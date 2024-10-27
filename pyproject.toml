@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fmp-data"
-version = "0.0.1"
+dynamic = ["version"]
 description = "Python client for Financial Modeling Prep API"
 authors = ["mehdizare <mehdizare@users.noreply.github.com>"]
 readme = "README.md"
@@ -10,7 +10,7 @@ repository = "https://github.com/MehdiZare/fmp-data"
 documentation = "https://fmp-data.readthedocs.io"
 keywords = ["finance", "api", "stock market", "financial data"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.12",
@@ -53,6 +53,13 @@ typecheck = "scripts:typecheck"
 test = "scripts:test"
 security = "scripts:security_check"
 fmp = "fmp_data.scripts.dev:main"
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+style = "semver"
+pattern = "^(?P<base>\\d+\\.\\d+\\.\\d+)(-?((?P<stage>[a-zA-Z]+)\\.?(?P<revision>\\d+)?))?"
+tag-pattern = "v[0-9]*"
 
 # Tool configurations
 [tool.black]
