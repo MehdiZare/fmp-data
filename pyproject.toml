@@ -143,13 +143,11 @@ filterwarnings = [
 [tool.coverage.run]
 source = ["fmp_data"]
 branch = true
-
-[tool.ruff.per-file-ignores]
-"__init__.py" = ["F401"]
-
-[tool.bandit]
-exclude_dirs = ["tests"]
-skips = ["B101"]
+omit = [
+    "tests/*",
+    "*/tests/*",
+    "setup.py",
+]
 
 [tool.coverage.report]
 exclude_lines = [
@@ -161,6 +159,22 @@ exclude_lines = [
     "pass",
     "raise ImportError",
 ]
+show_missing = true
+fail_under = 80
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101"]
+
 
 [build-system]
 requires = ["poetry-core"]
