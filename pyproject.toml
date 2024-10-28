@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fmp-data"
-dynamic = ["version"]
+version = "0.0.0"  # Placeholder version, will be dynamically updated
 description = "Python client for Financial Modeling Prep API"
 authors = ["mehdizare <mehdizare@users.noreply.github.com>"]
 readme = "README.md"
@@ -27,6 +27,8 @@ tqdm = "^4.66.5"
 cachetools = "^5.5.0"
 structlog = "^24.4.0"
 types-cachetools = "^5.5.0.20240820"
+mkdocstrings-python = "^1.12.2"
+pydantic-settings = "^2.6.0"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -46,6 +48,11 @@ pre-commit = "^4.0.1"
 coverage = "^7.6.4"
 
 
+
+[tool.poetry.group.docs.dependencies]
+mkdocs = "^1.6.1"
+mkdocs-material = "^9.5.42"
+
 [tool.poetry.scripts]
 format = "scripts:format_code"
 lint = "scripts:lint"
@@ -60,6 +67,9 @@ vcs = "git"
 style = "semver"
 pattern = "^(?P<base>\\d+\\.\\d+\\.\\d+)(-?((?P<stage>[a-zA-Z]+)\\.?(?P<revision>\\d+)?))?"
 tag-pattern = "v[0-9]*"
+
+[tool.poetry-dynamic-versioning.substitution]
+files = ["fmp_data/__init__.py"]
 
 # Tool configurations
 [tool.black]
@@ -93,20 +103,20 @@ warn_unreachable = true
 [tool.pydocstyle]
 convention = "google"
 add-select = [
-    "D100",  # Missing docstring in public module
-    "D101",  # Missing docstring in public class
-    "D102",  # Missing docstring in public method
-    "D103",  # Missing docstring in public function
-    "D104",  # Missing docstring in public package
+    "D100", # Missing docstring in public module
+    "D101", # Missing docstring in public class
+    "D102", # Missing docstring in public method
+    "D103", # Missing docstring in public function
+    "D104", # Missing docstring in public package
 ]
 add-ignore = [
-    "D105",  # Missing docstring in magic method
-    "D107",  # Missing docstring in __init__
-    "D200",  # One-line docstring should fit on one line
-    "D203",  # 1 blank line required before class docstring
-    "D213",  # Multi-line docstring summary should start at the second line
-    "D406",  # Section name should end with a newline
-    "D407",  # Missing dashed underline after section
+    "D105", # Missing docstring in magic method
+    "D107", # Missing docstring in __init__
+    "D200", # One-line docstring should fit on one line
+    "D203", # 1 blank line required before class docstring
+    "D213", # Multi-line docstring summary should start at the second line
+    "D406", # Section name should end with a newline
+    "D407", # Missing dashed underline after section
 ]
 ignore-decorators = "overrides"
 
@@ -117,14 +127,14 @@ line-length = 88
 
 [tool.ruff.lint]
 select = [
-    "E",   # pycodestyle errors
-    "W",   # pycodestyle warnings
-    "F",   # pyflakes
-    "I",   # isort
-    "C",   # flake8-comprehensions
-    "B",   # flake8-bugbear
-    "S",   # flake8-bandit
-    "UP",  # pyupgrade
+    "E", # pycodestyle errors
+    "W", # pycodestyle warnings
+    "F", # pyflakes
+    "I", # isort
+    "C", # flake8-comprehensions
+    "B", # flake8-bugbear
+    "S", # flake8-bandit
+    "UP", # pyupgrade
 ]
 ignore = []
 
@@ -138,10 +148,10 @@ known-first-party = ["fmp_data"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra -q"
-testpaths = ["fmp_data/tests"]
-asyncio_mode = "strict"
-asyncio_default_fixture_loop_scope = "function"
+addopts = "--quiet --no-header --tb=short -v --disable-warnings"
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::UserWarning",
@@ -184,5 +194,5 @@ skips = ["B101"]
 
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0"]
+build-backend = "poetry-dynamic-versioning.backend"
