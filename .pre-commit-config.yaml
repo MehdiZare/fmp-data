@@ -43,12 +43,19 @@ repos:
       - id: detect-secrets
         exclude: tests/.*
 
-#  - repo: local
-#    hooks:
-#      - id: pytest-check
-#        name: pytest-check
-#        entry: pytest
-#        language: system
-#        pass_filenames: false
-#        always_run: true
-#        args: [ "--maxfail=1", "--disable-warnings" ]
+  - repo: local
+    hooks:
+    -   id: pytest-check
+        name: pytest-check
+        entry: pytest
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [push]  # Only run on push, not on every commit
+        args: [
+            "--quiet",
+            "--no-header",
+            "--tb=short",
+            "-v",
+            "--disable-warnings",
+        ]
