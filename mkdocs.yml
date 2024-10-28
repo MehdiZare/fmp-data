@@ -1,0 +1,42 @@
+site_name: FMP Data
+site_description: Financial Modeling Prep API Client
+repo_url: https://github.com/MehdiZare/fmp-data
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - search.highlight
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Contributing:
+    - Development Setup: contributing/development.md
+    - Workflow Guide: contributing/workflow.md
+    - Testing: contributing/testing.md
+    - Releasing: contributing/releasing.md
+  - API Reference:
+    - Client: api/reference.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - admonition
+  - footnotes
+  - attr_list
+  - def_list
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [fmp_data]
+          options:
+            show_source: false
+            show_root_heading: true
