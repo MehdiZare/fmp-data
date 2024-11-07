@@ -1,6 +1,6 @@
 # fmp_data/__init__.py
 from .client import FMPDataClient
-from .config import ClientConfig, LoggingConfig
+from .config import ClientConfig, LoggingConfig, RateLimitConfig
 from .exceptions import (
     AuthenticationError,
     ConfigError,
@@ -17,6 +17,7 @@ __all__ = [
     "FMPDataClient",
     "ClientConfig",
     "LoggingConfig",
+    "RateLimitConfig",
     "FMPError",
     "RateLimitError",
     "AuthenticationError",
