@@ -1,48 +1,95 @@
-# fmp_data/models.py
-"""Data models for FMP client."""
-from datetime import datetime
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Generic, TypeVar
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
-
-class CompanyProfile(BaseModel):
-    """Company profile model."""
-
-    symbol: str
-    company_name: str = Field(alias="companyName")
-    currency: str
-    exchange: str
-    industry: str | None = None
-    website: str | None = None
-    description: str | None = None
-    ceo: str | None = None
-    sector: str | None = None
-    country: str | None = None
-    employees: int | None = Field(None, alias="fullTimeEmployees")
-    phone: str | None = None
-    address: str | None = None
-    city: str | None = None
-    state: str | None = None
-    zip_code: str | None = Field(None, alias="zip")
-    price: float | None = None
-    beta: float | None = None
-    volume_avg: int | None = Field(None, alias="volAvg")
-    market_cap: float | None = Field(None, alias="mktCap")
-    last_dividend: float | None = Field(None, alias="lastDiv")
-    range: str | None = None
-    changes: float | None = None
-    dcf_diff: float | None = Field(None, alias="dcfDiff")
-    dcf: float | None = None
-    ipo_date: datetime | None = Field(None, alias="ipoDate")
+T = TypeVar("T")
 
 
-class IncomeStatement(BaseModel):
-    """Income statement model."""
+class APIVersion(str, Enum):
+    """API versions supported by FMP"""
 
-    date: str
-    symbol: str
-    revenue: float
-    gross_profit: float = Field(alias="grossProfit")
-    operating_income: float = Field(alias="operatingIncome")
-    net_income: float = Field(alias="netIncome")
-    eps: float = Field(alias="eps")
+    V3 = "v3"
+    V4 = "v4"
+    STABLE = "stable"
+
+
+class ParamType(str, Enum):
+    """Parameter types for endpoints"""
+
+    PATH = "path"
+    QUERY = "query"
+
+
+@dataclass
+class EndpointParam:
+    """Definition of an endpoint parameter"""
+
+    name: str
+    param_type: ParamType
+    required: bool
+    type: type
+    description: str
+    default: Any = None
+    alias: str | None = None
+    valid_values: list[Any] | None = None
+
+
+class Endpoint(BaseModel, Generic[T]):
+    """Enhanced endpoint definition with type checking"""
+
+    name: str
+    path: str
+    version: APIVersion
+    description: str
+    mandatory_params: list[EndpointParam]
+    optional_params: list[EndpointParam] = Field(default_factory=list)
+    response_model: type[T]
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    def validate_params(self, provided_params: dict) -> dict[str, Any]:
+        """Validate provided parameters against endpoint definition"""
+        validated = {}
+
+        # Check mandatory parameters
+        for param in self.mandatory_params:
+            if param.param_type == ParamType.PATH:
+                if param.name not in provided_params:
+                    raise ValueError(f"Missing mandatory path parameter: {param.name}")
+            elif param.name not in provided_params:
+                raise ValueError(f"Missing mandatory parameter: {param.name}")
+
+            value = provided_params[param.name]
+            if param.valid_values and value not in param.valid_values:
+                raise ValueError(
+                    f"Invalid value for {param.name}. "
+                    f"Must be one of: {param.valid_values}"
+                )
+            validated[param.name] = value
+
+        # Process optional parameters
+        for param in self.optional_params:
+            if param.name in provided_params:
+                value = provided_params[param.name]
+                if param.valid_values and value not in param.valid_values:
+                    raise ValueError(
+                        f"Invalid value for {param.name}. "
+                        f"Must be one of: {param.valid_values}"
+                    )
+                validated[param.name if not param.alias else param.alias] = value
+            elif param.default is not None:
+                validated[param.name if not param.alias else param.alias] = (
+                    param.default
+                )
+
+        return validated
+
+    def build_url(self, base_url: str, params: dict[str, Any]) -> str:
+        """Build the complete URL for the endpoint"""
+        path = self.path
+        for param in self.mandatory_params:
+            if param.param_type == ParamType.PATH and param.name in params:
+                path = path.replace(f"{{{param.name}}}", str(params[param.name]))
+        return f"{base_url}/{self.version.value}/{path}"
