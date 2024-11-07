@@ -160,6 +160,7 @@ filterwarnings = [
 source = ["fmp_data"]
 branch = true
 omit = [
+    "fmp_data/endpoints/definitions.py",
     "tests/*",
     "*/tests/*",
     "setup.py",
@@ -169,17 +170,19 @@ omit = [
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
-    "if self.debug:",
     "raise NotImplementedError",
-    "if __name__ == .__main__.:",
+    "if __name__ == '__main__':",
     "pass",
     "raise ImportError",
+    "except ImportError",
+    "def main()",
+    "if TYPE_CHECKING:"
 ]
 show_missing = true
 fail_under = 80
 
 [tool.coverage.html]
-directory = "htmlcov"
+directory = "coverage_html"
 
 [tool.coverage.xml]
 output = "coverage.xml"
