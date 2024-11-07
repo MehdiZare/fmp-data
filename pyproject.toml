@@ -6,16 +6,27 @@ authors = ["mehdizare <mehdizare@users.noreply.github.com>"]
 readme = "README.md"
 packages = [{ include = "fmp_data" }]
 license = "MIT"
+homepage = "https://github.com/MehdiZare/fmp-data"
 repository = "https://github.com/MehdiZare/fmp-data"
-documentation = "https://fmp-data.readthedocs.io"
-keywords = ["finance", "api", "stock market", "financial data"]
+documentation = "https://github.com/MehdiZare/fmp-data#readme"
+keywords = ["fmp", "financial", "api", "stocks", "market-data", "stock market", "financial data"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License", # Added for tenacity
+    "License :: OSI Approved :: BSD License", # Added for httpx
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Office/Business :: Financial :: Investment",
+    "Framework :: AsyncIO",
+    "Intended Audience :: Financial and Insurance Industry",
 ]
+
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"

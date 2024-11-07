@@ -1,0 +1,37 @@
+FMP Data Client
+Copyright (c) 2024 Mehdi Zare
+
+This software includes the following third-party packages:
+
+- httpx (BSD-3-Clause License)
+  Copyright (c) 2019, Tom Christie
+  https://github.com/encode/httpx
+
+- pydantic (MIT License)
+  Copyright (c) 2017-present Samuel Colvin and other contributors
+  https://github.com/pydantic/pydantic
+
+- tenacity (Apache License 2.0)
+  Copyright (c) 2016 Julien Danjou and contributors
+  Licensed under the Apache License, Version 2.0
+  https://github.com/jd/tenacity
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+
+For more detailed license information and full license texts:
+- httpx: https://github.com/encode/httpx/blob/master/LICENSE.md
+- pydantic: https://github.com/pydantic/pydantic/blob/main/LICENSE
+- tenacity: http://www.apache.org/licenses/LICENSE-2.0
+
+Third-party dependencies may have their own licenses and terms. Please refer to
+each package's documentation for complete licensing information.
