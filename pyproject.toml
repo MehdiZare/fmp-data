@@ -75,7 +75,7 @@ files = ["fmp_data/__init__.py"]
 # Tool configurations
 [tool.black]
 line-length = 88
-target-version = ['py312']
+target-version = ["py39", "py310", "py311", "py312", "py313"]
 include = '\.pyi?$'
 
 [tool.isort]
@@ -138,7 +138,7 @@ select = [
     "UP",
 ]
 ignore = ["S101"]
-per-file-ignores = { "tests/*"= ["S101"], "scripts/*"= ["S603", "S607"], "**/conftest.py"= ["S101"], "__init__.py"= ["F401"] }
+per-file-ignores = { "tests/*" = ["S101"], "scripts/*" = ["S603", "S607"], "**/conftest.py" = ["S101"], "__init__.py" = ["F401"] }
 
 
 
@@ -161,6 +161,8 @@ source = ["fmp_data"]
 branch = true
 omit = [
     "fmp_data/endpoints/definitions.py",
+    "fmp_data/example.py",
+    "*/__init__.py",
     "tests/*",
     "*/tests/*",
     "setup.py",
