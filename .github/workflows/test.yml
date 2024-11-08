@@ -39,18 +39,21 @@ jobs:
         virtualenvs-create: true
         virtualenvs-in-project: true
 
-    - name: Set environment variables for Windows
+    - name: Set Windows environment
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        # Set UTF-8 for Python
         echo "PYTHONUTF8=1" >> $env:GITHUB_ENV
-        # Set Python executable path
         echo "PYTHON_EXECUTABLE=$((Get-Command python).Path)" >> $env:GITHUB_ENV
-        # Set Poetry encoding
+        echo "PATH=$env:USERPROFILE\.local\bin;$env:PATH" >> $env:GITHUB_ENV
         echo "POETRY_ENCODING=utf-8" >> $env:GITHUB_ENV
+        # Print debug info
+        Write-Host "Poetry location:"
+        Get-Command poetry -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+        Write-Host "Path environment:"
+        $env:PATH -split ';' | ForEach-Object { Write-Host $_ }
 
-    - name: Set environment variables for Unix
+    - name: Set Unix environment
       if: runner.os != 'Windows'
       run: |
         echo "PYTHON_EXECUTABLE=$(which python)" >> $GITHUB_ENV
@@ -65,39 +68,58 @@ jobs:
           venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-
 
     - name: Install dependencies
+      if: runner.os == 'Windows'
       shell: pwsh
       run: |
         python -m pip install --upgrade pip
         $env:PYTHONIOENCODING = "utf-8"
-        poetry env use $env:PYTHON_EXECUTABLE
+        # Ensure poetry is in PATH
+        $poetryPath = Join-Path $env:USERPROFILE ".local" "bin" "poetry"
+        if (Test-Path $poetryPath) {
+            & $poetryPath env use $env:PYTHON_EXECUTABLE
+            & $poetryPath install --no-interaction --with dev
+        } else {
+            Write-Host "Poetry not found at expected location: $poetryPath"
+            Write-Host "Searching for poetry in PATH..."
+            $poetryCmd = Get-Command poetry -ErrorAction SilentlyContinue
+            if ($poetryCmd) {
+                Write-Host "Found poetry at: $($poetryCmd.Source)"
+                & $poetryCmd env use $env:PYTHON_EXECUTABLE
+                & $poetryCmd install --no-interaction --with dev
+            } else {
+                Write-Error "Poetry not found in PATH"
+                exit 1
+            }
+        }
+
+    - name: Install dependencies (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        python -m pip install --upgrade pip
+        poetry env use "${PYTHON_EXECUTABLE}"
         poetry install --no-interaction --with dev
 
     - name: List environment info
-      shell: pwsh
+      shell: bash
       run: |
-        Write-Host "Python Version:"
         python --version
-        Write-Host "`nPip Version:"
         pip --version
-        Write-Host "`nPoetry Version:"
         poetry --version
-        Write-Host "`nPoetry Environment Info:"
-        poetry env info
-        Write-Host "`nInstalled Packages:"
         poetry show
+        poetry env info
 
     - name: Run tests
-      shell: pwsh
+      shell: bash
       env:
         FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
         PYTHONIOENCODING: utf-8
       run: |
-        poetry run pytest tests/ `
-          --cov=fmp_data `
-          --cov-config=.coveragerc `
-          --cov-report=xml `
-          --cov-report=term `
-          --cov-report=html `
+        poetry run pytest tests/ \
+          --cov=fmp_data \
+          --cov-config=.coveragerc \
+          --cov-report=xml \
+          --cov-report=term \
+          --cov-report=html \
           -v
 
     - name: Upload coverage
