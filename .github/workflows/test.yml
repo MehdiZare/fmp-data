@@ -52,15 +52,20 @@ jobs:
         restore-keys: |
           venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-
 
+    - name: Set Python Path for Poetry (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        echo "PYTHON_EXECUTABLE=$(where python | head -n 1)" >> $GITHUB_ENV
+
+    - name: Set Python Path for Poetry (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        echo "PYTHON_EXECUTABLE=$(which python)" >> $GITHUB_ENV
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        if [ "$RUNNER_OS" == "Windows" ]; then
-          # On Windows, use the full Python path
-          poetry env use "$(which python)"
-        else
-          poetry env use python${{ matrix.python-version }}
-        fi
+        poetry env use "${PYTHON_EXECUTABLE}"
         poetry install --no-interaction --with dev
 
     - name: List environment info
