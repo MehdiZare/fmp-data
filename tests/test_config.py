@@ -1,4 +1,5 @@
 import os
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -12,38 +13,52 @@ from fmp_data.config import (
 )
 
 
-@pytest.fixture
-def env_vars():
-    """Setup and teardown environment variables"""
+@contextmanager
+def temp_environ():
+    """Context manager to temporarily modify environment variables."""
+    old_environ = dict(os.environ)
+    try:
+        yield os.environ
+    finally:
+        os.environ.clear()
+        os.environ.update(old_environ)
 
-    original_vars = {}
+
+@pytest.fixture
+def rate_limit_env_vars():
+    """Fixture to set up and tear down rate limit environment variables"""
     test_vars = {
-        "FMP_API_KEY": "test_api_key",
-        "FMP_TIMEOUT": "30",
-        "FMP_MAX_RETRIES": "3",
-        "FMP_BASE_URL": "https://test.api.com",
         "FMP_DAILY_LIMIT": "1000",
         "FMP_REQUESTS_PER_SECOND": "5",
-        "FMP_REQUESTS_PER_MINUTE": "100",
-        "FMP_LOG_LEVEL": "DEBUG",
-        "FMP_LOG_CONSOLE": "true",
-        "FMP_LOG_PATH": "/tmp/logs",  # noqa: S108
+        "FMP_REQUESTS_PER_MINUTE": "300",
     }
 
-    # Save original values and set test values
-    for key, value in test_vars.items():
-        if key in os.environ:
-            original_vars[key] = os.environ[key]
-        os.environ[key] = value
+    with temp_environ() as env:
+        env.update(test_vars)
+        yield test_vars
 
-    yield test_vars
 
-    # Restore original values
-    for key in test_vars:
-        if key in original_vars:
-            os.environ[key] = original_vars[key]
-        else:
-            del os.environ[key]
+@pytest.fixture
+def env_vars(tmp_path):
+    """Fixture to set up and tear down environment variables"""
+    log_path = tmp_path / "logs"
+
+    test_vars = {
+        "FMP_API_KEY": "test_api_key",
+        "FMP_BASE_URL": "https://test.api.com",
+        "FMP_DAILY_LIMIT": "1000",
+        "FMP_LOG_CONSOLE": "true",
+        "FMP_LOG_CONSOLE_LEVEL": "DEBUG",
+        "FMP_LOG_PATH": str(log_path),
+        "FMP_LOG_FILE_LEVEL": "INFO",
+        "FMP_LOG_JSON": "true",
+        "FMP_LOG_JSON_LEVEL": "WARNING",
+        "FMP_LOG_LEVEL": "DEBUG",
+    }
+
+    with temp_environ() as env:
+        env.update(test_vars)
+        yield test_vars
 
 
 def test_log_handler_config_validation():
@@ -67,19 +82,72 @@ def test_logging_config_from_env(env_vars):
     """Test logging configuration from environment variables"""
     config = LoggingConfig.from_env()
 
+    # Basic config assertions
     assert config.level == "DEBUG"
     assert "console" in config.handlers
+
+    # Path comparison using Path objects
     assert isinstance(config.log_path, Path)
-    assert str(config.log_path) == "/tmp/logs"  # noqa: S108
+    expected_path = Path(env_vars["FMP_LOG_PATH"])
+    assert config.log_path.resolve() == expected_path.resolve()
+
+    # Handler configuration tests
+    assert config.handlers["console"].level == "DEBUG"
+
+    # File handler tests
+    assert "file" in config.handlers
+    file_handler = config.handlers["file"]
+    assert file_handler.level == "INFO"
+    assert file_handler.class_name == "RotatingFileHandler"
+    assert (
+        Path(file_handler.kwargs["filename"]).parent.resolve()
+        == expected_path.resolve()
+    )
+
+    # JSON handler tests
+    assert "json" in config.handlers
+    json_handler = config.handlers["json"]
+    assert json_handler.level == "WARNING"
+    assert json_handler.class_name == "JsonRotatingFileHandler"
+    assert (
+        Path(json_handler.kwargs["filename"]).parent.resolve()
+        == expected_path.resolve()
+    )
 
 
-def test_rate_limit_config_from_env(env_vars):
+def test_rate_limit_config_from_env(rate_limit_env_vars):
     """Test rate limit configuration from environment variables"""
     config = RateLimitConfig.from_env()
 
-    assert config.daily_limit == 1000
-    assert config.requests_per_second == 5
-    assert config.requests_per_minute == 100
+    assert config.daily_limit == int(rate_limit_env_vars["FMP_DAILY_LIMIT"])
+    assert config.requests_per_second == int(
+        rate_limit_env_vars["FMP_REQUESTS_PER_SECOND"]
+    )
+    assert config.requests_per_minute == int(
+        rate_limit_env_vars["FMP_REQUESTS_PER_MINUTE"]
+    )
+
+
+def test_rate_limit_config_validation():
+    """Test rate limit configuration validation"""
+    with pytest.raises(ValueError):
+        RateLimitConfig(daily_limit=0)  # Should be greater than 0
+
+    with pytest.raises(ValueError):
+        RateLimitConfig(requests_per_second=0)  # Should be greater than 0
+
+    with pytest.raises(ValueError):
+        RateLimitConfig(requests_per_minute=0)  # Should be greater than 0
+
+
+def test_rate_limit_config_defaults():
+    """Test rate limit configuration defaults"""
+    with temp_environ():
+        config = RateLimitConfig()
+
+        assert config.daily_limit == 250  # Default daily limit
+        assert config.requests_per_second == 5  # Default requests per second
+        assert config.requests_per_minute == 300  # Default requests per minute
 
 
 def test_client_config_validation():
@@ -165,19 +233,20 @@ def test_logging_config_file_handlers(tmp_path):
     assert config.handlers["file"].class_name == "RotatingFileHandler"
 
 
-def test_rate_limit_config_validation():
-    """Test rate limit configuration validation"""
-    # Test invalid values
-    with pytest.raises(ValidationError):
-        RateLimitConfig(daily_limit=0)  # Must be > 0
+def test_logging_config_no_path():
+    """Test logging configuration when no path is provided"""
+    with temp_environ() as env:
+        env.update(
+            {
+                "FMP_LOG_CONSOLE": "true",
+                "FMP_LOG_CONSOLE_LEVEL": "DEBUG",
+                "FMP_LOG_LEVEL": "DEBUG",
+            }
+        )
+        config = LoggingConfig.from_env()
 
-    with pytest.raises(ValidationError):
-        RateLimitConfig(requests_per_second=-1)  # Must be > 0
-
-    # Test valid config
-    config = RateLimitConfig(
-        daily_limit=1000, requests_per_second=10, requests_per_minute=300
-    )
-    assert config.daily_limit == 1000
-    assert config.requests_per_second == 10
-    assert config.requests_per_minute == 300
+        assert config.level == "DEBUG"
+        assert "console" in config.handlers
+        assert config.log_path is None
+        assert "file" not in config.handlers
+        assert "json" not in config.handlers
