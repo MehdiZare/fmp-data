@@ -1,7 +1,15 @@
 # fmp_data/institutional/endpoints.py
+from fmp_data.institutional.models import (
+    AssetAllocation,
+    Form13F,
+    InsiderRoster,
+    InsiderStatistic,
+    InsiderTrade,
+    InsiderTransactionType,
+    InstitutionalHolder,
+    InstitutionalHolding,
+)
 from fmp_data.models import APIVersion, Endpoint, EndpointParam, ParamType
-
-from . import models
 
 # Form 13F endpoints
 FORM_13F = Endpoint(
@@ -25,7 +33,7 @@ FORM_13F = Endpoint(
             description="Filing date",
         ),
     ],
-    response_model=models.Form13F,
+    response_model=Form13F,
 )
 
 ASSET_ALLOCATION = Endpoint(
@@ -42,7 +50,7 @@ ASSET_ALLOCATION = Endpoint(
             description="Filing date",
         )
     ],
-    response_model=models.AssetAllocation,
+    response_model=AssetAllocation,
 )
 
 INSTITUTIONAL_HOLDERS = Endpoint(
@@ -50,7 +58,9 @@ INSTITUTIONAL_HOLDERS = Endpoint(
     path="institutional-ownership/list",
     version=APIVersion.V4,
     description="Get list of institutional holders",
-    response_model=models.InstitutionalHolder,
+    mandatory_params=[],
+    optional_params=[],
+    response_model=InstitutionalHolder,
 )
 
 INSTITUTIONAL_HOLDINGS = Endpoint(
@@ -75,7 +85,8 @@ INSTITUTIONAL_HOLDINGS = Endpoint(
             default=False,
         ),
     ],
-    response_model=models.InstitutionalHolding,
+    optional_params=[],
+    response_model=InstitutionalHolding,
 )
 
 # Insider Trading endpoints
@@ -103,7 +114,7 @@ INSIDER_TRADES = Endpoint(
             default=0,
         )
     ],
-    response_model=models.InsiderTrade,
+    response_model=InsiderTrade,
 )
 
 TRANSACTION_TYPES = Endpoint(
@@ -111,7 +122,9 @@ TRANSACTION_TYPES = Endpoint(
     path="insider-trading-transaction-type",
     version=APIVersion.V4,
     description="Get insider transaction types",
-    response_model=models.InsiderTransactionType,
+    mandatory_params=[],
+    optional_params=[],
+    response_model=InsiderTransactionType,
 )
 
 INSIDER_ROSTER = Endpoint(
@@ -128,7 +141,8 @@ INSIDER_ROSTER = Endpoint(
             description="Stock symbol",
         )
     ],
-    response_model=models.InsiderRoster,
+    optional_params=[],
+    response_model=InsiderRoster,
 )
 
 INSIDER_STATISTICS = Endpoint(
@@ -145,5 +159,6 @@ INSIDER_STATISTICS = Endpoint(
             description="Stock symbol",
         )
     ],
-    response_model=models.InsiderStatistic,
+    optional_params=[],
+    response_model=InsiderStatistic,
 )
