@@ -13,6 +13,7 @@ TREASURY_RATES = Endpoint(
     path="treasury",
     version=APIVersion.V4,
     description="Get treasury rates",
+    mandatory_params=[],
     optional_params=[
         EndpointParam(
             name="from",
@@ -46,6 +47,7 @@ ECONOMIC_INDICATORS = Endpoint(
             description="Indicator name",
         )
     ],
+    optional_params=[],
     response_model=EconomicIndicator,
 )
 
@@ -70,6 +72,7 @@ ECONOMIC_CALENDAR = Endpoint(
             description="End date",
         ),
     ],
+    mandatory_params=[],
     response_model=EconomicEvent,
 )
 
@@ -79,4 +82,6 @@ MARKET_RISK_PREMIUM = Endpoint(
     version=APIVersion.V4,
     description="Get market risk premium data",
     response_model=MarketRiskPremium,
+    mandatory_params=[],
+    optional_params=[],
 )
