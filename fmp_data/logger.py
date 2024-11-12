@@ -11,7 +11,7 @@ from functools import wraps
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-from .config import LoggingConfig, LogHandlerConfig
+from fmp_data.config import LoggingConfig, LogHandlerConfig
 
 
 class SensitiveDataFilter(logging.Filter):

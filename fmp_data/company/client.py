@@ -1,7 +1,7 @@
 # company/client.py
 
-from ..base import EndpointGroup
-from .endpoints import (
+from fmp_data.base import EndpointGroup
+from fmp_data.company.endpoints import (
     AVAILABLE_INDEXES,
     CIK_SEARCH,
     COMPANY_LOGO,
@@ -17,7 +17,7 @@ from .endpoints import (
     SEARCH,
     STOCK_LIST,
 )
-from .models import (
+from fmp_data.company.models import (
     CIKResult,
     CompanyCoreInformation,
     CompanyExecutive,

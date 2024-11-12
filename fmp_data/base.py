@@ -13,11 +13,16 @@ from tenacity import (
     wait_exponential,
 )
 
-from .config import ClientConfig
-from .exceptions import AuthenticationError, FMPError, RateLimitError, ValidationError
-from .logger import FMPLogger, log_api_call
-from .models import Endpoint
-from .rate_limit import FMPRateLimiter, QuotaConfig
+from fmp_data.config import ClientConfig
+from fmp_data.exceptions import (
+    AuthenticationError,
+    FMPError,
+    RateLimitError,
+    ValidationError,
+)
+from fmp_data.logger import FMPLogger, log_api_call
+from fmp_data.models import Endpoint
+from fmp_data.rate_limit import FMPRateLimiter, QuotaConfig
 
 T = TypeVar("T")
 

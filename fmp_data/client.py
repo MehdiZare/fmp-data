@@ -3,11 +3,13 @@ import warnings
 
 from pydantic import ValidationError as PydanticValidationError
 
-from .base import BaseClient
-from .company.client import CompanyClient
-from .config import ClientConfig, LoggingConfig, LogHandlerConfig
-from .exceptions import ConfigError
-from .logger import FMPLogger
+from fmp_data.base import BaseClient
+from fmp_data.company.client import CompanyClient
+from fmp_data.config import ClientConfig, LoggingConfig, LogHandlerConfig
+from fmp_data.exceptions import ConfigError
+from fmp_data.fundamental import FundamentalClient
+from fmp_data.logger import FMPLogger
+from fmp_data.market import MarketClient
 
 
 class FMPDataClient(BaseClient):
@@ -39,8 +41,11 @@ class FMPDataClient(BaseClient):
             ConfigError: If api_key is not provided and not found in environment
         """
         self._initialized = False
-        self._company = None
         self._logger = None
+        self._company = None
+        self._market = None
+        self._fundamental = None
+
         # pylint: disable=line-too-long
 
         try:
@@ -104,18 +109,6 @@ class FMPDataClient(BaseClient):
 
         return cls(config=config)
 
-    @property
-    def company(self) -> CompanyClient:
-        """Get or create the company client instance"""
-        if not self._initialized:
-            raise RuntimeError("Client not properly initialized")
-
-        if self._company is None:
-            if self.logger:
-                self.logger.debug("Initializing company client")
-            self._company = CompanyClient(self)
-        return self._company
-
     def __enter__(self):
         """Context manager enter"""
         if not self._initialized:
@@ -159,3 +152,39 @@ class FMPDataClient(BaseClient):
                 ResourceWarning,
                 stacklevel=2,
             )
+
+    @property
+    def company(self) -> CompanyClient:
+        """Get or create the company client instance"""
+        if not self._initialized:
+            raise RuntimeError("Client not properly initialized")
+
+        if self._company is None:
+            if self.logger:
+                self.logger.debug("Initializing company client")
+            self._company = CompanyClient(self)
+        return self._company
+
+    @property
+    def market(self) -> MarketClient:
+        """Get or create the market data client instance"""
+        if not self._initialized:
+            raise RuntimeError("Client not properly initialized")
+
+        if self._market is None:
+            if self.logger:
+                self.logger.debug("Initializing market client")
+            self._market = MarketClient(self)
+        return self._market
+
+    @property
+    def fundamental(self) -> FundamentalClient:
+        """Get or create the fundamental client instance"""
+        if not self._initialized:
+            raise RuntimeError("Client not properly initialized")
+
+        if self._fundamental is None:
+            if self.logger:
+                self.logger.debug("Initializing fundamental client")
+            self._fundamental = FundamentalClient(self)
+        return self._fundamental

@@ -1,6 +1,5 @@
 # endpoints.py
-from ..models import APIVersion, Endpoint, EndpointParam, ParamType
-from .models import (
+from fmp_data.company.models import (
     CIKResult,
     CompanyCoreInformation,
     CompanyExecutive,
@@ -13,6 +12,7 @@ from .models import (
     ExchangeSymbol,
     ISINResult,
 )
+from fmp_data.models import APIVersion, Endpoint, EndpointParam, ParamType
 
 # Company Endpoints
 PROFILE = Endpoint(
@@ -259,5 +259,3 @@ COMPANY_LOGO = Endpoint(
     optional_params=[],
     response_model=str,
 )
-
-# In models.py, add:

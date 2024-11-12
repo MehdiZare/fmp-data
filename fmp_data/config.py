@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
-from .exceptions import ConfigError
+from fmp_data.exceptions import ConfigError
 
 
 class LogHandlerConfig(BaseModel):

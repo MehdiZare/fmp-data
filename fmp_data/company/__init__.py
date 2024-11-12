@@ -1,6 +1,6 @@
 # fmp_data/company/__init__.py
-from .client import CompanyClient
-from .models import (
+from fmp_data.company.client import CompanyClient
+from fmp_data.company.models import (
     CompanyCoreInformation,
     CompanyExecutive,
     CompanyNote,
