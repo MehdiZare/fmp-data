@@ -28,6 +28,7 @@ BULK_QUOTES = Endpoint(
             description="Comma-separated stock symbols",
         )
     ],
+    optional_params=[],
     response_model=BulkQuote,
 )
 
@@ -45,6 +46,7 @@ BATCH_EOD = Endpoint(
             description="Trading date",
         )
     ],
+    optional_params=[],
     response_model=BulkEODPrice,
 )
 
@@ -70,6 +72,7 @@ BULK_INCOME_STATEMENTS = Endpoint(
             valid_values=["annual", "quarter"],
         ),
     ],
+    optional_params=[],
     response_model=BulkIncomeStatement,
 )
 
@@ -95,6 +98,7 @@ BULK_BALANCE_SHEETS = Endpoint(
             valid_values=["annual", "quarter"],
         ),
     ],
+    optional_params=[],
     response_model=BulkBalanceSheet,
 )
 
@@ -120,6 +124,7 @@ BULK_CASH_FLOWS = Endpoint(
             valid_values=["annual", "quarter"],
         ),
     ],
+    optional_params=[],
     response_model=BulkCashFlowStatement,
 )
 
@@ -145,6 +150,7 @@ BULK_RATIOS = Endpoint(
             valid_values=["annual", "quarter"],
         ),
     ],
+    optional_params=[],
     response_model=BulkRatio,
 )
 
@@ -170,6 +176,7 @@ BULK_KEY_METRICS = Endpoint(
             valid_values=["annual", "quarter"],
         ),
     ],
+    optional_params=[],
     response_model=BulkKeyMetric,
 )
 
@@ -178,6 +185,8 @@ BULK_EARNINGS_SURPRISES = Endpoint(
     path="earnings-surprises-bulk",
     version=APIVersion.V4,
     description="Get bulk earnings surprises",
+    mandatory_params=[],
+    optional_params=[],
     response_model=BulkEarningSurprise,
 )
 
@@ -195,6 +204,7 @@ BULK_COMPANY_PROFILES = Endpoint(
             description="Data part number",
         )
     ],
+    optional_params=[],
     response_model=BulkCompanyProfile,
 )
 
@@ -203,6 +213,8 @@ BULK_STOCK_PEERS = Endpoint(
     path="stock_peers_bulk",
     version=APIVersion.V4,
     description="Get bulk stock peers data",
+    mandatory_params=[],
+    optional_params=[],
     response_model=BulkStockPeer,
 )
 
@@ -228,5 +240,6 @@ BULK_FINANCIAL_GROWTH = Endpoint(
             valid_values=["annual", "quarter"],
         ),
     ],
+    optional_params=[],
     response_model=BulkFinancialGrowth,
 )
