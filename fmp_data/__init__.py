@@ -1,14 +1,14 @@
 # fmp_data/__init__.py
-from .client import FMPDataClient
-from .config import ClientConfig, LoggingConfig, RateLimitConfig
-from .exceptions import (
+from fmp_data.client import FMPDataClient
+from fmp_data.config import ClientConfig, LoggingConfig, RateLimitConfig
+from fmp_data.exceptions import (
     AuthenticationError,
     ConfigError,
     FMPError,
     RateLimitError,
     ValidationError,
 )
-from .logger import FMPLogger
+from fmp_data.logger import FMPLogger
 
 # Initialize the logger when the library is imported
 logger = FMPLogger()
