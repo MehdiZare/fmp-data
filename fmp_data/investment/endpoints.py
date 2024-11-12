@@ -1,15 +1,15 @@
 # fmp_data/investment/endpoints.py
-from datetime import date
-
 from fmp_data.investment.models import (
     ETFCountryWeighting,
     ETFExposure,
     ETFHolder,
     ETFHolding,
     ETFInfo,
+    ETFPortfolioDate,
     ETFSectorWeighting,
     MutualFundHolder,
     MutualFundHolding,
+    PortfolioDate,
 )
 from fmp_data.models import APIVersion, Endpoint, EndpointParam, ParamType
 
@@ -52,7 +52,7 @@ ETF_HOLDING_DATES = Endpoint(
             description="ETF symbol",
         )
     ],
-    response_model=list[date],
+    response_model=ETFPortfolioDate,
 )
 
 ETF_INFO = Endpoint(
@@ -162,7 +162,7 @@ MUTUAL_FUND_DATES = Endpoint(
             description="Fund CIK",
         ),
     ],
-    response_model=list[date],
+    response_model=PortfolioDate,
 )
 
 MUTUAL_FUND_HOLDINGS = Endpoint(
