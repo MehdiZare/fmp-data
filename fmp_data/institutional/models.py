@@ -50,7 +50,7 @@ class AssetAllocation(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    date: date = Field(description="Allocation date")
+    allocation_date: date = Field(description="Allocation date", alias="date")
     cik: str = Field(description="Institution CIK")
     company_name: str = Field(alias="companyName", description="Institution name")
     asset_type: str = Field(alias="assetType", description="Type of asset")
