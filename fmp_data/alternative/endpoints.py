@@ -21,6 +21,8 @@ CRYPTO_LIST = Endpoint(
     path="symbol/available-cryptocurrencies",
     version=APIVersion.V3,
     description="Get list of available cryptocurrencies",
+    mandatory_params=[],
+    optional_params=[],
     response_model=CryptoPair,
 )
 
@@ -29,6 +31,8 @@ CRYPTO_QUOTES = Endpoint(
     path="quotes/crypto",
     version=APIVersion.V3,
     description="Get cryptocurrency quotes",
+    mandatory_params=[],
+    optional_params=[],
     response_model=CryptoQuote,
 )
 
@@ -113,6 +117,8 @@ FOREX_LIST = Endpoint(
     path="symbol/available-forex-currency-pairs",
     version=APIVersion.V3,
     description="Get list of available forex pairs",
+    mandatory_params=[],
+    optional_params=[],
     response_model=ForexPair,
 )
 
@@ -121,6 +127,8 @@ FOREX_QUOTES = Endpoint(
     path="quotes/forex",
     version=APIVersion.V3,
     description="Get forex quotes",
+    mandatory_params=[],
+    optional_params=[],
     response_model=ForexQuote,
 )
 
@@ -138,6 +146,7 @@ FOREX_QUOTE = Endpoint(
             description="Forex pair symbol",
         )
     ],
+    optional_params=[],
     response_model=ForexQuote,
 )
 
@@ -196,6 +205,7 @@ FOREX_INTRADAY = Endpoint(
             description="Forex pair symbol",
         ),
     ],
+    optional_params=[],
     response_model=ForexIntradayPrice,
 )
 
@@ -205,6 +215,8 @@ COMMODITIES_LIST = Endpoint(
     path="symbol/available-commodities",
     version=APIVersion.V3,
     description="Get list of available commodities",
+    mandatory_params=[],
+    optional_params=[],
     response_model=Commodity,
 )
 
@@ -213,6 +225,8 @@ COMMODITIES_QUOTES = Endpoint(
     path="quotes/commodity",
     version=APIVersion.V3,
     description="Get commodities quotes",
+    mandatory_params=[],
+    optional_params=[],
     response_model=CommodityQuote,
 )
 
@@ -230,6 +244,7 @@ COMMODITY_QUOTE = Endpoint(
             description="Commodity symbol",
         )
     ],
+    optional_params=[],
     response_model=CommodityQuote,
 )
 
@@ -288,5 +303,6 @@ COMMODITY_INTRADAY = Endpoint(
             description="Commodity symbol",
         ),
     ],
+    optional_params=[],
     response_model=CommodityIntradayPrice,
 )
