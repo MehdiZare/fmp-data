@@ -1,7 +1,20 @@
 # fmp_data/intelligence/endpoints.py
+from fmp_data.intelligence.models import (
+    AnalystEstimate,
+    AnalystRecommendation,
+    DividendEvent,
+    EarningConfirmed,
+    EarningEvent,
+    EarningSurprise,
+    IPOEvent,
+    PriceTarget,
+    PriceTargetConsensus,
+    PriceTargetSummary,
+    StockSplitEvent,
+    UpgradeDowngrade,
+    UpgradeDowngradeConsensus,
+)
 from fmp_data.models import APIVersion, Endpoint, EndpointParam, ParamType
-
-from . import models
 
 # Price Targets endpoints
 PRICE_TARGET = Endpoint(
@@ -18,7 +31,7 @@ PRICE_TARGET = Endpoint(
             description="Stock symbol",
         )
     ],
-    response_model=models.PriceTarget,
+    response_model=PriceTarget,
 )
 
 PRICE_TARGET_SUMMARY = Endpoint(
@@ -35,7 +48,7 @@ PRICE_TARGET_SUMMARY = Endpoint(
             description="Stock symbol",
         )
     ],
-    response_model=models.PriceTargetSummary,
+    response_model=PriceTargetSummary,
 )
 
 PRICE_TARGET_CONSENSUS = Endpoint(
@@ -52,7 +65,7 @@ PRICE_TARGET_CONSENSUS = Endpoint(
             description="Stock symbol",
         )
     ],
-    response_model=models.PriceTargetConsensus,
+    response_model=PriceTargetConsensus,
 )
 
 # Analyst Coverage endpoints
@@ -70,7 +83,7 @@ ANALYST_ESTIMATES = Endpoint(
             description="Stock symbol",
         )
     ],
-    response_model=models.AnalystEstimate,
+    response_model=AnalystEstimate,
 )
 
 ANALYST_RECOMMENDATIONS = Endpoint(
@@ -87,7 +100,7 @@ ANALYST_RECOMMENDATIONS = Endpoint(
             description="Stock symbol",
         )
     ],
-    response_model=models.AnalystRecommendation,
+    response_model=AnalystRecommendation,
 )
 
 # Upgrades & Downgrades endpoints
@@ -105,7 +118,7 @@ UPGRADES_DOWNGRADES = Endpoint(
             description="Stock symbol",
         )
     ],
-    response_model=models.UpgradeDowngrade,
+    response_model=UpgradeDowngrade,
 )
 
 UPGRADES_DOWNGRADES_CONSENSUS = Endpoint(
@@ -122,7 +135,7 @@ UPGRADES_DOWNGRADES_CONSENSUS = Endpoint(
             description="Stock symbol",
         )
     ],
-    response_model=models.UpgradeDowngradeConsensus,
+    response_model=UpgradeDowngradeConsensus,
 )
 
 # Corporate Events endpoints
@@ -131,6 +144,7 @@ EARNINGS_CALENDAR = Endpoint(
     path="earning_calendar",
     version=APIVersion.V3,
     description="Get earnings calendar",
+    mandatory_params=[],
     optional_params=[
         EndpointParam(
             name="from",
@@ -147,7 +161,7 @@ EARNINGS_CALENDAR = Endpoint(
             description="End date",
         ),
     ],
-    response_model=models.EarningEvent,
+    response_model=EarningEvent,
 )
 
 EARNINGS_CONFIRMED = Endpoint(
@@ -180,7 +194,7 @@ EARNINGS_CONFIRMED = Endpoint(
             description="End date",
         ),
     ],
-    response_model=models.EarningConfirmed,
+    response_model=EarningConfirmed,
 )
 
 EARNINGS_SURPRISES = Endpoint(
@@ -197,7 +211,8 @@ EARNINGS_SURPRISES = Endpoint(
             description="Stock symbol",
         )
     ],
-    response_model=models.EarningSurprise,
+    optional_params=[],
+    response_model=EarningSurprise,
 )
 
 HISTORICAL_EARNINGS = Endpoint(
@@ -214,7 +229,8 @@ HISTORICAL_EARNINGS = Endpoint(
             description="Stock symbol",
         )
     ],
-    response_model=models.EarningEvent,
+    optional_params=[],
+    response_model=EarningEvent,
 )
 
 DIVIDENDS_CALENDAR = Endpoint(
@@ -222,6 +238,7 @@ DIVIDENDS_CALENDAR = Endpoint(
     path="stock_dividend_calendar",
     version=APIVersion.V3,
     description="Get dividends calendar",
+    mandatory_params=[],
     optional_params=[
         EndpointParam(
             name="from",
@@ -238,7 +255,7 @@ DIVIDENDS_CALENDAR = Endpoint(
             description="End date",
         ),
     ],
-    response_model=models.DividendEvent,
+    response_model=DividendEvent,
 )
 
 STOCK_SPLITS_CALENDAR = Endpoint(
@@ -246,6 +263,7 @@ STOCK_SPLITS_CALENDAR = Endpoint(
     path="stock_split_calendar",
     version=APIVersion.V3,
     description="Get stock splits calendar",
+    mandatory_params=[],
     optional_params=[
         EndpointParam(
             name="from",
@@ -262,7 +280,7 @@ STOCK_SPLITS_CALENDAR = Endpoint(
             description="End date",
         ),
     ],
-    response_model=models.StockSplitEvent,
+    response_model=StockSplitEvent,
 )
 
 IPO_CALENDAR = Endpoint(
@@ -270,6 +288,7 @@ IPO_CALENDAR = Endpoint(
     path="ipo_calendar",
     version=APIVersion.V3,
     description="Get IPO calendar",
+    mandatory_params=[],
     optional_params=[
         EndpointParam(
             name="from",
@@ -286,5 +305,5 @@ IPO_CALENDAR = Endpoint(
             description="End date",
         ),
     ],
-    response_model=models.IPOEvent,
+    response_model=IPOEvent,
 )
