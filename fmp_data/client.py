@@ -1,6 +1,7 @@
 # client.py
 import warnings
 
+from alternative import AlternativeMarketsClient
 from pydantic import ValidationError as PydanticValidationError
 
 from fmp_data.base import BaseClient
@@ -53,6 +54,7 @@ class FMPDataClient(BaseClient):
         self._intelligence = None
         self._institutional = None
         self._investment = None
+        self._alternative = None
         # pylint: disable=line-too-long
 
         try:
@@ -243,3 +245,15 @@ class FMPDataClient(BaseClient):
                 self.logger.debug("Initializing investment products client")
             self._investment = InvestmentClient(self)
         return self._investment
+
+    @property
+    def alternative(self) -> AlternativeMarketsClient:
+        """Get or create the alternative markets client instance"""
+        if not self._initialized:
+            raise RuntimeError("Client not properly initialized")
+
+        if self._alternative is None:
+            if self.logger:
+                self.logger.debug("Initializing alternative markets client")
+            self._alternative = AlternativeMarketsClient(self)
+        return self._alternative
