@@ -596,3 +596,9 @@ class AsReportedCashFlowStatement(AsReportedFinancialStatementBase):
     cash_at_end_of_period: float | None = Field(
         alias="cashAtEndOfPeriod", default=None, description="Cash at end of period"
     )
+
+
+class FinancialReportDate(BaseModel):
+    """Financial report date"""
+
+    report_date: datetime = Field(alias="date", description="Report date")
