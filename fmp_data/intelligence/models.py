@@ -204,7 +204,7 @@ class StockSplitEvent(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Company symbol")
-    date: date = Field(description="Split date")
+    split_event_date: date = Field(description="Split date", alias="date")
     ratio: str = Field(description="Split ratio")
     to_factor: int = Field(alias="toFactor", description="New shares factor")
     from_factor: int = Field(alias="fromFactor", description="Old shares factor")
@@ -220,7 +220,7 @@ class IPOEvent(BaseModel):
 
     symbol: str = Field(description="Company symbol")
     company: str = Field(description="Company name")
-    date: date = Field(description="IPO date")
+    ipo_event_date: date = Field(description="IPO date", alias="date")
     exchange: str = Field(description="Exchange")
     actions: str = Field(description="IPO status")
     shares: int | None = Field(description="Number of shares")
