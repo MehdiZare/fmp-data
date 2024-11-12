@@ -9,7 +9,7 @@ class TreasuryRate(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    date: date = Field(description="Rate date")
+    rate_date: date = Field(description="Rate date", alias="date")
     month_1: float | None = Field(alias="1month", description="1-month rate")
     month_2: float | None = Field(alias="2month", description="2-month rate")
     month_3: float | None = Field(alias="3month", description="3-month rate")
@@ -29,7 +29,7 @@ class EconomicIndicator(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    date: date = Field(description="Data date")
+    indicator_date: date = Field(description="Data date", alias="date")
     indicator: str = Field(description="Indicator name")
     value: float = Field(description="Indicator value")
     unit: str = Field(description="Value unit")
@@ -46,7 +46,7 @@ class EconomicEvent(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     event: str = Field(description="Event name")
-    date: datetime = Field(description="Event date")
+    event_date: datetime = Field(description="Event date", alias="date")
     country: str = Field(description="Country")
     actual: float | None = Field(description="Actual value")
     previous: float | None = Field(description="Previous value")
@@ -63,7 +63,7 @@ class MarketRiskPremium(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    date: date = Field(description="Data date")
+    risk_premium_date: date = Field(description="Data date", alias="date")
     country: str = Field(description="Country")
     risk_premium: float = Field(alias="riskPremium", description="Risk premium")
     market_return: float = Field(alias="marketReturn", description="Market return")
