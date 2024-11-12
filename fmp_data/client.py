@@ -10,6 +10,7 @@ from fmp_data.exceptions import ConfigError
 from fmp_data.fundamental import FundamentalClient
 from fmp_data.logger import FMPLogger
 from fmp_data.market import MarketClient
+from fmp_data.technical import TechnicalClient
 
 
 class FMPDataClient(BaseClient):
@@ -45,6 +46,7 @@ class FMPDataClient(BaseClient):
         self._company = None
         self._market = None
         self._fundamental = None
+        self._technical = None
 
         # pylint: disable=line-too-long
 
@@ -188,3 +190,15 @@ class FMPDataClient(BaseClient):
                 self.logger.debug("Initializing fundamental client")
             self._fundamental = FundamentalClient(self)
         return self._fundamental
+
+    @property
+    def technical(self) -> TechnicalClient:
+        """Get or create the technical analysis client instance"""
+        if not self._initialized:
+            raise RuntimeError("Client not properly initialized")
+
+        if self._technical is None:
+            if self.logger:
+                self.logger.debug("Initializing technical analysis client")
+            self._technical = TechnicalClient(self)
+        return self._technical
