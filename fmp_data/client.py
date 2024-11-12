@@ -7,6 +7,7 @@ from pydantic import ValidationError as PydanticValidationError
 from fmp_data.base import BaseClient
 from fmp_data.company.client import CompanyClient
 from fmp_data.config import ClientConfig, LoggingConfig, LogHandlerConfig
+from fmp_data.economics import EconomicsClient
 from fmp_data.exceptions import ConfigError
 from fmp_data.fundamental import FundamentalClient
 from fmp_data.institutional import InstitutionalClient
@@ -55,6 +56,7 @@ class FMPDataClient(BaseClient):
         self._institutional = None
         self._investment = None
         self._alternative = None
+        self._economics = None
         # pylint: disable=line-too-long
 
         try:
@@ -257,3 +259,15 @@ class FMPDataClient(BaseClient):
                 self.logger.debug("Initializing alternative markets client")
             self._alternative = AlternativeMarketsClient(self)
         return self._alternative
+
+    @property
+    def economics(self) -> EconomicsClient:
+        """Get or create the economics data client instance"""
+        if not self._initialized:
+            raise RuntimeError("Client not properly initialized")
+
+        if self._economics is None:
+            if self.logger:
+                self.logger.debug("Initializing economics data client")
+            self._economics = EconomicsClient(self)
+        return self._economics
