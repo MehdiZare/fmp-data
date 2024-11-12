@@ -37,7 +37,7 @@ class BulkEODPrice(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Stock symbol")
-    date: date = Field(description="Trading date")
+    trading_date: date = Field(description="Trading date", alias="date")
     open: float = Field(description="Opening price")
     high: float = Field(description="High price")
     low: float = Field(description="Low price")
@@ -52,7 +52,7 @@ class BulkFinancialStatement(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Stock symbol")
-    date: date = Field(description="Statement date")
+    statement_date: date = Field(description="Statement date", alias="date")
     period: str = Field(description="Reporting period")
     currency: str = Field(description="Currency")
     filing_date: date = Field(alias="filingDate", description="SEC filing date")
@@ -108,7 +108,7 @@ class BulkRatio(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Stock symbol")
-    date: date = Field(description="Date")
+    ratio_date: date = Field(description="Date", alias="date")
     period: str = Field(description="Reporting period")
     current_ratio: float = Field(alias="currentRatio", description="Current ratio")
     quick_ratio: float = Field(alias="quickRatio", description="Quick ratio")
@@ -130,7 +130,7 @@ class BulkKeyMetric(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Stock symbol")
-    date: date = Field(description="Date")
+    metric_date: date = Field(description="Date", alias="date")
     period: str = Field(description="Reporting period")
     revenue_per_share: float = Field(
         alias="revenuePerShare", description="Revenue per share"
@@ -156,7 +156,7 @@ class BulkEarningSurprise(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Stock symbol")
-    date: date = Field(description="Earnings date")
+    surprise_date: date = Field(description="Earnings date", alias="date")
     actual_eps: float = Field(alias="actualEPS", description="Actual EPS")
     estimated_eps: float = Field(alias="estimatedEPS", description="Estimated EPS")
     surprise: float = Field(description="EPS surprise")
@@ -198,7 +198,7 @@ class BulkFinancialGrowth(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Stock symbol")
-    date: date = Field(description="Date")
+    growth_date: date = Field(description="Date", alias="date")
     period: str = Field(description="Reporting period")
     revenue_growth: float = Field(
         alias="revenueGrowth", description="Revenue growth rate"
