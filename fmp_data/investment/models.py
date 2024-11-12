@@ -127,3 +127,15 @@ class MutualFundHolder(BaseModel):
     weight_percentage: Decimal = Field(
         alias="weightPercentage", description="Portfolio weight percentage"
     )
+
+
+class ETFPortfolioDate(BaseModel):
+    """ETF portfolio date model"""
+
+    portfolio_date: date = Field(description="Portfolio date")
+
+
+class PortfolioDate(BaseModel):
+    """Portfolio date model for ETFs and Mutual Funds"""
+
+    portfolio_date: date = Field(description="Portfolio date")
