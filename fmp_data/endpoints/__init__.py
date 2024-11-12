@@ -1,4 +1,4 @@
 # fmp_data/endpoints/__init__.py
-from .definitions import Endpoint, EndpointCategory
+from fmp_data.endpoints.definitions import Endpoint, EndpointCategory
 
 __all__ = ["Endpoint", "EndpointCategory"]
