@@ -1,11 +1,10 @@
 # fmp_data/fundamental/endpoints.py
-from datetime import datetime
-
 from fmp_data.fundamental.models import (
     BalanceSheet,
     CashFlowStatement,
     FinancialRatios,
     FinancialReport,
+    FinancialReportDate,
     FinancialStatementFull,
     HistoricalRating,
     IncomeStatement,
@@ -245,7 +244,8 @@ FINANCIAL_REPORTS_DATES = Endpoint(
             description="Stock symbol (ticker)",
         )
     ],
-    response_model=list[datetime],
+    optional_params=[],
+    response_model=FinancialReportDate,
 )
 
 FINANCIAL_REPORTS = Endpoint(
@@ -276,6 +276,7 @@ FINANCIAL_REPORTS = Endpoint(
             description="Report period",
         ),
     ],
+    optional_params=[],
     response_model=FinancialReport,
 )
 
@@ -293,6 +294,7 @@ OWNER_EARNINGS = Endpoint(
             description="Stock symbol (ticker)",
         )
     ],
+    optional_params=[],
     response_model=OwnerEarnings,
 )
 
@@ -310,6 +312,7 @@ LEVERED_DCF = Endpoint(
             description="Stock symbol (ticker)",
         )
     ],
+    optional_params=[],
     response_model=LeveredDCF,
 )
 
@@ -327,5 +330,6 @@ HISTORICAL_RATING = Endpoint(
             description="Stock symbol (ticker)",
         )
     ],
+    optional_params=[],
     response_model=HistoricalRating,
 )
