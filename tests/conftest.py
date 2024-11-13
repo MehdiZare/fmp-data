@@ -2,6 +2,7 @@
 import json
 from unittest.mock import Mock, create_autospec
 
+import httpx
 import pytest
 
 from fmp_data import FMPDataClient
@@ -191,14 +192,19 @@ def mock_error_response():
 def mock_response():
     """Create a mock HTTP response"""
 
-    def _create_response(status_code=200, json_data=None, raise_error=None):
+    def _create_response(status_code=200, json_data=None, raise_error=False):
         response = Mock()
         response.status_code = status_code
-        response.raise_for_status = Mock()
-        if raise_error:
-            response.raise_for_status.side_effect = raise_error
         response.json.return_value = json_data or {}
         response.text = json.dumps(json_data) if json_data else ""
+
+        if raise_error:
+            response.raise_for_status.side_effect = httpx.HTTPStatusError(
+                "Not Found", request=Mock(), response=response
+            )
+        else:
+            response.raise_for_status.return_value = None
+
         return response
 
     return _create_response

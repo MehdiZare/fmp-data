@@ -17,7 +17,7 @@ from fmp_data.exceptions import (
 from fmp_data.models import APIVersion, Endpoint, EndpointParam, ParamType
 
 
-class TestResponse(BaseModel):
+class SampleResponse(BaseModel):
     test: str
 
 
@@ -41,7 +41,7 @@ def mock_response():
 def mock_endpoint():
     """Create mock endpoint"""
     endpoint = Mock()
-    endpoint.response_model = TestResponse
+    endpoint.response_model = SampleResponse
     endpoint.validate_params.return_value = {}
     endpoint.build_url.return_value = "https://test.com/api/v3/test"
     endpoint.name = "test_endpoint"
@@ -74,7 +74,7 @@ def test_endpoint():
                 description="Result limit",
             )
         ],
-        response_model=TestResponse,
+        response_model=SampleResponse,
     )
 
 
@@ -99,7 +99,7 @@ def test_base_client_request(mock_request, mock_endpoint, client_config, mock_re
     result = client.request(mock_endpoint)
 
     # Verify response processing
-    assert isinstance(result, TestResponse)
+    assert isinstance(result, SampleResponse)
     assert result.test == "data"
 
     # Verify the request was made with correct parameters
@@ -177,7 +177,7 @@ def test_request_with_retry(base_client, mock_endpoint, mock_response):
         result = base_client.request(mock_endpoint)
 
         # Verify result
-        assert isinstance(result, TestResponse)
+        assert isinstance(result, SampleResponse)
         assert result.test == "data"
 
         # Verify retry behavior
@@ -219,7 +219,7 @@ async def test_request_async(base_client, mock_endpoint):
 
     with patch("httpx.AsyncClient.request", return_value=mock_response):
         result = await base_client.request_async(mock_endpoint)
-        assert isinstance(result, TestResponse)
+        assert isinstance(result, SampleResponse)
         assert result.test == "data"
 
 
@@ -228,7 +228,7 @@ def test_process_response(mock_endpoint):
     # Test successful response
     data = {"test": "data"}
     result = BaseClient._process_response(mock_endpoint, data)
-    assert isinstance(result, TestResponse)
+    assert isinstance(result, SampleResponse)
     assert result.test == "data"
 
     # Test error response
@@ -278,7 +278,7 @@ def test_request_with_retry_success(mock_request, mock_endpoint, base_client):
     result = base_client.request(mock_endpoint)
 
     # Verify result and retry behavior
-    assert isinstance(result, TestResponse)
+    assert isinstance(result, SampleResponse)
     assert result.test == "data"
     assert mock_request.call_count == 2  # One failure, one success
 
