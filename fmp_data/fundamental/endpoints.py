@@ -12,7 +12,13 @@ from fmp_data.fundamental.models import (
     LeveredDCF,
     OwnerEarnings,
 )
-from fmp_data.models import APIVersion, Endpoint, EndpointParam, ParamType
+from fmp_data.models import (
+    APIVersion,
+    Endpoint,
+    EndpointParam,
+    ParamLocation,
+    ParamType,
+)
 
 # Financial Statements Endpoints
 INCOME_STATEMENT = Endpoint(
@@ -23,27 +29,27 @@ INCOME_STATEMENT = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.PATH,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Stock symbol (ticker)",
         )
     ],
     optional_params=[
         EndpointParam(
             name="period",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
             required=False,
-            type=str,
             description="Period (annual/quarter)",
             default="annual",
             valid_values=["annual", "quarter"],
         ),
         EndpointParam(
             name="limit",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
             required=False,
-            type=int,
             description="Number of results",
             default=40,
         ),
@@ -59,27 +65,27 @@ BALANCE_SHEET = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.PATH,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Stock symbol (ticker)",
         )
     ],
     optional_params=[
         EndpointParam(
             name="period",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
             required=False,
-            type=str,
             description="Period (annual/quarter)",
             default="annual",
             valid_values=["annual", "quarter"],
         ),
         EndpointParam(
             name="limit",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
             required=False,
-            type=int,
             description="Number of results",
             default=40,
         ),
@@ -95,27 +101,27 @@ CASH_FLOW = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.PATH,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Stock symbol (ticker)",
         )
     ],
     optional_params=[
         EndpointParam(
             name="period",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
             required=False,
-            type=str,
             description="Period (annual/quarter)",
             default="annual",
             valid_values=["annual", "quarter"],
         ),
         EndpointParam(
             name="limit",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
             required=False,
-            type=int,
             description="Number of results",
             default=40,
         ),
@@ -132,27 +138,27 @@ KEY_METRICS = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.PATH,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Stock symbol (ticker)",
         )
     ],
     optional_params=[
         EndpointParam(
             name="period",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
             required=False,
-            type=str,
             description="Period (annual/quarter)",
             default="annual",
             valid_values=["annual", "quarter"],
         ),
         EndpointParam(
             name="limit",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
             required=False,
-            type=int,
             description="Number of results",
             default=40,
         ),
@@ -168,27 +174,27 @@ FINANCIAL_RATIOS = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.PATH,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Stock symbol (ticker)",
         )
     ],
     optional_params=[
         EndpointParam(
             name="period",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
             required=False,
-            type=str,
             description="Period (annual/quarter)",
             default="annual",
             valid_values=["annual", "quarter"],
         ),
         EndpointParam(
             name="limit",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
             required=False,
-            type=int,
             description="Number of results",
             default=40,
         ),
@@ -203,26 +209,27 @@ FULL_FINANCIAL_STATEMENT = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.PATH,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Stock symbol (ticker)",
         )
     ],
     optional_params=[
         EndpointParam(
             name="period",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
             required=False,
-            type=str,
             description="Period (annual/quarter)",
             default="annual",
+            valid_values=["annual", "quarter"],
         ),
         EndpointParam(
             name="limit",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
             required=False,
-            type=int,
             description="Number of results",
             default=40,
         ),
@@ -238,9 +245,9 @@ FINANCIAL_REPORTS_DATES = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Stock symbol (ticker)",
         )
     ],
@@ -256,23 +263,23 @@ FINANCIAL_REPORTS = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Stock symbol (ticker)",
         ),
         EndpointParam(
             name="year",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
             required=True,
-            type=int,
             description="Report year",
         ),
         EndpointParam(
             name="period",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Report period",
         ),
     ],
@@ -288,9 +295,9 @@ OWNER_EARNINGS = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Stock symbol (ticker)",
         )
     ],
@@ -306,9 +313,9 @@ LEVERED_DCF = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Stock symbol (ticker)",
         )
     ],
@@ -324,9 +331,9 @@ HISTORICAL_RATING = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.PATH,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Stock symbol (ticker)",
         )
     ],

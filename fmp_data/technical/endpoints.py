@@ -1,5 +1,11 @@
 # fmp_data/technical/endpoints.py
-from fmp_data.models import APIVersion, Endpoint, EndpointParam, ParamType
+from fmp_data.models import (
+    APIVersion,
+    Endpoint,
+    EndpointParam,
+    ParamLocation,
+    ParamType,
+)
 
 from . import models
 
@@ -24,24 +30,24 @@ TECHNICAL_INDICATOR = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="interval",
-            param_type=ParamType.PATH,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Time interval",
             valid_values=["1min", "5min", "15min", "30min", "1hour", "4hour", "daily"],
         ),
         EndpointParam(
             name="symbol",
-            param_type=ParamType.PATH,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Stock symbol (ticker)",
         ),
         EndpointParam(
             name="type",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Indicator type",
             valid_values=[
                 "sma",
@@ -57,25 +63,25 @@ TECHNICAL_INDICATOR = Endpoint(
         ),
         EndpointParam(
             name="period",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
             required=True,
-            type=int,
             description="Period for indicator calculation",
         ),
     ],
     optional_params=[
         EndpointParam(
             name="from",
-            param_type=ParamType.QUERY,
-            required=False,
-            type=str,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
             description="Start date (YYYY-MM-DD)",
         ),
         EndpointParam(
             name="to",
-            param_type=ParamType.QUERY,
-            required=False,
-            type=str,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
             description="End date (YYYY-MM-DD)",
         ),
     ],

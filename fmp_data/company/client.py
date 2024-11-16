@@ -1,5 +1,4 @@
 # company/client.py
-
 from fmp_data.base import EndpointGroup
 from fmp_data.company.endpoints import (
     AVAILABLE_INDEXES,
@@ -30,20 +29,22 @@ from fmp_data.company.models import (
     ExchangeSymbol,
     ISINResult,
 )
+from fmp_data.exceptions import FMPError
 
 
 class CompanyClient(EndpointGroup):
     """Client for company-related API endpoints"""
 
     def get_profile(self, symbol: str) -> CompanyProfile:
-        """Get company profile information"""
         result = self.client.request(PROFILE, symbol=symbol)
-        # Handle the case where API returns a list with single item
+        if not result:
+            raise FMPError(f"Symbol {symbol} not found")
         return result[0] if isinstance(result, list) else result
 
     def get_core_information(self, symbol: str) -> CompanyCoreInformation:
         """Get core company information"""
-        return self.client.request(CORE_INFORMATION, symbol=symbol)
+        result = self.client.request(CORE_INFORMATION, symbol=symbol)
+        return result[0] if isinstance(result, list) else result
 
     def search(
         self, query: str, limit: int | None = None, exchange: str | None = None

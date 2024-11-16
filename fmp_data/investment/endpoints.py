@@ -11,7 +11,13 @@ from fmp_data.investment.models import (
     MutualFundHolding,
     PortfolioDate,
 )
-from fmp_data.models import APIVersion, Endpoint, EndpointParam, ParamType
+from fmp_data.models import (
+    APIVersion,
+    Endpoint,
+    EndpointParam,
+    ParamLocation,
+    ParamType,
+)
 
 # ETF endpoints
 ETF_HOLDINGS = Endpoint(
@@ -22,16 +28,16 @@ ETF_HOLDINGS = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
-            description="ETF symbol",
+            description="Stock symbol (ticker)",
         ),
         EndpointParam(
             name="date",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Holdings date",
         ),
     ],
@@ -46,10 +52,10 @@ ETF_HOLDING_DATES = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
-            description="ETF symbol",
+            description="ETF Symbol",
         )
     ],
     response_model=ETFPortfolioDate,
@@ -63,10 +69,10 @@ ETF_INFO = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
-            description="ETF symbol",
+            description="ETF Symbol",
         )
     ],
     response_model=ETFInfo,
@@ -80,10 +86,10 @@ ETF_SECTOR_WEIGHTINGS = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.PATH,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
-            description="ETF symbol",
+            description="ETF Symbol",
         )
     ],
     response_model=ETFSectorWeighting,
@@ -97,10 +103,10 @@ ETF_COUNTRY_WEIGHTINGS = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.PATH,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
-            description="ETF symbol",
+            description="ETF Symbol",
         )
     ],
     response_model=ETFCountryWeighting,
@@ -114,10 +120,10 @@ ETF_EXPOSURE = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.PATH,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
-            description="ETF symbol",
+            description="ETF Symbol",
         )
     ],
     response_model=ETFExposure,
@@ -131,10 +137,10 @@ ETF_HOLDER = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.PATH,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
-            description="Stock symbol",
+            description="Stock symbol (ticker)",
         )
     ],
     response_model=ETFHolder,
@@ -149,17 +155,17 @@ MUTUAL_FUND_DATES = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Fund symbol",
         ),
         EndpointParam(
             name="cik",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
-            description="Fund CIK",
+            description="Fund cik",
         ),
     ],
     response_model=PortfolioDate,
@@ -173,16 +179,16 @@ MUTUAL_FUND_HOLDINGS = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Fund symbol",
         ),
         EndpointParam(
             name="date",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Holdings date",
         ),
     ],
@@ -197,9 +203,9 @@ MUTUAL_FUND_BY_NAME = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="name",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Fund name",
         )
     ],
@@ -214,10 +220,10 @@ MUTUAL_FUND_HOLDER = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.PATH,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
-            description="Stock symbol",
+            description="Stock symbol (ticker)",
         )
     ],
     response_model=MutualFundHolder,

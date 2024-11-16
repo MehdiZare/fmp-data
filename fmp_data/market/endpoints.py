@@ -1,5 +1,5 @@
 # fmp_data/market/endpoints.py
-from ..models import APIVersion, Endpoint, EndpointParam, ParamType
+from ..models import APIVersion, Endpoint, EndpointParam, ParamLocation, ParamType
 from .models import (
     HistoricalPrice,
     IntradayPrice,
@@ -20,9 +20,9 @@ QUOTE = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.PATH,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Stock symbol (ticker)",
         )
     ],
@@ -37,9 +37,9 @@ SIMPLE_QUOTE = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.PATH,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Stock symbol (ticker)",
         )
     ],
@@ -54,25 +54,25 @@ HISTORICAL_PRICE = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.PATH,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Stock symbol (ticker)",
         )
     ],
     optional_params=[
         EndpointParam(
             name="from",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
             required=False,
-            type=str,
             description="Start date (YYYY-MM-DD)",
         ),
         EndpointParam(
             name="to",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
             required=False,
-            type=str,
             description="End date (YYYY-MM-DD)",
         ),
     ],
@@ -87,16 +87,16 @@ INTRADAY_PRICE = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="interval",
-            param_type=ParamType.PATH,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Time interval (1min, 5min, 15min, 30min, 1hour, 4hour)",
         ),
         EndpointParam(
             name="symbol",
-            param_type=ParamType.PATH,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Stock symbol (ticker)",
         ),
     ],
@@ -120,9 +120,9 @@ MARKET_CAP = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.PATH,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Stock symbol (ticker)",
         )
     ],
@@ -137,9 +137,9 @@ HISTORICAL_MARKET_CAP = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            param_type=ParamType.PATH,
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Stock symbol (ticker)",
         )
     ],

@@ -64,54 +64,51 @@ class CompanyCoreInformation(BaseModel):
         extra="allow",
     )
 
-    # Required fields
     symbol: str = Field(description="Stock symbol (ticker)")
     cik: str = Field(description="CIK number")
-
-    # Optional fields with defaults
-    date: datetime | None = Field(None, description="Information date")
-    stock_exchange: str | None = Field(
-        None, alias="stockExchange", description="Stock exchange"
+    exchange: str = Field(description="Exchange name")
+    sic_code: str | None = Field(None, alias="sicCode", description="SIC code")
+    sic_group: str | None = Field(None, alias="sicGroup", description="SIC group")
+    sic_description: str | None = Field(
+        None, alias="sicDescription", description="SIC description"
     )
-    company_name: str | None = Field(
-        None, alias="companyName", description="Company name"
+    state_location: str | None = Field(
+        None, alias="stateLocation", description="Company state location"
     )
-    registrant_name: str | None = Field(
-        None, alias="registrantName", description="Registrant name"
+    state_of_incorporation: str | None = Field(
+        None, alias="stateOfIncorporation", description="State of incorporation"
     )
-    industry: str | None = Field(None, description="Industry classification")
-    sector: str | None = Field(None, description="Sector classification")
-    zip: str | None = Field(None, description="ZIP/Postal code")
-    state: str | None = Field(None, description="State")
-    city: str | None = Field(None, description="City")
-    address: str | None = Field(None, description="Address")
-    website: AnyHttpUrl | None = Field(None, description="Company website")
-    country: str | None = Field(None, description="Country")
-    phone: str | None = Field(None, description="Phone number")
-    sic: str | None = Field(None, description="SIC code")
-    ticker_cusip: str | None = Field(
-        None, alias="tickerCusip", description="CUSIP number"
+    fiscal_year_end: str | None = Field(
+        None, alias="fiscalYearEnd", description="Fiscal year end date"
     )
     business_address: str | None = Field(
         None, alias="businessAddress", description="Business address"
     )
-    mail_address: str | None = Field(
-        None, alias="mailAddress", description="Mailing address"
+    mailing_address: str | None = Field(
+        None, alias="mailingAddress", description="Mailing address"
+    )
+    tax_identification_number: str | None = Field(
+        None, alias="taxIdentificationNumber", description="Tax ID"
+    )
+    registrant_name: str | None = Field(
+        None, alias="registrantName", description="Registrant name"
     )
 
 
 class CompanyExecutive(BaseModel):
-    """Company executive information."""
-
-    model_config = ConfigDict(populate_by_name=True)
+    """Company executive information"""
 
     title: str = Field(description="Executive title")
     name: str = Field(description="Executive name")
-    pay: int = Field(description="Annual compensation")
-    currency_pay: str = Field(alias="currencyPay", description="Compensation currency")
-    gender: str = Field(description="Gender")
-    year_born: int = Field(alias="yearBorn", description="Birth year")
-    title_since: datetime = Field(alias="titleSince", description="Position start date")
+    pay: int | None = Field(None, description="Annual compensation")
+    currency_pay: str | None = Field(
+        None, alias="currencyPay", description="Compensation currency"
+    )
+    gender: str | None = Field(None, description="Gender")
+    year_born: int | None = Field(None, alias="yearBorn", description="Birth year")
+    title_since: datetime | None = Field(
+        None, alias="titleSince", description="Position start date"
+    )
 
 
 class CompanyNote(BaseModel):
@@ -119,23 +116,23 @@ class CompanyNote(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    date: datetime = Field(description="Note date")
-    note: str = Field(description="Note content")
-    filing_type: str = Field(alias="filingType", description="SEC filing type")
-    section: str = Field(description="Section of the filing")
+    title: str = Field(description="Note title")
+    cik: str = Field(description="CIK number")
+    symbol: str = Field(description="Stock symbol")
+    exchange: str = Field(description="Exchange name")
 
 
 class CompanySearchResult(BaseModel):
-    """Company search result."""
-
-    model_config = ConfigDict(populate_by_name=True)
+    """Company search result"""
 
     symbol: str = Field(description="Stock symbol (ticker)")
     name: str = Field(description="Company name")
-    currency: str = Field(description="Trading currency")
-    stock_exchange: str = Field(alias="stockExchange", description="Stock exchange")
-    exchange_short_name: str = Field(
-        alias="exchangeShortName", description="Exchange short name"
+    currency: str | None = Field(None, description="Trading currency")
+    stock_exchange: str | None = Field(
+        None, alias="stockExchange", description="Stock exchange"
+    )
+    exchange_short_name: str | None = Field(
+        None, alias="exchangeShortName", description="Exchange short name"
     )
 
 
@@ -144,12 +141,19 @@ class EmployeeCount(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    date: datetime = Field(description="Report date")
-    count: int = Field(description="Number of employees")
-    reported_currency: str = Field(
-        alias="reportedCurrency", description="Reporting currency"
+    symbol: str = Field(description="Company symbol")
+    cik: str = Field(description="CIK number")
+    acceptance_time: datetime = Field(
+        alias="acceptanceTime", description="Filing acceptance time"
     )
-    filing_date: datetime = Field(alias="filingDate", description="SEC filing date")
+    period_of_report: str = Field(alias="periodOfReport", description="Report period")
+    company_name: str = Field(alias="companyName", description="Company name")
+    form_type: str = Field(alias="formType", description="SEC form type")
+    filing_date: str = Field(alias="filingDate", description="Filing date")
+    employee_count: int = Field(
+        alias="employeeCount", description="Number of employees"
+    )
+    source: str | None = Field(None, description="SEC filing source URL")
 
 
 class CompanySymbol(BaseModel):
@@ -158,9 +162,13 @@ class CompanySymbol(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Stock symbol")
-    name: str = Field(description="Company name")
-    price: float = Field(description="Current stock price")
+    name: str | None = Field(None, description="Company name")
+    price: float | None = Field(None, description="Current stock price")
     exchange: str = Field(description="Stock exchange")
+    exchange_short_name: str = Field(
+        alias="exchangeShortName", description="Exchange short name"
+    )
+    type: str | None = Field(None, description="Security type")
 
 
 class ExchangeSymbol(BaseModel):
@@ -171,7 +179,7 @@ class ExchangeSymbol(BaseModel):
     symbol: str = Field(description="Stock symbol")
     name: str = Field(description="Company name")
     price: float = Field(description="Current stock price")
-    type: str = Field(description="Security type")
+    type: str = Field(None, description="Security type")
 
 
 class CIKResult(BaseModel):
@@ -202,3 +210,17 @@ class ISINResult(BaseModel):
     isin: str = Field(description="ISIN number")
     symbol: str = Field(description="Stock symbol")
     name: str = Field(description="Company name")
+
+
+class AvailableIndex(BaseModel):
+    """Market index information"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    symbol: str = Field(description="Index symbol")
+    name: str = Field(description="Index name")
+    currency: str = Field(description="Trading currency")
+    stock_exchange: str = Field(alias="stockExchange", description="Stock exchange")
+    exchange_short_name: str = Field(
+        alias="exchangeShortName", description="Exchange short name"
+    )

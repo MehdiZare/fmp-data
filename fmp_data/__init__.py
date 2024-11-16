@@ -23,4 +23,5 @@ __all__ = [
     "AuthenticationError",
     "ValidationError",
     "ConfigError",
+    "logger",
 ]

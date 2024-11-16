@@ -1,32 +1,40 @@
-# fmp_data/economics/endpoints.py
-
 from fmp_data.economics.models import (
     EconomicEvent,
     EconomicIndicator,
     MarketRiskPremium,
     TreasuryRate,
 )
-from fmp_data.models import APIVersion, Endpoint, EndpointParam, ParamType
+from fmp_data.models import (
+    APIVersion,
+    Endpoint,
+    EndpointParam,
+    HTTPMethod,
+    ParamLocation,
+    ParamType,
+    URLType,
+)
 
 TREASURY_RATES = Endpoint(
     name="treasury_rates",
     path="treasury",
     version=APIVersion.V4,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
     description="Get treasury rates",
     mandatory_params=[],
     optional_params=[
         EndpointParam(
             name="from",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
             required=False,
-            type=str,
             description="Start date",
         ),
         EndpointParam(
             name="to",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
             required=False,
-            type=str,
             description="End date",
         ),
     ],
@@ -37,13 +45,15 @@ ECONOMIC_INDICATORS = Endpoint(
     name="economic_indicators",
     path="economic",
     version=APIVersion.V4,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
     description="Get economic indicators",
     mandatory_params=[
         EndpointParam(
             name="name",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
             required=True,
-            type=str,
             description="Indicator name",
         )
     ],
@@ -55,24 +65,26 @@ ECONOMIC_CALENDAR = Endpoint(
     name="economic_calendar",
     path="economic_calendar",
     version=APIVersion.V3,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
     description="Get economic calendar events",
+    mandatory_params=[],
     optional_params=[
         EndpointParam(
             name="from",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
             required=False,
-            type=str,
             description="Start date",
         ),
         EndpointParam(
             name="to",
-            param_type=ParamType.QUERY,
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
             required=False,
-            type=str,
             description="End date",
         ),
     ],
-    mandatory_params=[],
     response_model=EconomicEvent,
 )
 
@@ -80,8 +92,10 @@ MARKET_RISK_PREMIUM = Endpoint(
     name="market_risk_premium",
     path="market_risk_premium",
     version=APIVersion.V4,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
     description="Get market risk premium data",
-    response_model=MarketRiskPremium,
     mandatory_params=[],
     optional_params=[],
+    response_model=MarketRiskPremium,
 )

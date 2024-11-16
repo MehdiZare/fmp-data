@@ -30,8 +30,6 @@ logger = FMPLogger().get_logger(__name__)
 
 
 class BaseClient:
-    """Abstract base class for API clients"""
-
     def __init__(self, config: ClientConfig):
         self.config = config
         self.logger = FMPLogger().get_logger(__name__)
@@ -45,7 +43,7 @@ class BaseClient:
             extra={"base_url": self.config.base_url, "timeout": self.config.timeout},
         )
 
-        # Initialize rate limiter using config
+        # Initialize rate limiter
         self._rate_limiter = FMPRateLimiter(
             QuotaConfig(
                 daily_limit=self.config.rate_limit.daily_limit,
@@ -65,11 +63,67 @@ class BaseClient:
             },
         )
 
-    def get_query_params(self, validated_params: dict[str, Any]) -> dict[str, Any]:
-        """Get query parameters including API key"""
-        query_params = {k: v for k, v in validated_params.items() if v is not None}
-        query_params["apikey"] = self.config.api_key
-        return query_params
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        retry=retry_if_exception_type(
+            (httpx.TimeoutException, httpx.NetworkError, httpx.HTTPStatusError)
+        ),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        after=after_log(logger, logging.INFO),
+    )
+    @log_api_call()
+    def request(self, endpoint: Endpoint[T], **kwargs) -> T:
+        """Make request with rate limiting"""
+        if not self._rate_limiter.should_allow_request():
+            wait_time = self._rate_limiter.get_wait_time()
+            raise RateLimitError(
+                f"Rate limit exceeded. Please wait {wait_time:.1f} seconds",
+                retry_after=wait_time,
+            )
+
+        try:
+            self._rate_limiter.record_request()
+
+            # Validate and process parameters
+            validated_params = endpoint.validate_params(kwargs)
+
+            # Build URL
+            url = endpoint.build_url(self.config.base_url, validated_params)
+
+            # Extract query parameters and add API key
+            query_params = endpoint.get_query_params(validated_params)
+            query_params["apikey"] = self.config.api_key
+
+            self.logger.debug(
+                f"Making request to {endpoint.name}",
+                extra={
+                    "url": url,
+                    "endpoint": endpoint.name,
+                    "method": endpoint.method.value,
+                },
+            )
+
+            response = self.client.request(
+                endpoint.method.value, url, params=query_params
+            )
+
+            # Handle rate limit response
+            self._rate_limiter.handle_response(
+                response.status_code,
+                response.text if response.status_code == 429 else None,
+            )
+
+            data = self.handle_response(response)
+            return self._process_response(endpoint, data)
+
+        except Exception as e:
+            self.logger.error(
+                f"Request failed: {str(e)}",
+                extra={"endpoint": endpoint.name, "error": str(e)},
+                exc_info=True,
+            )
+            raise
 
     def handle_response(self, response: httpx.Response) -> dict[str, Any]:
         """Handle API response and errors"""
@@ -124,118 +178,6 @@ class BaseClient:
         if isinstance(data, list):
             return [endpoint.response_model.model_validate(item) for item in data]
         return endpoint.response_model.model_validate(data)
-
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=4, max=10),
-        retry=retry_if_exception_type(
-            (httpx.TimeoutException, httpx.NetworkError, httpx.HTTPStatusError)
-        ),
-        before_sleep=before_sleep_log(logger, logging.WARNING),
-        after=after_log(logger, logging.INFO),
-    )
-    @log_api_call()
-    def request(self, endpoint: Endpoint[T], **kwargs) -> T:
-        """Make request with rate limiting"""
-        if not self._rate_limiter.should_allow_request():
-            wait_time = self._rate_limiter.get_wait_time()
-            raise RateLimitError(
-                f"Rate limit exceeded. Please wait {wait_time:.1f} seconds",
-                retry_after=wait_time,
-            )
-
-        try:
-            self._rate_limiter.record_request()
-
-            validated_params = endpoint.validate_params(kwargs)
-            url = endpoint.build_url(self.config.base_url, validated_params)
-            query_params = self.get_query_params(validated_params)
-
-            self.logger.debug(
-                f"Making request to {endpoint.name}",
-                extra={"url": url, "endpoint": endpoint.name, "method": "GET"},
-            )
-
-            response = self.client.request("GET", url, params=query_params)
-
-            # Handle rate limit response
-            self._rate_limiter.handle_response(
-                response.status_code,
-                response.text if response.status_code == 429 else None,
-            )
-
-            data = self.handle_response(response)
-            return self._process_response(endpoint, data)
-
-        except Exception as e:
-            self.logger.error(
-                f"Request failed: {str(e)}",
-                extra={"endpoint": endpoint.name, "error": str(e)},
-                exc_info=True,
-            )
-            raise
-
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=4, max=10),
-        retry=retry_if_exception_type(
-            (httpx.TimeoutException, httpx.NetworkError, httpx.HTTPStatusError)
-        ),
-        before_sleep=before_sleep_log(logger, logging.WARNING),
-        after=after_log(logger, logging.INFO),
-    )
-    @log_api_call()
-    async def request_async(self, endpoint: Endpoint[T], **kwargs) -> T:
-        """Make async request to API endpoint with retry logic"""
-        if not self._rate_limiter.should_allow_request():
-            wait_time = self._rate_limiter.get_wait_time()
-            raise RateLimitError(
-                f"Rate limit exceeded. Please wait {wait_time:.1f} seconds",
-                retry_after=wait_time,
-            )
-
-        try:
-            self._rate_limiter.record_request()
-
-            validated_params = endpoint.validate_params(kwargs)
-            url = endpoint.build_url(self.config.base_url, validated_params)
-            query_params = self.get_query_params(validated_params)
-
-            logger.debug(f"Making async request to {url}")
-
-            async with httpx.AsyncClient(
-                timeout=self.config.timeout,
-                follow_redirects=True,
-                headers=self.client.headers,
-            ) as client:
-                response = await client.request("GET", url, params=query_params)
-
-                self._rate_limiter.handle_response(
-                    response.status_code,
-                    response.text if response.status_code == 429 else None,
-                )
-
-                data = self.handle_response(response)
-                return self._process_response(endpoint, data)
-
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 429:
-                wait_time = self._rate_limiter.get_wait_time()
-                raise RateLimitError(
-                    "Rate limit exceeded",
-                    status_code=429,
-                    retry_after=wait_time,
-                    response=e.response.json() if e.response.content else None,
-                ) from e
-            raise
-
-    def close(self) -> None:
-        """Clean up resources"""
-        self.client.close()
-
-    def __del__(self):
-        """Clean up resources on deletion"""
-        self.close()
 
 
 class EndpointGroup:
