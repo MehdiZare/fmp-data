@@ -63,6 +63,11 @@ class BaseClient:
             },
         )
 
+    def close(self):
+        """Clean up resources"""
+        if hasattr(self, "client") and self.client is not None:
+            self.client.close()
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=4, max=10),
@@ -178,6 +183,32 @@ class BaseClient:
         if isinstance(data, list):
             return [endpoint.response_model.model_validate(item) for item in data]
         return endpoint.response_model.model_validate(data)
+
+    async def request_async(self, endpoint: Endpoint[T], **kwargs) -> T:
+        """Make async request with rate limiting"""
+        validated_params = endpoint.validate_params(kwargs)
+        url = endpoint.build_url(self.config.base_url, validated_params)
+        query_params = endpoint.get_query_params(validated_params)
+        query_params["apikey"] = self.config.api_key
+
+        try:
+            # Add timeout and other settings from config
+            async with httpx.AsyncClient(
+                timeout=self.config.timeout,
+                follow_redirects=True,
+                headers={
+                    "User-Agent": "FMP-Python-Client/1.0",
+                    "Accept": "application/json",
+                },
+            ) as client:
+                response = await client.request(
+                    endpoint.method.value, url, params=query_params
+                )
+                data = self.handle_response(response)
+                return self._process_response(endpoint, data)
+        except Exception as e:
+            self.logger.error(f"Async request failed: {str(e)}")
+            raise
 
 
 class EndpointGroup:
