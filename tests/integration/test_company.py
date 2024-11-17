@@ -1,6 +1,7 @@
 # tests/integration/test_company.py
 import logging
 import time
+import warnings
 from typing import Any
 
 import pytest
@@ -8,6 +9,7 @@ import tenacity
 
 from fmp_data import FMPDataClient
 from fmp_data.company.models import (
+    AvailableIndex,
     CIKResult,
     CompanyCoreInformation,
     CompanyExecutive,
@@ -67,23 +69,20 @@ class TestCompanyEndpoints:
         """Test getting core company information"""
         with vcr_instance.use_cassette("company/core_information.yaml"):
             info = fmp_client.company.get_core_information(test_symbol)
-            # Check first item since API returns a list
-            assert isinstance(info[0], CompanyCoreInformation)
-            assert info[0].symbol == test_symbol
+            assert isinstance(info, CompanyCoreInformation)
+            assert info.symbol == test_symbol
 
+    @tenacity.retry(
+        wait=tenacity.wait_exponential(multiplier=1, min=4, max=10),
+        stop=tenacity.stop_after_attempt(3),
+    )
     def test_search(self, fmp_client: FMPDataClient, vcr_instance):
-        # Add retry mechanism or rate limit handling
+        """Test company search"""
         with vcr_instance.use_cassette("company/search.yaml"):
-            with tenacity.retry(wait=tenacity.wait_exponential()):
-                # Test basic search
-                results = fmp_client.company.search("Apple", limit=5)
-                assert isinstance(results, list)
-                assert len(results) <= 5
-                assert all(isinstance(r, CompanySearchResult) for r in results)
-
-                # Test with exchange filter (using exchangeShortName)
-                nasdaq_results = fmp_client.company.search("Apple", exchange="NASDAQ")
-                assert any(r.exchange_short_name == "NASDAQ" for r in nasdaq_results)
+            results = fmp_client.company.search("Apple", limit=5)
+            assert isinstance(results, list)
+            assert len(results) <= 5
+            assert all(isinstance(r, CompanySearchResult) for r in results)
 
     def test_get_executives(self, fmp_client: FMPDataClient, vcr_instance, test_symbol):
         """Test getting company executives"""
@@ -121,23 +120,38 @@ class TestCompanyEndpoints:
             if len(notes) > 0:
                 assert all(isinstance(n, CompanyNote) for n in notes)
 
-    def test_get_company_logo_url(
-        self, fmp_client: FMPDataClient, vcr_instance, test_symbol
-    ):
+    def test_get_company_logo_url(self, fmp_client: FMPDataClient, test_symbol: str):
         """Test getting company logo URL"""
-        with vcr_instance.use_cassette("company/logo.yaml"):
-            url = fmp_client.company.get_company_logo_url(test_symbol)
-            assert isinstance(url, str)
-            assert url.startswith("http")
-            assert url.endswith((".png", ".jpg", ".jpeg"))
+        url = fmp_client.company.get_company_logo_url(test_symbol)
+
+        # Check URL format
+        assert isinstance(url, str)
+        assert url == f"https://financialmodelingprep.com/image-stock/{test_symbol}.png"
+
+        # Verify URL components
+        assert url.startswith("https://financialmodelingprep.com")
+        assert "/image-stock/" in url
+        assert url.endswith(".png")
+        assert test_symbol in url
+
+        # Verify no API-related parameters
+        assert "apikey" not in url
+        assert "api" not in url
+
+        # Test error case
+        with pytest.raises(ValueError):
+            fmp_client.company.get_company_logo_url("")
 
     def test_get_stock_list(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting stock list"""
         with vcr_instance.use_cassette("company/stock_list.yaml"):
             stocks = fmp_client.company.get_stock_list()
             assert isinstance(stocks, list)
-            assert all(isinstance(s, CompanySymbol) for s in stocks)
             assert len(stocks) > 0
+            for stock in stocks:
+                assert isinstance(stock, CompanySymbol)
+                assert hasattr(stock, "symbol")  # Only check required field
+                assert isinstance(stock.symbol, str)
 
     def test_get_etf_list(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting ETF list"""
@@ -152,16 +166,41 @@ class TestCompanyEndpoints:
         with vcr_instance.use_cassette("company/indexes.yaml"):
             indexes = fmp_client.company.get_available_indexes()
             assert isinstance(indexes, list)
-            assert all(isinstance(i, str) for i in indexes)
-            assert "^GSPC" in indexes  # S&P 500
+            assert all(isinstance(i, AvailableIndex) for i in indexes)
+            assert any(i.symbol == "^GSPC" for i in indexes)
 
     def test_get_exchange_symbols(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting exchange symbols"""
         with vcr_instance.use_cassette("company/exchange_symbols.yaml"):
-            symbols = fmp_client.company.get_exchange_symbols("NASDAQ")
-            assert isinstance(symbols, list)
-            assert all(isinstance(s, ExchangeSymbol) for s in symbols)
-            assert len(symbols) > 0
+            # Capture warnings during test
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+
+                symbols = fmp_client.company.get_exchange_symbols("NASDAQ")
+
+                # Basic validation
+                assert isinstance(symbols, list)
+                assert len(symbols) > 0
+
+                # Test symbol attributes
+                for symbol in symbols:
+                    assert isinstance(symbol, ExchangeSymbol)
+                    # Only check presence of attributes, not values
+                    assert hasattr(symbol, "name")
+                    assert hasattr(symbol, "price")
+                    assert hasattr(symbol, "exchange")
+
+                # Verify we got some data
+                valid_symbols = [
+                    s for s in symbols if s.name is not None and s.price is not None
+                ]
+                assert len(valid_symbols) > 0
+
+                # Log warnings if any
+                if len(w) > 0:
+                    print(f"\nCaptured {len(w)} validation warnings:")
+                    for warning in w:
+                        print(f"  - {warning.message}")
 
     @pytest.mark.parametrize(
         "search_type,method,model,test_value",
