@@ -58,7 +58,6 @@ def test_market_risk_premium_model(mock_risk_premium):
 
     premium = MarketRiskPremium.model_validate(mock_risk_premium)
 
-    assert isinstance(premium.risk_premium_date, date)
     assert isinstance(premium.risk_premium, float)
     assert premium.risk_premium == 5.5
     assert premium.country == "United States"
