@@ -1,6 +1,7 @@
 # base.py
 import json
 import logging
+import warnings
 from typing import Any, TypeVar
 
 import httpx
@@ -176,12 +177,23 @@ class BaseClient:
 
     @staticmethod
     def _process_response(endpoint: Endpoint[T], data: Any) -> T:
-        """Process the response data"""
+        """Process the response data with warning handling"""
         if isinstance(data, dict) and "message" in data:  # Error response
             raise FMPError(data["message"])
 
         if isinstance(data, list):
-            return [endpoint.response_model.model_validate(item) for item in data]
+            processed_items = []
+            for item in data:
+                with warnings.catch_warnings(record=True) as w:
+                    # Enable all warnings
+                    warnings.simplefilter("always")
+                    # Process item
+                    processed_item = endpoint.response_model.model_validate(item)
+                    # Log any warnings
+                    for warning in w:
+                        logger.warning(f"Validation warning: {warning.message}")
+                    processed_items.append(processed_item)
+            return processed_items
         return endpoint.response_model.model_validate(data)
 
     async def request_async(self, endpoint: Endpoint[T], **kwargs) -> T:
