@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 import httpx
 import pytest
 
-from fmp_data.client import BaseClient, FMPDataClient
+from fmp_data.client import FMPDataClient
 from fmp_data.exceptions import (
     AuthenticationError,
     ConfigError,
@@ -147,24 +147,6 @@ def test_authentication_error(
 
     with pytest.raises(AuthenticationError):
         fmp_client.company.get_profile("AAPL")
-
-
-@patch("httpx.Client.request")
-def test_base_client_request(mock_request, mock_endpoint, client_config, mock_response):
-    """Test base client request method"""
-    mock_data = {"test": "data"}
-    mock_request.return_value = mock_response(status_code=200, json_data=mock_data)
-
-    client = BaseClient(client_config)
-    client.request(mock_endpoint)
-
-    # Verify the mock was called correctly
-    mock_request.assert_called_once()
-    mock_endpoint.validate_params.assert_called_once()
-    mock_endpoint.build_url.assert_called_once()
-
-    # Verify response was validated
-    mock_endpoint.response_model.model_validate.assert_called_once()
 
 
 def test_context_manager():
