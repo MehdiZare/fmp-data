@@ -58,6 +58,7 @@ rich = "^13.9.3"
 pytest-mock = "^3.14.0"
 pre-commit = "^4.0.1"
 coverage = "^7.6.4"
+vcrpy = "^6.0.2"
 
 
 
