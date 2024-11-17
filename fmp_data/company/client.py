@@ -3,7 +3,6 @@ from fmp_data.base import EndpointGroup
 from fmp_data.company.endpoints import (
     AVAILABLE_INDEXES,
     CIK_SEARCH,
-    COMPANY_LOGO,
     COMPANY_NOTES,
     CORE_INFORMATION,
     CUSIP_SEARCH,
@@ -70,8 +69,24 @@ class CompanyClient(EndpointGroup):
         return self.client.request(COMPANY_NOTES, symbol=symbol)
 
     def get_company_logo_url(self, symbol: str) -> str:
-        """Get company logo URL"""
-        return self.client.request(COMPANY_LOGO, symbol=symbol)
+        """
+        Get company logo URL
+
+        Args:
+            symbol: Stock symbol (e.g., AAPL)
+
+        Returns:
+            str: URL to company logo
+        """
+        if not symbol:
+            raise ValueError("Symbol is required")
+
+        # Strip any leading/trailing whitespace and convert to uppercase
+        symbol = symbol.strip().upper()
+
+        # Remove /api from base URL and construct logo URL
+        base_url = self.client.config.base_url.replace("/api", "").replace("site.", "")
+        return f"{base_url}/image-stock/{symbol}.png"
 
     def get_stock_list(self) -> list[CompanySymbol]:
         """Get list of all available stocks"""
