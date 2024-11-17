@@ -9,19 +9,19 @@ class TreasuryRate(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    rate_date: date = Field(description="Rate date", alias="date")
-    month_1: float | None = Field(alias="1month", description="1-month rate")
-    month_2: float | None = Field(alias="2month", description="2-month rate")
-    month_3: float | None = Field(alias="3month", description="3-month rate")
-    month_6: float | None = Field(alias="6month", description="6-month rate")
-    year_1: float | None = Field(alias="1year", description="1-year rate")
-    year_2: float | None = Field(alias="2year", description="2-year rate")
-    year_3: float | None = Field(alias="3year", description="3-year rate")
-    year_5: float | None = Field(alias="5year", description="5-year rate")
-    year_7: float | None = Field(alias="7year", description="7-year rate")
-    year_10: float | None = Field(alias="10year", description="10-year rate")
-    year_20: float | None = Field(alias="20year", description="20-year rate")
-    year_30: float | None = Field(alias="30year", description="30-year rate")
+    rate_date: date = Field(..., alias="date")
+    month_1: float | None = Field(None, alias="month1")
+    month_2: float | None = Field(None, alias="month2")
+    month_3: float | None = Field(None, alias="month3")
+    month_6: float | None = Field(None, alias="month6")
+    year_1: float | None = Field(None, alias="year1")
+    year_2: float | None = Field(None, alias="year2")
+    year_3: float | None = Field(None, alias="year3")
+    year_5: float | None = Field(None, alias="year5")
+    year_7: float | None = Field(None, alias="year7")
+    year_10: float | None = Field(None, alias="year10")
+    year_20: float | None = Field(None, alias="year20")
+    year_30: float | None = Field(None, alias="year30")
 
 
 class EconomicIndicator(BaseModel):
@@ -29,33 +29,26 @@ class EconomicIndicator(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    indicator_date: date = Field(description="Data date", alias="date")
-    indicator: str = Field(description="Indicator name")
-    value: float = Field(description="Indicator value")
-    unit: str = Field(description="Value unit")
-    frequency: str = Field(description="Data frequency")
-    country: str = Field(description="Country")
-    category: str | None = Field(description="Indicator category")
-    description: str | None = Field(description="Indicator description")
-    source: str | None = Field(description="Data source")
+    indicator_date: date = Field(..., alias="date")
+    value: float
+    name: str | None = None
 
 
 class EconomicEvent(BaseModel):
-    """Economic calendar event"""
+    """Economic calendar event data"""
 
     model_config = ConfigDict(populate_by_name=True)
 
-    event: str = Field(description="Event name")
-    event_date: datetime = Field(description="Event date", alias="date")
-    country: str = Field(description="Country")
-    actual: float | None = Field(description="Actual value")
-    previous: float | None = Field(description="Previous value")
-    estimate: float | None = Field(description="Estimated value")
-    change: float | None = Field(description="Change from previous")
-    change_percent: float | None = Field(
-        alias="changePercentage", description="Percent change from previous"
-    )
-    impact: str | None = Field(description="Event impact level")
+    event: str = Field(..., description="Event name")
+    country: str = Field(default="", description="Country code")  # Can be empty string
+    event_date: datetime = Field(..., alias="date")
+    currency: str | None = Field(None, description="Currency code")
+    previous: float | None = Field(None, description="Previous value")
+    estimate: float | None = Field(None, description="Estimated value")
+    actual: float | None = Field(None, description="Actual value")
+    change: float | None = Field(None, description="Change value")
+    impact: str | None = Field(None, description="Impact level")
+    change_percent: float = Field(0, alias="changePercentage")
 
 
 class MarketRiskPremium(BaseModel):
@@ -63,14 +56,11 @@ class MarketRiskPremium(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    risk_premium_date: date = Field(description="Data date", alias="date")
-    country: str = Field(description="Country")
-    risk_premium: float = Field(alias="riskPremium", description="Risk premium")
-    market_return: float = Field(alias="marketReturn", description="Market return")
-    risk_free_rate: float = Field(alias="riskFreeRate", description="Risk-free rate")
-    equity_risk_premium: float = Field(
-        alias="equityRiskPremium", description="Equity risk premium"
-    )
+    country: str = Field(..., description="Country name")
+    continent: str | None = Field(None, description="Continent name")
     country_risk_premium: float | None = Field(
-        alias="countryRiskPremium", description="Country risk premium"
+        None, alias="countryRiskPremium", description="Country risk premium"
+    )
+    total_equity_risk_premium: float | None = Field(
+        None, alias="totalEquityRiskPremium", description="Total equity risk premium"
     )
