@@ -3,7 +3,6 @@ from fmp_data.fundamental.models import (
     BalanceSheet,
     CashFlowStatement,
     FinancialRatios,
-    FinancialReport,
     FinancialReportDate,
     FinancialStatementFull,
     HistoricalRating,
@@ -245,7 +244,7 @@ FINANCIAL_REPORTS_DATES = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
@@ -253,38 +252,6 @@ FINANCIAL_REPORTS_DATES = Endpoint(
     ],
     optional_params=[],
     response_model=FinancialReportDate,
-)
-
-FINANCIAL_REPORTS = Endpoint(
-    name="financial_reports",
-    path="financial-reports-json",
-    version=APIVersion.V4,
-    description="Get financial reports",
-    mandatory_params=[
-        EndpointParam(
-            name="symbol",
-            location=ParamLocation.PATH,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Stock symbol (ticker)",
-        ),
-        EndpointParam(
-            name="year",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Report year",
-        ),
-        EndpointParam(
-            name="period",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Report period",
-        ),
-    ],
-    optional_params=[],
-    response_model=FinancialReport,
 )
 
 OWNER_EARNINGS = Endpoint(

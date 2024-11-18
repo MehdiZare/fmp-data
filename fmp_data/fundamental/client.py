@@ -7,7 +7,6 @@ from fmp_data.fundamental.models import (
     BalanceSheet,
     CashFlowStatement,
     FinancialRatios,
-    FinancialReport,
     FinancialStatementFull,
     IncomeStatement,
     KeyMetrics,
@@ -71,11 +70,3 @@ class FundamentalClient(EndpointGroup):
     def get_financial_report_dates(self, symbol: str) -> list[datetime]:
         """Get list of financial report dates"""
         return self.client.request(endpoints.FINANCIAL_REPORTS_DATES, symbol=symbol)
-
-    def get_financial_report(
-        self, symbol: str, year: int, period: str
-    ) -> FinancialReport:
-        """Get financial report"""
-        return self.client.request(
-            endpoints.FINANCIAL_REPORTS, symbol=symbol, year=year, period=period
-        )

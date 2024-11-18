@@ -14,63 +14,199 @@ class FinancialStatementBase(BaseModel):
     reported_currency: str = Field(
         alias="reportedCurrency", description="Currency used"
     )
-    period: str = Field(description="Reporting period (annual/quarter)")
+    cik: str = Field(description="SEC CIK number")
     filling_date: datetime = Field(alias="fillingDate", description="SEC filing date")
     accepted_date: datetime = Field(
         alias="acceptedDate", description="SEC acceptance date"
     )
-    calendar_year: int = Field(alias="calendarYear", description="Calendar year")
-    period_length: str = Field(alias="periodLength", description="Period length")
+    calendar_year: str = Field(alias="calendarYear", description="Calendar year")
+    period: str = Field(description="Reporting period (Q1, Q2, Q3, Q4, FY)")
+    link: str = Field(description="Filing URL")
+    final_link: str = Field(alias="finalLink", description="Final filing URL")
 
 
 class IncomeStatement(FinancialStatementBase):
     """Income statement data"""
 
-    revenue: float = Field(description="Total revenue")
-    cost_of_revenue: float = Field(alias="costOfRevenue", description="Cost of revenue")
-    gross_profit: float = Field(alias="grossProfit", description="Gross profit")
-    operating_expenses: float = Field(
+    revenue: float | None = Field(None, description="Total revenue")
+    cost_of_revenue: float | None = Field(
+        alias="costOfRevenue", description="Cost of revenue"
+    )
+    gross_profit: float | None = Field(alias="grossProfit", description="Gross profit")
+    gross_profit_ratio: float | None = Field(
+        alias="grossProfitRatio", description="Gross profit ratio"
+    )
+
+    # Operating expenses
+    research_and_development_expenses: float | None = Field(
+        alias="researchAndDevelopmentExpenses", description="R&D expenses"
+    )
+    selling_general_and_administrative_expenses: float | None = Field(
+        alias="sellingGeneralAndAdministrativeExpenses", description="SG&A expenses"
+    )
+    operating_expenses: float | None = Field(
         alias="operatingExpenses", description="Operating expenses"
     )
+    cost_and_expenses: float | None = Field(
+        alias="costAndExpenses", description="Total costs and expenses"
+    )
+
+    # Profitability metrics
     operating_income: float = Field(
         alias="operatingIncome", description="Operating income"
     )
-    net_income: float = Field(alias="netIncome", description="Net income")
-    eps: float = Field(description="Earnings per share")
+    operating_income_ratio: float = Field(
+        alias="operatingIncomeRatio", description="Operating income ratio"
+    )
+
     ebitda: float = Field(description="EBITDA")
-    # Add more fields as needed
+    ebitda_ratio: float = Field(alias="ebitdaratio", description="EBITDA ratio")
+
+    # Income metrics
+    income_before_tax: float = Field(
+        alias="incomeBeforeTax", description="Income before tax"
+    )
+    income_before_tax_ratio: float = Field(
+        alias="incomeBeforeTaxRatio", description="Income before tax ratio"
+    )
+    income_tax_expense: float = Field(
+        alias="incomeTaxExpense", description="Income tax expense"
+    )
+    net_income: float = Field(alias="netIncome", description="Net income")
+    net_income_ratio: float = Field(
+        alias="netIncomeRatio", description="Net income ratio"
+    )
+
+    # Share data
+    eps: float = Field(description="Earnings per share")
+    eps_diluted: float = Field(alias="epsdiluted", description="Diluted EPS")
+    weighted_average_shares_out: float = Field(
+        alias="weightedAverageShsOut", description="Weighted average shares"
+    )
+    weighted_average_shares_out_dil: float = Field(
+        alias="weightedAverageShsOutDil", description="Diluted weighted average shares"
+    )
 
 
 class BalanceSheet(FinancialStatementBase):
     """Balance sheet data"""
 
+    # Cash and Investments
+    cash_and_short_term_investments: float = Field(
+        alias="cashAndShortTermInvestments",
+        description="Cash and short-term investments",
+    )
+    net_receivables: float = Field(
+        alias="netReceivables", description="Net receivables"
+    )
+    inventory: float = Field(description="Inventory")
+    total_current_assets: float = Field(
+        alias="totalCurrentAssets", description="Total current assets"
+    )
+    property_plant_equipment_net: float = Field(
+        alias="propertyPlantEquipmentNet", description="Net PP&E"
+    )
+    total_non_current_assets: float = Field(
+        alias="totalNonCurrentAssets", description="Total non-current assets"
+    )
     total_assets: float = Field(alias="totalAssets", description="Total assets")
+
+    # Liabilities
+    account_payables: float = Field(
+        alias="accountPayables", description="Accounts payable"
+    )
+    short_term_debt: float = Field(alias="shortTermDebt", description="Short-term debt")
+    total_current_liabilities: float = Field(
+        alias="totalCurrentLiabilities", description="Total current liabilities"
+    )
+    long_term_debt: float = Field(alias="longTermDebt", description="Long-term debt")
+    total_non_current_liabilities: float = Field(
+        alias="totalNonCurrentLiabilities", description="Total non-current liabilities"
+    )
     total_liabilities: float = Field(
         alias="totalLiabilities", description="Total liabilities"
     )
-    total_equity: float = Field(alias="totalEquity", description="Total equity")
-    cash_and_equivalents: float = Field(
-        alias="cashAndEquivalents", description="Cash and equivalents"
+
+    # Equity
+    total_stockholders_equity: float = Field(
+        alias="totalStockholdersEquity", description="Total stockholders' equity"
     )
-    short_term_debt: float = Field(alias="shortTermDebt", description="Short term debt")
-    long_term_debt: float = Field(alias="longTermDebt", description="Long term debt")
-    # Add more fields as needed
+    total_equity: float = Field(alias="totalEquity", description="Total equity")
+    total_liabilities_and_equity: float = Field(
+        alias="totalLiabilitiesAndTotalEquity",
+        description="Total liabilities and equity",
+    )
+
+    # Additional metrics
+    total_investments: float = Field(
+        alias="totalInvestments", description="Total investments"
+    )
+    total_debt: float = Field(alias="totalDebt", description="Total debt")
+    net_debt: float = Field(alias="netDebt", description="Net debt")
 
 
 class CashFlowStatement(FinancialStatementBase):
     """Cash flow statement data"""
 
-    operating_cash_flow: float = Field(
+    # Operating activities
+    net_income: float | None = Field(alias="netIncome", description="Net income")
+    depreciation_and_amortization: float | None = Field(
+        alias="depreciationAndAmortization", description="Depreciation and amortization"
+    )
+
+    stock_based_compensation: float = Field(
+        alias="stockBasedCompensation", description="Stock-based compensation"
+    )
+    operating_cash_flow: float | None = Field(
         alias="operatingCashFlow", description="Operating cash flow"
     )
-    investing_cash_flow: float = Field(
-        alias="investingCashFlow", description="Investing cash flow"
+    net_cash_provided_by_operating_activities: float | None = Field(
+        alias="netCashProvidedByOperatingActivities",
+        description="Net cash from operating activities",
     )
-    financing_cash_flow: float = Field(
-        alias="financingCashFlow", description="Financing cash flow"
+
+    # Investing activities
+    capital_expenditure: float | None = Field(
+        None, alias="capitalExpenditure", description="Capital expenditure"
     )
-    net_cash_flow: float = Field(alias="netCashFlow", description="Net cash flow")
-    # Add more fields as needed
+    investing_cash_flow: float | None = Field(
+        None,
+        alias="netCashUsedForInvestingActivites",
+        description="Net cash used in investing activities",
+    )
+
+    acquisitions_net: float = Field(
+        alias="acquisitionsNet", description="Net acquisitions"
+    )
+    investments_in_property_plant_and_equipment: float = Field(
+        alias="investmentsInPropertyPlantAndEquipment", description="PP&E investments"
+    )
+
+    # Financing activities
+    debt_repayment: float = Field(alias="debtRepayment", description="Debt repayment")
+    common_stock_repurchased: float = Field(
+        alias="commonStockRepurchased", description="Stock repurchases"
+    )
+    dividends_paid: float = Field(alias="dividendsPaid", description="Dividends paid")
+    financing_cash_flow: float | None = Field(
+        alias="netCashUsedProvidedByFinancingActivities",
+        description="Net cash used in financing activities",
+    )
+
+    net_change_in_cash: float | None = Field(
+        alias="netChangeInCash", description="Net change in cash"
+    )
+
+    # Cash position
+    free_cash_flow: float | None = Field(
+        alias="freeCashFlow", description="Free cash flow"
+    )
+    cash_at_beginning_of_period: float | None = Field(
+        alias="cashAtBeginningOfPeriod", description="Beginning cash balance"
+    )
+    cash_at_end_of_period: float | None = Field(
+        alias="cashAtEndOfPeriod", description="Ending cash balance"
+    )
 
 
 class KeyMetrics(BaseModel):
@@ -195,23 +331,160 @@ class EnterpriseValue(BaseModel):
 
 
 class FinancialStatementFull(BaseModel):
-    """Full financial statement data including all statements"""
+    """Full financial statements as reported"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    date: datetime | None = Field(None, description="Statement date")
+    symbol: str | None = Field(None, description="Company symbol")
+    period: str | None = Field(None, description="Reporting period")
 
-    date: datetime = Field(description="Statement date")
-    symbol: str = Field(description="Company symbol")
-    income_statement: dict = Field(
-        alias="incomeStatement", description="Income statement data"
+    document_type: str | None = Field(
+        None, alias="documenttype", description="SEC filing type"
     )
-    balance_sheet: dict = Field(alias="balanceSheet", description="Balance sheet data")
-    cash_flow_statement: dict = Field(
-        alias="cashFlowStatement", description="Cash flow statement data"
+    filing_date: datetime | None = Field(
+        None, alias="filingdate", description="SEC filing date"
+    )
+
+    # Income Statement Items
+    revenue: float | None = Field(
+        None,
+        alias="revenuefromcontractwithcustomerexcludingassessedtax",
+        description="Total revenue",
+    )
+    cost_of_revenue: float | None = Field(
+        None, alias="costofgoodsandservicessold", description="Cost of goods sold"
+    )
+    gross_profit: float | None = Field(
+        None, alias="grossprofit", description="Gross profit"
+    )
+    operating_expenses: float | None = Field(
+        None, alias="operatingexpenses", description="Operating expenses"
+    )
+    research_development: float | None = Field(
+        None, alias="researchanddevelopmentexpense", description="R&D expenses"
+    )
+    selling_general_administrative: float | None = Field(
+        None,
+        alias="sellinggeneralandadministrativeexpense",
+        description="SG&A expenses",
+    )
+    operating_income: float | None = Field(
+        None, alias="operatingincomeloss", description="Operating income/loss"
+    )
+    net_income: float | None = Field(
+        None, alias="netincomeloss", description="Net income/loss"
+    )
+    eps_basic: float | None = Field(
+        None, alias="earningspersharebasic", description="Basic EPS"
+    )
+    eps_diluted: float | None = Field(
+        None, alias="earningspersharediluted", description="Diluted EPS"
+    )
+
+    # Balance Sheet Items - Assets
+    cash_and_equivalents: float | None = Field(
+        None,
+        alias="cashandcashequivalentsatcarryingvalue",
+        description="Cash and cash equivalents",
+    )
+    marketable_securities_current: float | None = Field(
+        None,
+        alias="marketablesecuritiescurrent",
+        description="Current marketable securities",
+    )
+    accounts_receivable_net_current: float | None = Field(
+        None,
+        alias="accountsreceivablenetcurrent",
+        description="Net accounts receivable",
+    )
+    inventory_net: float | None = Field(
+        None, alias="inventorynet", description="Net inventory"
+    )
+    assets_current: float | None = Field(
+        None, alias="assetscurrent", description="Total current assets"
+    )
+    property_plant_equipment_net: float | None = Field(
+        None, alias="propertyplantandequipmentnet", description="Net PP&E"
+    )
+    assets_noncurrent: float | None = Field(
+        None, alias="assetsnoncurrent", description="Total non-current assets"
+    )
+    total_assets: float | None = Field(None, alias="assets", description="Total assets")
+
+    # Balance Sheet Items - Liabilities
+    accounts_payable_current: float | None = Field(
+        None, alias="accountspayablecurrent", description="Current accounts payable"
+    )
+    liabilities_current: float | None = Field(
+        None, alias="liabilitiescurrent", description="Total current liabilities"
+    )
+    long_term_debt_noncurrent: float | None = Field(
+        None, alias="longtermdebtnoncurrent", description="Long-term debt"
+    )
+    liabilities_noncurrent: float | None = Field(
+        None, alias="liabilitiesnoncurrent", description="Total non-current liabilities"
+    )
+    total_liabilities: float | None = Field(
+        None, alias="liabilities", description="Total liabilities"
+    )
+
+    # Balance Sheet Items - Equity
+    common_stock_shares_outstanding: float | None = Field(
+        None,
+        alias="commonstocksharesoutstanding",
+        description="Common stock shares outstanding",
+    )
+    common_stock_value: float | None = Field(
+        None,
+        alias="commonstocksincludingadditionalpaidincapital",
+        description="Common stock and additional paid-in capital",
+    )
+    retained_earnings: float | None = Field(
+        None,
+        alias="retainedearningsaccumulateddeficit",
+        description="Retained earnings/accumulated deficit",
+    )
+    accumulated_other_comprehensive_income: float | None = Field(
+        None,
+        alias="accumulatedothercomprehensiveincomelossnetoftax",
+        description="Accumulated other comprehensive income",
+    )
+    stockholders_equity: float | None = Field(
+        None, alias="stockholdersequity", description="Total stockholders' equity"
+    )
+
+    # Cash Flow Items
+    operating_cash_flow: float | None = Field(
+        None,
+        alias="netcashprovidedbyusedinoperatingactivities",
+        description="Net cash from operating activities",
+    )
+    investing_cash_flow: float | None = Field(
+        None,
+        alias="netcashprovidedbyusedininvestingactivities",
+        description="Net cash from investing activities",
+    )
+    financing_cash_flow: float | None = Field(
+        None,
+        alias="netcashprovidedbyusedinfinancingactivities",
+        description="Net cash from financing activities",
+    )
+    depreciation_amortization: float | None = Field(
+        None,
+        alias="depreciationdepletionandamortization",
+        description="Depreciation and amortization",
+    )
+
+    # Additional Metrics
+    market_cap: float | None = Field(
+        None, alias="marketcap", description="Market capitalization"
+    )
+    employees: int | None = Field(
+        None, alias="fullTimeEmployees", description="Number of full-time employees"
     )
 
 
 class FinancialReport(BaseModel):
-    """Financial report data"""
+    """Financial report summary"""
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -220,7 +493,7 @@ class FinancialReport(BaseModel):
     year: int = Field(description="Report year")
     period: str = Field(description="Report period")
     url: str = Field(description="Report URL")
-    filing_date: datetime = Field(alias="filingDate", description="SEC filing date")
+    filing_date: datetime = Field(alias="filingDate", description="Filing date")
 
 
 class OwnerEarnings(BaseModel):
@@ -601,4 +874,14 @@ class AsReportedCashFlowStatement(AsReportedFinancialStatementBase):
 class FinancialReportDate(BaseModel):
     """Financial report date"""
 
-    report_date: datetime = Field(alias="date", description="Report date")
+    symbol: str = Field(description="Stock symbol")
+    report_date: str = Field(description="Report date", alias="date")
+    period: str = Field(description="Reporting period")
+    link_xlsx: str = Field(alias="linkXlsx", description="XLSX report link")
+    link_json: str = Field(alias="linkJson", description="JSON report link")
+
+
+class FinancialReportDates(BaseModel):
+    """Financial report date"""
+
+    financial_report_dates: list[FinancialReportDate]

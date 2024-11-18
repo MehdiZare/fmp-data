@@ -178,8 +178,14 @@ class BaseClient:
     @staticmethod
     def _process_response(endpoint: Endpoint[T], data: Any) -> T:
         """Process the response data with warning handling"""
-        if isinstance(data, dict) and "message" in data:  # Error response
-            raise FMPError(data["message"])
+        if isinstance(data, dict):
+            # Check for different forms of error messages
+            if "Error Message" in data:
+                raise FMPError(data["Error Message"])
+            if "message" in data:
+                raise FMPError(data["message"])
+            if "error" in data:
+                raise FMPError(data["error"])
 
         if isinstance(data, list):
             processed_items = []
