@@ -88,8 +88,8 @@ class TestFundamentalEndpoints(unittest.TestCase):
             "period": "FY",
             "documenttype": "10-K",
             "revenuefromcontractwithcustomerexcludingassessedtax": 391035000000,
-            "costofgoodsandservicessold": 210352000000,  # Changed to match model alias
-            "grossprofit": 180683000000,  # Changed to match model alias
+            "costofgoodsandservicessold": 210352000000,
+            "grossprofit": 180683000000,
         }
 
     def test_get_income_statement(self):
