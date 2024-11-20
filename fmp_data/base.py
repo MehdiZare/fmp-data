@@ -194,7 +194,20 @@ class BaseClient:
                     # Enable all warnings
                     warnings.simplefilter("always")
                     # Process item
-                    processed_item = endpoint.response_model.model_validate(item)
+                    if isinstance(item, dict):
+                        processed_item = endpoint.response_model.model_validate(item)
+                    else:
+                        alias = endpoint.response_model.model_fields.get(
+                            list(endpoint.response_model.model_fields.keys())[0]
+                        ).alias
+                        field_name = (
+                            alias
+                            if alias
+                            else list(endpoint.response_model.model_fields.keys())[0]
+                        )
+                        processed_item = endpoint.response_model.model_validate(
+                            {field_name: item}
+                        )
                     # Log any warnings
                     for warning in w:
                         logger.warning(f"Validation warning: {warning.message}")

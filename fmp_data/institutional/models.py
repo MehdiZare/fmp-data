@@ -1,48 +1,60 @@
 # fmp_data/institutional/models.py
-from datetime import date
-from decimal import Decimal
+import warnings
+from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-class Form13FHolding(BaseModel):
+class Form13F(BaseModel):
     """Individual holding in a 13F report"""
 
     model_config = ConfigDict(populate_by_name=True)
 
-    cusip: str = Field(description="CUSIP of security")
-    ticker: str | None = Field(description="Ticker symbol if available")
+    form_date: date = Field(None, description="Date of form", alias="date")
+    filing_date: date = Field(alias="fillingDate", description="Filing date")
+    accepted_date: date = Field(alias="acceptedDate", description="Accepted date")
+    cik: str = Field(description="CIK number")
+    cusip: str = Field(description="CUSIP number")
+    ticker: str | None = Field(None, description="CUSIP of ticker", alias="tickercusip")
     company_name: str = Field(alias="nameOfIssuer", description="Name of issuer")
     shares: int = Field(description="Number of shares held")
-    value: Decimal = Field(description="Market value of holding")
-    class_title: str = Field(alias="classTitle", description="Share class")
-    investment_discretion: str = Field(
-        alias="investmentDiscretion", description="Type of investment discretion"
-    )
-    sole_voting_authority: int | None = Field(
-        alias="soleVotingAuthority", description="Sole voting authority shares"
-    )
-    shared_voting_authority: int | None = Field(
-        alias="sharedVotingAuthority", description="Shared voting authority shares"
-    )
-    no_voting_authority: int | None = Field(
-        alias="noVotingAuthority", description="No voting authority shares"
+    class_title: str = Field(alias="titleOfClass", description="Share class")
+    value: float = Field(description="Market value of holding")
+    link: str = Field(description="link to SEC report")
+    link_final: str | None = Field(
+        None, alias="linkFinal", description="Link to final SEC report"
     )
 
 
-class Form13F(BaseModel):
-    """Form 13F filing data"""
+class Form13FDate(BaseModel):
+    """Form 13F filing dates"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    form_date: date = Field(None, description="Date of form 13F filing", alias="date")
 
-    cik: str = Field(description="CIK number")
-    filing_date: date = Field(alias="filingDate", description="Filing date")
-    period_date: date = Field(alias="periodOfReport", description="Period end date")
-    filing_type: str = Field(alias="form13FFileNumber", description="Filing type")
-    holdings: list[Form13FHolding] = Field(description="List of holdings")
-    total_value: Decimal = Field(
-        alias="totalValue", description="Total portfolio value"
-    )
+    @field_validator("form_date", mode="before")
+    def validate_date(cls, value):
+        """
+        Validate the date field. If validation fails, log a warning and return None.
+        """
+        if value is None:
+            return None
+        if isinstance(value, date):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.strptime(value, "%Y-%m-%d").date()
+            except ValueError:
+                warnings.warn(
+                    f"Invalid date format: {value}. "
+                    f"Expected format: YYYY-MM-DD. Skipping this value.",
+                    stacklevel=2,
+                )
+                return None
+        warnings.warn(
+            f"Unexpected type for date: {type(value)}. Skipping this value.",
+            stacklevel=2,
+        )
+        return None
 
 
 class AssetAllocation(BaseModel):
@@ -54,8 +66,7 @@ class AssetAllocation(BaseModel):
     cik: str = Field(description="Institution CIK")
     company_name: str = Field(alias="companyName", description="Institution name")
     asset_type: str = Field(alias="assetType", description="Type of asset")
-    percentage: Decimal = Field(description="Allocation percentage")
-    value: Decimal = Field(description="Asset value")
+    percentage: float = Field(description="Allocation percentage")
     current_quarter: bool = Field(
         alias="currentQuarter", description="Is current quarter"
     )
@@ -68,12 +79,6 @@ class InstitutionalHolder(BaseModel):
 
     cik: str = Field(description="CIK number")
     name: str = Field(description="Institution name")
-    description: str | None = Field(description="Institution description")
-    website: str | None = Field(description="Institution website")
-    address: str | None = Field(description="Institution address")
-    city: str | None = Field(description="Institution city")
-    state: str | None = Field(description="Institution state")
-    country: str | None = Field(description="Institution country")
 
 
 class InstitutionalHolding(BaseModel):
@@ -82,17 +87,44 @@ class InstitutionalHolding(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Stock symbol")
-    holder: str = Field(description="Institution name")
-    shares: int = Field(description="Number of shares held")
-    value: Decimal = Field(description="Holding value")
-    weight_percentage: Decimal = Field(
-        alias="weightPercentage", description="Portfolio weight percentage"
+    cik: str = Field(description="CIK number")
+    report_date: date = Field(description="Report date", alias="date")
+    investors_holding: int = Field(
+        alias="investorsHolding", description="Number of investors holding"
     )
-    change: int = Field(description="Change in shares")
-    change_percentage: Decimal = Field(
-        alias="changePercentage", description="Change percentage"
+    last_investors_holding: int = Field(
+        alias="lastInvestorsHolding", description="Previous number of investors"
     )
-    date_reported: date = Field(alias="dateReported", description="Report date")
+    investors_holding_change: int = Field(
+        alias="investorsHoldingChange", description="Change in investor count"
+    )
+    number_of_13f_shares: int = Field(
+        alias="numberOf13Fshares", description="Number of 13F shares"
+    )
+    last_number_of_13f_shares: int = Field(
+        alias="lastNumberOf13Fshares", description="Previous number of 13F shares"
+    )
+    number_of_13f_shares_change: int = Field(
+        alias="numberOf13FsharesChange", description="Change in 13F shares"
+    )
+    total_invested: float = Field(
+        alias="totalInvested", description="Total invested amount"
+    )
+    last_total_invested: float = Field(
+        alias="lastTotalInvested", description="Previous total invested"
+    )
+    total_invested_change: float = Field(
+        alias="totalInvestedChange", description="Change in total invested"
+    )
+    ownership_percent: float = Field(
+        alias="ownershipPercent", description="Ownership percentage"
+    )
+    last_ownership_percent: float = Field(
+        alias="lastOwnershipPercent", description="Previous ownership percentage"
+    )
+    ownership_percent_change: float = Field(
+        alias="ownershipPercentChange", description="Change in ownership percentage"
+    )
 
 
 class InsiderTransactionType(BaseModel):
@@ -107,41 +139,17 @@ class InsiderTransactionType(BaseModel):
     )
 
 
-class InsiderTrade(BaseModel):
-    """Insider trade information"""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    symbol: str = Field(description="Stock symbol")
-    insider_name: str = Field(alias="insiderName", description="Insider name")
-    insider_title: str = Field(alias="insiderTitle", description="Insider title")
-    transaction_date: date = Field(alias="transactionDate", description="Trade date")
-    transaction_type: str = Field(
-        alias="transactionType", description="Transaction type"
-    )
-    transaction_code: str = Field(
-        alias="transactionCode", description="Transaction code"
-    )
-    shares: int = Field(description="Number of shares")
-    share_price: Decimal = Field(alias="sharePrice", description="Price per share")
-    value: Decimal = Field(description="Total transaction value")
-    filing_date: date = Field(alias="filingDate", description="SEC filing date")
-
-
 class InsiderRoster(BaseModel):
     """Insider roster information"""
 
     model_config = ConfigDict(populate_by_name=True)
 
-    symbol: str = Field(description="Stock symbol")
-    name: str = Field(description="Insider name")
-    title: str = Field(description="Insider title")
-    total_holdings: int = Field(alias="totalHoldings", description="Total shares held")
-    last_transaction_date: date = Field(
-        alias="lastTransactionDate", description="Last transaction date"
+    owner: str = Field(description="Insider name")
+    transaction_date: date = Field(
+        alias="transactionDate", description="Transaction date"
     )
-    last_transaction_filing_date: date = Field(
-        alias="lastTransactionFilingDate", description="Last transaction filing date"
+    type_of_owner: str | None = Field(
+        None, alias="typeOfOwner", description="Type of owner/position"
     )
 
 
@@ -151,14 +159,49 @@ class InsiderStatistic(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Stock symbol")
-    total_transactions: int = Field(
-        alias="totalTransactions", description="Total number of transactions"
-    )
+    cik: str = Field(description="CIK number")
+    year: int = Field(description="Year")
+    quarter: int = Field(description="Quarter")
+    purchases: int = Field(description="Number of purchases")
+    sales: int = Field(description="Number of sales")
+    buy_sell_ratio: float = Field(alias="buySellRatio", description="Buy/sell ratio")
     total_bought: int = Field(alias="totalBought", description="Total shares bought")
     total_sold: int = Field(alias="totalSold", description="Total shares sold")
-    net_transactions: int = Field(
-        alias="netTransactions", description="Net transaction count"
+    average_bought: float = Field(
+        alias="averageBought", description="Average shares bought"
     )
-    last_transaction_date: date = Field(
-        alias="lastTransactionDate", description="Last transaction date"
+    average_sold: float = Field(alias="averageSold", description="Average shares sold")
+    p_purchases: int = Field(alias="pPurchases", description="P purchases")
+    s_sales: int = Field(alias="sSales", description="S sales")
+
+
+class InsiderTrade(BaseModel):
+    """Insider trade information"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    symbol: str = Field(description="Stock symbol")
+    filing_date: datetime = Field(alias="filingDate", description="SEC filing date")
+    transaction_date: date = Field(alias="transactionDate", description="Trade date")
+    reporting_cik: str = Field(alias="reportingCik", description="Reporting CIK")
+    transaction_type: str = Field(
+        alias="transactionType", description="Transaction type"
     )
+    securities_owned: float | None = Field(
+        None, alias="securitiesOwned", description="Securities owned"
+    )
+    company_cik: str = Field(alias="companyCik", description="Company CIK")
+    reporting_name: str = Field(
+        alias="reportingName", description="Reporting person name"
+    )
+    type_of_owner: str = Field(alias="typeOfOwner", description="Type of owner")
+    acquisition_or_disposition: str = Field(
+        alias="acquistionOrDisposition", description="A/D indicator"
+    )
+    form_type: str = Field(alias="formType", description="SEC form type")
+    securities_transacted: float | None = Field(
+        None, alias="securitiesTransacted", description="Securities transacted"
+    )
+    price: float = Field(description="Transaction price")
+    security_name: str = Field(alias="securityName", description="Security name")
+    link: str = Field(description="SEC filing link")

@@ -15,6 +15,10 @@ class InstitutionalClient(EndpointGroup):
             endpoints.FORM_13F, cik=cik, date=filing_date.strftime("%Y-%m-%d")
         )
 
+    def get_form_13f_dates(self, cik: str) -> models.Form13F:
+        """Get Form 13F filing data"""
+        return self.client.request(endpoints.FORM_13F_DATES, cik=cik)
+
     def get_asset_allocation(self, filing_date: date) -> list[models.AssetAllocation]:
         """Get 13F asset allocation data"""
         return self.client.request(

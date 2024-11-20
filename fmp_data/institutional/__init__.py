@@ -3,7 +3,7 @@ from fmp_data.institutional.client import InstitutionalClient
 from fmp_data.institutional.models import (  # 13F Models; Insider Trading Models
     AssetAllocation,
     Form13F,
-    Form13FHolding,
+    Form13FDate,
     InsiderRoster,
     InsiderStatistic,
     InsiderTrade,
@@ -15,7 +15,7 @@ from fmp_data.institutional.models import (  # 13F Models; Insider Trading Model
 __all__ = [
     "InstitutionalClient",
     "Form13F",
-    "Form13FHolding",
+    "Form13FDate",
     "AssetAllocation",
     "InstitutionalHolder",
     "InstitutionalHolding",

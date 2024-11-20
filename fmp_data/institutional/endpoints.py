@@ -1,6 +1,7 @@
 from fmp_data.institutional.models import (
     AssetAllocation,
     Form13F,
+    Form13FDate,
     InsiderRoster,
     InsiderStatistic,
     InsiderTrade,
@@ -42,6 +43,25 @@ FORM_13F = Endpoint(
         ),
     ],
     response_model=Form13F,
+)
+
+FORM_13F_DATES = Endpoint(
+    name="form_13f_dates",
+    path="form-thirteen-date/{cik}",
+    version=APIVersion.V3,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get Form 13F filing dates",
+    mandatory_params=[
+        EndpointParam(
+            name="cik",
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Institution CIK number",
+        ),
+    ],
+    response_model=Form13FDate,
 )
 
 ASSET_ALLOCATION = Endpoint(
