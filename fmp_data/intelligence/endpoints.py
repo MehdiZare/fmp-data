@@ -197,15 +197,7 @@ EARNINGS_CONFIRMED = Endpoint(
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description="Get confirmed earnings dates",
-    mandatory_params=[
-        EndpointParam(
-            name="symbol",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Stock symbol",
-        )
-    ],
+    mandatory_params=[],
     optional_params=[
         EndpointParam(
             name="from",

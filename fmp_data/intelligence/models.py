@@ -1,25 +1,43 @@
 # fmp_data/intelligence/models.py
+import json
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class PriceTarget(BaseModel):
-    """Price target data"""
+    """Price target data based on FMP API response"""
 
     model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Company symbol")
-    date: datetime = Field(description="Publication date")
-    analyst_name: str = Field(alias="analystName", description="Analyst name")
-    analyst_company: str = Field(alias="analystCompany", description="Analyst company")
-    target_price: Decimal = Field(alias="targetPrice", description="Price target")
-    price_when_posted: Decimal = Field(
+    published_date: datetime = Field(
+        alias="publishedDate", description="Publication date and time"
+    )
+    news_url: str = Field(alias="newsURL", description="URL to the news article")
+    news_title: str | None = Field(
+        None, alias="newsTitle", description="Title of the news article"
+    )
+    analyst_name: str | None = Field(
+        alias="analystName", description="Name of the analyst"
+    )
+    price_target: float = Field(alias="priceTarget", description="Price target")
+    adj_price_target: float = Field(
+        alias="adjPriceTarget", description="Adjusted price target"
+    )
+    price_when_posted: float = Field(
         alias="priceWhenPosted", description="Stock price at publication"
     )
-    rating: str = Field(description="Analyst rating")
-    exchange: str = Field(description="Stock exchange")
+    news_publisher: str = Field(
+        alias="newsPublisher", description="Publisher of the news"
+    )
+    news_base_url: str = Field(
+        alias="newsBaseURL", description="Base URL of the news source"
+    )
+    analyst_company: str = Field(
+        alias="analystCompany", description="Analyst's company"
+    )
 
 
 class PriceTargetSummary(BaseModel):
@@ -28,21 +46,48 @@ class PriceTargetSummary(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Company symbol")
-    target_consensus: Decimal = Field(
-        alias="targetConsensus", description="Consensus price target"
+    last_month: int = Field(
+        alias="lastMonth", description="Number of analysts in the last month"
     )
-    target_high: Decimal = Field(alias="targetHigh", description="Highest price target")
-    target_low: Decimal = Field(alias="targetLow", description="Lowest price target")
-    target_average: Decimal = Field(
-        alias="targetAverage", description="Average price target"
+    last_month_avg_price_target: float = Field(
+        alias="lastMonthAvgPriceTarget",
+        description="Average price target from the last month",
     )
-    target_median: Decimal = Field(
-        alias="targetMedian", description="Median price target"
+    last_quarter: int = Field(
+        alias="lastQuarter", description="Number of analysts in the last quarter"
     )
-    last_update: datetime = Field(alias="lastUpdate", description="Last update date")
-    number_of_analysts: int = Field(
-        alias="numberOfAnalysts", description="Number of analysts"
+    last_quarter_avg_price_target: float = Field(
+        alias="lastQuarterAvgPriceTarget",
+        description="Average price target from the last quarter",
     )
+    last_year: int = Field(
+        alias="lastYear", description="Number of analysts in the last year"
+    )
+    last_year_avg_price_target: float = Field(
+        alias="lastYearAvgPriceTarget",
+        description="Average price target from the last year",
+    )
+    all_time: int = Field(alias="allTime", description="Total number of analysts")
+    all_time_avg_price_target: float = Field(
+        alias="allTimeAvgPriceTarget", description="Average price target of all time"
+    )
+    publishers: list[str] | None = Field(
+        None,
+        description=(
+            "List of publishers. Must be a valid JSON array string and"
+            " will be parsed into a Python list."
+        ),
+    )
+
+    @field_validator("publishers", mode="before")
+    def validate_publishers(cls, value):
+        """Validate and parse publishers field if it is a JSON string."""
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError:
+                return None  # Return None if parsing fails
+        return value
 
 
 class PriceTargetConsensus(BaseModel):
@@ -51,36 +96,85 @@ class PriceTargetConsensus(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Company symbol")
-    consensus_type: str = Field(alias="consensusType", description="Type of consensus")
-    consensus: str = Field(description="Consensus rating")
-    total_analysts: int = Field(
-        alias="totalAnalysts", description="Total number of analysts"
+    target_high: float = Field(alias="targetHigh", description="Highest price target")
+    target_low: float = Field(alias="targetLow", description="Lowest price target")
+    target_consensus: float = Field(
+        alias="targetConsensus", description="Consensus price target"
     )
-    buy_analysts: int = Field(alias="buyAnalysts", description="Number of buy ratings")
-    hold_analysts: int = Field(
-        alias="holdAnalysts", description="Number of hold ratings"
-    )
-    sell_analysts: int = Field(
-        alias="sellAnalysts", description="Number of sell ratings"
-    )
-    consensus_date: datetime = Field(
-        alias="consensusDate", description="Consensus date"
+    target_median: float = Field(
+        alias="targetMedian", description="Median price target"
     )
 
 
 class AnalystEstimate(BaseModel):
-    """Analyst earnings estimate"""
+    """Analyst earnings and revenue estimates"""
 
     model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Company symbol")
     date: datetime = Field(description="Estimate date")
-    estimate_type: str = Field(alias="estimateType", description="Type of estimate")
-    estimate: Decimal = Field(description="Earnings estimate")
-    currency: str = Field(description="Currency")
-    period: str = Field(description="Fiscal period")
-    year: int = Field(description="Fiscal year")
-    analysts_count: int = Field(alias="analystsCount", description="Number of analysts")
+    estimated_revenue_low: float = Field(
+        alias="estimatedRevenueLow", description="Lowest estimated revenue"
+    )
+    estimated_revenue_high: float = Field(
+        alias="estimatedRevenueHigh", description="Highest estimated revenue"
+    )
+    estimated_revenue_avg: float = Field(
+        alias="estimatedRevenueAvg", description="Average estimated revenue"
+    )
+    estimated_ebitda_low: float = Field(
+        alias="estimatedEbitdaLow", description="Lowest estimated EBITDA"
+    )
+    estimated_ebitda_high: float = Field(
+        alias="estimatedEbitdaHigh", description="Highest estimated EBITDA"
+    )
+    estimated_ebitda_avg: float = Field(
+        alias="estimatedEbitdaAvg", description="Average estimated EBITDA"
+    )
+    estimated_ebit_low: float = Field(
+        alias="estimatedEbitLow", description="Lowest estimated EBIT"
+    )
+    estimated_ebit_high: float = Field(
+        alias="estimatedEbitHigh", description="Highest estimated EBIT"
+    )
+    estimated_ebit_avg: float = Field(
+        alias="estimatedEbitAvg", description="Average estimated EBIT"
+    )
+    estimated_net_income_low: float = Field(
+        alias="estimatedNetIncomeLow", description="Lowest estimated net income"
+    )
+    estimated_net_income_high: float = Field(
+        alias="estimatedNetIncomeHigh", description="Highest estimated net income"
+    )
+    estimated_net_income_avg: float = Field(
+        alias="estimatedNetIncomeAvg", description="Average estimated net income"
+    )
+    estimated_sga_expense_low: float = Field(
+        alias="estimatedSgaExpenseLow", description="Lowest estimated SG&A expense"
+    )
+    estimated_sga_expense_high: float = Field(
+        alias="estimatedSgaExpenseHigh", description="Highest estimated SG&A expense"
+    )
+    estimated_sga_expense_avg: float = Field(
+        alias="estimatedSgaExpenseAvg", description="Average estimated SG&A expense"
+    )
+    estimated_eps_low: float = Field(
+        alias="estimatedEpsLow", description="Lowest estimated EPS"
+    )
+    estimated_eps_high: float = Field(
+        alias="estimatedEpsHigh", description="Highest estimated EPS"
+    )
+    estimated_eps_avg: float = Field(
+        alias="estimatedEpsAvg", description="Average estimated EPS"
+    )
+    number_analyst_estimated_revenue: int = Field(
+        alias="numberAnalystEstimatedRevenue",
+        description="Number of analysts estimating revenue",
+    )
+    number_analysts_estimated_eps: int = Field(
+        alias="numberAnalystsEstimatedEps",
+        description="Number of analysts estimating EPS",
+    )
 
 
 class AnalystRecommendation(BaseModel):
@@ -90,12 +184,21 @@ class AnalystRecommendation(BaseModel):
 
     symbol: str = Field(description="Company symbol")
     date: datetime = Field(description="Recommendation date")
-    analyst_company: str = Field(alias="analystCompany", description="Analyst company")
-    recommendation: str = Field(description="Stock recommendation")
-    previous_recommendation: str | None = Field(
-        alias="previousRecommendation", description="Previous recommendation"
+    analyst_ratings_buy: int = Field(
+        alias="analystRatingsbuy", description="Number of buy ratings"
     )
-    ratings_count: int = Field(alias="ratingsCount", description="Number of ratings")
+    analyst_ratings_hold: int = Field(
+        alias="analystRatingsHold", description="Number of hold ratings"
+    )
+    analyst_ratings_sell: int = Field(
+        alias="analystRatingsSell", description="Number of sell ratings"
+    )
+    analyst_ratings_strong_sell: int = Field(
+        alias="analystRatingsStrongSell", description="Number of strong sell ratings"
+    )
+    analyst_ratings_strong_buy: int = Field(
+        alias="analystRatingsStrongBuy", description="Number of strong buy ratings"
+    )
 
 
 class UpgradeDowngrade(BaseModel):
@@ -104,13 +207,28 @@ class UpgradeDowngrade(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Company symbol")
-    date: datetime = Field(description="Publication date")
-    action: str = Field(description="Upgrade/downgrade action")
-    company: str = Field(description="Analysis company")
-    from_grade: str = Field(alias="fromGrade", description="Previous rating")
-    to_grade: str = Field(alias="toGrade", description="New rating")
-    price_target: Decimal | None = Field(
-        alias="priceTarget", description="New price target"
+    published_date: datetime = Field(
+        alias="publishedDate", description="Publication date of the news"
+    )
+    news_url: str = Field(alias="newsURL", description="URL of the news article")
+    news_title: str = Field(alias="newsTitle", description="Title of the news article")
+    news_base_url: str = Field(
+        alias="newsBaseURL", description="Base URL of the news source"
+    )
+    news_publisher: str = Field(
+        alias="newsPublisher", description="Publisher of the news article"
+    )
+    new_grade: str = Field(alias="newGrade", description="New rating grade")
+    previous_grade: str | None = Field(
+        None, alias="previousGrade", description="Previous rating grade"
+    )
+    grading_company: str = Field(
+        alias="gradingCompany", description="Company providing the grade"
+    )
+    action: str = Field(description="Action taken (e.g., hold, buy, sell)")
+    price_when_posted: Decimal = Field(
+        alias="priceWhenPosted",
+        description="Price of the stock when the article was posted",
     )
 
 
@@ -129,56 +247,58 @@ class UpgradeDowngradeConsensus(BaseModel):
 
 
 class EarningEvent(BaseModel):
-    """Earnings calendar event"""
+    """Earnings calendar event based on FMP API response"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    event_date: date = Field(description="Earnings date", alias="date")
+    symbol: str = Field(description="Company symbol")
+    eps: float | None = Field(default=None, description="Actual earnings per share")
+    eps_estimated: float | None = Field(
+        alias="epsEstimated", default=None, description="Estimated earnings per share"
+    )
+    time: str | None = Field(default=None, description="Time of day (amc/bmo)")
+    revenue: float | None = Field(default=None, description="Actual revenue")
+    revenue_estimated: float | None = Field(
+        alias="revenueEstimated", default=None, description="Estimated revenue"
+    )
+    fiscal_date_ending: date = Field(
+        alias="fiscalDateEnding", description="Fiscal period end date"
+    )
+    updated_from_date: date = Field(
+        alias="updatedFromDate", description="Last update date"
+    )
+
+
+class EarningConfirmed(BaseModel):
+    """Confirmed earnings event"""
 
     model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Company symbol")
-    date: datetime = Field(description="Earnings date")
-    eps_estimate: Decimal | None = Field(
-        alias="epsEstimate", description="EPS estimate"
+    exchange: str = Field(description="Stock exchange")
+    time: str = Field(description="Earnings announcement time (HH:MM)")
+    when: str = Field(description="Time of day (pre market/post market)")
+    event_date: datetime = Field(description="Earnings announcement date", alias="date")
+    publication_date: datetime = Field(
+        alias="publicationDate", description="Publication date of the announcement"
     )
-    eps_actual: Decimal | None = Field(alias="epsActual", description="Actual EPS")
-    revenue_estimate: Decimal | None = Field(
-        alias="revenueEstimate", description="Revenue estimate"
-    )
-    revenue_actual: Decimal | None = Field(
-        alias="revenueActual", description="Actual revenue"
-    )
-    fiscal_quarter: int = Field(alias="fiscalQuarter", description="Fiscal quarter")
-    fiscal_year: int = Field(alias="fiscalYear", description="Fiscal year")
-    time: str | None = Field(description="Time of day (BMO/AMC)")
-
-
-class EarningConfirmed(EarningEvent):
-    """Confirmed earnings event"""
-
-    confirmed_date: datetime = Field(
-        alias="confirmedDate", description="Date earnings confirmed"
-    )
-    conference_call_time: datetime | None = Field(
-        alias="conferenceCallTime", description="Conference call time"
-    )
+    title: str = Field(description="Title of the earnings announcement")
+    url: str = Field(description="URL to the earnings announcement")
 
 
 class EarningSurprise(BaseModel):
-    """Earnings surprise data"""
+    """Earnings surprise data based on FMP API response"""
 
     model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Company symbol")
-    date: datetime = Field(description="Earnings date")
-    actual_eps: Decimal = Field(alias="actualEps", description="Actual EPS")
-    estimated_eps: Decimal = Field(alias="estimatedEps", description="Estimated EPS")
-    surprise: Decimal = Field(description="EPS surprise amount")
-    surprise_percentage: Decimal = Field(
-        alias="surprisePercentage", description="Surprise percentage"
+    surprise_date: date = Field(description="Earnings date", alias="date")
+    actual_earning_result: float = Field(
+        alias="actualEarningResult", description="Actual earnings per share"
     )
-    change_percent: Decimal = Field(
-        alias="changePercent", description="Stock price change %"
-    )
-    change_value: Decimal = Field(
-        alias="changeValue", description="Stock price change value"
+    estimated_earning: float = Field(
+        alias="estimatedEarning", description="Estimated earnings per share"
     )
 
 
@@ -188,14 +308,21 @@ class DividendEvent(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Company symbol")
-    dividend: Decimal = Field(description="Dividend amount")
-    record_date: date = Field(alias="recordDate", description="Record date")
-    payment_date: date = Field(alias="paymentDate", description="Payment date")
-    declaration_date: date = Field(
-        alias="declarationDate", description="Declaration date"
+    ex_dividend_date: date = Field(description="Ex-dividend date", alias="date")
+    label: str = Field(description="Human-readable date label")
+    adj_dividend: float = Field(
+        alias="adjDividend", description="Adjusted dividend amount"
     )
-    ex_date: date = Field(alias="exDate", description="Ex-dividend date")
-    frequency: str = Field(description="Payment frequency")
+    dividend: float = Field(description="Declared dividend amount")
+    record_date: date | None = Field(
+        None, alias="recordDate", description="Record date"
+    )
+    payment_date: date | None = Field(
+        None, alias="paymentDate", description="Payment date"
+    )
+    declaration_date: date | None = Field(
+        None, alias="declarationDate", description="Declaration date"
+    )
 
 
 class StockSplitEvent(BaseModel):
@@ -205,12 +332,9 @@ class StockSplitEvent(BaseModel):
 
     symbol: str = Field(description="Company symbol")
     split_event_date: date = Field(description="Split date", alias="date")
-    ratio: str = Field(description="Split ratio")
-    to_factor: int = Field(alias="toFactor", description="New shares factor")
-    from_factor: int = Field(alias="fromFactor", description="Old shares factor")
-    declaration_date: date | None = Field(
-        alias="declarationDate", description="Declaration date"
-    )
+    label: str = Field(description="Human-readable date label")
+    numerator: int = Field(description="Numerator of the split ratio")
+    denominator: int = Field(description="Denominator of the split ratio")
 
 
 class IPOEvent(BaseModel):

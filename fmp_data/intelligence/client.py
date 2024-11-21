@@ -64,12 +64,11 @@ class MarketIntelligenceClient(EndpointGroup):
 
     def get_earnings_confirmed(
         self,
-        symbol: str,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[models.EarningConfirmed]:
         """Get confirmed earnings dates"""
-        params = {"symbol": symbol}
+        params = {}
         if start_date:
             params["from"] = start_date.strftime("%Y-%m-%d")
         if end_date:
