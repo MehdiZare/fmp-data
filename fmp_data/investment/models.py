@@ -2,7 +2,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ETFHolding(BaseModel):
@@ -10,15 +10,48 @@ class ETFHolding(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    asset: str = Field(description="Asset name")
+    cik: str = Field(description="Central Index Key (CIK)")
+    acceptance_time: datetime = Field(
+        alias="acceptanceTime", description="Acceptance time of the filing"
+    )
+    holding_date: date | None = Field(None, description="Holding date")
+    symbol: str = Field(description="Ticker symbol")
+    name: str = Field(description="Asset name")
+    lei: str | None = Field(description="Legal Entity Identifier (LEI)")
+    title: str = Field(description="Asset title")
     cusip: str | None = Field(description="Asset CUSIP")
     isin: str | None = Field(description="Asset ISIN")
-    market_value: Decimal = Field(alias="marketValue", description="Market value")
-    weight_percentage: Decimal = Field(
-        alias="weightPercentage", description="Portfolio weight percentage"
+    balance: float | None = Field(None, description="Number of shares held")
+    units: str = Field(description="Units type")
+    currency_code: str = Field(alias="cur_cd", description="Currency code")
+    value_usd: Decimal = Field(alias="valUsd", description="Market value in USD")
+    percentage_value: Decimal = Field(
+        alias="pctVal", description="Percentage of total value"
     )
-    shares: int = Field(description="Number of shares")
-    updated_at: datetime = Field(alias="updatedAt", description="Last update time")
+    payoff_profile: str | None = Field(None, description="Payoff profile")
+    asset_category: str = Field(alias="assetCat", description="Asset category")
+    issuer_category: str = Field(alias="issuerCat", description="Issuer category")
+    investment_country: str = Field(
+        alias="invCountry", description="Investment country"
+    )
+    is_restricted_security: bool = Field(
+        alias="isRestrictedSec", description="Is restricted security"
+    )
+    fair_value_level: str = Field(alias="fairValLevel", description="Fair value level")
+    is_cash_collateral: bool = Field(
+        alias="isCashCollateral", description="Is cash collateral"
+    )
+    is_non_cash_collateral: bool = Field(
+        alias="isNonCashCollateral", description="Is non-cash collateral"
+    )
+    is_loan_by_fund: bool = Field(alias="isLoanByFund", description="Is loan by fund")
+
+
+class ETFSectorExposure(BaseModel):
+    """Sector exposure within the ETF"""
+
+    industry: str = Field(description="Sector or industry name")
+    exposure: float = Field(description="Exposure percentage to the sector")
 
 
 class ETFInfo(BaseModel):
@@ -28,20 +61,24 @@ class ETFInfo(BaseModel):
 
     symbol: str = Field(description="ETF symbol")
     name: str = Field(description="ETF name")
-    expense_ratio: Decimal = Field(alias="expenseRatio", description="Expense ratio")
-    assets_under_management: Decimal = Field(
+    expense_ratio: float = Field(alias="expenseRatio", description="Expense ratio")
+    assets_under_management: float = Field(
         alias="aum", description="Assets under management"
     )
     avg_volume: int = Field(alias="avgVolume", description="Average volume")
+    cusip: str = Field(description="CUSIP identifier for the ETF")
+    isin: str = Field(description="ISIN identifier for the ETF")
     description: str = Field(description="ETF description")
+    domicile: str = Field(description="Country of domicile")
+    etf_company: str = Field(alias="etfCompany", description="ETF issuer company")
     inception_date: date = Field(alias="inceptionDate", description="Inception date")
-    issuer: str = Field(description="ETF issuer")
-    investment_category: str = Field(
-        alias="investmentCategory", description="Investment category"
+    nav: Decimal = Field(description="Net Asset Value (NAV)")
+    nav_currency: str = Field(alias="navCurrency", description="Currency of NAV")
+    sectors_list: list[ETFSectorExposure] = Field(
+        alias="sectorsList", description="List of sector exposures"
     )
-    primary_benchmark: str | None = Field(
-        alias="primaryBenchmark", description="Primary benchmark"
-    )
+    website: str = Field(description="ETF website")
+    holdings_count: int = Field(alias="holdingsCount", description="Number of holdings")
 
 
 class ETFSectorWeighting(BaseModel):
@@ -50,9 +87,16 @@ class ETFSectorWeighting(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     sector: str = Field(description="Sector name")
-    weight_percentage: Decimal = Field(
+    weight_percentage: float = Field(
         alias="weightPercentage", description="Sector weight percentage"
     )
+
+    @field_validator("weight_percentage", mode="before")
+    def parse_weight_percentage(cls, value: str) -> float:
+        """Parse percentage string into float"""
+        if isinstance(value, str) and value.endswith("%"):
+            return float(value.strip("%")) / 100
+        return float(value)
 
 
 class ETFCountryWeighting(BaseModel):
@@ -61,9 +105,16 @@ class ETFCountryWeighting(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     country: str = Field(description="Country name")
-    weight_percentage: Decimal = Field(
+    weight_percentage: float = Field(
         alias="weightPercentage", description="Country weight percentage"
     )
+
+    @field_validator("weight_percentage", mode="before")
+    def parse_weight_percentage(cls, value: str) -> float:
+        """Parse percentage string into float"""
+        if isinstance(value, str) and value.endswith("%"):
+            return float(value.strip("%")) / 100
+        return float(value)
 
 
 class ETFExposure(BaseModel):
@@ -71,15 +122,19 @@ class ETFExposure(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    symbol: str = Field(description="ETF symbol")
-    asset_symbol: str = Field(alias="assetSymbol", description="Stock symbol")
-    asset_name: str = Field(alias="assetName", description="Company name")
-    shares: int = Field(description="Number of shares")
-    weight_percentage: Decimal = Field(
+    etf_symbol: str = Field(alias="etfSymbol", description="ETF symbol")
+    asset_exposure: str = Field(
+        alias="assetExposure", description="Asset symbol the ETF is exposed to"
+    )
+    shares_number: int = Field(
+        alias="sharesNumber", description="Number of shares held"
+    )
+    weight_percentage: float = Field(
         alias="weightPercentage", description="Portfolio weight percentage"
     )
-    market_value: Decimal = Field(alias="marketValue", description="Market value")
-    updated_at: datetime = Field(alias="updatedAt", description="Last update time")
+    market_value: float = Field(
+        alias="marketValue", description="Market value of the exposure"
+    )
 
 
 class ETFHolder(BaseModel):
@@ -87,13 +142,22 @@ class ETFHolder(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    holder: str = Field(description="Holder name")
-    shares: int = Field(description="Number of shares")
-    date_reported: date = Field(alias="dateReported", description="Report date")
-    market_value: Decimal = Field(alias="marketValue", description="Market value")
-    weight_percentage: Decimal = Field(
+    asset: str = Field(description="Asset symbol")
+    name: str = Field(description="Full name of the asset")
+    isin: str = Field(
+        description="International Securities Identification Number (ISIN)"
+    )
+    cusip: str = Field(description="CUSIP identifier for the asset")
+    shares_number: float = Field(
+        alias="sharesNumber", description="Number of shares held"
+    )
+    weight_percentage: float = Field(
         alias="weightPercentage", description="Portfolio weight percentage"
     )
+    market_value: float = Field(
+        alias="marketValue", description="Market value of the asset"
+    )
+    updated: datetime = Field(description="Timestamp of the last update")
 
 
 class MutualFundHolding(BaseModel):
@@ -121,21 +185,21 @@ class MutualFundHolder(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     holder: str = Field(description="Fund name")
-    shares: int = Field(description="Number of shares")
+    shares: float = Field(description="Number of shares")
     date_reported: date = Field(alias="dateReported", description="Report date")
-    market_value: Decimal = Field(alias="marketValue", description="Market value")
-    weight_percentage: Decimal = Field(
-        alias="weightPercentage", description="Portfolio weight percentage"
+    change: int = Field(description="Change in the number of shares")
+    weight_percent: float = Field(
+        alias="weightPercent", description="Portfolio weight percentage"
     )
 
 
 class ETFPortfolioDate(BaseModel):
     """ETF portfolio date model"""
 
-    portfolio_date: date = Field(description="Portfolio date")
+    portfolio_date: date = Field(description="Portfolio date", alias="date")
 
 
 class PortfolioDate(BaseModel):
     """Portfolio date model for ETFs and Mutual Funds"""
 
-    portfolio_date: date = Field(description="Portfolio date")
+    portfolio_date: date = Field(description="Portfolio date", alias="date")

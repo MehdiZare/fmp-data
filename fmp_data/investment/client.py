@@ -1,4 +1,5 @@
 # fmp_data/investment/client.py
+import warnings
 from datetime import date
 
 from fmp_data.base import EndpointGroup
@@ -41,10 +42,15 @@ class InvestmentClient(EndpointGroup):
         """Get ETF holding dates"""
         return self.client.request(ETF_HOLDING_DATES, symbol=symbol)
 
-    def get_etf_info(self, symbol: str) -> ETFInfo:
+    def get_etf_info(self, symbol: str) -> ETFInfo | None:
         """Get ETF information"""
-        result = self.client.request(ETF_INFO, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
+        try:
+            result = self.client.request(ETF_INFO, symbol=symbol)
+            return result[0] if isinstance(result, list) else result
+        except Exception as e:
+            error_msg = f"Error in get_etf_info, error: {str(e)}"
+            warnings.warn(error_msg, stacklevel=2)
+            return None
 
     def get_etf_sector_weightings(self, symbol: str) -> list[ETFSectorWeighting]:
         """Get ETF sector weightings"""
