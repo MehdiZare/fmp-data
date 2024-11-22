@@ -1,4 +1,3 @@
-# fmp_data/technical/client.py
 from datetime import date
 from typing import TypeVar
 
@@ -37,7 +36,7 @@ class TechnicalClient(EndpointGroup):
             params["to"] = end_date.strftime("%Y-%m-%d")
 
         # Create endpoint copy with specific indicator model
-        endpoint = endpoints.TECHNICAL_INDICATOR.copy()
+        endpoint = endpoints.TECHNICAL_INDICATOR.model_copy()  # Updated to model_copy
         endpoint.response_model = indicator_model
 
         return self.client.request(endpoint, **params)
