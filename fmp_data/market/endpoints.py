@@ -1,7 +1,7 @@
 # fmp_data/market/endpoints.py
 from ..models import APIVersion, Endpoint, EndpointParam, ParamLocation, ParamType
 from .models import (
-    HistoricalPrice,
+    HistoricalData,
     IntradayPrice,
     MarketCapitalization,
     MarketHours,
@@ -76,7 +76,7 @@ HISTORICAL_PRICE = Endpoint(
             description="End date (YYYY-MM-DD)",
         ),
     ],
-    response_model=HistoricalPrice,
+    response_model=HistoricalData,
 )
 
 INTRADAY_PRICE = Endpoint(

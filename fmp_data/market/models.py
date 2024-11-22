@@ -1,7 +1,7 @@
 # fmp_data/market/models.py
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class Quote(BaseModel):
@@ -72,6 +72,26 @@ class HistoricalPrice(BaseModel):
     )
 
 
+class HistoricalData(BaseModel):
+    """Model to parse the full historical data response"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    symbol: str = Field(description="Stock symbol")
+    historical: list[HistoricalPrice] = Field(
+        description="List of historical price data"
+    )
+
+    @classmethod
+    def parse_api_response(cls, data: dict):
+        """Parse raw API response into validated HistoricalData model."""
+        # Ensure historical data is validated
+        historical_prices = [
+            HistoricalPrice(**item) for item in data.get("historical", [])
+        ]
+        return cls(symbol=data["symbol"], historical=historical_prices)
+
+
 class IntradayPrice(BaseModel):
     """Intraday price data point"""
 
@@ -85,18 +105,55 @@ class IntradayPrice(BaseModel):
     volume: int = Field(description="Trading volume")
 
 
+class StockMarketHours(BaseModel):
+    """Opening and closing hours of the stock market"""
+
+    openingHour: str = Field(description="Opening hour of the market")
+    closingHour: str = Field(description="Closing hour of the market")
+
+
+class StockMarketHoliday(BaseModel):
+    """Stock market holiday for a specific year"""
+
+    year: int = Field(description="Year of the holiday schedule")
+    holidays: dict[str, str] = Field(description="Mapping of holiday names to dates")
+
+    @classmethod
+    def from_api_data(cls, data: dict):
+        """Custom parser to separate year and holidays."""
+        year = data["year"]
+        holidays = {key: value for key, value in data.items() if key != "year"}
+        return cls(year=year, holidays=holidays)
+
+
 class MarketHours(BaseModel):
     """Market trading hours information"""
 
     model_config = ConfigDict(populate_by_name=True)
 
     stockExchangeName: str = Field(description="Stock exchange name")
-    stockMarketHours: str = Field(description="Market hours")
-    stockMarketHolidays: list[str] = Field(description="Market holidays")
-    isTheStockMarketOpen: bool = Field(description="Whether market is currently open")
-    isTheEuronextMarketOpen: bool = Field(description="Whether Euronext is open")
+    stockMarketHours: StockMarketHours = Field(description="Market hours")
+    stockMarketHolidays: list[StockMarketHoliday] = Field(
+        description="List of market holidays"
+    )
+    isTheStockMarketOpen: bool = Field(
+        description="Whether the stock market is currently open"
+    )
+    isTheEuronextMarketOpen: bool = Field(description="Whether Euronext market is open")
     isTheForexMarketOpen: bool = Field(description="Whether Forex market is open")
     isTheCryptoMarketOpen: bool = Field(description="Whether Crypto market is open")
+
+    def __init__(self, **data):
+        """Override the default initialization to preprocess API data."""
+        # Process stockMarketHolidays
+        holidays = data.get("stockMarketHolidays", [])
+        if holidays:
+            data["stockMarketHolidays"] = [
+                StockMarketHoliday.from_api_data(h) for h in holidays
+            ]
+
+        # Initialize the base model with processed data
+        super().__init__(**data)
 
 
 class MarketCapitalization(BaseModel):
@@ -130,8 +187,18 @@ class SectorPerformance(BaseModel):
 
     sector: str = Field(description="Sector name")
     change_percentage: float = Field(
-        alias="changesPercentage", description="Change percentage"
+        alias="changesPercentage", description="Change percentage as a float"
     )
+
+    @field_validator("change_percentage", mode="before")
+    def parse_percentage(cls, value):
+        """Convert percentage string to a float."""
+        if isinstance(value, str) and value.endswith("%"):
+            try:
+                return float(value.strip("%")) / 100
+            except ValueError as e:
+                raise ValueError(f"Invalid percentage format: {value}") from e
+        raise ValueError(f"Expected a percentage string, got: {value}")
 
 
 class PrePostMarketQuote(BaseModel):
