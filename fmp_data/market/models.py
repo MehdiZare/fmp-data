@@ -119,10 +119,35 @@ class StockMarketHoliday(BaseModel):
     holidays: dict[str, str] = Field(description="Mapping of holiday names to dates")
 
     @classmethod
-    def from_api_data(cls, data: dict):
-        """Custom parser to separate year and holidays."""
-        year = data["year"]
-        holidays = {key: value for key, value in data.items() if key != "year"}
+    def from_api_data(cls, data):
+        if not isinstance(data, dict):
+            raise ValueError(
+                f"Expected a dictionary but got {type(data).__name__}: {data}"
+            )
+
+        # Extract the year
+        year = data.get("year")
+        if year is None:
+            raise ValueError("Missing 'year' field in data")
+
+        # Aggregate holidays into a dictionary
+        holidays = {}
+        for holiday in data.get("holidays", []):
+            if not isinstance(holiday, dict):
+                raise ValueError(
+                    f"Expected a dictionary for "
+                    f"holiday but got {type(holiday).__name__}: {holiday}"
+                )
+
+            name = holiday.get("name")
+            date = holiday.get("date")
+            if not name or not date:
+                raise ValueError(
+                    f"Holiday entry must have 'name' and 'date': {holiday}"
+                )
+
+            holidays[name] = date
+
         return cls(year=year, holidays=holidays)
 
 
