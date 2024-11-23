@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 import tenacity
+import vcr
 
 from fmp_data import FMPDataClient
 from fmp_data.company.models import (
@@ -42,7 +43,9 @@ class TestCompanyEndpoints:
                 time.sleep(e.retry_after or 1)
                 continue
 
-    def test_get_profile(self, fmp_client: FMPDataClient, vcr_instance, test_symbol):
+    def test_get_profile(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR, test_symbol
+    ):
         """Test getting company profile"""
         logger.info(f"Testing profile for symbol: {test_symbol}")
 
@@ -64,7 +67,7 @@ class TestCompanyEndpoints:
                 raise
 
     def test_get_core_information(
-        self, fmp_client: FMPDataClient, vcr_instance, test_symbol
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR, test_symbol
     ):
         """Test getting core company information"""
         with vcr_instance.use_cassette("company/core_information.yaml"):
@@ -76,7 +79,7 @@ class TestCompanyEndpoints:
         wait=tenacity.wait_exponential(multiplier=1, min=4, max=10),
         stop=tenacity.stop_after_attempt(3),
     )
-    def test_search(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_search(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test company search"""
         with vcr_instance.use_cassette("company/search.yaml"):
             results = fmp_client.company.search("Apple", limit=5)
@@ -97,7 +100,7 @@ class TestCompanyEndpoints:
             )
 
     def test_get_employee_count(
-        self, fmp_client: FMPDataClient, vcr_instance, test_symbol
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR, test_symbol
     ):
         """Test getting employee count history"""
         with vcr_instance.use_cassette("company/employee_count.yaml"):
@@ -109,7 +112,7 @@ class TestCompanyEndpoints:
                 assert all(isinstance(c, EmployeeCount) for c in counts)
 
     def test_get_company_notes(
-        self, fmp_client: FMPDataClient, vcr_instance, test_symbol
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR, test_symbol
     ):
         """Test getting company notes"""
         with vcr_instance.use_cassette("company/notes.yaml"):
@@ -142,7 +145,7 @@ class TestCompanyEndpoints:
         with pytest.raises(ValueError):
             fmp_client.company.get_company_logo_url("")
 
-    def test_get_stock_list(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_get_stock_list(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test getting stock list"""
         with vcr_instance.use_cassette("company/stock_list.yaml"):
             stocks = fmp_client.company.get_stock_list()
@@ -153,7 +156,7 @@ class TestCompanyEndpoints:
                 assert hasattr(stock, "symbol")  # Only check required field
                 assert isinstance(stock.symbol, str)
 
-    def test_get_etf_list(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_get_etf_list(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test getting ETF list"""
         with vcr_instance.use_cassette("company/etf_list.yaml"):
             etfs = fmp_client.company.get_etf_list()
@@ -161,7 +164,9 @@ class TestCompanyEndpoints:
             assert all(isinstance(e, CompanySymbol) for e in etfs)
             assert len(etfs) > 0
 
-    def test_get_available_indexes(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_get_available_indexes(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
+    ):
         """Test getting available indexes"""
         with vcr_instance.use_cassette("company/indexes.yaml"):
             indexes = fmp_client.company.get_available_indexes()
@@ -169,7 +174,9 @@ class TestCompanyEndpoints:
             assert all(isinstance(i, AvailableIndex) for i in indexes)
             assert any(i.symbol == "^GSPC" for i in indexes)
 
-    def test_get_exchange_symbols(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_get_exchange_symbols(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
+    ):
         """Test getting exchange symbols"""
         with vcr_instance.use_cassette("company/exchange_symbols.yaml"):
             # Capture warnings during test
@@ -213,7 +220,7 @@ class TestCompanyEndpoints:
     def test_identifier_searches(
         self,
         fmp_client: FMPDataClient,
-        vcr_instance,
+        vcr_instance: vcr.VCR,
         search_type: str,
         method: str,
         model: Any,
@@ -226,7 +233,7 @@ class TestCompanyEndpoints:
             assert isinstance(results, list)
             assert all(isinstance(r, model) for r in results)
 
-    def test_rate_limiting(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_rate_limiting(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test rate limiting handling"""
         with vcr_instance.use_cassette("company/rate_limit.yaml"):
             symbols = ["AAPL", "MSFT", "GOOGL"]
@@ -242,7 +249,7 @@ class TestCompanyEndpoints:
             assert len(results) == len(symbols)
             assert all(isinstance(r, CompanyProfile) for r in results)
 
-    def test_error_handling(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_error_handling(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test error handling"""
         with vcr_instance.use_cassette("company/error_invalid_symbol.yaml"):
             with pytest.raises(FMPError) as exc_info:  # Use specific exception

@@ -15,7 +15,7 @@ from fmp_data import ClientConfig, FMPDataClient, RateLimitConfig
 logger = logging.getLogger(__name__)
 
 
-def scrub_api_key(request):
+def scrub_api_key(request: Request) -> Request:
     """Remove API key for recording only"""
     logger.debug(f"Original request URI: {request.uri}")
 

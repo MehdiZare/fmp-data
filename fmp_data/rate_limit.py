@@ -2,7 +2,7 @@
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -28,14 +28,14 @@ class FMPRateLimiter:
         self.quota_config = quota_config
 
         # Daily tracking
-        self._daily_requests = 0
-        self._reset_date = datetime.now().date()
+        self._daily_requests: int = 0
+        self._reset_date: date = datetime.now().date()
 
         # Per-minute tracking
-        self._minute_requests = []
+        self._minute_requests: list[datetime] = []
 
         # Per-second tracking
-        self._second_requests = []
+        self._second_requests: list[datetime] = []
 
     def _cleanup_old_requests(self) -> None:
         """Remove old requests from tracking"""
