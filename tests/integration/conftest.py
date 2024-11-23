@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import time
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -54,13 +55,13 @@ logger.debug(f"VCR cassettes will be saved to: {CASSETTES_PATH}")
 
 
 @pytest.fixture(scope="session")
-def vcr_instance():
+def vcr_instance() -> vcr.VCR:
     """Provide VCR instance"""
     return vcr_config
 
 
 @pytest.fixture(scope="session")
-def rate_limit_config():
+def rate_limit_config() -> RateLimitConfig:
     """Provide relaxed rate limits for testing"""
     return RateLimitConfig(
         daily_limit=1000,
@@ -70,7 +71,7 @@ def rate_limit_config():
 
 
 @pytest.fixture(scope="session")
-def fmp_client(rate_limit_config) -> FMPDataClient:
+def fmp_client(rate_limit_config: RateLimitConfig) -> Generator[FMPDataClient]:
     """Create FMP client for testing"""
     api_key = os.getenv("FMP_TEST_API_KEY")
     if not api_key:
@@ -106,7 +107,7 @@ def fmp_client(rate_limit_config) -> FMPDataClient:
 
 
 @pytest.fixture(autouse=True)
-def rate_limit_sleep():
+def rate_limit_sleep() -> Generator:
     """Add small delay between tests to avoid rate limiting"""
     yield
     time.sleep(0.5)  # 500ms delay between tests

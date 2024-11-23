@@ -1,4 +1,5 @@
-from datetime import UTC, date, datetime
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 import pytest
 from pydantic import ValidationError
@@ -9,6 +10,8 @@ from fmp_data.alternative.models import (
     CryptoQuote,
     ForexQuote,
 )
+
+UTC = ZoneInfo("UTC")
 
 
 @pytest.fixture
