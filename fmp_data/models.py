@@ -143,7 +143,7 @@ class Endpoint(BaseModel, Generic[T]):
     method: HTTPMethod = HTTPMethod.GET
     description: str
     mandatory_params: list[EndpointParam]
-    optional_params: list[EndpointParam] = Field(default_factory=list)
+    optional_params: list[EndpointParam] | None = Field(default_factory=list)
     response_model: type[T]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
