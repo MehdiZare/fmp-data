@@ -2,7 +2,7 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main ]  # Automatically trigger on pushes to the main branch
   pull_request:
     branches: [ main ]
   workflow_dispatch:  # Allow manual triggering
@@ -19,12 +19,11 @@ jobs:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
-    - uses: actions/checkout@v4.2.2
-      with:
-        fetch-depth: 0
+    - name: Check out the repository
+      uses: actions/checkout@v4
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5.3.0
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -34,15 +33,13 @@ jobs:
         poetry config virtualenvs.create true
         poetry config virtualenvs.in-project true
 
-    - name: Load cached venv
-      id: cached-poetry-dependencies
-      uses: actions/cache@v4.1.2
+    - name: Cache Poetry dependencies
+      uses: actions/cache@v4
       with:
-        path: .venv
-        key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+        path: ~/.cache/pypoetry
+        key: poetry-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
 
     - name: Install dependencies
-      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
       run: poetry install --no-interaction
 
     - name: Run style checks
@@ -69,16 +66,15 @@ jobs:
   publish-test:
     name: Publish to TestPyPI
     needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'  # Only run on main branch pushes
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4.2.2
-      with:
-        fetch-depth: 0
+    - name: Check out the repository
+      uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v5.3.0
+      uses: actions/setup-python@v5
       with:
         python-version: "3.12"
 
@@ -90,6 +86,9 @@ jobs:
 
     - name: Install dependencies
       run: poetry install --no-interaction
+
+    - name: Append Git SHA to version for TestPyPI
+      run: poetry version "$(poetry version --short).dev.${{ github.run_id }}"
 
     - name: Build package
       run: poetry build
@@ -105,16 +104,15 @@ jobs:
   publish-prod:
     name: Publish to PyPI
     needs: test
-    if: github.event_name == 'release' && github.event.action == 'published'  # Only run on manual releases
+    if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4.2.2
-      with:
-        fetch-depth: 0
+    - name: Check out the repository
+      uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v5.3.0
+      uses: actions/setup-python@v5
       with:
         python-version: "3.12"
 
