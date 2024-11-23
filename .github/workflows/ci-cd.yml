@@ -2,12 +2,12 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]  # Automatically trigger on pushes to the main branch
+    branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:  # Allow manual triggering
+  workflow_dispatch:
   release:
-    types: [published]  # Trigger on manual releases
+    types: [published]
 
 jobs:
   test:
@@ -27,11 +27,10 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Install Poetry
+    - name: Install Poetry with Dynamic Versioning
       run: |
         curl -sSL https://install.python-poetry.org | python3 -
-        poetry config virtualenvs.create true
-        poetry config virtualenvs.in-project true
+        poetry self add poetry-dynamic-versioning
 
     - name: Cache Poetry dependencies
       uses: actions/cache@v4
@@ -39,7 +38,7 @@ jobs:
         path: ~/.cache/pypoetry
         key: poetry-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
 
-    - name: Install dependencies
+    - name: Install dependencies with Dynamic Versioning
       run: poetry install --no-interaction
 
     - name: Run style checks
@@ -64,7 +63,6 @@ jobs:
         fail_ci_if_error: true
         files: ./coverage.xml
 
-
   publish-test:
     name: Publish to TestPyPI
     needs: test
@@ -80,11 +78,10 @@ jobs:
       with:
         python-version: "3.12"
 
-    - name: Install Poetry
+    - name: Install Poetry with Dynamic Versioning
       run: |
         curl -sSL https://install.python-poetry.org | python3 -
-        poetry config virtualenvs.create true
-        poetry config virtualenvs.in-project true
+        poetry self add poetry-dynamic-versioning
 
     - name: Install dependencies
       run: poetry install --no-interaction
@@ -118,11 +115,10 @@ jobs:
       with:
         python-version: "3.12"
 
-    - name: Install Poetry
+    - name: Install Poetry with Dynamic Versioning
       run: |
         curl -sSL https://install.python-poetry.org | python3 -
-        poetry config virtualenvs.create true
-        poetry config virtualenvs.in-project true
+        poetry self add poetry-dynamic-versioning
 
     - name: Install dependencies
       run: poetry install --no-interaction
