@@ -1,6 +1,7 @@
 # base.py
 import json
 import logging
+import time
 import warnings
 from typing import Any, TypeVar
 
@@ -34,6 +35,8 @@ class BaseClient:
     def __init__(self, config: ClientConfig):
         self.config = config
         self.logger = FMPLogger().get_logger(__name__)
+        self.max_rate_limit_retries = getattr(config, "max_rate_limit_retries", 3)
+        self._rate_limit_retry_count = 0
 
         # Configure logging based on config
         FMPLogger().configure(self.config.logging)
@@ -69,6 +72,28 @@ class BaseClient:
         if hasattr(self, "client") and self.client is not None:
             self.client.close()
 
+    def _handle_rate_limit(self, wait_time: float) -> None:
+        """
+        Handle rate limiting by waiting or raising an exception based on retry count
+        """
+        self._rate_limit_retry_count += 1
+
+        if self._rate_limit_retry_count > self.max_rate_limit_retries:
+            self._rate_limit_retry_count = 0  # Reset for next request
+            raise RateLimitError(
+                f"Rate limit exceeded after "
+                f"{self.max_rate_limit_retries} retries. "
+                f"Please wait {wait_time:.1f} seconds",
+                retry_after=wait_time,
+            )
+
+        self.logger.warning(
+            f"Rate limit reached "
+            f"(attempt {self._rate_limit_retry_count}/{self.max_rate_limit_retries}), "
+            f"waiting {wait_time:.1f} seconds before retrying"
+        )
+        time.sleep(wait_time)
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=4, max=10),
@@ -80,13 +105,16 @@ class BaseClient:
     )
     @log_api_call()
     def request(self, endpoint: Endpoint[T], **kwargs) -> T:
-        """Make request with rate limiting"""
+        """Make request with rate limiting and retry logic"""
+        # First, check if we're already over the rate limit
         if not self._rate_limiter.should_allow_request():
             wait_time = self._rate_limiter.get_wait_time()
             raise RateLimitError(
                 f"Rate limit exceeded. Please wait {wait_time:.1f} seconds",
                 retry_after=wait_time,
             )
+
+        self._rate_limit_retry_count = 0  # Reset counter at start of new request
 
         try:
             self._rate_limiter.record_request()
@@ -114,11 +142,14 @@ class BaseClient:
                 endpoint.method.value, url, params=query_params
             )
 
-            # Handle rate limit response
-            self._rate_limiter.handle_response(
-                response.status_code,
-                response.text if response.status_code == 429 else None,
-            )
+            # Handle 429 responses from the API
+            if response.status_code == 429:
+                self._rate_limiter.handle_response(response.status_code, response.text)
+                wait_time = self._rate_limiter.get_wait_time()
+                raise RateLimitError(
+                    f"Rate limit exceeded. Please wait {wait_time:.1f} seconds",
+                    retry_after=wait_time,
+                )
 
             data = self.handle_response(response)
             return self._process_response(endpoint, data)

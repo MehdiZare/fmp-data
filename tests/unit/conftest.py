@@ -17,6 +17,7 @@ def client_config():
         api_key="test_api_key",
         timeout=5,
         max_retries=1,
+        max_rate_limit_retries=5,
         base_url="https://test.financialmodelingprep.com/api",
         logging=LoggingConfig(
             level="ERROR",

@@ -2,8 +2,7 @@ from datetime import date
 from typing import TypeVar
 
 from fmp_data.base import EndpointGroup
-
-from . import endpoints, models
+from fmp_data.technical import endpoints, models
 
 # Generic type variable for technical indicators
 T = TypeVar("T", bound=models.TechnicalIndicator)

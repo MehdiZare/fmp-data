@@ -144,6 +144,9 @@ class ClientConfig(BaseModel):
     max_retries: int = Field(
         default=3, ge=0, description="Maximum number of request retries"
     )
+    max_rate_limit_retries: int = Field(
+        default=3, ge=0, description="Maximum number of rate limit retries"
+    )
     base_url: str = Field(
         default="https://financialmodelingprep.com/api",
         pattern=r"^https?://.*",
