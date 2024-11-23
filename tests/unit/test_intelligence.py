@@ -1,107 +1,155 @@
-from datetime import datetime
-from unittest.mock import patch
+from datetime import date
+from unittest.mock import Mock
 
 import pytest
 
-from fmp_data.market.models import (
-    HistoricalData,
-    HistoricalPrice,
-    MarketHours,
-    StockMarketHours,
+from fmp_data.intelligence.client import MarketIntelligenceClient
+from fmp_data.intelligence.models import (
+    AnalystEstimate,
+    DividendEvent,
+    IPOEvent,
+    PriceTarget,
+    PriceTargetSummary,
 )
 
 
 @pytest.fixture
-def mock_market_hours_data():
-    """Mock market hours data"""
-    return {
-        "stockExchangeName": "NYSE",
-        "stockMarketHours": {"openingHour": "09:30AM", "closingHour": "04:00PM"},
-        "stockMarketHolidays": [
-            {"year": 2024, "holidays": [{"name": "New Year", "date": "2024-01-01"}]}
-        ],
-        "isTheStockMarketOpen": True,
-        "isTheEuronextMarketOpen": False,
-        "isTheForexMarketOpen": True,
-        "isTheCryptoMarketOpen": True,
-    }
+def mock_client():
+    """Fixture to mock the API client."""
+    return Mock()
 
 
 @pytest.fixture
-def mock_historical_data():
-    """Mock historical data"""
-    return {
+def fmp_client(mock_client):
+    """Fixture to create an instance of MarketIntelligenceClient
+    with a mocked client."""
+    return MarketIntelligenceClient(client=mock_client)
+
+
+def test_get_price_target(fmp_client, mock_client):
+    """Test fetching price targets"""
+    mock_data = [
+        {
+            "symbol": "AAPL",
+            "publishedDate": "2024-01-01T12:00:00",
+            "newsURL": "https://example.com/news",
+            "newsTitle": "Apple price target increased",
+            "analystName": "John Doe",
+            "priceTarget": 200.0,
+            "adjPriceTarget": 198.0,
+            "priceWhenPosted": 150.0,
+            "newsPublisher": "Example News",
+            "newsBaseURL": "example.com",
+            "analystCompany": "Big Bank",
+        }
+    ]
+    mock_client.request.return_value = [PriceTarget(**mock_data[0])]
+    result = fmp_client.get_price_target(symbol="AAPL")
+    assert isinstance(result, list)
+    assert isinstance(result[0], PriceTarget)
+    assert result[0].symbol == "AAPL"
+
+
+def test_get_price_target_summary(fmp_client, mock_client):
+    """Test fetching price target summary"""
+    mock_data = {
         "symbol": "AAPL",
-        "historical": [
-            {
-                "date": "2024-01-05T16:00:00",
-                "open": 149.00,
-                "high": 151.00,
-                "low": 148.50,
-                "close": 150.25,
-                "adjClose": 150.25,
-                "volume": 82034567,
-                "unadjustedVolume": 82034567,
-                "change": 2.25,
-                "changePercent": 1.5,
-                "vwap": 149.92,
-                "label": "January 05",
-                "changeOverTime": 0.015,
-            }
-        ],
+        "lastMonth": 10,
+        "lastMonthAvgPriceTarget": 190.0,
+        "lastQuarter": 30,
+        "lastQuarterAvgPriceTarget": 185.0,
+        "lastYear": 100,
+        "lastYearAvgPriceTarget": 180.0,
+        "allTime": 300,
+        "allTimeAvgPriceTarget": 175.0,
+        "publishers": '["Example News", "Tech Daily"]',
     }
+    mock_client.request.return_value = PriceTargetSummary(**mock_data)
+    result = fmp_client.get_price_target_summary(symbol="AAPL")
+    assert isinstance(result, PriceTargetSummary)
+    assert result.symbol == "AAPL"
+    assert result.last_month_avg_price_target == 190.0
 
 
-@patch("httpx.Client.request")
-def test_get_market_hours(
-    mock_request, fmp_client, mock_response, mock_market_hours_data
-):
-    """Test getting market hours"""
-    mock_request.return_value = mock_response(
-        status_code=200, json_data=mock_market_hours_data
+def test_get_analyst_estimates(fmp_client, mock_client):
+    """Test fetching analyst estimates"""
+    mock_data = [
+        {
+            "symbol": "AAPL",
+            "date": "2024-01-01T12:00:00",
+            "estimatedRevenueLow": 50000000.0,
+            "estimatedRevenueHigh": 55000000.0,
+            "estimatedRevenueAvg": 52500000.0,
+            "estimatedEbitdaLow": 12000000.0,
+            "estimatedEbitdaHigh": 13000000.0,
+            "estimatedEbitdaAvg": 12500000.0,
+            "estimatedEbitLow": 10000000.0,
+            "estimatedEbitHigh": 11000000.0,
+            "estimatedEbitAvg": 10500000.0,
+            "estimatedNetIncomeLow": 8000000.0,
+            "estimatedNetIncomeHigh": 9000000.0,
+            "estimatedNetIncomeAvg": 8500000.0,
+            "estimatedSgaExpenseLow": 2000000.0,
+            "estimatedSgaExpenseHigh": 2500000.0,
+            "estimatedSgaExpenseAvg": 2250000.0,
+            "estimatedEpsLow": 3.5,
+            "estimatedEpsHigh": 4.0,
+            "estimatedEpsAvg": 3.75,
+            "numberAnalystEstimatedRevenue": 10,
+            "numberAnalystsEstimatedEps": 8,
+        }
+    ]
+    mock_client.request.return_value = [AnalystEstimate(**mock_data[0])]
+    result = fmp_client.get_analyst_estimates(symbol="AAPL")
+    assert isinstance(result, list)
+    assert isinstance(result[0], AnalystEstimate)
+    assert result[0].symbol == "AAPL"
+    assert result[0].estimated_revenue_avg == 52500000.0
+
+
+def test_get_dividends_calendar(fmp_client, mock_client):
+    """Test fetching dividends calendar"""
+    mock_data = [
+        {
+            "symbol": "AAPL",
+            "date": "2024-01-15",
+            "label": "Jan 15, 2024",
+            "adjDividend": 0.22,
+            "dividend": 0.2,
+            "recordDate": "2024-01-10",
+            "paymentDate": "2024-01-20",
+            "declarationDate": "2023-12-15",
+        }
+    ]
+    mock_client.request.return_value = [DividendEvent(**mock_data[0])]
+    result = fmp_client.get_dividends_calendar(
+        start_date=date(2024, 1, 1), end_date=date(2024, 1, 31)
     )
-
-    hours = fmp_client.market.get_market_hours()
-
-    # Ensure the response is of the correct type
-    assert isinstance(hours, MarketHours)
-
-    # Validate fields in the response
-    assert hours.stockExchangeName == "NYSE"
-    assert hours.isTheStockMarketOpen is True
-    assert isinstance(hours.stockMarketHours, StockMarketHours)
-    assert hours.stockMarketHours.openingHour == "09:30AM"
-    assert hours.stockMarketHours.closingHour == "04:00PM"
-    assert isinstance(hours.stockMarketHolidays, list)
-    assert len(hours.stockMarketHolidays) > 0
-    holiday = hours.stockMarketHolidays[0]
-    assert holiday.year == 2024
-    assert holiday.holidays == {"New Year": "2024-01-01"}
+    assert isinstance(result, list)
+    assert isinstance(result[0], DividendEvent)
+    assert result[0].symbol == "AAPL"
+    assert result[0].dividend == 0.2
 
 
-@patch("httpx.Client.request")
-def test_get_historical_prices(
-    mock_request, fmp_client, mock_response, mock_historical_data
-):
-    """Test getting historical prices"""
-    mock_request.return_value = mock_response(
-        status_code=200, json_data=mock_historical_data
+def test_get_ipo_calendar(fmp_client, mock_client):
+    """Test fetching IPO calendar"""
+    mock_data = [
+        {
+            "symbol": "NEWCO",
+            "company": "New Company",
+            "date": "2024-02-01",
+            "exchange": "NASDAQ",
+            "actions": "IPO Scheduled",
+            "shares": 1000000,
+            "priceRange": "15-18",
+            "marketCap": 17000000,
+        }
+    ]
+    mock_client.request.return_value = [IPOEvent(**mock_data[0])]
+    result = fmp_client.get_ipo_calendar(
+        start_date=date(2024, 1, 1), end_date=date(2024, 1, 31)
     )
-
-    data = fmp_client.market.get_historical_prices(
-        "AAPL", from_date="2024-01-01", to_date="2024-01-05"
-    )
-
-    # Ensure the response is of the correct type
-    assert isinstance(data, HistoricalData)
-    assert data.symbol == "AAPL"
-
-    # Validate the historical prices
-    assert isinstance(data.historical, list)
-    assert len(data.historical) == 1
-    price = data.historical[0]
-    assert isinstance(price, HistoricalPrice)
-    assert price.date == datetime(2024, 1, 5, 16, 0)
-    assert price.open == 149.00
-    assert price.close == 150.25
-    assert price.volume == 82034567
+    assert isinstance(result, list)
+    assert isinstance(result[0], IPOEvent)
+    assert result[0].symbol == "NEWCO"
+    assert result[0].company == "New Company"
