@@ -43,6 +43,9 @@ class FMPDataClient(BaseClient):
         self._alternative: AlternativeMarketsClient | None = None
         self._economics: EconomicsClient | None = None
 
+        if not api_key and (config is None or not config.api_key):
+            raise ConfigError("Invalid client configuration: API key is required")
+
         try:
             if config is not None:
                 self._config = config
