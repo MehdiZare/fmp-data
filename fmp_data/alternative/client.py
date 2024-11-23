@@ -20,16 +20,16 @@ from fmp_data.alternative.endpoints import (
 )
 from fmp_data.alternative.models import (
     Commodity,
-    CommodityHistoricalPrice,
     CommodityIntradayPrice,
+    CommodityPriceHistory,
     CommodityQuote,
-    CryptoHistoricalPrice,
+    CryptoHistoricalData,
     CryptoIntradayPrice,
     CryptoPair,
     CryptoQuote,
-    ForexHistoricalPrice,
     ForexIntradayPrice,
     ForexPair,
+    ForexPriceHistory,
     ForexQuote,
 )
 from fmp_data.base import EndpointGroup
@@ -57,7 +57,7 @@ class AlternativeMarketsClient(EndpointGroup):
         symbol: str,
         start_date: date | None = None,
         end_date: date | None = None,
-    ) -> list[CryptoHistoricalPrice]:
+    ) -> CryptoHistoricalData:
         """Get cryptocurrency historical prices"""
         params = {"symbol": symbol}
         if start_date:
@@ -92,7 +92,7 @@ class AlternativeMarketsClient(EndpointGroup):
         symbol: str,
         start_date: date | None = None,
         end_date: date | None = None,
-    ) -> list[ForexHistoricalPrice]:
+    ) -> ForexPriceHistory:
         """Get forex historical prices"""
         params = {"symbol": symbol}
         if start_date:
@@ -127,7 +127,7 @@ class AlternativeMarketsClient(EndpointGroup):
         symbol: str,
         start_date: date | None = None,
         end_date: date | None = None,
-    ) -> list[CommodityHistoricalPrice]:
+    ) -> CommodityPriceHistory:
         """Get commodity historical prices"""
         params = {"symbol": symbol}
         if start_date:

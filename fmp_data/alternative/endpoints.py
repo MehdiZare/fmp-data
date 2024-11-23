@@ -1,15 +1,15 @@
 from fmp_data.alternative.models import (
     Commodity,
-    CommodityHistoricalPrice,
     CommodityIntradayPrice,
+    CommodityPriceHistory,
     CommodityQuote,
-    CryptoHistoricalPrice,
+    CryptoHistoricalData,
     CryptoIntradayPrice,
     CryptoPair,
     CryptoQuote,
-    ForexHistoricalPrice,
     ForexIntradayPrice,
     ForexPair,
+    ForexPriceHistory,
     ForexQuote,
 )
 from fmp_data.models import (
@@ -97,7 +97,7 @@ CRYPTO_HISTORICAL = Endpoint(
             description="End date",
         ),
     ],
-    response_model=CryptoHistoricalPrice,
+    response_model=CryptoHistoricalData,
 )
 
 CRYPTO_INTRADAY = Endpoint(
@@ -202,7 +202,7 @@ FOREX_HISTORICAL = Endpoint(
             description="End date",
         ),
     ],
-    response_model=ForexHistoricalPrice,
+    response_model=ForexPriceHistory,
 )
 
 FOREX_INTRADAY = Endpoint(
@@ -307,7 +307,7 @@ COMMODITY_HISTORICAL = Endpoint(
             description="End date",
         ),
     ],
-    response_model=CommodityHistoricalPrice,
+    response_model=CommodityPriceHistory,
 )
 
 COMMODITY_INTRADAY = Endpoint(
@@ -332,6 +332,22 @@ COMMODITY_INTRADAY = Endpoint(
             param_type=ParamType.STRING,
             required=True,
             description="Commodity symbol",
+        ),
+    ],
+    optional_params=[
+        EndpointParam(
+            name="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Start date",
+        ),
+        EndpointParam(
+            name="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="End date",
         ),
     ],
     response_model=CommodityIntradayPrice,
