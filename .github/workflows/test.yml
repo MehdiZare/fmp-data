@@ -111,7 +111,7 @@ jobs:
     - name: Run tests
       shell: bash
       env:
-        FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        FMP_TEST_API_KEY: ${{ secrets.FMP_TEST_API_KEY }}
         PYTHONIOENCODING: utf-8
       run: |
         poetry run pytest tests/ \
