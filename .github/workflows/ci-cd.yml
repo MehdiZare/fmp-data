@@ -7,7 +7,7 @@ on:
     branches: [ main ]
   workflow_dispatch:
   release:
-    types: [published]
+    types: [published]  # Trigger when a release is published
 
 jobs:
   test:
@@ -63,45 +63,8 @@ jobs:
         fail_ci_if_error: true
         files: ./coverage.xml
 
-  publish-test:
-    name: Publish to TestPyPI
-    needs: test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Check out the repository
-      uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.12"
-
-    - name: Install Poetry with Dynamic Versioning
-      run: |
-        curl -sSL https://install.python-poetry.org | python3 -
-        poetry self add poetry-dynamic-versioning
-
-    - name: Install dependencies
-      run: poetry install --no-interaction
-
-    - name: Append Git SHA to version for TestPyPI
-      run: poetry version "$(poetry version --short).dev.${{ github.run_id }}"
-
-    - name: Build package
-      run: poetry build
-
-    - name: Publish to TestPyPI
-      env:
-        TEST_PYPI_TOKEN: ${{ secrets.TEST_PYPI_TOKEN }}
-      run: |
-        poetry config repositories.testpypi https://test.pypi.org/legacy/
-        poetry config pypi-token.testpypi $TEST_PYPI_TOKEN
-        poetry publish -r testpypi
-
-  publish-prod:
-    name: Publish to PyPI
+  publish:
+    name: Publish Package
     needs: test
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
@@ -109,6 +72,8 @@ jobs:
     steps:
     - name: Check out the repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -126,7 +91,17 @@ jobs:
     - name: Build package
       run: poetry build
 
-    - name: Publish to PyPI
+    - name: Publish Pre-Release to TestPyPI
+      if: github.event.release.prerelease == true
+      env:
+        TEST_PYPI_TOKEN: ${{ secrets.TEST_PYPI_TOKEN }}
+      run: |
+        poetry config repositories.testpypi https://test.pypi.org/legacy/
+        poetry config pypi-token.testpypi $TEST_PYPI_TOKEN
+        poetry publish -r testpypi
+
+    - name: Publish Release to PyPI
+      if: github.event.release.prerelease == false
       env:
         PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
       run: |
