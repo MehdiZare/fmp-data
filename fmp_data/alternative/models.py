@@ -1,8 +1,11 @@
 # fmp_data/alternative/models.py
 import warnings
-from datetime import UTC, date, datetime
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+UTC = ZoneInfo("UTC")
 
 
 # Base Models
