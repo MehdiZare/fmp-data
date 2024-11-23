@@ -3,7 +3,7 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Any, Generic, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 T = TypeVar("T")
 
@@ -143,7 +143,7 @@ class Endpoint(BaseModel, Generic[T]):
     method: HTTPMethod = HTTPMethod.GET
     description: str
     mandatory_params: list[EndpointParam]
-    optional_params: list[EndpointParam] | None = Field(default_factory=list)
+    optional_params: list[EndpointParam] | None
     response_model: type[T]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -175,7 +175,7 @@ class Endpoint(BaseModel, Generic[T]):
             validated[param.name] = value
 
         # Validate optional parameters
-        for param in self.optional_params:
+        for param in self.optional_params or []:
             if param.name in provided_params:
                 value = param.validate_value(provided_params[param.name])
                 key = param.alias or param.name
@@ -193,6 +193,6 @@ class Endpoint(BaseModel, Generic[T]):
             for k, v in validated_params.items()
             if any(
                 p.location == ParamLocation.QUERY and (p.name == k or p.alias == k)
-                for p in self.mandatory_params + self.optional_params
+                for p in self.mandatory_params + (self.optional_params or [])
             )
         }

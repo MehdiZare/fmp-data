@@ -62,6 +62,7 @@ CRYPTO_QUOTE = Endpoint(
             description="Crypto pair symbol",
         )
     ],
+    optional_params=[],
     response_model=CryptoQuote,
 )
 
@@ -124,6 +125,7 @@ CRYPTO_INTRADAY = Endpoint(
             description="Crypto pair symbol",
         ),
     ],
+    optional_params=[],
     response_model=CryptoIntradayPrice,
 )
 
@@ -167,6 +169,7 @@ FOREX_QUOTE = Endpoint(
             description="Forex pair symbol",
         )
     ],
+    optional_params=[],
     response_model=ForexQuote,
 )
 
@@ -229,6 +232,7 @@ FOREX_INTRADAY = Endpoint(
             description="Forex pair symbol",
         ),
     ],
+    optional_params=[],
     response_model=ForexIntradayPrice,
 )
 
@@ -272,6 +276,7 @@ COMMODITY_QUOTE = Endpoint(
             description="Commodity symbol",
         )
     ],
+    optional_params=[],
     response_model=CommodityQuote,
 )
 

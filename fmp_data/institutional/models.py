@@ -10,7 +10,7 @@ class Form13F(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    form_date: date = Field(None, description="Date of form", alias="date")
+    form_date: date = Field(description="Date of form", alias="date")
     filing_date: date = Field(alias="fillingDate", description="Filing date")
     accepted_date: date = Field(alias="acceptedDate", description="Accepted date")
     cik: str = Field(description="CIK number")
@@ -29,7 +29,7 @@ class Form13F(BaseModel):
 class Form13FDate(BaseModel):
     """Form 13F filing dates"""
 
-    form_date: date = Field(None, description="Date of form 13F filing", alias="date")
+    form_date: date = Field(description="Date of form 13F filing", alias="date")
 
     @field_validator("form_date", mode="before")
     def validate_date(cls, value):

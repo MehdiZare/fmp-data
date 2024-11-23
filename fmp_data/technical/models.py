@@ -15,114 +15,64 @@ class TechnicalIndicator(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     date: datetime = Field(description="Data point date")
-    value: float = Field(description="Indicator value")
-
-
-class SMAIndicator(BaseModel):
-    """Simple Moving Average indicator with extended fields"""
-
-    date: datetime = Field(description="Data point date")
     open: float = Field(description="Opening price")
     high: float = Field(description="Highest price")
     low: float = Field(description="Lowest price")
     close: float = Field(description="Closing price")
     volume: int = Field(description="Trading volume")
+
+
+class SMAIndicator(TechnicalIndicator):
+    """Simple Moving Average indicator with extended fields"""
+
     sma: float = Field(description="Simple Moving Average value")
 
 
-class EMAIndicator(BaseModel):
+class EMAIndicator(TechnicalIndicator):
     """Exponential Moving Average (EMA) indicator"""
 
-    date: datetime = Field(description="Data point date")
-    open: float = Field(description="Opening price")
-    high: float = Field(description="Highest price")
-    low: float = Field(description="Lowest price")
-    close: float = Field(description="Closing price")
-    volume: int = Field(description="Trading volume")
     ema: float = Field(description="EMA value")
 
 
-class WMAIndicator(BaseModel):
+class WMAIndicator(TechnicalIndicator):
     """Weighted Moving Average indicator"""
 
-    date: datetime = Field(description="Data point date")
-    open: float = Field(description="Opening price")
-    high: float = Field(description="Highest price")
-    low: float = Field(description="Lowest price")
-    close: float = Field(description="Closing price")
-    volume: int = Field(description="Trading volume")
     wma: float = Field(description="Weighted Moving Average value")
 
 
-class DEMAIndicator(BaseModel):
+class DEMAIndicator(TechnicalIndicator):
     """Double Exponential Moving Average (DEMA) indicator"""
 
-    date: datetime = Field(description="Data point date")
-    open: float = Field(description="Opening price")
-    high: float = Field(description="Highest price")
-    low: float = Field(description="Lowest price")
-    close: float = Field(description="Closing price")
-    volume: int = Field(description="Trading volume")
     dema: float = Field(description="DEMA value")
 
 
-class TEMAIndicator(BaseModel):
+class TEMAIndicator(TechnicalIndicator):
     """Triple Exponential Moving Average (TEMA) indicator"""
 
-    date: datetime = Field(description="Data point date")
-    open: float = Field(description="Opening price")
-    high: float = Field(description="Highest price")
-    low: float = Field(description="Lowest price")
-    close: float = Field(description="Closing price")
-    volume: int = Field(description="Trading volume")
     tema: float = Field(description="Triple Exponential Moving Average (TEMA) value")
 
 
-class WilliamsIndicator(BaseModel):
+class WilliamsIndicator(TechnicalIndicator):
     """Williams %R indicator"""
 
-    date: datetime = Field(description="Data point date")
-    open: float = Field(description="Opening price")
-    high: float = Field(description="Highest price")
-    low: float = Field(description="Lowest price")
-    close: float = Field(description="Closing price")
-    volume: int = Field(description="Trading volume")
     williams: float = Field(description="Williams %R value")
 
 
-class RSIIndicator(BaseModel):
+class RSIIndicator(TechnicalIndicator):
     """Relative Strength Index (RSI) indicator"""
 
-    date: datetime = Field(description="Data point date")
-    open: float = Field(description="Opening price")
-    high: float = Field(description="Highest price")
-    low: float = Field(description="Lowest price")
-    close: float = Field(description="Closing price")
-    volume: int = Field(description="Trading volume")
     rsi: float = Field(description="RSI value")
 
 
-class ADXIndicator(BaseModel):
+class ADXIndicator(TechnicalIndicator):
     """Average Directional Index (ADX) indicator"""
 
-    date: datetime = Field(description="Data point date")
-    open: float = Field(description="Opening price")
-    high: float = Field(description="Highest price")
-    low: float = Field(description="Lowest price")
-    close: float = Field(description="Closing price")
-    volume: int = Field(description="Trading volume")
     adx: float = Field(description="ADX value")
 
 
-class StandardDeviationIndicator(BaseModel):
+class StandardDeviationIndicator(TechnicalIndicator):
     """Standard Deviation indicator with extended fields"""
 
-    date: datetime = Field(description="Data point date")
-    open: float = Field(description="Opening price")
-    high: float = Field(description="Highest price")
-    low: float = Field(description="Lowest price")
-    close: float = Field(description="Closing price")
-    volume: int = Field(description="Trading volume")
     standard_deviation: float = Field(
         alias="standardDeviation", description="Standard Deviation value"
     )

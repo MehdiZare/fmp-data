@@ -1,4 +1,5 @@
 # company/client.py
+
 from fmp_data.base import EndpointGroup
 from fmp_data.company.endpoints import (
     AVAILABLE_INDEXES,
@@ -16,6 +17,7 @@ from fmp_data.company.endpoints import (
     STOCK_LIST,
 )
 from fmp_data.company.models import (
+    AvailableIndex,
     CIKResult,
     CompanyCoreInformation,
     CompanyExecutive,
@@ -51,7 +53,7 @@ class CompanyClient(EndpointGroup):
         """Search for companies"""
         params = {"query": query}
         if limit is not None:
-            params["limit"] = limit
+            params["limit"] = str(limit)
         if exchange is not None:
             params["exchange"] = exchange
         return self.client.request(SEARCH, **params)
@@ -96,7 +98,7 @@ class CompanyClient(EndpointGroup):
         """Get list of all available ETFs"""
         return self.client.request(ETF_LIST)
 
-    def get_available_indexes(self) -> list[str]:
+    def get_available_indexes(self) -> list[AvailableIndex]:
         """Get list of all available indexes"""
         return self.client.request(AVAILABLE_INDEXES)
 

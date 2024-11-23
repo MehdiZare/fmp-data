@@ -178,8 +178,16 @@ class ClientConfig(BaseModel):
     @classmethod
     def from_env(cls) -> "ClientConfig":
         """Create configuration from environment variables"""
+        # Ensure API key is validated
+        api_key = os.getenv("FMP_API_KEY")
+        if not api_key:
+            raise ConfigError(
+                "API key must be provided either "
+                "explicitly or via FMP_API_KEY environment variable"
+            )
+
         return cls(
-            api_key=os.getenv("FMP_API_KEY"),
+            api_key=api_key,
             timeout=int(os.getenv("FMP_TIMEOUT", "30")),
             max_retries=int(os.getenv("FMP_MAX_RETRIES", "3")),
             base_url=os.getenv("FMP_BASE_URL", "https://financialmodelingprep.com/api"),

@@ -41,6 +41,7 @@ ETF_HOLDINGS = Endpoint(
             description="Holdings date",
         ),
     ],
+    optional_params=[],
     response_model=ETFHolding,
 )
 
@@ -58,6 +59,7 @@ ETF_HOLDING_DATES = Endpoint(
             description="ETF Symbol",
         )
     ],
+    optional_params=[],
     response_model=ETFPortfolioDate,
 )
 
@@ -75,6 +77,7 @@ ETF_INFO = Endpoint(
             description="ETF Symbol",
         )
     ],
+    optional_params=[],
     response_model=ETFInfo,
 )
 
@@ -92,6 +95,7 @@ ETF_SECTOR_WEIGHTINGS = Endpoint(
             description="ETF Symbol",
         )
     ],
+    optional_params=[],
     response_model=ETFSectorWeighting,
 )
 
@@ -109,6 +113,7 @@ ETF_COUNTRY_WEIGHTINGS = Endpoint(
             description="ETF Symbol",
         )
     ],
+    optional_params=[],
     response_model=ETFCountryWeighting,
 )
 
@@ -126,6 +131,7 @@ ETF_EXPOSURE = Endpoint(
             description="ETF Symbol",
         )
     ],
+    optional_params=[],
     response_model=ETFExposure,
 )
 
@@ -143,6 +149,7 @@ ETF_HOLDER = Endpoint(
             description="Stock symbol (ticker)",
         )
     ],
+    optional_params=[],
     response_model=ETFHolder,
 )
 
@@ -168,6 +175,7 @@ MUTUAL_FUND_DATES = Endpoint(
             description="Fund cik",
         ),
     ],
+    optional_params=[],
     response_model=PortfolioDate,
 )
 
@@ -192,6 +200,7 @@ MUTUAL_FUND_HOLDINGS = Endpoint(
             description="Holdings date",
         ),
     ],
+    optional_params=[],
     response_model=MutualFundHolding,
 )
 
@@ -209,6 +218,7 @@ MUTUAL_FUND_BY_NAME = Endpoint(
             description="Fund name",
         )
     ],
+    optional_params=[],
     response_model=MutualFundHolding,
 )
 
@@ -226,5 +236,6 @@ MUTUAL_FUND_HOLDER = Endpoint(
             description="Stock symbol (ticker)",
         )
     ],
+    optional_params=[],
     response_model=MutualFundHolder,
 )

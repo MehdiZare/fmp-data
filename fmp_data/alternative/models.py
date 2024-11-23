@@ -16,7 +16,7 @@ class PriceQuote(BaseModel):
 
     # Required fields
     symbol: str = Field(description="Trading symbol")
-    price: float = Field(description="Current price")
+    price: float | None = Field(None, description="Current price")
     change: float | None = Field(None, description="Price change")
     change_percent: float = Field(
         alias="changesPercentage", description="Percent change"
@@ -42,7 +42,7 @@ class PriceQuote(BaseModel):
     )
 
     # Volume
-    volume: int | None = Field(None, description="Trading volume")
+    volume: float | None = Field(None, description="Trading volume")
     avg_volume: float | None = Field(
         None, alias="avgVolume", description="Average volume"
     )
@@ -59,7 +59,7 @@ class PriceQuote(BaseModel):
     )
     eps: float | None = Field(None, description="Earnings per share")
     pe: float | None = Field(None, description="Price to earnings ratio")
-    shares_outstanding: int | None = Field(
+    shares_outstanding: float | None = Field(
         None, alias="sharesOutstanding", description="Shares outstanding"
     )
     earnings_announcement: datetime | None = Field(
@@ -146,63 +146,14 @@ class CryptoQuote(PriceQuote):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    # Override inherited fields
-    name: str = Field(description="Cryptocurrency name")
-    price: float | None = Field(None, description="Current price")
-    change: float = Field(description="Price change")
-    change_percent: float = Field(
-        alias="changesPercentage", description="Price change percentage"
-    )
-
-    # Price ranges
-    day_low: float | None = Field(None, alias="dayLow", description="Day low price")
-    day_high: float | None = Field(None, alias="dayHigh", description="Day high price")
-    year_high: float = Field(alias="yearHigh", description="52-week high")
-    year_low: float = Field(alias="yearLow", description="52-week low")
-
-    # Market data
-    market_cap: float | None = Field(
-        None, alias="marketCap", description="Market capitalization"
-    )
-    price_avg_50: float | None = Field(
-        None, alias="priceAvg50", description="50-day average price"
-    )
-    price_avg_200: float | None = Field(
-        None, alias="priceAvg200", description="200-day average price"
-    )
-
-    # Volume
-    volume: float | None = Field(None, description="Trading volume")
-    avg_volume: float | None = Field(
-        None, alias="avgVolume", description="Average volume"
-    )
-
-    # Trading info
-    exchange: str = Field(description="Exchange name")
-    open: float = Field(description="Opening price")
-    previous_close: float | None = Field(
-        None, alias="previousClose", description="Previous close"
-    )
-
-    # Additional crypto specific fields
-    shares_outstanding: float | None = Field(
-        None, alias="sharesOutstanding", description="Total shares/coins"
-    )
-    eps: float | None = Field(None, description="Earnings per share")
-    pe: float | None = Field(None, description="Price to earnings ratio")
-    earnings_announcement: datetime | None = Field(
-        None, alias="earningsAnnouncement", description="Next earnings date"
-    )
-
     @field_validator("timestamp", mode="before")
-    def parse_timestamp(cls, value: int | None) -> datetime | None:
+    def parse_timestamp(cls, value: int) -> datetime | None:
         """Convert Unix timestamp to datetime"""
-        if value is not None:
-            try:
-                return datetime.fromtimestamp(value, tz=UTC)
-            except (ValueError, TypeError) as e:
-                warnings.warn(f"Failed to parse timestamp {value}: {e}", stacklevel=2)
-        return None
+        try:
+            return datetime.fromtimestamp(value, tz=UTC)
+        except (ValueError, TypeError) as e:
+            warnings.warn(f"Failed to parse timestamp {value}: {e}", stacklevel=2)
+            return None
 
 
 class CryptoHistoricalPrice(HistoricalPrice):
@@ -292,10 +243,7 @@ class Commodity(BaseModel):
 class CommodityQuote(PriceQuote):
     """Commodity price quote"""
 
-    name: str = Field(description="Commodity name")
-    year_high: float | None = Field(None, alias="yearHigh", description="52-week high")
-    year_low: float | None = Field(None, alias="yearLow", description="52-week low")
-    volume: float | None = Field(None, description="Trading volume")
+    pass
 
 
 class CommodityHistoricalPrice(HistoricalPrice):

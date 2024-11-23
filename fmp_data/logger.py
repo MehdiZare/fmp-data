@@ -83,7 +83,9 @@ class SensitiveDataFilter(logging.Filter):
                 if is_sensitive and isinstance(v, str | int | float):
                     result[k] = self._mask_value(str(v))
                 elif isinstance(v, dict | list):
-                    result[k] = self._mask_dict_recursive(v, f"{parent_key}.{k}")
+                    result[k] = json.dumps(
+                        self._mask_dict_recursive(v, f"{parent_key}.{k}")
+                    )  # Convert to string
                 else:
                     result[k] = v
             return result

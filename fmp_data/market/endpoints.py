@@ -26,6 +26,7 @@ QUOTE = Endpoint(
             description="Stock symbol (ticker)",
         )
     ],
+    optional_params=[],
     response_model=Quote,
 )
 
@@ -43,6 +44,7 @@ SIMPLE_QUOTE = Endpoint(
             description="Stock symbol (ticker)",
         )
     ],
+    optional_params=[],
     response_model=SimpleQuote,
 )
 
@@ -100,6 +102,7 @@ INTRADAY_PRICE = Endpoint(
             description="Stock symbol (ticker)",
         ),
     ],
+    optional_params=[],
     response_model=IntradayPrice,
 )
 
@@ -109,6 +112,7 @@ MARKET_HOURS = Endpoint(
     version=APIVersion.V3,
     description="Get market trading hours information",
     mandatory_params=[],
+    optional_params=[],
     response_model=MarketHours,
 )
 
@@ -126,6 +130,7 @@ MARKET_CAP = Endpoint(
             description="Stock symbol (ticker)",
         )
     ],
+    optional_params=[],
     response_model=MarketCapitalization,
 )
 
@@ -143,6 +148,7 @@ HISTORICAL_MARKET_CAP = Endpoint(
             description="Stock symbol (ticker)",
         )
     ],
+    optional_params=[],
     response_model=MarketCapitalization,
 )
 
@@ -152,6 +158,7 @@ GAINERS = Endpoint(
     version=APIVersion.V3,
     description="Get market gainers",
     mandatory_params=[],
+    optional_params=[],
     response_model=MarketMover,
 )
 
@@ -161,6 +168,7 @@ LOSERS = Endpoint(
     version=APIVersion.V3,
     description="Get market losers",
     mandatory_params=[],
+    optional_params=[],
     response_model=MarketMover,
 )
 
@@ -170,6 +178,7 @@ MOST_ACTIVE = Endpoint(
     version=APIVersion.V3,
     description="Get most active stocks",
     mandatory_params=[],
+    optional_params=[],
     response_model=MarketMover,
 )
 
@@ -179,6 +188,7 @@ SECTOR_PERFORMANCE = Endpoint(
     version=APIVersion.V3,
     description="Get sector performance data",
     mandatory_params=[],
+    optional_params=[],
     response_model=SectorPerformance,
 )
 
@@ -188,5 +198,6 @@ PRE_POST_MARKET = Endpoint(
     version=APIVersion.V4,
     description="Get pre/post market data",
     mandatory_params=[],
+    optional_params=[],
     response_model=PrePostMarketQuote,
 )

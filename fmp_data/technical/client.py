@@ -2,10 +2,22 @@ from datetime import date
 from typing import TypeVar
 
 from fmp_data.base import EndpointGroup
-from fmp_data.technical import endpoints, models
+from fmp_data.technical.endpoints import INDICATOR_MODEL_MAP, TECHNICAL_INDICATOR
+from fmp_data.technical.models import (
+    ADXIndicator,
+    DEMAIndicator,
+    EMAIndicator,
+    RSIIndicator,
+    SMAIndicator,
+    StandardDeviationIndicator,
+    TechnicalIndicator,
+    TEMAIndicator,
+    WilliamsIndicator,
+    WMAIndicator,
+)
 
 # Generic type variable for technical indicators
-T = TypeVar("T", bound=models.TechnicalIndicator)
+T = TypeVar("T", bound=TechnicalIndicator)
 
 
 class TechnicalClient(EndpointGroup):
@@ -14,9 +26,8 @@ class TechnicalClient(EndpointGroup):
     def _get_indicator(
         self,
         symbol: str,
-        indicator_type: models.IndicatorType,
+        indicator_type: str,
         period: int,
-        indicator_model: type[T],
         interval: str = "daily",
         start_date: date | None = None,
         end_date: date | None = None,
@@ -35,8 +46,8 @@ class TechnicalClient(EndpointGroup):
             params["to"] = end_date.strftime("%Y-%m-%d")
 
         # Create endpoint copy with specific indicator model
-        endpoint = endpoints.TECHNICAL_INDICATOR.model_copy()  # Updated to model_copy
-        endpoint.response_model = indicator_model
+        endpoint = TECHNICAL_INDICATOR.model_copy()
+        endpoint.response_model = INDICATOR_MODEL_MAP[indicator_type]
 
         return self.client.request(endpoint, **params)
 
@@ -47,13 +58,12 @@ class TechnicalClient(EndpointGroup):
         interval: str = "daily",
         start_date: date | None = None,
         end_date: date | None = None,
-    ) -> list[models.SMAIndicator]:
+    ) -> list[SMAIndicator]:
         """Get Simple Moving Average values"""
         return self._get_indicator(
             symbol=symbol,
             indicator_type="sma",
             period=period,
-            indicator_model=models.SMAIndicator,
             interval=interval,
             start_date=start_date,
             end_date=end_date,
@@ -66,13 +76,12 @@ class TechnicalClient(EndpointGroup):
         interval: str = "daily",
         start_date: date | None = None,
         end_date: date | None = None,
-    ) -> list[models.EMAIndicator]:
+    ) -> list[EMAIndicator]:
         """Get Exponential Moving Average values"""
         return self._get_indicator(
             symbol=symbol,
             indicator_type="ema",
             period=period,
-            indicator_model=models.EMAIndicator,
             interval=interval,
             start_date=start_date,
             end_date=end_date,
@@ -85,13 +94,12 @@ class TechnicalClient(EndpointGroup):
         interval: str = "daily",
         start_date: date | None = None,
         end_date: date | None = None,
-    ) -> list[models.WMAIndicator]:
+    ) -> list[WMAIndicator]:
         """Get Weighted Moving Average values"""
         return self._get_indicator(
             symbol=symbol,
             indicator_type="wma",
             period=period,
-            indicator_model=models.WMAIndicator,
             interval=interval,
             start_date=start_date,
             end_date=end_date,
@@ -104,13 +112,12 @@ class TechnicalClient(EndpointGroup):
         interval: str = "daily",
         start_date: date | None = None,
         end_date: date | None = None,
-    ) -> list[models.DEMAIndicator]:
+    ) -> list[DEMAIndicator]:
         """Get Double Exponential Moving Average values"""
         return self._get_indicator(
             symbol=symbol,
             indicator_type="dema",
             period=period,
-            indicator_model=models.DEMAIndicator,
             interval=interval,
             start_date=start_date,
             end_date=end_date,
@@ -123,13 +130,12 @@ class TechnicalClient(EndpointGroup):
         interval: str = "daily",
         start_date: date | None = None,
         end_date: date | None = None,
-    ) -> list[models.TEMAIndicator]:
+    ) -> list[TEMAIndicator]:
         """Get Triple Exponential Moving Average values"""
         return self._get_indicator(
             symbol=symbol,
             indicator_type="tema",
             period=period,
-            indicator_model=models.TEMAIndicator,
             interval=interval,
             start_date=start_date,
             end_date=end_date,
@@ -142,13 +148,12 @@ class TechnicalClient(EndpointGroup):
         interval: str = "daily",
         start_date: date | None = None,
         end_date: date | None = None,
-    ) -> list[models.WilliamsIndicator]:
+    ) -> list[WilliamsIndicator]:
         """Get Williams %R values"""
         return self._get_indicator(
             symbol=symbol,
             indicator_type="williams",
             period=period,
-            indicator_model=models.WilliamsIndicator,
             interval=interval,
             start_date=start_date,
             end_date=end_date,
@@ -161,13 +166,12 @@ class TechnicalClient(EndpointGroup):
         interval: str = "daily",
         start_date: date | None = None,
         end_date: date | None = None,
-    ) -> list[models.RSIIndicator]:
+    ) -> list[RSIIndicator]:
         """Get Relative Strength Index values"""
         return self._get_indicator(
             symbol=symbol,
             indicator_type="rsi",
             period=period,
-            indicator_model=models.RSIIndicator,
             interval=interval,
             start_date=start_date,
             end_date=end_date,
@@ -180,13 +184,12 @@ class TechnicalClient(EndpointGroup):
         interval: str = "daily",
         start_date: date | None = None,
         end_date: date | None = None,
-    ) -> list[models.ADXIndicator]:
+    ) -> list[ADXIndicator]:
         """Get Average Directional Index values"""
         return self._get_indicator(
             symbol=symbol,
             indicator_type="adx",
             period=period,
-            indicator_model=models.ADXIndicator,
             interval=interval,
             start_date=start_date,
             end_date=end_date,
@@ -199,13 +202,12 @@ class TechnicalClient(EndpointGroup):
         interval: str = "daily",
         start_date: date | None = None,
         end_date: date | None = None,
-    ) -> list[models.StandardDeviationIndicator]:
+    ) -> list[StandardDeviationIndicator]:
         """Get Standard Deviation values"""
         return self._get_indicator(
             symbol=symbol,
             indicator_type="standardDeviation",
             period=period,
-            indicator_model=models.StandardDeviationIndicator,
             interval=interval,
             start_date=start_date,
             end_date=end_date,

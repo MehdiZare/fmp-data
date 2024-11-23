@@ -1,4 +1,5 @@
 # fmp_data/technical/endpoints.py
+
 from fmp_data.models import (
     APIVersion,
     Endpoint,
@@ -6,20 +7,30 @@ from fmp_data.models import (
     ParamLocation,
     ParamType,
 )
-
-from . import models
+from fmp_data.technical.models import (
+    ADXIndicator,
+    DEMAIndicator,
+    EMAIndicator,
+    RSIIndicator,
+    SMAIndicator,
+    StandardDeviationIndicator,
+    TechnicalIndicator,
+    TEMAIndicator,
+    WilliamsIndicator,
+    WMAIndicator,
+)
 
 # Map of indicator types to their corresponding models
-INDICATOR_MODEL_MAP = {
-    "sma": models.SMAIndicator,
-    "ema": models.EMAIndicator,
-    "wma": models.WMAIndicator,
-    "dema": models.DEMAIndicator,
-    "tema": models.TEMAIndicator,
-    "williams": models.WilliamsIndicator,
-    "rsi": models.RSIIndicator,
-    "adx": models.ADXIndicator,
-    "standardDeviation": models.StandardDeviationIndicator,
+INDICATOR_MODEL_MAP: dict[str, type[TechnicalIndicator]] = {
+    "sma": SMAIndicator,
+    "ema": EMAIndicator,
+    "wma": WMAIndicator,
+    "dema": DEMAIndicator,
+    "tema": TEMAIndicator,
+    "williams": WilliamsIndicator,
+    "rsi": RSIIndicator,
+    "adx": ADXIndicator,
+    "standardDeviation": StandardDeviationIndicator,
 }
 
 TECHNICAL_INDICATOR = Endpoint(
@@ -85,5 +96,5 @@ TECHNICAL_INDICATOR = Endpoint(
             description="End date (YYYY-MM-DD)",
         ),
     ],
-    response_model=models.TechnicalIndicator,
+    response_model=TechnicalIndicator,
 )

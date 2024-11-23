@@ -6,6 +6,7 @@ import warnings
 from typing import Any, TypeVar
 
 import httpx
+from pydantic import BaseModel
 from tenacity import (
     after_log,
     before_sleep_log,
@@ -26,7 +27,7 @@ from fmp_data.logger import FMPLogger, log_api_call
 from fmp_data.models import Endpoint
 from fmp_data.rate_limit import FMPRateLimiter, QuotaConfig
 
-T = TypeVar("T")
+T = TypeVar("T", bound=BaseModel)
 
 logger = FMPLogger().get_logger(__name__)
 
@@ -104,7 +105,7 @@ class BaseClient:
         after=after_log(logger, logging.INFO),
     )
     @log_api_call()
-    def request(self, endpoint: Endpoint[T], **kwargs) -> T:
+    def request(self, endpoint: Endpoint[T], **kwargs) -> T | list[T]:
         """Make request with rate limiting and retry logic"""
         # First, check if we're already over the rate limit
         if not self._rate_limiter.should_allow_request():
@@ -207,7 +208,7 @@ class BaseClient:
             ) from e
 
     @staticmethod
-    def _process_response(endpoint: Endpoint[T], data: Any) -> T:
+    def _process_response(endpoint: Endpoint[T], data: Any) -> T | list[T]:
         """Process the response data with warning handling"""
         if isinstance(data, dict):
             # Check for different forms of error messages
@@ -219,7 +220,7 @@ class BaseClient:
                 raise FMPError(data["error"])
 
         if isinstance(data, list):
-            processed_items = []
+            processed_items: list[T] = []
             for item in data:
                 with warnings.catch_warnings(record=True) as w:
                     # Enable all warnings
@@ -228,17 +229,20 @@ class BaseClient:
                     if isinstance(item, dict):
                         processed_item = endpoint.response_model.model_validate(item)
                     else:
-                        alias = endpoint.response_model.model_fields.get(
-                            list(endpoint.response_model.model_fields.keys())[0]
-                        ).alias
-                        field_name = (
-                            alias
-                            if alias
-                            else list(endpoint.response_model.model_fields.keys())[0]
-                        )
-                        processed_item = endpoint.response_model.model_validate(
-                            {field_name: item}
-                        )
+                        # Get the first field info directly from model config
+                        model = endpoint.response_model
+                        try:
+                            # Get first field name from the model
+                            first_field = next(iter(model.__annotations__))
+                            # Try to get alias from field info
+                            field_info = model.model_fields[first_field]
+                            field_name = field_info.alias or first_field
+                            processed_item = model.model_validate({field_name: item})
+                        except (StopIteration, KeyError, AttributeError) as e:
+                            raise ValueError(
+                                f"Invalid model structure for {model.__name__}"
+                            ) from e
+
                     # Log any warnings
                     for warning in w:
                         logger.warning(f"Validation warning: {warning.message}")
@@ -246,7 +250,7 @@ class BaseClient:
             return processed_items
         return endpoint.response_model.model_validate(data)
 
-    async def request_async(self, endpoint: Endpoint[T], **kwargs) -> T:
+    async def request_async(self, endpoint: Endpoint[T], **kwargs) -> T | list[T]:
         """Make async request with rate limiting"""
         validated_params = endpoint.validate_params(kwargs)
         url = endpoint.build_url(self.config.base_url, validated_params)

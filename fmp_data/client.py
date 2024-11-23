@@ -1,4 +1,5 @@
 # client.py
+import logging
 import warnings
 
 from pydantic import ValidationError as PydanticValidationError
@@ -30,41 +31,22 @@ class FMPDataClient(BaseClient):
         config: ClientConfig | None = None,
         debug: bool = False,
     ):
-        # pylint: disable=line-too-long
-        """
-        Initialize FMP Data client
-
-        Args:
-            api_key: Optional API key.
-            If not provided, will look for FMP_API_KEY env variable
-            timeout: Request timeout in seconds
-            max_retries: Maximum number of request retries
-            base_url: FMP API base URL
-            config: Optional pre-configured ClientConfig instance
-            debug: Enable debug logging if True
-
-        Raises:
-            ConfigError: If api_key is not provided and not found in environment
-        """
-        self._initialized = False
-        self._logger = None
-        self._company = None
-        self._market = None
-        self._fundamental = None
-        self._technical = None
-        self._intelligence = None
-        self._institutional = None
-        self._investment = None
-        self._alternative = None
-        self._economics = None
-        self._bulk = None
-        # pylint: disable=line-too-long
+        self._initialized: bool = False
+        self._logger: logging.Logger | None = None
+        self._company: CompanyClient | None = None
+        self._market: MarketClient | None = None
+        self._fundamental: FundamentalClient | None = None
+        self._technical: TechnicalClient | None = None
+        self._intelligence: MarketIntelligenceClient | None = None
+        self._institutional: InstitutionalClient | None = None
+        self._investment: InvestmentClient | None = None
+        self._alternative: AlternativeMarketsClient | None = None
+        self._economics: EconomicsClient | None = None
 
         try:
             if config is not None:
                 self._config = config
             else:
-                # Create default logging config based on debug parameter
                 logging_config = LoggingConfig(
                     level="DEBUG" if debug else "INFO",
                     handlers={
@@ -72,8 +54,8 @@ class FMPDataClient(BaseClient):
                             class_name="StreamHandler",
                             level="DEBUG" if debug else "INFO",
                             format=(
-                                "%(asctime)s - %(levelname)s - "
-                                "%(name)s - %(message)s"
+                                "%(asctime)s - %(levelname)s -"
+                                " %(name)s - %(message)s"
                             ),
                         )
                     },
@@ -81,7 +63,7 @@ class FMPDataClient(BaseClient):
 
                 try:
                     self._config = ClientConfig(
-                        api_key=api_key,
+                        api_key=api_key or "",  # Handle None case
                         timeout=timeout,
                         max_retries=max_retries,
                         base_url=base_url,
@@ -90,16 +72,13 @@ class FMPDataClient(BaseClient):
                 except PydanticValidationError as e:
                     raise ConfigError("Invalid client configuration") from e
 
-            # Initialize the FMPLogger with our configuration
             FMPLogger().configure(self._config.logging)
             self._logger = FMPLogger().get_logger(__name__)
 
-            # Initialize base client
             super().__init__(self._config)
             self._initialized = True
 
         except Exception as e:
-            # Ensure we have a logger for error reporting
             if not hasattr(self, "_logger") or self._logger is None:
                 self._logger = FMPLogger().get_logger(__name__)
             self._logger.error(f"Failed to initialize client: {str(e)}")

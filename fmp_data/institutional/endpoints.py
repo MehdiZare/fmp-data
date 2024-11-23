@@ -42,6 +42,7 @@ FORM_13F = Endpoint(
             description="Filing date",
         ),
     ],
+    optional_params=[],
     response_model=Form13F,
 )
 
@@ -61,6 +62,7 @@ FORM_13F_DATES = Endpoint(
             description="Institution CIK number",
         ),
     ],
+    optional_params=[],
     response_model=Form13FDate,
 )
 
@@ -80,6 +82,7 @@ ASSET_ALLOCATION = Endpoint(
             description="Filing date",
         )
     ],
+    optional_params=[],
     response_model=AssetAllocation,
 )
 
