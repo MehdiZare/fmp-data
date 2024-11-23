@@ -5,7 +5,6 @@ from pydantic import ValidationError as PydanticValidationError
 
 from fmp_data.alternative import AlternativeMarketsClient
 from fmp_data.base import BaseClient
-from fmp_data.bulk import BulkClient
 from fmp_data.company.client import CompanyClient
 from fmp_data.config import ClientConfig, LoggingConfig, LogHandlerConfig
 from fmp_data.economics import EconomicsClient
@@ -273,15 +272,3 @@ class FMPDataClient(BaseClient):
                 self.logger.debug("Initializing economics data client")
             self._economics = EconomicsClient(self)
         return self._economics
-
-    @property
-    def bulk(self) -> BulkClient:
-        """Get or create the bulk data client instance"""
-        if not self._initialized:
-            raise RuntimeError("Client not properly initialized")
-
-        if self._bulk is None:
-            if self.logger:
-                self.logger.debug("Initializing bulk data client")
-            self._bulk = BulkClient(self)
-        return self._bulk
