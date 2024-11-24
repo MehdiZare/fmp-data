@@ -79,10 +79,23 @@ mkdocstrings-python = "mkdocstrings.cli:main"
 enable = true
 vcs = "git"
 style = "pep440"
+pattern = "(?P<base>\\d+\\.\\d+\\.\\d+)"
+strict = true
+
+# Development format (for TestPyPI)
+format-jinja = """
+{%- if env.get("POETRY_PYPI_TOKEN_TESTPYPI") -%}
+{{base}}.dev{{distance}}
+{%- else -%}
+{{base}}
+{%- endif -%}
+"""
 
 
 [tool.poetry-dynamic-versioning.substitution]
-files = ["fmp_data/__init__.py"]
+folders = [
+    { path = "fmp_data" }
+]
 
 # Tool configurations
 [tool.black]
