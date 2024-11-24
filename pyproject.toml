@@ -82,17 +82,17 @@ mkdocstrings-python = "mkdocstrings.cli:main"
 enable = true
 vcs = "git"
 style = "pep440"
-pattern = "(?P<base>\\d+\\.\\d+\\.\\d+)"
+pattern = "v(?P<major>\\d+)\\.(?P<minor>\\d+)(\\.(?P<patch>\\d+))?"
 strict = true
 
-# Development format (for TestPyPI)
 format-jinja = """
-{%- if env.get("POETRY_PYPI_TOKEN_TESTPYPI") -%}
-{{base}}.dev{{distance}}
+{%- if env.get("TEST_PYPI_TOKEN") -%}
+    {{major}}.{{minor}}.{{"0" if not patch else patch}}.dev{{distance}}
 {%- else -%}
-{{base}}
+    {{major}}.{{minor}}.{{"0" if not patch else patch}}
 {%- endif -%}
 """
+
 
 
 [tool.poetry-dynamic-versioning.substitution]
