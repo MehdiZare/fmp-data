@@ -64,6 +64,7 @@ vcrpy = "^6.0.2"
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.6.1"
 mkdocs-material = "^9.5.42"
+mkdocstrings-python = "^1.12.2"
 
 [tool.poetry.scripts]
 format = "scripts:format_code"
@@ -72,14 +73,13 @@ typecheck = "scripts:typecheck"
 test = "scripts:test"
 security = "scripts:security_check"
 fmp = "fmp_data.scripts.dev:main"
-mkdocstrings-python = "^1.12.2"
+mkdocstrings-python = "mkdocstrings.cli:main"
 
 [tool.poetry-dynamic-versioning]
 enable = true
 vcs = "git"
 style = "pep440"
-pattern = "^(?P<base>\\d+\\.\\d+\\.\\d+)(-?((?P<stage>[a-zA-Z]+)\\.?(?P<revision>\\d+)?))?"
-tag-pattern = "v[0-9]*"
+
 
 [tool.poetry-dynamic-versioning.substitution]
 files = ["fmp_data/__init__.py"]
