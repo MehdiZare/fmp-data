@@ -7,7 +7,7 @@ on:
     branches: [ main ]
   workflow_dispatch:
   release:
-    types: [published]  # Trigger when a release is published
+    types: [published]
 
 jobs:
   test:
@@ -21,6 +21,8 @@ jobs:
     steps:
     - name: Check out the repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Ensure full Git history for versioning
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
@@ -73,7 +75,7 @@ jobs:
     - name: Check out the repository
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0
+        fetch-depth: 0  # Ensure full Git history for versioning
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -94,16 +96,15 @@ jobs:
     - name: Publish Pre-Release to TestPyPI
       if: github.event.release.prerelease == true
       env:
-        TEST_PYPI_TOKEN: ${{ secrets.TEST_PYPI_TOKEN }}
+        POETRY_PYPI_TOKEN_TESTPYPI: ${{ secrets.TEST_PYPI_TOKEN }}
       run: |
         poetry config repositories.testpypi https://test.pypi.org/legacy/
-        poetry config pypi-token.testpypi $TEST_PYPI_TOKEN
         poetry publish -r testpypi
 
     - name: Publish Release to PyPI
       if: github.event.release.prerelease == false
       env:
-        PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
       run: |
-        poetry config pypi-token.pypi $PYPI_TOKEN
+        poetry config pypi-token.pypi $POETRY_PYPI_TOKEN_PYPI
         poetry publish

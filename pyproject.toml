@@ -77,7 +77,7 @@ fmp = "fmp_data.scripts.dev:main"
 [tool.poetry-dynamic-versioning]
 enable = true
 vcs = "git"
-style = "semver"
+style = "pep440"
 pattern = "^(?P<base>\\d+\\.\\d+\\.\\d+)(-?((?P<stage>[a-zA-Z]+)\\.?(?P<revision>\\d+)?))?"
 tag-pattern = "v[0-9]*"
 
