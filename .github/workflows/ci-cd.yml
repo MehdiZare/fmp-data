@@ -66,8 +66,8 @@ jobs:
         files: ./coverage.xml
 
   publish:
-    name: Publish Package
-    needs: test
+    name: Build and Publish Package
+    needs: test  # Ensures tests must pass before publishing
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
 
@@ -89,6 +89,10 @@ jobs:
 
     - name: Install dependencies
       run: poetry install --no-interaction
+
+    - name: Clean build artifacts
+      run: |
+        rm -rf dist/ build/ *.egg-info
 
     - name: Build package
       run: poetry build
