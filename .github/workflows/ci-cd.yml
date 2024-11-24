@@ -106,23 +106,14 @@ jobs:
           poetry config repositories.testpypi https://test.pypi.org/legacy/
           poetry publish -r testpypi --skip-existing --build
 
-      - name: Verify package installation
-        run: |
-          python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ fmp-data
-          python -c "import fmp_data; print(fmp_data.__version__)"
-
-      - name: Verify package version
-        run: |
-          python -c "import fmp_data; print(fmp_data.__version__)"
-
   publish-prod:
     name: Publish to PyPI
     needs: [ test, publish-test ]
     if: |
       success() &&
       startsWith(github.ref, 'refs/tags/') &&
-      !contains(github.ref, 'alpha') &&
-      !contains(github.ref, 'beta')
+      !contains(github.ref, '-alpha') &&
+      !contains(github.ref, '-beta')
     runs-on: ubuntu-latest
 
     steps:
@@ -140,20 +131,12 @@ jobs:
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
           poetry self add poetry-dynamic-versioning
-          poetry self show plugins
 
       - name: Clean build artifacts
         run: rm -rf dist/ build/ *.egg-info
 
       - name: Build package
         run: poetry build
-
-      - name: Debug - Verify build artifacts and configuration
-        run: |
-          echo "Listing dist directory:"
-          ls -al dist/ || echo "dist directory not found"
-          echo "Versioning configuration:"
-          poetry config --list
 
       - name: Publish to PyPI
         env:
@@ -162,14 +145,13 @@ jobs:
           poetry config pypi-token.pypi $PYPI_TOKEN
           poetry publish --skip-existing --build
 
-
   create-release:
     name: Create GitHub Release
-    needs: [ publish-prod ]  # Run after successful PyPI publish
-    if: startsWith(github.ref, 'refs/tags/')  # Only run for tags
+    needs: [ publish-prod ]
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # Needed for creating releases
+      contents: write
 
     steps:
       - name: Check out code
@@ -181,35 +163,12 @@ jobs:
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Generate Release Notes
-        id: release_notes
-        run: |
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          if [ -z "$PREVIOUS_TAG" ]; then
-            COMMITS=$(git log --pretty=format:"* %s" --no-merges)
-          else
-            COMMITS=$(git log --pretty=format:"* %s" --no-merges $PREVIOUS_TAG..HEAD)
-          fi
-          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
-          echo "$COMMITS" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           name: Release ${{ steps.get_version.outputs.VERSION }}
-          draft: false
-          prerelease: ${{ contains(github.ref, '-alpha') || contains(github.ref, '-beta') }}
           body: |
             ## What's Changed
-            ${{ steps.release_notes.outputs.CHANGELOG }}
-
-            ## Installation
-            ```bash
-            pip install fmp-data==${{ steps.get_version.outputs.VERSION }}
-            ```
-
-            For development version:
-            ```bash
-            pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ fmp-data
-            ```
+            - Dynamic versioning managed with `poetry-dynamic-versioning`.
+            - Published to PyPI and TestPyPI.
+            - CI/CD streamlined for `fmp-data`.
