@@ -16,54 +16,54 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: [ "3.10", "3.11", "3.12", "3.13" ]
 
     steps:
-    - name: Check out the repository
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # Ensure full Git history for versioning
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Ensure full Git history for versioning
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Install Poetry with Dynamic Versioning
-      run: |
-        curl -sSL https://install.python-poetry.org | python3 -
-        poetry self add poetry-dynamic-versioning
+      - name: Install Poetry with Dynamic Versioning
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          poetry self add poetry-dynamic-versioning
 
-    - name: Cache Poetry dependencies
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pypoetry
-        key: poetry-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: poetry-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
 
-    - name: Install dependencies with Dynamic Versioning
-      run: poetry install --no-interaction
+      - name: Install dependencies with Dynamic Versioning
+        run: poetry install --no-interaction
 
-    - name: Run style checks
-      run: |
-        poetry run black . --check
-        poetry run isort . --check
-        poetry run ruff check .
+      - name: Run style checks
+        run: |
+          poetry run black . --check
+          poetry run isort . --check
+          poetry run ruff check .
 
-    - name: Run type checks
-      run: poetry run mypy .
+      - name: Run type checks
+        run: poetry run mypy .
 
-    - name: Run security checks
-      run: poetry run bandit -r fmp_data
+      - name: Run security checks
+        run: poetry run bandit -r fmp_data
 
-    - name: Run tests with coverage
-      run: poetry run pytest --cov=fmp_data --cov-report=xml
+      - name: Run tests with coverage
+        run: poetry run pytest --cov=fmp_data --cov-report=xml
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v5
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        fail_ci_if_error: true
-        files: ./coverage.xml
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+          files: ./coverage.xml
 
   publish-test:
     name: Publish to TestPyPI
@@ -102,9 +102,14 @@ jobs:
           poetry config repositories.testpypi https://test.pypi.org/legacy/
           poetry publish -r testpypi
 
+      - name: Verify package installation
+        run: |
+          python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ fmp-data
+          python -c "import fmp_data; print(fmp_data.__version__)"
+
   publish-prod:
     name: Publish to PyPI
-    needs: [test, publish-test]
+    needs: [ test, publish-test ]
     if: |
       success() &&
       startsWith(github.ref, 'refs/tags/') &&
