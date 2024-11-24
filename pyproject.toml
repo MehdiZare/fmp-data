@@ -38,7 +38,6 @@ tqdm = "^4.66.5"
 cachetools = "^5.5.0"
 structlog = "^24.4.0"
 types-cachetools = "^5.5.0.20240820"
-mkdocstrings-python = "^1.12.2"
 pydantic-settings = "^2.6.0"
 pandas = "^2.2.3"
 
@@ -73,6 +72,7 @@ typecheck = "scripts:typecheck"
 test = "scripts:test"
 security = "scripts:security_check"
 fmp = "fmp_data.scripts.dev:main"
+mkdocstrings-python = "^1.12.2"
 
 [tool.poetry-dynamic-versioning]
 enable = true
