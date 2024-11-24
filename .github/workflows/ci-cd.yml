@@ -111,6 +111,10 @@ jobs:
           python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ fmp-data
           python -c "import fmp_data; print(fmp_data.__version__)"
 
+      - name: Verify package version
+        run: |
+          python -c "import fmp_data; print(fmp_data.__version__)"
+
   publish-prod:
     name: Publish to PyPI
     needs: [ test, publish-test ]

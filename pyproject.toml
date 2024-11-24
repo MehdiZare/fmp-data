@@ -80,6 +80,7 @@ mkdocstrings-python = "mkdocstrings.cli:main"
 
 [tool.poetry-dynamic-versioning]
 enable = true
+write_to = "fmp_data/__init__.py"
 vcs = "git"
 style = "pep440"
 pattern = "v(?P<base>\\d+\\.\\d+)(?:-(?P<stage>beta|alpha))?(?:\\.(?P<rev>\\d+))?"
