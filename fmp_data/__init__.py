@@ -25,3 +25,5 @@ __all__ = [
     "ConfigError",
     "logger",
 ]
+
+__version__ = "0.1.0"
