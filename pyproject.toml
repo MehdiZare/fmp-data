@@ -27,6 +27,9 @@ classifiers = [
     "Intended Audience :: Financial and Insurance Industry",
 ]
 
+[tool.poetry.urls]
+"Homepage" = "https://github.com/MehdiZare/fmp-data"
+"Bug Tracker" = "https://github.com/MehdiZare/fmp-data/issues"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
