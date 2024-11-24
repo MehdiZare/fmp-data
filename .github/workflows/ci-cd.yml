@@ -146,3 +146,57 @@ jobs:
         run: |
           poetry config pypi-token.pypi $PYPI_TOKEN
           poetry publish
+    create-release:
+      name: Create GitHub Release
+      needs: [ publish-prod ]  # Run after successful PyPI publish
+      if: startsWith(github.ref, 'refs/tags/')  # Only run for tags
+      runs-on: ubuntu-latest
+      permissions:
+        contents: write  # Needed for creating releases
+
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+
+        - name: Get version from tag
+          id: get_version
+          run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+        - name: Generate Release Notes
+          id: release_notes
+          run: |
+            # Get commits since last release
+            PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+            if [ -z "$PREVIOUS_TAG" ]; then
+              # If no previous tag exists, get all commits
+              COMMITS=$(git log --pretty=format:"* %s" --no-merges)
+            else
+              # Get commits since last tag
+              COMMITS=$(git log --pretty=format:"* %s" --no-merges $PREVIOUS_TAG..HEAD)
+            fi
+            # Save commits to output
+            echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+            echo "$COMMITS" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+
+        - name: Create Release
+          uses: softprops/action-gh-release@v1
+          with:
+            name: Release ${{ steps.get_version.outputs.VERSION }}
+            draft: false
+            prerelease: ${{ contains(github.ref, '-alpha') || contains(github.ref, '-beta') }}
+            body: |
+              ## What's Changed
+              ${{ steps.release_notes.outputs.CHANGELOG }}
+
+              ## Installation
+              ```bash
+              pip install fmp-data==${{ steps.get_version.outputs.VERSION }}
+              ```
+
+              For development version:
+              ```bash
+              pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ fmp-data
+              ```
