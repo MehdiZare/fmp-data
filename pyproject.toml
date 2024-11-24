@@ -82,14 +82,22 @@ mkdocstrings-python = "mkdocstrings.cli:main"
 enable = true
 vcs = "git"
 style = "pep440"
-pattern = "v(?P<major>\\d+)\\.(?P<minor>\\d+)(\\.(?P<patch>\\d+))?"
+pattern = "v(?P<base>\\d+\\.\\d+)(?:-(?P<stage>beta|alpha))?(?:\\.(?P<rev>\\d+))?"
 strict = true
 
 format-jinja = """
 {%- if env.get("TEST_PYPI_TOKEN") -%}
-    {{major}}.{{minor}}.{{"0" if not patch else patch}}.dev{{distance}}
+    {%- if stage -%}
+        {{base}}{{stage[0]}}{{rev if rev else "1"}}.dev{{distance}}
+    {%- else -%}
+        {{base}}.0.dev{{distance}}
+    {%- endif -%}
 {%- else -%}
-    {{major}}.{{minor}}.{{"0" if not patch else patch}}
+    {%- if stage -%}
+        {{base}}{{stage[0]}}{{rev if rev else "1"}}
+    {%- else -%}
+        {{base}}.0
+    {%- endif -%}
 {%- endif -%}
 """
 
