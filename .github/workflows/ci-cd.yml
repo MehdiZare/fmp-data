@@ -140,6 +140,7 @@ jobs:
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
           poetry self add poetry-dynamic-versioning
+          poetry self show plugins
 
       - name: Clean build artifacts
         run: rm -rf dist/ build/ *.egg-info
@@ -147,10 +148,12 @@ jobs:
       - name: Build package
         run: poetry build
 
-      - name: Debug - Verify build artifacts
+      - name: Debug - Verify build artifacts and configuration
         run: |
           echo "Listing dist directory:"
           ls -al dist/ || echo "dist directory not found"
+          echo "Versioning configuration:"
+          poetry config --list
 
       - name: Publish to PyPI
         env:
@@ -158,6 +161,7 @@ jobs:
         run: |
           poetry config pypi-token.pypi $PYPI_TOKEN
           poetry publish --skip-existing --build
+
 
   create-release:
     name: Create GitHub Release
