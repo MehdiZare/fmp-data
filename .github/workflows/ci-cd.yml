@@ -87,31 +87,32 @@ jobs:
           curl -sSL https://install.python-poetry.org | python3 -
           poetry self add poetry-dynamic-versioning
 
+      - name: Configure Poetry
+        run: |
+          poetry config repositories.testpypi https://test.pypi.org/legacy/
+          poetry config pypi-token.testpypi ${{ secrets.TEST_PYPI_TOKEN }}
+
       - name: Clean build artifacts
-        run: rm -rf dist/ build/ *.egg-info
+        run: |
+          rm -rf dist/
+          rm -rf build/
+          rm -rf *.egg-info/
 
       - name: Build package
-        run: poetry build
-
-      - name: Debug - Verify build artifacts
         run: |
-          echo "Listing dist directory:"
-          ls -al dist/ || echo "dist directory not found"
+          poetry build
+          echo "Built artifacts:"
+          ls -la dist/
 
       - name: Publish to TestPyPI
-        env:
-          TEST_PYPI_TOKEN: ${{ secrets.TEST_PYPI_TOKEN }}
-        run: |
-          poetry config pypi-token.testpypi $TEST_PYPI_TOKEN
-          poetry config repositories.testpypi https://test.pypi.org/legacy/
-          poetry publish -r testpypi --skip-existing --build
+        run: poetry publish -r testpypi --skip-existing
 
   publish-prod:
     name: Publish to PyPI
     needs: [ test, publish-test ]
     if: |
       success() &&
-      startsWith(github.ref, 'refs/tags/') &&
+      startsWith(github.ref, 'refs/tags/v') &&
       !contains(github.ref, '-alpha') &&
       !contains(github.ref, '-beta')
     runs-on: ubuntu-latest
@@ -132,23 +133,37 @@ jobs:
           curl -sSL https://install.python-poetry.org | python3 -
           poetry self add poetry-dynamic-versioning
 
+      - name: Configure Poetry
+        run: poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
+
+      - name: Display version info
+        run: |
+          echo "Git ref: ${{ github.ref }}"
+          poetry version
+          git describe --tags
+
       - name: Clean build artifacts
-        run: rm -rf dist/ build/ *.egg-info
+        run: |
+          rm -rf dist/
+          rm -rf build/
+          rm -rf *.egg-info/
 
       - name: Build package
-        run: poetry build
+        run: |
+          poetry build
+          echo "Built artifacts:"
+          ls -la dist/
 
       - name: Publish to PyPI
-        env:
-          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
         run: |
-          poetry config pypi-token.pypi $PYPI_TOKEN
-          poetry publish --skip-existing --build
+          echo "Publishing to PyPI..."
+          poetry publish --skip-existing --verbose
+          echo "Published successfully!"
 
   create-release:
     name: Create GitHub Release
     needs: [ publish-prod ]
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -169,6 +184,6 @@ jobs:
           name: Release ${{ steps.get_version.outputs.VERSION }}
           body: |
             ## What's Changed
-            - Dynamic versioning managed with `poetry-dynamic-versioning`.
-            - Published to PyPI and TestPyPI.
-            - CI/CD streamlined for `fmp-data`.
+            - Dynamic versioning managed with `poetry-dynamic-versioning`
+            - Published to PyPI and TestPyPI
+            - CI/CD streamlined for `fmp-data`
