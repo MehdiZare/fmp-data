@@ -87,6 +87,9 @@ jobs:
           curl -sSL https://install.python-poetry.org | python3 -
           poetry self add poetry-dynamic-versioning
 
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-root
+
       - name: Clean build artifacts
         run: |
           rm -rf dist/ build/ *.egg-info
@@ -100,7 +103,7 @@ jobs:
         run: |
           poetry config pypi-token.testpypi $TEST_PYPI_TOKEN
           poetry config repositories.testpypi https://test.pypi.org/legacy/
-          poetry publish -r testpypi
+          poetry publish -r testpypi --skip-existing
 
       - name: Verify package installation
         run: |
@@ -133,6 +136,9 @@ jobs:
           curl -sSL https://install.python-poetry.org | python3 -
           poetry self add poetry-dynamic-versioning
 
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-root
+
       - name: Clean build artifacts
         run: |
           rm -rf dist/ build/ *.egg-info
@@ -145,7 +151,7 @@ jobs:
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
         run: |
           poetry config pypi-token.pypi $PYPI_TOKEN
-          poetry publish
+          poetry publish --skip-existing
 
   create-release:
     name: Create GitHub Release
