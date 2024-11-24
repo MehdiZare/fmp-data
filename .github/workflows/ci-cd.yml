@@ -87,15 +87,16 @@ jobs:
           curl -sSL https://install.python-poetry.org | python3 -
           poetry self add poetry-dynamic-versioning
 
-      - name: Install dependencies
-        run: poetry install --no-interaction --no-root
-
       - name: Clean build artifacts
-        run: |
-          rm -rf dist/ build/ *.egg-info
+        run: rm -rf dist/ build/ *.egg-info
 
       - name: Build package
         run: poetry build
+
+      - name: Debug - Verify build artifacts
+        run: |
+          echo "Listing dist directory:"
+          ls -al dist/ || echo "dist directory not found"
 
       - name: Publish to TestPyPI
         env:
@@ -103,7 +104,7 @@ jobs:
         run: |
           poetry config pypi-token.testpypi $TEST_PYPI_TOKEN
           poetry config repositories.testpypi https://test.pypi.org/legacy/
-          poetry publish -r testpypi --skip-existing
+          poetry publish -r testpypi --skip-existing --build
 
       - name: Verify package installation
         run: |
@@ -136,22 +137,23 @@ jobs:
           curl -sSL https://install.python-poetry.org | python3 -
           poetry self add poetry-dynamic-versioning
 
-      - name: Install dependencies
-        run: poetry install --no-interaction --no-root
-
       - name: Clean build artifacts
-        run: |
-          rm -rf dist/ build/ *.egg-info
+        run: rm -rf dist/ build/ *.egg-info
 
       - name: Build package
         run: poetry build
+
+      - name: Debug - Verify build artifacts
+        run: |
+          echo "Listing dist directory:"
+          ls -al dist/ || echo "dist directory not found"
 
       - name: Publish to PyPI
         env:
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
         run: |
           poetry config pypi-token.pypi $PYPI_TOKEN
-          poetry publish --skip-existing
+          poetry publish --skip-existing --build
 
   create-release:
     name: Create GitHub Release
@@ -162,7 +164,7 @@ jobs:
       contents: write  # Needed for creating releases
 
     steps:
-      - name: Checkout code
+      - name: Check out code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -174,16 +176,12 @@ jobs:
       - name: Generate Release Notes
         id: release_notes
         run: |
-          # Get commits since last release
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -z "$PREVIOUS_TAG" ]; then
-            # If no previous tag exists, get all commits
             COMMITS=$(git log --pretty=format:"* %s" --no-merges)
           else
-            # Get commits since last tag
             COMMITS=$(git log --pretty=format:"* %s" --no-merges $PREVIOUS_TAG..HEAD)
           fi
-          # Save commits to output
           echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
           echo "$COMMITS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
