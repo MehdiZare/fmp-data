@@ -1,6 +1,5 @@
 # fmp_data/market/endpoints.py
-from ..models import APIVersion, Endpoint, EndpointParam, ParamLocation, ParamType
-from .models import (
+from fmp_data.market.models import (
     HistoricalData,
     IntradayPrice,
     MarketCapitalization,
@@ -10,6 +9,13 @@ from .models import (
     Quote,
     SectorPerformance,
     SimpleQuote,
+)
+from fmp_data.models import (
+    APIVersion,
+    Endpoint,
+    EndpointParam,
+    ParamLocation,
+    ParamType,
 )
 
 QUOTE = Endpoint(
