@@ -1,19 +1,32 @@
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
+from pydantic import HttpUrl
+
 from fmp_data import FMPDataClient
 from fmp_data.intelligence.models import (
     AnalystEstimate,
     AnalystRecommendation,
+    CryptoNewsArticle,
     DividendEvent,
     EarningConfirmed,
     EarningEvent,
     EarningSurprise,
+    FMPArticle,
+    ForexNewsArticle,
+    GeneralNewsArticle,
+    HistoricalSocialSentiment,
     IPOEvent,
+    PressRelease,
+    PressReleaseBySymbol,
     PriceTarget,
     PriceTargetConsensus,
     PriceTargetSummary,
+    SocialSentimentChanges,
+    StockNewsArticle,
+    StockNewsSentiment,
     StockSplitEvent,
+    TrendingSocialSentiment,
     UpgradeDowngrade,
     UpgradeDowngradeConsensus,
 )
@@ -270,3 +283,218 @@ class TestIntelligenceEndpoints:
                         assert isinstance(event.shares, int)
                     if event.market_cap is not None:
                         assert isinstance(event.market_cap, Decimal)
+
+    def test_get_fmp_articles(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting FMP articles"""
+        with vcr_instance.use_cassette("intelligence/fmp_articles.yaml"):
+            articles = fmp_client.intelligence.get_fmp_articles(page=0, size=5)
+
+            assert isinstance(articles, list)
+            assert len(articles) > 0
+
+            for article in articles:
+                assert isinstance(article, FMPArticle)
+                assert isinstance(article.title, str)
+                assert isinstance(article.date, datetime)
+                assert isinstance(article.content, str)
+                assert isinstance(article.tickers, str)
+                assert isinstance(article.image, HttpUrl)
+                assert isinstance(article.link, HttpUrl)
+                assert isinstance(article.author, str)
+                assert isinstance(article.site, str)
+
+    def test_get_general_news(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting general news articles"""
+        with vcr_instance.use_cassette("intelligence/general_news.yaml"):
+            articles = fmp_client.intelligence.get_general_news(page=0)
+
+            assert isinstance(articles, list)
+            assert len(articles) > 0
+
+            for article in articles:
+                assert isinstance(article, GeneralNewsArticle)
+                assert isinstance(article.publishedDate, datetime)
+                assert isinstance(article.title, str)
+                assert isinstance(article.image, HttpUrl)
+                assert isinstance(article.site, str)
+                assert isinstance(article.text, str)
+                assert isinstance(article.url, HttpUrl)
+
+    def test_get_stock_news(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting stock news articles"""
+        with vcr_instance.use_cassette("intelligence/stock_news.yaml"):
+            articles = fmp_client.intelligence.get_stock_news(
+                tickers="AAPL,MSFT",
+                page=0,
+                from_date=date(2024, 1, 1),
+                to_date=date(2024, 1, 31),
+                limit=10,
+            )
+
+            assert isinstance(articles, list)
+            assert len(articles) > 0
+
+            for article in articles:
+                assert isinstance(article, StockNewsArticle)
+                assert isinstance(article.symbol, str)
+                assert isinstance(article.publishedDate, datetime)
+                assert isinstance(article.title, str)
+                assert isinstance(article.image, HttpUrl)
+                assert isinstance(article.site, str)
+                assert isinstance(article.text, str)
+                assert isinstance(article.url, HttpUrl)
+
+    def test_get_stock_news_sentiments(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting stock news articles with sentiment"""
+        with vcr_instance.use_cassette("intelligence/stock_news_sentiments.yaml"):
+            articles = fmp_client.intelligence.get_stock_news_sentiments(page=0)
+
+            assert isinstance(articles, list)
+            assert len(articles) > 0
+
+            for article in articles:
+                assert isinstance(article, StockNewsSentiment)
+                assert isinstance(article.symbol, str)
+                assert isinstance(article.publishedDate, datetime)
+                assert isinstance(article.sentiment, str)
+                assert isinstance(article.sentimentScore, float)
+                assert isinstance(article.title, str)
+                assert isinstance(article.text, str)
+
+    def test_get_forex_news(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting forex news articles"""
+        with vcr_instance.use_cassette("intelligence/forex_news.yaml"):
+            articles = fmp_client.intelligence.get_forex_news(
+                page=0,
+                symbol="EURUSD",
+                from_date=date(2024, 1, 1),
+                to_date=date(2024, 1, 31),
+            )
+
+            assert isinstance(articles, list)
+            assert len(articles) > 0
+
+            for article in articles:
+                assert isinstance(article, ForexNewsArticle)
+                assert isinstance(article.publishedDate, datetime)
+                assert isinstance(article.title, str)
+                assert isinstance(article.site, str)
+                assert isinstance(article.text, str)
+                assert isinstance(article.symbol, str)
+
+    def test_get_crypto_news(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting crypto news articles"""
+        with vcr_instance.use_cassette("intelligence/crypto_news.yaml"):
+            articles = fmp_client.intelligence.get_crypto_news(
+                symbol="BTC",
+                from_date=date(2024, 1, 1),
+            )
+
+            assert isinstance(articles, list)
+            assert len(articles) > 0
+
+            for article in articles:
+                assert isinstance(article, CryptoNewsArticle)
+                assert isinstance(article.publishedDate, datetime)
+                assert isinstance(article.title, str)
+                if article.image is not None:
+                    assert isinstance(article.image, HttpUrl)
+                assert isinstance(article.site, str)
+                assert isinstance(article.text, str)
+                assert isinstance(article.url, HttpUrl)
+                assert isinstance(article.symbol, str)
+
+    def test_get_press_releases(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting press releases"""
+        with vcr_instance.use_cassette("intelligence/press_releases.yaml"):
+            releases = fmp_client.intelligence.get_press_releases(page=0)
+
+            assert isinstance(releases, list)
+            assert len(releases) > 0
+
+            for release in releases:
+                assert isinstance(release, PressRelease)
+                assert isinstance(release.symbol, str)
+                assert isinstance(release.date, datetime)
+                assert isinstance(release.title, str)
+                assert isinstance(release.text, str)
+
+    def test_get_press_releases_by_symbol(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting press releases by symbol"""
+        with vcr_instance.use_cassette("intelligence/press_releases_by_symbol.yaml"):
+            releases = fmp_client.intelligence.get_press_releases_by_symbol(
+                symbol="AAPL", page=0
+            )
+
+            assert isinstance(releases, list)
+            assert len(releases) > 0
+
+            for release in releases:
+                assert isinstance(release, PressReleaseBySymbol)
+                assert release.symbol == "AAPL"
+                assert isinstance(release.date, datetime)
+                assert isinstance(release.title, str)
+                assert isinstance(release.text, str)
+
+    def test_get_historical_social_sentiment(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting historical social sentiment"""
+        with vcr_instance.use_cassette("intelligence/historical_social_sentiment.yaml"):
+            sentiments = fmp_client.intelligence.get_historical_social_sentiment(
+                symbol="AAPL", page=0
+            )
+
+            assert isinstance(sentiments, list)
+            assert len(sentiments) > 0
+
+            for sentiment in sentiments:
+                assert isinstance(sentiment, HistoricalSocialSentiment)
+                assert isinstance(sentiment.date, datetime)
+                assert sentiment.symbol == "AAPL"
+                assert isinstance(sentiment.stocktwitsPosts, int)
+                assert isinstance(sentiment.twitterPosts, int)
+                assert isinstance(sentiment.stocktwitsSentiment, float)
+                assert isinstance(sentiment.twitterSentiment, float)
+
+    def test_get_trending_social_sentiment(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting trending social sentiment"""
+        with vcr_instance.use_cassette("intelligence/trending_social_sentiment.yaml"):
+            sentiments = fmp_client.intelligence.get_trending_social_sentiment(
+                type="bullish", source="stocktwits"
+            )
+
+            assert isinstance(sentiments, list)
+            assert len(sentiments) > 0
+
+            for sentiment in sentiments:
+                assert isinstance(sentiment, TrendingSocialSentiment)
+                assert isinstance(sentiment.symbol, str)
+                assert isinstance(sentiment.name, str)
+                assert isinstance(sentiment.rank, int)
+                assert isinstance(sentiment.sentiment, float)
+                assert isinstance(sentiment.lastSentiment, float)
+
+    def test_get_social_sentiment_changes(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting social sentiment changes"""
+        with vcr_instance.use_cassette("intelligence/social_sentiment_changes.yaml"):
+            changes = fmp_client.intelligence.get_social_sentiment_changes(
+                type="bullish", source="stocktwits"
+            )
+
+            assert isinstance(changes, list)
+            assert len(changes) > 0
+
+            for change in changes:
+                assert isinstance(change, SocialSentimentChanges)
+                assert isinstance(change.symbol, str)
+                assert isinstance(change.name, str)
+                assert isinstance(change.rank, int)
+                assert isinstance(change.sentiment, float)
+                assert isinstance(change.sentimentChange, float)
