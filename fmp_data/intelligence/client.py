@@ -194,9 +194,9 @@ class MarketIntelligenceClient(EndpointGroup):
     def get_stock_news(
         self,
         tickers: str,
-        page: int = 0,
-        from_date: date = None,
-        to_date: date = None,
+        page: int | None | None = 0,
+        from_date: date | None | None = None,
+        to_date: date | None | None = None,
         limit: int = 50,
     ) -> list[StockNewsArticle]:
         """Get a list of the latest stock news articles"""
@@ -237,9 +237,9 @@ class MarketIntelligenceClient(EndpointGroup):
     def get_crypto_news(
         self,
         page: int = 0,
-        symbol: str = None,
-        from_date: date = None,
-        to_date: date = None,
+        symbol: str | None | None = None,
+        from_date: date | None | None = None,
+        to_date: date | None | None = None,
         limit: int = 50,
     ) -> list[CryptoNewsArticle]:
         """Get a list of the latest crypto news articles"""
