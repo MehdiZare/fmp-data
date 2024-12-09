@@ -1,8 +1,7 @@
 # fmp_data/market/client.py
 
 from fmp_data.base import EndpointGroup
-
-from .endpoints import (
+from fmp_data.market.endpoints import (
     GAINERS,
     HISTORICAL_MARKET_CAP,
     HISTORICAL_PRICE,
@@ -16,7 +15,7 @@ from .endpoints import (
     SECTOR_PERFORMANCE,
     SIMPLE_QUOTE,
 )
-from .models import (
+from fmp_data.market.models import (
     HistoricalPrice,
     IntradayPrice,
     MarketCapitalization,
