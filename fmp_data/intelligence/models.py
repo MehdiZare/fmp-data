@@ -3,7 +3,7 @@ import json
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
 
 class PriceTarget(BaseModel):
@@ -354,3 +354,144 @@ class IPOEvent(BaseModel):
     market_cap: Decimal | None = Field(
         alias="marketCap", description="Expected market cap"
     )
+
+
+class FMPArticle(BaseModel):
+    """Individual FMP article data"""
+
+    title: str | None = Field(description="Article title")
+    date: datetime = Field(description="Publication date and time")
+    content: str | None = Field(description="Article content in HTML format")
+    tickers: str | None = Field(None, description="Related stock tickers")
+    image: HttpUrl | None = Field(None, description="Article image URL")
+    link: HttpUrl | None = Field(None, description="Article URL")
+    author: str | None = Field(None, description="Article author")
+    site: str | None = Field(None, description="Publishing site name")
+
+
+class FMPArticlesResponse(BaseModel):
+    """Root response containing array of articles"""
+
+    content: list[FMPArticle] = Field(description="List of articles")
+
+    model_config = ConfigDict(populate_by_name=True, str_strip_whitespace=True)
+
+
+class GeneralNewsArticle(BaseModel):
+    """General news article data"""
+
+    publishedDate: datetime
+    title: str
+    image: HttpUrl
+    site: str
+    text: str
+    url: HttpUrl
+
+
+class StockNewsArticle(BaseModel):
+    """Stock news article data"""
+
+    symbol: str
+    publishedDate: datetime
+    title: str
+    image: HttpUrl
+    site: str
+    text: str
+    url: HttpUrl
+
+
+class StockNewsSentiment(BaseModel):
+    """Stock news article with sentiment data"""
+
+    symbol: str
+    publishedDate: datetime
+    title: str
+    image: HttpUrl
+    site: str
+    text: str
+    url: HttpUrl
+    sentiment: str
+    sentimentScore: float
+
+
+class ForexNewsArticle(BaseModel):
+    """Forex news article data"""
+
+    publishedDate: datetime = Field(description="Article publication date and time")
+    title: str = Field(description="Article title")
+    image: HttpUrl = Field(description="URL of the article image")
+    site: str = Field(description="Source website")
+    text: str = Field(description="Article preview text/summary")
+    url: HttpUrl = Field(description="Full article URL")
+    symbol: str = Field(description="Forex pair symbol")
+
+    model_config = ConfigDict(populate_by_name=True, str_strip_whitespace=True)
+
+
+class CryptoNewsArticle(BaseModel):
+    """Crypto news article data"""
+
+    publishedDate: datetime = Field(description="Article publication date and time")
+    title: str = Field(description="Article title")
+    image: HttpUrl = Field(description="URL of the article image")
+    site: str = Field(description="Source website")
+    text: str = Field(description="Article preview text/summary")
+    url: HttpUrl = Field(description="Full article URL")
+    symbol: str = Field(description="Cryptocurrency trading pair symbol")
+
+    model_config = ConfigDict(populate_by_name=True, str_strip_whitespace=True)
+
+
+class PressRelease(BaseModel):
+    """Press release data"""
+
+    symbol: str
+    date: datetime
+    title: str
+    text: str
+
+
+class PressReleaseBySymbol(BaseModel):
+    """Press release data by company symbol"""
+
+    symbol: str
+    date: datetime
+    title: str
+    text: str
+
+
+class HistoricalSocialSentiment(BaseModel):
+    """Historical social sentiment data"""
+
+    date: datetime
+    symbol: str
+    stocktwitsPosts: int
+    twitterPosts: int
+    stocktwitsComments: int
+    twitterComments: int
+    stocktwitsLikes: int
+    twitterLikes: int
+    stocktwitsImpressions: int
+    twitterImpressions: int
+    stocktwitsSentiment: float
+    twitterSentiment: float
+
+
+class TrendingSocialSentiment(BaseModel):
+    """Trending social sentiment data"""
+
+    symbol: str
+    name: str
+    rank: int
+    sentiment: float
+    lastSentiment: float
+
+
+class SocialSentimentChanges(BaseModel):
+    """Changes in social sentiment data"""
+
+    symbol: str
+    name: str
+    rank: int
+    sentiment: float
+    sentimentChange: float

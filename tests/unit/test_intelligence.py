@@ -1,15 +1,22 @@
-from datetime import date
+from datetime import date, datetime
 from unittest.mock import Mock
 
 import pytest
+from pydantic import HttpUrl
 
 from fmp_data.intelligence.client import MarketIntelligenceClient
 from fmp_data.intelligence.models import (
     AnalystEstimate,
     DividendEvent,
+    FMPArticle,
+    FMPArticlesResponse,
+    GeneralNewsArticle,
     IPOEvent,
+    PressRelease,
     PriceTarget,
     PriceTargetSummary,
+    StockNewsArticle,
+    StockNewsSentiment,
 )
 
 
@@ -176,3 +183,141 @@ def test_get_ipo_calendar(fmp_client, mock_client, ipo_calendar_data):
     assert isinstance(result[0], IPOEvent)
     assert result[0].symbol == "NEWCO"
     assert result[0].company == "New Company"
+
+
+@pytest.fixture
+def general_news_data():
+    return [
+        {
+            "publishedDate": "2024-12-08T12:00:00.000Z",
+            "title": "Major Economic Report Released",
+            "image": "https://example.com/image.jpg",
+            "site": "financial-news.com",
+            "text": "A comprehensive economic report shows...",
+            "url": "https://financial-news.com/article",
+        }
+    ]
+
+
+@pytest.fixture
+def stock_news_data():
+    return [
+        {
+            "symbol": "AAPL",
+            "publishedDate": "2024-12-08T14:30:00.000Z",
+            "title": "Apple Announces New Product Line",
+            "image": "https://example.com/image.jpg",
+            "site": "market-news.com",
+            "text": "Apple Inc. today announced...",
+            "url": "https://market-news.com/article",
+        }
+    ]
+
+
+@pytest.fixture
+def stock_news_sentiment_data():
+    return [
+        {
+            "symbol": "TSLA",
+            "publishedDate": "2024-12-08T15:45:00.000Z",
+            "title": "Tesla Beats Delivery Estimates",
+            "image": "https://example.com/image.jpg",
+            "site": "market-analysis.com",
+            "text": "Tesla has exceeded delivery estimates...",
+            "url": "https://market-analysis.com/article",
+            "sentiment": "Positive",
+            "sentimentScore": 0.85,
+        }
+    ]
+
+
+@pytest.fixture
+def press_release_data():
+    return [
+        {
+            "symbol": "MSFT",
+            "date": "2024-12-08T16:00:00",
+            "title": "Microsoft Quarterly Results",
+            "text": "Microsoft Corporation today announced...",
+        }
+    ]
+
+
+@pytest.fixture
+def fmp_articles_data():
+    return {
+        "content": [
+            {
+                "title": "The AI Opportunity for the Global Telecom Sector",
+                "date": "2024-12-08 05:20:23",
+                "content": "<p>The global telecom industry is on the verge...</p>",
+            }
+        ]
+    }
+
+
+def test_get_general_news(fmp_client, mock_client, general_news_data):
+    mock_client.request.return_value = [GeneralNewsArticle(**general_news_data[0])]
+
+    result = fmp_client.get_general_news(page=0)
+
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert isinstance(result[0], GeneralNewsArticle)
+    assert result[0].site == "financial-news.com"
+    assert isinstance(result[0].publishedDate, datetime)
+    assert isinstance(result[0].image, HttpUrl)
+
+
+def test_get_stock_news(fmp_client, mock_client, stock_news_data):
+    mock_client.request.return_value = [StockNewsArticle(**stock_news_data[0])]
+
+    result = fmp_client.get_stock_news(
+        tickers="AAPL", page=0, from_date=date(2024, 1, 1), to_date=date(2024, 12, 31)
+    )
+
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert isinstance(result[0], StockNewsArticle)
+    assert result[0].symbol == "AAPL"
+    assert isinstance(result[0].url, HttpUrl)
+
+
+def test_get_stock_news_sentiment(fmp_client, mock_client, stock_news_sentiment_data):
+    mock_client.request.return_value = [
+        StockNewsSentiment(**stock_news_sentiment_data[0])
+    ]
+
+    result = fmp_client.get_stock_news_sentiments(page=0)
+
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert isinstance(result[0], StockNewsSentiment)
+    assert result[0].symbol == "TSLA"
+    assert result[0].sentiment == "Positive"
+    assert result[0].sentimentScore == 0.85
+
+
+def test_get_press_releases(fmp_client, mock_client, press_release_data):
+    mock_client.request.return_value = [PressRelease(**press_release_data[0])]
+
+    result = fmp_client.get_press_releases(page=0)
+
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert isinstance(result[0], PressRelease)
+    assert result[0].symbol == "MSFT"
+    assert isinstance(result[0].date, datetime)
+
+
+def test_get_fmp_articles(fmp_client, mock_client, fmp_articles_data):
+    mock_client.request.return_value = FMPArticlesResponse(**fmp_articles_data)
+
+    result = fmp_client.get_fmp_articles(page=0, size=5)
+
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert isinstance(result[0], FMPArticle)
+    assert result[0].title == "The AI Opportunity for the Global Telecom Sector"
+    assert isinstance(result[0].date, datetime)
+    assert result[0].content.startswith("<p>")
