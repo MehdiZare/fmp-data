@@ -39,14 +39,14 @@ from fmp_data import FMPDataClient, ClientConfig, LoggingConfig
 from fmp_data.exceptions import FMPError, RateLimitError, AuthenticationError
 
 # Method 1: Initialize with direct API key
-client = FMPDataClient(api_key="your_api_key_here") # pragma: allowlist secret
+client = FMPDataClient(api_key="your_api_key_here")  # pragma: allowlist secret
 
 # Method 2: Initialize from environment variable (FMP_API_KEY)
 client = FMPDataClient.from_env()
 
 # Method 3: Initialize with custom configuration
 config = ClientConfig(
-    api_key="your_api_key_here", #pragma: allowlist secret
+    api_key="your_api_key_here",  # pragma: allowlist secret
     timeout=30,
     max_retries=3,
     base_url="https://financialmodelingprep.com/api",
@@ -55,7 +55,7 @@ config = ClientConfig(
 client = FMPDataClient(config=config)
 
 # Using with context manager (recommended)
-with FMPDataClient(api_key="your_api_key_here") as client: # pragma: allowlist secret
+with FMPDataClient(api_key="your_api_key_here") as client:  # pragma: allowlist secret
     try:
         # Get company profile
         profile = client.company.get_profile("AAPL")
@@ -81,6 +81,7 @@ with FMPDataClient(api_key="your_api_key_here") as client: # pragma: allowlist s
 ## Key Components
 
 ### 1. Company Information
+
 ```python
 from fmp_data import FMPDataClient
 
@@ -99,6 +100,7 @@ with FMPDataClient.from_env() as client:
 ```
 
 ### 2. Financial Statements
+
 ```python
 from fmp_data import FMPDataClient
 
@@ -121,6 +123,7 @@ with FMPDataClient.from_env() as client:
 ```
 
 ### 3. Market Data
+
 ```python
 from fmp_data import FMPDataClient
 
@@ -137,15 +140,18 @@ with FMPDataClient.from_env() as client:
 ```
 
 ### 4. Async Support
+
 ```python
 import asyncio
 from fmp_data import FMPDataClient
 
+
 async def get_multiple_profiles(symbols):
     async with FMPDataClient.from_env() as client:
         tasks = [client.company.get_profile_async(symbol)
-                for symbol in symbols]
+                 for symbol in symbols]
         return await asyncio.gather(*tasks)
+
 
 # Run async function
 symbols = ["AAPL", "MSFT", "GOOGL"]
@@ -155,6 +161,7 @@ profiles = asyncio.run(get_multiple_profiles(symbols))
 ## Configuration
 
 ### Environment Variables
+
 ```bash
 # Required
 FMP_API_KEY=your_api_key_here
@@ -177,12 +184,12 @@ FMP_LOG_BACKUP_COUNT=5
 ```
 
 ### Custom Configuration
+
 ```python
 from fmp_data import FMPDataClient, ClientConfig, LoggingConfig, RateLimitConfig
 
-
 config = ClientConfig(
-    api_key="your_api_key_here", # pragma: allowlist secret
+    api_key="your_api_key_here",  # pragma: allowlist secret
     timeout=30,
     max_retries=3,
     base_url="https://financialmodelingprep.com/api",
@@ -223,6 +230,7 @@ from fmp_data.exceptions import (
     ValidationError,
     ConfigError
 )
+
 try:
     with FMPDataClient.from_env() as client:
         profile = client.company.get_profile("INVALID")
@@ -249,17 +257,20 @@ except FMPError as e:
 ## Development Setup
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/MehdiZare/fmp-data.git
 cd fmp-data
 ```
 
 2. Install dependencies using Poetry:
+
 ```bash
 poetry install
 ```
 
 3. Set up pre-commit hooks:
+
 ```bash
 poetry run pre-commit install
 ```
@@ -288,11 +299,40 @@ View the latest test coverage report [here](https://codecov.io/gh/MehdiZare/fmp-
 5. Create a pull request
 
 Please ensure:
+
 - Tests pass
 - Code is formatted with black
 - Type hints are included
 - Documentation is updated
 - Commit messages follow conventional commits
+
+## Releasing New Versions
+
+To release a new version, follow these steps:
+
+1. Ensure all changes are committed and pushed to the `main` branch
+2. Update the CHANGELOG.md with the new version changes
+3. Create and push a new version tag:
+
+```bash
+# For a new release (e.g., v0.1.2)
+git tag -a v0.1.2 -m "Release version 0.1.2"
+git push origin v0.1.2
+```
+
+The CI/CD pipeline will automatically:
+
+Run all tests across Python versions 3.10-3.13
+Run style, type and security checks
+Publish the package to TestPyPI
+Publish the package to PyPI (for non-alpha/beta tags)
+Create a GitHub release
+
+Notes:
+
+Version tags must start with 'v' (e.g., v0.1.2)
+Alpha/beta versions (e.g., v0.1.2-beta) will only be published to TestPyPI
+The package uses poetry-dynamic-versioning to manage versions based on git tags
 
 ## License
 
