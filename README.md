@@ -1,7 +1,7 @@
 # FMP Data Client
 
 [![Test](https://github.com/MehdiZare/fmp-data/actions/workflows/test.yml/badge.svg)](https://github.com/MehdiZare/fmp-data/actions/workflows/test.yml)
-[![codecov](https://codecov.io/gh/MehdiZare/fmp-data/branch/main/graph/badge.svg)](https://codecov.io/gh/MehdiZare/fmp-data)
+[![CI/CD Pipeline](https://github.com/MehdiZare/fmp-data/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/MehdiZare/fmp-data/actions/workflows/ci-cd.yml)[![codecov](https://codecov.io/gh/MehdiZare/fmp-data/branch/main/graph/badge.svg)](https://codecov.io/gh/MehdiZare/fmp-data)
 [![Python](https://img.shields.io/pypi/pyversions/fmp-data.svg)](https://pypi.org/project/fmp-data/)
 [![Poetry](https://img.shields.io/endpoint?url=https://python-poetry.org/badge/v0.json)](https://python-poetry.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
