@@ -22,6 +22,12 @@ A Python client for the Financial Modeling Prep (FMP) API with comprehensive log
 - 🔍 Detailed error messages
 - 🚦 Configurable retry strategies
 
+## Getting an API Key
+
+To use this library, you'll need an API key from Financial Modeling Prep (FMP). You can:
+- Get a [free API key from FMP](https://site.financialmodelingprep.com/pricing-plans?couponCode=mehdi)
+- All paid plans come with a 10% discount.
+
 ## Installation
 
 ```bash
