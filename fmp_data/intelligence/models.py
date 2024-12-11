@@ -495,3 +495,422 @@ class SocialSentimentChanges(BaseModel):
     rank: int
     sentiment: float
     sentimentChange: float
+
+
+class ESGData(BaseModel):
+    """ESG environmental, social and governance data"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    symbol: str = Field(description="Company symbol")
+    cik: str = Field(description="CIK number")
+    date: datetime = Field(description="ESG data date")
+    environmental_score: float = Field(
+        alias="environmentalScore", description="Environmental score"
+    )
+    social_score: float = Field(alias="socialScore", description="Social score")
+    governance_score: float = Field(
+        alias="governanceScore", description="Governance score"
+    )
+    esg_score: float = Field(alias="ESGScore", description="Total ESG score")
+    company_name: str = Field(alias="companyName", description="Company name")
+    industry: str = Field(description="Industry classification")
+    form_type: str = Field(alias="formType", description="SEC form type")
+    accepted_date: datetime = Field(
+        alias="acceptedDate", description="SEC acceptance date"
+    )
+    url: HttpUrl = Field(description="SEC filing URL")
+
+
+class ESGRating(BaseModel):
+    """ESG rating data"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    symbol: str = Field(description="Company symbol")
+    cik: str = Field(description="CIK number")
+    company_name: str = Field(alias="companyName", description="Company name")
+    industry: str = Field(description="Industry classification")
+    year: int = Field(description="Rating year")
+    esg_risk_rating: str = Field(
+        alias="ESGRiskRating", description="ESG risk rating grade"
+    )
+    industry_rank: str = Field(
+        alias="industryRank", description="Industry rank (e.g. '4 out of 5')"
+    )
+
+
+class ESGBenchmark(BaseModel):
+    """ESG sector benchmark data"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    year: int = Field(description="Benchmark year")
+    sector: str = Field(description="Industry sector")
+    environmental_score: float = Field(
+        alias="environmentalScore", description="Environmental score"
+    )
+    social_score: float = Field(alias="socialScore", description="Social score")
+    governance_score: float = Field(
+        alias="governanceScore", description="Governance score"
+    )
+    esg_score: float = Field(alias="ESGScore", description="Total ESG score")
+
+
+# Government Trading Models
+class SenateTrade(BaseModel):
+    """Senate trading data"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    first_name: str = Field(alias="firstName", description="Senator's first name")
+    last_name: str = Field(alias="lastName", description="Senator's last name")
+    office: str = Field(description="Senate office")
+    link: HttpUrl = Field(description="Link to filing")
+    date_received: datetime = Field(
+        alias="dateRecieved", description="Date filing received"
+    )
+    transaction_date: datetime = Field(
+        alias="transactionDate", description="Date of transaction"
+    )
+    owner: str = Field(description="Owner of the asset")
+    asset_description: str = Field(
+        alias="assetDescription", description="Description of the asset"
+    )
+    asset_type: str = Field(alias="assetType", description="Type of asset")
+    type: str = Field(description="Transaction type")
+    amount: str = Field(description="Transaction amount range")
+    comment: str | None = Field(default="", description="Additional comments")
+    symbol: str = Field(description="Stock symbol")
+
+
+class HouseDisclosure(BaseModel):
+    """House disclosure data"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    disclosure_year: str = Field(
+        alias="disclosureYear", description="Year of disclosure"
+    )
+    disclosure_date: datetime = Field(
+        alias="disclosureDate", description="Date of disclosure"
+    )
+    transaction_date: datetime = Field(
+        alias="transactionDate", description="Date of transaction"
+    )
+    owner: str | None = Field(default="", description="Owner of the asset")
+    ticker: str = Field(description="Stock symbol")
+    asset_description: str = Field(
+        alias="assetDescription", description="Description of the asset"
+    )
+    type: str = Field(description="Transaction type")
+    amount: str = Field(description="Transaction amount range")
+    representative: str = Field(description="Representative's name")
+    district: str = Field(description="Congressional district")
+    link: HttpUrl = Field(description="Link to filing")
+    capital_gains_over_200usd: bool = Field(
+        alias="capitalGainsOver200USD",
+        description="Whether capital gains exceeded $200",
+    )
+
+
+class CrowdfundingOffering(BaseModel):
+    """Crowdfunding offering data"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    cik: str = Field(description="Company CIK number")
+    company_name: str | None | None = Field(
+        None, alias="companyName", description="Company name"
+    )
+    acceptance_time: datetime = Field(
+        alias="acceptanceTime", description="Filing acceptance time"
+    )
+    form_type: str = Field(alias="formType", description="SEC form type")
+    form_signification: str = Field(
+        alias="formSignification", description="Form signification"
+    )
+    filing_date: datetime = Field(alias="fillingDate", description="Filing date")
+    date: str | None | None = Field(None, description="Date in MM-DD-YYYY format")
+    name_of_issuer: str | None | None = Field(
+        None, alias="nameOfIssuer", description="Name of issuer"
+    )
+    legal_status_form: str | None = Field(
+        None, alias="legalStatusForm", description="Legal status form"
+    )
+    jurisdiction_organization: str | None = Field(
+        None, alias="jurisdictionOrganization", description="Jurisdiction"
+    )
+
+    # Issuer information
+    issuer_street: str | None | None = Field(
+        None, alias="issuerStreet", description="Issuer street address"
+    )
+    issuer_city: str | None | None = Field(
+        None, alias="issuerCity", description="Issuer city"
+    )
+    issuer_state_or_country: str | None | None = Field(
+        None, alias="issuerStateOrCountry", description="Issuer state/country"
+    )
+    issuer_zip_code: str | None | None = Field(
+        None, alias="issuerZipCode", description="Issuer ZIP code"
+    )
+    issuer_website: str | None | None = Field(
+        None, alias="issuerWebsite", description="Issuer website"
+    )
+
+    # Intermediary information
+    intermediary_company_name: str | None | None = Field(
+        None, alias="intermediaryCompanyName", description="Intermediary company name"
+    )
+    intermediary_commission_cik: str | None | None = Field(
+        None, alias="intermediaryCommissionCik", description="Intermediary CIK"
+    )
+    intermediary_commission_file_number: str | None | None = Field(
+        None,
+        alias="intermediaryCommissionFileNumber",
+        description="Intermediary file number",
+    )
+    compensation_amount: str | None | None = Field(
+        None, alias="compensationAmount", description="Compensation amount"
+    )
+    financial_interest: str | None | None = Field(
+        None, alias="financialInterest", description="Financial interest"
+    )
+
+    # Offering details
+    security_offered_type: str | None | None = Field(
+        None, alias="securityOfferedType", description="Type of security offered"
+    )
+    security_offered_other_description: str | None = Field(
+        alias="securityOfferedOtherDescription",
+        description="Other security description",
+    )
+    number_of_security_offered: int = Field(
+        alias="numberOfSecurityOffered", description="Number of securities offered"
+    )
+    offering_price: Decimal = Field(
+        alias="offeringPrice", description="Price per security"
+    )
+    offering_amount: Decimal = Field(
+        alias="offeringAmount", description="Total offering amount"
+    )
+    over_subscription_accepted: str = Field(
+        alias="overSubscriptionAccepted", description="Over-subscription accepted"
+    )
+    over_subscription_allocation_type: str | None | None = Field(
+        None,
+        alias="overSubscriptionAllocationType",
+        description="Over-subscription allocation type",
+    )
+    maximum_offering_amount: Decimal = Field(
+        alias="maximumOfferingAmount", description="Maximum offering amount"
+    )
+    offering_deadline_date: str | None | None = Field(
+        None, alias="offeringDeadlineDate", description="Offering deadline"
+    )
+
+    # Company metrics
+    current_number_of_employees: int = Field(
+        alias="currentNumberOfEmployees", description="Current employee count"
+    )
+
+    # Financial data - Most recent fiscal year
+    total_asset_most_recent_fiscal_year: Decimal = Field(
+        alias="totalAssetMostRecentFiscalYear", description="Total assets - most recent"
+    )
+    cash_and_cash_equivalent_most_recent_fiscal_year: Decimal = Field(
+        alias="cashAndCashEquiValentMostRecentFiscalYear",
+        description="Cash - most recent",
+    )
+    accounts_receivable_most_recent_fiscal_year: Decimal = Field(
+        alias="accountsReceivableMostRecentFiscalYear", description="AR - most recent"
+    )
+    short_term_debt_most_recent_fiscal_year: Decimal = Field(
+        alias="shortTermDebtMostRecentFiscalYear",
+        description="Short term debt - most recent",
+    )
+    long_term_debt_most_recent_fiscal_year: Decimal = Field(
+        alias="longTermDebtMostRecentFiscalYear",
+        description="Long term debt - most recent",
+    )
+    revenue_most_recent_fiscal_year: Decimal = Field(
+        alias="revenueMostRecentFiscalYear", description="Revenue - most recent"
+    )
+    cost_goods_sold_most_recent_fiscal_year: Decimal = Field(
+        alias="costGoodsSoldMostRecentFiscalYear", description="COGS - most recent"
+    )
+    taxes_paid_most_recent_fiscal_year: Decimal = Field(
+        alias="taxesPaidMostRecentFiscalYear", description="Taxes - most recent"
+    )
+    net_income_most_recent_fiscal_year: Decimal = Field(
+        alias="netIncomeMostRecentFiscalYear", description="Net income - most recent"
+    )
+
+    # Financial data - Prior fiscal year
+    total_asset_prior_fiscal_year: Decimal = Field(
+        alias="totalAssetPriorFiscalYear", description="Total assets - prior"
+    )
+    cash_and_cash_equivalent_prior_fiscal_year: Decimal = Field(
+        alias="cashAndCashEquiValentPriorFiscalYear", description="Cash - prior"
+    )
+    accounts_receivable_prior_fiscal_year: Decimal = Field(
+        alias="accountsReceivablePriorFiscalYear", description="AR - prior"
+    )
+    short_term_debt_prior_fiscal_year: Decimal = Field(
+        alias="shortTermDebtPriorFiscalYear", description="Short term debt - prior"
+    )
+    long_term_debt_prior_fiscal_year: Decimal = Field(
+        alias="longTermDebtPriorFiscalYear", description="Long term debt - prior"
+    )
+    revenue_prior_fiscal_year: Decimal = Field(
+        alias="revenuePriorFiscalYear", description="Revenue - prior"
+    )
+    cost_goods_sold_prior_fiscal_year: Decimal = Field(
+        alias="costGoodsSoldPriorFiscalYear", description="COGS - prior"
+    )
+    taxes_paid_prior_fiscal_year: Decimal = Field(
+        alias="taxesPaidPriorFiscalYear", description="Taxes - prior"
+    )
+    net_income_prior_fiscal_year: Decimal = Field(
+        alias="netIncomePriorFiscalYear", description="Net income - prior"
+    )
+
+
+class EquityOffering(BaseModel):
+    """Equity offering data"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    # Filing information
+    form_type: str = Field(alias="formType", description="SEC form type")
+    form_signification: str = Field(
+        alias="formSignification", description="Form signification"
+    )
+    acceptance_time: datetime = Field(
+        alias="acceptanceTime", description="Filing acceptance time"
+    )
+    is_amendment: bool = Field(
+        alias="isAmendment", description="Whether this is an amendment"
+    )
+
+    # Issuer information
+    cik: str = Field(description="Company CIK number")
+    entity_name: str = Field(alias="entityName", description="Entity name")
+    entity_type: str = Field(alias="entityType", description="Type of entity")
+    jurisdiction_of_incorporation: str = Field(
+        alias="jurisdictionOfIncorporation", description="Jurisdiction"
+    )
+    incorporated_within_five_years: bool | None = Field(
+        alias="incorporatedWithinFiveYears",
+        default=None,
+        description="Whether incorporated within 5 years",
+    )
+    year_of_incorporation: str = Field(
+        alias="yearOfIncorporation", description="Year of incorporation"
+    )
+    industry_group_type: str = Field(
+        alias="industryGroupType", description="Industry group"
+    )
+    revenue_range: str | None = Field(alias="revenueRange", description="Revenue range")
+
+    # Issuer address
+    issuer_street: str = Field(
+        alias="issuerStreet", description="Issuer street address"
+    )
+    issuer_city: str = Field(alias="issuerCity", description="Issuer city")
+    issuer_state_or_country: str = Field(
+        alias="issuerStateOrCountry", description="Issuer state/country code"
+    )
+    issuer_state_or_country_description: str = Field(
+        alias="issuerStateOrCountryDescription", description="Issuer state/country name"
+    )
+    issuer_zip_code: str = Field(alias="issuerZipCode", description="Issuer ZIP code")
+    issuer_phone_number: str = Field(
+        alias="issuerPhoneNumber", description="Issuer phone number"
+    )
+
+    # Related person information
+    related_person_first_name: str = Field(
+        alias="relatedPersonFirstName", description="Related person first name"
+    )
+    related_person_last_name: str = Field(
+        alias="relatedPersonLastName", description="Related person last name"
+    )
+    related_person_street: str = Field(
+        alias="relatedPersonStreet", description="Related person street"
+    )
+    related_person_city: str = Field(
+        alias="relatedPersonCity", description="Related person city"
+    )
+    related_person_state_or_country: str = Field(
+        alias="relatedPersonStateOrCountry",
+        description="Related person state/country code",
+    )
+    related_person_state_or_country_description: str = Field(
+        alias="relatedPersonStateOrCountryDescription",
+        description="Related person state/country name",
+    )
+    related_person_zip_code: str = Field(
+        alias="relatedPersonZipCode", description="Related person ZIP code"
+    )
+    related_person_relationship: str = Field(
+        alias="relatedPersonRelationship", description="Related person relationship"
+    )
+
+    # Offering details
+    federal_exemptions_exclusions: str = Field(
+        alias="federalExemptionsExclusions", description="Federal exemptions"
+    )
+    date_of_first_sale: str = Field(
+        alias="dateOfFirstSale", description="Date of first sale"
+    )
+    duration_of_offering_is_more_than_year: bool = Field(
+        alias="durationOfOfferingIsMoreThanYear",
+        description="Whether offering duration exceeds one year",
+    )
+    securities_offered_are_of_equity_type: bool | None | None = Field(
+        None,
+        alias="securitiesOfferedAreOfEquityType",
+        description="Whether securities are equity type",
+    )
+    is_business_combination_transaction: bool = Field(
+        alias="isBusinessCombinationTransaction",
+        description="Whether this is a business combination",
+    )
+
+    # Financial details
+    minimum_investment_accepted: Decimal = Field(
+        alias="minimumInvestmentAccepted", description="Minimum investment"
+    )
+    total_offering_amount: Decimal = Field(
+        alias="totalOfferingAmount", description="Total offering amount"
+    )
+    total_amount_sold: Decimal = Field(
+        alias="totalAmountSold", description="Total amount sold"
+    )
+    total_amount_remaining: Decimal = Field(
+        alias="totalAmountRemaining", description="Amount remaining"
+    )
+    has_non_accredited_investors: bool = Field(
+        alias="hasNonAccreditedInvestors", description="Has non-accredited investors"
+    )
+    total_number_already_invested: int = Field(
+        alias="totalNumberAlreadyInvested", description="Number of investors"
+    )
+    sales_commissions: Decimal = Field(
+        alias="salesCommissions", description="Sales commissions"
+    )
+    finders_fees: Decimal = Field(alias="findersFees", description="Finders fees")
+    gross_proceeds_used: Decimal = Field(
+        alias="grossProceedsUsed", description="Gross proceeds used"
+    )
+
+
+class EquityOfferingSearchItem(BaseModel):
+    """Equity offering search item"""
+
+    model_config = ConfigDict(populate_by_name=True)
+    cik: str = Field(description="Company CIK number")
+    name: str = Field(description="Company name")
+    date: datetime = Field(description="Date of filing")

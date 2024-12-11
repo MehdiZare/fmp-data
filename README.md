@@ -1,7 +1,7 @@
 # FMP Data Client
 
 [![Test](https://github.com/MehdiZare/fmp-data/actions/workflows/test.yml/badge.svg)](https://github.com/MehdiZare/fmp-data/actions/workflows/test.yml)
-[![codecov](https://codecov.io/gh/MehdiZare/fmp-data/branch/main/graph/badge.svg)](https://codecov.io/gh/MehdiZare/fmp-data)
+[![CI/CD Pipeline](https://github.com/MehdiZare/fmp-data/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/MehdiZare/fmp-data/actions/workflows/ci-cd.yml)[![codecov](https://codecov.io/gh/MehdiZare/fmp-data/branch/main/graph/badge.svg)](https://codecov.io/gh/MehdiZare/fmp-data)
 [![Python](https://img.shields.io/pypi/pyversions/fmp-data.svg)](https://pypi.org/project/fmp-data/)
 [![Poetry](https://img.shields.io/endpoint?url=https://python-poetry.org/badge/v0.json)](https://python-poetry.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -21,6 +21,12 @@ A Python client for the Financial Modeling Prep (FMP) API with comprehensive log
 - 📊 Support for all major FMP endpoints
 - 🔍 Detailed error messages
 - 🚦 Configurable retry strategies
+
+## Getting an API Key
+
+To use this library, you'll need an API key from Financial Modeling Prep (FMP). You can:
+- Get a [free API key from FMP](https://site.financialmodelingprep.com/pricing-plans?couponCode=mehdi)
+- All paid plans come with a 10% discount.
 
 ## Installation
 

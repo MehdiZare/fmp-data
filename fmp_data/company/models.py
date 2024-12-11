@@ -1,7 +1,7 @@
 import warnings
-from datetime import datetime
+from datetime import date, datetime
 
-from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
 
 class CompanyProfile(BaseModel):
@@ -300,3 +300,108 @@ class AvailableIndex(BaseModel):
     exchange_short_name: str = Field(
         alias="exchangeShortName", description="Exchange short name"
     )
+
+
+class ExecutiveCompensation(BaseModel):
+    """Executive compensation information based on SEC filings"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    cik: str = Field(description="SEC CIK number")
+    symbol: str = Field(description="Company symbol")
+    company_name: str = Field(alias="companyName", description="Company name")
+    industry_title: str = Field(
+        alias="industryTitle", description="Industry classification"
+    )
+    filing_date: date = Field(alias="filingDate", description="SEC filing date")
+    accepted_date: datetime = Field(
+        alias="acceptedDate", description="SEC acceptance date"
+    )
+    name_and_position: str = Field(
+        alias="nameAndPosition", description="Executive name and title"
+    )
+    year: int = Field(description="Compensation year")
+    salary: float = Field(description="Base salary")
+    bonus: float = Field(description="Annual bonus")
+    stock_award: float = Field(alias="stock_award", description="Stock awards value")
+    option_award: float | None | None = Field(
+        None, alias="option_award", description="Option awards value"
+    )
+    incentive_plan_compensation: float = Field(
+        alias="incentive_plan_compensation", description="Incentive plan compensation"
+    )
+    all_other_compensation: float = Field(
+        alias="all_other_compensation", description="All other compensation"
+    )
+    total: float = Field(description="Total compensation")
+    url: HttpUrl = Field(description="SEC filing URL")
+
+
+class ShareFloat(BaseModel):
+    """Share float information"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    symbol: str = Field(description="Company symbol")
+    date: datetime | None = Field(
+        None, description="Data date"
+    )  # Example: "2024-12-09 12:10:05"
+    free_float: float | None = Field(
+        alias="freeFloat", description="Free float percentage"
+    )  # Example: 55.73835
+    float_shares: float | None = Field(
+        alias="floatShares", description="Number of floating shares"
+    )  # Example: 36025816
+    outstanding_shares: float | None = Field(
+        alias="outstandingShares", description="Total outstanding shares"
+    )
+
+
+class HistoricalShareFloat(ShareFloat):
+    """Historical share float data with the same structure as current share float"""
+
+    pass
+
+
+class RevenueSegmentItem(BaseModel):
+    """Single year revenue segment data"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    date: str = Field(description="Fiscal year end date")
+    segments: dict[str, float] = Field(description="Segment name to revenue mapping")
+
+    def __init__(self, **data):
+        """Custom init to handle the single-key dictionary structure"""
+        # Input looks like: {"2024-09-28": {"Mac": 29984000000, ...}}
+        if len(data) == 1:
+            date_key = next(iter(data))
+            segments = data[date_key]
+            super().__init__(date=date_key, segments=segments)
+        else:
+            super().__init__(**data)
+
+
+class ProductRevenueSegment(RevenueSegmentItem):
+    """Product revenue segmentation with product segments"""
+
+    pass
+
+
+class GeographicRevenueSegment(RevenueSegmentItem):
+    """Geographic revenue segmentation with region segments"""
+
+    pass
+
+
+class SymbolChange(BaseModel):
+    """Symbol change information from the FMP API"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    change_date: date = Field(
+        description="Date when the symbol change occurred", alias="date"
+    )
+    name: str = Field(description="Company or security name")
+    old_symbol: str = Field(alias="oldSymbol", description="Previous trading symbol")
+    new_symbol: str = Field(alias="newSymbol", description="New trading symbol")

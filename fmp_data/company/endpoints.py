@@ -1,3 +1,4 @@
+# company/endpoints.py
 from fmp_data.company.models import (
     AvailableIndex,
     CIKResult,
@@ -10,7 +11,13 @@ from fmp_data.company.models import (
     CUSIPResult,
     EmployeeCount,
     ExchangeSymbol,
+    ExecutiveCompensation,
+    GeographicRevenueSegment,
+    HistoricalShareFloat,
     ISINResult,
+    ProductRevenueSegment,
+    ShareFloat,
+    SymbolChange,
 )
 from fmp_data.models import (
     APIVersion,
@@ -292,4 +299,140 @@ COMPANY_LOGO = Endpoint(
     ],
     optional_params=[],
     response_model=str,
+)
+
+EXECUTIVE_COMPENSATION = Endpoint(
+    name="executive_compensation",
+    path="governance/executive_compensation",
+    version=APIVersion.V4,
+    description="Get executive compensation data",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Company symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=ExecutiveCompensation,
+)
+
+SHARE_FLOAT = Endpoint(
+    name="share_float",
+    path="shares_float",
+    version=APIVersion.V4,
+    description="Get current share float data",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Company symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=ShareFloat,
+)
+
+HISTORICAL_SHARE_FLOAT = Endpoint(
+    name="historical_share_float",
+    path="historical/shares_float",
+    version=APIVersion.V4,
+    description="Get historical share float data",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Company symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=HistoricalShareFloat,
+)
+
+ALL_SHARES_FLOAT = Endpoint(
+    name="all_shares_float",
+    path="shares_float/all",
+    version=APIVersion.V4,
+    description="Get share float data for all companies",
+    mandatory_params=[],
+    optional_params=[],
+    response_model=ShareFloat,
+)
+
+# endpoints.py
+PRODUCT_REVENUE_SEGMENTATION = Endpoint(
+    name="product_revenue_segmentation",
+    path="revenue-product-segmentation",
+    version=APIVersion.V4,
+    description="Get revenue segmentation by product",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Company symbol",
+        ),
+        EndpointParam(
+            name="structure",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Data structure format",
+            default="flat",
+        ),
+        EndpointParam(
+            name="period",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Annual or quarterly data",
+            default="annual",
+            valid_values=["annual", "quarter"],
+        ),
+    ],
+    optional_params=[],
+    response_model=ProductRevenueSegment,  # Updated to new model
+)
+
+GEOGRAPHIC_REVENUE_SEGMENTATION = Endpoint(
+    name="geographic_revenue_segmentation",
+    path="revenue-geographic-segmentation",
+    version=APIVersion.V4,
+    description="Get revenue segmentation by geography",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Company symbol",
+        ),
+        EndpointParam(
+            name="structure",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Data structure format",
+            default="flat",
+        ),
+    ],
+    optional_params=[],
+    response_model=GeographicRevenueSegment,  # Updated to new model
+)
+
+SYMBOL_CHANGES = Endpoint(
+    name="symbol_changes",
+    path="symbol_change",
+    version=APIVersion.V4,
+    description="Get symbol change history",
+    mandatory_params=[],
+    optional_params=[],
+    response_model=SymbolChange,
 )

@@ -2,6 +2,7 @@
 
 from fmp_data.base import EndpointGroup
 from fmp_data.company.endpoints import (
+    ALL_SHARES_FLOAT,
     AVAILABLE_INDEXES,
     CIK_SEARCH,
     COMPANY_NOTES,
@@ -10,11 +11,17 @@ from fmp_data.company.endpoints import (
     EMPLOYEE_COUNT,
     ETF_LIST,
     EXCHANGE_SYMBOLS,
+    EXECUTIVE_COMPENSATION,
+    GEOGRAPHIC_REVENUE_SEGMENTATION,
+    HISTORICAL_SHARE_FLOAT,
     ISIN_SEARCH,
     KEY_EXECUTIVES,
+    PRODUCT_REVENUE_SEGMENTATION,
     PROFILE,
     SEARCH,
+    SHARE_FLOAT,
     STOCK_LIST,
+    SYMBOL_CHANGES,
 )
 from fmp_data.company.models import (
     AvailableIndex,
@@ -28,7 +35,13 @@ from fmp_data.company.models import (
     CUSIPResult,
     EmployeeCount,
     ExchangeSymbol,
+    ExecutiveCompensation,
+    GeographicRevenueSegment,
+    HistoricalShareFloat,
     ISINResult,
+    ProductRevenueSegment,
+    ShareFloat,
+    SymbolChange,
 )
 from fmp_data.exceptions import FMPError
 
@@ -117,3 +130,61 @@ class CompanyClient(EndpointGroup):
     def search_by_isin(self, query: str) -> list[ISINResult]:
         """Search companies by ISIN"""
         return self.client.request(ISIN_SEARCH, query=query)
+
+    def get_executive_compensation(self, symbol: str) -> list[ExecutiveCompensation]:
+        """Get executive compensation data for a company"""
+        return self.client.request(EXECUTIVE_COMPENSATION, symbol=symbol)
+
+    def get_share_float(self, symbol: str) -> ShareFloat:
+        """Get current share float data for a company"""
+        result = self.client.request(SHARE_FLOAT, symbol=symbol)
+        return result[0] if isinstance(result, list) else result
+
+    def get_historical_share_float(self, symbol: str) -> list[HistoricalShareFloat]:
+        """Get historical share float data for a company"""
+        return self.client.request(HISTORICAL_SHARE_FLOAT, symbol=symbol)
+
+    def get_all_shares_float(self) -> list[ShareFloat]:
+        """Get share float data for all companies"""
+        return self.client.request(ALL_SHARES_FLOAT)
+
+    # client.py additions
+    def get_product_revenue_segmentation(
+        self, symbol: str, period: str = "annual"
+    ) -> list[ProductRevenueSegment]:
+        """Get revenue segmentation by product.
+
+        Args:
+            symbol: Company symbol
+            period: Data period ('annual' or 'quarter')
+
+        Returns:
+            List of product revenue segments by fiscal year
+        """
+        return self.client.request(
+            PRODUCT_REVENUE_SEGMENTATION,
+            symbol=symbol,
+            structure="flat",
+            period=period,
+        )
+
+    def get_geographic_revenue_segmentation(
+        self, symbol: str
+    ) -> list[GeographicRevenueSegment]:
+        """Get revenue segmentation by geographic region.
+
+        Args:
+            symbol: Company symbol
+
+        Returns:
+            List of geographic revenue segments by fiscal year
+        """
+        return self.client.request(
+            GEOGRAPHIC_REVENUE_SEGMENTATION,
+            symbol=symbol,
+            structure="flat",
+        )
+
+    def get_symbol_changes(self) -> list[SymbolChange]:
+        """Get symbol change history"""
+        return self.client.request(SYMBOL_CHANGES)
