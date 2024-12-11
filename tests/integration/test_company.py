@@ -132,10 +132,13 @@ class TestCompanyEndpoints:
         assert url == f"https://financialmodelingprep.com/image-stock/{test_symbol}.png"
 
         # Verify URL components
-        assert url.startswith("https://financialmodelingprep.com")
-        assert "/image-stock/" in url
-        assert url.endswith(".png")
-        assert test_symbol in url
+        from urllib.parse import urlparse
+        parsed_url = urlparse(url)
+        assert parsed_url.scheme == "https"
+        assert parsed_url.netloc == "financialmodelingprep.com"
+        assert parsed_url.path.startswith("/image-stock/")
+        assert parsed_url.path.endswith(".png")
+        assert test_symbol in parsed_url.path
 
         # Verify no API-related parameters
         assert "apikey" not in url
