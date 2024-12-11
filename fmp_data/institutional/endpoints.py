@@ -1,5 +1,9 @@
 from fmp_data.institutional.models import (
     AssetAllocation,
+    BeneficialOwnership,
+    CIKCompanyMap,
+    CIKMapping,
+    FailToDeliver,
     Form13F,
     Form13FDate,
     InsiderRoster,
@@ -205,4 +209,113 @@ INSIDER_STATISTICS = Endpoint(
     ],
     optional_params=[],
     response_model=InsiderStatistic,
+)
+
+CIK_MAPPER = Endpoint(
+    name="cik_mapper",
+    path="mapper-cik-name",
+    version=APIVersion.V4,
+    description="Get CIK to name mappings",
+    mandatory_params=[],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Page number",
+            default=0,
+        )
+    ],
+    response_model=CIKMapping,
+)
+
+CIK_MAPPER_BY_NAME = Endpoint(
+    name="cik_mapper_by_name",
+    path="mapper-cik-name",
+    version=APIVersion.V4,
+    description="Search CIK mappings by name",
+    mandatory_params=[
+        EndpointParam(
+            name="name",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Name to search",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Page number",
+            default=0,
+        )
+    ],
+    response_model=CIKMapping,
+)
+
+CIK_MAPPER_BY_SYMBOL = Endpoint(
+    name="cik_mapper_by_symbol",
+    path="mapper-cik-company/{symbol}",
+    version=APIVersion.V4,
+    description="Get CIK mapping for symbol",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=CIKCompanyMap,
+)
+
+BENEFICIAL_OWNERSHIP = Endpoint(
+    name="beneficial_ownership",
+    path="insider/ownership/acquisition_of_beneficial_ownership",
+    version=APIVersion.V4,
+    description="Get beneficial ownership data",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=BeneficialOwnership,
+)
+
+FAIL_TO_DELIVER = Endpoint(
+    name="fail_to_deliver",
+    path="fail_to_deliver",
+    version=APIVersion.V4,
+    description="Get fail to deliver data",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Page number",
+            default=0,
+        )
+    ],
+    response_model=FailToDeliver,
 )

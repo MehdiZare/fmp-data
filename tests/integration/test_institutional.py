@@ -5,6 +5,10 @@ import pytest
 
 from fmp_data import FMPDataClient
 from fmp_data.institutional.models import (
+    BeneficialOwnership,
+    CIKCompanyMap,
+    CIKMapping,
+    FailToDeliver,
     Form13F,
     InsiderRoster,
     InsiderStatistic,
@@ -155,3 +159,147 @@ class TestInsiderTradingEndpoints:
                 assert all(isinstance(t, InsiderTrade) for t in trades)
                 assert all(t.symbol == test_symbol for t in trades)
                 assert all(t.price >= 0 for t in trades)
+
+
+# Add these test classes to test_institutional.py
+
+
+class TestCIKMappingEndpoints:
+    """Test CIK mapping related endpoints"""
+
+    def test_get_cik_mappings(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting CIK mappings"""
+        with vcr_instance.use_cassette("institutional/cik_mappings.yaml"):
+            mappings = fmp_client.institutional.get_cik_mappings(page=0)
+
+            assert isinstance(mappings, list)
+            assert len(mappings) > 0
+            assert all(isinstance(m, CIKMapping) for m in mappings)
+
+            # Verify sample mapping data
+            sample_mapping = mappings[0]
+            assert isinstance(sample_mapping.reporting_cik, str)
+            assert isinstance(sample_mapping.reporting_name, str)
+            assert len(sample_mapping.reporting_cik) == 10  # CIK numbers are 10 digits
+
+    def test_search_cik_by_name(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test searching CIK mappings by name"""
+        with vcr_instance.use_cassette("institutional/cik_search_name.yaml"):
+            # Using "Berkshire" as test search term
+            mappings = fmp_client.institutional.search_cik_by_name("Berkshire", page=0)
+
+            assert isinstance(mappings, list)
+            assert len(mappings) > 0
+            assert all(isinstance(m, CIKMapping) for m in mappings)
+
+            # Verify search results contain term
+            sample_mapping = mappings[0]
+            assert "BERKSHIRE" in sample_mapping.reporting_name.upper()
+
+    def test_get_cik_by_symbol(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting CIK mapping by symbol"""
+        with vcr_instance.use_cassette("institutional/cik_by_symbol.yaml"):
+            mappings = fmp_client.institutional.get_cik_by_symbol("AAPL")
+
+            assert isinstance(mappings, list)
+            assert len(mappings) > 0
+            assert all(isinstance(m, CIKCompanyMap) for m in mappings)
+
+            # Verify mapping matches requested symbol
+            sample_mapping = mappings[0]
+            assert isinstance(sample_mapping.cik, str)
+            assert isinstance(sample_mapping.symbol, str)
+            assert "AAPL" in sample_mapping.symbol.upper()
+
+
+class TestBeneficialOwnershipEndpoints:
+    """Test beneficial ownership endpoints"""
+
+    def test_get_beneficial_ownership(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting beneficial ownership data"""
+        with vcr_instance.use_cassette("institutional/beneficial_ownership.yaml"):
+            ownership = fmp_client.institutional.get_beneficial_ownership("AAPL")
+
+            assert isinstance(ownership, list)
+            if len(ownership) > 0:  # Not all symbols have beneficial ownership data
+                assert all(isinstance(o, BeneficialOwnership) for o in ownership)
+
+                # Verify sample ownership data
+                sample_ownership = ownership[0]
+                assert sample_ownership.symbol == "AAPL"
+                assert isinstance(sample_ownership.filing_date, datetime)
+                assert isinstance(sample_ownership.accepted_ate, datetime)
+                assert isinstance(sample_ownership.citizenship_place_org, str)
+                assert isinstance(sample_ownership.type_of_reporting_person, str)
+                assert isinstance(sample_ownership.shared_voting_power, float)
+                assert isinstance(sample_ownership.url, str)
+
+    @pytest.mark.parametrize(
+        "test_symbol",
+        [
+            "AAPL",  # High volume stock
+            "MSFT",  # Another high volume option
+        ],
+    )
+    def test_beneficial_ownership_multiple_symbols(
+        self, fmp_client: FMPDataClient, vcr_instance, test_symbol
+    ):
+        """Test beneficial ownership with different symbols"""
+        with vcr_instance.use_cassette(
+            f"institutional/beneficial_ownership_{test_symbol}.yaml"
+        ):
+            ownership = fmp_client.institutional.get_beneficial_ownership(test_symbol)
+
+            assert isinstance(ownership, list)
+            if len(ownership) > 0:
+                assert all(isinstance(o, BeneficialOwnership) for o in ownership)
+                assert all(o.symbol == test_symbol for o in ownership)
+                assert all(o.amount_beneficially_owned >= 0 for o in ownership)
+
+
+class TestFailToDeliverEndpoints:
+    """Test fail to deliver endpoints"""
+
+    def test_get_fail_to_deliver(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting fail to deliver data"""
+        with vcr_instance.use_cassette("institutional/fail_to_deliver.yaml"):
+            ftd_data = fmp_client.institutional.get_fail_to_deliver("AAPL", page=0)
+
+            assert isinstance(ftd_data, list)
+            if len(ftd_data) > 0:  # Not all symbols have FTD data
+                assert all(isinstance(f, FailToDeliver) for f in ftd_data)
+
+                # Verify sample FTD data
+                sample_ftd = ftd_data[0]
+                assert sample_ftd.symbol == "AAPL"
+                assert isinstance(sample_ftd.fail_date, date)
+                assert isinstance(sample_ftd.quantity, int)
+                assert isinstance(sample_ftd.price, float)
+                assert isinstance(sample_ftd.name, str)
+
+                # Verify reasonable value ranges
+                assert sample_ftd.quantity >= 0
+                assert sample_ftd.price > 0
+
+    @pytest.mark.parametrize(
+        "test_symbol",
+        [
+            "AAPL",  # High volume stock
+            "MSFT",  # Another high volume option
+        ],
+    )
+    def test_fail_to_deliver_multiple_symbols(
+        self, fmp_client: FMPDataClient, vcr_instance, test_symbol
+    ):
+        """Test fail to deliver with different symbols"""
+        with vcr_instance.use_cassette(
+            f"institutional/fail_to_deliver_{test_symbol}.yaml"
+        ):
+            ftd_data = fmp_client.institutional.get_fail_to_deliver(test_symbol, page=0)
+
+            assert isinstance(ftd_data, list)
+            if len(ftd_data) > 0:
+                assert all(isinstance(f, FailToDeliver) for f in ftd_data)
+                assert all(f.symbol == test_symbol for f in ftd_data)
+                assert all(f.quantity >= 0 for f in ftd_data)
+                assert all(f.price > 0 for f in ftd_data)
