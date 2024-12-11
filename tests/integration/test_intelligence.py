@@ -696,4 +696,4 @@ class TestIntelligenceEndpoints:
                     assert isinstance(offering.year_of_incorporation, str)
                     assert isinstance(offering.related_person_first_name, str)
                     assert isinstance(offering.date_of_first_sale, str)
-                    assert isinstance(offering.offering_type, str)
+                    assert isinstance(offering.form_signification, str)
