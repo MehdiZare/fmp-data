@@ -1,21 +1,29 @@
 from fmp_data.intelligence.models import (
     AnalystEstimate,
     AnalystRecommendation,
+    CrowdfundingOffering,
     CryptoNewsArticle,
     DividendEvent,
     EarningConfirmed,
     EarningEvent,
     EarningSurprise,
+    EquityOffering,
+    EquityOfferingSearchItem,
+    ESGBenchmark,
+    ESGData,
+    ESGRating,
     FMPArticlesResponse,
     ForexNewsArticle,
     GeneralNewsArticle,
     HistoricalSocialSentiment,
+    HouseDisclosure,
     IPOEvent,
     PressRelease,
     PressReleaseBySymbol,
     PriceTarget,
     PriceTargetConsensus,
     PriceTargetSummary,
+    SenateTrade,
     SocialSentimentChanges,
     StockNewsArticle,
     StockNewsSentiment,
@@ -667,4 +675,245 @@ SOCIAL_SENTIMENT_CHANGES_ENDPOINT = Endpoint(
     ],
     optional_params=[],
     response_model=SocialSentimentChanges,
+)
+
+# ESG Endpoints
+ESG_DATA = Endpoint(
+    name="esg_data",
+    path="esg-environmental-social-governance-data",
+    version=APIVersion.V4,
+    description="Get ESG data for a company",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Company symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=ESGData,
+)
+
+ESG_RATINGS = Endpoint(
+    name="esg_ratings",
+    path="esg-environmental-social-governance-data-ratings",
+    version=APIVersion.V4,
+    description="Get ESG ratings for a company",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Company symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=ESGRating,
+)
+
+ESG_BENCHMARK = Endpoint(
+    name="esg_benchmark",
+    path="esg-environmental-social-governance-sector-benchmark",
+    version=APIVersion.V4,
+    description="Get ESG sector benchmark data",
+    mandatory_params=[
+        EndpointParam(
+            name="year",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Benchmark year",
+        )
+    ],
+    optional_params=[],
+    response_model=ESGBenchmark,
+)
+
+# Government Trading Endpoints
+SENATE_TRADING = Endpoint(
+    name="senate_trading",
+    path="senate-trading",
+    version=APIVersion.V4,
+    description="Get Senate trading data",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=SenateTrade,
+)
+
+SENATE_TRADING_RSS = Endpoint(
+    name="senate_trading_rss",
+    path="senate-trading-rss-feed",
+    version=APIVersion.V4,
+    description="Get Senate trading RSS feed",
+    mandatory_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Page number",
+            default=0,
+        )
+    ],
+    optional_params=[],
+    response_model=SenateTrade,
+)
+
+HOUSE_DISCLOSURE = Endpoint(
+    name="house_disclosure",
+    path="senate-disclosure",
+    version=APIVersion.V4,
+    description="Get House disclosure data",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=HouseDisclosure,
+)
+
+HOUSE_DISCLOSURE_RSS = Endpoint(
+    name="house_disclosure_rss",
+    path="senate-disclosure-rss-feed",
+    version=APIVersion.V4,
+    description="Get House disclosure RSS feed",
+    mandatory_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Page number",
+            default=0,
+        )
+    ],
+    optional_params=[],
+    response_model=HouseDisclosure,
+)
+
+# Fundraising Endpoints
+CROWDFUNDING_RSS = Endpoint(
+    name="crowdfunding_rss",
+    path="crowdfunding-offerings-rss-feed",
+    version=APIVersion.V4,
+    description="Get crowdfunding offerings RSS feed",
+    mandatory_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Page number",
+            default=0,
+        )
+    ],
+    optional_params=[],
+    response_model=CrowdfundingOffering,
+)
+
+CROWDFUNDING_SEARCH = Endpoint(
+    name="crowdfunding_search",
+    path="crowdfunding-offerings/search",
+    version=APIVersion.V4,
+    description="Search crowdfunding offerings",
+    mandatory_params=[
+        EndpointParam(
+            name="name",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Company or offering name",
+        )
+    ],
+    optional_params=[],
+    response_model=CrowdfundingOffering,
+)
+
+CROWDFUNDING_BY_CIK = Endpoint(
+    name="crowdfunding_by_cik",
+    path="crowdfunding-offerings",
+    version=APIVersion.V4,
+    description="Get crowdfunding offerings by CIK",
+    mandatory_params=[
+        EndpointParam(
+            name="cik",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Company CIK number",
+        )
+    ],
+    optional_params=[],
+    response_model=CrowdfundingOffering,
+)
+
+EQUITY_OFFERING_RSS = Endpoint(
+    name="equity_offering_rss",
+    path="fundraising-rss-feed",
+    version=APIVersion.V4,
+    description="Get equity offering RSS feed",
+    mandatory_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Page number",
+            default=0,
+        )
+    ],
+    optional_params=[],
+    response_model=EquityOffering,
+)
+
+EQUITY_OFFERING_SEARCH = Endpoint(
+    name="equity_offering_search",
+    path="fundraising/search",
+    version=APIVersion.V4,
+    description="Search equity offerings",
+    mandatory_params=[
+        EndpointParam(
+            name="name",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Company or offering name",
+        )
+    ],
+    optional_params=[],
+    response_model=EquityOfferingSearchItem,
+)
+
+EQUITY_OFFERING_BY_CIK = Endpoint(
+    name="equity_offering_by_cik",
+    path="fundraising",
+    version=APIVersion.V4,
+    description="Get equity offerings by CIK",
+    mandatory_params=[
+        EndpointParam(
+            name="cik",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Company CIK number",
+        )
+    ],
+    optional_params=[],
+    response_model=EquityOffering,
 )
