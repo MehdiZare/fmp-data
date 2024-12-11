@@ -133,6 +133,7 @@ class TestCompanyEndpoints:
 
         # Verify URL components
         from urllib.parse import urlparse
+
         parsed_url = urlparse(url)
         assert parsed_url.scheme == "https"
         assert parsed_url.netloc == "financialmodelingprep.com"
