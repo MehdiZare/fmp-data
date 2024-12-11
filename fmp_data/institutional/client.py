@@ -21,6 +21,7 @@ from fmp_data.institutional.endpoints import (
 from fmp_data.institutional.models import (
     AssetAllocation,
     BeneficialOwnership,
+    CIKCompanyMap,
     CIKMapping,
     FailToDeliver,
     Form13F,
@@ -91,7 +92,7 @@ class InstitutionalClient(EndpointGroup):
         """Search CIK mappings by name"""
         return self.client.request(CIK_MAPPER_BY_NAME, name=name, page=page)
 
-    def get_cik_by_symbol(self, symbol: str) -> list[CIKMapping]:
+    def get_cik_by_symbol(self, symbol: str) -> list[CIKCompanyMap]:
         """Get CIK mapping for symbol"""
         return self.client.request(CIK_MAPPER_BY_SYMBOL, symbol=symbol)
 
