@@ -865,7 +865,8 @@ class EquityOffering(BaseModel):
     date_of_first_sale: str = Field(
         alias="dateOfFirstSale", description="Date of first sale"
     )
-    duration_of_offering_is_more_than_year: bool = Field(
+    duration_of_offering_is_more_than_year: bool | None | None = Field(
+        None,
         alias="durationOfOfferingIsMoreThanYear",
         description="Whether offering duration exceeds one year",
     )
@@ -874,7 +875,8 @@ class EquityOffering(BaseModel):
         alias="securitiesOfferedAreOfEquityType",
         description="Whether securities are equity type",
     )
-    is_business_combination_transaction: bool = Field(
+    is_business_combination_transaction: bool | None | None = Field(
+        None,
         alias="isBusinessCombinationTransaction",
         description="Whether this is a business combination",
     )
@@ -892,8 +894,10 @@ class EquityOffering(BaseModel):
     total_amount_remaining: Decimal = Field(
         alias="totalAmountRemaining", description="Amount remaining"
     )
-    has_non_accredited_investors: bool = Field(
-        alias="hasNonAccreditedInvestors", description="Has non-accredited investors"
+    has_non_accredited_investors: bool | None | None = Field(
+        None,
+        alias="hasNonAccreditedInvestors",
+        description="Has non-accredited investors",
     )
     total_number_already_invested: int = Field(
         alias="totalNumberAlreadyInvested", description="Number of investors"
