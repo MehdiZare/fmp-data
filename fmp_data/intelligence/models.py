@@ -790,8 +790,8 @@ class EquityOffering(BaseModel):
     acceptance_time: datetime = Field(
         alias="acceptanceTime", description="Filing acceptance time"
     )
-    is_amendment: bool = Field(
-        alias="isAmendment", description="Whether this is an amendment"
+    is_amendment: bool | None | None = Field(
+        None, alias="isAmendment", description="Whether this is an amendment"
     )
 
     # Issuer information
