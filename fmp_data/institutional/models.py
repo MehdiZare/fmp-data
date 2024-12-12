@@ -205,3 +205,73 @@ class InsiderTrade(BaseModel):
     price: float = Field(description="Transaction price")
     security_name: str = Field(alias="securityName", description="Security name")
     link: str = Field(description="SEC filing link")
+
+
+class CIKMapping(BaseModel):
+    """CIK to name mapping information"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    reporting_cik: str = Field(alias="reportingCik", description="CIK number")
+    reporting_name: str = Field(
+        alias="reportingName", description="Individual or company name"
+    )
+
+
+class CIKCompanyMap(BaseModel):
+    """CIK to company mapping information"""
+
+    model_config = ConfigDict(populate_by_name=True)
+    symbol: str = Field(description="Stock symbol")
+    cik: str = Field(description="CIK number", alias="companyCik")
+
+
+class BeneficialOwnership(BaseModel):
+    """Beneficial ownership information"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    symbol: str = Field(description="Company symbol")
+    filing_date: datetime = Field(alias="filingDate", description="Filing date")
+    accepted_ate: datetime = Field(alias="acceptedDate", description="Acceptance date")
+    cusip: str = Field(description="CUSIP number")
+    citizenship_place_org: str | None | None = Field(
+        None,
+        alias="citizenshipOrPlaceOfOrganization",
+        description="Citizenship or place of organization",
+    )
+    sole_voting_power: float | None | None = Field(
+        None, alias="soleVotingPower", description="Sole voting power"
+    )
+    shared_voting_power: float | None | None = Field(
+        None, alias="sharedVotingPower", description="Shared voting power"
+    )
+    sole_dispositive_power: float | None | None = Field(
+        None, alias="soleDispositivePower", description="Sole dispositive power"
+    )
+    shared_dispositive_power: float | None | None = Field(
+        None, alias="sharedDispositivePower", description="Shared dispositive power"
+    )
+    amount_beneficially_owned: float = Field(
+        alias="amountBeneficiallyOwned", description="Amount beneficially owned"
+    )
+    percent_of_class: float = Field(
+        alias="percentOfClass", description="Percent of class"
+    )
+    type_of_reporting_person: str = Field(
+        alias="typeOfReportingPerson", description="Type of reporting person"
+    )
+    url: str = Field(description="Name of reporting person")
+
+
+class FailToDeliver(BaseModel):
+    """Fail to deliver information"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    symbol: str = Field(description="Company symbol")
+    fail_date: date = Field(description="Date of fail to deliver", alias="date")
+    price: float = Field(description="Price per share")
+    quantity: int = Field(description="Number of shares failed to deliver")
+    cusip: str = Field(description="CUSIP identifier")
+    name: str = Field(description="Company name")

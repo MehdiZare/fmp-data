@@ -7,21 +7,29 @@ from fmp_data import FMPDataClient
 from fmp_data.intelligence.models import (
     AnalystEstimate,
     AnalystRecommendation,
+    CrowdfundingOffering,
     CryptoNewsArticle,
     DividendEvent,
     EarningConfirmed,
     EarningEvent,
     EarningSurprise,
+    EquityOffering,
+    EquityOfferingSearchItem,
+    ESGBenchmark,
+    ESGData,
+    ESGRating,
     FMPArticle,
     ForexNewsArticle,
     GeneralNewsArticle,
     HistoricalSocialSentiment,
+    HouseDisclosure,
     IPOEvent,
     PressRelease,
     PressReleaseBySymbol,
     PriceTarget,
     PriceTargetConsensus,
     PriceTargetSummary,
+    SenateTrade,
     SocialSentimentChanges,
     StockNewsArticle,
     StockNewsSentiment,
@@ -498,3 +506,194 @@ class TestIntelligenceEndpoints:
                 assert isinstance(change.rank, int)
                 assert isinstance(change.sentiment, float)
                 assert isinstance(change.sentimentChange, float)
+
+    def test_get_esg_data(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting ESG data"""
+        with vcr_instance.use_cassette("intelligence/esg_data.yaml"):
+            data = fmp_client.intelligence.get_esg_data("AAPL")
+
+            assert isinstance(data, ESGData)
+            assert data.symbol == "AAPL"
+            assert isinstance(data.environmental_score, float)
+            assert isinstance(data.social_score, float)
+            assert isinstance(data.governance_score, float)
+            assert isinstance(data.company_name, str)
+            assert isinstance(data.date, datetime)
+
+    def test_get_esg_ratings(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting ESG ratings"""
+        with vcr_instance.use_cassette("intelligence/esg_ratings.yaml"):
+            rating = fmp_client.intelligence.get_esg_ratings("AAPL")
+
+            assert isinstance(rating, ESGRating)
+            assert rating.symbol == "AAPL"
+            assert isinstance(rating.year, int)
+            assert isinstance(rating.esg_risk_rating, str)
+
+    def test_get_esg_benchmark(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting ESG benchmark data"""
+        with vcr_instance.use_cassette("intelligence/esg_benchmark.yaml"):
+            benchmarks = fmp_client.intelligence.get_esg_benchmark(2022)
+
+            assert isinstance(benchmarks, list)
+            assert len(benchmarks) > 0
+
+            for benchmark in benchmarks:
+                assert isinstance(benchmark, ESGBenchmark)
+                assert isinstance(benchmark.sector, str)
+                assert benchmark.year == 2022
+                assert isinstance(benchmark.environmental_score, float)
+                assert isinstance(benchmark.social_score, float)
+                assert isinstance(benchmark.governance_score, float)
+                assert isinstance(benchmark.esg_score, float)
+
+    def test_get_senate_trading(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting senate trading data"""
+        with vcr_instance.use_cassette("intelligence/senate_trading.yaml"):
+            trades = fmp_client.intelligence.get_senate_trading("AAPL")
+
+            assert isinstance(trades, list)
+            assert len(trades) > 0
+
+            for trade in trades:
+                assert isinstance(trade, SenateTrade)
+                assert isinstance(trade.date_received, datetime)
+                assert isinstance(trade.amount, str)
+                assert isinstance(trade.first_name, str)
+                assert isinstance(trade.last_name, str)
+
+    def test_get_senate_trading_rss(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting senate trading RSS feed"""
+        with vcr_instance.use_cassette("intelligence/senate_trading_rss.yaml"):
+            trades = fmp_client.intelligence.get_senate_trading_rss(page=0)
+
+            assert isinstance(trades, list)
+            assert len(trades) > 0
+
+            for trade in trades:
+                assert isinstance(trade, SenateTrade)
+                assert isinstance(trade.date_received, datetime)
+                assert isinstance(trade.amount, str)
+                assert isinstance(trade.first_name, str)
+                assert isinstance(trade.last_name, str)
+
+    def test_get_house_disclosure(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting house disclosure data"""
+        with vcr_instance.use_cassette("intelligence/house_disclosure.yaml"):
+            disclosures = fmp_client.intelligence.get_house_disclosure("AAPL")
+
+            assert isinstance(disclosures, list)
+            assert len(disclosures) > 0
+
+            for disclosure in disclosures:
+                assert isinstance(disclosure, HouseDisclosure)
+                assert isinstance(disclosure.disclosure_year, str)
+                assert isinstance(disclosure.disclosure_date, datetime)
+                assert isinstance(disclosure.transaction_date, datetime)
+                assert isinstance(disclosure.amount, str)
+                assert isinstance(disclosure.representative, str)
+                assert isinstance(disclosure.district, str)
+                assert isinstance(disclosure.asset_description, str)
+
+    def test_get_house_disclosure_rss(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting house disclosure RSS feed"""
+        with vcr_instance.use_cassette("intelligence/house_disclosure_rss.yaml"):
+            disclosures = fmp_client.intelligence.get_house_disclosure_rss(page=0)
+
+            assert isinstance(disclosures, list)
+            assert len(disclosures) > 0
+
+            for disclosure in disclosures:
+                assert isinstance(disclosure, HouseDisclosure)
+                assert isinstance(disclosure.disclosure_year, str)
+                assert isinstance(disclosure.disclosure_date, datetime)
+                assert isinstance(disclosure.transaction_date, datetime)
+                assert isinstance(disclosure.amount, str)
+                assert isinstance(disclosure.representative, str)
+                assert isinstance(disclosure.district, str)
+                assert isinstance(disclosure.asset_description, str)
+
+    def test_get_crowdfunding_rss(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting crowdfunding RSS feed"""
+        with vcr_instance.use_cassette("intelligence/crowdfunding_rss.yaml"):
+            offerings = fmp_client.intelligence.get_crowdfunding_rss(page=0)
+
+            assert isinstance(offerings, list)
+            assert len(offerings) > 0
+
+            for offering in offerings:
+                assert isinstance(offering, CrowdfundingOffering)
+                assert isinstance(offering.filing_date, datetime)
+                assert isinstance(offering.form_type, str)
+
+    def test_search_crowdfunding(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test searching crowdfunding offerings"""
+        with vcr_instance.use_cassette("intelligence/crowdfunding_search.yaml"):
+            offerings = fmp_client.intelligence.search_crowdfunding("NJOY")
+
+            assert isinstance(offerings, list)
+            if len(offerings) > 0:
+                for offering in offerings:
+                    assert isinstance(offering, CrowdfundingOffering)
+                    assert isinstance(offering.company_name, str)
+                    assert isinstance(offering.filing_date, datetime)
+                    assert isinstance(offering.name_of_issuer, str)
+
+    def test_get_crowdfunding_by_cik(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting crowdfunding offerings by CIK"""
+        with vcr_instance.use_cassette("intelligence/crowdfunding_by_cik.yaml"):
+            offerings = fmp_client.intelligence.get_crowdfunding_by_cik("0001388838")
+
+            assert isinstance(offerings, list)
+            if len(offerings) > 0:
+
+                for offering in offerings:
+                    assert offering.cik == "0001388838"
+                    assert isinstance(offering, CrowdfundingOffering)
+                    assert isinstance(offering.company_name, str)
+                    assert isinstance(offering.filing_date, datetime)
+                    assert isinstance(offering.name_of_issuer, str)
+
+    def test_get_equity_offering_rss(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting equity offering RSS feed"""
+        with vcr_instance.use_cassette("intelligence/equity_offering_rss.yaml"):
+            offerings = fmp_client.intelligence.get_equity_offering_rss(page=0)
+
+            assert isinstance(offerings, list)
+            assert len(offerings) > 0
+
+            for offering in offerings:
+                assert isinstance(offering, EquityOffering)
+                assert isinstance(offering.entity_name, str)
+                assert isinstance(offering.year_of_incorporation, str)
+                assert isinstance(offering.related_person_first_name, str)
+                assert isinstance(offering.date_of_first_sale, str)
+                assert isinstance(offering.industry_group_type, str)
+
+    def test_search_equity_offering(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test searching equity offerings"""
+        with vcr_instance.use_cassette("intelligence/equity_offering_search.yaml"):
+            offerings = fmp_client.intelligence.search_equity_offering("AAPL")
+
+            assert isinstance(offerings, list)
+            if len(offerings) > 0:
+                for offering in offerings:
+                    assert isinstance(offering, EquityOfferingSearchItem)
+                    assert isinstance(offering.cik, str)
+                    assert isinstance(offering.name, str)
+
+    def test_get_equity_offering_by_cik(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting equity offerings by CIK"""
+        with vcr_instance.use_cassette("intelligence/equity_offering_by_cik.yaml"):
+            offerings = fmp_client.intelligence.get_equity_offering_by_cik("0001388838")
+
+            assert isinstance(offerings, list)
+            if len(offerings) > 0:
+                for offering in offerings:
+                    assert offering.cik == "0001388838"
+                    assert isinstance(offering, EquityOffering)
+                    assert isinstance(offering.entity_name, str)
+                    assert isinstance(offering.year_of_incorporation, str)
+                    assert isinstance(offering.related_person_first_name, str)
+                    assert isinstance(offering.date_of_first_sale, str)
+                    assert isinstance(offering.form_signification, str)

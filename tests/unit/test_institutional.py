@@ -4,6 +4,9 @@ from unittest.mock import patch
 import pytest
 
 from fmp_data.institutional.models import (
+    CIKCompanyMap,
+    CIKMapping,
+    FailToDeliver,
     Form13F,
     InsiderStatistic,
     InsiderTrade,
@@ -101,6 +104,25 @@ def mock_insider_statistic():
     }
 
 
+@pytest.fixture
+def mock_fail_to_deliver():
+    """Mock fail to deliver data"""
+    return {
+        "symbol": "AAPL",
+        "date": "2024-11-14",
+        "price": 225.12,
+        "quantity": 444,
+        "cusip": "037833100",
+        "name": "APPLE INC;COM NPV",
+    }
+
+
+@pytest.fixture
+def mock_cik_mapping():
+    """Mock CIK mapping data"""
+    return {"reportingCik": "0001758386", "reportingName": "Young Bradford Addison"}
+
+
 class TestInstitutionalModels:
     def test_form_13f_model(self, mock_13f_filing):
         """Test Form13F model validation"""
@@ -151,6 +173,22 @@ class TestInstitutionalModels:
         assert stats.total_bought == 25000
         assert stats.total_sold == 75000
         assert isinstance(stats.average_bought, float)
+
+    def test_fail_to_deliver_model(self, mock_fail_to_deliver):
+        """Test FailToDeliver model validation"""
+        ftd = FailToDeliver.model_validate(mock_fail_to_deliver)
+        assert ftd.symbol == "AAPL"
+        assert isinstance(ftd.fail_date, date)  # Changed from date to fail_date
+        assert ftd.price == 225.12
+        assert ftd.quantity == 444
+        assert ftd.cusip == "037833100"
+        assert ftd.name == "APPLE INC;COM NPV"
+
+    def test_cik_mapping_model(self, mock_cik_mapping):
+        """Test CIKMapping model validation with actual API response structure"""
+        mapping = CIKMapping.model_validate(mock_cik_mapping)
+        assert mapping.reporting_cik == "0001758386"
+        assert mapping.reporting_name == "Young Bradford Addison"
 
 
 class TestInstitutionalClient:
@@ -239,3 +277,19 @@ class TestInstitutionalClient:
         assert holdings[0].symbol == "AAPL"
         assert holdings[0].investors_holding == 5181
         assert holdings[0].total_invested == 1988382372981.0
+
+    @patch("httpx.Client.request")
+    def test_get_cik_by_symbol(self, mock_request, fmp_client, mock_response):
+        """Test getting CIK mapping by symbol"""
+        # Updated mock response to match expected structure
+        mock_data = {"symbol": "AAPL", "companyCik": "0000320193"}
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[mock_data]
+        )
+
+        mappings = fmp_client.institutional.get_cik_by_symbol("AAPL")
+        assert isinstance(mappings, list)
+        assert len(mappings) == 1
+        assert isinstance(mappings[0], CIKCompanyMap)  # Using correct model
+        assert mappings[0].symbol == "AAPL"
+        assert mappings[0].cik == "0000320193"  # Using aliased field name

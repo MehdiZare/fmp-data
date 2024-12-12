@@ -2,6 +2,7 @@
 import logging
 import time
 import warnings
+from datetime import date, datetime
 from typing import Any
 
 import pytest
@@ -21,7 +22,13 @@ from fmp_data.company.models import (
     CUSIPResult,
     EmployeeCount,
     ExchangeSymbol,
+    ExecutiveCompensation,
+    GeographicRevenueSegment,
+    HistoricalShareFloat,
     ISINResult,
+    ProductRevenueSegment,
+    ShareFloat,
+    SymbolChange,
 )
 from fmp_data.exceptions import FMPError, RateLimitError
 
@@ -259,3 +266,117 @@ class TestCompanyEndpoints:
             with pytest.raises(FMPError) as exc_info:  # Use specific exception
                 fmp_client.company.get_profile("INVALID-SYMBOL")
             assert "not found" in str(exc_info.value).lower()
+
+    # tests/integration/test_company.py - Add to existing TestCompanyEndpoints class
+
+    def test_get_executive_compensation(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR, test_symbol: str
+    ):
+        """Test getting executive compensation data"""
+        with vcr_instance.use_cassette("company/executive_compensation.yaml"):
+            compensation = self._handle_rate_limit(
+                fmp_client.company.get_executive_compensation, test_symbol
+            )
+            assert isinstance(compensation, list)
+            if len(compensation) > 0:
+                assert all(isinstance(c, ExecutiveCompensation) for c in compensation)
+                for comp in compensation:
+                    assert comp.symbol == test_symbol
+                    assert isinstance(comp.name_and_position, str)
+                    assert isinstance(comp.company_name, str)
+                    assert isinstance(comp.salary, float)
+                    assert isinstance(comp.filing_date, date)
+
+    def test_get_share_float(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR, test_symbol: str
+    ):
+        """Test getting current share float data"""
+        with vcr_instance.use_cassette("company/share_float.yaml"):
+            float_data = self._handle_rate_limit(
+                fmp_client.company.get_share_float, test_symbol
+            )
+            assert isinstance(float_data, ShareFloat)
+            assert float_data.symbol == test_symbol
+            assert isinstance(float_data.float_shares, float)
+            assert isinstance(float_data.outstanding_shares, float)
+            assert isinstance(float_data.date, datetime)
+
+    def test_get_historical_share_float(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR, test_symbol: str
+    ):
+        """Test getting historical share float data"""
+        with vcr_instance.use_cassette("company/historical_share_float.yaml"):
+            historical_data = self._handle_rate_limit(
+                fmp_client.company.get_historical_share_float, test_symbol
+            )
+            assert isinstance(historical_data, list)
+            if len(historical_data) > 0:
+                assert all(isinstance(d, HistoricalShareFloat) for d in historical_data)
+                # Check first entry in detail
+                first_entry = historical_data[0]
+                assert first_entry.symbol == test_symbol
+                assert isinstance(first_entry.float_shares, float)
+                assert isinstance(first_entry.outstanding_shares, float)
+                assert isinstance(first_entry.date, datetime)
+
+    def test_get_all_shares_float(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
+    ):
+        """Test getting all companies share float data"""
+        with vcr_instance.use_cassette("company/all_shares_float.yaml"):
+            all_float_data = self._handle_rate_limit(
+                fmp_client.company.get_all_shares_float
+            )
+            assert isinstance(all_float_data, list)
+            assert len(all_float_data) > 0
+            assert all(isinstance(d, ShareFloat) for d in all_float_data)
+
+    def test_get_product_revenue_segmentation(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR, test_symbol: str
+    ):
+        """Test getting product revenue segmentation data"""
+        with vcr_instance.use_cassette("company/product_revenue_segmentation.yaml"):
+            segment_data = self._handle_rate_limit(
+                fmp_client.company.get_product_revenue_segmentation, test_symbol
+            )
+            assert isinstance(segment_data, list)
+            if len(segment_data) > 0:
+                assert all(isinstance(d, ProductRevenueSegment) for d in segment_data)
+                first_entry = segment_data[0]
+                assert isinstance(first_entry.date, str)
+                assert isinstance(first_entry.segments, dict)
+                if len(first_entry.segments) > 0:
+                    first_segment_name = next(iter(first_entry.segments))
+                    assert isinstance(
+                        first_entry.segments.get(first_segment_name), float
+                    )
+
+    def test_get_geographic_revenue_segmentation(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR, test_symbol: str
+    ):
+        """Test getting geographic revenue segmentation data"""
+        with vcr_instance.use_cassette("company/geographic_revenue_segmentation.yaml"):
+            geo_data = self._handle_rate_limit(
+                fmp_client.company.get_geographic_revenue_segmentation, test_symbol
+            )
+            assert isinstance(geo_data, list)
+            if len(geo_data) > 0:
+                assert all(isinstance(d, GeographicRevenueSegment) for d in geo_data)
+                first_entry = geo_data[0]
+                assert isinstance(first_entry.segments, dict)
+                if len(first_entry.segments) > 0:
+                    one_segment_key = next(iter(first_entry.segments))
+                    assert isinstance(first_entry.segments.get(one_segment_key), float)
+
+    def test_get_symbol_changes(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
+        """Test getting symbol change history"""
+        with vcr_instance.use_cassette("company/symbol_changes.yaml"):
+            changes = self._handle_rate_limit(fmp_client.company.get_symbol_changes)
+            assert isinstance(changes, list)
+            if len(changes) > 0:
+                assert all(isinstance(c, SymbolChange) for c in changes)
+                first_change = changes[0]
+                assert isinstance(first_change.old_symbol, str)
+                assert isinstance(first_change.new_symbol, str)
+                assert isinstance(first_change.change_date, date)
+                assert isinstance(first_change.name, str)
