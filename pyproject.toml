@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fmp-data"
-version = "0.1.2"
+version = "0.2.0"
 description = "Python client for Financial Modeling Prep API"
 authors = ["mehdizare <mehdizare@users.noreply.github.com>"]
 readme = "README.md"
