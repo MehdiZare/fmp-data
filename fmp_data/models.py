@@ -145,6 +145,8 @@ class Endpoint(BaseModel, Generic[T]):
     mandatory_params: list[EndpointParam]
     optional_params: list[EndpointParam] | None
     response_model: type[T]
+    arg_model: type[BaseModel] | None = None
+    example_queries: list | None | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
