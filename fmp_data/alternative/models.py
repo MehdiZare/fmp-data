@@ -23,51 +23,59 @@ class PriceQuote(BaseModel):
     )
 
     # Optional fields
-    name: str | None = Field(None, description="Symbol name or pair name")
+    name: str | None | None = Field(None, description="Symbol name or pair name")
 
     # Day range
-    day_low: float | None = Field(None, alias="dayLow", description="Day low price")
-    day_high: float | None = Field(None, alias="dayHigh", description="Day high price")
+    day_low: float | None | None = Field(
+        None, alias="dayLow", description="Day low price"
+    )
+    day_high: float | None | None = Field(
+        None, alias="dayHigh", description="Day high price"
+    )
 
     # Year range
-    year_high: float | None = Field(None, alias="yearHigh", description="52-week high")
-    year_low: float | None = Field(None, alias="yearLow", description="52-week low")
+    year_high: float | None | None = Field(
+        None, alias="yearHigh", description="52-week high"
+    )
+    year_low: float | None | None = Field(
+        None, alias="yearLow", description="52-week low"
+    )
 
     # Moving averages
-    price_avg_50: float | None = Field(
+    price_avg_50: float | None | None = Field(
         None, alias="priceAvg50", description="50-day average"
     )
-    price_avg_200: float | None = Field(
+    price_avg_200: float | None | None = Field(
         None, alias="priceAvg200", description="200-day average"
     )
 
     # Volume
-    volume: float | None = Field(None, description="Trading volume")
-    avg_volume: float | None = Field(
+    volume: float | None | None = Field(None, description="Trading volume")
+    avg_volume: float | None | None = Field(
         None, alias="avgVolume", description="Average volume"
     )
 
     # Other price points
-    open: float | None = Field(None, description="Opening price")
-    previous_close: float | None = Field(
+    open: float | None | None = Field(None, description="Opening price")
+    previous_close: float | None | None = Field(
         None, alias="previousClose", description="Previous close"
     )
 
     # Market data
-    market_cap: float | None = Field(
+    market_cap: float | None | None = Field(
         None, alias="marketCap", description="Market capitalization"
     )
-    eps: float | None = Field(None, description="Earnings per share")
-    pe: float | None = Field(None, description="Price to earnings ratio")
-    shares_outstanding: float | None = Field(
+    eps: float | None | None = Field(None, description="Earnings per share")
+    pe: float | None | None = Field(None, description="Price to earnings ratio")
+    shares_outstanding: float | None | None = Field(
         None, alias="sharesOutstanding", description="Shares outstanding"
     )
-    earnings_announcement: datetime | None = Field(
+    earnings_announcement: datetime | None | None = Field(
         None, alias="earningsAnnouncement", description="Next earnings date"
     )
-    exchange: str | None = Field(None, description="Exchange name")
+    exchange: str | None | None = Field(None, description="Exchange name")
 
-    timestamp: datetime | None = Field(
+    timestamp: datetime | None | None = Field(
         None,
         description="Quote timestamp",
         json_schema_extra={"format": "unix-timestamp"},
