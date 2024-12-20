@@ -1,3 +1,4 @@
+# fmp_data/alternative/endpoints.py
 from fmp_data.alternative.models import (
     Commodity,
     CommodityIntradayPrice,
@@ -11,6 +12,23 @@ from fmp_data.alternative.models import (
     ForexPair,
     ForexPriceHistory,
     ForexQuote,
+)
+from fmp_data.alternative.schema import (
+    CommoditiesListArgs,
+    CommoditiesQuotesArgs,
+    CommodityHistoricalArgs,
+    CommodityIntradayArgs,
+    CommodityQuoteArgs,
+    CryptoHistoricalArgs,
+    CryptoIntradayArgs,
+    CryptoListArgs,
+    CryptoQuoteArgs,
+    CryptoQuotesArgs,
+    ForexHistoricalArgs,
+    ForexIntradayArgs,
+    ForexListArgs,
+    ForexQuoteArgs,
+    ForexQuotesArgs,
 )
 from fmp_data.models import (
     APIVersion,
@@ -28,10 +46,20 @@ CRYPTO_LIST = Endpoint(
     version=APIVersion.V3,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get list of available cryptocurrencies",
+    description=(
+        "Get a comprehensive list of all available cryptocurrencies and "
+        "their basic information including symbol, name, and exchange details"
+    ),
     mandatory_params=[],
     optional_params=[],
     response_model=CryptoPair,
+    arg_model=CryptoListArgs,
+    example_queries=[
+        "List all available cryptocurrencies",
+        "Get cryptocurrency trading pairs",
+        "Show supported crypto symbols",
+        "What cryptocurrencies can I trade?",
+    ],
 )
 
 CRYPTO_QUOTES = Endpoint(
@@ -40,10 +68,20 @@ CRYPTO_QUOTES = Endpoint(
     version=APIVersion.V3,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get cryptocurrency quotes",
+    description=(
+        "Retrieve real-time price quotes for all available cryptocurrencies "
+        "including current price, daily change, volume and other key metrics"
+    ),
     mandatory_params=[],
     optional_params=[],
     response_model=CryptoQuote,
+    arg_model=CryptoQuotesArgs,
+    example_queries=[
+        "Get current prices for all cryptocurrencies",
+        "Show real-time crypto quotes",
+        "What are the latest cryptocurrency prices?",
+        "Get live crypto market data",
+    ],
 )
 
 CRYPTO_QUOTE = Endpoint(
@@ -52,18 +90,29 @@ CRYPTO_QUOTE = Endpoint(
     version=APIVersion.V3,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get cryptocurrency quote",
+    description=(
+        "Get detailed real-time price quote and trading information for "
+        "a specific cryptocurrency including price, volume, change percentage, "
+        "and market metrics"
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
             location=ParamLocation.PATH,
             param_type=ParamType.STRING,
             required=True,
-            description="Crypto pair symbol",
+            description="Crypto pair symbol (e.g., BTCUSD)",
         )
     ],
     optional_params=[],
     response_model=CryptoQuote,
+    arg_model=CryptoQuoteArgs,
+    example_queries=[
+        "Get Bitcoin price quote",
+        "Show current price for ETH",
+        "What is the latest price of BTCUSD?",
+        "Get detailed quote for a specific cryptocurrency",
+    ],
 )
 
 CRYPTO_HISTORICAL = Endpoint(
@@ -72,7 +121,11 @@ CRYPTO_HISTORICAL = Endpoint(
     version=APIVersion.V3,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get cryptocurrency historical prices",
+    description=(
+        "Retrieve historical price data for a cryptocurrency over "
+        "a specified date range, including daily OHLCV "
+        "(Open, High, Low, Close, Volume) data and adjusted prices"
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
@@ -99,6 +152,13 @@ CRYPTO_HISTORICAL = Endpoint(
         ),
     ],
     response_model=CryptoHistoricalData,
+    arg_model=CryptoHistoricalArgs,
+    example_queries=[
+        "Get Bitcoin historical prices",
+        "Show ETH price history for last month",
+        "Historical crypto data between dates",
+        "Get historical OHLCV data for cryptocurrency",
+    ],
 )
 
 CRYPTO_INTRADAY = Endpoint(
@@ -107,7 +167,11 @@ CRYPTO_INTRADAY = Endpoint(
     version=APIVersion.V3,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get cryptocurrency intraday prices",
+    description=(
+        "Get detailed intraday price data for a cryptocurrency at "
+        "specified time intervals, perfect for short-term trading "
+        "analysis and high-frequency data needs"
+    ),
     mandatory_params=[
         EndpointParam(
             name="interval",
@@ -127,6 +191,13 @@ CRYPTO_INTRADAY = Endpoint(
     ],
     optional_params=[],
     response_model=CryptoIntradayPrice,
+    arg_model=CryptoIntradayArgs,
+    example_queries=[
+        "Get Bitcoin minute-by-minute prices",
+        "Show hourly cryptocurrency data",
+        "Get intraday crypto prices",
+        "Get 5-minute interval prices for ETH",
+    ],
 )
 
 FOREX_LIST = Endpoint(
@@ -135,10 +206,20 @@ FOREX_LIST = Endpoint(
     version=APIVersion.V3,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get list of available forex pairs",
+    description=(
+        "Get a complete list of available forex currency pairs with "
+        "their symbols and basic trading information"
+    ),
     mandatory_params=[],
     optional_params=[],
     response_model=ForexPair,
+    arg_model=ForexListArgs,
+    example_queries=[
+        "List all forex pairs",
+        "Show available currency pairs",
+        "What forex pairs can I trade?",
+        "Get forex trading pairs list",
+    ],
 )
 
 FOREX_QUOTES = Endpoint(
@@ -147,10 +228,20 @@ FOREX_QUOTES = Endpoint(
     version=APIVersion.V3,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get forex quotes",
+    description=(
+        "Retrieve real-time quotes for all available forex currency pairs "
+        "including current exchange rates and daily changes"
+    ),
     mandatory_params=[],
     optional_params=[],
     response_model=ForexQuote,
+    arg_model=ForexQuotesArgs,
+    example_queries=[
+        "Get all forex quotes",
+        "Show current exchange rates",
+        "Get live forex prices",
+        "Current forex market rates",
+    ],
 )
 
 FOREX_QUOTE = Endpoint(
@@ -159,7 +250,10 @@ FOREX_QUOTE = Endpoint(
     version=APIVersion.V3,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get forex quote",
+    description=(
+        "Get detailed real-time quote for a specific forex "
+        "currency pair including current rate, daily change, and trading metrics"
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
@@ -171,6 +265,13 @@ FOREX_QUOTE = Endpoint(
     ],
     optional_params=[],
     response_model=ForexQuote,
+    arg_model=ForexQuoteArgs,
+    example_queries=[
+        "Get EURUSD exchange rate",
+        "Show current price for GBPUSD",
+        "What is the latest USDJPY rate?",
+        "Get forex pair quote",
+    ],
 )
 
 FOREX_HISTORICAL = Endpoint(
@@ -179,7 +280,10 @@ FOREX_HISTORICAL = Endpoint(
     version=APIVersion.V3,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get forex historical prices",
+    description=(
+        "Access historical exchange rate data for forex pairs "
+        "over a specified date range, including daily rates and price changes"
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
@@ -206,6 +310,13 @@ FOREX_HISTORICAL = Endpoint(
         ),
     ],
     response_model=ForexPriceHistory,
+    arg_model=ForexHistoricalArgs,
+    example_queries=[
+        "Get historical EURUSD rates",
+        "Show forex pair price history",
+        "Historical exchange rates between dates",
+        "Get past forex prices",
+    ],
 )
 
 FOREX_INTRADAY = Endpoint(
@@ -214,7 +325,11 @@ FOREX_INTRADAY = Endpoint(
     version=APIVersion.V3,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get forex intraday prices",
+    description=(
+        "Retrieve intraday exchange rate data for forex pairs "
+        "at specified intervals, ideal for day trading and "
+        "short-term analysis"
+    ),
     mandatory_params=[
         EndpointParam(
             name="interval",
@@ -234,6 +349,13 @@ FOREX_INTRADAY = Endpoint(
     ],
     optional_params=[],
     response_model=ForexIntradayPrice,
+    arg_model=ForexIntradayArgs,
+    example_queries=[
+        "Get minute-by-minute EURUSD data",
+        "Show hourly forex rates",
+        "Get intraday currency prices",
+        "5-minute interval forex data",
+    ],
 )
 
 COMMODITIES_LIST = Endpoint(
@@ -242,10 +364,20 @@ COMMODITIES_LIST = Endpoint(
     version=APIVersion.V3,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get list of available commodities",
+    description=(
+        "Get a comprehensive list of all available commodity "
+        "symbols and their basic trading information"
+    ),
     mandatory_params=[],
     optional_params=[],
     response_model=Commodity,
+    arg_model=CommoditiesListArgs,
+    example_queries=[
+        "List all commodities",
+        "Show available commodity symbols",
+        "What commodities can I trade?",
+        "Get commodities trading list",
+    ],
 )
 
 COMMODITIES_QUOTES = Endpoint(
@@ -254,10 +386,20 @@ COMMODITIES_QUOTES = Endpoint(
     version=APIVersion.V3,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get commodities quotes",
+    description=(
+        "Retrieve real-time quotes for all available commodities "
+        "including current prices, daily changes, and trading volumes"
+    ),
     mandatory_params=[],
     optional_params=[],
     response_model=CommodityQuote,
+    arg_model=CommoditiesQuotesArgs,
+    example_queries=[
+        "Get all commodity prices",
+        "Show current commodity quotes",
+        "Get live commodity market data",
+        "Latest commodities prices",
+    ],
 )
 
 COMMODITY_QUOTE = Endpoint(
@@ -266,18 +408,31 @@ COMMODITY_QUOTE = Endpoint(
     version=APIVersion.V3,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get commodity quote",
+    description=(
+        "Get detailed real-time price quote for a specific commodity "
+        "including current price, daily change, trading volume and "
+        "other key market metrics. Ideal for tracking individual "
+        "commodity performance."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
             location=ParamLocation.PATH,
             param_type=ParamType.STRING,
             required=True,
-            description="Commodity symbol",
+            description="Commodity symbol (e.g., GC for Gold, CL for Crude Oil)",
         )
     ],
     optional_params=[],
     response_model=CommodityQuote,
+    arg_model=CommodityQuoteArgs,
+    example_queries=[
+        "Get gold price quote",
+        "Show current oil price",
+        "What is the latest silver price?",
+        "Get real-time commodity quote",
+        "Current price for specific commodity",
+    ],
 )
 
 COMMODITY_HISTORICAL = Endpoint(
@@ -286,14 +441,20 @@ COMMODITY_HISTORICAL = Endpoint(
     version=APIVersion.V3,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get commodity historical prices",
+    description=(
+        "Retrieve comprehensive historical price data for a "
+        "commodity over a specified date range, including "
+        "daily OHLCV (Open, High, Low, Close, Volume) data, "
+        "adjusted prices, and price change metrics. "
+        "Perfect for long-term trend analysis and historical performance review."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
             location=ParamLocation.PATH,
             param_type=ParamType.STRING,
             required=True,
-            description="Commodity symbol",
+            description="Commodity symbol (e.g., GC, CL, SI)",
         )
     ],
     optional_params=[
@@ -302,17 +463,26 @@ COMMODITY_HISTORICAL = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
             required=False,
-            description="Start date",
+            description="Start date for historical data (format: YYYY-MM-DD)",
         ),
         EndpointParam(
             name="to",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
             required=False,
-            description="End date",
+            description="End date for historical data (format: YYYY-MM-DD)",
         ),
     ],
     response_model=CommodityPriceHistory,
+    arg_model=CommodityHistoricalArgs,
+    example_queries=[
+        "Get gold price history",
+        "Show historical oil prices",
+        "Get commodity prices between dates",
+        "Historical OHLCV data for commodity",
+        "Past price data for precious metals",
+        "Get commodity price trends",
+    ],
 )
 
 COMMODITY_INTRADAY = Endpoint(
@@ -321,14 +491,20 @@ COMMODITY_INTRADAY = Endpoint(
     version=APIVersion.V3,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get commodity intraday prices",
+    description=(
+        "Access detailed intraday price data for commodities "
+        "at specified time intervals. Provides high-frequency "
+        "price data including open, high, low, close prices and "
+        "volume. Essential for day trading, technical analysis, "
+        "and monitoring short-term price movements in commodity markets."
+    ),
     mandatory_params=[
         EndpointParam(
             name="interval",
             location=ParamLocation.PATH,
             param_type=ParamType.STRING,
             required=True,
-            description="Time interval",
+            description="Time interval for price data",
             valid_values=["1min", "5min", "15min", "30min", "1hour", "4hour"],
         ),
         EndpointParam(
@@ -345,15 +521,24 @@ COMMODITY_INTRADAY = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
             required=False,
-            description="Start date",
+            description="Start date for intraday data",
         ),
         EndpointParam(
             name="to",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
             required=False,
-            description="End date",
+            description="End date for intraday data",
         ),
     ],
     response_model=CommodityIntradayPrice,
+    arg_model=CommodityIntradayArgs,
+    example_queries=[
+        "Get minute-by-minute gold prices",
+        "Show hourly oil price data",
+        "Get intraday commodity prices",
+        "5-minute interval silver prices",
+        "Get high-frequency commodity data",
+        "Real-time commodity price updates",
+    ],
 )
