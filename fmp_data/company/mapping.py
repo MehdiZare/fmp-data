@@ -976,4 +976,154 @@ COMPANY_ENDPOINTS_SEMANTICS = {
             "Global portfolio management",
         ],
     ),
+    "company_logo_url": EndpointSemantics(
+        client_name="company",
+        method_name="get_company_logo_url",
+        natural_description=(
+            "Get the URL of the company's official logo image for use in "
+            "applications, websites, or documentation"
+        ),
+        example_queries=[
+            "Get Apple's company logo",
+            "Find Microsoft's logo URL",
+            "Show me Tesla's logo",
+            "Get logo image for Amazon",
+            "Find company logo for Google",
+        ],
+        related_terms=[
+            "company logo",
+            "brand image",
+            "corporate logo",
+            "logo URL",
+            "company icon",
+            "brand symbol",
+        ],
+        category=SemanticCategory.COMPANY_INFO,
+        sub_category="Media",
+        parameter_hints={"symbol": SYMBOL_HINT},
+        response_hints={
+            "url": ResponseFieldInfo(
+                description="URL to company logo image",
+                examples=[
+                    "https://example.com/logos/AAPL.png",
+                    "https://example.com/logos/MSFT.png",
+                ],
+                related_terms=["logo link", "image URL", "logo source", "image link"],
+            ),
+        },
+        use_cases=[
+            "Brand asset retrieval",
+            "Website development",
+            "Application UI development",
+            "Marketing materials",
+            "Company presentations",
+        ],
+    ),
+    "executive_compensation": EndpointSemantics(
+        client_name="company",
+        method_name="get_executive_compensation",
+        natural_description=(
+            "Get detailed executive compensation information including salary, "
+            "bonuses, stock awards, and total compensation packages for company leaders"
+        ),
+        example_queries=[
+            "How much does Apple's CEO make?",
+            "Get Microsoft executive compensation",
+            "Show me Tesla executive salaries",
+            "What's the compensation for Amazon's executives?",
+            "Get Google executive pay information",
+        ],
+        related_terms=[
+            "executive pay",
+            "compensation package",
+            "salary",
+            "executive benefits",
+            "remuneration",
+            "executive rewards",
+        ],
+        category=SemanticCategory.COMPANY_INFO,
+        sub_category="Executive",
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+        },
+        response_hints={
+            "salary": ResponseFieldInfo(
+                description="Base salary amount",
+                examples=["1500000", "1000000"],
+                related_terms=["base pay", "annual salary", "base compensation"],
+            ),
+            "bonus": ResponseFieldInfo(
+                description="Annual bonus payment",
+                examples=["3000000", "2500000"],
+                related_terms=["annual bonus", "cash bonus", "performance bonus"],
+            ),
+            "stock_awards": ResponseFieldInfo(
+                description="Value of stock awards",
+                examples=["12000000", "15000000"],
+                related_terms=["equity awards", "stock grants", "RSUs"],
+            ),
+            "total_compensation": ResponseFieldInfo(
+                description="Total annual compensation",
+                examples=["25000000", "30000000"],
+                related_terms=["total pay", "total package", "annual compensation"],
+            ),
+        },
+        use_cases=[
+            "Executive compensation analysis",
+            "Corporate governance research",
+            "Compensation benchmarking",
+            "SEC compliance reporting",
+            "Management expense analysis",
+        ],
+    ),
+    "all_shares_float": EndpointSemantics(
+        client_name="company",
+        method_name="get_all_shares_float",
+        natural_description=(
+            "Get comprehensive share float data for all companies, showing the "
+            "number and percentage of shares available for public trading"
+        ),
+        example_queries=[
+            "Get all companies' share float data",
+            "Show float information for all stocks",
+            "List share float for all companies",
+            "Get complete float data",
+            "Show all public float information",
+        ],
+        related_terms=[
+            "market float",
+            "public float",
+            "tradable shares",
+            "floating stock",
+            "share availability",
+            "trading float",
+        ],
+        category=SemanticCategory.COMPANY_INFO,
+        sub_category="Float",
+        parameter_hints={},  # No parameters needed
+        response_hints={
+            "symbol": ResponseFieldInfo(
+                description="Company stock symbol",
+                examples=["AAPL", "MSFT"],
+                related_terms=["ticker", "trading symbol", "stock symbol"],
+            ),
+            "float_shares": ResponseFieldInfo(
+                description="Number of shares in public float",
+                examples=["5.2B", "750M"],
+                related_terms=["floating shares", "tradable shares", "public shares"],
+            ),
+            "percentage_float": ResponseFieldInfo(
+                description="Percentage of shares in public float",
+                examples=["85.5%", "45.2%"],
+                related_terms=["float percentage", "public float ratio", "float ratio"],
+            ),
+        },
+        use_cases=[
+            "Market liquidity analysis",
+            "Float comparison across companies",
+            "Trading volume analysis",
+            "Institutional ownership research",
+            "Market availability assessment",
+        ],
+    ),
 }
