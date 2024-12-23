@@ -1,4 +1,5 @@
 # fmp_data/alternative/endpoints.py
+
 from fmp_data.alternative.models import (
     Commodity,
     CommodityIntradayPrice,
@@ -39,6 +40,9 @@ from fmp_data.models import (
     ParamType,
     URLType,
 )
+
+# Validation constants
+VALID_INTERVALS = ["1min", "5min", "15min", "30min", "1hour", "4hour"]
 
 CRYPTO_LIST = Endpoint(
     name="crypto_list",
@@ -141,14 +145,16 @@ CRYPTO_HISTORICAL = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
             required=False,
-            description="Start date",
+            description="Start date for historical data",
+            alias="start_date",
         ),
         EndpointParam(
             name="to",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
             required=False,
-            description="End date",
+            description="End date for historical data",
+            alias="end_date",
         ),
     ],
     response_model=CryptoHistoricalData,
@@ -178,8 +184,8 @@ CRYPTO_INTRADAY = Endpoint(
             location=ParamLocation.PATH,
             param_type=ParamType.STRING,
             required=True,
-            description="Time interval",
-            valid_values=["1min", "5min", "15min", "30min", "1hour", "4hour"],
+            description="Time interval between data points",
+            valid_values=VALID_INTERVALS,
         ),
         EndpointParam(
             name="symbol",
@@ -299,14 +305,16 @@ FOREX_HISTORICAL = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
             required=False,
-            description="Start date",
+            description="Start date for historical data",
+            alias="start_date",
         ),
         EndpointParam(
             name="to",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
             required=False,
-            description="End date",
+            description="End date for historical data",
+            alias="end_date",
         ),
     ],
     response_model=ForexPriceHistory,
@@ -336,8 +344,8 @@ FOREX_INTRADAY = Endpoint(
             location=ParamLocation.PATH,
             param_type=ParamType.STRING,
             required=True,
-            description="Time interval",
-            valid_values=["1min", "5min", "15min", "30min", "1hour", "4hour"],
+            description="Time interval between data points",
+            valid_values=VALID_INTERVALS,
         ),
         EndpointParam(
             name="symbol",
@@ -411,8 +419,7 @@ COMMODITY_QUOTE = Endpoint(
     description=(
         "Get detailed real-time price quote for a specific commodity "
         "including current price, daily change, trading volume and "
-        "other key market metrics. Ideal for tracking individual "
-        "commodity performance."
+        "other key market metrics"
     ),
     mandatory_params=[
         EndpointParam(
@@ -445,8 +452,7 @@ COMMODITY_HISTORICAL = Endpoint(
         "Retrieve comprehensive historical price data for a "
         "commodity over a specified date range, including "
         "daily OHLCV (Open, High, Low, Close, Volume) data, "
-        "adjusted prices, and price change metrics. "
-        "Perfect for long-term trend analysis and historical performance review."
+        "adjusted prices, and price change metrics"
     ),
     mandatory_params=[
         EndpointParam(
@@ -459,18 +465,18 @@ COMMODITY_HISTORICAL = Endpoint(
     ],
     optional_params=[
         EndpointParam(
-            name="from",
+            name="start_date",  # Changed from "from"
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
             required=False,
-            description="Start date for historical data (format: YYYY-MM-DD)",
+            description="Start date for historical data",
         ),
         EndpointParam(
-            name="to",
+            name="end_date",  # Changed from "to"
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
             required=False,
-            description="End date for historical data (format: YYYY-MM-DD)",
+            description="End date for historical data",
         ),
     ],
     response_model=CommodityPriceHistory,
@@ -494,9 +500,7 @@ COMMODITY_INTRADAY = Endpoint(
     description=(
         "Access detailed intraday price data for commodities "
         "at specified time intervals. Provides high-frequency "
-        "price data including open, high, low, close prices and "
-        "volume. Essential for day trading, technical analysis, "
-        "and monitoring short-term price movements in commodity markets."
+        "price data including open, high, low, close prices and volume"
     ),
     mandatory_params=[
         EndpointParam(
@@ -504,8 +508,8 @@ COMMODITY_INTRADAY = Endpoint(
             location=ParamLocation.PATH,
             param_type=ParamType.STRING,
             required=True,
-            description="Time interval for price data",
-            valid_values=["1min", "5min", "15min", "30min", "1hour", "4hour"],
+            description="Time interval between data points",
+            valid_values=VALID_INTERVALS,
         ),
         EndpointParam(
             name="symbol",
@@ -515,22 +519,7 @@ COMMODITY_INTRADAY = Endpoint(
             description="Commodity symbol",
         ),
     ],
-    optional_params=[
-        EndpointParam(
-            name="from",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.DATE,
-            required=False,
-            description="Start date for intraday data",
-        ),
-        EndpointParam(
-            name="to",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.DATE,
-            required=False,
-            description="End date for intraday data",
-        ),
-    ],
+    optional_params=[],
     response_model=CommodityIntradayPrice,
     arg_model=CommodityIntradayArgs,
     example_queries=[
