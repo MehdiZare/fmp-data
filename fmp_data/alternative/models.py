@@ -1,4 +1,5 @@
 # fmp_data/alternative/models.py
+
 import warnings
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
