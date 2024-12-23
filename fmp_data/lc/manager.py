@@ -1,24 +1,29 @@
 # fmp_data/lc/manager.py
+from copy import deepcopy
 
 from langchain.tools import StructuredTool
 
 from fmp_data import ClientConfig, FMPDataClient
-
-# Import endpoint maps and semantics from different modules
 from fmp_data.alternative.mapping import (
     ALTERNATIVE_ENDPOINT_MAP,
     ALTERNATIVE_ENDPOINTS_SEMANTICS,
 )
+from fmp_data.company.mapping import COMPANY_ENDPOINT_MAP, COMPANY_ENDPOINTS_SEMANTICS
 from fmp_data.lc.registry import EndpointRegistry
 from fmp_data.lc.setup import setup_vector_store
 from fmp_data.lc.vector_store import EndpointVectorStore
 from fmp_data.logger import FMPLogger
 
-# Add other endpoint imports as needed
-# from fmp_data.market.mapping import MARKET_ENDPOINT_MAP, MARKET_ENDPOINTS_SEMANTICS
-# etc.
-
 logger = FMPLogger().get_logger(__name__)
+
+ENDPOINT_GROUPS = [
+    "alternative",
+    "company",
+    "market",
+    "fundamental",
+    "technical",
+    "economics",
+]
 
 
 class FMPToolManager:
@@ -45,13 +50,8 @@ class FMPToolManager:
         self.store_name = store_name
         self.vector_store: EndpointVectorStore | None = None
 
-        # Map to track loaded endpoint groups
-        self._loaded_groups = {
-            "alternative": False,
-            "market": False,
-            "fundamental": False,
-            # Add other groups as needed
-        }
+        # Initialize all groups to False
+        self._loaded_groups = {group: False for group in ENDPOINT_GROUPS}
 
         if auto_initialize:
             self.load_all_endpoints()
@@ -62,36 +62,123 @@ class FMPToolManager:
     ) -> None:
         """Register a group of endpoints with their semantics"""
         for name, endpoint in endpoint_map.items():
-            semantic_name = name.replace("get_", "")
-            semantics = semantics_map.get(semantic_name)
-
-            if not semantics:
-                logger.warning(f"No semantics found for endpoint: {name}")
-                continue
-
             try:
+                # Get semantic name from the endpoint name
+                semantic_name = name
+
+                # Remove 'get_' prefix if present
+                if semantic_name.startswith("get_"):
+                    semantic_name = semantic_name[4:]
+
+                # For search variants, use the full method name
+                if "search" in semantic_name:
+                    semantics = semantics_map.get(
+                        semantic_name
+                    )  # Use full name for search variants
+                    if not semantics:
+                        # Fallback to base search if specific variant not found
+                        semantics = semantics_map.get("search")
+                        logger.debug(f"Using base search semantics for {name}")
+                else:
+                    semantics = semantics_map.get(semantic_name)
+
+                if not semantics:
+                    logger.warning(
+                        f"No semantics found for endpoint: {name} "
+                        f"(semantic_name: {semantic_name})"
+                    )
+                    continue
+
+                # Validate that method name matches between endpoint and semantics
+                if semantics.method_name != name:
+                    # Update method name in semantics to match endpoint
+                    semantics = deepcopy(semantics)
+                    semantics.method_name = name
+                    logger.debug(
+                        f"Updated method name in semantics "
+                        f"from {semantics.method_name} "
+                        f"to {name}"
+                    )
+
+                # Validate mandatory parameters have semantic hints
+                mandatory_params = {p.name for p in endpoint.mandatory_params}
+                semantic_hints = set(semantics.parameter_hints.keys())
+                missing_hints = mandatory_params - semantic_hints
+
+                if missing_hints:
+                    logger.warning(
+                        f"Missing semantic hints for mandatory parameters in "
+                        f"{name}: {missing_hints}"
+                    )
+
                 self.registry.register(name, endpoint, semantics)
-                logger.debug(f"Registered endpoint: {name}")
+                logger.debug(
+                    f"Successfully registered endpoint: {name} with "
+                    f"{len(semantics.parameter_hints)} parameter hints"
+                )
+
             except ValueError as e:
-                logger.error(f"Failed to register {name}: {str(e)}")
+                logger.error(
+                    f"Failed to register {name}: {str(e)}",
+                    extra={"semantic_name": semantic_name},
+                )
+                raise
+            except Exception as e:
+                logger.error(
+                    f"Unexpected error registering {name}: {str(e)}", exc_info=True
+                )
                 raise
 
     def load_alternative_endpoints(self) -> None:
         """Load alternative market endpoints"""
         if self._loaded_groups["alternative"]:
+            logger.debug("Alternative endpoints already loaded")
             return
 
-        self._register_endpoints(
-            ALTERNATIVE_ENDPOINT_MAP, ALTERNATIVE_ENDPOINTS_SEMANTICS
-        )
-        self._loaded_groups["alternative"] = True
-        logger.info("Loaded alternative market endpoints")
+        try:
+            self._register_endpoints(
+                ALTERNATIVE_ENDPOINT_MAP, ALTERNATIVE_ENDPOINTS_SEMANTICS
+            )
+            self._loaded_groups["alternative"] = True
+            logger.info("Successfully loaded alternative market endpoints")
+        except Exception as e:
+            logger.error(f"Failed to load alternative endpoints: {str(e)}")
+            raise
+
+    def load_company_endpoints(self) -> None:
+        """Load company information endpoints"""
+        if self._loaded_groups["company"]:
+            logger.debug("Company endpoints already loaded")
+            return
+
+        try:
+            self._register_endpoints(COMPANY_ENDPOINT_MAP, COMPANY_ENDPOINTS_SEMANTICS)
+            self._loaded_groups["company"] = True
+            logger.info("Successfully loaded company information endpoints")
+        except Exception as e:
+            logger.error(f"Failed to load company endpoints: {str(e)}")
+            raise
 
     def load_all_endpoints(self) -> None:
         """Load all available endpoint groups"""
-        # Load alternative markets
-        self.load_alternative_endpoints()
-        logger.info("Loaded all available endpoints")
+        loaded_count = 0
+
+        try:
+            # Load alternative markets
+            self.load_alternative_endpoints()
+            loaded_count += len(ALTERNATIVE_ENDPOINT_MAP)
+
+            # Load company endpoints
+            self.load_company_endpoints()
+            loaded_count += len(COMPANY_ENDPOINT_MAP)
+
+            logger.info(
+                f"Successfully loaded {loaded_count} endpoints across "
+                f"{sum(self._loaded_groups.values())} groups"
+            )
+        except Exception as e:
+            logger.error(f"Failed to load all endpoints: {str(e)}")
+            raise
 
     def _get_embeddings(self):
         """Get embeddings from config or raise error"""
