@@ -169,6 +169,49 @@ class EndpointVectorStore:
         except Exception as e:
             raise ConfigError(f"Failed to load vector store: {str(e)}") from e
 
+    def validate(self) -> bool:
+        """
+        Validate the vector store is usable with current configuration
+
+        Returns:
+            bool: True if store is valid, False otherwise
+        """
+        try:
+            # Check if the store has vectors
+            if (
+                not hasattr(self.vector_store, "index_to_docstore_id")
+                or not self.vector_store.index_to_docstore_id
+            ):
+                logger.warning("Vector store has no vectors")
+                return False
+
+            # Check if we have metadata that matches our registry
+            stored_endpoints = set(self.vector_store.index_to_docstore_id.values())
+            registry_endpoints = set(self.registry.list_endpoints().keys())
+
+            if stored_endpoints != registry_endpoints:
+                missing = registry_endpoints - stored_endpoints
+                extra = stored_endpoints - registry_endpoints
+                if missing:
+                    logger.warning(f"Missing endpoints in store: {missing}")
+                if extra:
+                    logger.warning(f"Extra endpoints in store: {extra}")
+                return False
+
+            # Basic embedding check
+            try:
+                # Try a simple embedding operation
+                self.embeddings.embed_query("test")
+            except Exception as e:
+                logger.warning(f"Embedding check failed: {str(e)}")
+                return False
+
+            return True
+
+        except Exception as e:
+            logger.warning(f"Store validation failed: {str(e)}")
+            return False
+
     def save(self) -> None:
         """Save vector store to disk"""
         try:
@@ -203,9 +246,13 @@ class EndpointVectorStore:
         self.vector_store.add_documents([document])
         logger.debug(f"Added endpoint to vector store: {name}")
 
+    # In EndpointVectorStore class
+
     def add_endpoints(self, names: list[str]) -> None:
         """Add multiple endpoints to vector store"""
         documents = []
+        skipped_endpoints = set()
+
         for name in names:
             info = self.registry.get_endpoint(name)
             text = self.registry.get_embedding_text(name)
@@ -213,13 +260,22 @@ class EndpointVectorStore:
                 doc = Document(page_content=text, metadata={"endpoint": name})
                 documents.append(doc)
             else:
-                logger.warning(
-                    f"Skipping endpoint {name}: missing info or embedding text"
-                )
+                skipped_endpoints.add(name)
+                if not info:
+                    logger.warning(f"Skipping endpoint {name}: missing endpoint info")
+                if not text:
+                    logger.warning(f"Skipping endpoint {name}: missing embedding text")
 
         if documents:
             self.vector_store.add_documents(documents)
-            logger.debug(f"Added {len(documents)} endpoints to vector store")
+            logger.debug(
+                f"Added {len(documents)} endpoints to vector store "
+                f"(skipped {len(skipped_endpoints)})"
+            )
+            if skipped_endpoints:
+                logger.debug(f"Skipped endpoints: {skipped_endpoints}")
+        else:
+            logger.warning("No valid endpoints to add to vector store")
 
     def search(
         self, query: str, k: int = 3, threshold: float = 0.3
