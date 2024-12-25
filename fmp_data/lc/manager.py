@@ -1,6 +1,7 @@
 # fmp_data/lc/manager.py
 from copy import deepcopy
 
+from investment.mapping import INVESTMENT_ENDPOINT_MAP, INVESTMENT_ENDPOINTS_SEMANTICS
 from langchain.tools import StructuredTool
 
 from fmp_data import ClientConfig, FMPDataClient
@@ -41,10 +42,49 @@ ENDPOINT_GROUPS = [
     "economics",
     "institutional",
     "intelligence",
+    "investment",
 ]
 
 
 class FMPToolManager:
+    ENDPOINT_GROUPS = {
+        "alternative": {
+            "endpoint_map": ALTERNATIVE_ENDPOINT_MAP,
+            "semantics_map": ALTERNATIVE_ENDPOINTS_SEMANTICS,
+            "display_name": "alternative market",
+        },
+        "company": {
+            "endpoint_map": COMPANY_ENDPOINT_MAP,
+            "semantics_map": COMPANY_ENDPOINTS_SEMANTICS,
+            "display_name": "company information",
+        },
+        "economics": {
+            "endpoint_map": ECONOMICS_ENDPOINT_MAP,
+            "semantics_map": ECONOMICS_ENDPOINTS_SEMANTICS,
+            "display_name": "economics data",
+        },
+        "fundamental": {
+            "endpoint_map": FUNDAMENTAL_ENDPOINT_MAP,
+            "semantics_map": FUNDAMENTAL_ENDPOINTS_SEMANTICS,
+            "display_name": "fundamental analysis",
+        },
+        "institutional": {
+            "endpoint_map": INSTITUTIONAL_ENDPOINT_MAP,
+            "semantics_map": INSTITUTIONAL_ENDPOINTS_SEMANTICS,
+            "display_name": "institutional data",
+        },
+        "intelligence": {
+            "endpoint_map": INTELLIGENCE_ENDPOINT_MAP,
+            "semantics_map": INTELLIGENCE_ENDPOINTS_SEMANTICS,
+            "display_name": "market intelligence",
+        },
+        "investment": {
+            "endpoint_map": INVESTMENT_ENDPOINT_MAP,
+            "semantics_map": INVESTMENT_ENDPOINTS_SEMANTICS,
+            "display_name": "investment",
+        },
+    }
+
     def __init__(
         self,
         client: FMPDataClient | None = None,
@@ -52,59 +92,74 @@ class FMPToolManager:
         store_name: str = "fmp_endpoints",
         auto_initialize: bool = True,
     ):
-        """
-        Initialize tool manager
-
-        Args:
-            client: Optional FMP API client
-            config: Optional client configuration
-            store_name: Name for vector store
-            auto_initialize: Whether to automatically load endpoints
-            and initialize vector store
-        """
         self.config = config or ClientConfig.from_env()
         self.client = client or FMPDataClient(config=self.config)
         self.registry = EndpointRegistry()
         self.store_name = store_name
         self.vector_store: EndpointVectorStore | None = None
-
-        # Initialize all groups to False
-        self._loaded_groups = {group: False for group in ENDPOINT_GROUPS}
+        self._loaded_groups = {group: False for group in self.ENDPOINT_GROUPS.keys()}
 
         if auto_initialize:
-            self.load_all_endpoints()
-            self.initialize_vector_store()
+            self.initialize()
+
+    def initialize(self) -> None:
+        """Initialize endpoints and vector store"""
+        # First load all endpoints
+        logger.info("Initializing FMP Tool Manager")
+        self.load_all_endpoints()
+
+        # Then initialize vector store
+        embeddings = self._get_embeddings()
+        self.vector_store = setup_vector_store(
+            client=self.client,
+            registry=self.registry,
+            embeddings=embeddings,
+            store_name=self.store_name,
+        )
+
+    def initialize_vector_store(self, force_create: bool = False) -> None:
+        """Initialize or load vector store"""
+        if self.vector_store is not None and not force_create:
+            logger.debug("Vector store already initialized")
+            return
+
+        embeddings = self._get_embeddings()
+
+        self.vector_store = setup_vector_store(
+            client=self.client,
+            registry=self.registry,
+            embeddings=embeddings,
+            store_name=self.store_name,
+            force_create=force_create,
+        )
+        logger.info(
+            f"Initialized vector store with "
+            f"{len(self.registry.list_endpoints())} endpoints"
+        )
 
     def _register_endpoints(
         self, endpoint_map: dict[str, type], semantics_map: dict[str, type]
     ) -> None:
         """Register a group of endpoints with their semantics"""
+        registered = 0
+        skipped = 0
+        skipped_endpoints = set()
+
         for name, endpoint in endpoint_map.items():
             try:
                 # Get semantic name from the endpoint name
-                semantic_name = name
+                semantic_name = (
+                    name.replace("get_", "") if name.startswith("get_") else name
+                )
 
-                # Remove 'get_' prefix if present
-                if semantic_name.startswith("get_"):
-                    semantic_name = semantic_name[4:]
-
-                # For search variants, use the full method name
-                if "search" in semantic_name:
-                    semantics = semantics_map.get(
-                        semantic_name
-                    )  # Use full name for search variants
-                    if not semantics:
-                        # Fallback to base search if specific variant not found
-                        semantics = semantics_map.get("search")
-                        logger.debug(f"Using base search semantics for {name}")
-                else:
-                    semantics = semantics_map.get(semantic_name)
-
+                semantics = semantics_map.get(semantic_name)
                 if not semantics:
                     logger.warning(
                         f"No semantics found for endpoint: {name} "
                         f"(semantic_name: {semantic_name})"
                     )
+                    skipped += 1
+                    skipped_endpoints.add(name)
                     continue
 
                 # Validate that method name matches between endpoint and semantics
@@ -130,151 +185,68 @@ class FMPToolManager:
                     )
 
                 self.registry.register(name, endpoint, semantics)
+                registered += 1
                 logger.debug(
                     f"Successfully registered endpoint: {name} with "
                     f"{len(semantics.parameter_hints)} parameter hints"
                 )
 
-            except ValueError as e:
-                logger.error(
-                    f"Failed to register {name}: {str(e)}",
-                    extra={"semantic_name": semantic_name},
-                )
-                raise
             except Exception as e:
-                logger.error(
-                    f"Unexpected error registering {name}: {str(e)}", exc_info=True
-                )
-                raise
+                logger.error(f"Failed to register {name}: {str(e)}", exc_info=True)
+                skipped += 1
+                skipped_endpoints.add(name)
 
-    def load_alternative_endpoints(self) -> None:
-        """Load alternative market endpoints"""
-        if self._loaded_groups["alternative"]:
-            logger.debug("Alternative endpoints already loaded")
-            return
+        logger.debug(
+            f"Registration summary: {registered} registered, {skipped} skipped"
+        )
+        if skipped_endpoints:
+            logger.debug(f"Skipped endpoints: {skipped_endpoints}")
 
+    def load_endpoints(
+        self, endpoint_map: dict, semantics_map: dict, group_name: str
+    ) -> tuple[int, set[str]]:
+        """Load endpoints for a specific group"""
         try:
-            self._register_endpoints(
-                ALTERNATIVE_ENDPOINT_MAP, ALTERNATIVE_ENDPOINTS_SEMANTICS
-            )
-            self._loaded_groups["alternative"] = True
-            logger.info("Successfully loaded alternative market endpoints")
+            self._register_endpoints(endpoint_map, semantics_map)
+            # Remove success logging from here - we'll log once at the end
+            return len(endpoint_map), set(endpoint_map.keys())
         except Exception as e:
-            logger.error(f"Failed to load alternative endpoints: {str(e)}")
-            raise
-
-    def load_company_endpoints(self) -> None:
-        """Load company information endpoints"""
-        if self._loaded_groups["company"]:
-            logger.debug("Company endpoints already loaded")
-            return
-
-        try:
-            self._register_endpoints(COMPANY_ENDPOINT_MAP, COMPANY_ENDPOINTS_SEMANTICS)
-            self._loaded_groups["company"] = True
-            logger.info("Successfully loaded company information endpoints")
-        except Exception as e:
-            logger.error(f"Failed to load company endpoints: {str(e)}")
-            raise
-
-    def load_economics_endpoints(self) -> None:
-        """Load economics data endpoints"""
-        if self._loaded_groups["economics"]:
-            logger.debug("Economics endpoints already loaded")
-            return
-
-        try:
-            self._register_endpoints(
-                ECONOMICS_ENDPOINT_MAP, ECONOMICS_ENDPOINTS_SEMANTICS
-            )
-            self._loaded_groups["economics"] = True
-            logger.info("Successfully loaded economics data endpoints")
-        except Exception as e:
-            logger.error(f"Failed to load economics endpoints: {str(e)}")
-            raise
-
-    def load_fundamental_endpoints(self) -> None:
-        """Load fundamental analysis endpoints"""
-        if self._loaded_groups["fundamental"]:
-            logger.debug("Fundamental endpoints already loaded")
-            return
-
-        try:
-            self._register_endpoints(
-                FUNDAMENTAL_ENDPOINT_MAP, FUNDAMENTAL_ENDPOINTS_SEMANTICS
-            )
-            self._loaded_groups["fundamental"] = True
-            logger.info("Successfully loaded fundamental analysis endpoints")
-        except Exception as e:
-            logger.error(f"Failed to load fundamental endpoints: {str(e)}")
-            raise
-
-    def load_institutional_endpoints(self) -> None:
-        """Load institutional data endpoints"""
-        if self._loaded_groups["institutional"]:
-            logger.debug("Institutional endpoints already loaded")
-            return
-
-        try:
-            self._register_endpoints(
-                INSTITUTIONAL_ENDPOINT_MAP, INSTITUTIONAL_ENDPOINTS_SEMANTICS
-            )
-            self._loaded_groups["institutional"] = True
-            logger.info("Successfully loaded institutional data endpoints")
-        except Exception as e:
-            logger.error(f"Failed to load institutional endpoints: {str(e)}")
-            raise
-
-    def load_intelligence_endpoints(self) -> None:
-        """Load market intelligence endpoints"""
-        if self._loaded_groups["intelligence"]:
-            logger.debug("Intelligence endpoints already loaded")
-            return
-
-        try:
-            self._register_endpoints(
-                INTELLIGENCE_ENDPOINT_MAP, INTELLIGENCE_ENDPOINTS_SEMANTICS
-            )
-            self._loaded_groups["intelligence"] = True
-            logger.info("Successfully loaded market intelligence endpoints")
-        except Exception as e:
-            logger.error(f"Failed to load intelligence endpoints: {str(e)}")
+            logger.error(f"Failed to load {group_name} endpoints: {str(e)}")
             raise
 
     def load_all_endpoints(self) -> None:
         """Load all available endpoint groups"""
-        loaded_count = 0
+        total_count = 0
+        all_endpoints = set()
+        loaded_groups = []
 
         try:
-            # Load alternative markets
-            self.load_alternative_endpoints()
-            loaded_count += len(ALTERNATIVE_ENDPOINT_MAP)
+            for group_name, config in self.ENDPOINT_GROUPS.items():
+                if self._loaded_groups.get(group_name):
+                    continue
 
-            # Load company endpoints
-            self.load_company_endpoints()
-            loaded_count += len(COMPANY_ENDPOINT_MAP)
+                count, endpoints = self.load_endpoints(
+                    config["endpoint_map"], config["semantics_map"], group_name
+                )
+                self._loaded_groups[group_name] = True
+                total_count += count
+                all_endpoints.update(endpoints)
+                loaded_groups.append(config["display_name"])
 
-            # Load economic endpoints
-            self.load_economics_endpoints()
-            loaded_count += len(ECONOMICS_ENDPOINT_MAP)
+            # Get actually registered endpoints
+            registered_endpoints = set(self.registry.list_endpoints().keys())
+            missing_endpoints = all_endpoints - registered_endpoints
 
-            # Load fundamental endpoints
-            self.load_fundamental_endpoints()
-            loaded_count += len(FUNDAMENTAL_ENDPOINT_MAP)
-
-            self.load_institutional_endpoints()
-            loaded_count += len(INSTITUTIONAL_ENDPOINT_MAP)
-
-            # Add intelligence endpoints
-            self.load_intelligence_endpoints()
-            loaded_count += len(INTELLIGENCE_ENDPOINT_MAP)
+            # Single summary log at the end
+            if missing_endpoints:
+                logger.warning(f"Missing semantics for endpoints: {missing_endpoints}")
 
             logger.info(
-                f"Successfully loaded {loaded_count} endpoints across "
-                f"{sum(self._loaded_groups.values())} groups"
+                f"Loaded {len(registered_endpoints)} endpoints "
+                f"across {len(loaded_groups)} groups: {', '.join(loaded_groups)}"
             )
         except Exception as e:
-            logger.error(f"Failed to load all endpoints: {str(e)}")
+            logger.error(f"Failed to load endpoints: {str(e)}")
             raise
 
     def _get_embeddings(self):
@@ -285,22 +257,6 @@ class FMPToolManager:
                 "Please configure embeddings in client config or environment variables."
             )
         return self.config.embedding.get_embeddings()
-
-    def initialize_vector_store(self, force_create: bool = False) -> None:
-        """Initialize or load vector store"""
-        embeddings = self._get_embeddings()
-
-        self.vector_store = setup_vector_store(
-            client=self.client,
-            registry=self.registry,
-            embeddings=embeddings,
-            store_name=self.store_name,
-            force_create=force_create,
-        )
-        logger.info(
-            f"Initialized vector store with "
-            f"{len(self.registry.list_endpoints())} endpoints"
-        )
 
     def get_tools(
         self, query: str | None = None, k: int = 3, threshold: float = 0.3
