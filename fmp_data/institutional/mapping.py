@@ -686,6 +686,47 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
             "Risk management",
         ],
     ),
+    "institutional_holders": EndpointSemantics(
+        client_name="institutional",
+        method_name="get_institutional_holders",
+        natural_description=(
+            "Get detailed information about institutional holders of securities, "
+            "including ownership percentages and position changes"
+        ),
+        example_queries=[
+            "Who are the institutional holders of AAPL?",
+            "Show me institutional ownership for MSFT",
+            "Get major holders for GOOGL",
+            "List institutional investors in TSLA",
+        ],
+        related_terms=[
+            "institutional investors",
+            "major holders",
+            "institutional ownership",
+            "fund holdings",
+            "stakeholders",
+        ],
+        category=SemanticCategory.INSTITUTIONAL,
+        sub_category="Ownership",
+        parameter_hints={},
+        response_hints={
+            "holder": ResponseFieldInfo(
+                description="Name of institutional holder",
+                examples=["BlackRock", "Vanguard", "State Street"],
+                related_terms=["institution", "investor", "owner"],
+            ),
+            "shares": ResponseFieldInfo(
+                description="Number of shares held",
+                examples=["1000000", "500000"],
+                related_terms=["position size", "holding"],
+            ),
+        },
+        use_cases=[
+            "Ownership analysis",
+            "Institutional interest tracking",
+            "Stakeholder analysis",
+        ],
+    ),
 }
 
 # Time period mapping for natural language processing
