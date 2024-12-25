@@ -9,6 +9,14 @@ from fmp_data.alternative.mapping import (
     ALTERNATIVE_ENDPOINTS_SEMANTICS,
 )
 from fmp_data.company.mapping import COMPANY_ENDPOINT_MAP, COMPANY_ENDPOINTS_SEMANTICS
+from fmp_data.economics.mapping import (
+    ECONOMICS_ENDPOINT_MAP,
+    ECONOMICS_ENDPOINTS_SEMANTICS,
+)
+from fmp_data.fundamental.mapping import (
+    FUNDAMENTAL_ENDPOINT_MAP,
+    FUNDAMENTAL_ENDPOINTS_SEMANTICS,
+)
 from fmp_data.lc.registry import EndpointRegistry
 from fmp_data.lc.setup import setup_vector_store
 from fmp_data.lc.vector_store import EndpointVectorStore
@@ -159,6 +167,38 @@ class FMPToolManager:
             logger.error(f"Failed to load company endpoints: {str(e)}")
             raise
 
+    def load_economics_endpoints(self) -> None:
+        """Load economics data endpoints"""
+        if self._loaded_groups["economics"]:
+            logger.debug("Economics endpoints already loaded")
+            return
+
+        try:
+            self._register_endpoints(
+                ECONOMICS_ENDPOINT_MAP, ECONOMICS_ENDPOINTS_SEMANTICS
+            )
+            self._loaded_groups["economics"] = True
+            logger.info("Successfully loaded economics data endpoints")
+        except Exception as e:
+            logger.error(f"Failed to load economics endpoints: {str(e)}")
+            raise
+
+    def load_fundamental_endpoints(self) -> None:
+        """Load fundamental analysis endpoints"""
+        if self._loaded_groups["fundamental"]:
+            logger.debug("Fundamental endpoints already loaded")
+            return
+
+        try:
+            self._register_endpoints(
+                FUNDAMENTAL_ENDPOINT_MAP, FUNDAMENTAL_ENDPOINTS_SEMANTICS
+            )
+            self._loaded_groups["fundamental"] = True
+            logger.info("Successfully loaded fundamental analysis endpoints")
+        except Exception as e:
+            logger.error(f"Failed to load fundamental endpoints: {str(e)}")
+            raise
+
     def load_all_endpoints(self) -> None:
         """Load all available endpoint groups"""
         loaded_count = 0
@@ -171,6 +211,14 @@ class FMPToolManager:
             # Load company endpoints
             self.load_company_endpoints()
             loaded_count += len(COMPANY_ENDPOINT_MAP)
+
+            # Load economic endpoints
+            self.load_economics_endpoints()
+            loaded_count += len(ECONOMICS_ENDPOINT_MAP)
+
+            # Load fundamental endpoints
+            self.load_fundamental_endpoints()
+            loaded_count += len(FUNDAMENTAL_ENDPOINT_MAP)
 
             logger.info(
                 f"Successfully loaded {loaded_count} endpoints across "
