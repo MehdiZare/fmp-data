@@ -21,6 +21,10 @@ from fmp_data.institutional.mapping import (
     INSTITUTIONAL_ENDPOINT_MAP,
     INSTITUTIONAL_ENDPOINTS_SEMANTICS,
 )
+from fmp_data.intelligence.mapping import (
+    INTELLIGENCE_ENDPOINT_MAP,
+    INTELLIGENCE_ENDPOINTS_SEMANTICS,
+)
 from fmp_data.lc.registry import EndpointRegistry
 from fmp_data.lc.setup import setup_vector_store
 from fmp_data.lc.vector_store import EndpointVectorStore
@@ -36,6 +40,7 @@ ENDPOINT_GROUPS = [
     "technical",
     "economics",
     "institutional",
+    "intelligence",
 ]
 
 
@@ -220,6 +225,22 @@ class FMPToolManager:
             logger.error(f"Failed to load institutional endpoints: {str(e)}")
             raise
 
+    def load_intelligence_endpoints(self) -> None:
+        """Load market intelligence endpoints"""
+        if self._loaded_groups["intelligence"]:
+            logger.debug("Intelligence endpoints already loaded")
+            return
+
+        try:
+            self._register_endpoints(
+                INTELLIGENCE_ENDPOINT_MAP, INTELLIGENCE_ENDPOINTS_SEMANTICS
+            )
+            self._loaded_groups["intelligence"] = True
+            logger.info("Successfully loaded market intelligence endpoints")
+        except Exception as e:
+            logger.error(f"Failed to load intelligence endpoints: {str(e)}")
+            raise
+
     def load_all_endpoints(self) -> None:
         """Load all available endpoint groups"""
         loaded_count = 0
@@ -243,6 +264,10 @@ class FMPToolManager:
 
             self.load_institutional_endpoints()
             loaded_count += len(INSTITUTIONAL_ENDPOINT_MAP)
+
+            # Add intelligence endpoints
+            self.load_intelligence_endpoints()
+            loaded_count += len(INTELLIGENCE_ENDPOINT_MAP)
 
             logger.info(
                 f"Successfully loaded {loaded_count} endpoints across "
