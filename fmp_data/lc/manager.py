@@ -17,6 +17,10 @@ from fmp_data.fundamental.mapping import (
     FUNDAMENTAL_ENDPOINT_MAP,
     FUNDAMENTAL_ENDPOINTS_SEMANTICS,
 )
+from fmp_data.institutional.mapping import (
+    INSTITUTIONAL_ENDPOINT_MAP,
+    INSTITUTIONAL_ENDPOINTS_SEMANTICS,
+)
 from fmp_data.lc.registry import EndpointRegistry
 from fmp_data.lc.setup import setup_vector_store
 from fmp_data.lc.vector_store import EndpointVectorStore
@@ -31,6 +35,7 @@ ENDPOINT_GROUPS = [
     "fundamental",
     "technical",
     "economics",
+    "institutional",
 ]
 
 
@@ -199,6 +204,22 @@ class FMPToolManager:
             logger.error(f"Failed to load fundamental endpoints: {str(e)}")
             raise
 
+    def load_institutional_endpoints(self) -> None:
+        """Load institutional data endpoints"""
+        if self._loaded_groups["institutional"]:
+            logger.debug("Institutional endpoints already loaded")
+            return
+
+        try:
+            self._register_endpoints(
+                INSTITUTIONAL_ENDPOINT_MAP, INSTITUTIONAL_ENDPOINTS_SEMANTICS
+            )
+            self._loaded_groups["institutional"] = True
+            logger.info("Successfully loaded institutional data endpoints")
+        except Exception as e:
+            logger.error(f"Failed to load institutional endpoints: {str(e)}")
+            raise
+
     def load_all_endpoints(self) -> None:
         """Load all available endpoint groups"""
         loaded_count = 0
@@ -219,6 +240,9 @@ class FMPToolManager:
             # Load fundamental endpoints
             self.load_fundamental_endpoints()
             loaded_count += len(FUNDAMENTAL_ENDPOINT_MAP)
+
+            self.load_institutional_endpoints()
+            loaded_count += len(INSTITUTIONAL_ENDPOINT_MAP)
 
             logger.info(
                 f"Successfully loaded {loaded_count} endpoints across "

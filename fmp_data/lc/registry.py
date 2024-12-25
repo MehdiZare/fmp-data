@@ -9,6 +9,7 @@ from fmp_data.alternative.validation import AlternativeMarketsRule
 from fmp_data.company.validation import CompanyInfoRule
 from fmp_data.economics.validation import EconomicsRule
 from fmp_data.fundamental.validation import FundamentalAnalysisRule
+from fmp_data.institutional.validation import InstitutionalRule
 from fmp_data.lc.models import EndpointSemantics
 from fmp_data.lc.validation import ValidationRuleRegistry
 from fmp_data.logger import FMPLogger
@@ -35,7 +36,7 @@ class EndpointRegistry:
         self._validation.register_rule(CompanyInfoRule())
         self._validation.register_rule(EconomicsRule())
         self._validation.register_rule(FundamentalAnalysisRule())
-        # Register other rules
+        self._validation.register_rule(InstitutionalRule())
 
     def register(
         self, name: str, endpoint: Endpoint, semantics: EndpointSemantics
