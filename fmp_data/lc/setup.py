@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from langchain.embeddings.base import Embeddings
-from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 
 from fmp_data.base import BaseClient
 from fmp_data.lc.registry import EndpointRegistry
@@ -40,7 +40,6 @@ class VectorStoreSetup:
         # You can modify this to use different default embeddings
         return OpenAIEmbeddings(
             model="text-embedding-3-small",
-            dimensions=1536,  # Specify dimensions explicitly for consistency
         )
 
     def _get_embedding_dimension(self) -> int:
@@ -162,15 +161,59 @@ def setup_vector_store(
     Returns:
         Configured vector store
     """
-    setup = VectorStoreSetup(
+    cache_dir_path = Path(cache_dir) if cache_dir else Path.home() / ".fmp_cache"
+    store_dir = cache_dir_path / "vector_stores" / store_name
+    store_dir.mkdir(parents=True, exist_ok=True)
+
+    metadata_path = store_dir / "metadata.json"
+    index_path = store_dir / "faiss.index"
+
+    store_exists = metadata_path.exists() and index_path.exists()
+
+    if force_create:
+        logger.info("Force creating new vector store...")
+        vector_store = EndpointVectorStore(
+            client=client,
+            registry=registry,
+            embeddings=embeddings,
+            cache_dir=str(cache_dir_path),
+            store_name=store_name,
+        )
+        endpoint_names = list(registry.list_endpoints().keys())
+        vector_store.add_endpoints(endpoint_names)
+        vector_store.save()
+        logger.info(f"Created vector store with {len(endpoint_names)} endpoints")
+        return vector_store
+
+    if store_exists:
+        try:
+            # Try to load existing store
+            vector_store = EndpointVectorStore(
+                client=client,
+                registry=registry,
+                embeddings=embeddings,
+                cache_dir=str(cache_dir_path),
+                store_name=store_name,
+            )
+            # Quick validation check
+            if vector_store.validate():
+                logger.info("Using existing vector store")
+                return vector_store
+            logger.warning("Existing vector store validation failed")
+        except Exception as e:
+            logger.warning(f"Failed to load existing vector store: {str(e)}")
+
+    # Create new store if we get here
+    logger.info("Creating new vector store...")
+    vector_store = EndpointVectorStore(
         client=client,
         registry=registry,
         embeddings=embeddings,
-        cache_dir=cache_dir,
+        cache_dir=str(cache_dir_path),
         store_name=store_name,
     )
-
-    if force_create:
-        return setup.create_store()
-
-    return setup.setup()
+    endpoint_names = list(registry.list_endpoints().keys())
+    vector_store.add_endpoints(endpoint_names)
+    vector_store.save()
+    logger.info(f"Created vector store with {len(endpoint_names)} endpoints")
+    return vector_store
