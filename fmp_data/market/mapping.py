@@ -95,7 +95,6 @@ MARKET_SESSIONS = {
     },
 }
 
-# Price movement categories
 PRICE_MOVEMENTS = {
     "up": {
         "patterns": [
@@ -120,7 +119,6 @@ PRICE_MOVEMENTS = {
     },
 }
 
-# Market significance levels
 SIGNIFICANCE_LEVELS = {
     "high_activity": {
         "patterns": [
@@ -138,7 +136,6 @@ SIGNIFICANCE_LEVELS = {
     },
 }
 
-# Complete the mappings with additional useful categorizations
 PRICE_METRICS = {
     "ohlc": ["open", "high", "low", "close"],
     "derived": ["vwap", "twap", "moving_average"],
@@ -154,6 +151,45 @@ TECHNICAL_INDICATORS = {
     "momentum": ["rsi", "macd", "momentum"],
     "trend": ["moving_average", "trend_line"],
     "volatility": ["atr", "bollinger_bands"],
+}
+MARKET_COMMON_TERMS = {
+    "price": [
+        "quote",
+        "value",
+        "trading price",
+        "market price",
+        "stock price",
+    ],
+    "volume": [
+        "shares traded",
+        "trading volume",
+        "market volume",
+        "activity",
+    ],
+    "market_cap": [
+        "market capitalization",
+        "company value",
+        "market value",
+        "size",
+    ],
+}
+MARKET_TIME_PERIODS = {
+    "intraday": {
+        "patterns": [
+            r"(?i)intraday",
+            r"(?i)during the day",
+            r"(?i)today's trading",
+        ],
+        "terms": ["intraday", "today", "current session"],
+    },
+    "daily": {
+        "patterns": [
+            r"(?i)daily",
+            r"(?i)day by day",
+            r"(?i)each day",
+        ],
+        "terms": ["daily", "per day", "day"],
+    },
 }
 
 # Complete semantic definitions
@@ -208,92 +244,151 @@ MARKET_ENDPOINTS_SEMANTICS = {
             "Price change monitoring",
         ],
     ),
-    # Add other endpoint semantics following the same pattern...
-}
-
-# Additional mappings for common terms
-MARKET_COMMON_TERMS = {
-    "price": [
-        "quote",
-        "value",
-        "trading price",
-        "market price",
-        "stock price",
-    ],
-    "volume": [
-        "shares traded",
-        "trading volume",
-        "market volume",
-        "activity",
-    ],
-    "market_cap": [
-        "market capitalization",
-        "company value",
-        "market value",
-        "size",
-    ],
-}
-
-# Time period mapping for natural language processing
-MARKET_TIME_PERIODS = {
-    "intraday": {
-        "patterns": [
-            r"(?i)intraday",
-            r"(?i)during the day",
-            r"(?i)today's trading",
-        ],
-        "terms": ["intraday", "today", "current session"],
-    },
-    "daily": {
-        "patterns": [
-            r"(?i)daily",
-            r"(?i)day by day",
-            r"(?i)each day",
-        ],
-        "terms": ["daily", "per day", "day"],
-    },
     "simple_quote": EndpointSemantics(
         client_name="market",
         method_name="get_simple_quote",
         natural_description=(
-            "Get simplified stock quote with basic price and volume data, "
-            "ideal for quick price checks and lightweight applications"
+            "Get real-time basic stock quote "
+            "including price, volume, and change information"
         ),
         example_queries=[
-            "Get basic quote for AAPL",
-            "What's the simple price of MSFT",
-            "Show quick quote for GOOGL",
-            "Basic price check for AMZN",
-            "Get minimal quote data for TSLA",
+            "Get current price for AAPL",
+            "Show Microsoft stock quote",
+            "What's Tesla trading at?",
+            "Get Google stock price",
+            "Show Amazon quote",
         ],
         related_terms=[
-            "basic quote",
-            "simple price",
-            "quick quote",
-            "minimal quote",
-            "price check",
+            "stock quote",
+            "current price",
+            "trading price",
+            "market price",
+            "live quote",
+            "real-time price",
         ],
         category=SemanticCategory.MARKET_DATA,
-        sub_category="Basic Quotes",
+        sub_category="Real-time Quotes",
         parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
             "price": ResponseFieldInfo(
                 description="Current stock price",
-                examples=["150.25", "3500.95"],
-                related_terms=["price", "current price", "trading price"],
+                examples=["150.25", "3200.50"],
+                related_terms=["current price", "trading price", "market price"],
+            ),
+            "change": ResponseFieldInfo(
+                description="Price change",
+                examples=["+2.50", "-1.75"],
+                related_terms=["price change", "change amount", "price movement"],
             ),
             "volume": ResponseFieldInfo(
                 description="Trading volume",
-                examples=["1000000", "500000"],
-                related_terms=["volume", "shares traded"],
+                examples=["1.2M", "500K"],
+                related_terms=["volume", "shares traded", "trading volume"],
             ),
         },
         use_cases=[
+            "Real-time price monitoring",
+            "Basic stock tracking",
             "Quick price checks",
-            "Basic market monitoring",
-            "Simple portfolio tracking",
-            "Lightweight applications",
-            "Basic price alerts",
+            "Portfolio monitoring",
+        ],
+    ),
+    "historical_prices": EndpointSemantics(
+        client_name="market",
+        method_name="get_historical_prices",
+        natural_description=(
+            "Retrieve historical price data "
+            "including OHLCV (Open, High, Low, Close, Volume) information"
+        ),
+        example_queries=[
+            "Get AAPL historical prices",
+            "Show Microsoft price history",
+            "Tesla stock price history",
+            "Get Google historical data",
+            "Show Amazon price chart data",
+        ],
+        related_terms=[
+            "price history",
+            "historical data",
+            "OHLCV",
+            "price chart",
+            "historical quotes",
+            "past prices",
+        ],
+        category=SemanticCategory.MARKET_DATA,
+        sub_category="Historical Data",
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "from_date": DATE_HINT,
+            "to_date": DATE_HINT,
+        },
+        response_hints={
+            "date": ResponseFieldInfo(
+                description="Trading date",
+                examples=["2024-01-15", "2023-12-31"],
+                related_terms=["date", "trading day", "session date"],
+            ),
+            "open": ResponseFieldInfo(
+                description="Opening price",
+                examples=["150.25", "3200.50"],
+                related_terms=["open price", "opening", "open"],
+            ),
+            "close": ResponseFieldInfo(
+                description="Closing price",
+                examples=["151.75", "3225.25"],
+                related_terms=["close price", "closing", "close"],
+            ),
+        },
+        use_cases=[
+            "Technical analysis",
+            "Historical analysis",
+            "Price trend analysis",
+            "Chart creation",
+        ],
+    ),
+    "intraday_prices": EndpointSemantics(
+        client_name="market",
+        method_name="get_intraday_prices",
+        natural_description=(
+            "Get intraday price data with " "minute-by-minute or hourly intervals"
+        ),
+        example_queries=[
+            "Get AAPL intraday prices",
+            "Show Microsoft today's price movement",
+            "Tesla intraday data",
+            "Get Google price by minute",
+            "Show Amazon today's trading",
+        ],
+        related_terms=[
+            "intraday",
+            "minute data",
+            "day trading",
+            "price movement",
+            "daily chart",
+        ],
+        category=SemanticCategory.MARKET_DATA,
+        sub_category="Intraday Data",
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "interval": INTERVAL_HINT,
+        },
+        response_hints={
+            "datetime": ResponseFieldInfo(
+                description="Exact time of the price",
+                examples=["2024-01-15 10:30:00", "2024-01-15 15:45:00"],
+                related_terms=["timestamp", "time", "minute"],
+            ),
+            "price": ResponseFieldInfo(
+                description="Price at that time",
+                examples=["150.25", "3200.50"],
+                related_terms=["price", "trade price", "current"],
+            ),
+        },
+        use_cases=[
+            "Day trading",
+            "Intraday analysis",
+            "Price monitoring",
+            "Short-term trading",
         ],
     ),
     "historical_price": EndpointSemantics(
