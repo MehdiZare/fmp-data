@@ -19,6 +19,19 @@ from fmp_data.lc.models import (
     SemanticCategory,
 )
 
+# Endpoint mappings
+FUNDAMENTAL_ENDPOINT_MAP = {
+    "get_income_statement": INCOME_STATEMENT,
+    "get_balance_sheet": BALANCE_SHEET,
+    "get_cash_flow": CASH_FLOW,
+    "get_key_metrics": KEY_METRICS,
+    "get_financial_ratios": FINANCIAL_RATIOS,
+    "get_owner_earnings": OWNER_EARNINGS,
+    "get_levered_dcf": LEVERED_DCF,
+    "get_historical_rating": HISTORICAL_RATING,
+    "get_full_financial_statement": FULL_FINANCIAL_STATEMENT,
+    "get_financial_report_dates": FINANCIAL_REPORTS_DATES,
+}
 # Common parameter hints
 SYMBOL_HINT = ParameterHint(
     natural_names=["company", "ticker", "stock", "symbol"],
@@ -741,20 +754,6 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
             "Data collection planning",
         ],
     ),
-}
-
-# Endpoint mappings
-FUNDAMENTAL_ENDPOINT_MAP = {
-    "get_income_statement": INCOME_STATEMENT,
-    "get_balance_sheet": BALANCE_SHEET,
-    "get_cash_flow": CASH_FLOW,
-    "get_key_metrics": KEY_METRICS,
-    "get_financial_ratios": FINANCIAL_RATIOS,
-    "get_owner_earnings": OWNER_EARNINGS,
-    "get_levered_dcf": LEVERED_DCF,
-    "get_historical_rating": HISTORICAL_RATING,
-    "get_full_financial_statement": FULL_FINANCIAL_STATEMENT,
-    "get_financial_report_dates": FINANCIAL_REPORTS_DATES,
 }
 
 # Common concepts and terms for fundamental analysis
