@@ -1,5 +1,3 @@
-# fmp_data/technical/mapping.py
-
 from fmp_data.lc.models import (
     EndpointSemantics,
     ParameterHint,
@@ -8,19 +6,7 @@ from fmp_data.lc.models import (
 )
 from fmp_data.technical.endpoints import TECHNICAL_INDICATOR
 
-TECHNICAL_ENDPOINT_MAP = {
-    "get_sma": TECHNICAL_INDICATOR,
-    "get_ema": TECHNICAL_INDICATOR,
-    "get_wma": TECHNICAL_INDICATOR,
-    "get_dema": TECHNICAL_INDICATOR,
-    "get_tema": TECHNICAL_INDICATOR,
-    "get_williams": TECHNICAL_INDICATOR,
-    "get_rsi": TECHNICAL_INDICATOR,
-    "get_adx": TECHNICAL_INDICATOR,
-    "get_standard_deviation": TECHNICAL_INDICATOR,
-}
-
-# Common parameter hints for reuse
+# Common parameter hints
 SYMBOL_HINT = ParameterHint(
     natural_names=["symbol", "ticker", "stock"],
     extraction_patterns=[
@@ -30,6 +16,15 @@ SYMBOL_HINT = ParameterHint(
     ],
     examples=["AAPL", "MSFT", "GOOGL"],
     context_clues=["stock", "symbol", "ticker", "company"],
+)
+
+TYPE_HINT = ParameterHint(
+    natural_names=["type", "indicator", "calculation"],
+    extraction_patterns=[
+        r"(sma|ema|wma|dema|tema|williams|rsi|adx|standardDeviation)",
+    ],
+    examples=["sma", "ema", "rsi"],
+    context_clues=["type", "indicator", "method"],
 )
 
 PERIOD_HINT = ParameterHint(
@@ -52,50 +47,37 @@ INTERVAL_HINT = ParameterHint(
     context_clues=["interval", "frequency", "period", "timeframe"],
 )
 
-DATE_HINT = ParameterHint(
-    natural_names=["date", "start date", "end date"],
+FROM_DATE_HINT = ParameterHint(
+    natural_names=["from date", "start date", "beginning"],
     extraction_patterns=[
-        r"(\d{4}-\d{2}-\d{2})",
-        r"(?:from|since|after)\s+(\d{4}-\d{2}-\d{2})",
+        r"from\s+(\d{4}-\d{2}-\d{2})",
+        r"starting\s+(\d{4}-\d{2}-\d{2})",
     ],
-    examples=["2024-01-15", "2023-12-31"],
-    context_clues=["date", "from", "since", "starting", "until"],
+    examples=["2024-01-01", "2023-12-01"],
+    context_clues=["from", "start", "beginning", "since"],
 )
 
-# Common response field hints
-BASIC_PRICE_HINTS = {
-    "date": ResponseFieldInfo(
-        description="Date of the price data point",
-        examples=["2024-01-15", "2023-12-31"],
-        related_terms=["date", "timestamp", "time"],
-    ),
-    "open": ResponseFieldInfo(
-        description="Opening price",
-        examples=["150.25", "3500.75"],
-        related_terms=["open price", "opening", "start price"],
-    ),
-    "high": ResponseFieldInfo(
-        description="Highest price",
-        examples=["152.50", "3525.00"],
-        related_terms=["high price", "peak", "maximum"],
-    ),
-    "low": ResponseFieldInfo(
-        description="Lowest price",
-        examples=["148.75", "3475.50"],
-        related_terms=["low price", "bottom", "minimum"],
-    ),
-    "close": ResponseFieldInfo(
-        description="Closing price",
-        examples=["151.00", "3510.25"],
-        related_terms=["close price", "closing", "end price"],
-    ),
-    "volume": ResponseFieldInfo(
-        description="Trading volume",
-        examples=["1000000", "500000"],
-        related_terms=["volume", "shares traded", "trading volume"],
-    ),
+TO_DATE_HINT = ParameterHint(
+    natural_names=["to date", "end date", "until"],
+    extraction_patterns=[
+        r"to\s+(\d{4}-\d{2}-\d{2})",
+        r"until\s+(\d{4}-\d{2}-\d{2})",
+    ],
+    examples=["2024-12-31", "2023-12-31"],
+    context_clues=["to", "end", "until", "through"],
+)
+
+# Common parameter hints dictionary
+COMMON_PARAMS = {
+    "symbol": SYMBOL_HINT,
+    "type": TYPE_HINT,
+    "period": PERIOD_HINT,
+    "interval": INTERVAL_HINT,
+    "from": FROM_DATE_HINT,
+    "to": TO_DATE_HINT,
 }
 
+# Define each technical indicator explicitly
 TECHNICAL_ENDPOINTS_SEMANTICS = {
     "sma": EndpointSemantics(
         client_name="technical",
@@ -107,10 +89,9 @@ TECHNICAL_ENDPOINTS_SEMANTICS = {
         ),
         example_queries=[
             "Calculate 50-day SMA for AAPL",
-            "Get daily SMA(20) for MSFT",
+            "Get daily SMA(20) for MSFT from 2024-01-01 to 2024-12-31",
             "Show 200-day moving average for GOOGL",
             "What's the 10-day SMA for TSLA?",
-            "Plot 100-day simple moving average for AMZN",
         ],
         related_terms=[
             "moving average",
@@ -121,15 +102,8 @@ TECHNICAL_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.TECHNICAL_ANALYSIS,
         sub_category="Moving Averages",
-        parameter_hints={
-            "symbol": SYMBOL_HINT,
-            "period": PERIOD_HINT,
-            "interval": INTERVAL_HINT,
-            "from": DATE_HINT,
-            "to": DATE_HINT,
-        },
+        parameter_hints=COMMON_PARAMS,
         response_hints={
-            **BASIC_PRICE_HINTS,
             "sma": ResponseFieldInfo(
                 description="Simple Moving Average value",
                 examples=["150.75", "3505.50"],
@@ -141,7 +115,6 @@ TECHNICAL_ENDPOINTS_SEMANTICS = {
             "Support/resistance levels",
             "Price smoothing",
             "Trading signals generation",
-            "Technical analysis",
         ],
     ),
     "ema": EndpointSemantics(
@@ -155,9 +128,8 @@ TECHNICAL_ENDPOINTS_SEMANTICS = {
         example_queries=[
             "Calculate 20-day EMA for AAPL",
             "Get exponential moving average(50) for MSFT",
-            "Show 12-day EMA for GOOGL",
+            "Show 12-day EMA for GOOGL from 2024-01-01 to 2024-12-31",
             "What's the 26-day EMA for TSLA?",
-            "Plot exponential average for AMZN",
         ],
         related_terms=[
             "exponential average",
@@ -167,15 +139,8 @@ TECHNICAL_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.TECHNICAL_ANALYSIS,
         sub_category="Moving Averages",
-        parameter_hints={
-            "symbol": SYMBOL_HINT,
-            "period": PERIOD_HINT,
-            "interval": INTERVAL_HINT,
-            "from": DATE_HINT,
-            "to": DATE_HINT,
-        },
+        parameter_hints=COMMON_PARAMS,
         response_hints={
-            **BASIC_PRICE_HINTS,
             "ema": ResponseFieldInfo(
                 description="Exponential Moving Average value",
                 examples=["151.25", "3508.75"],
@@ -186,61 +151,288 @@ TECHNICAL_ENDPOINTS_SEMANTICS = {
             "Trend following",
             "Price momentum analysis",
             "Trading signal generation",
-            "Technical analysis",
             "Market timing",
+        ],
+    ),
+    "wma": EndpointSemantics(
+        client_name="technical",
+        method_name="get_wma",
+        natural_description=(
+            "Calculate Weighted Moving Average (WMA). WMA assigns higher weights "
+            "to recent data points, providing a more responsive trend indicator "
+            "than simple moving average."
+        ),
+        example_queries=[
+            "Calculate WMA for AAPL",
+            "Get weighted moving average for MSFT",
+            "Show 10-day WMA for GOOGL from 2024-01-01 to 2024-12-31",
+            "What's the 20-day WMA for TSLA?",
+        ],
+        related_terms=[
+            "weighted average",
+            "moving average",
+            "trend indicator",
+            "price weighting",
+        ],
+        category=SemanticCategory.TECHNICAL_ANALYSIS,
+        sub_category="Moving Averages",
+        parameter_hints=COMMON_PARAMS,
+        response_hints={
+            "wma": ResponseFieldInfo(
+                description="Weighted Moving Average value",
+                examples=["152.50", "3515.25"],
+                related_terms=["weighted average", "moving average", "WMA"],
+            ),
+        },
+        use_cases=[
+            "Trend analysis",
+            "Price momentum tracking",
+            "Technical trading",
+            "Market analysis",
+        ],
+    ),
+    "dema": EndpointSemantics(
+        client_name="technical",
+        method_name="get_dema",
+        natural_description=(
+            "Calculate Double Exponential Moving Average (DEMA). DEMA reduces lag "
+            "in traditional moving averages by applying exponential smoothing twice."
+        ),
+        example_queries=[
+            "Calculate DEMA for AAPL",
+            "Get double exponential average for MSFT",
+            "Show 10-day DEMA for GOOGL from 2024-01-01 to 2024-12-31",
+            "What's the 20-day DEMA for TSLA?",
+        ],
+        related_terms=[
+            "double exponential",
+            "moving average",
+            "trend indicator",
+            "lag reduction",
+        ],
+        category=SemanticCategory.TECHNICAL_ANALYSIS,
+        sub_category="Moving Averages",
+        parameter_hints=COMMON_PARAMS,
+        response_hints={
+            "dema": ResponseFieldInfo(
+                description="Double Exponential Moving Average value",
+                examples=["153.75", "3520.50"],
+                related_terms=["double exponential", "moving average", "DEMA"],
+            ),
+        },
+        use_cases=[
+            "Trend analysis",
+            "Reduced lag indicators",
+            "Technical trading",
+            "Quick trend detection",
+        ],
+    ),
+    "tema": EndpointSemantics(
+        client_name="technical",
+        method_name="get_tema",
+        natural_description=(
+            "Calculate Triple Exponential Moving Average (TEMA). TEMA applies "
+            "exponential smoothing three times to further reduce lag while "
+            "maintaining smoothing effectiveness."
+        ),
+        example_queries=[
+            "Calculate TEMA for AAPL",
+            "Get triple exponential average for MSFT",
+            "Show 10-day TEMA for GOOGL from 2024-01-01 to 2024-12-31",
+            "What's the 20-day TEMA for TSLA?",
+        ],
+        related_terms=[
+            "triple exponential",
+            "moving average",
+            "trend indicator",
+            "lag reduction",
+        ],
+        category=SemanticCategory.TECHNICAL_ANALYSIS,
+        sub_category="Moving Averages",
+        parameter_hints=COMMON_PARAMS,
+        response_hints={
+            "tema": ResponseFieldInfo(
+                description="Triple Exponential Moving Average value",
+                examples=["154.25", "3525.75"],
+                related_terms=["triple exponential", "moving average", "TEMA"],
+            ),
+        },
+        use_cases=[
+            "Trend analysis",
+            "Minimal lag indicators",
+            "Technical trading",
+            "Rapid trend detection",
+        ],
+    ),
+    "williams": EndpointSemantics(
+        client_name="technical",
+        method_name="get_williams",
+        natural_description=(
+            "Calculate Williams %R indicator. This momentum indicator measures "
+            "overbought and oversold levels by comparing the closing price to "
+            "the high-low range over a specified period."
+        ),
+        example_queries=[
+            "Calculate Williams %R for AAPL",
+            "Get Williams indicator for MSFT",
+            "Show 14-day Williams %R for GOOGL from 2024-01-01 to 2024-12-31",
+            "What's the overbought/oversold level for TSLA?",
+        ],
+        related_terms=[
+            "williams percent r",
+            "momentum indicator",
+            "overbought/oversold",
+            "price momentum",
+        ],
+        category=SemanticCategory.TECHNICAL_ANALYSIS,
+        sub_category="Momentum Indicators",
+        parameter_hints=COMMON_PARAMS,
+        response_hints={
+            "williams": ResponseFieldInfo(
+                description="Williams %R value",
+                examples=["-20.5", "-80.3"],
+                related_terms=["percent r", "momentum", "overbought", "oversold"],
+            ),
+        },
+        use_cases=[
+            "Overbought/oversold detection",
+            "Momentum analysis",
+            "Market timing",
+            "Reversal signals",
         ],
     ),
     "rsi": EndpointSemantics(
         client_name="technical",
         method_name="get_rsi",
         natural_description=(
-            "Calculate Relative Strength Index (RSI) for a security. RSI measures "
-            "the speed and magnitude of price movements to evaluate overbought or "
-            "oversold conditions."
+            "Calculate Relative Strength Index (RSI). RSI measures momentum by "
+            "comparing the magnitude of recent gains to recent losses, identifying "
+            "overbought and oversold conditions."
         ),
         example_queries=[
-            "Get 14-day RSI for AAPL",
-            "Calculate relative strength index for MSFT",
-            "Show RSI levels for GOOGL",
-            "What's the current RSI for TSLA?",
-            "Plot RSI indicator for AMZN",
+            "Calculate 14-day RSI for AAPL",
+            "Get RSI indicator for MSFT",
+            "Show relative strength for GOOGL from 2024-01-01 to 2024-12-31",
+            "What's the RSI level for TSLA?",
         ],
         related_terms=[
             "relative strength",
             "momentum indicator",
-            "overbought",
-            "oversold",
-            "momentum oscillator",
+            "overbought/oversold",
+            "price momentum",
         ],
         category=SemanticCategory.TECHNICAL_ANALYSIS,
         sub_category="Momentum Indicators",
-        parameter_hints={
-            "symbol": SYMBOL_HINT,
-            "period": PERIOD_HINT,
-            "interval": INTERVAL_HINT,
-            "from": DATE_HINT,
-            "to": DATE_HINT,
-        },
+        parameter_hints=COMMON_PARAMS,
         response_hints={
-            **BASIC_PRICE_HINTS,
             "rsi": ResponseFieldInfo(
-                description="Relative Strength Index value",
+                description="RSI value",
                 examples=["70.5", "30.2"],
-                related_terms=["RSI", "momentum", "overbought", "oversold"],
+                related_terms=[
+                    "relative strength",
+                    "momentum",
+                    "overbought",
+                    "oversold",
+                ],
             ),
         },
         use_cases=[
-            "Overbought/oversold detection",
             "Momentum analysis",
             "Trend reversal signals",
-            "Technical analysis",
-            "Trading signal generation",
+            "Market timing",
+            "Overbought/oversold detection",
         ],
     ),
-    # Add similar semantic definitions for other indicators...
+    "adx": EndpointSemantics(
+        client_name="technical",
+        method_name="get_adx",
+        natural_description=(
+            "Calculate Average Directional Index (ADX). ADX measures trend "
+            "strength regardless of direction, helping identify strong trends "
+            "and potential trading opportunities."
+        ),
+        example_queries=[
+            "Calculate ADX for AAPL",
+            "Get directional movement for MSFT",
+            "Show trend strength for GOOGL from 2024-01-01 to 2024-12-31",
+            "What's the ADX value for TSLA?",
+        ],
+        related_terms=[
+            "directional movement",
+            "trend strength",
+            "trend indicator",
+            "directional index",
+        ],
+        category=SemanticCategory.TECHNICAL_ANALYSIS,
+        sub_category="Trend Indicators",
+        parameter_hints=COMMON_PARAMS,
+        response_hints={
+            "adx": ResponseFieldInfo(
+                description="ADX value",
+                examples=["25.5", "45.8"],
+                related_terms=["directional movement", "trend strength", "ADX"],
+            ),
+        },
+        use_cases=[
+            "Trend strength analysis",
+            "Trend following",
+            "Trade filtering",
+            "Market direction",
+        ],
+    ),
+    "standard_deviation": EndpointSemantics(
+        client_name="technical",
+        method_name="get_standard_deviation",
+        natural_description=(
+            "Calculate price Standard Deviation to measure volatility and "
+            "dispersion. This statistical indicator helps assess market "
+            "volatility and potential risk levels."
+        ),
+        example_queries=[
+            "Calculate price volatility for AAPL",
+            "Get standard deviation for MSFT",
+            "Show price dispersion for GOOGL from 2024-01-01 to 2024-12-31",
+            "What's the volatility level for TSLA?",
+        ],
+        related_terms=[
+            "volatility",
+            "price dispersion",
+            "statistical indicator",
+            "risk measure",
+        ],
+        category=SemanticCategory.TECHNICAL_ANALYSIS,
+        sub_category="Volatility Indicators",
+        parameter_hints=COMMON_PARAMS,
+        response_hints={
+            "standard_deviation": ResponseFieldInfo(
+                description="Standard Deviation value",
+                examples=["2.5", "5.8"],
+                related_terms=["volatility", "dispersion", "variance", "risk"],
+            ),
+        },
+        use_cases=[
+            "Volatility analysis",
+            "Risk assessment",
+            "Option pricing",
+            "Market stability",
+        ],
+    ),
 }
 
-# Aggregate all technical endpoints for global mapping
+# Endpoint mappings
+TECHNICAL_ENDPOINT_MAP = {
+    "get_sma": TECHNICAL_INDICATOR,
+    "get_ema": TECHNICAL_INDICATOR,
+    "get_wma": TECHNICAL_INDICATOR,
+    "get_dema": TECHNICAL_INDICATOR,
+    "get_tema": TECHNICAL_INDICATOR,
+    "get_williams": TECHNICAL_INDICATOR,
+    "get_rsi": TECHNICAL_INDICATOR,
+    "get_adx": TECHNICAL_INDICATOR,
+    "get_standard_deviation": TECHNICAL_INDICATOR,
+}
+
+# Aggregate technical endpoints for global mapping
 ALL_TECHNICAL_ENDPOINTS = {
     name: TECHNICAL_INDICATOR
     for name in [
@@ -256,54 +448,30 @@ ALL_TECHNICAL_ENDPOINTS = {
     ]
 }
 
-# Additional mappings for common terms
-TECHNICAL_COMMON_TERMS = {
-    "moving_average": [
-        "average price",
-        "price mean",
-        "smoothed price",
-        "trend line",
-        "MA",
-    ],
-    "momentum": [
-        "price momentum",
-        "trend strength",
-        "price strength",
-        "movement speed",
-        "price velocity",
-    ],
-    "volatility": [
-        "price volatility",
-        "market volatility",
-        "price variation",
-        "price fluctuation",
-        "market movement",
-    ],
+# Common subcategories for technical analysis
+TECHNICAL_CATEGORIES = {
+    "Moving Averages": ["sma", "ema", "wma", "dema", "tema"],
+    "Momentum Indicators": ["williams", "rsi"],
+    "Trend Indicators": ["adx"],
+    "Volatility Indicators": ["standard_deviation"],
 }
 
-# Time interval mappings
-TECHNICAL_INTERVALS = {
-    "intraday": {
-        "1min": ["1-minute", "one minute", "1 min", "1m"],
-        "5min": ["5-minute", "five minute", "5 min", "5m"],
-        "15min": ["15-minute", "fifteen minute", "15 min", "15m"],
-        "30min": ["30-minute", "thirty minute", "30 min", "30m"],
-        "1hour": ["1-hour", "one hour", "1 hr", "1h"],
-        "4hour": ["4-hour", "four hour", "4 hr", "4h"],
-    },
-    "daily": ["daily", "day", "1 day", "1d"],
+# Default periods for different technical indicators
+DEFAULT_PERIODS = {
+    "sma": 20,
+    "ema": 20,
+    "wma": 20,
+    "dema": 20,
+    "tema": 20,
+    "williams": 14,
+    "rsi": 14,
+    "adx": 14,
+    "standard_deviation": 20,
 }
 
-# Common calculation patterns
-TECHNICAL_CALCULATIONS = {
-    "moving_average": {
-        "simple": "sum(prices) / period",
-        "exponential": "(price * k) + (previous_ema * (1-k)) where k = 2/(period+1)",
-        "weighted": "sum(price * weight) / sum(weights)",
-    },
-    "momentum": {
-        "rsi": "(100 - 100/(1 + RS)) where RS = avg_gain/avg_loss",
-        "williams": "((highest_high - close)/(highest_high - lowest_low)) * -100",
-        "adx": "(+DI - -DI)/(+DI + -DI) * 100",
-    },
+# Indicator thresholds for interpretation
+INDICATOR_THRESHOLDS = {
+    "rsi": {"overbought": 70, "oversold": 30},
+    "williams": {"overbought": -20, "oversold": -80},
+    "adx": {"weak_trend": 25, "strong_trend": 50, "very_strong_trend": 75},
 }
