@@ -89,8 +89,55 @@ LIMIT_HINT = ParameterHint(
         "reports",
     ],
 )
-
-# Semantic definitions for fundamental endpoints
+FUNDAMENTAL_CONCEPTS = {
+    "profitability": [
+        "margins",
+        "returns",
+        "earnings",
+        "profits",
+        "income",
+    ],
+    "liquidity": [
+        "cash",
+        "working capital",
+        "current ratio",
+        "quick ratio",
+    ],
+    "solvency": [
+        "debt",
+        "leverage",
+        "coverage",
+        "capital structure",
+    ],
+    "efficiency": [
+        "turnover",
+        "utilization",
+        "productivity",
+        "asset management",
+        "inventory management",
+    ],
+    "growth": [
+        "expansion",
+        "increase",
+        "development",
+        "scaling",
+        "momentum",
+    ],
+    "reporting": [
+        "filings",
+        "reports",
+        "statements",
+        "disclosures",
+        "documentation",
+    ],
+    "timing": [
+        "schedule",
+        "calendar",
+        "dates",
+        "timeline",
+        "availability",
+    ],
+}
 FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
     "income_statement": EndpointSemantics(
         client_name="fundamental",
@@ -625,12 +672,10 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         client_name="fundamental",
         method_name="get_full_financial_statement",
         natural_description=(
-            "Access complete financial statements as "
-            "reported to regulatory authorities, "
-            "including detailed line items, notes, "
-            "and supplementary information. Provides "
-            "comprehensive financial data in its "
-            "original reported form with full disclosure."
+            "Access complete financial statements as reported "
+            "to regulatory authorities, "
+            "including detailed line items, notes, and supplementary information. "
+            "Provides comprehensive financial data in its original reported form."
         ),
         example_queries=[
             "Get AAPL full financial statements",
@@ -649,7 +694,6 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
             "regulatory filing",
             "financial filing",
             "complete statements",
-            "detailed financials",
         ],
         category=SemanticCategory.FUNDAMENTAL_ANALYSIS,
         sub_category="Financial Statements",
@@ -667,17 +711,12 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
             "operating_income": ResponseFieldInfo(
                 description="Operating income as reported",
                 examples=["108.95B", "15.23B"],
-                related_terms=["operating profit", "reported income", "EBIT"],
+                related_terms=["operating profit", "reported income"],
             ),
             "net_income": ResponseFieldInfo(
                 description="Reported net income",
                 examples=["94.68B", "12.9B"],
                 related_terms=["net profit", "reported earnings", "bottom line"],
-            ),
-            "filing_date": ResponseFieldInfo(
-                description="Date of financial filing",
-                examples=["2024-02-15", "2023-12-31"],
-                related_terms=["report date", "submission date", "filing time"],
             ),
         },
         use_cases=[
@@ -687,25 +726,22 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
             "Investment research",
             "Financial modeling",
             "Due diligence",
-            "Comprehensive analysis",
         ],
     ),
     "financial_reports_dates": EndpointSemantics(
         client_name="fundamental",
         method_name="get_financial_report_dates",
         natural_description=(
-            "Retrieve available dates and links for "
-            "financial reports, including quarterly "
-            "and annual filings. Access historical "
-            "report timeline and associated "
-            "documentation with direct links to detailed reports."
+            "Retrieve available dates and links for financial reports, including "
+            "quarterly and annual filings. Access historical report timeline and "
+            "associated documentation with direct links to detailed reports."
         ),
         example_queries=[
-            "When are AAPL's financial reports?",
+            "When are AAPL's financial reports available?",
             "Show Microsoft report dates",
             "Get Tesla financial filing dates",
             "When does Google report?",
-            "Amazon financial report schedule",
+            "List Amazon financial report schedule",
             "Show Netflix reporting dates",
         ],
         related_terms=[
@@ -718,6 +754,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
             "report availability",
             "financial schedule",
             "reporting timeline",
+            "earnings calendar",
         ],
         category=SemanticCategory.FUNDAMENTAL_ANALYSIS,
         sub_category="Financial Reports",
@@ -756,495 +793,83 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
     ),
 }
 
-# Common concepts and terms for fundamental analysis
-FUNDAMENTAL_CONCEPTS = {
-    "profitability": [
-        "margins",
-        "returns",
-        "earnings",
-        "profits",
-        "income",
+FULL_STATEMENT_SEMANTICS = EndpointSemantics(
+    client_name="fundamental",
+    method_name="full_financial_statement",
+    natural_description=(
+        "Access complete financial statements as reported to regulatory authorities, "
+        "including detailed line items, notes, and supplementary information. "
+        "Provides comprehensive financial data in its original reported form with "
+        "complete transparency on revenue, profitability, assets, and liabilities."
+    ),
+    example_queries=[
+        "Get AAPL's full financial statements",
+        "Show complete Microsoft financial reports",
+        "Get Tesla's detailed financial statements",
+        "Full financial report for Google",
+        "Show Amazon's complete financial data",
+        "Access Netflix's detailed financial reports",
     ],
-    "liquidity": [
-        "cash",
-        "working capital",
-        "current ratio",
-        "quick ratio",
+    related_terms=[
+        "complete financials",
+        "detailed statements",
+        "full report",
+        "comprehensive financials",
+        "as reported",
+        "regulatory filing",
+        "financial filing",
+        "complete statements",
+        "detailed financials",
+        "SEC filing",
+        "financial report",
     ],
-    "solvency": [
-        "debt",
-        "leverage",
-        "coverage",
-        "capital structure",
+    category=SemanticCategory.FUNDAMENTAL_ANALYSIS,
+    sub_category="Financial Statements",
+    parameter_hints={
+        "symbol": SYMBOL_HINT,
+        "period": PERIOD_HINT,
+        "limit": LIMIT_HINT,
+    },
+    response_hints={
+        "revenue": ResponseFieldInfo(
+            description="Total reported revenue",
+            examples=["365.7B", "42.1B"],
+            related_terms=["total sales", "reported revenue", "gross revenue"],
+        ),
+        "operating_income": ResponseFieldInfo(
+            description="Operating income as reported",
+            examples=["108.95B", "15.23B"],
+            related_terms=["operating profit", "reported income", "EBIT"],
+        ),
+        "net_income": ResponseFieldInfo(
+            description="Reported net income",
+            examples=["94.68B", "12.9B"],
+            related_terms=["net profit", "reported earnings", "bottom line"],
+        ),
+        "total_assets": ResponseFieldInfo(
+            description="Total reported assets",
+            examples=["352.8B", "128.3B"],
+            related_terms=["assets", "total resources", "reported assets"],
+        ),
+        "total_liabilities": ResponseFieldInfo(
+            description="Total reported liabilities",
+            examples=["258.5B", "89.7B"],
+            related_terms=["liabilities", "obligations", "debts"],
+        ),
+        "stockholders_equity": ResponseFieldInfo(
+            description="Total stockholders' equity",
+            examples=["94.3B", "38.6B"],
+            related_terms=["equity", "net worth", "shareholder equity"],
+        ),
+    },
+    use_cases=[
+        "Detailed financial analysis",
+        "Regulatory compliance review",
+        "Audit preparation",
+        "Investment research",
+        "Financial modeling",
+        "Due diligence",
+        "Comprehensive analysis",
+        "SEC filing analysis",
     ],
-    "efficiency": [
-        "turnover",
-        "utilization",
-        "productivity",
-        "asset management",
-        "inventory management",
-    ],
-    "growth": [
-        "expansion",
-        "increase",
-        "development",
-        "scaling",
-        "momentum",
-    ],
-}
-
-# Additional semantic definitions
-FUNDAMENTAL_ENDPOINTS_SEMANTICS.update(
-    {
-        "cash_flow": EndpointSemantics(
-            client_name="fundamental",
-            method_name="get_cash_flow",
-            natural_description=(
-                "Retrieve detailed cash flow statements "
-                "showing operating, investing, and "
-                "financing activities. Track cash movements, "
-                "sources and uses of funds, "
-                "and overall liquidity management."
-            ),
-            example_queries=[
-                "Get AAPL cash flow statement",
-                "Show Microsoft's operating cash flow",
-                "What's Tesla's free cash flow?",
-                "Get Google's capital expenditures",
-                "Show Amazon's financing activities",
-                "Netflix cash flow last 3 years",
-            ],
-            related_terms=[
-                "cash flow",
-                "operating activities",
-                "investing activities",
-                "financing activities",
-                "free cash flow",
-                "capital expenditures",
-                "cash generation",
-                "liquidity",
-                "working capital",
-            ],
-            category=SemanticCategory.FUNDAMENTAL_ANALYSIS,
-            sub_category="Financial Statements",
-            parameter_hints={
-                "symbol": SYMBOL_HINT,
-                "period": PERIOD_HINT,
-                "limit": LIMIT_HINT,
-            },
-            response_hints={
-                "operating_cash_flow": ResponseFieldInfo(
-                    description="Net cash from operating activities",
-                    examples=["95.2B", "12.4B"],
-                    related_terms=["operations cash flow", "operating activities"],
-                ),
-                "free_cash_flow": ResponseFieldInfo(
-                    description="Operating cash flow minus capital expenditures",
-                    examples=["75.8B", "8.9B"],
-                    related_terms=["FCF", "available cash flow"],
-                ),
-                "capital_expenditure": ResponseFieldInfo(
-                    description="Investment in fixed assets",
-                    examples=["18.9B", "4.2B"],
-                    related_terms=["capex", "fixed asset investment"],
-                ),
-            },
-            use_cases=[
-                "Cash flow analysis",
-                "Liquidity assessment",
-                "Investment capacity evaluation",
-                "Dividend sustainability analysis",
-                "Working capital management",
-                "Capital allocation analysis",
-            ],
-        ),
-        "key_metrics": EndpointSemantics(
-            client_name="fundamental",
-            method_name="get_key_metrics",
-            natural_description=(
-                "Access essential financial metrics and KPIs including profitability, "
-                "efficiency, and valuation measures. Get comprehensive insights into "
-                "company performance and financial health."
-            ),
-            example_queries=[
-                "Show AAPL key metrics",
-                "Get Microsoft's financial KPIs",
-                "What are Tesla's key ratios?",
-                "Show performance metrics for Amazon",
-                "Get Google's fundamental metrics",
-                "Key indicators for Netflix",
-            ],
-            related_terms=[
-                "KPIs",
-                "metrics",
-                "ratios",
-                "indicators",
-                "measurements",
-                "performance measures",
-                "financial metrics",
-                "key figures",
-                "benchmarks",
-            ],
-            category=SemanticCategory.FUNDAMENTAL_ANALYSIS,
-            sub_category="Financial Metrics",
-            parameter_hints={
-                "symbol": SYMBOL_HINT,
-                "period": PERIOD_HINT,
-                "limit": LIMIT_HINT,
-            },
-            response_hints={
-                "revenue_per_share": ResponseFieldInfo(
-                    description="Revenue divided by shares outstanding",
-                    examples=["85.20", "12.45"],
-                    related_terms=["sales per share", "revenue/share"],
-                ),
-                "net_income_per_share": ResponseFieldInfo(
-                    description="Net income divided by shares outstanding",
-                    examples=["6.15", "2.30"],
-                    related_terms=["earnings per share", "profit per share"],
-                ),
-            },
-            use_cases=[
-                "Performance evaluation",
-                "Company comparison",
-                "Investment screening",
-                "Valuation analysis",
-                "Trend monitoring",
-            ],
-        ),
-        "financial_ratios": EndpointSemantics(
-            client_name="fundamental",
-            method_name="get_financial_ratios",
-            natural_description=(
-                "Access comprehensive financial ratios for "
-                "analyzing company performance, "
-                "efficiency, and financial health. Includes "
-                "profitability, liquidity, "
-                "solvency, and valuation ratios."
-            ),
-            example_queries=[
-                "Get AAPL financial ratios",
-                "Show Microsoft's profitability ratios",
-                "What's Tesla's debt ratio?",
-                "Get Google's efficiency ratios",
-                "Show Amazon's liquidity ratios",
-            ],
-            related_terms=[
-                "ratios",
-                "financial metrics",
-                "performance measures",
-                "efficiency metrics",
-                "profitability metrics",
-                "liquidity ratios",
-                "solvency ratios",
-            ],
-            category=SemanticCategory.FUNDAMENTAL_ANALYSIS,
-            sub_category="Financial Metrics",
-            parameter_hints={
-                "symbol": SYMBOL_HINT,
-                "period": PERIOD_HINT,
-                "limit": LIMIT_HINT,
-            },
-            response_hints={
-                "current_ratio": ResponseFieldInfo(
-                    description="Current assets divided by current liabilities",
-                    examples=["2.5", "1.8"],
-                    related_terms=["liquidity ratio", "working capital ratio"],
-                ),
-                "return_on_equity": ResponseFieldInfo(
-                    description="Net income divided by shareholders' equity",
-                    examples=["25.4%", "18.2%"],
-                    related_terms=["ROE", "equity returns"],
-                ),
-            },
-            use_cases=[
-                "Financial analysis",
-                "Performance comparison",
-                "Risk assessment",
-                "Investment screening",
-                "Credit analysis",
-            ],
-        ),
-    }
-)
-
-FUNDAMENTAL_ENDPOINTS_SEMANTICS.update(
-    {
-        "owner_earnings": EndpointSemantics(
-            client_name="fundamental",
-            method_name="get_owner_earnings",
-            natural_description=(
-                "Calculate owner earnings metrics using "
-                "Warren Buffett's methodology for "
-                "evaluating true business profitability "
-                "and cash generation capability. "
-                "Provides insights into actual "
-                "cash-generating ability of the business."
-            ),
-            example_queries=[
-                "Calculate AAPL owner earnings",
-                "Get Microsoft's owner earnings",
-                "What's Tesla's true earnings power?",
-                "Show Google's owner earnings metrics",
-                "Calculate Apple's real earnings power",
-                "Get Amazon's owner earnings analysis",
-            ],
-            related_terms=[
-                "owner earnings",
-                "true earnings",
-                "cash earnings",
-                "buffett earnings",
-                "real earnings power",
-                "cash generation",
-                "earning power",
-                "sustainable earnings",
-                "economic earnings",
-            ],
-            category=SemanticCategory.FUNDAMENTAL_ANALYSIS,
-            sub_category="Financial Metrics",
-            parameter_hints={"symbol": SYMBOL_HINT},
-            response_hints={
-                "reported_owner_earnings": ResponseFieldInfo(
-                    description="Reported owner earnings value",
-                    examples=["8.5B", "12.3B"],
-                    related_terms=["earnings", "cash earnings", "true earnings"],
-                ),
-                "owner_earnings_per_share": ResponseFieldInfo(
-                    description="Owner earnings per share",
-                    examples=["4.25", "6.15"],
-                    related_terms=["per share earnings", "earnings power"],
-                ),
-            },
-            use_cases=[
-                "True earnings power analysis",
-                "Long-term investment analysis",
-                "Business value assessment",
-                "Cash generation evaluation",
-                "Quality of earnings analysis",
-            ],
-        ),
-        "levered_dcf": EndpointSemantics(
-            client_name="fundamental",
-            method_name="get_levered_dcf",
-            natural_description=(
-                "Perform levered discounted cash flow valuation including detailed "
-                "assumptions about growth, cost of capital, and future cash flows. "
-                "Provides intrinsic value estimates considering capital structure."
-            ),
-            example_queries=[
-                "Calculate AAPL DCF value",
-                "Get Microsoft's intrinsic value",
-                "What's Tesla worth using DCF?",
-                "Show Google's DCF valuation",
-                "Get Amazon's fair value estimate",
-                "Calculate Facebook DCF",
-            ],
-            related_terms=[
-                "dcf valuation",
-                "intrinsic value",
-                "present value",
-                "fair value",
-                "discounted cash flow",
-                "valuation",
-                "enterprise value",
-                "equity value",
-                "company value",
-            ],
-            category=SemanticCategory.FUNDAMENTAL_ANALYSIS,
-            sub_category="Valuation",
-            parameter_hints={"symbol": SYMBOL_HINT},
-            response_hints={
-                "levered_dcf": ResponseFieldInfo(
-                    description="Calculated DCF value",
-                    examples=["180.50", "2450.75"],
-                    related_terms=["fair value", "intrinsic value", "dcf price"],
-                ),
-                "growth_rate": ResponseFieldInfo(
-                    description="Growth rate used in calculation",
-                    examples=["12.5%", "8.3%"],
-                    related_terms=["growth assumption", "projected growth"],
-                ),
-                "cost_of_equity": ResponseFieldInfo(
-                    description="Cost of equity used in calculation",
-                    examples=["9.5%", "11.2%"],
-                    related_terms=["required return", "discount rate"],
-                ),
-            },
-            use_cases=[
-                "Intrinsic value calculation",
-                "Investment valuation",
-                "Fair value estimation",
-                "Value investing analysis",
-                "Acquisition analysis",
-            ],
-        ),
-        "historical_rating": EndpointSemantics(
-            client_name="fundamental",
-            method_name="get_historical_rating",
-            natural_description=(
-                "Retrieve historical company ratings and scoring "
-                "metrics over time based "
-                "on fundamental analysis. Includes overall ratings, detailed scoring "
-                "breakdowns, and investment recommendations."
-            ),
-            example_queries=[
-                "Get AAPL historical ratings",
-                "Show Microsoft's rating history",
-                "What are Tesla's past ratings?",
-                "Get Google's historical scores",
-                "Show Amazon's rating changes",
-                "Rating history for Netflix",
-            ],
-            related_terms=[
-                "company rating",
-                "credit rating",
-                "investment grade",
-                "score history",
-                "historical grades",
-                "rating changes",
-                "company score",
-                "financial rating",
-            ],
-            category=SemanticCategory.FUNDAMENTAL_ANALYSIS,
-            sub_category="Ratings",
-            parameter_hints={"symbol": SYMBOL_HINT},
-            response_hints={
-                "rating": ResponseFieldInfo(
-                    description="Overall rating grade",
-                    examples=["A+", "B", "C-"],
-                    related_terms=["grade", "score", "rating level"],
-                ),
-                "rating_score": ResponseFieldInfo(
-                    description="Numerical rating score",
-                    examples=["85", "72", "63"],
-                    related_terms=["score", "numerical rating", "rating value"],
-                ),
-                "rating_recommendation": ResponseFieldInfo(
-                    description="Investment recommendation",
-                    examples=["Strong Buy", "Hold", "Sell"],
-                    related_terms=[
-                        "recommendation",
-                        "investment advice",
-                        "rating action",
-                    ],
-                ),
-            },
-            use_cases=[
-                "Rating trend analysis",
-                "Investment screening",
-                "Risk assessment",
-                "Credit analysis",
-                "Performance tracking",
-            ],
-        ),
-        "full_financial_statement": EndpointSemantics(
-            client_name="fundamental",
-            method_name="get_full_financial_statement",
-            natural_description=(
-                "Access complete financial statements as reported "
-                "to regulatory authorities, "
-                "including detailed line items, notes, and supplementary information. "
-                "Provides comprehensive financial data in its original reported form."
-            ),
-            example_queries=[
-                "Get AAPL full financial statements",
-                "Show complete Microsoft financials",
-                "Get Tesla's detailed statements",
-                "Full financial report for Google",
-                "Show Amazon's complete financials",
-                "Detailed statements for Netflix",
-            ],
-            related_terms=[
-                "complete financials",
-                "detailed statements",
-                "full report",
-                "comprehensive financials",
-                "as reported",
-                "regulatory filing",
-                "financial filing",
-                "complete statements",
-            ],
-            category=SemanticCategory.FUNDAMENTAL_ANALYSIS,
-            sub_category="Financial Statements",
-            parameter_hints={
-                "symbol": SYMBOL_HINT,
-                "period": PERIOD_HINT,
-                "limit": LIMIT_HINT,
-            },
-            response_hints={
-                "revenue": ResponseFieldInfo(
-                    description="Total reported revenue",
-                    examples=["365.7B", "42.1B"],
-                    related_terms=["total sales", "reported revenue", "gross revenue"],
-                ),
-                "operating_income": ResponseFieldInfo(
-                    description="Operating income as reported",
-                    examples=["108.95B", "15.23B"],
-                    related_terms=["operating profit", "reported income"],
-                ),
-                "net_income": ResponseFieldInfo(
-                    description="Reported net income",
-                    examples=["94.68B", "12.9B"],
-                    related_terms=["net profit", "reported earnings", "bottom line"],
-                ),
-            },
-            use_cases=[
-                "Detailed financial analysis",
-                "Regulatory compliance review",
-                "Audit preparation",
-                "Investment research",
-                "Financial modeling",
-                "Due diligence",
-            ],
-        ),
-        "financial_reports_dates": EndpointSemantics(
-            client_name="fundamental",
-            method_name="get_financial_report_dates",
-            natural_description=(
-                "Retrieve available dates and links for financial reports, including "
-                "quarterly and annual filings. Provides access to historical report "
-                "timeline and associated documentation."
-            ),
-            example_queries=[
-                "When are AAPL's financial reports?",
-                "Show Microsoft report dates",
-                "Get Tesla financial filing dates",
-                "When does Google report?",
-                "Amazon financial report schedule",
-                "Show Netflix reporting dates",
-            ],
-            related_terms=[
-                "reporting dates",
-                "filing dates",
-                "financial calendar",
-                "report schedule",
-                "earnings dates",
-                "filing timeline",
-                "report availability",
-                "financial schedule",
-            ],
-            category=SemanticCategory.FUNDAMENTAL_ANALYSIS,
-            sub_category="Financial Reports",
-            parameter_hints={"symbol": SYMBOL_HINT},
-            response_hints={
-                "report_date": ResponseFieldInfo(
-                    description="Date of the financial report",
-                    examples=["2023-12-31", "2024-03-31"],
-                    related_terms=["filing date", "report date", "statement date"],
-                ),
-                "period": ResponseFieldInfo(
-                    description="Reporting period covered",
-                    examples=["Q1 2024", "FY 2023"],
-                    related_terms=["fiscal period", "quarter", "annual period"],
-                ),
-            },
-            use_cases=[
-                "Report scheduling",
-                "Filing date tracking",
-                "Research planning",
-                "Due diligence timeline",
-                "Analysis scheduling",
-            ],
-        ),
-    }
 )
