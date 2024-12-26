@@ -18,6 +18,161 @@ ECONOMICS_ENDPOINT_MAP = {
     "get_economic_calendar": ECONOMIC_CALENDAR,
     "get_market_risk_premium": MARKET_RISK_PREMIUM,
 }
+# Additional semantic mappings for common terms and concepts
+ECONOMICS_COMMON_TERMS = {
+    "gdp": [
+        "gross domestic product",
+        "economic output",
+        "national output",
+        "economic production",
+        "national production",
+    ],
+    "inflation": [
+        "price increases",
+        "cost increases",
+        "price changes",
+        "purchasing power",
+        "price levels",
+    ],
+    "interest_rates": [
+        "yields",
+        "rates",
+        "borrowing costs",
+        "lending rates",
+        "financing costs",
+    ],
+    "employment": [
+        "jobs",
+        "labor market",
+        "workforce",
+        "employment situation",
+        "labor statistics",
+    ],
+}
+
+# Time period mapping for natural language processing
+ECONOMICS_TIME_PERIODS = {
+    "daily": {
+        "patterns": [
+            r"(?i)daily",
+            r"(?i)day by day",
+            r"(?i)each day",
+            r"(?i)per day",
+        ],
+        "terms": ["daily", "day", "24-hour", "intraday"],
+    },
+    "weekly": {
+        "patterns": [
+            r"(?i)weekly",
+            r"(?i)week by week",
+            r"(?i)each week",
+            r"(?i)per week",
+        ],
+        "terms": ["weekly", "week", "7-day", "per week"],
+    },
+    "monthly": {
+        "patterns": [
+            r"(?i)monthly",
+            r"(?i)month by month",
+            r"(?i)each month",
+            r"(?i)per month",
+        ],
+        "terms": ["monthly", "month", "30-day", "per month"],
+    },
+    "quarterly": {
+        "patterns": [
+            r"(?i)quarterly",
+            r"(?i)quarter by quarter",
+            r"(?i)each quarter",
+            r"(?i)per quarter",
+        ],
+        "terms": ["quarterly", "quarter", "3-month", "Q1", "Q2", "Q3", "Q4"],
+    },
+    "annual": {
+        "patterns": [
+            r"(?i)annual",
+            r"(?i)yearly",
+            r"(?i)per year",
+            r"(?i)each year",
+        ],
+        "terms": ["annual", "yearly", "year", "12-month", "per year"],
+    },
+}
+
+# Economic indicator categories for organization
+ECONOMIC_INDICATOR_CATEGORIES = {
+    "output": [
+        "gdp",
+        "gdp_growth",
+        "industrial_production",
+        "capacity_utilization",
+    ],
+    "prices": [
+        "inflation",
+        "cpi",
+        "ppi",
+        "import_prices",
+        "export_prices",
+    ],
+    "employment": [
+        "unemployment",
+        "nonfarm_payroll",
+        "jobless_claims",
+        "employment_cost",
+    ],
+    "consumption": [
+        "retail_sales",
+        "personal_spending",
+        "consumer_confidence",
+        "consumer_sentiment",
+    ],
+    "housing": [
+        "housing_starts",
+        "building_permits",
+        "home_sales",
+        "construction_spending",
+    ],
+    "trade": [
+        "balance_of_trade",
+        "current_account",
+        "import_export",
+        "trade_balance",
+    ],
+    "business": [
+        "durable_goods",
+        "factory_orders",
+        "business_inventories",
+        "business_confidence",
+    ],
+    "government": [
+        "government_budget",
+        "government_debt",
+        "government_spending",
+        "tax_revenue",
+    ],
+}
+
+# Function mappings for common calculations
+ECONOMICS_CALCULATIONS = {
+    "growth_rate": {
+        "description": "Calculate period-over-period growth rate",
+        "formula": "((current_value - previous_value) / previous_value) * 100",
+        "parameters": ["current_value", "previous_value"],
+        "return_type": "percentage",
+    },
+    "inflation_rate": {
+        "description": "Calculate inflation rate from price indices",
+        "formula": "((current_cpi - previous_cpi) / previous_cpi) * 100",
+        "parameters": ["current_cpi", "previous_cpi"],
+        "return_type": "percentage",
+    },
+    "real_rate": {
+        "description": "Calculate real interest rate",
+        "formula": "nominal_rate - inflation_rate",
+        "parameters": ["nominal_rate", "inflation_rate"],
+        "return_type": "percentage",
+    },
+}
 
 # Complete Semantic Definitions
 ECONOMICS_ENDPOINTS_SEMANTICS = {
@@ -500,160 +655,4 @@ ECONOMICS_ENDPOINTS_SEMANTICS = {
             "Risk-adjusted return analysis",
         ],
     ),
-}
-
-# Additional semantic mappings for common terms and concepts
-ECONOMICS_COMMON_TERMS = {
-    "gdp": [
-        "gross domestic product",
-        "economic output",
-        "national output",
-        "economic production",
-        "national production",
-    ],
-    "inflation": [
-        "price increases",
-        "cost increases",
-        "price changes",
-        "purchasing power",
-        "price levels",
-    ],
-    "interest_rates": [
-        "yields",
-        "rates",
-        "borrowing costs",
-        "lending rates",
-        "financing costs",
-    ],
-    "employment": [
-        "jobs",
-        "labor market",
-        "workforce",
-        "employment situation",
-        "labor statistics",
-    ],
-}
-
-# Time period mapping for natural language processing
-ECONOMICS_TIME_PERIODS = {
-    "daily": {
-        "patterns": [
-            r"(?i)daily",
-            r"(?i)day by day",
-            r"(?i)each day",
-            r"(?i)per day",
-        ],
-        "terms": ["daily", "day", "24-hour", "intraday"],
-    },
-    "weekly": {
-        "patterns": [
-            r"(?i)weekly",
-            r"(?i)week by week",
-            r"(?i)each week",
-            r"(?i)per week",
-        ],
-        "terms": ["weekly", "week", "7-day", "per week"],
-    },
-    "monthly": {
-        "patterns": [
-            r"(?i)monthly",
-            r"(?i)month by month",
-            r"(?i)each month",
-            r"(?i)per month",
-        ],
-        "terms": ["monthly", "month", "30-day", "per month"],
-    },
-    "quarterly": {
-        "patterns": [
-            r"(?i)quarterly",
-            r"(?i)quarter by quarter",
-            r"(?i)each quarter",
-            r"(?i)per quarter",
-        ],
-        "terms": ["quarterly", "quarter", "3-month", "Q1", "Q2", "Q3", "Q4"],
-    },
-    "annual": {
-        "patterns": [
-            r"(?i)annual",
-            r"(?i)yearly",
-            r"(?i)per year",
-            r"(?i)each year",
-        ],
-        "terms": ["annual", "yearly", "year", "12-month", "per year"],
-    },
-}
-
-# Economic indicator categories for organization
-ECONOMIC_INDICATOR_CATEGORIES = {
-    "output": [
-        "gdp",
-        "gdp_growth",
-        "industrial_production",
-        "capacity_utilization",
-    ],
-    "prices": [
-        "inflation",
-        "cpi",
-        "ppi",
-        "import_prices",
-        "export_prices",
-    ],
-    "employment": [
-        "unemployment",
-        "nonfarm_payroll",
-        "jobless_claims",
-        "employment_cost",
-    ],
-    "consumption": [
-        "retail_sales",
-        "personal_spending",
-        "consumer_confidence",
-        "consumer_sentiment",
-    ],
-    "housing": [
-        "housing_starts",
-        "building_permits",
-        "home_sales",
-        "construction_spending",
-    ],
-    "trade": [
-        "balance_of_trade",
-        "current_account",
-        "import_export",
-        "trade_balance",
-    ],
-    "business": [
-        "durable_goods",
-        "factory_orders",
-        "business_inventories",
-        "business_confidence",
-    ],
-    "government": [
-        "government_budget",
-        "government_debt",
-        "government_spending",
-        "tax_revenue",
-    ],
-}
-
-# Function mappings for common calculations
-ECONOMICS_CALCULATIONS = {
-    "growth_rate": {
-        "description": "Calculate period-over-period growth rate",
-        "formula": "((current_value - previous_value) / previous_value) * 100",
-        "parameters": ["current_value", "previous_value"],
-        "return_type": "percentage",
-    },
-    "inflation_rate": {
-        "description": "Calculate inflation rate from price indices",
-        "formula": "((current_cpi - previous_cpi) / previous_cpi) * 100",
-        "parameters": ["current_cpi", "previous_cpi"],
-        "return_type": "percentage",
-    },
-    "real_rate": {
-        "description": "Calculate real interest rate",
-        "formula": "nominal_rate - inflation_rate",
-        "parameters": ["nominal_rate", "inflation_rate"],
-        "return_type": "percentage",
-    },
 }
