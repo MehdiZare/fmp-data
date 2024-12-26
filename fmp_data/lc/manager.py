@@ -3,6 +3,8 @@ from copy import deepcopy
 
 from investment.mapping import INVESTMENT_ENDPOINT_MAP, INVESTMENT_ENDPOINTS_SEMANTICS
 from langchain.tools import StructuredTool
+from market.mapping import MARKET_ENDPOINT_MAP, MARKET_ENDPOINTS_SEMANTICS
+from technical.mapping import ALL_TECHNICAL_ENDPOINTS, TECHNICAL_ENDPOINTS_SEMANTICS
 
 from fmp_data import ClientConfig, FMPDataClient
 from fmp_data.alternative.mapping import (
@@ -82,6 +84,16 @@ class FMPToolManager:
             "endpoint_map": INVESTMENT_ENDPOINT_MAP,
             "semantics_map": INVESTMENT_ENDPOINTS_SEMANTICS,
             "display_name": "investment",
+        },
+        "market": {
+            "endpoint_map": MARKET_ENDPOINT_MAP,
+            "semantics_map": MARKET_ENDPOINTS_SEMANTICS,
+            "display_name": "market",
+        },
+        "technical": {
+            "endpoint_map": ALL_TECHNICAL_ENDPOINTS,
+            "semantics_map": TECHNICAL_ENDPOINTS_SEMANTICS,
+            "display_name": "technical analysis",
         },
     }
 

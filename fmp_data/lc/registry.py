@@ -11,10 +11,13 @@ from fmp_data.economics.validation import EconomicsRule
 from fmp_data.fundamental.validation import FundamentalAnalysisRule
 from fmp_data.institutional.validation import InstitutionalRule
 from fmp_data.intelligence.validation import MarketIntelligenceRule
+from fmp_data.investment.validation import InvestmentProductsRule
 from fmp_data.lc.models import EndpointSemantics
 from fmp_data.lc.validation import ValidationRuleRegistry
 from fmp_data.logger import FMPLogger
+from fmp_data.market.validation import MarketDataRule
 from fmp_data.models import Endpoint
+from fmp_data.technical.validation import TechnicalAnalysisRule
 
 logger = FMPLogger().get_logger(__name__)
 
@@ -39,6 +42,9 @@ class EndpointRegistry:
         self._validation.register_rule(FundamentalAnalysisRule())
         self._validation.register_rule(InstitutionalRule())
         self._validation.register_rule(MarketIntelligenceRule())
+        self._validation.register_rule(InvestmentProductsRule())
+        self._validation.register_rule(MarketDataRule())
+        self._validation.register_rule(TechnicalAnalysisRule())
 
     def register(
         self, name: str, endpoint: Endpoint, semantics: EndpointSemantics
