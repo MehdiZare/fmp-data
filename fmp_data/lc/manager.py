@@ -1,10 +1,7 @@
 # fmp_data/lc/manager.py
 from copy import deepcopy
 
-from investment.mapping import INVESTMENT_ENDPOINT_MAP, INVESTMENT_ENDPOINTS_SEMANTICS
 from langchain.tools import StructuredTool
-from market.mapping import MARKET_ENDPOINT_MAP, MARKET_ENDPOINTS_SEMANTICS
-from technical.mapping import ALL_TECHNICAL_ENDPOINTS, TECHNICAL_ENDPOINTS_SEMANTICS
 
 from fmp_data import ClientConfig, FMPDataClient
 from fmp_data.alternative.mapping import (
@@ -28,23 +25,32 @@ from fmp_data.intelligence.mapping import (
     INTELLIGENCE_ENDPOINT_MAP,
     INTELLIGENCE_ENDPOINTS_SEMANTICS,
 )
+from fmp_data.investment.mapping import (
+    INVESTMENT_ENDPOINT_MAP,
+    INVESTMENT_ENDPOINTS_SEMANTICS,
+)
 from fmp_data.lc.registry import EndpointRegistry
 from fmp_data.lc.setup import setup_vector_store
 from fmp_data.lc.vector_store import EndpointVectorStore
 from fmp_data.logger import FMPLogger
+from fmp_data.market.mapping import MARKET_ENDPOINT_MAP, MARKET_ENDPOINTS_SEMANTICS
+from fmp_data.technical.mapping import (
+    TECHNICAL_ENDPOINT_MAP,
+    TECHNICAL_ENDPOINTS_SEMANTICS,
+)
 
 logger = FMPLogger().get_logger(__name__)
 
 ENDPOINT_GROUPS = [
     "alternative",
     "company",
-    "market",
-    "fundamental",
-    "technical",
     "economics",
+    "fundamental",
     "institutional",
     "intelligence",
     "investment",
+    "market",
+    "technical",
 ]
 
 
@@ -91,7 +97,7 @@ class FMPToolManager:
             "display_name": "market",
         },
         "technical": {
-            "endpoint_map": ALL_TECHNICAL_ENDPOINTS,
+            "endpoint_map": TECHNICAL_ENDPOINT_MAP,
             "semantics_map": TECHNICAL_ENDPOINTS_SEMANTICS,
             "display_name": "technical analysis",
         },
