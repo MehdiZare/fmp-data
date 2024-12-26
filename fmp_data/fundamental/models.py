@@ -227,7 +227,6 @@ class KeyMetrics(BaseModel):
     free_cash_flow_per_share: float = Field(
         alias="freeCashFlowPerShare", description="Free cash flow per share"
     )
-    # Add more fields as needed
 
 
 class KeyMetricsTTM(KeyMetrics):
