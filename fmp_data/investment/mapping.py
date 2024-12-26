@@ -62,6 +62,62 @@ FUND_NAME_HINT = ParameterHint(
     context_clues=["named", "fund", "called", "mutual fund"],
 )
 
+# Additional semantic mappings
+INVESTMENT_COMMON_TERMS = {
+    "etf": [
+        "exchange traded fund",
+        "index fund",
+        "traded fund",
+        "ETF fund",
+        "passive fund",
+    ],
+    "mutual_fund": [
+        "mutual fund",
+        "active fund",
+        "managed fund",
+        "open-end fund",
+        "unit trust",
+    ],
+    "holdings": [
+        "portfolio",
+        "positions",
+        "investments",
+        "securities",
+        "assets",
+        "constituents",
+    ],
+    "weightings": [
+        "allocation",
+        "exposure",
+        "breakdown",
+        "distribution",
+        "composition",
+        "diversification",
+    ],
+}
+
+# Additional helper mappings
+INVESTMENT_CALCULATIONS = {
+    "portfolio_weight": {
+        "description": "Calculate position weight in portfolio",
+        "formula": "(position_value / total_portfolio_value) * 100",
+        "parameters": ["position_value", "total_portfolio_value"],
+        "return_type": "percentage",
+    },
+    "position_return": {
+        "description": "Calculate return on position",
+        "formula": "((current_value - cost_basis) / cost_basis) * 100",
+        "parameters": ["current_value", "cost_basis"],
+        "return_type": "percentage",
+    },
+    "sector_concentration": {
+        "description": "Calculate sector concentration ratio",
+        "formula": "sum((sector_weight / 100) ** 2) * 100",
+        "parameters": ["sector_weights"],
+        "return_type": "ratio",
+    },
+}
+
 # Endpoint mappings
 INVESTMENT_ENDPOINT_MAP = {
     "get_etf_holdings": ETF_HOLDINGS,
@@ -599,60 +655,4 @@ INVESTMENT_ENDPOINTS_SEMANTICS = {
             "Fund comparison",
         ],
     ),
-}
-
-# Additional semantic mappings
-INVESTMENT_COMMON_TERMS = {
-    "etf": [
-        "exchange traded fund",
-        "index fund",
-        "traded fund",
-        "ETF fund",
-        "passive fund",
-    ],
-    "mutual_fund": [
-        "mutual fund",
-        "active fund",
-        "managed fund",
-        "open-end fund",
-        "unit trust",
-    ],
-    "holdings": [
-        "portfolio",
-        "positions",
-        "investments",
-        "securities",
-        "assets",
-        "constituents",
-    ],
-    "weightings": [
-        "allocation",
-        "exposure",
-        "breakdown",
-        "distribution",
-        "composition",
-        "diversification",
-    ],
-}
-
-# Additional helper mappings
-INVESTMENT_CALCULATIONS = {
-    "portfolio_weight": {
-        "description": "Calculate position weight in portfolio",
-        "formula": "(position_value / total_portfolio_value) * 100",
-        "parameters": ["position_value", "total_portfolio_value"],
-        "return_type": "percentage",
-    },
-    "position_return": {
-        "description": "Calculate return on position",
-        "formula": "((current_value - cost_basis) / cost_basis) * 100",
-        "parameters": ["current_value", "cost_basis"],
-        "return_type": "percentage",
-    },
-    "sector_concentration": {
-        "description": "Calculate sector concentration ratio",
-        "formula": "sum((sector_weight / 100) ** 2) * 100",
-        "parameters": ["sector_weights"],
-        "return_type": "ratio",
-    },
 }
