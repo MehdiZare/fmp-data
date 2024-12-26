@@ -73,6 +73,51 @@ NAME_HINT = ParameterHint(
     context_clues=["name", "company", "corporation", "entity"],
 )
 
+INSTITUTIONAL_TIME_PERIODS = {
+    "quarterly": {
+        "patterns": [
+            r"(?i)quarterly",
+            r"(?i)quarter",
+            r"(?i)Q[1-4]",
+            r"(?i)13F",
+        ],
+        "terms": ["quarterly", "13F filing", "quarter", "three months"],
+    },
+    "annual": {
+        "patterns": [
+            r"(?i)annual",
+            r"(?i)yearly",
+            r"(?i)year",
+        ],
+        "terms": ["annual", "yearly", "fiscal year", "calendar year"],
+    },
+}
+
+# Filing type categories
+INSTITUTIONAL_FILING_TYPES = {
+    "ownership": [
+        "13F",
+        "13D",
+        "13G",
+        "Form 3",
+        "Form 4",
+        "Form 5",
+    ],
+    "insider": [
+        "Form 3",
+        "Form 4",
+        "Form 5",
+        "Initial filing",
+        "Changes in ownership",
+    ],
+    "institutional": [
+        "13F",
+        "13F-HR",
+        "13F-NT",
+        "Quarterly report",
+        "Holdings report",
+    ],
+}
 INSTITUTIONAL_ENDPOINT_MAP = {
     "get_form_13f": FORM_13F,
     "get_form_13f_dates": FORM_13F_DATES,
@@ -727,51 +772,4 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
             "Stakeholder analysis",
         ],
     ),
-}
-
-# Time period mapping for natural language processing
-INSTITUTIONAL_TIME_PERIODS = {
-    "quarterly": {
-        "patterns": [
-            r"(?i)quarterly",
-            r"(?i)quarter",
-            r"(?i)Q[1-4]",
-            r"(?i)13F",
-        ],
-        "terms": ["quarterly", "13F filing", "quarter", "three months"],
-    },
-    "annual": {
-        "patterns": [
-            r"(?i)annual",
-            r"(?i)yearly",
-            r"(?i)year",
-        ],
-        "terms": ["annual", "yearly", "fiscal year", "calendar year"],
-    },
-}
-
-# Filing type categories
-INSTITUTIONAL_FILING_TYPES = {
-    "ownership": [
-        "13F",
-        "13D",
-        "13G",
-        "Form 3",
-        "Form 4",
-        "Form 5",
-    ],
-    "insider": [
-        "Form 3",
-        "Form 4",
-        "Form 5",
-        "Initial filing",
-        "Changes in ownership",
-    ],
-    "institutional": [
-        "13F",
-        "13F-HR",
-        "13F-NT",
-        "Quarterly report",
-        "Holdings report",
-    ],
 }
