@@ -3,105 +3,17 @@
 from langchain.tools import StructuredTool
 
 from fmp_data import ClientConfig, FMPDataClient
-from fmp_data.alternative.mapping import (
-    ALTERNATIVE_ENDPOINT_MAP,
-    ALTERNATIVE_ENDPOINTS_SEMANTICS,
-)
-from fmp_data.company.mapping import COMPANY_ENDPOINT_MAP, COMPANY_ENDPOINTS_SEMANTICS
-from fmp_data.economics.mapping import (
-    ECONOMICS_ENDPOINT_MAP,
-    ECONOMICS_ENDPOINTS_SEMANTICS,
-)
-from fmp_data.fundamental.mapping import (
-    FUNDAMENTAL_ENDPOINT_MAP,
-    FUNDAMENTAL_ENDPOINTS_SEMANTICS,
-)
-from fmp_data.institutional.mapping import (
-    INSTITUTIONAL_ENDPOINT_MAP,
-    INSTITUTIONAL_ENDPOINTS_SEMANTICS,
-)
-from fmp_data.intelligence.mapping import (
-    INTELLIGENCE_ENDPOINT_MAP,
-    INTELLIGENCE_ENDPOINTS_SEMANTICS,
-)
-from fmp_data.investment.mapping import (
-    INVESTMENT_ENDPOINT_MAP,
-    INVESTMENT_ENDPOINTS_SEMANTICS,
-)
+from fmp_data.lc.mapping import ENDPOINT_GROUPS
 from fmp_data.lc.models import EndpointSemantics
 from fmp_data.lc.registry import Endpoint, EndpointRegistry
 from fmp_data.lc.setup import setup_vector_store
 from fmp_data.lc.vector_store import EndpointVectorStore
 from fmp_data.logger import FMPLogger
-from fmp_data.market.mapping import MARKET_ENDPOINT_MAP, MARKET_ENDPOINTS_SEMANTICS
-from fmp_data.technical.mapping import (
-    TECHNICAL_ENDPOINT_MAP,
-    TECHNICAL_ENDPOINTS_SEMANTICS,
-)
 
 logger = FMPLogger().get_logger(__name__)
 
-ENDPOINT_GROUPS = [
-    "alternative",
-    "company",
-    "economics",
-    "fundamental",
-    "institutional",
-    "intelligence",
-    "investment",
-    "market",
-    "technical",
-]
-
 
 class FMPToolManager:
-    ENDPOINT_GROUPS = {
-        "alternative": {
-            "endpoint_map": ALTERNATIVE_ENDPOINT_MAP,
-            "semantics_map": ALTERNATIVE_ENDPOINTS_SEMANTICS,
-            "display_name": "alternative market",
-        },
-        "company": {
-            "endpoint_map": COMPANY_ENDPOINT_MAP,
-            "semantics_map": COMPANY_ENDPOINTS_SEMANTICS,
-            "display_name": "company information",
-        },
-        "economics": {
-            "endpoint_map": ECONOMICS_ENDPOINT_MAP,
-            "semantics_map": ECONOMICS_ENDPOINTS_SEMANTICS,
-            "display_name": "economics data",
-        },
-        "fundamental": {
-            "endpoint_map": FUNDAMENTAL_ENDPOINT_MAP,
-            "semantics_map": FUNDAMENTAL_ENDPOINTS_SEMANTICS,
-            "display_name": "fundamental analysis",
-        },
-        "institutional": {
-            "endpoint_map": INSTITUTIONAL_ENDPOINT_MAP,
-            "semantics_map": INSTITUTIONAL_ENDPOINTS_SEMANTICS,
-            "display_name": "institutional data",
-        },
-        "intelligence": {
-            "endpoint_map": INTELLIGENCE_ENDPOINT_MAP,
-            "semantics_map": INTELLIGENCE_ENDPOINTS_SEMANTICS,
-            "display_name": "market intelligence",
-        },
-        "investment": {
-            "endpoint_map": INVESTMENT_ENDPOINT_MAP,
-            "semantics_map": INVESTMENT_ENDPOINTS_SEMANTICS,
-            "display_name": "investment",
-        },
-        "market": {
-            "endpoint_map": MARKET_ENDPOINT_MAP,
-            "semantics_map": MARKET_ENDPOINTS_SEMANTICS,
-            "display_name": "market",
-        },
-        "technical": {
-            "endpoint_map": TECHNICAL_ENDPOINT_MAP,
-            "semantics_map": TECHNICAL_ENDPOINTS_SEMANTICS,
-            "display_name": "technical analysis",
-        },
-    }
 
     def __init__(
         self,
@@ -109,13 +21,15 @@ class FMPToolManager:
         config: ClientConfig | None = None,
         store_name: str = "fmp_endpoints",
         auto_initialize: bool = True,
+        endpoint_groups: dict[str, dict] = ENDPOINT_GROUPS,
     ):
         self.config = config or ClientConfig.from_env()
         self.client = client or FMPDataClient(config=self.config)
         self.registry = EndpointRegistry()
         self.store_name = store_name
+        self.endpoint_groups = endpoint_groups
         self.vector_store: EndpointVectorStore | None = None
-        self._loaded_groups = {group: False for group in self.ENDPOINT_GROUPS.keys()}
+        self._loaded_groups = {group: False for group in self.endpoint_groups.keys()}
         self.logger = FMPLogger().get_logger(self.__class__.__name__)
 
         if auto_initialize:
@@ -250,7 +164,7 @@ class FMPToolManager:
         loaded_groups = []
 
         try:
-            for group_name, config in self.ENDPOINT_GROUPS.items():
+            for group_name, config in self.endpoint_groups.items():
                 if self._loaded_groups.get(group_name):
                     continue
 
@@ -276,14 +190,20 @@ class FMPToolManager:
             )
 
             # Detailed registration statistics at debug level
+            total_attempted = len(all_registered) + len(all_skipped)
+            success_rate = (
+                f"{(len(all_registered) / total_attempted * 100):.1f}%"
+                if total_attempted > 0
+                else "0.0%"
+            )
+
             self.logger.debug(
                 "Registration details",
                 extra={
                     "registered": len(all_registered),
                     "skipped": len(all_skipped),
-                    "total_attempted": len(all_registered) + len(all_skipped),
-                    "success_rate": f"{(len(all_registered) /
-                            (len(all_registered) + len(all_skipped)) * 100):.1f}%",
+                    "total_attempted": total_attempted,
+                    "success_rate": success_rate,
                 },
             )
 
