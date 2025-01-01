@@ -30,7 +30,7 @@ FUNDAMENTAL_ENDPOINT_MAP = {
     "get_levered_dcf": LEVERED_DCF,
     "get_historical_rating": HISTORICAL_RATING,
     "get_full_financial_statement": FULL_FINANCIAL_STATEMENT,
-    "get_financial_report_dates": FINANCIAL_REPORTS_DATES,
+    "get_financial_reports_dates": FINANCIAL_REPORTS_DATES,
 }
 # Common parameter hints
 SYMBOL_HINT = ParameterHint(
@@ -730,40 +730,49 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
     ),
     "financial_reports_dates": EndpointSemantics(
         client_name="fundamental",
-        method_name="get_financial_report_dates",
+        method_name="get_financial_reports_dates",
         natural_description=(
-            "Retrieve available dates and links for financial reports, including "
-            "quarterly and annual filings. Access historical report timeline and "
-            "associated documentation with direct links to detailed reports."
+            "Retrieve available financial report dates and access links for a company, "
+            "including quarterly and annual filings. Provides direct access to "
+            "historical financial statements and their filing dates."
         ),
         example_queries=[
             "When are AAPL's financial reports available?",
-            "Show Microsoft report dates",
-            "Get Tesla financial filing dates",
-            "When does Google report?",
-            "List Amazon financial report schedule",
-            "Show Netflix reporting dates",
+            "Get MSFT financial filing dates",
+            "Show report dates for GOOGL",
+            "List available financial statements for TSLA",
+            "Find Amazon's report timeline",
+            "Get financial report schedule for Netflix",
         ],
         related_terms=[
-            "reporting dates",
             "filing dates",
-            "financial calendar",
             "report schedule",
+            "financial calendar",
             "earnings dates",
-            "filing timeline",
-            "report availability",
-            "financial schedule",
-            "reporting timeline",
-            "earnings calendar",
+            "statement availability",
+            "financial filings",
+            "quarterly reports",
+            "annual reports",
         ],
         category=SemanticCategory.FUNDAMENTAL_ANALYSIS,
         sub_category="Financial Reports",
-        parameter_hints={"symbol": SYMBOL_HINT},
+        parameter_hints={
+            "symbol": ParameterHint(
+                natural_names=["symbol", "ticker", "company", "stock"],
+                extraction_patterns=[
+                    r"(?i)for\s+([A-Z]{1,5})",
+                    r"(?i)([A-Z]{1,5})(?:'s|'|\s+)",
+                    r"\b[A-Z]{1,5}\b",
+                ],
+                examples=["AAPL", "MSFT", "GOOGL"],
+                context_clues=["company", "stock", "ticker", "corporation", "business"],
+            )
+        },
         response_hints={
-            "report_date": ResponseFieldInfo(
+            "date": ResponseFieldInfo(
                 description="Date of the financial report",
-                examples=["2023-12-31", "2024-03-31"],
-                related_terms=["filing date", "report date", "statement date"],
+                examples=["2024-01-15", "2023-12-31"],
+                related_terms=["report date", "filing date", "statement date"],
             ),
             "period": ResponseFieldInfo(
                 description="Reporting period covered",
@@ -787,8 +796,8 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
             "Research planning",
             "Due diligence timeline",
             "Analysis scheduling",
-            "Historical report access",
-            "Data collection planning",
+            "Report access planning",
+            "Historical statement retrieval",
         ],
     ),
 }

@@ -883,4 +883,4 @@ class FinancialReportDate(BaseModel):
 class FinancialReportDates(BaseModel):
     """Financial report date"""
 
-    financial_report_dates: list[FinancialReportDate]
+    financial_reports_dates: list[FinancialReportDate]

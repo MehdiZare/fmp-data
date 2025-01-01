@@ -70,8 +70,8 @@ class FundamentalClient(EndpointGroup):
             limit=limit,
         )
 
-    def get_financial_report_dates(self, symbol: str) -> list[datetime]:
-        """Get list of financial report dates"""
+    def get_financial_reports_dates(self, symbol: str) -> list[datetime]:
+        """Get list of financial reports dates"""
         return self.client.request(endpoints.FINANCIAL_REPORTS_DATES, symbol=symbol)
 
     def get_owner_earnings(self, symbol: str) -> list[OwnerEarnings]:
