@@ -23,6 +23,7 @@ __all__ = [
     "LoggingConfig",
     "RateLimitConfig",
     "FMPError",
+    "FMPLogger",
     "RateLimitError",
     "AuthenticationError",
     "ValidationError",
