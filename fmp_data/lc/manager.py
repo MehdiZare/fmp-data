@@ -1,5 +1,4 @@
 # fmp_data/lc/manager.py
-from copy import deepcopy
 
 from langchain.tools import StructuredTool
 
@@ -29,7 +28,8 @@ from fmp_data.investment.mapping import (
     INVESTMENT_ENDPOINT_MAP,
     INVESTMENT_ENDPOINTS_SEMANTICS,
 )
-from fmp_data.lc.registry import EndpointRegistry
+from fmp_data.lc.models import EndpointSemantics
+from fmp_data.lc.registry import Endpoint, EndpointRegistry
 from fmp_data.lc.setup import setup_vector_store
 from fmp_data.lc.vector_store import EndpointVectorStore
 from fmp_data.logger import FMPLogger
@@ -116,6 +116,7 @@ class FMPToolManager:
         self.store_name = store_name
         self.vector_store: EndpointVectorStore | None = None
         self._loaded_groups = {group: False for group in self.ENDPOINT_GROUPS.keys()}
+        self.logger = FMPLogger().get_logger(self.__class__.__name__)
 
         if auto_initialize:
             self.initialize()
@@ -156,86 +157,96 @@ class FMPToolManager:
         )
 
     def _register_endpoints(
-        self, endpoint_map: dict[str, type], semantics_map: dict[str, type]
-    ) -> None:
-        """Register a group of endpoints with their semantics"""
-        registered = 0
-        skipped = 0
-        skipped_endpoints = set()
+        self,
+        endpoint_map: dict[str, Endpoint],
+        semantics_map: dict[str, EndpointSemantics],
+    ) -> tuple[int, set[str], set[str]]:
+        registered = set()
+        skipped = set()
 
         for name, endpoint in endpoint_map.items():
             try:
-                # Get semantic name from the endpoint name
-                semantic_name = (
-                    name.replace("get_", "") if name.startswith("get_") else name
-                )
+                semantic_name = name[4:] if name.startswith("get_") else name
+
+                # Special debug for problematic endpoint
+                if name == "get_financial_reports_dates":
+                    self.logger.debug(f"Processing {name}:")
+                    self.logger.debug(f"  Semantic name: {semantic_name}")
+                    self.logger.debug(
+                        f"  Available semantics: {list(semantics_map.keys())}"
+                    )
+                    self.logger.debug(
+                        f"  Found in semantics: {semantic_name in semantics_map}"
+                    )
+                    # Print category information
+                    if semantics_map.get(semantic_name):
+                        self.logger.debug(
+                            f"  Category: {semantics_map[semantic_name].category}"
+                        )
 
                 semantics = semantics_map.get(semantic_name)
                 if not semantics:
-                    logger.warning(
-                        f"No semantics found for endpoint: {name} "
+                    self.logger.debug(
+                        f"No semantics found for endpoint {name} "
                         f"(semantic_name: {semantic_name})"
                     )
-                    skipped += 1
-                    skipped_endpoints.add(name)
+                    skipped.add(name)
                     continue
 
-                # Validate that method name matches between endpoint and semantics
-                if semantics.method_name != name:
-                    # Update method name in semantics to match endpoint
-                    semantics = deepcopy(semantics)
-                    semantics.method_name = name
-                    logger.debug(
-                        f"Updated method name in semantics "
-                        f"from {semantics.method_name} "
-                        f"to {name}"
+                # Debug validation
+                if name == "get_financial_reports_dates":
+                    valid, msg = self.registry._validation.validate_category(
+                        name, semantics.category
                     )
+                    self.logger.debug(f"  Validation result: {valid}, {msg}")
 
-                # Validate mandatory parameters have semantic hints
-                mandatory_params = {p.name for p in endpoint.mandatory_params}
-                semantic_hints = set(semantics.parameter_hints.keys())
-                missing_hints = mandatory_params - semantic_hints
-
-                if missing_hints:
-                    logger.warning(
-                        f"Missing semantic hints for mandatory parameters in "
-                        f"{name}: {missing_hints}"
-                    )
+                # Rest of the registration code...
 
                 self.registry.register(name, endpoint, semantics)
-                registered += 1
-                logger.debug(
-                    f"Successfully registered endpoint: {name} with "
-                    f"{len(semantics.parameter_hints)} parameter hints"
-                )
+                registered.add(name)
 
             except Exception as e:
-                logger.error(f"Failed to register {name}: {str(e)}", exc_info=True)
-                skipped += 1
-                skipped_endpoints.add(name)
+                self.logger.error(f"Failed to register {name}: {str(e)}", exc_info=True)
+                skipped.add(name)
 
-        logger.debug(
-            f"Registration summary: {registered} registered, {skipped} skipped"
-        )
-        if skipped_endpoints:
-            logger.debug(f"Skipped endpoints: {skipped_endpoints}")
+        return len(registered), registered, skipped
 
     def load_endpoints(
         self, endpoint_map: dict, semantics_map: dict, group_name: str
-    ) -> tuple[int, set[str]]:
-        """Load endpoints for a specific group"""
+    ) -> tuple[int, set[str], set[str]]:
+        """
+        Load endpoints for a specific group
+        """
         try:
-            self._register_endpoints(endpoint_map, semantics_map)
-            # Remove success logging from here - we'll log once at the end
-            return len(endpoint_map), set(endpoint_map.keys())
+            # Add debug logging
+            if group_name == "intelligence":
+                self.logger.debug("Intelligence endpoints:")
+                self.logger.debug(f"  Endpoint map keys: {sorted(endpoint_map.keys())}")
+                self.logger.debug(
+                    f"  Semantics map keys: {sorted(semantics_map.keys())}"
+                )
+
+                # Look for our problematic endpoint
+                if "get_financial_reports_dates" in endpoint_map:
+                    self.logger.debug(
+                        "Found get_financial_reports_dates in endpoint map"
+                    )
+                    semantic_name = "financial_reports_dates"
+                    self.logger.debug(f"Looking for {semantic_name} in semantics")
+                    self.logger.debug(f"Found: {semantic_name in semantics_map}")
+
+            return self._register_endpoints(endpoint_map, semantics_map)
         except Exception as e:
-            logger.error(f"Failed to load {group_name} endpoints: {str(e)}")
+            self.logger.error(
+                f"Failed to load {group_name} endpoints: {str(e)}", exc_info=True
+            )
             raise
 
     def load_all_endpoints(self) -> None:
         """Load all available endpoint groups"""
-        total_count = 0
-        all_endpoints = set()
+        total_registered = 0
+        all_registered = set()
+        all_skipped = set()
         loaded_groups = []
 
         try:
@@ -243,28 +254,41 @@ class FMPToolManager:
                 if self._loaded_groups.get(group_name):
                     continue
 
-                count, endpoints = self.load_endpoints(
+                count, registered, skipped = self.load_endpoints(
                     config["endpoint_map"], config["semantics_map"], group_name
                 )
                 self._loaded_groups[group_name] = True
-                total_count += count
-                all_endpoints.update(endpoints)
+                total_registered += count
+                all_registered.update(registered)
+                all_skipped.update(skipped)
                 loaded_groups.append(config["display_name"])
 
-            # Get actually registered endpoints
-            registered_endpoints = set(self.registry.list_endpoints().keys())
-            missing_endpoints = all_endpoints - registered_endpoints
+            # Log summary of registration results
+            if all_skipped:
+                self.logger.warning(
+                    f"Failed to register {len(all_skipped)} "
+                    f"endpoints: {sorted(all_skipped)}"
+                )
 
-            # Single summary log at the end
-            if missing_endpoints:
-                logger.warning(f"Missing semantics for endpoints: {missing_endpoints}")
-
-            logger.info(
-                f"Loaded {len(registered_endpoints)} endpoints "
-                f"across {len(loaded_groups)} groups: {', '.join(loaded_groups)}"
+            self.logger.info(
+                f"Successfully registered {len(all_registered)} endpoints across "
+                f"{len(loaded_groups)} groups: {', '.join(loaded_groups)}"
             )
+
+            # Detailed registration statistics at debug level
+            self.logger.debug(
+                "Registration details",
+                extra={
+                    "registered": len(all_registered),
+                    "skipped": len(all_skipped),
+                    "total_attempted": len(all_registered) + len(all_skipped),
+                    "success_rate": f"{(len(all_registered) /
+                            (len(all_registered) + len(all_skipped)) * 100):.1f}%",
+                },
+            )
+
         except Exception as e:
-            logger.error(f"Failed to load endpoints: {str(e)}")
+            self.logger.error(f"Failed to load endpoints: {str(e)}", exc_info=True)
             raise
 
     def _get_embeddings(self):

@@ -7,14 +7,15 @@ from pydantic import BaseModel, Field
 class SemanticCategory(str, Enum):
     """Categories for semantic classification"""
 
-    COMPANY_INFO = "Company Information"
-    MARKET_DATA = "Market Data"
     ALTERNATIVE_DATA = "Alternative Data"
-    TECHNICAL_ANALYSIS = "Technical Analysis"
+    COMPANY_INFO = "Company Information"
+    ECONOMIC = "Economic Data"
     FUNDAMENTAL_ANALYSIS = "Fundamental Analysis"
     INSTITUTIONAL = "Institutional Data"
-    ECONOMIC = "Economic Data"
+    INTELLIGENCE = "Intelligence"
     INVESTMENT_PRODUCTS = "Investment Products"
+    MARKET_DATA = "Market Data"
+    TECHNICAL_ANALYSIS = "Technical Analysis"
 
 
 class ParameterHint(BaseModel):
