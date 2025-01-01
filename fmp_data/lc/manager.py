@@ -2,7 +2,7 @@
 
 from langchain.tools import StructuredTool
 
-from fmp_data import ClientConfig, FMPDataClient
+from fmp_data import ClientConfig, ConfigError, FMPDataClient
 from fmp_data.lc.mapping import ENDPOINT_GROUPS
 from fmp_data.lc.models import EndpointSemantics
 from fmp_data.lc.registry import Endpoint, EndpointRegistry
@@ -14,6 +14,28 @@ logger = FMPLogger().get_logger(__name__)
 
 
 class FMPToolManager:
+    """
+    Manager for FMP API tools and endpoints with LangChain integration.
+
+    Provides natural language search and tool creation for FMP API endpoints.
+    Handles endpoint registration, validation, and vector store management.
+
+    Args:
+        client: FMPDataClient instance or None (will create from config if None)
+        config: ClientConfig instance or None (will load from env if None)
+        store_name: Name for the vector store
+        auto_initialize: Whether to initialize endpoints and store on creation
+
+    Examples:
+        # Create with default settings
+        manager = FMPToolManager()
+
+        # Get tools for a specific query
+        tools = manager.get_tools("Get company financial ratios")
+
+        # Search for relevant endpoints
+        results = manager.search_endpoints("Find historical stock prices")
+    """
 
     def __init__(
         self,
@@ -23,32 +45,47 @@ class FMPToolManager:
         auto_initialize: bool = True,
         endpoint_groups: dict[str, dict] = ENDPOINT_GROUPS,
     ):
-        self.config = config or ClientConfig.from_env()
-        self.client = client or FMPDataClient(config=self.config)
-        self.registry = EndpointRegistry()
-        self.store_name = store_name
-        self.endpoint_groups = endpoint_groups
-        self.vector_store: EndpointVectorStore | None = None
-        self._loaded_groups = {group: False for group in self.endpoint_groups.keys()}
-        self.logger = FMPLogger().get_logger(self.__class__.__name__)
+        try:
+            self.config = config or ClientConfig.from_env()
+            self.client = client or FMPDataClient(config=self.config)
+            self.registry = EndpointRegistry()
+            self.store_name = store_name
+            self.endpoint_groups = endpoint_groups
+            self.vector_store: EndpointVectorStore | None = None
+            self._loaded_groups = {
+                group: False for group in self.endpoint_groups.keys()
+            }
+            self.logger = FMPLogger().get_logger(self.__class__.__name__)
 
-        if auto_initialize:
-            self.initialize()
+            if auto_initialize:
+                self.initialize()
+        except Exception as e:
+            raise ConfigError(f"Failed to initialize FMP Tool Manager: {str(e)}") from e
 
     def initialize(self) -> None:
         """Initialize endpoints and vector store"""
-        # First load all endpoints
-        logger.info("Initializing FMP Tool Manager")
-        self.load_all_endpoints()
+        try:
+            logger.info("Initializing FMP Tool Manager")
+            self.load_all_endpoints()
 
-        # Then initialize vector store
-        embeddings = self._get_embeddings()
-        self.vector_store = setup_vector_store(
-            client=self.client,
-            registry=self.registry,
-            embeddings=embeddings,
-            store_name=self.store_name,
-        )
+            if not self.registry.list_endpoints():
+                raise RuntimeError("No endpoints were registered during initialization")
+
+            # Then initialize vector store
+            embeddings = self._get_embeddings()
+            self.vector_store = setup_vector_store(
+                client=self.client,
+                registry=self.registry,
+                embeddings=embeddings,
+                store_name=self.store_name,
+            )
+
+            if not self.vector_store:
+                raise RuntimeError("Failed to initialize vector store")
+
+        except Exception as e:
+            self.logger.error("Failed to initialize tool manager", exc_info=True)
+            raise ConfigError(f"Initialization failed: {str(e)}") from e
 
     def initialize_vector_store(self, force_create: bool = False) -> None:
         """Initialize or load vector store"""
@@ -128,33 +165,21 @@ class FMPToolManager:
     def load_endpoints(
         self, endpoint_map: dict, semantics_map: dict, group_name: str
     ) -> tuple[int, set[str], set[str]]:
-        """
-        Load endpoints for a specific group
-        """
+        """Load endpoints for a specific group"""
+        if not endpoint_map:
+            raise ValueError(f"Empty endpoint map provided for group {group_name}")
+        if not semantics_map:
+            raise ValueError(f"Empty semantics map provided for group {group_name}")
+
         try:
-            # Add debug logging
-            if group_name == "intelligence":
-                self.logger.debug("Intelligence endpoints:")
-                self.logger.debug(f"  Endpoint map keys: {sorted(endpoint_map.keys())}")
-                self.logger.debug(
-                    f"  Semantics map keys: {sorted(semantics_map.keys())}"
-                )
-
-                # Look for our problematic endpoint
-                if "get_financial_reports_dates" in endpoint_map:
-                    self.logger.debug(
-                        "Found get_financial_reports_dates in endpoint map"
-                    )
-                    semantic_name = "financial_reports_dates"
-                    self.logger.debug(f"Looking for {semantic_name} in semantics")
-                    self.logger.debug(f"Found: {semantic_name in semantics_map}")
-
             return self._register_endpoints(endpoint_map, semantics_map)
         except Exception as e:
             self.logger.error(
                 f"Failed to load {group_name} endpoints: {str(e)}", exc_info=True
             )
-            raise
+            raise RuntimeError(
+                f"Error loading endpoints for {group_name}: {str(e)}"
+            ) from e
 
     def load_all_endpoints(self) -> None:
         """Load all available endpoint groups"""
@@ -224,50 +249,90 @@ class FMPToolManager:
         self, query: str | None = None, k: int = 3, threshold: float = 0.3
     ) -> list[StructuredTool]:
         """
-        Get relevant tools based on query
+        Get relevant LangChain tools based on natural language query.
 
         Args:
-            query: Natural language query to find relevant tools
-            k: Number of tools to return
-            threshold: Minimum similarity score threshold
+            query: Natural language query to find relevant tools (None for all tools)
+            k: Maximum number of tools to return
+            threshold: Minimum similarity score threshold (0-1)
 
         Returns:
-            List of relevant LangChain tools
+            List of LangChain StructuredTool instances
+
+        Raises:
+            RuntimeError: If vector store is not initialized
+            ValueError: If invalid k or threshold values
+
+        Examples:
+            tools = manager.get_tools("Get company financial ratios")
+            tools = manager.get_tools("Find historical stock prices", k=5)
         """
         if not self.vector_store:
             raise RuntimeError(
                 "Vector store not initialized. Call initialize_vector_store() first."
             )
 
-        return self.vector_store.get_tools(query=query, k=k, threshold=threshold)
+        if k < 1:
+            raise ValueError("k must be >= 1")
+        if not 0 <= threshold <= 1:
+            raise ValueError("threshold must be between 0 and 1")
+
+        try:
+            return self.vector_store.get_tools(query=query, k=k, threshold=threshold)
+        except Exception as e:
+            self.logger.error(f"Failed to get tools: {str(e)}")
+            raise
 
     def search_endpoints(
         self, query: str, k: int = 3, threshold: float = 0.3
     ) -> list[dict]:
         """
-        Search for relevant endpoints
+        Search for relevant endpoints using natural language query.
 
         Args:
             query: Natural language query
-            k: Number of results to return
-            threshold: Minimum similarity score threshold
+            k: Maximum number of results to return
+            threshold: Minimum similarity score threshold (0-1)
 
         Returns:
-            List of relevant endpoints with scores
+            List of dicts containing endpoint info with fields:
+            - score: Similarity score
+            - name: Endpoint name
+            - description: Natural language description
+            - category: Endpoint category
+            - sub_category: Endpoint subcategory
+
+        Raises:
+            RuntimeError: If vector store is not initialized
+            ValueError: If invalid k or threshold values
+
+        Examples:
+            results = manager.search_endpoints("Find company financials")
+            for r in results:
+                print(f"{r['name']}: {r['description']}")
         """
         if not self.vector_store:
             raise RuntimeError(
                 "Vector store not initialized. Call initialize_vector_store() first."
             )
 
-        results = self.vector_store.search(query, k=k, threshold=threshold)
-        return [
-            {
-                "score": result.score,
-                "name": result.name,
-                "description": result.info.semantics.natural_description,
-                "category": result.info.semantics.category,
-                "sub_category": result.info.semantics.sub_category,
-            }
-            for result in results
-        ]
+        if k < 1:
+            raise ValueError("k must be >= 1")
+        if not 0 <= threshold <= 1:
+            raise ValueError("threshold must be between 0 and 1")
+
+        try:
+            results = self.vector_store.search(query, k=k, threshold=threshold)
+            return [
+                {
+                    "score": result.score,
+                    "name": result.name,
+                    "description": result.info.semantics.natural_description,
+                    "category": result.info.semantics.category,
+                    "sub_category": result.info.semantics.sub_category,
+                }
+                for result in results
+            ]
+        except Exception as e:
+            self.logger.error(f"Failed to search endpoints: {str(e)}")
+            raise
