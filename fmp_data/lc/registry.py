@@ -3,8 +3,6 @@ from __future__ import annotations
 
 import re
 
-from pydantic import BaseModel
-
 from fmp_data.alternative.validation import AlternativeMarketsRule
 from fmp_data.company.validation import CompanyInfoRule
 from fmp_data.economics.validation import EconomicsRule
@@ -12,7 +10,7 @@ from fmp_data.fundamental.validation import FundamentalAnalysisRule
 from fmp_data.institutional.validation import InstitutionalRule
 from fmp_data.intelligence.validation import IntelligenceRule
 from fmp_data.investment.validation import InvestmentProductsRule
-from fmp_data.lc.models import EndpointSemantics
+from fmp_data.lc.models import EndpointInfo, EndpointSemantics
 from fmp_data.lc.validation import ValidationRuleRegistry
 from fmp_data.logger import FMPLogger
 from fmp_data.market.validation import MarketDataRule
@@ -20,13 +18,6 @@ from fmp_data.models import Endpoint
 from fmp_data.technical.validation import TechnicalAnalysisRule
 
 logger = FMPLogger().get_logger(__name__)
-
-
-class EndpointInfo(BaseModel):
-    """Combined endpoint information"""
-
-    endpoint: Endpoint
-    semantics: EndpointSemantics
 
 
 class EndpointRegistry:
@@ -41,15 +32,12 @@ class EndpointRegistry:
     def _register_validation_rules(self) -> None:
         """Register all validation rules in order of precedence"""
         rules = [
-            # Core financial data rules
             FundamentalAnalysisRule(),
             MarketDataRule(),
             TechnicalAnalysisRule(),
-            # Company and institutional data rules
             CompanyInfoRule(),
             InstitutionalRule(),
             IntelligenceRule(),
-            # Specialized data rules
             AlternativeMarketsRule(),
             EconomicsRule(),
             InvestmentProductsRule(),
@@ -59,9 +47,8 @@ class EndpointRegistry:
             self._validation.register_rule(rule)
             self.logger.debug(f"Registered validation rule: {rule.__class__.__name__}")
 
-    def _validate_method_name(
-        self, name: str, info: EndpointInfo
-    ) -> tuple[bool, str | None]:
+    @staticmethod
+    def _validate_method_name(name: str, info: EndpointInfo) -> tuple[bool, str | None]:
         """Validate method name consistency"""
         if info.semantics.method_name != name:
             return False, (
@@ -70,9 +57,8 @@ class EndpointRegistry:
             )
         return True, None
 
-    def _validate_parameters(
-        self, name: str, info: EndpointInfo
-    ) -> tuple[bool, str | None]:
+    @staticmethod
+    def _validate_parameters(name: str, info: EndpointInfo) -> tuple[bool, str | None]:
         """Validate parameter consistency"""
         # Get all endpoint parameters (mandatory + optional)
         endpoint_params = {p.name for p in info.endpoint.mandatory_params}
