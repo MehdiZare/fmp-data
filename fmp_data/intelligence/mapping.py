@@ -207,7 +207,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "analyst forecast",
             "price estimate",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Analyst Research",
         parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
@@ -251,7 +251,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "financial results",
             "earnings announcement",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Corporate Events",
         parameter_hints={
             "from": DATE_HINTS["from"],
@@ -296,7 +296,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "governance",
             "ESG score",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="ESG",
         parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
@@ -339,7 +339,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "share offering",
             "new issues",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Fundraising",
         parameter_hints={"page": PAGE_HINT},
         response_hints={
@@ -380,7 +380,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "equity raises",
             "share sales",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Fundraising",
         parameter_hints={
             "cik": ParameterHint(
@@ -428,7 +428,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "financial research",
             "investment insights",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="News & Research",
         parameter_hints={
             "page": PAGE_HINT,
@@ -473,7 +473,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "business news",
             "market coverage",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="News & Media",
         parameter_hints={"page": PAGE_HINT},
         response_hints={
@@ -514,7 +514,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "corporate news",
             "market news",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="News & Media",
         parameter_hints={
             "tickers": ParameterHint(
@@ -567,7 +567,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "market mood",
             "news impact",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="News & Media",
         parameter_hints={"page": PAGE_HINT},
         response_hints={
@@ -608,7 +608,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "corporate news",
             "official updates",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="News & Media",
         parameter_hints={
             "symbol": SYMBOL_HINT,
@@ -633,48 +633,6 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "Research",
         ],
     ),
-    "price_target_summary": EndpointSemantics(
-        client_name="intelligence",
-        method_name="get_price_target_summary",
-        natural_description=(
-            "Get summarized price target statistics including average targets over "
-            "different time periods and analyst coverage metrics"
-        ),
-        example_queries=[
-            "Show price target summary for AAPL",
-            "Get consensus target for TSLA",
-            "Analyst target averages for MSFT",
-            "Summary of price predictions",
-        ],
-        related_terms=[
-            "consensus target",
-            "average target",
-            "target summary",
-            "price consensus",
-            "analyst coverage",
-        ],
-        category=SemanticCategory.INSTITUTIONAL,
-        sub_category="Analyst Research",
-        parameter_hints={"symbol": SYMBOL_HINT},
-        response_hints={
-            "last_month_avg_price_target": ResponseFieldInfo(
-                description="Average price target from last month",
-                examples=["155.50", "3600.00"],
-                related_terms=["monthly average", "recent target"],
-            ),
-            "all_time_avg_price_target": ResponseFieldInfo(
-                description="All-time average price target",
-                examples=["145.75", "3200.00"],
-                related_terms=["historical average", "long-term target"],
-            ),
-        },
-        use_cases=[
-            "Target price analysis",
-            "Consensus tracking",
-            "Historical target trends",
-            "Analyst coverage monitoring",
-        ],
-    ),
     "analyst_recommendations": EndpointSemantics(
         client_name="intelligence",
         method_name="get_analyst_recommendations",
@@ -695,7 +653,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "analyst consensus",
             "stock recommendation",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Analyst Research",
         parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
@@ -737,7 +695,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "announcement date",
             "confirmed release",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Corporate Events",
         parameter_hints={
             "from": DATE_HINTS["from"],
@@ -783,7 +741,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "sentiment history",
             "sentiment trends",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Sentiment Analysis",
         parameter_hints={
             "symbol": SYMBOL_HINT,
@@ -830,7 +788,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "market buzz",
             "social momentum",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Sentiment Analysis",
         parameter_hints={
             "type": ParameterHint(
@@ -891,7 +849,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "congressional disclosure",
             "representative trading",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Government Trading",
         parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
@@ -933,7 +891,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "official statement",
             "company release",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="News & Media",
         parameter_hints={"page": PAGE_HINT},
         response_hints={
@@ -981,7 +939,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "currency trading",
             "fx updates",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="News & Media",
         parameter_hints={
             "symbol": ParameterHint(
@@ -1036,7 +994,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "investment offerings",
             "capital raise",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Fundraising",
         parameter_hints={"page": PAGE_HINT},
         response_hints={
@@ -1078,7 +1036,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "capital raise",
             "public offering",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Fundraising",
         parameter_hints={
             "name": ParameterHint(
@@ -1127,7 +1085,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "momentum shift",
             "sentiment movement",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Sentiment Analysis",
         parameter_hints={
             "type": ParameterHint(
@@ -1162,47 +1120,6 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "Market psychology",
         ],
     ),
-    "price_target_consensus": EndpointSemantics(
-        client_name="intelligence",
-        method_name="get_price_target_consensus",
-        natural_description=(
-            "Retrieve consensus price target data including highest, lowest, "
-            "median and average targets from analysts"
-        ),
-        example_queries=[
-            "Get price target consensus for AAPL",
-            "Show analyst consensus for TSLA",
-            "What's the target consensus for MSFT?",
-            "Average price targets",
-        ],
-        related_terms=[
-            "consensus target",
-            "analyst consensus",
-            "price agreement",
-            "target average",
-        ],
-        category=SemanticCategory.INSTITUTIONAL,
-        sub_category="Analyst Research",
-        parameter_hints={"symbol": SYMBOL_HINT},
-        response_hints={
-            "target_consensus": ResponseFieldInfo(
-                description="Consensus price target",
-                examples=["150.00", "3500.00"],
-                related_terms=["consensus", "average target"],
-            ),
-            "target_high": ResponseFieldInfo(
-                description="Highest price target",
-                examples=["180.00", "4000.00"],
-                related_terms=["high target", "maximum target"],
-            ),
-        },
-        use_cases=[
-            "Price target analysis",
-            "Investment research",
-            "Market consensus",
-            "Analyst coverage",
-        ],
-    ),
     "crypto_news": EndpointSemantics(
         client_name="intelligence",
         method_name="get_crypto_news",
@@ -1222,7 +1139,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "cryptocurrency",
             "blockchain news",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="News & Media",
         parameter_hints={
             "symbol": SYMBOL_HINT,
@@ -1267,7 +1184,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "analyst forecasts",
             "EBITDA estimates",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Analyst Research",
         parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
@@ -1309,7 +1226,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "stock downgrades",
             "recommendation changes",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Analyst Research",
         parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
@@ -1351,7 +1268,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "rating breakdown",
             "consensus view",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Analyst Research",
         parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
@@ -1395,7 +1312,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "earnings estimates",
             "actual results",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Calendar Events",
         parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
@@ -1439,7 +1356,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "previous reports",
             "past performance",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Calendar Events",
         parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
@@ -1483,7 +1400,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "dividend schedule",
             "dividend events",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Calendar Events",
         parameter_hints={
             "from": DATE_HINTS["from"],
@@ -1530,7 +1447,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "split events",
             "corporate actions",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Calendar Events",
         parameter_hints={
             "from": DATE_HINTS["from"],
@@ -1575,7 +1492,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "public offerings",
             "market debuts",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Calendar Events",
         parameter_hints={
             "from": DATE_HINTS["from"],
@@ -1622,7 +1539,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "social score",
             "governance rating",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="ESG",
         parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
@@ -1664,7 +1581,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "ESG averages",
             "peer metrics",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="ESG",
         parameter_hints={
             "year": ParameterHint(
@@ -1713,7 +1630,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "congress trades",
             "senate disclosures",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Government Trading",
         parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
@@ -1754,7 +1671,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "disclosure alerts",
             "political trades",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Government Trading",
         parameter_hints={"page": PAGE_HINT},
         response_hints={
@@ -1795,7 +1712,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "representative trading",
             "political updates",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Government Trading",
         parameter_hints={"page": PAGE_HINT},
         response_hints={
@@ -1815,48 +1732,6 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "Political trading analysis",
             "Regulatory tracking",
             "Market research",
-        ],
-    ),
-    "financial_report_dates": EndpointSemantics(
-        client_name="intelligence",
-        method_name="get_financial_report_dates",
-        natural_description=(
-            "Access financial report filing dates and periods including quarterly "
-            "and annual report schedules with links to documents"
-        ),
-        example_queries=[
-            "Get financial report dates for AAPL",
-            "Show filing schedule for MSFT",
-            "When are quarterly reports due?",
-            "Financial reporting calendar",
-        ],
-        related_terms=[
-            "filing dates",
-            "report schedule",
-            "financial calendar",
-            "earnings dates",
-            "reporting periods",
-        ],
-        category=SemanticCategory.FUNDAMENTAL_ANALYSIS,
-        sub_category="Financial Reports",
-        parameter_hints={"symbol": SYMBOL_HINT},
-        response_hints={
-            "report_date": ResponseFieldInfo(
-                description="Filing date",
-                examples=["2024-01-15", "2023-12-20"],
-                related_terms=["filing date", "submission date"],
-            ),
-            "period": ResponseFieldInfo(
-                description="Reporting period",
-                examples=["Q1 2024", "FY 2023"],
-                related_terms=["fiscal period", "quarter", "annual"],
-            ),
-        },
-        use_cases=[
-            "Report scheduling",
-            "Filing tracking",
-            "Document access",
-            "Event planning",
         ],
     ),
     "institutional_holders": EndpointSemantics(
@@ -1879,7 +1754,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "ownership stakes",
             "institutional investors",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Ownership",
         parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
@@ -1921,7 +1796,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "capital raise",
             "offering search",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Fundraising",
         parameter_hints={
             "name": ParameterHint(
@@ -1969,7 +1844,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "fundraising rounds",
             "startup funding",
         ],
-        category=SemanticCategory.INSTITUTIONAL,
+        category=SemanticCategory.INTELLIGENCE,
         sub_category="Fundraising",
         parameter_hints={
             "cik": ParameterHint(
@@ -1991,6 +1866,167 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "Funding analysis",
             "Investment tracking",
             "Due diligence",
+        ],
+    ),
+    "price_target_consensus": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_price_target_consensus",
+        natural_description=(
+            "Get detailed consensus information about analyst price targets, "
+            "including target distribution, recent changes, and analyst "
+            "recommendations. Provides comprehensive view of market expectations."
+        ),
+        example_queries=[
+            "What's the analyst consensus on AAPL?",
+            "Show MSFT target price consensus",
+            "Get analyst agreement on GOOGL price",
+            "Consensus target for TSLA",
+            "What's the market expecting for AMZN?",
+            "Show analyst consensus for Netflix",
+        ],
+        related_terms=[
+            "price consensus",
+            "analyst agreement",
+            "target consensus",
+            "market expectation",
+            "price agreement",
+            "collective forecast",
+            "analyst consensus",
+            "price outlook",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Analyst Coverage",
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+        },
+        response_hints={
+            "consensus_price": ResponseFieldInfo(
+                description="Consensus price target",
+                examples=["185.50", "3750.00"],
+                related_terms=["consensus target", "agreed target", "mean target"],
+            ),
+            "consensus_growth": ResponseFieldInfo(
+                description="Expected price growth percentage",
+                examples=["15.5%", "22.3%"],
+                related_terms=["target growth", "expected return", "price potential"],
+            ),
+            "analyst_count": ResponseFieldInfo(
+                description="Number of analysts in consensus",
+                examples=["25", "32"],
+                related_terms=["analyst coverage", "following analysts", "coverage"],
+            ),
+            "recommendation": ResponseFieldInfo(
+                description="Overall analyst recommendation",
+                examples=["Buy", "Hold", "Sell"],
+                related_terms=["rating", "analyst rating", "recommendation"],
+            ),
+        },
+        use_cases=[
+            "Investment research",
+            "Market sentiment analysis",
+            "Price target tracking",
+            "Analyst coverage monitoring",
+            "Investment decision support",
+            "Portfolio strategy planning",
+            "Risk assessment",
+        ],
+    ),
+    "price_target_summary": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_price_target_summary",
+        natural_description=(
+            "Get a summary of analyst price targets for a stock, including average, "
+            "highest, and lowest targets along with number of analysts. Provides a "
+            "quick overview of market expectations for a company's stock price."
+        ),
+        example_queries=[
+            "What's the average price target for AAPL?",
+            "Show analyst price targets for MSFT",
+            "Get price target range for GOOGL",
+            "What do analysts expect for TSLA stock?",
+            "Show target price summary for AMZN",
+            "Analyst predictions for Netflix stock",
+        ],
+        related_terms=[
+            "analyst target",
+            "price forecast",
+            "stock target",
+            "price prediction",
+            "analyst estimate",
+            "price expectation",
+            "stock valuation",
+            "price consensus",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Analyst Coverage",
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+        },
+        response_hints={
+            "target_consensus": ResponseFieldInfo(
+                description="Average analyst price target",
+                examples=["185.50", "3750.00"],
+                related_terms=["consensus target", "average target", "mean target"],
+            ),
+            "target_high": ResponseFieldInfo(
+                description="Highest analyst price target",
+                examples=["200.00", "4000.00"],
+                related_terms=["highest target", "maximum target", "bull case"],
+            ),
+            "target_low": ResponseFieldInfo(
+                description="Lowest analyst price target",
+                examples=["160.00", "3200.00"],
+                related_terms=["lowest target", "minimum target", "bear case"],
+            ),
+            "number_of_analysts": ResponseFieldInfo(
+                description="Number of analysts providing targets",
+                examples=["25", "32"],
+                related_terms=["analyst count", "coverage", "analysts following"],
+            ),
+        },
+        use_cases=[
+            "Investment research",
+            "Price potential analysis",
+            "Market sentiment assessment",
+            "Target price monitoring",
+            "Analyst coverage tracking",
+            "Investment decision making",
+            "Portfolio management",
+        ],
+    ),
+    "financial_reports_dates": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_financial_reports_dates",
+        natural_description=(
+            "Retrieve available financial report dates and filing deadlines"
+        ),
+        example_queries=[
+            "When are financial reports due?",
+            "Get report filing dates",
+            "Show financial reporting calendar",
+            "Next earnings report dates",
+        ],
+        related_terms=[
+            "filing dates",
+            "report deadlines",
+            "financial calendar",
+            "reporting schedule",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Calendar Events",
+        parameter_hints={},  # Add any parameters if needed
+        response_hints={
+            "date": ResponseFieldInfo(
+                description="Report filing date",
+                examples=["2024-01-15", "2024-02-01"],
+                related_terms=["filing date", "report date"],
+            ),
+        },
+        use_cases=[
+            "Filing deadline tracking",
+            "Report scheduling",
+            "Compliance planning",
+            "Calendar management",
         ],
     ),
 }
