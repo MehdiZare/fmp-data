@@ -48,6 +48,25 @@ SYMBOL_HINT = ParameterHint(
     context_clues=["stock", "symbol", "ticker", "company"],
 )
 
+FROM_DATE_HINT = ParameterHint(
+    natural_names=["from date", "start date", "beginning"],
+    extraction_patterns=[
+        r"from\s+(\d{4}-\d{2}-\d{2})",
+        r"starting\s+(\d{4}-\d{2}-\d{2})",
+    ],
+    examples=["2024-01-01", "2023-12-01"],
+    context_clues=["from", "start", "beginning", "since"],
+)
+
+TO_DATE_HINT = ParameterHint(
+    natural_names=["to date", "end date", "until"],
+    extraction_patterns=[
+        r"to\s+(\d{4}-\d{2}-\d{2})",
+        r"until\s+(\d{4}-\d{2}-\d{2})",
+    ],
+    examples=["2024-12-31", "2023-12-31"],
+    context_clues=["to", "end", "until", "through"],
+)
 DATE_HINT = ParameterHint(
     natural_names=["date", "as of", "trading date"],
     extraction_patterns=[
@@ -291,59 +310,6 @@ MARKET_ENDPOINTS_SEMANTICS = {
             "Basic stock tracking",
             "Quick price checks",
             "Portfolio monitoring",
-        ],
-    ),
-    "historical_prices": EndpointSemantics(
-        client_name="market",
-        method_name="get_historical_prices",
-        natural_description=(
-            "Retrieve historical price data "
-            "including OHLCV (Open, High, Low, Close, Volume) information"
-        ),
-        example_queries=[
-            "Get AAPL historical prices",
-            "Show Microsoft price history",
-            "Tesla stock price history",
-            "Get Google historical data",
-            "Show Amazon price chart data",
-        ],
-        related_terms=[
-            "price history",
-            "historical data",
-            "OHLCV",
-            "price chart",
-            "historical quotes",
-            "past prices",
-        ],
-        category=SemanticCategory.MARKET_DATA,
-        sub_category="Historical Data",
-        parameter_hints={
-            "symbol": SYMBOL_HINT,
-            "from_date": DATE_HINT,
-            "to_date": DATE_HINT,
-        },
-        response_hints={
-            "date": ResponseFieldInfo(
-                description="Trading date",
-                examples=["2024-01-15", "2023-12-31"],
-                related_terms=["date", "trading day", "session date"],
-            ),
-            "open": ResponseFieldInfo(
-                description="Opening price",
-                examples=["150.25", "3200.50"],
-                related_terms=["open price", "opening", "open"],
-            ),
-            "close": ResponseFieldInfo(
-                description="Closing price",
-                examples=["151.75", "3225.25"],
-                related_terms=["close price", "closing", "close"],
-            ),
-        },
-        use_cases=[
-            "Technical analysis",
-            "Historical analysis",
-            "Price trend analysis",
-            "Chart creation",
         ],
     ),
     "intraday_prices": EndpointSemantics(
@@ -887,6 +853,60 @@ MARKET_ENDPOINTS_SEMANTICS = {
             "Early market direction indicators",
             "After-hours movement tracking",
             "Pre-market momentum analysis",
+        ],
+    ),
+    "historical_prices": EndpointSemantics(
+        client_name="market",
+        method_name="get_historical_prices",
+        natural_description=(
+            "Retrieve historical price data including OHLCV (Open, High, Low, Close, "
+            "Volume) information for detailed technical and performance analysis."
+        ),
+        example_queries=[
+            "Get AAPL historical prices",
+            "Show MSFT price history from 2023-01-01 to 2023-12-31",
+            "Get GOOGL historical data between dates",
+            "TSLA price history last year",
+            "Show AMZN trading history",
+        ],
+        related_terms=[
+            "price history",
+            "historical data",
+            "past prices",
+            "trading history",
+            "historical performance",
+            "price chart data",
+        ],
+        category=SemanticCategory.MARKET_DATA,
+        sub_category="Historical Data",
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "from": FROM_DATE_HINT,
+            "to": TO_DATE_HINT,
+        },
+        response_hints={
+            "date": ResponseFieldInfo(
+                description="Trading date",
+                examples=["2024-01-15", "2023-12-31"],
+                related_terms=["date", "trading day", "session date"],
+            ),
+            "open": ResponseFieldInfo(
+                description="Opening price",
+                examples=["150.25", "3500.95"],
+                related_terms=["open price", "opening", "open"],
+            ),
+            "close": ResponseFieldInfo(
+                description="Closing price",
+                examples=["151.00", "3525.75"],
+                related_terms=["close price", "closing", "final price"],
+            ),
+        },
+        use_cases=[
+            "Technical analysis",
+            "Performance tracking",
+            "Backtesting",
+            "Trend analysis",
+            "Historical research",
         ],
     ),
 }
