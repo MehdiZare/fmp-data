@@ -1,12 +1,16 @@
 import os
 from contextlib import contextmanager
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 import pytest
 from pydantic import ValidationError
 
 from fmp_data.config import (
     ClientConfig,
+    ConfigError,
+    EmbeddingConfig,
+    EmbeddingProvider,
     LoggingConfig,
     LogHandlerConfig,
     RateLimitConfig,
@@ -250,3 +254,180 @@ def test_logging_config_no_path():
         assert config.log_path is None
         assert "file" not in config.handlers
         assert "json" not in config.handlers
+
+
+@pytest.fixture
+def embedding_env_vars():
+    """Fixture to set up and tear down embedding environment variables"""
+    test_vars = {
+        "FMP_EMBEDDING_PROVIDER": "openai",
+        "FMP_EMBEDDING_MODEL": "text-embedding-ada-002",
+        "OPENAI_API_KEY": "test-openai-key",
+        "FMP_EMBEDDING_KWARGS": '{"batch_size": 8}',
+    }
+
+    with temp_environ() as env:
+        env.update(test_vars)
+        yield test_vars
+
+
+def test_embedding_config_validation():
+    """Test embedding configuration validation"""
+    # Valid configuration with OpenAI
+    with patch("fmp_data.config.check_langchain_dependency"):
+        valid_config = EmbeddingConfig(
+            provider=EmbeddingProvider.OPENAI,
+            api_key="test-key",
+            model_name="text-embedding-ada-002",
+        )
+        assert valid_config.provider == EmbeddingProvider.OPENAI
+        assert valid_config.api_key == "test-key"
+
+    # Test missing API key for OpenAI
+    with pytest.raises(ConfigError):
+        config = EmbeddingConfig(provider=EmbeddingProvider.OPENAI)
+        config.get_embeddings()
+
+    # Valid configuration with HuggingFace (no API key needed)
+    with patch("fmp_data.config.check_langchain_dependency"):
+        valid_config = EmbeddingConfig(
+            provider=EmbeddingProvider.HUGGINGFACE,
+            model_name="sentence-transformers/all-mpnet-base-v2",
+        )
+        assert valid_config.provider == EmbeddingProvider.HUGGINGFACE
+
+
+def test_embedding_config_from_env(embedding_env_vars):
+    """Test embedding configuration from environment variables"""
+    with patch("fmp_data.config.check_langchain_dependency"):
+        config = EmbeddingConfig.from_env()
+
+        assert config is not None
+        assert config.provider == EmbeddingProvider.OPENAI
+        assert config.model_name == "text-embedding-ada-002"
+        assert config.api_key == "test-openai-key"
+        assert config.additional_kwargs == {"batch_size": 8}
+
+
+def test_embedding_config_no_env():
+    """Test embedding configuration when no environment variables are set"""
+    with temp_environ():
+        config = EmbeddingConfig.from_env()
+        assert config is None
+
+
+def test_dependency_checks():
+    """Test dependency checking functionality"""
+    # Test missing langchain
+    with patch("importlib.util.find_spec", return_value=None):
+        with pytest.raises(ConfigError, match="Langchain is required"):
+            config = EmbeddingConfig(provider=EmbeddingProvider.OPENAI, api_key="test")
+            config.model_post_init(None)
+
+    # Test missing OpenAI dependencies
+    with (
+        patch("fmp_data.config.check_langchain_dependency"),
+        patch(
+            "importlib.util.find_spec",
+            side_effect=lambda x: None if x in ["openai", "tiktoken"] else Mock(),
+        ),
+    ):
+        with pytest.raises(ConfigError, match="Required package\\(s\\) for OpenAI"):
+            config = EmbeddingConfig(provider=EmbeddingProvider.OPENAI, api_key="test")
+            config.get_embeddings()
+
+    # Test missing HuggingFace dependencies
+    with (
+        patch("fmp_data.config.check_langchain_dependency"),
+        patch(
+            "importlib.util.find_spec",
+            side_effect=lambda x: (
+                None if x in ["sentence_transformers", "torch"] else Mock()
+            ),
+        ),
+    ):
+        with pytest.raises(
+            ConfigError, match="Required package\\(s\\) for HuggingFace"
+        ):
+            config = EmbeddingConfig(provider=EmbeddingProvider.HUGGINGFACE)
+            config.get_embeddings()
+
+
+def test_client_config_with_embeddings(env_vars, embedding_env_vars):
+    """Test client configuration with embedding settings"""
+    with patch("fmp_data.config.check_langchain_dependency"):
+        config = ClientConfig.from_env()
+
+        assert config.embedding is not None
+        assert config.embedding.provider == EmbeddingProvider.OPENAI
+        assert config.embedding.model_name == "text-embedding-ada-002"
+        assert config.embedding.api_key == "test-openai-key"
+
+
+def test_embedding_provider_validation():
+    """Test embedding provider validation"""
+    with temp_environ() as env:
+        env["FMP_EMBEDDING_PROVIDER"] = "invalid_provider"
+
+        with pytest.raises(ConfigError, match="Invalid embedding provider"):
+            EmbeddingConfig.from_env()
+
+
+def test_embedding_kwargs_validation():
+    """Test embedding additional kwargs validation"""
+    with temp_environ() as env:
+        env.update(
+            {"FMP_EMBEDDING_PROVIDER": "openai", "FMP_EMBEDDING_KWARGS": "invalid_json"}
+        )
+
+        config = EmbeddingConfig.from_env()
+        assert (
+            config.additional_kwargs == {}
+        )  # Should default to empty dict on invalid JSON
+
+
+def test_embedding_model_instantiation():
+    """Test embedding model instantiation"""
+    with (
+        patch("fmp_data.config.check_langchain_dependency"),
+        patch("langchain.embeddings.OpenAIEmbeddings") as mock_openai,
+        patch("importlib.util.find_spec", return_value=Mock()),
+    ):
+        config = EmbeddingConfig(
+            provider=EmbeddingProvider.OPENAI,
+            api_key="test-key",
+            model_name="custom-model",
+            additional_kwargs={"batch_size": 10},
+        )
+
+        _ = config.get_embeddings()
+
+        mock_openai.assert_called_once_with(
+            openai_api_key="test-key", model="custom-model", batch_size=10
+        )
+
+
+def test_client_config_serialization_with_embeddings():
+    """Test configuration serialization with embeddings"""
+    with patch("fmp_data.config.check_langchain_dependency"):
+        original_config = ClientConfig(
+            api_key="test_key",
+            embedding=EmbeddingConfig(
+                provider=EmbeddingProvider.OPENAI, api_key="test-openai-key"
+            ),
+        )
+
+        # Serialize to dict
+        config_dict = original_config.model_dump()
+
+        # Deserialize from dict
+        reconstructed_config = ClientConfig.model_validate(config_dict)
+
+        assert reconstructed_config.embedding is not None
+        assert (
+            reconstructed_config.embedding.provider
+            == original_config.embedding.provider
+        )
+        assert (
+            reconstructed_config.embedding.api_key == original_config.embedding.api_key
+        )

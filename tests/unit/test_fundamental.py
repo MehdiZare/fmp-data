@@ -72,7 +72,7 @@ class TestFundamentalEndpoints(unittest.TestCase):
             "returnOnEquity": 1.6459350307287095,
         }
 
-        self.sample_financial_report_dates = [
+        self.sample_financial_reports_dates = [
             {
                 "symbol": "AAPL",
                 "date": "2024",
@@ -133,16 +133,16 @@ class TestFundamentalEndpoints(unittest.TestCase):
         self.assertIsInstance(ratio, FinancialRatios)
         self.assertAlmostEqual(ratio.current_ratio, 0.8673125765340832)
 
-    def test_get_financial_report_dates(self):
+    def test_get_financial_reports_dates(self):
         """Test getting financial report dates"""
         # Configure mock to return model instances
         mock_response = dict_to_model(
-            FinancialReportDate, self.sample_financial_report_dates[0]
+            FinancialReportDate, self.sample_financial_reports_dates[0]
         )
         self.mock_client.request.return_value = [mock_response]
 
         # Execute request
-        result = self.fundamental_client.get_financial_report_dates(symbol=self.symbol)
+        result = self.fundamental_client.get_financial_reports_dates(symbol=self.symbol)
 
         # Verify request and response
         self.mock_client.request.assert_called_once_with(

@@ -159,11 +159,11 @@ class TestFundamentalEndpoints:
                 assert isinstance(statement.period, str)
                 assert isinstance(statement.revenue, float)
 
-    def test_get_financial_report_dates(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_get_financial_reports_dates(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting financial report dates"""
-        with vcr_instance.use_cassette("fundamental/financial_report_dates.yaml"):
+        with vcr_instance.use_cassette("fundamental/financial_reports_dates.yaml"):
             dates = self._handle_rate_limit(
-                fmp_client.fundamental.get_financial_report_dates,
+                fmp_client.fundamental.get_financial_reports_dates,
                 symbol=self.TEST_SYMBOL,
             )
 
