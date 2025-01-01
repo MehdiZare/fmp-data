@@ -3,6 +3,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from fmp_data.models import Endpoint
+
 
 class SemanticCategory(str, Enum):
     """Categories for semantic classification"""
@@ -64,3 +66,10 @@ class EndpointSemantics(BaseModel):
         description="Information about response fields"
     )
     use_cases: list[str] = Field(description="Common use cases for this endpoint")
+
+
+class EndpointInfo(BaseModel):
+    """Combined endpoint information"""
+
+    endpoint: Endpoint
+    semantics: EndpointSemantics
