@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from logging import Logger
 
 from fmp_data.alternative.validation import AlternativeMarketsRule
 from fmp_data.company.validation import CompanyInfoRule
@@ -21,10 +22,24 @@ logger = FMPLogger().get_logger(__name__)
 
 
 class EndpointRegistry:
+    """
+    Registry for managing FMP API endpoints and their semantic information.
+
+    Handles endpoint registration, validation, and lookup. Stores endpoint
+    configurations and semantic metadata for search and tool creation.
+
+    Examples:
+        registry = EndpointRegistry()
+        registry.register("get_company_profile", endpoint, semantics)
+        info = registry.get_endpoint("get_company_profile")
+    """
+
     def __init__(self):
         self._endpoints: dict[str, EndpointInfo] = {}
         self._validation = ValidationRuleRegistry()
-        self.logger = logger.getChild(self.__class__.__name__)
+        self.logger: Logger = (
+            FMPLogger().get_logger(__name__).getChild(self.__class__.__name__)
+        )
 
         # Register validation rules
         self._register_validation_rules()
@@ -150,7 +165,15 @@ class EndpointRegistry:
                 raise
 
     def get_endpoint(self, name: str) -> EndpointInfo | None:
-        """Get endpoint information by name"""
+        """
+        Get endpoint information by name.
+
+        Args:
+            name: Name of the endpoint to retrieve
+
+        Returns:
+            EndpointInfo if found, None otherwise
+        """
         return self._endpoints.get(name)
 
     def get_endpoints_by_names(self, names: list[str]) -> dict[str, EndpointInfo]:
@@ -162,7 +185,15 @@ class EndpointRegistry:
         return self._endpoints
 
     def filter_endpoints(self, category: str | None = None) -> dict[str, EndpointInfo]:
-        """Filter endpoints by category"""
+        """
+        Filter endpoints by category.
+
+        Args:
+            category: Category to filter by (None returns all endpoints)
+
+        Returns:
+            Dict of endpoint names to EndpointInfo objects
+        """
         if not category:
             return self._endpoints
         return {
