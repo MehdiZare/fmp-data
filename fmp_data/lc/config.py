@@ -1,7 +1,7 @@
 # fmp_data/lc/config.py
 import os
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from fmp_data.config import ClientConfig
 from fmp_data.lc.embedding import EmbeddingConfig, EmbeddingProvider
@@ -82,6 +82,7 @@ class LangChainConfig(ClientConfig):
 
         return cls(**config_dict)
 
-    class Config:
-        validate_assignment = True
-        extra = "forbid"
+    model_config = ConfigDict(
+        validate_assignment=True,
+        extra="forbid",
+    )
