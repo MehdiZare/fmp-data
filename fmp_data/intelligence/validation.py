@@ -1,16 +1,11 @@
 from typing import ClassVar
 
-from fmp_data import FMPLogger
 from fmp_data.lc.models import SemanticCategory
 from fmp_data.lc.validation import CommonValidationRule
 
 
 class IntelligenceRule(CommonValidationRule):
     """Validation rules for market intelligence endpoints"""
-
-    def __init__(self):
-        self.logger = FMPLogger().get_logger(self.__class__.__name__)
-        super().__init__()
 
     METHOD_GROUPS: ClassVar[dict[str, tuple[str, list[str]]]] = {
         "Analyst Research": (
