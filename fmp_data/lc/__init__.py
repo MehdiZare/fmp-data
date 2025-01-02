@@ -8,26 +8,42 @@ This module provides LangChain integration features including:
 - Vector store management
 - Natural language endpoint discovery
 """
-
 import os
-from typing import Optional
 
-from fmp_data import FMPLogger
+from fmp_data.lc.config import LangChainConfig
 from fmp_data.lc.manager import FMPToolManager
 from fmp_data.lc.models import EndpointSemantics, SemanticCategory
 from fmp_data.lc.utils import is_langchain_available
 from fmp_data.lc.vector_store import EndpointVectorStore
+from fmp_data.logger import FMPLogger
 
 logger = FMPLogger().get_logger(__name__)
 
 __all__ = [
-    "FMPToolManager",
     "EndpointVectorStore",
     "EndpointSemantics",
     "SemanticCategory",
-    "create_tool_manager",
     "is_langchain_available",
+    "LangChainConfig",
 ]
+
+
+# Don't auto-initialize anymore, let users do it explicitly
+def init_langchain() -> bool:
+    """
+    Initialize LangChain integration if dependencies are available.
+
+    Returns:
+        bool: True if initialization successful, False otherwise
+    """
+    if not is_langchain_available():
+        logger.warning(
+            "LangChain dependencies not available. "
+            "Install with: pip install 'fmp-data[langchain]'"
+        )
+        return False
+
+    return True
 
 
 def create_tool_manager(
@@ -88,15 +104,3 @@ def create_tool_manager(
     except Exception as e:
         logger.error(f"Failed to create tool manager: {str(e)}")
         return None
-
-
-# Optional: Auto-initialize if configured
-if (
-    os.getenv("FMP_AUTO_INIT_VECTOR_STORE", "false").lower() == "true"
-    and is_langchain_available()
-):
-    try:
-        logger.info("Auto-initializing FMP Tool Manager")
-        create_tool_manager()
-    except Exception as e:
-        logger.warning(f"Auto-initialization failed: {str(e)}")
