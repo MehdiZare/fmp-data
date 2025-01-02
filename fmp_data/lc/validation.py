@@ -1,13 +1,10 @@
 # fmp_data/lc/validation.py
-
-import logging
 import re
 from abc import ABC, abstractmethod
 from typing import ClassVar
 
 from fmp_data.lc.models import SemanticCategory
-
-logger = logging.getLogger(__name__)
+from fmp_data.logger import FMPLogger
 
 
 class ValidationRule(ABC):
@@ -19,6 +16,9 @@ class ValidationRule(ABC):
     # Required class variables that must be defined by subclasses
     METHOD_GROUPS: ClassVar[dict[str, tuple[str, list[str]]]]
     PARAMETER_PATTERNS: ClassVar[dict[str, dict[str, list[str] | str | int]]]
+
+    def __init__(self):
+        self.logger = FMPLogger().get_logger(self.__class__.__name__)
 
     @property
     @abstractmethod
@@ -99,7 +99,7 @@ class ValidationRuleRegistry:
 
     def __init__(self):
         self._rules: list[ValidationRule] = []
-        self.logger = logger.getChild(self.__class__.__name__)
+        self.logger = FMPLogger().get_logger(self.__class__.__name__)
 
     def register_rule(self, rule: ValidationRule) -> None:
         """Register a validation rule"""
