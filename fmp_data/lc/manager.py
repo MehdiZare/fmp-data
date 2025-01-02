@@ -182,18 +182,21 @@ class FMPToolManager:
             self.logger.debug("Vector store already initialized")
             return
 
-        embeddings = self.config.embedding_config.get_embeddings()
-        self.vector_store = setup_vector_store(
-            client=self.client,
-            registry=self.registry,
-            embeddings=embeddings,
-            store_name=self.store_name,
-            force_create=force_create,
-        )
-        self.logger.info(
-            f"Initialized vector store with "
-            f"{len(self.registry.list_endpoints())} endpoints"
-        )
+        try:
+            embeddings = self.config.embedding_config.get_embeddings()
+            self.vector_store = setup_vector_store(
+                client=self.client,
+                registry=self.registry,
+                embeddings=embeddings,
+                store_name=self.store_name,
+                force_create=force_create,
+            )
+            self.logger.info(
+                f"Initialized vector store with "
+                f"{len(self.registry.list_endpoints())} endpoints"
+            )
+        except Exception as e:
+            raise RuntimeError(f"Failed to initialize vector store: {str(e)}") from e
 
     def _register_endpoints(
         self,
