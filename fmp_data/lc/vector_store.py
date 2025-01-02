@@ -140,24 +140,29 @@ class EndpointVectorStore:
 
     def _initialize_store(self) -> None:
         """Initialize or load vector store"""
-        if self._store_exists():
-            self._load_store()
-        else:
-            index = faiss.IndexFlatL2(self._get_embedding_dimension())
+        try:
+            if self._store_exists():
+                self._load_store()
+            else:
+                # Get proper dimension from embeddings
+                dimension = len(self.embeddings.embed_query("test"))
+                index = faiss.IndexFlatL2(dimension)
 
-            self.vector_store = FAISS(
-                embedding_function=self.embeddings,
-                index=index,
-                docstore=InMemoryDocstore(),
-                index_to_docstore_id={},
-            )
+                self.vector_store = FAISS(
+                    embedding_function=self.embeddings,
+                    index=index,
+                    docstore=InMemoryDocstore(),
+                    index_to_docstore_id={},
+                )
 
-            # Initialize metadata
-            self.metadata = VectorStoreMetadata(
-                embedding_provider=self.embeddings.__class__.__name__,
-                embedding_model=getattr(self.embeddings, "model_name", "default"),
-                dimension=self._get_embedding_dimension(),
-            )
+                # Initialize metadata
+                self.metadata = VectorStoreMetadata(
+                    embedding_provider=self.embeddings.__class__.__name__,
+                    embedding_model=getattr(self.embeddings, "model_name", "default"),
+                    dimension=dimension,
+                )
+        except Exception as e:
+            raise RuntimeError(f"Failed to initialize vector store: {str(e)}") from e
 
     def _get_embedding_dimension(self) -> int:
         """Get embedding dimension by testing with a sample text"""
