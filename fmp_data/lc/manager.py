@@ -1,78 +1,162 @@
 # fmp_data/lc/manager.py
+from logging import Logger
 
 from langchain.tools import StructuredTool
 
-from fmp_data import ClientConfig, ConfigError, FMPDataClient
+from fmp_data.lc.config import LangChainConfig
+from fmp_data.lc.embedding import EmbeddingProvider
 from fmp_data.lc.mapping import ENDPOINT_GROUPS
 from fmp_data.lc.models import EndpointSemantics
 from fmp_data.lc.registry import Endpoint, EndpointRegistry
 from fmp_data.lc.setup import setup_vector_store
+from fmp_data.lc.utils import DependencyError, is_langchain_available
 from fmp_data.lc.vector_store import EndpointVectorStore
 from fmp_data.logger import FMPLogger
-
-logger = FMPLogger().get_logger(__name__)
 
 
 class FMPToolManager:
     """
     Manager for FMP API tools and endpoints with LangChain integration.
 
-    Provides natural language search and tool creation for FMP API endpoints.
-    Handles endpoint registration, validation, and vector store management.
-
     Args:
-        client: FMPDataClient instance or None (will create from config if None)
-        config: ClientConfig instance or None (will load from env if None)
+        fmp_api_key: FMP API key for accessing financial data
+        openai_api_key: OpenAI API key for
+            embeddings (required if using OpenAI embeddings)
         store_name: Name for the vector store
         auto_initialize: Whether to initialize endpoints and store on creation
+        logger: Optional custom logger instance
+        endpoint_groups: Dictionary of endpoint groups to load
+        config: Optional LangChain configuration
+            (if provided, api_keys will override config values)
+        embedding_provider: Embedding provider to use (default: OpenAI)
+        embedding_model: Optional specific model to use for embeddings
 
     Examples:
-        # Create with default settings
-        manager = FMPToolManager()
+        # Create with both API keys
+        manager = FMPToolManager(
+            fmp_api_key="your-fmp-key",  # pragma: allowlist secret
+            openai_api_key="your-openai-key" # pragma: allowlist secret
+        )
 
-        # Get tools for a specific query
-        tools = manager.get_tools("Get company financial ratios")
-
-        # Search for relevant endpoints
-        results = manager.search_endpoints("Find historical stock prices")
+        # Create with custom embedding provider
+        manager = FMPToolManager(
+            fmp_api_key="your-fmp-key",  # pragma: allowlist secret
+            embedding_provider=EmbeddingProvider.HUGGINGFACE,
+            embedding_model="sentence-transformers/all-mpnet-base-v2"
+        )
     """
 
     def __init__(
         self,
-        client: FMPDataClient | None = None,
-        config: ClientConfig | None = None,
+        fmp_api_key: str | None = None,
+        openai_api_key: str | None = None,
         store_name: str = "fmp_endpoints",
         auto_initialize: bool = True,
+        logger: Logger | None = None,
         endpoint_groups: dict[str, dict] = ENDPOINT_GROUPS,
+        config: LangChainConfig | None = None,
+        embedding_provider: EmbeddingProvider = EmbeddingProvider.OPENAI,
+        embedding_model: str | None = None,
     ):
+        """Initialize tool manager."""
+        if not is_langchain_available():
+            raise DependencyError(
+                "LangChain is required. Install with: "
+                "pip install 'fmp-data[langchain]'"
+            )
+
         try:
-            self.config = config or ClientConfig.from_env()
-            self.client = client or FMPDataClient(config=self.config)
+            # Initialize logger first
+            self.logger = logger or FMPLogger().get_logger(__name__)
+
+            # Set up configuration
+            self.config = self._setup_config(
+                config=config,
+                fmp_api_key=fmp_api_key,
+                openai_api_key=openai_api_key,
+                embedding_provider=embedding_provider,
+                embedding_model=embedding_model,
+            )
+
+            # Initialize components
+            from fmp_data import FMPDataClient
+
+            self.client = FMPDataClient(config=self.config)
             self.registry = EndpointRegistry()
             self.store_name = store_name
             self.endpoint_groups = endpoint_groups
+            self._loaded_groups = {group: False for group in endpoint_groups.keys()}
             self.vector_store: EndpointVectorStore | None = None
-            self._loaded_groups = {
-                group: False for group in self.endpoint_groups.keys()
-            }
-            self.logger = FMPLogger().get_logger(self.__class__.__name__)
 
             if auto_initialize:
                 self.initialize()
+
         except Exception as e:
-            raise ConfigError(f"Failed to initialize FMP Tool Manager: {str(e)}") from e
+            self.logger.error(f"Failed to initialize tool manager: {str(e)}")
+            raise
+
+    def _setup_config(
+        self,
+        config: LangChainConfig | None,
+        fmp_api_key: str | None,
+        openai_api_key: str | None,
+        embedding_provider: EmbeddingProvider,
+        embedding_model: str | None,
+    ) -> LangChainConfig:
+        """Set up configuration with API keys and embedding settings."""
+        try:
+            if config is None:
+                # Create new config with required fmp_api_key
+                if not fmp_api_key:
+                    # Try to get from environment if not provided
+                    config = LangChainConfig.from_env()
+                else:
+                    config = LangChainConfig(api_key=fmp_api_key)
+
+            # Update embedding settings
+            config.embedding_provider = embedding_provider
+            if embedding_model:
+                config.embedding_model = embedding_model
+
+            # Handle OpenAI API key
+            if embedding_provider == EmbeddingProvider.OPENAI:
+                if openai_api_key:
+                    config.embedding_api_key = openai_api_key
+                elif not config.embedding_api_key:
+                    # Try to get from environment
+                    import os
+
+                    env_key = os.getenv("OPENAI_API_KEY")
+                    if env_key:
+                        config.embedding_api_key = env_key
+                    else:
+                        self.logger.warning(
+                            "No OpenAI API key provided or found in environment"
+                        )
+
+            return config
+
+        except Exception as e:
+            self.logger.error(f"Failed to setup configuration: {str(e)}")
+            raise
 
     def initialize(self) -> None:
         """Initialize endpoints and vector store"""
         try:
-            logger.info("Initializing FMP Tool Manager")
+            self.logger.info("Initializing FMP Tool Manager")
             self.load_all_endpoints()
 
             if not self.registry.list_endpoints():
                 raise RuntimeError("No endpoints were registered during initialization")
 
-            # Then initialize vector store
-            embeddings = self._get_embeddings()
+            # Get embeddings from config
+            if not self.config.embedding_config:
+                raise RuntimeError(
+                    "Embedding configuration required. Set via environment "
+                    "variables or provide config with embedding settings."
+                )
+
+            embeddings = self.config.embedding_config.get_embeddings()
             self.vector_store = setup_vector_store(
                 client=self.client,
                 registry=self.registry,
@@ -83,18 +167,22 @@ class FMPToolManager:
             if not self.vector_store:
                 raise RuntimeError("Failed to initialize vector store")
 
-        except Exception as e:
+        except Exception:
             self.logger.error("Failed to initialize tool manager", exc_info=True)
-            raise ConfigError(f"Initialization failed: {str(e)}") from e
+            raise
 
     def initialize_vector_store(self, force_create: bool = False) -> None:
-        """Initialize or load vector store"""
+        """
+        Initialize or load vector store.
+
+        Args:
+            force_create: Whether to force creation of a new store
+        """
         if self.vector_store is not None and not force_create:
-            logger.debug("Vector store already initialized")
+            self.logger.debug("Vector store already initialized")
             return
 
-        embeddings = self._get_embeddings()
-
+        embeddings = self.config.embedding_config.get_embeddings()
         self.vector_store = setup_vector_store(
             client=self.client,
             registry=self.registry,
@@ -102,7 +190,7 @@ class FMPToolManager:
             store_name=self.store_name,
             force_create=force_create,
         )
-        logger.info(
+        self.logger.info(
             f"Initialized vector store with "
             f"{len(self.registry.list_endpoints())} endpoints"
         )
@@ -112,30 +200,15 @@ class FMPToolManager:
         endpoint_map: dict[str, Endpoint],
         semantics_map: dict[str, EndpointSemantics],
     ) -> tuple[int, set[str], set[str]]:
+        """Register endpoints with validation."""
         registered = set()
         skipped = set()
 
         for name, endpoint in endpoint_map.items():
             try:
                 semantic_name = name[4:] if name.startswith("get_") else name
-
-                # Special debug for problematic endpoint
-                if name == "get_financial_reports_dates":
-                    self.logger.debug(f"Processing {name}:")
-                    self.logger.debug(f"  Semantic name: {semantic_name}")
-                    self.logger.debug(
-                        f"  Available semantics: {list(semantics_map.keys())}"
-                    )
-                    self.logger.debug(
-                        f"  Found in semantics: {semantic_name in semantics_map}"
-                    )
-                    # Print category information
-                    if semantics_map.get(semantic_name):
-                        self.logger.debug(
-                            f"  Category: {semantics_map[semantic_name].category}"
-                        )
-
                 semantics = semantics_map.get(semantic_name)
+
                 if not semantics:
                     self.logger.debug(
                         f"No semantics found for endpoint {name} "
@@ -143,15 +216,6 @@ class FMPToolManager:
                     )
                     skipped.add(name)
                     continue
-
-                # Debug validation
-                if name == "get_financial_reports_dates":
-                    valid, msg = self.registry._validation.validate_category(
-                        name, semantics.category
-                    )
-                    self.logger.debug(f"  Validation result: {valid}, {msg}")
-
-                # Rest of the registration code...
 
                 self.registry.register(name, endpoint, semantics)
                 registered.add(name)
@@ -165,7 +229,17 @@ class FMPToolManager:
     def load_endpoints(
         self, endpoint_map: dict, semantics_map: dict, group_name: str
     ) -> tuple[int, set[str], set[str]]:
-        """Load endpoints for a specific group"""
+        """
+        Load endpoints for a specific group.
+
+        Args:
+            endpoint_map: Dictionary of endpoints
+            semantics_map: Dictionary of semantic information
+            group_name: Name of the endpoint group
+
+        Returns:
+            Tuple of (number registered, registered endpoints, skipped endpoints)
+        """
         if not endpoint_map:
             raise ValueError(f"Empty endpoint map provided for group {group_name}")
         if not semantics_map:
@@ -202,7 +276,7 @@ class FMPToolManager:
                 all_skipped.update(skipped)
                 loaded_groups.append(config["display_name"])
 
-            # Log summary of registration results
+            # Log registration results
             if all_skipped:
                 self.logger.warning(
                     f"Failed to register {len(all_skipped)} "
@@ -214,7 +288,7 @@ class FMPToolManager:
                 f"{len(loaded_groups)} groups: {', '.join(loaded_groups)}"
             )
 
-            # Detailed registration statistics at debug level
+            # Log detailed statistics
             total_attempted = len(all_registered) + len(all_skipped)
             success_rate = (
                 f"{(len(all_registered) / total_attempted * 100):.1f}%"
@@ -272,6 +346,9 @@ class FMPToolManager:
                 "Vector store not initialized. Call initialize_vector_store() first."
             )
 
+        k = k or self.config.max_tools
+        threshold = threshold or self.config.similarity_threshold
+
         if k < 1:
             raise ValueError("k must be >= 1")
         if not 0 <= threshold <= 1:
@@ -315,6 +392,9 @@ class FMPToolManager:
             raise RuntimeError(
                 "Vector store not initialized. Call initialize_vector_store() first."
             )
+
+        k = k or self.config.max_tools
+        threshold = threshold or self.config.similarity_threshold
 
         if k < 1:
             raise ValueError("k must be >= 1")
