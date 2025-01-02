@@ -10,6 +10,7 @@ from fmp_data.economics.models import (
     MarketRiskPremium,
     TreasuryRate,
 )
+from fmp_data.economics.schema import EconomicIndicatorType
 
 
 # Test data moved to class-level fixtures
@@ -130,7 +131,10 @@ class TestEconomicIndicator:
             status_code=200, json_data=[indicator_data]
         )
 
-        indicators = fmp_client.economics.get_economic_indicators("GDP")
+        # Use EconomicIndicatorType.GDP.value instead of "GDP"
+        indicators = fmp_client.economics.get_economic_indicators(
+            EconomicIndicatorType.GDP.value
+        )
         assert len(indicators) == 1
         indicator = indicators[0]
         assert isinstance(indicator, EconomicIndicator)
