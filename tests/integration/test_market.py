@@ -13,14 +13,16 @@ from fmp_data.market.models import (
     SimpleQuote,
 )
 
+from .base import BaseTestCase
 
-class TestMarketClientEndpoints:
+
+class TestMarketClientEndpoints(BaseTestCase):
     """Integration tests for MarketClient endpoints using VCR"""
 
     def test_get_quote(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting real-time stock quote"""
         with vcr_instance.use_cassette("market/quote.yaml"):
-            quote = fmp_client.market.get_quote("AAPL")
+            quote = self._handle_rate_limit(fmp_client.market.get_quote, "AAPL")
 
             assert isinstance(quote, Quote)
             assert quote.symbol == "AAPL"
@@ -34,7 +36,7 @@ class TestMarketClientEndpoints:
     def test_get_simple_quote(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting simple stock quote"""
         with vcr_instance.use_cassette("market/simple_quote.yaml"):
-            quote = fmp_client.market.get_simple_quote("AAPL")
+            quote = self._handle_rate_limit(fmp_client.market.get_simple_quote, "AAPL")
 
             assert isinstance(quote, SimpleQuote)
             assert quote.symbol == "AAPL"
@@ -44,8 +46,11 @@ class TestMarketClientEndpoints:
     def test_get_historical_prices(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting historical price data"""
         with vcr_instance.use_cassette("market/historical_prices.yaml"):
-            prices = fmp_client.market.get_historical_prices(
-                "AAPL", from_date="2023-01-01", to_date="2023-01-31"
+            prices = self._handle_rate_limit(
+                fmp_client.market.get_historical_prices,
+                "AAPL",
+                from_date="2023-01-01",
+                to_date="2023-01-31",
             )
 
             assert isinstance(prices, HistoricalData)
@@ -63,7 +68,9 @@ class TestMarketClientEndpoints:
     def test_get_intraday_prices(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting intraday price data"""
         with vcr_instance.use_cassette("market/intraday_prices.yaml"):
-            prices = fmp_client.market.get_intraday_prices("AAPL", interval="5min")
+            prices = self._handle_rate_limit(
+                fmp_client.market.get_intraday_prices, "AAPL", interval="5min"
+            )
 
             assert isinstance(prices, list)
             assert len(prices) > 0
@@ -80,7 +87,9 @@ class TestMarketClientEndpoints:
     def test_get_market_hours(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting market hours information"""
         with vcr_instance.use_cassette("market/market_hours.yaml"):
-            hours = fmp_client.market.get_market_hours()
+            hours = self._handle_rate_limit(
+                fmp_client.market.get_market_hours,
+            )
 
             assert isinstance(hours, MarketHours)
             assert hours.stockExchangeName
@@ -94,7 +103,7 @@ class TestMarketClientEndpoints:
     def test_get_market_cap(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting market capitalization data"""
         with vcr_instance.use_cassette("market/market_cap.yaml"):
-            cap = fmp_client.market.get_market_cap("AAPL")
+            cap = self._handle_rate_limit(fmp_client.market.get_market_cap, "AAPL")
 
             assert isinstance(cap, MarketCapitalization)
             assert cap.symbol == "AAPL"
@@ -105,7 +114,9 @@ class TestMarketClientEndpoints:
     def test_get_historical_market_cap(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting historical market capitalization data"""
         with vcr_instance.use_cassette("market/historical_market_cap.yaml"):
-            caps = fmp_client.market.get_historical_market_cap("AAPL")
+            caps = self._handle_rate_limit(
+                fmp_client.market.get_historical_market_cap, "AAPL"
+            )
 
             assert isinstance(caps, list)
             assert len(caps) > 0
@@ -120,7 +131,9 @@ class TestMarketClientEndpoints:
     def test_get_gainers(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting market gainers"""
         with vcr_instance.use_cassette("market/gainers.yaml"):
-            gainers = fmp_client.market.get_gainers()
+            gainers = self._handle_rate_limit(
+                fmp_client.market.get_gainers,
+            )
 
             assert isinstance(gainers, list)
             assert len(gainers) > 0
@@ -137,7 +150,9 @@ class TestMarketClientEndpoints:
     def test_get_losers(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting market losers"""
         with vcr_instance.use_cassette("market/losers.yaml"):
-            losers = fmp_client.market.get_losers()
+            losers = self._handle_rate_limit(
+                fmp_client.market.get_losers,
+            )
 
             assert isinstance(losers, list)
             assert len(losers) > 0
@@ -154,7 +169,10 @@ class TestMarketClientEndpoints:
     def test_get_most_active(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting most active stocks"""
         with vcr_instance.use_cassette("market/most_active.yaml"):
-            actives = fmp_client.market.get_most_active()
+            actives = self._handle_rate_limit(
+                fmp_client.market.get_most_active,
+                limit=10000,
+            )
 
             assert isinstance(actives, list)
             assert len(actives) > 0
@@ -170,7 +188,7 @@ class TestMarketClientEndpoints:
     def test_get_sector_performance(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting sector performance data"""
         with vcr_instance.use_cassette("market/sector_performance.yaml"):
-            sectors = fmp_client.market.get_sector_performance()
+            sectors = self._handle_rate_limit(fmp_client.market.get_sector_performance)
 
             assert isinstance(sectors, list)
             assert len(sectors) > 0
@@ -183,7 +201,9 @@ class TestMarketClientEndpoints:
     def test_get_pre_post_market(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting pre/post market data"""
         with vcr_instance.use_cassette("market/pre_post_market.yaml"):
-            quotes = fmp_client.market.get_pre_post_market()
+            quotes = self._handle_rate_limit(
+                fmp_client.market.get_pre_post_market,
+            )
 
             assert isinstance(quotes, list)
             assert len(quotes) >= 0  # May be empty outside trading hours
