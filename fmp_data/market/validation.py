@@ -8,16 +8,6 @@ class MarketDataRule(CommonValidationRule):
     """Validation rules for market data endpoints"""
 
     METHOD_GROUPS: ClassVar[dict[str, tuple[str, list[str]]]] = {
-        "Price Data": (
-            "get_",
-            [
-                "price",
-                "historical_price",
-                "daily_price",
-                "intraday_price",
-                "real_time_price",
-            ],
-        ),
         "Market Data": (
             "get_",
             [
@@ -27,28 +17,12 @@ class MarketDataRule(CommonValidationRule):
                 "market_losers",
                 "market_sectors",
                 "market_most_active",
-            ],
-        ),
-        "Historical Data": (
-            "get_",
-            [
-                "historical_prices",
-                "intraday_prices",
-                "market_cap",
-                "historical_market_cap",
+                "all_shares_float",
             ],
         ),
         "Quote Data": (
             "get_",
             [
-                "quote",
-                "quotes",
-                "batch_quotes",
-                "trade_data",
-                "tick_data",
-                "simple_quote",
-                "quote",
-                "quotes",
                 "pre_post_market",
             ],
         ),
@@ -59,7 +33,15 @@ class MarketDataRule(CommonValidationRule):
                 "available_stocks",
                 "tradable_symbols",
                 "exchange_symbols",
+                "etf_list",
+                "available_indexes",
+                "exchange_symbols",
+                "company_list",
             ],
+        ),
+        "Search": (
+            "",  # Added underscore for consistency
+            ["search", "search_by_cik", "search_by_cusip", "search_by_isin", "notes"],
         ),
         "Market Movers": ("get_", ["gainers", "losers", "most_active"]),
         "Market Analysis": ("get_", ["sector_performance"]),

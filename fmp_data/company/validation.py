@@ -8,16 +8,32 @@ class CompanyInfoRule(CommonValidationRule):
     """Validation rules for company information endpoints"""
 
     METHOD_GROUPS: ClassVar[dict[str, tuple[str, list[str]]]] = {
+        "Price Data": (
+            "get_",
+            [
+                "price",
+                "historical_price",
+                "daily_price",
+                "intraday_price",
+                "real_time_price",
+                "simple_quote",
+                "quote",
+            ],
+        ),
+        "Historical Data": (
+            "get_",
+            [
+                "historical_prices",
+                "intraday_prices",
+                "market_cap",
+                "historical_market_cap",
+            ],
+        ),
         "Basic": (
             "get_",
             [
                 "executives",
                 "executive_compensation",
-                "stock_list",
-                "etf_list",
-                "available_indexes",
-                "exchange_symbols",
-                "company_list",
                 "employee_count",
                 "symbol_changes",
                 "profile",
@@ -32,11 +48,14 @@ class CompanyInfoRule(CommonValidationRule):
         ),
         "Search": (
             "",  # Added underscore for consistency
-            ["search", "search_by_cik", "search_by_cusip", "search_by_isin", "notes"],
+            ["notes"],
         ),
         "Float": (
             "get_",  # Changed prefix
-            ["share_float", "historical_share_float", "all_shares_float"],
+            [
+                "share_float",
+                "historical_share_float",
+            ],
         ),
         "Revenue": (
             "get_",
@@ -45,20 +64,6 @@ class CompanyInfoRule(CommonValidationRule):
         "Symbol": (
             "get_company_",  # Made prefix more specific
             ["logo_url", "symbol_changes"],
-        ),
-        "Technical": (
-            "get_",
-            [
-                "sma",
-                "ema",
-                "wma",
-                "dema",
-                "tema",  # Moving averages
-                "williams",
-                "rsi",
-                "adx",  # Momentum
-                "standard_deviation",  # Volatility
-            ],
         ),
         "Screening": (
             "get_",
