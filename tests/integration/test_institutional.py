@@ -17,18 +17,22 @@ from fmp_data.institutional.models import (
     InstitutionalHolding,
 )
 
+from .base import BaseTestCase
+
 logger = logging.getLogger(__name__)
 
 
-class Test13FEndpoints:
+class Test13FEndpoints(BaseTestCase):
     """Test Form 13F related endpoints"""
 
     def test_get_form_13f(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting Form 13F filing data"""
         with vcr_instance.use_cassette("institutional/form_13f.yaml"):
             # Using Berkshire Hathaway's CIK as test data
-            results = fmp_client.institutional.get_form_13f(
-                "0001067983", datetime.fromisoformat("2023-09-30")
+            results = self._handle_rate_limit(
+                fmp_client.institutional.get_form_13f,
+                "0001067983",
+                datetime.fromisoformat("2023-09-30"),
             )
 
             assert isinstance(results, list)
@@ -50,13 +54,15 @@ class Test13FEndpoints:
             assert len(sample_holding.cusip) > 0
 
 
-class TestInstitutionalOwnershipEndpoints:
+class TestInstitutionalOwnershipEndpoints(BaseTestCase):
     """Test institutional ownership endpoints"""
 
     def test_get_institutional_holders(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting list of institutional holders"""
         with vcr_instance.use_cassette("institutional/holders.yaml"):
-            holders = fmp_client.institutional.get_institutional_holders()
+            holders = self._handle_rate_limit(
+                fmp_client.institutional.get_institutional_holders
+            )
 
             assert isinstance(holders, list)
             assert len(holders) > 0
@@ -70,8 +76,8 @@ class TestInstitutionalOwnershipEndpoints:
     def test_get_institutional_holdings(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting institutional holdings by symbol"""
         with vcr_instance.use_cassette("institutional/holdings.yaml"):
-            holdings = fmp_client.institutional.get_institutional_holdings(
-                "AAPL", False
+            holdings = self._handle_rate_limit(
+                fmp_client.institutional.get_institutional_holdings, "AAPL", False
             )
 
             assert isinstance(holdings, list)
@@ -87,13 +93,16 @@ class TestInstitutionalOwnershipEndpoints:
             assert isinstance(sample_holding.ownership_percent, float)
 
 
-class TestInsiderTradingEndpoints:
+class TestInsiderTradingEndpoints(BaseTestCase):
     """Test insider trading related endpoints"""
 
     def test_get_insider_trades(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting insider trades"""
         with vcr_instance.use_cassette("institutional/insider_trades.yaml"):
-            trades = fmp_client.institutional.get_insider_trades("AAPL")
+            trades = self._handle_rate_limit(
+                fmp_client.institutional.get_insider_trades,
+                "AAPL",
+            )
 
             assert isinstance(trades, list)
             assert len(trades) > 0
@@ -110,7 +119,10 @@ class TestInsiderTradingEndpoints:
     def test_get_insider_roster(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting insider roster"""
         with vcr_instance.use_cassette("institutional/insider_roster.yaml"):
-            roster = fmp_client.institutional.get_insider_roster("AAPL")
+            roster = self._handle_rate_limit(
+                fmp_client.institutional.get_insider_roster,
+                "AAPL",
+            )
 
             assert isinstance(roster, list)
             assert len(roster) > 0
@@ -125,7 +137,10 @@ class TestInsiderTradingEndpoints:
     def test_get_insider_statistics(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting insider trading statistics"""
         with vcr_instance.use_cassette("institutional/insider_statistics.yaml"):
-            stats = fmp_client.institutional.get_insider_statistics("AAPL")
+            stats = self._handle_rate_limit(
+                fmp_client.institutional.get_insider_statistics,
+                "AAPL",
+            )
 
             # Verify statistics structure
             assert isinstance(stats, InsiderStatistic)
@@ -152,7 +167,10 @@ class TestInsiderTradingEndpoints:
         with vcr_instance.use_cassette(
             f"institutional/insider_trades_{test_symbol}.yaml"
         ):
-            trades = fmp_client.institutional.get_insider_trades(test_symbol)
+            trades = self._handle_rate_limit(
+                fmp_client.institutional.get_insider_trades,
+                test_symbol,
+            )
 
             assert isinstance(trades, list)
             if len(trades) > 0:  # Some symbols might not have recent trades
@@ -164,13 +182,16 @@ class TestInsiderTradingEndpoints:
 # Add these test classes to test_institutional.py
 
 
-class TestCIKMappingEndpoints:
+class TestCIKMappingEndpoints(BaseTestCase):
     """Test CIK mapping related endpoints"""
 
     def test_get_cik_mappings(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting CIK mappings"""
         with vcr_instance.use_cassette("institutional/cik_mappings.yaml"):
-            mappings = fmp_client.institutional.get_cik_mappings(page=0)
+            mappings = self._handle_rate_limit(
+                fmp_client.institutional.get_cik_mappings,
+                page=0,
+            )
 
             assert isinstance(mappings, list)
             assert len(mappings) > 0
@@ -186,7 +207,11 @@ class TestCIKMappingEndpoints:
         """Test searching CIK mappings by name"""
         with vcr_instance.use_cassette("institutional/cik_search_name.yaml"):
             # Using "Berkshire" as test search term
-            mappings = fmp_client.institutional.search_cik_by_name("Berkshire", page=0)
+            mappings = self._handle_rate_limit(
+                fmp_client.institutional.search_cik_by_name,
+                "Berkshire",
+                page=0,
+            )
 
             assert isinstance(mappings, list)
             assert len(mappings) > 0
@@ -199,7 +224,10 @@ class TestCIKMappingEndpoints:
     def test_get_cik_by_symbol(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting CIK mapping by symbol"""
         with vcr_instance.use_cassette("institutional/cik_by_symbol.yaml"):
-            mappings = fmp_client.institutional.get_cik_by_symbol("AAPL")
+            mappings = self._handle_rate_limit(
+                fmp_client.institutional.get_cik_by_symbol,
+                "AAPL",
+            )
 
             assert isinstance(mappings, list)
             assert len(mappings) > 0
@@ -212,13 +240,16 @@ class TestCIKMappingEndpoints:
             assert "AAPL" in sample_mapping.symbol.upper()
 
 
-class TestBeneficialOwnershipEndpoints:
+class TestBeneficialOwnershipEndpoints(BaseTestCase):
     """Test beneficial ownership endpoints"""
 
     def test_get_beneficial_ownership(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting beneficial ownership data"""
         with vcr_instance.use_cassette("institutional/beneficial_ownership.yaml"):
-            ownership = fmp_client.institutional.get_beneficial_ownership("AAPL")
+            ownership = self._handle_rate_limit(
+                fmp_client.institutional.get_beneficial_ownership,
+                "AAPL",
+            )
 
             assert isinstance(ownership, list)
             if len(ownership) > 0:  # Not all symbols have beneficial ownership data
@@ -248,7 +279,10 @@ class TestBeneficialOwnershipEndpoints:
         with vcr_instance.use_cassette(
             f"institutional/beneficial_ownership_{test_symbol}.yaml"
         ):
-            ownership = fmp_client.institutional.get_beneficial_ownership(test_symbol)
+            ownership = self._handle_rate_limit(
+                fmp_client.institutional.get_beneficial_ownership,
+                test_symbol,
+            )
 
             assert isinstance(ownership, list)
             if len(ownership) > 0:
@@ -257,13 +291,17 @@ class TestBeneficialOwnershipEndpoints:
                 assert all(o.amount_beneficially_owned >= 0 for o in ownership)
 
 
-class TestFailToDeliverEndpoints:
+class TestFailToDeliverEndpoints(BaseTestCase):
     """Test fail to deliver endpoints"""
 
     def test_get_fail_to_deliver(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting fail to deliver data"""
         with vcr_instance.use_cassette("institutional/fail_to_deliver.yaml"):
-            ftd_data = fmp_client.institutional.get_fail_to_deliver("AAPL", page=0)
+            ftd_data = self._handle_rate_limit(
+                fmp_client.institutional.get_fail_to_deliver,
+                "AAPL",
+                page=0,
+            )
 
             assert isinstance(ftd_data, list)
             if len(ftd_data) > 0:  # Not all symbols have FTD data
@@ -295,7 +333,11 @@ class TestFailToDeliverEndpoints:
         with vcr_instance.use_cassette(
             f"institutional/fail_to_deliver_{test_symbol}.yaml"
         ):
-            ftd_data = fmp_client.institutional.get_fail_to_deliver(test_symbol, page=0)
+            ftd_data = self._handle_rate_limit(
+                fmp_client.institutional.get_fail_to_deliver,
+                test_symbol,
+                page=0,
+            )
 
             assert isinstance(ftd_data, list)
             if len(ftd_data) > 0:
