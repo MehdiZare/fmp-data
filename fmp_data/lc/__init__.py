@@ -11,14 +11,14 @@ This module provides LangChain integration features including:
 import os
 
 from langchain_core.embeddings import Embeddings
-from lc.embedding import EmbeddingProvider
-from lc.mapping import ENDPOINT_GROUPS
-from lc.registry import EndpointRegistry
 
 from fmp_data import FMPDataClient
 from fmp_data.lc.config import LangChainConfig
+from fmp_data.lc.embedding import EmbeddingProvider
 from fmp_data.lc.manager import FMPToolManager
+from fmp_data.lc.mapping import ENDPOINT_GROUPS
 from fmp_data.lc.models import EndpointSemantics, SemanticCategory
+from fmp_data.lc.registry import EndpointRegistry
 from fmp_data.lc.utils import is_langchain_available
 from fmp_data.lc.vector_store import EndpointVectorStore
 from fmp_data.logger import FMPLogger
