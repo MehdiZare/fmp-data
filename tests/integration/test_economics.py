@@ -3,7 +3,6 @@ import time
 from datetime import date, datetime, timedelta
 
 import pytest
-from economics.schema import EconomicIndicatorType
 
 from fmp_data import FMPDataClient
 from fmp_data.economics.models import (
@@ -12,6 +11,7 @@ from fmp_data.economics.models import (
     MarketRiskPremium,
     TreasuryRate,
 )
+from fmp_data.economics.schema import EconomicIndicatorType
 from fmp_data.exceptions import RateLimitError
 
 logger = logging.getLogger(__name__)
