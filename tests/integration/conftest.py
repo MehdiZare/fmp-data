@@ -62,11 +62,9 @@ def vcr_instance() -> vcr.VCR:
 
 @pytest.fixture(scope="session")
 def rate_limit_config() -> RateLimitConfig:
-    """Provide relaxed rate limits for testing"""
+    """Provide relaxed but conservative rate limits for testing"""
     return RateLimitConfig(
-        daily_limit=1000,
-        requests_per_second=2,  # More relaxed for testing
-        requests_per_minute=100,
+        daily_limit=1000, requests_per_second=2, requests_per_minute=45
     )
 
 
