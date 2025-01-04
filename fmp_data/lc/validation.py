@@ -119,76 +119,62 @@ class ValidationRuleRegistry:
         Returns:
             Tuple of (is_valid, error_message)
         """
-        # First find the rule that matches this category
-        matching_rules = [
+        # First check if we have any rules for this category
+        category_rules = [
             rule for rule in self._rules if rule.expected_category == category
         ]
-        message = ""
-        if not matching_rules:
-            # No rules for this category - consider it valid
-            return True, ""
+        if not category_rules:
+            return False, f"No rules found for category {category.value}"
 
-        # Try each matching rule
-        for rule in matching_rules:
-            valid, message = rule.validate(method_name, category)
-            if valid:
-                return True, ""
+        # Then find the correct rule for this method based on its pattern
+        matching_rule = None
+        for rule in self._rules:
+            if any(method_name.startswith(prefix) for prefix in rule.endpoint_prefixes):
+                matching_rule = rule
+                break
 
-        # If we have rules but none validated, use the last error message
-        return False, message
+        if matching_rule:
+            # If we found a matching rule but
+            # its category doesn't match the requested one
+            if matching_rule.expected_category != category:
+                return (
+                    False,
+                    f"Category mismatch: endpoint {method_name} "
+                    f"belongs to {matching_rule.expected_category.value}, "
+                    f"not {category.value}",
+                )
+
+            # If categories match, validate the method pattern
+            return matching_rule.validate(method_name, category)
+
+        # If no rule has a matching pattern
+        return (
+            False,
+            f"No matching rule found for {method_name} in category {category.value}",
+        )
 
     def get_parameter_requirements(
         self, method_name: str, category: SemanticCategory
     ) -> tuple[dict[str, list[str]] | None, str]:
-        """
-        Get parameter requirements for a method
-
-        Args:
-            method_name: Method name
-            category: Expected category
-
-        Returns:
-            Tuple of (requirements dict or None, error message)
-        """
+        """Get parameter requirements for a method"""
         for rule in self._rules:
             if rule.expected_category == category:
                 requirements = rule.get_parameter_requirements(method_name)
                 if requirements is not None:
                     return requirements, ""
-                return None, f"No parameter requirements found for {method_name}"
-
-        return None, f"No validation rule found for category {category}"
+        return None, f"No parameter requirements found for {method_name}"
 
     def validate_parameters(
         self, method_name: str, category: SemanticCategory, parameters: dict
     ) -> tuple[bool, str]:
-        """
-        Validate parameters using registered rules
-
-        Args:
-            method_name: Method name
-            category: Expected category
-            parameters: Parameters to validate
-
-        Returns:
-            Tuple of (is_valid, error_message)
-        """
+        """Validate parameters using registered rules"""
         for rule in self._rules:
             if rule.expected_category == category:
                 return rule.validate_parameters(method_name, parameters)
-
-        return True, ""  # No rules found for this category
+        return True, ""  # No rules found for category
 
     def get_expected_category(self, method_name: str) -> SemanticCategory | None:
-        """
-        Determine expected category for a method name
-
-        Args:
-            method_name: Method name to check
-
-        Returns:
-            Expected category or None if no matching rule found
-        """
+        """Determine expected category for a method name"""
         for rule in self._rules:
             if any(method_name.startswith(prefix) for prefix in rule.endpoint_prefixes):
                 return rule.expected_category
