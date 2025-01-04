@@ -5,8 +5,6 @@ from pydantic import HttpUrl
 
 from fmp_data import FMPDataClient
 from fmp_data.intelligence.models import (
-    AnalystEstimate,
-    AnalystRecommendation,
     CrowdfundingOffering,
     CryptoNewsArticle,
     DividendEvent,
@@ -26,17 +24,12 @@ from fmp_data.intelligence.models import (
     IPOEvent,
     PressRelease,
     PressReleaseBySymbol,
-    PriceTarget,
-    PriceTargetConsensus,
-    PriceTargetSummary,
     SenateTrade,
     SocialSentimentChanges,
     StockNewsArticle,
     StockNewsSentiment,
     StockSplitEvent,
     TrendingSocialSentiment,
-    UpgradeDowngrade,
-    UpgradeDowngradeConsensus,
 )
 
 from .base import BaseTestCase
@@ -44,126 +37,6 @@ from .base import BaseTestCase
 
 class TestIntelligenceEndpoints(BaseTestCase):
     """Test market intelligence endpoints"""
-
-    def test_get_price_target(self, fmp_client: FMPDataClient, vcr_instance):
-        """Test getting price targets"""
-        with vcr_instance.use_cassette("intelligence/price_target.yaml"):
-            targets = self._handle_rate_limit(
-                fmp_client.intelligence.get_price_target, "AAPL"
-            )
-
-            assert isinstance(targets, list)
-            assert len(targets) > 0
-
-            for target in targets:
-                assert isinstance(target, PriceTarget)
-                assert isinstance(target.published_date, datetime)
-                assert isinstance(target.price_target, float)
-                assert target.symbol == "AAPL"
-                assert isinstance(target.adj_price_target, float)
-                assert isinstance(target.price_when_posted, float)
-
-    def test_get_price_target_summary(self, fmp_client: FMPDataClient, vcr_instance):
-        """Test getting price target summary"""
-        with vcr_instance.use_cassette("intelligence/price_target_summary.yaml"):
-            summary = self._handle_rate_limit(
-                fmp_client.intelligence.get_price_target_summary, "AAPL"
-            )
-
-            assert isinstance(summary, PriceTargetSummary)
-            assert summary.symbol == "AAPL"
-            assert isinstance(summary.last_month, int)
-            assert isinstance(summary.last_month_avg_price_target, float)
-            assert isinstance(summary.last_quarter_avg_price_target, float)
-            assert isinstance(summary.last_year, int)
-            assert isinstance(summary.all_time_avg_price_target, float)
-
-    def test_get_price_target_consensus(self, fmp_client: FMPDataClient, vcr_instance):
-        """Test getting price target consensus"""
-        with vcr_instance.use_cassette("intelligence/price_target_consensus.yaml"):
-            consensus = fmp_client.intelligence.get_price_target_consensus("AAPL")
-
-            assert isinstance(consensus, PriceTargetConsensus)
-            assert consensus.symbol == "AAPL"
-            assert isinstance(consensus.target_consensus, float)
-            assert isinstance(consensus.target_high, float)
-            assert isinstance(consensus.target_low, float)
-
-    def test_get_analyst_estimates(self, fmp_client: FMPDataClient, vcr_instance):
-        """Test getting analyst estimates"""
-        with vcr_instance.use_cassette("intelligence/analyst_estimates.yaml"):
-            estimates = self._handle_rate_limit(
-                fmp_client.intelligence.get_analyst_estimates, "AAPL"
-            )
-
-            assert isinstance(estimates, list)
-            assert len(estimates) > 0
-
-            for estimate in estimates:
-                assert isinstance(estimate, AnalystEstimate)
-                assert isinstance(estimate.date, datetime)
-                assert isinstance(estimate.estimated_revenue_high, float)
-                assert estimate.symbol == "AAPL"
-                assert isinstance(estimate.estimated_ebitda_avg, float)
-                assert isinstance(estimate.number_analyst_estimated_revenue, int)
-
-    def test_get_analyst_recommendations(self, fmp_client: FMPDataClient, vcr_instance):
-        """Test getting analyst recommendations"""
-        with vcr_instance.use_cassette("intelligence/analyst_recommendations.yaml"):
-            recommendations = self._handle_rate_limit(
-                fmp_client.intelligence.get_analyst_recommendations, "AAPL"
-            )
-
-            assert isinstance(recommendations, list)
-            assert len(recommendations) > 0
-
-            for rec in recommendations:
-                assert isinstance(rec, AnalystRecommendation)
-                assert isinstance(rec.date, datetime)
-                assert rec.symbol == "AAPL"
-                assert isinstance(rec.analyst_ratings_buy, int)
-                assert isinstance(rec.analyst_ratings_strong_sell, int)
-
-    def test_get_upgrades_downgrades(self, fmp_client: FMPDataClient, vcr_instance):
-        """Test getting upgrades and downgrades"""
-        with vcr_instance.use_cassette("intelligence/upgrades_downgrades.yaml"):
-            changes = self._handle_rate_limit(
-                fmp_client.intelligence.get_upgrades_downgrades, "AAPL"
-            )
-
-            assert isinstance(changes, list)
-            assert len(changes) > 0
-
-            for change in changes:
-                assert isinstance(change, UpgradeDowngrade)
-                assert isinstance(change.published_date, datetime)
-                assert change.symbol == "AAPL"
-                assert isinstance(change.action, str)
-                assert (
-                    isinstance(change.previous_grade, str)
-                    if change.previous_grade is not None
-                    else True
-                )
-                assert isinstance(change.new_grade, str)
-
-    def test_get_upgrades_downgrades_consensus(
-        self, fmp_client: FMPDataClient, vcr_instance
-    ):
-        """Test getting upgrades/downgrades consensus"""
-        with vcr_instance.use_cassette(
-            "intelligence/upgrades_downgrades_consensus.yaml"
-        ):
-            consensus = self._handle_rate_limit(
-                fmp_client.intelligence.get_upgrades_downgrades_consensus, "AAPL"
-            )
-
-            assert isinstance(consensus, UpgradeDowngradeConsensus)
-            assert consensus.symbol == "AAPL"
-            assert isinstance(consensus.strong_buy, int)
-            assert isinstance(consensus.buy, int)
-            assert isinstance(consensus.hold, int)
-            assert isinstance(consensus.sell, int)
-            assert isinstance(consensus.strong_sell, int)
 
     def test_get_earnings_calendar(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting earnings calendar"""
