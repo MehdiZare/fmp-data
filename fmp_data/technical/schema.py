@@ -6,6 +6,90 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from fmp_data.schema import DateRangeArg, SymbolArg
+
+
+# Base Technical Analysis Args
+class TechnicalIndicatorArgs(SymbolArg, DateRangeArg):
+    """Base arguments for technical indicators"""
+
+    period: int | None = Field(
+        default=14, ge=1, le=500, description="Calculation period"
+    )
+
+
+# Price Indicators
+class SMAArgs(TechnicalIndicatorArgs):
+    """Arguments for Simple Moving Average"""
+
+    pass
+
+
+class EMAArgs(TechnicalIndicatorArgs):
+    """Arguments for Exponential Moving Average"""
+
+    pass
+
+
+class WMAArgs(TechnicalIndicatorArgs):
+    """Arguments for Weighted Moving Average"""
+
+    pass
+
+
+# Momentum Indicators
+class RSIArgs(TechnicalIndicatorArgs):
+    """Arguments for Relative Strength Index"""
+
+    pass
+
+
+class MACDArgs(TechnicalIndicatorArgs):
+    """Arguments for MACD"""
+
+    fast_period: int | None = Field(default=12, ge=1, le=100, description="Fast period")
+    slow_period: int | None = Field(default=26, ge=1, le=100, description="Slow period")
+    signal_period: int | None = Field(
+        default=9, ge=1, le=100, description="Signal period"
+    )
+
+
+# Volatility Indicators
+class BollingerBandsArgs(TechnicalIndicatorArgs):
+    """Arguments for Bollinger Bands"""
+
+    standard_deviations: float | None = Field(
+        default=2.0, ge=0.1, le=10.0, description="Number of standard deviations"
+    )
+
+
+class ATRArgs(TechnicalIndicatorArgs):
+    """Arguments for Average True Range"""
+
+    pass
+
+
+# Volume Indicators
+class OBVArgs(TechnicalIndicatorArgs):
+    """Arguments for On Balance Volume"""
+
+    pass
+
+
+# Support/Resistance
+class PivotPointsArgs(SymbolArg):
+    """Arguments for Pivot Points"""
+
+    method: str | None = Field(
+        default="standard",
+        description="Calculation method",
+        json_schema_extra={
+            "enum": ["standard", "fibonacci", "woodie", "camarilla", "demark"],
+            "examples": ["standard"],
+        },
+    )
+
+
 # Available intervals for technical analysis
 TimeInterval = Literal["1min", "5min", "15min", "30min", "1hour", "4hour", "daily"]
 
