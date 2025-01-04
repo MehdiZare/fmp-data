@@ -190,6 +190,27 @@ class EndpointVectorStore:
         except Exception as e:
             raise ConfigError(f"Failed to load vector store: {str(e)}") from e
 
+    @staticmethod
+    def _format_tool_for_provider(
+        tool: StructuredTool, provider: str = "openai"
+    ) -> dict | StructuredTool:
+        """Format tool based on provider requirements."""
+        match provider.lower():
+            case "openai":
+                from langchain_core.utils.function_calling import (
+                    convert_to_openai_function,
+                )
+
+                return convert_to_openai_function(tool)
+            case "anthropic":
+                return {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "parameters": tool.args_schema.schema() if tool.args_schema else {},
+                }
+            case _:
+                return tool
+
     def validate(self) -> bool:
         """
         Validate the vector store is usable with current configuration
@@ -362,19 +383,7 @@ class EndpointVectorStore:
 
     # pylint: disable=C901
     def create_tool(self, info: EndpointInfo) -> StructuredTool:
-        """
-        Create a LangChain tool from endpoint info.
-
-        Args:
-            info: EndpointInfo containing endpoint configuration and semantics
-
-        Returns:
-            StructuredTool configured for the endpoint
-
-        Raises:
-            ValueError: If endpoint info is invalid or missing required fields
-            RuntimeError: If tool creation fails
-        """
+        """Create a LangChain tool from endpoint info."""
         if not info:
             raise ValueError("EndpointInfo cannot be None")
         if not info.endpoint or not info.semantics:
@@ -384,53 +393,111 @@ class EndpointVectorStore:
             semantics = info.semantics
             endpoint = info.endpoint
 
-            # Create function to handle endpoint call
             def endpoint_func(**kwargs: Any) -> Any:
                 try:
-                    return self.client.request(endpoint, **kwargs)
+                    result = self.client.request(endpoint, **kwargs)
+
+                    # Handle successful response
+                    if isinstance(result, list):
+                        return {
+                            "status": "success",
+                            "data": [
+                                (
+                                    item.model_dump(mode="json")
+                                    if hasattr(item, "model_dump")
+                                    else item
+                                )
+                                for item in result
+                            ],
+                        }
+                    elif hasattr(result, "model_dump"):
+                        return {
+                            "status": "success",
+                            "data": result.model_dump(mode="json"),
+                        }
+                    return {"status": "success", "data": result}
+
                 except Exception as e:
-                    raise RuntimeError(f"Endpoint call failed: {str(e)}") from e
+                    # Handle different types of errors
+                    error_message = str(e)
+                    error_type = type(e).__name__
+
+                    if "ValidationError" in error_type:
+                        # Parse validation error for better feedback
+                        error_details = str(e).split("\n")
+                        field_errors = [
+                            line.strip() for line in error_details if "  " in line
+                        ]
+
+                        return {
+                            "status": "error",
+                            "error_type": "validation_error",
+                            "message": "Invalid input parameters or response format",
+                            "details": {
+                                "validation_errors": field_errors,
+                                "original_error": error_message,
+                            },
+                            "suggestions": [
+                                "Check if all required parameters are provided",
+                                "Verify parameter types match the expected format",
+                                "Ensure date formats are YYYY-MM-DD",
+                                "Make sure numeric values are properly formatted",
+                            ],
+                        }
+
+                    elif "RateLimitError" in error_type:
+                        return {
+                            "status": "error",
+                            "error_type": "rate_limit",
+                            "message": "Rate limit exceeded",
+                            "details": {"retry_after": getattr(e, "retry_after", None)},
+                            "suggestions": [
+                                "Wait before making another request",
+                                "Consider reducing request frequency",
+                            ],
+                        }
+
+                    else:
+                        return {
+                            "status": "error",
+                            "error_type": "unexpected_error",
+                            "message": f"An unexpected error occurred: {error_message}",
+                            "details": {"error_class": error_type},
+                            "suggestions": [
+                                "Check your input parameters",
+                                "Verify the API endpoint is available",
+                                "Try again later if the issue persists",
+                            ],
+                        }
 
             # Create tool parameters model
-            param_fields = {}
-            try:
-                # Add mandatory parameters
-                param_fields.update(
-                    ToolFactory.create_parameter_fields(
-                        endpoint.mandatory_params, semantics.parameter_hints
-                    )
-                )
-
-                # Add optional parameters
-                if endpoint.optional_params:
-                    param_fields.update(
-                        ToolFactory.create_parameter_fields(
-                            endpoint.optional_params, semantics.parameter_hints
-                        )
-                    )
-            except Exception as e:
-                raise ValueError(f"Failed to create parameter fields: {str(e)}") from e
-
-            # Create tool args model
             tool_args_model = create_model(
-                f"{semantics.method_name}Args", **param_fields
+                f"{semantics.method_name}Args",
+                __config__=ConfigDict(
+                    extra="forbid",
+                    arbitrary_types_allowed=True,
+                ),
+                **ToolFactory.create_parameter_fields(
+                    endpoint.mandatory_params + (endpoint.optional_params or []),
+                    semantics.parameter_hints,
+                ),
             )
 
-            # Create tool description
-            tool_description = (
+            # Update description to include error handling information
+            full_description = (
                 f"{semantics.natural_description}\n\n"
-                f"Examples:\n"
-                f"{chr(10).join(f'- {q}' for q in semantics.example_queries)}\n\n"
-                f"Use cases:\n"
-                f"{chr(10).join(f'- {u}' for u in semantics.use_cases)}"
+                f"Note: This tool returns a structured response "
+                f"with 'status' and 'data'/'error' fields. "
+                f"Check 'status' field to handle success/error cases appropriately."
             )
 
             return StructuredTool.from_function(
                 func=endpoint_func,
                 name=semantics.method_name,
-                description=tool_description,
+                description=full_description,
                 args_schema=tool_args_model,
                 return_direct=True,
+                infer_schema=False,
             )
 
         except Exception as e:
@@ -438,8 +505,12 @@ class EndpointVectorStore:
             raise RuntimeError(f"Tool creation failed: {str(e)}") from e
 
     def get_tools(
-        self, query: str | None = None, k: int = 3, threshold: float = 0.3
-    ) -> list[StructuredTool]:
+        self,
+        query: str | None = None,
+        k: int = 3,
+        threshold: float = 0.3,
+        provider: str | None = None,  # Made provider optional
+    ) -> list[StructuredTool | dict]:
         """
         Get LangChain tools for relevant endpoints.
 
@@ -447,17 +518,16 @@ class EndpointVectorStore:
             query: Natural language query (None returns all tools)
             k: Maximum number of tools to return
             threshold: Minimum similarity score threshold (0-1)
+            provider: Model provider to format tools for ('openai', 'anthropic', etc)
+                     If None, returns unformatted StructuredTool objects
 
         Returns:
-            List of LangChain StructuredTool instances
-
-        Raises:
-            ValueError: If invalid k or threshold values
+            List of tools (formatted or unformatted based on provider)
         """
         try:
             if query:
                 results = self.search(query, k=k, threshold=threshold)
-                return [self.create_tool(r.info) for r in results]
+                tools = [self.create_tool(r.info) for r in results]
             else:
                 stored_docs = self.vector_store.similarity_search("", k=10000)
                 tools = []
@@ -466,7 +536,14 @@ class EndpointVectorStore:
                     info = self.registry.get_endpoint(name)
                     if info:
                         tools.append(self.create_tool(info))
-                return tools
+
+            # Only format if provider is specified
+            if provider:
+                return [
+                    self._format_tool_for_provider(tool, provider) for tool in tools
+                ]
+            return tools
+
         except Exception as e:
             self.logger.error(f"Failed to get tools: {str(e)}")
             raise
