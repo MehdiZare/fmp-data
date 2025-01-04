@@ -2,6 +2,9 @@ import logging
 import time
 from datetime import date, datetime, timedelta
 
+import pytest
+from economics.schema import EconomicIndicatorType
+
 from fmp_data import FMPDataClient
 from fmp_data.economics.models import (
     EconomicEvent,
@@ -119,10 +122,17 @@ class TestEconomicsEndpoints:
     def test_error_handling(self, fmp_client: FMPDataClient, vcr_instance):
         """Test error handling for invalid inputs"""
         with vcr_instance.use_cassette("economics/error_handling.yaml"):
-            # Test with invalid indicator - should return empty list
-            result = fmp_client.economics.get_economic_indicators("INVALID_INDICATOR")
-            assert isinstance(result, list)
-            assert len(result) == 0
+            # Test with invalid indicator - should raise ValueError
+            with pytest.raises(ValueError) as exc_info:
+                fmp_client.economics.get_economic_indicators("INVALID_INDICATOR")
+
+            error_msg = str(exc_info.value)
+            assert "Invalid value for name" in error_msg
+            assert "Must be one of:" in error_msg
+
+            # Verify the error includes all enum values
+            for indicator in EconomicIndicatorType:
+                assert str(indicator) in error_msg
 
     def test_rate_limiting(self, fmp_client: FMPDataClient, vcr_instance):
         """Test rate limiting with simple successful request"""
