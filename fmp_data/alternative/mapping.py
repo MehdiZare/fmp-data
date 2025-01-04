@@ -79,7 +79,7 @@ SYMBOL_HINTS = {
 }
 
 DATE_HINTS = {
-    "start_date": ParameterHint(  # Changed from "from_date"
+    "start_date": ParameterHint(
         natural_names=["start date", "from date", "beginning", "since"],
         extraction_patterns=[
             r"(\d{4}-\d{2}-\d{2})",
@@ -176,8 +176,8 @@ ALTERNATIVE_ENDPOINTS_SEMANTICS = {
         sub_category="Cryptocurrency",
         parameter_hints={
             "symbol": SYMBOL_HINTS["crypto"],
-            "from": DATE_HINTS["start_date"],
-            "to": DATE_HINTS["end_date"],
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
         },
         response_hints={
             "date": ResponseFieldInfo(
@@ -466,8 +466,8 @@ ALTERNATIVE_ENDPOINTS_SEMANTICS = {
         sub_category="Forex",
         parameter_hints={
             "symbol": SYMBOL_HINTS["forex"],
-            "from": DATE_HINTS["start_date"],
-            "to": DATE_HINTS["end_date"],
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
         },
         response_hints={
             "date": ResponseFieldInfo(

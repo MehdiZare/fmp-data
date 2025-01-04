@@ -1,9 +1,93 @@
 # fmp_data/market/schema.py
 
-from datetime import date
 from enum import Enum
 
 from pydantic import BaseModel, Field
+
+from fmp_data.schema import (
+    BaseArgModel,
+    DateRangeArg,
+    NoParamArg,
+    SymbolArg,
+    TimeSeriesBaseArg,
+)
+
+
+# Market Data Arguments
+class MarketQuoteArgs(SymbolArg):
+    """Arguments for getting market quotes"""
+
+    pass
+
+
+class MarketHoursArgs(SymbolArg):
+    """Arguments for getting market hours"""
+
+    pass
+
+
+class HistoricalPriceArgs(TimeSeriesBaseArg):
+    """Arguments for getting historical price data"""
+
+    pass
+
+
+class IntradayPriceArgs(TimeSeriesBaseArg):
+    """Arguments for getting intraday price data"""
+
+    pass
+
+
+class SectorPriceArgs(DateRangeArg):
+    """Arguments for getting sector performance"""
+
+    pass
+
+
+# Index Arguments
+class IndexQuoteArgs(SymbolArg):
+    """Arguments for getting index quotes"""
+
+    pass
+
+
+class IndexCompositionArgs(SymbolArg):
+    """Arguments for getting index composition"""
+
+    pass
+
+
+class IndexHistoricalArgs(TimeSeriesBaseArg):
+    """Arguments for getting historical index data"""
+
+    pass
+
+
+# Market Analysis
+class MarketBreadthArgs(NoParamArg):
+    """Arguments for getting market breadth data"""
+
+    pass
+
+
+class SectorPerformanceArgs(NoParamArg):
+    """Arguments for getting sector performance"""
+
+    pass
+
+
+class MarketMoversArgs(BaseArgModel):
+    """Arguments for getting market movers"""
+
+    direction: str | None = Field(
+        None,
+        description="Direction of movement",
+        json_schema_extra={
+            "enum": ["gainers", "losers", "active"],
+            "examples": ["gainers"],
+        },
+    )
+    limit: int | None = Field(default=10, ge=1, le=100, description="Number of results")
 
 
 class TimeInterval(str, Enum):
@@ -21,23 +105,6 @@ class QuoteArgs(BaseModel):
     """Arguments for getting stock quotes"""
 
     symbol: str = Field(description="Stock symbol (ticker)")
-
-
-class HistoricalPriceArgs(BaseModel):
-    """Arguments for getting historical price data"""
-
-    symbol: str = Field(description="Stock symbol (ticker)")
-    from_date: date | None = Field(None, description="Start date for historical data")
-    to_date: date | None = Field(None, description="End date for historical data")
-
-
-class IntradayPriceArgs(BaseModel):
-    """Arguments for getting intraday price data"""
-
-    symbol: str = Field(description="Stock symbol (ticker)")
-    interval: TimeInterval = Field(
-        default=TimeInterval.ONE_MINUTE, description="Time interval for intraday data"
-    )
 
 
 class MarketCapArgs(BaseModel):

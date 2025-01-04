@@ -33,7 +33,7 @@ INCOME_STATEMENT = Endpoint(
     version=APIVersion.V3,
     description=(
         "Retrieve detailed income statements showing revenue, costs, expenses and "
-        "profitability metrics for a company over multiple periods"
+        "profitability metrics for a company "
     ),
     mandatory_params=[
         EndpointParam(

@@ -110,8 +110,8 @@ SYMBOL_HINT = ParameterHint(
 )
 
 DATE_HINTS = {
-    "from": ParameterHint(
-        natural_names=["start date", "from date", "beginning", "since"],
+    "start_date": ParameterHint(
+        natural_names=["start date", "from date", "beginning", "since", "from"],
         extraction_patterns=[
             r"(\d{4}-\d{2}-\d{2})",
             r"(?:from|since|after)\s+(\d{4}-\d{2}-\d{2})",
@@ -119,8 +119,8 @@ DATE_HINTS = {
         examples=["2023-01-01", "2022-12-31"],
         context_clues=["from", "since", "starting", "after"],
     ),
-    "to": ParameterHint(
-        natural_names=["end date", "to date", "until", "through"],
+    "end_date": ParameterHint(
+        natural_names=["end date", "to date", "until", "through", "to"],
         extraction_patterns=[
             r"(?:to|until|through)\s+(\d{4}-\d{2}-\d{2})",
             r"(\d{4}-\d{2}-\d{2})",
@@ -254,8 +254,8 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         category=SemanticCategory.INTELLIGENCE,
         sub_category="Corporate Events",
         parameter_hints={
-            "from": DATE_HINTS["from"],
-            "to": DATE_HINTS["to"],
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
         },
         response_hints={
             "date": ResponseFieldInfo(
@@ -524,8 +524,8 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
                 context_clues=["stocks", "symbols", "companies"],
             ),
             "page": PAGE_HINT,
-            "from": DATE_HINTS["from"],
-            "to": DATE_HINTS["to"],
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
             "limit": LIMIT_HINT,
         },
         response_hints={
@@ -698,8 +698,8 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         category=SemanticCategory.INTELLIGENCE,
         sub_category="Corporate Events",
         parameter_hints={
-            "from": DATE_HINTS["from"],
-            "to": DATE_HINTS["to"],
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
         },
         response_hints={
             "event_date": ResponseFieldInfo(
@@ -950,8 +950,8 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             ),
             "page": PAGE_HINT,
             "limit": LIMIT_HINT,
-            "from": DATE_HINTS["from"],
-            "to": DATE_HINTS["to"],
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
         },
         response_hints={
             "title": ResponseFieldInfo(
@@ -1144,8 +1144,8 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         parameter_hints={
             "symbol": SYMBOL_HINT,
             "page": PAGE_HINT,
-            "from": DATE_HINTS["from"],
-            "to": DATE_HINTS["to"],
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
             "limit": LIMIT_HINT,  # Added missing limit parameter
         },
         response_hints={
@@ -1403,8 +1403,8 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         category=SemanticCategory.INTELLIGENCE,
         sub_category="Calendar Events",
         parameter_hints={
-            "from": DATE_HINTS["from"],
-            "to": DATE_HINTS["to"],
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
         },
         response_hints={
             "date": ResponseFieldInfo(
@@ -1450,8 +1450,8 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         category=SemanticCategory.INTELLIGENCE,
         sub_category="Calendar Events",
         parameter_hints={
-            "from": DATE_HINTS["from"],
-            "to": DATE_HINTS["to"],
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
         },
         response_hints={
             "date": ResponseFieldInfo(
@@ -1495,8 +1495,8 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         category=SemanticCategory.INTELLIGENCE,
         sub_category="Calendar Events",
         parameter_hints={
-            "from": DATE_HINTS["from"],
-            "to": DATE_HINTS["to"],
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
         },
         response_hints={
             "company": ResponseFieldInfo(
@@ -1874,7 +1874,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         natural_description=(
             "Get detailed consensus information about analyst price targets, "
             "including target distribution, recent changes, and analyst "
-            "recommendations. Provides comprehensive view of market expectations."
+            "recommendations."
         ),
         example_queries=[
             "What's the analyst consensus on AAPL?",
@@ -1936,8 +1936,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         method_name="get_price_target_summary",
         natural_description=(
             "Get a summary of analyst price targets for a stock, including average, "
-            "highest, and lowest targets along with number of analysts. Provides a "
-            "quick overview of market expectations for a company's stock price."
+            "highest, and lowest targets along with number of analysts."
         ),
         example_queries=[
             "What's the average price target for AAPL?",

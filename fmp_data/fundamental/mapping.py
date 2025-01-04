@@ -144,8 +144,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         method_name="get_income_statement",
         natural_description=(
             "Retrieve detailed income statements showing revenue, costs, expenses and "
-            "profitability metrics for a company over multiple periods. Includes key "
-            "metrics like revenue, operating income, net income, and EPS."
+            "profitability metrics for a company over multiple periods."
         ),
         example_queries=[
             "Get AAPL income statement",
@@ -219,8 +218,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         method_name="get_balance_sheet",
         natural_description=(
             "Access detailed balance sheet statements showing a company's assets, "
-            "liabilities, and shareholders' equity. Provides insights into financial "
-            "position, liquidity, and capital structure."
+            "liabilities, and shareholders' equity."
         ),
         example_queries=[
             "Get AAPL balance sheet",
@@ -286,8 +284,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         method_name="get_cash_flow",
         natural_description=(
             "Retrieve detailed cash flow statements showing operating, investing, and "
-            "financing activities. Track company's cash generation and usage across "
-            "different business activities and assess liquidity management."
+            "financing activities."
         ),
         example_queries=[
             "Get AAPL cash flow statement",
@@ -352,8 +349,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         method_name="get_financial_ratios",
         natural_description=(
             "Access comprehensive financial ratios for analyzing company performance, "
-            "efficiency, and financial health. Compare metrics across profitability, "
-            "liquidity, solvency, and operating efficiency."
+            "efficiency, and financial health."
         ),
         example_queries=[
             "Get AAPL financial ratios",
@@ -417,8 +413,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         method_name="get_key_metrics",
         natural_description=(
             "Access essential financial metrics and KPIs including profitability, "
-            "efficiency, and valuation measures. Get comprehensive insights into "
-            "company performance and financial health."
+            "efficiency, and valuation measures."
         ),
         example_queries=[
             "Show AAPL key metrics",
@@ -484,10 +479,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
             "Calculate owner earnings using Warren "
             "Buffett's methodology to evaluate "
             "true business profitability and "
-            "cash generation capability. Provides insights "
-            "into the actual cash-generating "
-            "ability of the business beyond standard "
-            "accounting metrics."
+            "cash generation capability."
         ),
         example_queries=[
             "Calculate AAPL owner earnings",
@@ -540,9 +532,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
             "Perform levered discounted cash flow "
             "valuation with detailed assumptions "
             "about growth, cost of capital, and "
-            "future cash flows. Calculate intrinsic "
-            "value estimates considering the company's "
-            "capital structure and financial leverage."
+            "future cash flows."
         ),
         example_queries=[
             "Calculate AAPL DCF value",
@@ -605,10 +595,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         natural_description=(
             "Retrieve historical company ratings and "
             "scoring metrics over time based on "
-            "fundamental analysis. Includes overall "
-            "ratings, detailed scoring breakdowns, "
-            "and investment recommendations with "
-            "trends and changes over time."
+            "fundamental analysis."
         ),
         example_queries=[
             "Get AAPL historical ratings",
@@ -674,8 +661,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         natural_description=(
             "Access complete financial statements as reported "
             "to regulatory authorities, "
-            "including detailed line items, notes, and supplementary information. "
-            "Provides comprehensive financial data in its original reported form."
+            "including detailed line items, notes, and supplementary information."
         ),
         example_queries=[
             "Get AAPL full financial statements",
@@ -733,8 +719,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         method_name="get_financial_reports_dates",
         natural_description=(
             "Retrieve available financial report dates and access links for a company, "
-            "including quarterly and annual filings. Provides direct access to "
-            "historical financial statements and their filing dates."
+            "including quarterly and annual filings."
         ),
         example_queries=[
             "When are AAPL's financial reports available?",
@@ -807,9 +792,7 @@ FULL_STATEMENT_SEMANTICS = EndpointSemantics(
     method_name="full_financial_statement",
     natural_description=(
         "Access complete financial statements as reported to regulatory authorities, "
-        "including detailed line items, notes, and supplementary information. "
-        "Provides comprehensive financial data in its original reported form with "
-        "complete transparency on revenue, profitability, assets, and liabilities."
+        "including detailed line items, notes, and supplementary information."
     ),
     example_queries=[
         "Get AAPL's full financial statements",

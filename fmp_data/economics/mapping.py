@@ -181,8 +181,7 @@ ECONOMICS_ENDPOINTS_SEMANTICS = {
         method_name="get_treasury_rates",
         natural_description=(
             "Retrieve U.S. Treasury rates across multiple maturities including bills, "
-            "notes, and bonds. Provides both current and historical yield curve data "
-            "for comprehensive fixed income market analysis."
+            "notes, and bonds. "
         ),
         example_queries=[
             "What are the current Treasury rates?",
@@ -313,8 +312,7 @@ ECONOMICS_ENDPOINTS_SEMANTICS = {
         method_name="get_economic_indicators",
         natural_description=(
             "Access comprehensive economic indicator data including GDP, inflation, "
-            "employment statistics, trade balances, and other key metrics that measure "
-            "economic performance and activity across different sectors."
+            "employment statistics, trade balances, and more."
         ),
         example_queries=[
             "Get GDP growth rate",
@@ -408,8 +406,7 @@ ECONOMICS_ENDPOINTS_SEMANTICS = {
         method_name="get_economic_calendar",
         natural_description=(
             "Access a comprehensive calendar of economic events, data releases, "
-            "and policy announcements. Includes expected values, actual results, "
-            "and historical comparisons for significant economic releases worldwide."
+            "and policy announcements."
         ),
         example_queries=[
             "Show economic calendar",
@@ -568,7 +565,7 @@ ECONOMICS_ENDPOINTS_SEMANTICS = {
         natural_description=(
             "Retrieve comprehensive market risk premium data by country, including "
             "equity risk premiums, country-specific risk factors, and total risk "
-            "premiums for investment analysis and asset pricing."
+            "premiums"
         ),
         example_queries=[
             "Get market risk premium data",

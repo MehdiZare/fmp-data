@@ -1,12 +1,13 @@
 # fmp_data/investment/schema.py
 
 from datetime import date
-from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from fmp_data.schema import BaseArgModel, BaseEnum, SymbolArg
 
 
-class ETFAssetCategory(str, Enum):
+class ETFAssetCategory(BaseEnum):
     """Categories of ETF assets"""
 
     EQUITY = "Equity"
@@ -18,7 +19,7 @@ class ETFAssetCategory(str, Enum):
     ALTERNATIVE = "Alternative"
 
 
-class FundType(str, Enum):
+class FundType(BaseEnum):
     """Types of investment funds"""
 
     ETF = "ETF"
@@ -27,40 +28,7 @@ class FundType(str, Enum):
     HEDGE_FUND = "Hedge Fund"
 
 
-class ETFHoldingsArgs(BaseModel):
-    """Arguments for getting ETF holdings"""
-
-    symbol: str = Field(description="ETF symbol")
-    date: date = Field(description="Holdings date")
-
-
-class ETFInfoArgs(BaseModel):
-    """Arguments for getting ETF information"""
-
-    symbol: str = Field(description="ETF symbol")
-
-
-class MutualFundHoldingsArgs(BaseModel):
-    """Arguments for getting mutual fund holdings"""
-
-    symbol: str = Field(description="Fund symbol")
-    date: date = Field(description="Holdings date")
-
-
-class MutualFundSearchArgs(BaseModel):
-    """Arguments for searching mutual funds by name"""
-
-    name: str = Field(description="Fund name or partial name to search")
-
-
-class FundHolderArgs(BaseModel):
-    """Arguments for getting fund holder information"""
-
-    symbol: str = Field(description="Fund symbol")
-    fund_type: FundType = Field(description="Type of fund (ETF or Mutual Fund)")
-
-
-class WeightingType(str, Enum):
+class WeightingType(BaseEnum):
     """Types of portfolio weightings"""
 
     SECTOR = "sector"
@@ -70,16 +38,69 @@ class WeightingType(str, Enum):
     CURRENCY = "currency"
 
 
-class WeightingArgs(BaseModel):
+class ETFHoldingsArgs(SymbolArg):
+    """Arguments for getting ETF holdings"""
+
+    date: date = Field(
+        description="Holdings date", json_schema_extra={"examples": ["2024-01-15"]}
+    )
+
+
+class ETFInfoArgs(SymbolArg):
+    """Arguments for getting ETF information"""
+
+    pass
+
+
+class MutualFundHoldingsArgs(SymbolArg):
+    """Arguments for getting mutual fund holdings"""
+
+    date: date = Field(
+        description="Holdings date", json_schema_extra={"examples": ["2024-01-15"]}
+    )
+
+
+class MutualFundSearchArgs(BaseArgModel):
+    """Arguments for searching mutual funds by name"""
+
+    name: str = Field(
+        description="Fund name or partial name to search",
+        min_length=2,
+        json_schema_extra={"examples": ["Vanguard 500", "Fidelity Growth"]},
+    )
+
+
+class FundHolderArgs(SymbolArg):
+    """Arguments for getting fund holder information"""
+
+    fund_type: FundType = Field(
+        description="Type of fund",
+        json_schema_extra={
+            "examples": ["ETF", "Mutual Fund"],
+            "description": "Specifies whether the fund is an ETF or Mutual Fund",
+        },
+    )
+
+
+class WeightingArgs(SymbolArg):
     """Arguments for getting fund weightings"""
 
-    symbol: str = Field(description="Fund symbol")
-    weighting_type: WeightingType = Field(description="Type of weighting to retrieve")
+    weighting_type: WeightingType = Field(
+        description="Type of weighting to retrieve",
+        json_schema_extra={"examples": ["sector", "country", "asset_class"]},
+    )
 
 
-class PortfolioDateArgs(BaseModel):
+class PortfolioDateArgs(SymbolArg):
     """Arguments for getting portfolio dates"""
 
-    symbol: str = Field(description="Fund symbol")
-    cik: str | None = Field(None, description="CIK number (required for mutual funds)")
-    fund_type: FundType = Field(description="Type of fund (ETF or Mutual Fund)")
+    cik: str | None = Field(
+        None,
+        description="CIK number (required for mutual funds)",
+        pattern=r"^\d{10}$",
+        json_schema_extra={"examples": ["0001234567"]},
+    )
+    fund_type: FundType = Field(
+        description="Type of fund",
+        json_schema_extra={"examples": ["ETF", "Mutual Fund"]},
+    )

@@ -229,12 +229,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
     "asset_allocation": EndpointSemantics(
         client_name="institutional",
         method_name="get_asset_allocation",
-        natural_description=(
-            "Analyze asset allocation data from "
-            "13F filings, showing how institutional "
-            "investors distribute their investments "
-            "across different asset types and sectors."
-        ),
+        natural_description=("Analyze asset allocation data from " "13F filings"),
         example_queries=[
             "Show asset allocation for major institutions",
             "Get portfolio distribution by asset type",
@@ -271,10 +266,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
         client_name="institutional",
         method_name="get_institutional_holdings",
         natural_description=(
-            "Analyze institutional ownership for "
-            "a specific security, including the number "
-            "of institutional holders, shares held, "
-            "and ownership changes over time."
+            "Analyze institutional ownership for " "a specific security."
         ),
         example_queries=[
             "Show institutional ownership for AAPL",
@@ -334,10 +326,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
         client_name="institutional",
         method_name="get_insider_trades",
         natural_description=(
-            "Track insider trading activity for "
-            "a specific security, including purchases, "
-            "sales, and other transactions by "
-            "company executives and major shareholders."
+            "Track insider trading activity for " "a specific security."
         ),
         example_queries=[
             "Show insider trades for AAPL",
@@ -380,9 +369,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
         method_name="get_transaction_types",
         natural_description=(
             "Get a reference list of insider "
-            "transaction types and their descriptions, "
-            "helping interpret and classify "
-            "different kinds of insider trading activity."
+            "transaction types and their descriptions."
         ),
         example_queries=[
             "List all insider transaction types",
@@ -462,10 +449,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
         client_name="institutional",
         method_name="get_insider_statistics",
         natural_description=(
-            "Get aggregated statistics about "
-            "insider trading activity, including buy/sell "
-            "ratios, transaction counts, "
-            "and volume analysis for a specific security."
+            "Get aggregated statistics about " "insider trading activity."
         ),
         example_queries=[
             "Get insider trading stats for AAPL",
@@ -511,9 +495,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
         method_name="get_cik_mapper",
         natural_description=(
             "Get a comprehensive mapping between "
-            "CIK numbers and company/institution names, "
-            "helping identify and cross-reference"
-            " entities in SEC filings."
+            "CIK numbers and company/institution names."
         ),
         example_queries=[
             "Get CIK mappings",
@@ -552,10 +534,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
     "cik_mapper_by_name": EndpointSemantics(
         client_name="institutional",
         method_name="get_cik_mapper_by_name",
-        natural_description=(
-            "Search for CIK numbers by company or institution name, helping identify "
-            "specific entities and their SEC filing identifiers."
-        ),
+        natural_description=("Search for CIK numbers by company or institution name."),
         example_queries=[
             "Find CIK for Apple",
             "Search CIK by company name",
@@ -596,10 +575,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
     "cik_mapper_by_symbol": EndpointSemantics(
         client_name="institutional",
         method_name="get_cik_mapper_by_symbol",
-        natural_description=(
-            "Look up CIK numbers using stock symbols, providing a quick way to find "
-            "SEC filing identifiers for publicly traded companies."
-        ),
+        natural_description=("Look up CIK numbers using stock symbols."),
         example_queries=[
             "Get CIK for AAPL",
             "Find Tesla's CIK by symbol",
@@ -685,8 +661,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
         client_name="institutional",
         method_name="get_fail_to_deliver",
         natural_description=(
-            "Get data on failed trade settlements (FTDs) for a security, including "
-            "quantity and price information for shares that failed to be delivered."
+            "Get data on failed trade settlements (FTDs) for a security."
         ),
         example_queries=[
             "Show FTDs for AAPL",
@@ -735,8 +710,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
         client_name="institutional",
         method_name="get_institutional_holders",
         natural_description=(
-            "Get detailed information about institutional holders of securities, "
-            "including ownership percentages and position changes"
+            "Get detailed information about institutional holders of securities."
         ),
         example_queries=[
             "Who are the institutional holders of AAPL?",

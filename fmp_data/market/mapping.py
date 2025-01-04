@@ -362,8 +362,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         method_name="get_historical_prices",
         natural_description=(
             "Retrieve historical daily price data including open, high, low, close, "
-            "and adjusted prices with volume information for technical analysis "
-            "and historical performance tracking"
+            "and adjusted prices with volume information ."
         ),
         example_queries=[
             "Get AAPL's historical prices",

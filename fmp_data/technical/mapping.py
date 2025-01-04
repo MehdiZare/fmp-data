@@ -83,9 +83,7 @@ TECHNICAL_ENDPOINTS_SEMANTICS = {
         client_name="technical",
         method_name="get_sma",
         natural_description=(
-            "Calculate Simple Moving Average (SMA) for a given security. SMA is the "
-            "arithmetic mean price over a specified period, useful for identifying "
-            "trends and support/resistance levels."
+            "Calculate Simple Moving Average (SMA) for a given security."
         ),
         example_queries=[
             "Calculate 50-day SMA for AAPL",
@@ -121,9 +119,7 @@ TECHNICAL_ENDPOINTS_SEMANTICS = {
         client_name="technical",
         method_name="get_ema",
         natural_description=(
-            "Calculate Exponential Moving Average (EMA) for a security. EMA gives "
-            "more weight to recent prices, making it more responsive to new "
-            "information than SMA."
+            "Calculate Exponential Moving Average (EMA) for a security."
         ),
         example_queries=[
             "Calculate 20-day EMA for AAPL",
@@ -157,11 +153,7 @@ TECHNICAL_ENDPOINTS_SEMANTICS = {
     "wma": EndpointSemantics(
         client_name="technical",
         method_name="get_wma",
-        natural_description=(
-            "Calculate Weighted Moving Average (WMA). WMA assigns higher weights "
-            "to recent data points, providing a more responsive trend indicator "
-            "than simple moving average."
-        ),
+        natural_description=("Calculate Weighted Moving Average (WMA)."),
         example_queries=[
             "Calculate WMA for AAPL",
             "Get weighted moving average for MSFT",
@@ -194,10 +186,7 @@ TECHNICAL_ENDPOINTS_SEMANTICS = {
     "dema": EndpointSemantics(
         client_name="technical",
         method_name="get_dema",
-        natural_description=(
-            "Calculate Double Exponential Moving Average (DEMA). DEMA reduces lag "
-            "in traditional moving averages by applying exponential smoothing twice."
-        ),
+        natural_description=("Calculate Double Exponential Moving Average (DEMA)."),
         example_queries=[
             "Calculate DEMA for AAPL",
             "Get double exponential average for MSFT",
@@ -230,11 +219,7 @@ TECHNICAL_ENDPOINTS_SEMANTICS = {
     "tema": EndpointSemantics(
         client_name="technical",
         method_name="get_tema",
-        natural_description=(
-            "Calculate Triple Exponential Moving Average (TEMA). TEMA applies "
-            "exponential smoothing three times to further reduce lag while "
-            "maintaining smoothing effectiveness."
-        ),
+        natural_description=("Calculate Triple Exponential Moving Average (TEMA)."),
         example_queries=[
             "Calculate TEMA for AAPL",
             "Get triple exponential average for MSFT",
@@ -269,8 +254,7 @@ TECHNICAL_ENDPOINTS_SEMANTICS = {
         method_name="get_williams",
         natural_description=(
             "Calculate Williams %R indicator. This momentum indicator measures "
-            "overbought and oversold levels by comparing the closing price to "
-            "the high-low range over a specified period."
+            "overbought and oversold levels."
         ),
         example_queries=[
             "Calculate Williams %R for AAPL",
@@ -304,11 +288,7 @@ TECHNICAL_ENDPOINTS_SEMANTICS = {
     "rsi": EndpointSemantics(
         client_name="technical",
         method_name="get_rsi",
-        natural_description=(
-            "Calculate Relative Strength Index (RSI). RSI measures momentum by "
-            "comparing the magnitude of recent gains to recent losses, identifying "
-            "overbought and oversold conditions."
-        ),
+        natural_description=("Calculate Relative Strength Index (RSI)."),
         example_queries=[
             "Calculate 14-day RSI for AAPL",
             "Get RSI indicator for MSFT",
@@ -346,11 +326,7 @@ TECHNICAL_ENDPOINTS_SEMANTICS = {
     "adx": EndpointSemantics(
         client_name="technical",
         method_name="get_adx",
-        natural_description=(
-            "Calculate Average Directional Index (ADX). ADX measures trend "
-            "strength regardless of direction, helping identify strong trends "
-            "and potential trading opportunities."
-        ),
+        natural_description=("Calculate Average Directional Index (ADX)."),
         example_queries=[
             "Calculate ADX for AAPL",
             "Get directional movement for MSFT",
@@ -385,8 +361,7 @@ TECHNICAL_ENDPOINTS_SEMANTICS = {
         method_name="get_standard_deviation",
         natural_description=(
             "Calculate price Standard Deviation to measure volatility and "
-            "dispersion. This statistical indicator helps assess market "
-            "volatility and potential risk levels."
+            "dispersion."
         ),
         example_queries=[
             "Calculate price volatility for AAPL",

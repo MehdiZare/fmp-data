@@ -419,3 +419,47 @@ class FMPToolManager:
         except Exception as e:
             self.logger.error(f"Failed to search endpoints: {str(e)}")
             raise
+
+    def get_all_tools(self) -> list[StructuredTool]:
+        """
+        Get all available endpoints as LangChain tools.
+
+        Returns:
+            List of all LangChain StructuredTool instances
+
+        Raises:
+            RuntimeError: If vector store is not initialized
+
+        Examples:
+            tools = manager.get_all_tools()
+            for tool in tools:
+                print(f"{tool.name}: {tool.description}")
+        """
+        if not self.vector_store:
+            raise RuntimeError(
+                "Vector store not initialized. Call initialize_vector_store() first."
+            )
+
+        try:
+            # Get all endpoints from the registry
+            endpoints = self.registry.list_endpoints()
+            tools = []
+
+            for name, info in endpoints.items():
+                try:
+                    tool = self.vector_store.create_tool(info)
+                    tools.append(tool)
+                except Exception as e:
+                    self.logger.warning(
+                        f"Failed to create tool for endpoint {name}: {str(e)}"
+                    )
+                    continue
+
+            self.logger.info(
+                f"Created {len(tools)} tools from {len(endpoints)} endpoints"
+            )
+            return tools
+
+        except Exception as e:
+            self.logger.error(f"Failed to get all tools: {str(e)}")
+            raise RuntimeError(f"Failed to get all tools: {str(e)}") from e

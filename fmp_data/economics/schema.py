@@ -3,6 +3,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from fmp_data.schema import BaseArgModel, DateRangeArg
+
 
 # Available Economic Indicators
 class EconomicIndicatorType(str, Enum):
@@ -32,32 +34,25 @@ class EconomicIndicatorType(str, Enum):
     DURABLE_GOODS_ORDERS = "durable_goods_orders"
 
 
-# Schema for Treasury Rates
-class TreasuryRatesArgs(BaseModel):
+class TreasuryRatesArgs(DateRangeArg):
     """Arguments for getting treasury rates"""
 
-    from_date: date | None = Field(
-        None, description="Start date for treasury rates data"
-    )
-    to_date: date | None = Field(None, description="End date for treasury rates data")
+    pass
 
 
-# Schema for Economic Indicators
-class EconomicIndicatorsArgs(BaseModel):
+class EconomicIndicatorsArgs(BaseArgModel):
     """Arguments for getting economic indicators"""
 
-    name: str = Field(
-        description="Name of the economic indicator to retrieve",
-        examples=["gdp", "inflation", "unemployment"],
+    name: EconomicIndicatorType = Field(
+        description="Name of the economic indicator",
+        json_schema_extra={"examples": ["gdp", "inflation", "unemployment"]},
     )
 
 
-# Schema for Economic Calendar
-class EconomicCalendarArgs(BaseModel):
+class EconomicCalendarArgs(DateRangeArg):
     """Arguments for getting economic calendar events"""
 
-    from_date: date | None = Field(None, description="Start date for economic events")
-    to_date: date | None = Field(None, description="End date for economic events")
+    pass
 
 
 # Response schemas for economics endpoints

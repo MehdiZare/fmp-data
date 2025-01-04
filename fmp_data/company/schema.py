@@ -1,7 +1,154 @@
 # fmp_data/company/schema.py
-from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
+
+from fmp_data.schema import (
+    ExchangeArg,
+    NoParamArg,
+    PaginationArg,
+    ReportingPeriodEnum,
+    SearchArg,
+    StructureTypeEnum,
+    SymbolArg,
+)
+
+
+# Profile and Core Information
+class ProfileArgs(SymbolArg):
+    """Arguments for getting company profile"""
+
+    pass
+
+
+class SearchArgs(SearchArg, PaginationArg):
+    """Arguments for company search"""
+
+    exchange: str | None = Field(
+        None,
+        description="Filter by stock exchange",
+        pattern=r"^[A-Z]{2,6}$",
+        json_schema_extra={"examples": ["NYSE", "NASDAQ"]},
+    )
+
+
+# Search Related
+class CIKSearchArgs(SearchArg):
+    """Arguments for CIK search"""
+
+    pass
+
+
+class CUSIPSearchArgs(SearchArg):
+    """Arguments for CUSIP search"""
+
+    pass
+
+
+class ISINSearchArgs(SearchArg):
+    """Arguments for ISIN search"""
+
+    pass
+
+
+# Executive Related
+class ExecutivesArgs(SymbolArg):
+    """Arguments for getting company executives"""
+
+    pass
+
+
+class ExecutiveCompensationArgs(SymbolArg):
+    """Arguments for getting executive compensation"""
+
+    pass
+
+
+# Company Data
+class CompanyNotesArgs(SymbolArg):
+    """Arguments for getting company notes"""
+
+    pass
+
+
+class EmployeeCountArgs(SymbolArg):
+    """Arguments for getting employee count"""
+
+    pass
+
+
+# List Related
+class StockListArgs(NoParamArg):
+    """Arguments for getting stock list"""
+
+    pass
+
+
+class ETFListArgs(NoParamArg):
+    """Arguments for getting ETF list"""
+
+    pass
+
+
+class AvailableIndexesArgs(NoParamArg):
+    """Arguments for getting available indexes"""
+
+    pass
+
+
+class ExchangeSymbolsArgs(ExchangeArg):
+    """Arguments for getting exchange symbols"""
+
+    pass
+
+
+# Float Related
+class ShareFloatArgs(SymbolArg):
+    """Arguments for getting share float data"""
+
+    pass
+
+
+class HistoricalShareFloatArgs(SymbolArg):
+    """Arguments for getting historical share float"""
+
+    pass
+
+
+class AllSharesFloatArgs(NoParamArg):
+    """Arguments for getting all shares float"""
+
+    pass
+
+
+# Revenue Related
+class RevenueSegmentationArgs(SymbolArg):
+    """Base arguments for revenue segmentation"""
+
+    structure: StructureTypeEnum = Field(
+        default=StructureTypeEnum.FLAT, description="Data structure format"
+    )
+    period: ReportingPeriodEnum = Field(
+        default=ReportingPeriodEnum.ANNUAL, description="Data period"
+    )
+
+
+class GeographicRevenueArgs(RevenueSegmentationArgs):
+    """Arguments for geographic revenue segmentation"""
+
+    pass
+
+
+# Symbol Related
+class LogoArgs(SymbolArg):
+    """Arguments for company logo endpoint"""
+
+    pass
+
+
+class SymbolChangesArgs(NoParamArg):
+    """Arguments for getting symbol changes"""
+
+    pass
 
 
 class BaseSymbolArg(BaseModel):
@@ -31,103 +178,10 @@ class BaseExchangeArg(BaseModel):
     )
 
 
-# Profile and Core Information
-class ProfileArgs(BaseSymbolArg):
-    """Arguments for getting company profile"""
-
-    pass
-
-
 class CoreInformationArgs(BaseSymbolArg):
     """Arguments for getting core company information"""
 
     pass
-
-
-# Search Related
-class SearchArgs(BaseModel):
-    """Arguments for company search"""
-
-    query: str = Field(description="Search term to find companies", min_length=2)
-    limit: int = Field(
-        default=10, description="Maximum number of results to return", ge=1, le=100
-    )
-    exchange: str | None = Field(
-        None,
-        description="Filter results by stock exchange (e.g., NYSE, NASDAQ)",
-        pattern=r"^[A-Z]{2,6}$",
-    )
-
-
-class CIKSearchArgs(BaseSearchArg):
-    """Arguments for CIK search"""
-
-    pass
-
-
-class CUSIPSearchArgs(BaseSearchArg):
-    """Arguments for CUSIP search"""
-
-    pass
-
-
-class ISINSearchArgs(BaseSearchArg):
-    """Arguments for ISIN search"""
-
-    pass
-
-
-# Executive Related
-class ExecutivesArgs(BaseSymbolArg):
-    """Arguments for getting company executives"""
-
-    pass
-
-
-class ExecutiveCompensationArgs(BaseSymbolArg):
-    """Arguments for getting executive compensation"""
-
-    pass
-
-
-# Company Data
-class CompanyNotesArgs(BaseSymbolArg):
-    """Arguments for getting company notes"""
-
-    pass
-
-
-class EmployeeCountArgs(BaseSymbolArg):
-    """Arguments for getting employee count"""
-
-    pass
-
-
-# List Related
-class StockListArgs(BaseModel):
-    """Arguments for getting stock list - no parameters needed"""
-
-    pass
-
-
-class ETFListArgs(BaseModel):
-    """Arguments for getting ETF list - no parameters needed"""
-
-    pass
-
-
-class AvailableIndexesArgs(BaseModel):
-    """Arguments for getting available indexes - no parameters needed"""
-
-    pass
-
-
-class ExchangeSymbolsArgs(BaseModel):
-    """Arguments for getting exchange symbols"""
-
-    exchange: str = Field(
-        description="Exchange code (e.g., NYSE, NASDAQ)", pattern=r"^[A-Z]{2,6}$"
-    )
 
 
 class ExchangeArgs(BaseExchangeArg):
@@ -140,73 +194,29 @@ class ExchangeArgs(BaseExchangeArg):
     pass
 
 
-# Float Related
-class ShareFloatArgs(BaseSymbolArg):
-    """Arguments for getting share float data"""
-
-    pass
-
-
-class HistoricalShareFloatArgs(BaseSymbolArg):
-    """Arguments for getting historical share float"""
-
-    pass
-
-
-class AllSharesFloatArgs(BaseModel):
-    """Arguments for getting all shares float - no parameters needed"""
-
-    pass
-
-
 # Revenue Related
-class RevenueSegmentationArgs(BaseModel):
+class RevenueSegmentationArgs(SymbolArg):
     """Base arguments for revenue segmentation"""
 
-    symbol: str = Field(
-        description="Company symbol (e.g., AAPL)", pattern=r"^[A-Z]{1,5}$"
+    structure: StructureTypeEnum = Field(
+        default=StructureTypeEnum.FLAT,
+        description="Data structure format",
+        json_schema_extra={"enum": ["flat", "nested"], "examples": ["flat"]},
     )
-    structure: str = Field(default="flat", description="Data structure format")
-    period: Literal["annual", "quarter"] = Field(
-        default="annual", description="Data period (annual or quarterly)"
+    period: ReportingPeriodEnum = Field(
+        default=ReportingPeriodEnum.ANNUAL,
+        description="Data period",
+        json_schema_extra={"enum": ["annual", "quarter"], "examples": ["annual"]},
     )
-
-    @field_validator("structure")
-    def validate_structure(cls, v: str) -> str:
-        if v not in ["flat", "nested"]:
-            raise ValueError("Structure must be either 'flat' or 'nested'")
-        return v
 
 
 class ProductRevenueArgs(RevenueSegmentationArgs):
     """Arguments for product revenue segmentation"""
 
-    pass
-
-
-class GeographicRevenueArgs(BaseModel):
-    """Arguments for geographic revenue segmentation"""
-
-    symbol: str = Field(
-        description="Company symbol (e.g., AAPL)", pattern=r"^[A-Z]{1,5}$"
+    model_config = ConfigDict(
+        json_schema_extra={
+            "title": "Product Revenue Arguments",
+            "description": "Arguments for getting product revenue data",
+            "examples": [{"symbol": "AAPL", "period": "annual", "structure": "flat"}],
+        }
     )
-    structure: str = Field(default="flat", description="Data structure format")
-
-    @field_validator("structure")
-    def validate_structure(cls, v: str) -> str:
-        if v not in ["flat", "nested"]:
-            raise ValueError("Structure must be either 'flat' or 'nested'")
-        return v
-
-
-# Symbol Related
-class LogoArgs(BaseSymbolArg):
-    """Arguments for company logo endpoint"""
-
-    pass
-
-
-class SymbolChangesArgs(BaseModel):
-    """Arguments for getting symbol changes - no parameters needed"""
-
-    pass

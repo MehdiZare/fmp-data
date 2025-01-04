@@ -315,10 +315,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         client_name="company",
         method_name="search",
         natural_description=(
-            "Search for companies by name, ticker, "
-            "or other identifiers. Returns matching "
-            "companies with their basic information "
-            "including symbol, name, and exchange."
+            "Search for companies by name, ticker, " "or other identifiers."
         ),
         example_queries=[
             "Search for companies with 'tech' in their name",

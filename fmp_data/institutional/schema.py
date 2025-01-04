@@ -1,89 +1,13 @@
+# fmp_data/institutional/schema.py
+
 from datetime import date
-from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-
-class Form13FArgs(BaseModel):
-    """Arguments for getting Form 13F data"""
-
-    cik: str = Field(description="Institution CIK number")
-    filing_date: date = Field(description="Filing date")
+from fmp_data.schema import BaseArgModel, BaseEnum, PaginationArg, SymbolArg
 
 
-class Form13FDatesArgs(BaseModel):
-    """Arguments for getting Form 13F filing dates"""
-
-    cik: str = Field(description="Institution CIK number")
-
-
-class AssetAllocationArgs(BaseModel):
-    """Arguments for getting 13F asset allocation data"""
-
-    filing_date: date = Field(description="Filing date")
-
-
-class InstitutionalHoldingsArgs(BaseModel):
-    """Arguments for getting institutional holdings"""
-
-    symbol: str = Field(description="Stock symbol")
-    include_current_quarter: bool = Field(
-        default=False, description="Include current quarter data"
-    )
-
-
-class InsiderTradesArgs(BaseModel):
-    """Arguments for getting insider trades"""
-
-    symbol: str = Field(description="Stock symbol")
-    page: int = Field(default=0, description="Page number")
-
-
-class InsiderRosterArgs(BaseModel):
-    """Arguments for getting insider roster"""
-
-    symbol: str = Field(description="Stock symbol")
-
-
-class InsiderStatisticsArgs(BaseModel):
-    """Arguments for getting insider statistics"""
-
-    symbol: str = Field(description="Stock symbol")
-
-
-class CIKMapperArgs(BaseModel):
-    """Arguments for getting CIK mappings"""
-
-    page: int = Field(default=0, description="Page number")
-
-
-class CIKMapperByNameArgs(BaseModel):
-    """Arguments for searching CIK mappings by name"""
-
-    name: str = Field(description="Name to search")
-    page: int = Field(default=0, description="Page number")
-
-
-class CIKMapperBySymbolArgs(BaseModel):
-    """Arguments for getting CIK mapping by symbol"""
-
-    symbol: str = Field(description="Stock symbol")
-
-
-class BeneficialOwnershipArgs(BaseModel):
-    """Arguments for getting beneficial ownership data"""
-
-    symbol: str = Field(description="Stock symbol")
-
-
-class FailToDeliverArgs(BaseModel):
-    """Arguments for getting fail to deliver data"""
-
-    symbol: str = Field(description="Stock symbol")
-    page: int = Field(default=0, description="Page number")
-
-
-class InsiderTransactionType(str, Enum):
+class InsiderTransactionType(BaseEnum):
     """Types of insider transactions"""
 
     PURCHASE = "P"
@@ -92,3 +16,84 @@ class InsiderTransactionType(str, Enum):
     CONVERSION = "C"
     EXERCISE = "E"
     OTHER = "O"
+
+
+class Form13FArgs(BaseArgModel):
+    """Arguments for getting Form 13F data"""
+
+    cik: str = Field(
+        description="Institution CIK number",
+        pattern=r"^\d{10}$",
+        json_schema_extra={"examples": ["0001234567"]},
+    )
+    filing_date: date = Field(
+        description="Filing date", json_schema_extra={"examples": ["2024-01-15"]}
+    )
+
+
+class Form13FDatesArgs(BaseArgModel):
+    """Arguments for getting Form 13F filing dates"""
+
+    cik: str = Field(description="Institution CIK number", pattern=r"^\d{10}$")
+
+
+class AssetAllocationArgs(BaseArgModel):
+    """Arguments for getting 13F asset allocation data"""
+
+    filing_date: date = Field(description="Filing date")
+
+
+class InstitutionalHoldingsArgs(SymbolArg):
+    """Arguments for getting institutional holdings"""
+
+    include_current_quarter: bool = Field(
+        default=False, description="Include current quarter data"
+    )
+
+
+class InsiderTradesArgs(SymbolArg, PaginationArg):
+    """Arguments for getting insider trades"""
+
+    pass
+
+
+class InsiderRosterArgs(SymbolArg):
+    """Arguments for getting insider roster"""
+
+    pass
+
+
+class InsiderStatisticsArgs(SymbolArg):
+    """Arguments for getting insider statistics"""
+
+    pass
+
+
+class CIKMapperArgs(PaginationArg):
+    """Arguments for getting CIK mappings"""
+
+    pass
+
+
+class CIKMapperByNameArgs(PaginationArg):
+    """Arguments for searching CIK mappings by name"""
+
+    name: str = Field(description="Name to search", min_length=2)
+
+
+class CIKMapperBySymbolArgs(SymbolArg):
+    """Arguments for getting CIK mapping by symbol"""
+
+    pass
+
+
+class BeneficialOwnershipArgs(SymbolArg):
+    """Arguments for getting beneficial ownership data"""
+
+    pass
+
+
+class FailToDeliverArgs(SymbolArg, PaginationArg):
+    """Arguments for getting fail to deliver data"""
+
+    pass
