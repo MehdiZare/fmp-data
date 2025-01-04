@@ -1,5 +1,4 @@
 import logging
-import time
 from datetime import date, datetime, timedelta
 
 import pytest
@@ -12,25 +11,14 @@ from fmp_data.economics.models import (
     TreasuryRate,
 )
 from fmp_data.economics.schema import EconomicIndicatorType
-from fmp_data.exceptions import RateLimitError
+
+from .base import BaseTestCase
 
 logger = logging.getLogger(__name__)
 
 
-class TestEconomicsEndpoints:
+class TestEconomicsEndpoints(BaseTestCase):
     """Test economics endpoints"""
-
-    def _handle_rate_limit(self, func, *args, **kwargs):
-        """Helper to handle rate limiting"""
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                return func(*args, **kwargs)
-            except RateLimitError as e:
-                if attempt == max_retries - 1:
-                    raise
-                time.sleep(e.retry_after or 1)
-                continue
 
     def test_get_treasury_rates(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting treasury rates"""
