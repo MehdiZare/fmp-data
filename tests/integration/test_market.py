@@ -171,7 +171,6 @@ class TestMarketClientEndpoints(BaseTestCase):
         with vcr_instance.use_cassette("market/most_active.yaml"):
             actives = self._handle_rate_limit(
                 fmp_client.market.get_most_active,
-                limit=10000,
             )
 
             assert isinstance(actives, list)
