@@ -112,7 +112,15 @@ class TestEconomicsEndpoints(BaseTestCase):
         with vcr_instance.use_cassette("economics/error_handling.yaml"):
             # Test with invalid indicator - should raise ValueError
             with pytest.raises(ValueError) as exc_info:
-                fmp_client.economics.get_economic_indicators("INVALID_INDICATOR")
+                # Use _handle_rate_limit but preserve the ValueError
+                try:
+                    self._handle_rate_limit(
+                        fmp_client.economics.get_economic_indicators,
+                        indicator_name="INVALID_INDICATOR",
+                    )
+                except ValueError as e:
+                    # Re-raise ValueError to be caught by pytest.raises
+                    raise ValueError(str(e)) from e
 
             error_msg = str(exc_info.value)
             assert "Invalid value for name" in error_msg
