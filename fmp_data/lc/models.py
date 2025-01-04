@@ -27,6 +27,7 @@ class SemanticCategory(str, Enum):
     INVESTMENT_PRODUCTS = "Investment Products"
     MARKET_DATA = "Market Data"
     TECHNICAL_ANALYSIS = "Technical Analysis"
+    UNKNOWN_CATEGORY = "Unknown Category"
 
 
 class ParameterHint(BaseModel):
