@@ -1,9 +1,18 @@
 # fmp_langchain/models.py
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
 from fmp_data.models import Endpoint
+
+
+class ToolType(str, Enum):
+    """Type of tool/function"""
+
+    FUNCTION = "function"
+    RETRIEVAL = "retrieval"  # For future use
+    ACTION = "action"  # For future use
 
 
 class SemanticCategory(str, Enum):
@@ -33,6 +42,12 @@ class ParameterHint(BaseModel):
     context_clues: list[str] = Field(
         description="Words that indicate this parameter is being referenced"
     )
+    required: bool = Field(
+        default=True, description="Whether this parameter is required"
+    )
+    schema_properties: dict | None = Field(
+        default=None, description="Additional schema properties for specific providers"
+    )
 
 
 class ResponseFieldInfo(BaseModel):
@@ -50,8 +65,12 @@ class EndpointSemantics(BaseModel):
         description="Name of the FMP client containing this endpoint"
     )
     method_name: str = Field(description="Method name in the client")
+    tool_type: ToolType = Field(
+        default=ToolType.FUNCTION, description="Type of tool this endpoint represents"
+    )
     natural_description: str = Field(
-        description="Natural language description of what this endpoint does"
+        description="Natural language description of what this endpoint does",
+        max_length=150,  # To ensure descriptions work well with LLMs
     )
     example_queries: list[str] = Field(
         description="Example natural language queries this endpoint can handle"
@@ -66,6 +85,9 @@ class EndpointSemantics(BaseModel):
         description="Information about response fields"
     )
     use_cases: list[str] = Field(description="Common use cases for this endpoint")
+    schema_format: Literal["openai", "anthropic", "standard"] = Field(
+        default="standard", description="Format specification for parameter schema"
+    )
 
 
 class EndpointInfo(BaseModel):
