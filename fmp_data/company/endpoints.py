@@ -1,35 +1,33 @@
 # company/endpoints.py
 from fmp_data.company.models import (
-    AvailableIndex,
-    CIKResult,
+    AnalystEstimate,
+    AnalystRecommendation,
     CompanyCoreInformation,
     CompanyExecutive,
     CompanyNote,
     CompanyProfile,
-    CompanySearchResult,
-    CompanySymbol,
-    CUSIPResult,
     EmployeeCount,
-    ExchangeSymbol,
     ExecutiveCompensation,
     GeographicRevenueSegment,
+    HistoricalData,
     HistoricalShareFloat,
-    ISINResult,
+    IntradayPrice,
+    PriceTarget,
+    PriceTargetConsensus,
+    PriceTargetSummary,
     ProductRevenueSegment,
+    Quote,
     ShareFloat,
+    SimpleQuote,
     SymbolChange,
+    UpgradeDowngrade,
+    UpgradeDowngradeConsensus,
 )
 from fmp_data.company.schema import (
-    AvailableIndexesArgs,
-    BaseExchangeArg,
-    BaseSearchArg,
     BaseSymbolArg,
-    ETFListArgs,
     GeographicRevenueArgs,
     LogoArgs,
     ProductRevenueArgs,
-    SearchArgs,
-    StockListArgs,
     SymbolChangesArgs,
 )
 from fmp_data.models import (
@@ -37,11 +35,107 @@ from fmp_data.models import (
     Endpoint,
     EndpointParam,
     HTTPMethod,
+    MarketCapitalization,
     ParamLocation,
     ParamType,
     URLType,
 )
 
+QUOTE = Endpoint(
+    name="quote",
+    path="quote/{symbol}",
+    version=APIVersion.V3,
+    description="Get real-time stock quote",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[],
+    response_model=Quote,
+)
+
+SIMPLE_QUOTE = Endpoint(
+    name="simple_quote",
+    path="quote-short/{symbol}",
+    version=APIVersion.V3,
+    description="Get simple stock quote",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[],
+    response_model=SimpleQuote,
+)
+
+HISTORICAL_PRICE = Endpoint(
+    name="historical_price",
+    path="historical-price-full/{symbol}",
+    version=APIVersion.V3,
+    description="Get historical daily price data",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="start_date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=True,
+            description="Start date",
+            alias="from",
+        ),
+        EndpointParam(
+            name="end_date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=True,
+            description="End date",
+            alias="to",
+        ),
+    ],
+    response_model=HistoricalData,
+)
+
+INTRADAY_PRICE = Endpoint(
+    name="intraday_price",
+    path="historical-chart/{interval}/{symbol}",
+    version=APIVersion.V3,
+    description="Get intraday price data",
+    mandatory_params=[
+        EndpointParam(
+            name="interval",
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Time interval (1min, 5min, 15min, 30min, 1hour, 4hour)",
+        ),
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        ),
+    ],
+    optional_params=[],
+    response_model=IntradayPrice,
+)
 # Profile Endpoints
 PROFILE = Endpoint(
     name="profile",
@@ -108,53 +202,7 @@ CORE_INFORMATION = Endpoint(
 )
 
 # Search Endpoints
-SEARCH = Endpoint(
-    name="search",
-    path="search",
-    version=APIVersion.V3,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description=(
-        "Search for companies by name, ticker, or other identifiers. Returns matching "
-        "companies with their basic information including symbol, name, and exchange. "
-        "Useful for finding companies based on keywords or partial matches."
-    ),
-    mandatory_params=[
-        EndpointParam(
-            name="query",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Search query string",
-        )
-    ],
-    optional_params=[
-        EndpointParam(
-            name="limit",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.INTEGER,
-            required=False,
-            description="Maximum number of results",
-            default=10,
-        ),
-        EndpointParam(
-            name="exchange",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=False,
-            description="Filter by exchange",
-        ),
-    ],
-    response_model=CompanySearchResult,
-    arg_model=SearchArgs,
-    example_queries=[
-        "Search for companies with 'tech' in their name",
-        "Find companies related to artificial intelligence",
-        "Look up companies in the healthcare sector",
-        "Search for banks listed on NYSE",
-        "Find companies matching 'renewable energy'",
-    ],
-)
+
 # Executive Information Endpoints
 KEY_EXECUTIVES = Endpoint(
     name="key_executives",
@@ -250,203 +298,6 @@ EMPLOYEE_COUNT = Endpoint(
     ],
 )
 
-STOCK_LIST = Endpoint(
-    name="stock_list",
-    path="stock/list",
-    version=APIVersion.V3,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description=(
-        "Get a comprehensive list of all available stocks with their basic information "
-        "including symbol, name, price, and exchange details. Returns the complete "
-        "universe of tradable stocks."
-    ),
-    mandatory_params=[],
-    optional_params=[],
-    response_model=CompanySymbol,
-    arg_model=StockListArgs,
-    example_queries=[
-        "Get a list of all available stocks",
-        "Show me all tradable company symbols",
-        "What stocks are available for trading?",
-        "List all company tickers",
-        "Get the complete list of stocks",
-    ],
-)
-
-ETF_LIST = Endpoint(
-    name="etf_list",
-    path="etf/list",
-    version=APIVersion.V3,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description=(
-        "Get a complete list of all available ETFs (Exchange Traded Funds) with their "
-        "basic information. Provides a comprehensive view of tradable ETF products."
-    ),
-    mandatory_params=[],
-    optional_params=[],
-    response_model=CompanySymbol,
-    arg_model=ETFListArgs,
-    example_queries=[
-        "List all available ETFs",
-        "Show me tradable ETF symbols",
-        "What ETFs can I invest in?",
-        "Get a complete list of ETFs",
-        "Show all exchange traded funds",
-    ],
-)
-AVAILABLE_INDEXES = Endpoint(
-    name="available_indexes",
-    path="symbol/available-indexes",
-    version=APIVersion.V3,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description=(
-        "Get a comprehensive list of all available market indexes including major "
-        "stock market indices, sector indexes, and other benchmark indicators. "
-        "Provides information about tradable and trackable market indexes along "
-        "with their basic details such as name, currency, and exchange."
-    ),
-    mandatory_params=[],
-    optional_params=[],
-    response_model=AvailableIndex,
-    arg_model=AvailableIndexesArgs,
-    example_queries=[
-        "List all available market indexes",
-        "Show me tradable market indices",
-        "What stock market indexes are available?",
-        "Get information about market indices",
-        "Show all benchmark indexes",
-    ],
-)
-
-EXCHANGE_SYMBOLS = Endpoint(
-    name="exchange_symbols",
-    path="symbol/{exchange}",
-    version=APIVersion.V3,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description=(
-        "Get all symbols listed on a specific exchange. Returns detailed information "
-        "about all securities trading on the specified exchange including stocks, "
-        "ETFs, and other instruments."
-    ),
-    mandatory_params=[
-        EndpointParam(
-            name="exchange",
-            location=ParamLocation.PATH,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Exchange code (e.g., NYSE, NASDAQ)",
-            valid_values=None,  # Will be validated by schema pattern
-        )
-    ],
-    optional_params=[],
-    response_model=ExchangeSymbol,
-    arg_model=BaseExchangeArg,  # Updated to use the base class
-    example_queries=[
-        "List all symbols on NYSE",
-        "Show me NASDAQ listed companies",
-        "What securities trade on LSE?",
-        "Get all stocks listed on TSX",
-        "Show symbols available on ASX",
-    ],
-)
-
-CIK_SEARCH = Endpoint(
-    name="cik_search",
-    path="cik-search",
-    version=APIVersion.V3,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description=(
-        "Search for companies by their CIK (Central Index Key) number. Useful for "
-        "finding companies using their SEC identifier and accessing regulatory filings."
-    ),
-    mandatory_params=[
-        EndpointParam(
-            name="query",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Search query",
-        )
-    ],
-    optional_params=[],
-    response_model=CIKResult,
-    arg_model=BaseSearchArg,
-    example_queries=[
-        "Find company with CIK number 320193",
-        "Search for company by CIK",
-        "Look up SEC CIK information",
-        "Get company details by CIK",
-        "Find ticker symbol for CIK",
-    ],
-)
-
-CUSIP_SEARCH = Endpoint(
-    name="cusip_search",
-    path="cusip",
-    version=APIVersion.V3,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description=(
-        "Search for companies by their CUSIP (Committee on Uniform Securities "
-        "Identification Procedures) number. Helps identify securities using their "
-        "unique identifier."
-    ),
-    mandatory_params=[
-        EndpointParam(
-            name="query",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Search query",
-        )
-    ],
-    optional_params=[],
-    response_model=CUSIPResult,
-    arg_model=BaseSearchArg,
-    example_queries=[
-        "Find company by CUSIP number",
-        "Search securities using CUSIP",
-        "Look up stock with CUSIP",
-        "Get company information by CUSIP",
-        "Find ticker for CUSIP",
-    ],
-)
-
-ISIN_SEARCH = Endpoint(
-    name="isin_search",
-    path="search/isin",
-    version=APIVersion.V4,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description=(
-        "Search for companies by their ISIN (International Securities Identification "
-        "Number). Used to find securities using their globally unique identifier."
-    ),
-    mandatory_params=[
-        EndpointParam(
-            name="query",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Search query",
-        )
-    ],
-    optional_params=[],
-    response_model=ISINResult,
-    arg_model=BaseSearchArg,
-    example_queries=[
-        "Find company by ISIN",
-        "Search using ISIN number",
-        "Look up stock with ISIN",
-        "Get security details by ISIN",
-        "Find ticker for ISIN",
-    ],
-)
 # Symbol Related Endpoints
 COMPANY_LOGO = Endpoint(
     name="company_logo",
@@ -481,7 +332,6 @@ COMPANY_LOGO = Endpoint(
     ],
 )
 
-
 # Company Operational Data
 COMPANY_NOTES = Endpoint(
     name="company_notes",
@@ -515,36 +365,6 @@ COMPANY_NOTES = Endpoint(
     ],
 )
 
-SHARE_FLOAT = Endpoint(
-    name="share_float",
-    path="shares_float",
-    version=APIVersion.V4,
-    description=(
-        "Get current share float data including number of shares available for "
-        "trading and percentage of total shares outstanding. Important for "
-        "understanding stock liquidity and institutional ownership."
-    ),
-    mandatory_params=[
-        EndpointParam(
-            name="symbol",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Company symbol",
-        )
-    ],
-    optional_params=[],
-    response_model=ShareFloat,
-    arg_model=BaseSymbolArg,
-    example_queries=[
-        "What is Apple's share float?",
-        "Get Microsoft's floating shares",
-        "Show Tesla's share float percentage",
-        "How many Amazon shares are floating?",
-        "Get Google's share float information",
-    ],
-)
-
 HISTORICAL_SHARE_FLOAT = Endpoint(
     name="historical_share_float",
     path="historical/shares_float",
@@ -572,28 +392,6 @@ HISTORICAL_SHARE_FLOAT = Endpoint(
         "Get Microsoft's historical floating shares",
         "Track Amazon's share float history",
         "Show changes in Google's share float",
-    ],
-)
-
-ALL_SHARES_FLOAT = Endpoint(
-    name="all_shares_float",
-    path="shares_float/all",
-    version=APIVersion.V4,
-    description=(
-        "Get share float data for all companies at once. Provides a comprehensive "
-        "view of market-wide float data, useful for screening and comparing "
-        "companies based on their float characteristics."
-    ),
-    mandatory_params=[],
-    optional_params=[],
-    response_model=ShareFloat,
-    arg_model=StockListArgs,  # Using StockListArgs since it's a no-parameter endpoint
-    example_queries=[
-        "Get share float data for all companies",
-        "Show market-wide float information",
-        "List float data across all stocks",
-        "Compare share floats across companies",
-        "Get complete market float data",
     ],
 )
 
@@ -683,7 +481,6 @@ GEOGRAPHIC_REVENUE_SEGMENTATION = Endpoint(
     ],
 )
 
-
 SYMBOL_CHANGES = Endpoint(
     name="symbol_changes",
     path="symbol_change",
@@ -704,4 +501,209 @@ SYMBOL_CHANGES = Endpoint(
         "What companies changed their symbols?",
         "Track stock symbol modifications",
     ],
+)
+
+SHARE_FLOAT = Endpoint(
+    name="share_float",
+    path="shares_float",
+    version=APIVersion.V4,
+    description=(
+        "Get current share float data including number of shares available for "
+        "trading and percentage of total shares outstanding. Important for "
+        "understanding stock liquidity and institutional ownership."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Company symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=ShareFloat,
+    arg_model=BaseSymbolArg,
+    example_queries=[
+        "What is Apple's share float?",
+        "Get Microsoft's floating shares",
+        "Show Tesla's share float percentage",
+        "How many Amazon shares are floating?",
+        "Get Google's share float information",
+    ],
+)
+
+MARKET_CAP = Endpoint(
+    name="market_cap",
+    path="market-capitalization/{symbol}",
+    version=APIVersion.V3,
+    description="Get market capitalization data",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[],
+    response_model=MarketCapitalization,
+)
+
+HISTORICAL_MARKET_CAP = Endpoint(
+    name="historical_market_cap",
+    path="historical-market-capitalization/{symbol}",
+    version=APIVersion.V3,
+    description="Get historical market capitalization data",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[],
+    response_model=MarketCapitalization,
+)
+PRICE_TARGET = Endpoint(
+    name="price_target",
+    path="price-target",
+    version=APIVersion.V4,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get price targets",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=PriceTarget,
+)
+
+PRICE_TARGET_SUMMARY = Endpoint(
+    name="price_target_summary",
+    path="price-target-summary",
+    version=APIVersion.V4,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get price target summary",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=PriceTargetSummary,
+)
+
+PRICE_TARGET_CONSENSUS = Endpoint(
+    name="price_target_consensus",
+    path="price-target-consensus",
+    version=APIVersion.V4,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get price target consensus",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=PriceTargetConsensus,
+)
+
+ANALYST_ESTIMATES = Endpoint(
+    name="analyst_estimates",
+    path="analyst-estimates/{symbol}",
+    version=APIVersion.V3,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get analyst estimates",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=AnalystEstimate,
+)
+
+ANALYST_RECOMMENDATIONS = Endpoint(
+    name="analyst_recommendations",
+    path="analyst-stock-recommendations/{symbol}",
+    version=APIVersion.V3,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get analyst recommendations",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.PATH,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=AnalystRecommendation,
+)
+
+UPGRADES_DOWNGRADES = Endpoint(
+    name="upgrades_downgrades",
+    path="upgrades-downgrades",
+    version=APIVersion.V4,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get upgrades and downgrades",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=UpgradeDowngrade,
+)
+
+UPGRADES_DOWNGRADES_CONSENSUS = Endpoint(
+    name="upgrades_downgrades_consensus",
+    path="upgrades-downgrades-consensus",
+    version=APIVersion.V4,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get upgrades and downgrades consensus",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=UpgradeDowngradeConsensus,
 )

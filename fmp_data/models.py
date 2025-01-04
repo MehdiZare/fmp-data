@@ -3,7 +3,7 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Any, Generic, TypeVar
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 T = TypeVar("T")
 
@@ -198,3 +198,57 @@ class Endpoint(BaseModel, Generic[T]):
                 for p in self.mandatory_params + (self.optional_params or [])
             )
         }
+
+
+class BaseSymbolArg(BaseModel):
+    """Base model for any endpoint requiring just a symbol"""
+
+    symbol: str = Field(
+        description="Stock symbol/ticker of the company (e.g., AAPL, MSFT)",
+        pattern=r"^[A-Z]{1,5}$",
+    )
+
+
+class ShareFloat(BaseModel):
+    """Share float information"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    symbol: str = Field(description="Company symbol")
+    date: datetime | None = Field(
+        None, description="Data date"
+    )  # Example: "2024-12-09 12:10:05"
+    free_float: float | None = Field(
+        alias="freeFloat", description="Free float percentage"
+    )  # Example: 55.73835
+    float_shares: float | None = Field(
+        alias="floatShares", description="Number of floating shares"
+    )  # Example: 36025816
+    outstanding_shares: float | None = Field(
+        alias="outstandingShares", description="Total outstanding shares"
+    )
+
+
+class MarketCapitalization(BaseModel):
+    """Market capitalization data"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    symbol: str = Field(description="Stock symbol")
+    date: datetime = Field(description="Date")
+    market_cap: float = Field(alias="marketCap", description="Market capitalization")
+
+
+class CompanySymbol(BaseModel):
+    """Company symbol information"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    symbol: str = Field(description="Stock symbol")
+    name: str | None = Field(None, description="Company name")
+    price: float | None = Field(None, description="Current stock price")
+    exchange: str | None = Field(None, description="Stock exchange")
+    exchange_short_name: str | None = Field(
+        None, alias="exchangeShortName", description="Exchange short name"
+    )
+    type: str | None = Field(None, description="Security type")

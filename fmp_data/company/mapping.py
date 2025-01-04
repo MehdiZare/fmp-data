@@ -1,191 +1,68 @@
 # fmp_data/company/mapping.py
 
 from fmp_data.company.endpoints import (
-    ALL_SHARES_FLOAT,
-    AVAILABLE_INDEXES,
-    CIK_SEARCH,
+    ANALYST_ESTIMATES,
+    ANALYST_RECOMMENDATIONS,
     COMPANY_LOGO,
     COMPANY_NOTES,
     CORE_INFORMATION,
-    CUSIP_SEARCH,
     EMPLOYEE_COUNT,
-    ETF_LIST,
-    EXCHANGE_SYMBOLS,
     EXECUTIVE_COMPENSATION,
     GEOGRAPHIC_REVENUE_SEGMENTATION,
+    HISTORICAL_MARKET_CAP,
+    HISTORICAL_PRICE,
     HISTORICAL_SHARE_FLOAT,
-    ISIN_SEARCH,
+    INTRADAY_PRICE,
     KEY_EXECUTIVES,
+    MARKET_CAP,
+    PRICE_TARGET,
+    PRICE_TARGET_CONSENSUS,
+    PRICE_TARGET_SUMMARY,
     PRODUCT_REVENUE_SEGMENTATION,
     PROFILE,
-    SEARCH,
+    QUOTE,
     SHARE_FLOAT,
-    STOCK_LIST,
+    SIMPLE_QUOTE,
     SYMBOL_CHANGES,
+    UPGRADES_DOWNGRADES,
+    UPGRADES_DOWNGRADES_CONSENSUS,
 )
-from fmp_data.lc.models import (
-    EndpointSemantics,
-    ParameterHint,
-    ResponseFieldInfo,
-    SemanticCategory,
+from fmp_data.lc.hints import DATE_HINTS, PERIOD_HINT, SYMBOL_HINT
+from fmp_data.lc.models import EndpointSemantics, ResponseFieldInfo, SemanticCategory
+
+from .hints import (
+    FLOAT_RESPONSE_HINTS,
+    INTERVAL_HINT,
+    PROFILE_RESPONSE_HINTS,
+    STRUCTURE_HINT,
 )
-
-IDENTIFIER_HINT = ParameterHint(
-    natural_names=["identifier", "ID", "number"],
-    extraction_patterns=[
-        r"\b\d{6,10}\b",  # CIK numbers
-        r"\b[0-9A-Z]{9}\b",  # CUSIP
-        r"\b[A-Z]{2}[A-Z0-9]{9}\d\b",  # ISIN
-    ],
-    examples=["320193", "037833100", "US0378331005"],
-    context_clues=["number", "identifier", "ID", "code"],
-)
-
-LIMIT_HINT = ParameterHint(
-    natural_names=["limit", "max results", "number of results"],
-    extraction_patterns=[
-        r"(?:limit|show|get|return)\s+(\d+)",
-        r"top\s+(\d+)",
-        r"first\s+(\d+)",
-    ],
-    examples=["10", "25", "50"],
-    context_clues=["limit", "maximum", "top", "first", "up to"],
-)
-
-STRUCTURE_HINT = ParameterHint(
-    natural_names=["structure", "format", "data format"],
-    extraction_patterns=[r"\b(flat|nested)\b"],
-    examples=["flat", "nested"],
-    context_clues=["structure", "format", "organize", "arrangement"],
-)
-
-PERIOD_HINT = ParameterHint(
-    natural_names=["period", "frequency", "timeframe"],
-    extraction_patterns=[r"\b(annual|quarter|quarterly)\b"],
-    examples=["annual", "quarter"],
-    context_clues=["period", "frequency", "annually", "quarterly"],
-)
-
-# Symbol related hints
-SYMBOL_HINT = ParameterHint(
-    natural_names=["ticker", "symbol", "stock", "company"],
-    extraction_patterns=[
-        r"\b[A-Z]{1,5}\b",
-        r"(?:for|of)\s+([A-Z]{1,5})",
-        r"([A-Z]{1,5})(?:'s|')",
-    ],
-    examples=["AAPL", "MSFT", "GOOG", "TSLA", "AMZN"],
-    context_clues=["for", "about", "'s", "of", "company", "stock"],
-)
-
-EXCHANGE_HINT = ParameterHint(
-    natural_names=["exchange", "market", "trading venue"],
-    extraction_patterns=[
-        r"\b(NYSE|NASDAQ|LSE|TSX|ASX)\b",
-        r"(?:on|at)\s+(the\s+)?([A-Z]{2,6})",
-    ],
-    examples=["NYSE", "NASDAQ", "LSE", "TSX"],
-    context_clues=["on", "listed on", "trading on", "exchange", "market"],
-)
-
-SEARCH_HINT = ParameterHint(
-    natural_names=["search term", "query", "keyword"],
-    extraction_patterns=[
-        r"(?:search|find|look up)\s+(.+?)(?:\s+in|\s+on|\s*$)",
-        r"(?:about|related to)\s+(.+?)(?:\s+in|\s+on|\s*$)",
-    ],
-    examples=["tech companies", "renewable energy", "artificial intelligence"],
-    context_clues=["search", "find", "look up", "about", "related to"],
-)
-
-PERIOD_HINT = ParameterHint(
-    natural_names=["period", "timeframe", "frequency"],
-    extraction_patterns=[
-        r"\b(annual|quarterly)\b",
-        r"(?:by|per)\s+(year|quarter)",
-    ],
-    examples=["annual", "quarter"],
-    context_clues=["annual", "quarterly", "year", "quarter"],
-)
-
-# Common response field hints
-PROFILE_RESPONSE_HINTS = {
-    "price": ResponseFieldInfo(
-        description="Current stock price",
-        examples=["150.25", "3500.00"],
-        related_terms=["stock price", "trading price", "share price", "current price"],
-    ),
-    "market_cap": ResponseFieldInfo(
-        description="Company's market capitalization",
-        examples=["2.5T", "800B"],
-        related_terms=["market value", "company worth", "capitalization", "market cap"],
-    ),
-    "beta": ResponseFieldInfo(
-        description="Stock's beta value (market correlation)",
-        examples=["1.2", "0.8"],
-        related_terms=["volatility", "market correlation", "risk measure"],
-    ),
-}
-
-FINANCIAL_RESPONSE_HINTS = {
-    "revenue": ResponseFieldInfo(
-        description="Company's revenue/sales",
-        examples=["$365.8B", "$115.5M"],
-        related_terms=["sales", "income", "earnings", "top line"],
-    ),
-    "employees": ResponseFieldInfo(
-        description="Number of employees",
-        examples=["164,000", "25,000"],
-        related_terms=["workforce", "staff", "personnel", "headcount"],
-    ),
-}
-
-EXECUTIVE_RESPONSE_HINTS = {
-    "name": ResponseFieldInfo(
-        description="Executive's name",
-        examples=["Tim Cook", "Satya Nadella"],
-        related_terms=["CEO", "executive", "officer", "management"],
-    ),
-    "compensation": ResponseFieldInfo(
-        description="Executive compensation",
-        examples=["$15.7M", "$40.2M"],
-        related_terms=["salary", "pay", "remuneration", "earnings"],
-    ),
-}
-
-FLOAT_RESPONSE_HINTS = {
-    "float_shares": ResponseFieldInfo(
-        description="Number of shares available for trading",
-        examples=["5.2B", "750M"],
-        related_terms=["floating shares", "tradable shares", "public float"],
-    ),
-    "float_percentage": ResponseFieldInfo(
-        description="Percentage of shares available for trading",
-        examples=["85.5%", "45.2%"],
-        related_terms=["float ratio", "public float percentage", "tradable ratio"],
-    ),
-}
 
 # Company endpoints mapping
 COMPANY_ENDPOINT_MAP = {
+    # Price Target endpoints
+    "get_price_target": PRICE_TARGET,
+    "get_price_target_summary": PRICE_TARGET_SUMMARY,
+    "get_price_target_consensus": PRICE_TARGET_CONSENSUS,
+    # Analyst endpoints
+    "get_analyst_estimates": ANALYST_ESTIMATES,
+    "get_analyst_recommendations": ANALYST_RECOMMENDATIONS,
+    "get_upgrades_downgrades": UPGRADES_DOWNGRADES,
+    "get_upgrades_downgrades_consensus": UPGRADES_DOWNGRADES_CONSENSUS,
+    "get_quote": QUOTE,
+    "get_simple_quote": SIMPLE_QUOTE,
+    "get_historical_prices": HISTORICAL_PRICE,
+    "get_intraday_prices": INTRADAY_PRICE,
+    "get_market_cap": MARKET_CAP,
+    "get_historical_market_cap": HISTORICAL_MARKET_CAP,
+    "get_share_float": SHARE_FLOAT,
     "get_profile": PROFILE,
     "get_core_information": CORE_INFORMATION,
-    "search": SEARCH,
     "get_executives": KEY_EXECUTIVES,
     "get_company_notes": COMPANY_NOTES,
     "get_employee_count": EMPLOYEE_COUNT,
-    "get_stock_list": STOCK_LIST,
-    "get_etf_list": ETF_LIST,
-    "get_available_indexes": AVAILABLE_INDEXES,
-    "get_exchange_symbols": EXCHANGE_SYMBOLS,
-    "search_by_cik": CIK_SEARCH,
-    "search_by_cusip": CUSIP_SEARCH,
-    "search_by_isin": ISIN_SEARCH,
     "get_company_logo_url": COMPANY_LOGO,
     "get_executive_compensation": EXECUTIVE_COMPENSATION,
-    "get_share_float": SHARE_FLOAT,
     "get_historical_share_float": HISTORICAL_SHARE_FLOAT,
-    "get_all_shares_float": ALL_SHARES_FLOAT,
     "get_product_revenue_segmentation": PRODUCT_REVENUE_SEGMENTATION,
     "get_geographic_revenue_segmentation": GEOGRAPHIC_REVENUE_SEGMENTATION,
     "get_symbol_changes": SYMBOL_CHANGES,
@@ -266,101 +143,6 @@ COMPANY_ENDPOINTS_SEMANTICS = {
             "SEC filing research",
             "Industry classification",
             "Company registration lookup",
-        ],
-    ),
-    "stock_list": EndpointSemantics(
-        client_name="company",
-        method_name="get_stock_list",
-        natural_description=(
-            "Get a comprehensive list of all available stocks with their basic "
-            "information including symbol, name, and exchange details"
-        ),
-        example_queries=[
-            "Get a list of all available stocks",
-            "Show me all tradable company symbols",
-            "What stocks are available for trading?",
-            "List all company tickers",
-            "Get the complete list of stocks",
-        ],
-        related_terms=[
-            "stocks",
-            "securities",
-            "tradable companies",
-            "listed companies",
-            "stock symbols",
-            "tickers",
-        ],
-        category=SemanticCategory.COMPANY_INFO,
-        parameter_hints={},  # No parameters needed
-        response_hints={
-            "symbol": ResponseFieldInfo(
-                description="Stock trading symbol",
-                examples=["AAPL", "MSFT"],
-                related_terms=["ticker", "stock symbol", "trading symbol"],
-            ),
-            "name": ResponseFieldInfo(
-                description="Company name",
-                examples=["Apple Inc", "Microsoft Corporation"],
-                related_terms=["company name", "business name", "corporation name"],
-            ),
-        },
-        use_cases=[
-            "Finding available stocks to trade",
-            "Market analysis",
-            "Building stock screeners",
-            "Portfolio management",
-        ],
-    ),
-    "search": EndpointSemantics(
-        client_name="company",
-        method_name="search",
-        natural_description=(
-            "Search for companies by name, ticker, " "or other identifiers."
-        ),
-        example_queries=[
-            "Search for companies with 'tech' in their name",
-            "Find companies related to artificial intelligence",
-            "Look up companies in the healthcare sector",
-            "Search for banks listed on NYSE",
-            "Find companies matching 'renewable energy'",
-        ],
-        related_terms=[
-            "company search",
-            "find companies",
-            "lookup businesses",
-            "search stocks",
-            "find tickers",
-            "company lookup",
-        ],
-        category=SemanticCategory.COMPANY_INFO,
-        parameter_hints={
-            "query": SEARCH_HINT,
-            "limit": LIMIT_HINT,
-            "exchange": EXCHANGE_HINT,
-        },
-        response_hints={
-            "symbol": ResponseFieldInfo(
-                description="Company stock symbol",
-                examples=["AAPL", "MSFT", "GOOGL"],
-                related_terms=["ticker", "stock symbol", "company symbol"],
-            ),
-            "name": ResponseFieldInfo(
-                description="Full company name",
-                examples=["Apple Inc.", "Microsoft Corporation"],
-                related_terms=["company name", "business name", "organization"],
-            ),
-            "exchange": ResponseFieldInfo(
-                description="Stock exchange where company is listed",
-                examples=["NASDAQ", "NYSE"],
-                related_terms=["listing exchange", "market", "trading venue"],
-            ),
-        },
-        use_cases=[
-            "Finding companies by keyword",
-            "Sector research",
-            "Competitor analysis",
-            "Investment screening",
-            "Market research",
         ],
     ),
     "share_float": EndpointSemantics(
@@ -477,96 +259,6 @@ COMPANY_ENDPOINTS_SEMANTICS = {
             "International market research",
             "Regional performance tracking",
             "Market penetration study",
-        ],
-    ),
-    "etf_list": EndpointSemantics(
-        client_name="company",
-        method_name="get_etf_list",
-        natural_description=(
-            "Get a complete list of all available "
-            "ETFs (Exchange Traded Funds) with their "
-            "basic information including symbol, "
-            "name, and trading details"
-        ),
-        example_queries=[
-            "List all available ETFs",
-            "Show me tradable ETF symbols",
-            "What ETFs can I invest in?",
-            "Get a complete list of ETFs",
-            "Show all exchange traded funds",
-        ],
-        related_terms=[
-            "exchange traded funds",
-            "ETFs",
-            "index funds",
-            "traded funds",
-            "fund listings",
-            "investment vehicles",
-        ],
-        category=SemanticCategory.COMPANY_INFO,
-        sub_category="Lists",
-        parameter_hints={},  # No parameters needed
-        response_hints={
-            "symbol": ResponseFieldInfo(
-                description="ETF trading symbol",
-                examples=["SPY", "QQQ", "VTI"],
-                related_terms=["ETF symbol", "fund ticker", "trading symbol"],
-            ),
-            "name": ResponseFieldInfo(
-                description="ETF name",
-                examples=["SPDR S&P 500 ETF", "Invesco QQQ Trust"],
-                related_terms=["fund name", "ETF name", "product name"],
-            ),
-        },
-        use_cases=[
-            "ETF research",
-            "Fund selection",
-            "Portfolio diversification",
-            "Investment screening",
-        ],
-    ),
-    "available_indexes": EndpointSemantics(
-        client_name="company",
-        method_name="get_available_indexes",
-        natural_description=(
-            "Get a list of all available market indexes including major stock market "
-            "indices, sector indexes, and other benchmark indicators"
-        ),
-        example_queries=[
-            "List all available market indexes",
-            "Show me tradable market indices",
-            "What stock market indexes are available?",
-            "Get information about market indices",
-            "Show all benchmark indexes",
-        ],
-        related_terms=[
-            "market indices",
-            "stock indexes",
-            "benchmarks",
-            "market indicators",
-            "sector indices",
-            "composite indexes",
-        ],
-        category=SemanticCategory.COMPANY_INFO,
-        sub_category="Lists",
-        parameter_hints={},  # No parameters needed
-        response_hints={
-            "symbol": ResponseFieldInfo(
-                description="Index symbol",
-                examples=["^GSPC", "^DJI", "^IXIC"],
-                related_terms=["index symbol", "benchmark code", "indicator symbol"],
-            ),
-            "name": ResponseFieldInfo(
-                description="Index name",
-                examples=["S&P 500", "Dow Jones Industrial Average"],
-                related_terms=["index name", "benchmark name", "indicator name"],
-            ),
-        },
-        use_cases=[
-            "Market analysis",
-            "Benchmark selection",
-            "Index tracking",
-            "Performance comparison",
         ],
     ),
     "key_executives": EndpointSemantics(
@@ -821,158 +513,6 @@ COMPANY_ENDPOINTS_SEMANTICS = {
             "Executive background check",
         ],
     ),
-    "exchange_symbols": EndpointSemantics(
-        client_name="company",
-        method_name="get_exchange_symbols",
-        natural_description=(
-            "Get all symbols listed on a specific exchange including stocks, ETFs, "
-            "and other traded instruments."
-        ),
-        example_queries=[
-            "List all symbols on NYSE",
-            "Show me NASDAQ listed companies",
-            "What securities trade on LSE?",
-            "Get all stocks listed on TSX",
-            "Show symbols available on ASX",
-        ],
-        related_terms=[
-            "exchange listings",
-            "listed securities",
-            "traded symbols",
-            "exchange symbols",
-            "market listings",
-        ],
-        category=SemanticCategory.COMPANY_INFO,
-        sub_category="Lists",
-        parameter_hints={
-            "exchange": EXCHANGE_HINT,
-        },
-        response_hints={
-            "symbol": ResponseFieldInfo(
-                description="Trading symbol",
-                examples=["AAPL", "MSFT"],
-                related_terms=["ticker", "stock symbol"],
-            ),
-            "name": ResponseFieldInfo(
-                description="Company name",
-                examples=["Apple Inc", "Microsoft Corporation"],
-                related_terms=["company name", "listing name"],
-            ),
-        },
-        use_cases=[
-            "Exchange analysis",
-            "Market coverage",
-            "Trading universe definition",
-            "Market research",
-        ],
-    ),
-    # Search variant semantics
-    "search_by_cik": EndpointSemantics(
-        client_name="company",
-        method_name="search_by_cik",  # Match exact method name
-        natural_description=(
-            "Search for companies by their SEC " "Central Index Key (CIK) number"
-        ),
-        example_queries=[
-            "Find company with CIK number 320193",
-            "Search for company by CIK",
-            "Look up SEC CIK information",
-            "Get company details by CIK",
-            "Find ticker symbol for CIK",
-        ],
-        related_terms=[
-            "CIK search",
-            "SEC identifier",
-            "Central Index Key",
-            "regulatory ID",
-            "SEC lookup",
-        ],
-        category=SemanticCategory.COMPANY_INFO,
-        sub_category="Search",
-        parameter_hints={"query": IDENTIFIER_HINT},
-        response_hints={
-            "cik": ResponseFieldInfo(
-                description="SEC Central Index Key",
-                examples=["0000320193"],
-                related_terms=["CIK", "SEC ID"],
-            )
-        },
-        use_cases=[
-            "Regulatory research",
-            "SEC filing lookup",
-            "Company identification",
-            "Regulatory compliance",
-        ],
-    ),
-    "search_by_cusip": EndpointSemantics(
-        client_name="company",
-        method_name="search_by_cusip",
-        natural_description="Search for companies by their CUSIP identifier",
-        example_queries=[
-            "Find company by CUSIP number",
-            "Search securities using CUSIP",
-            "Look up stock with CUSIP",
-            "Get company information by CUSIP",
-        ],
-        related_terms=[
-            "CUSIP search",
-            "security identifier",
-            "CUSIP lookup",
-            "security ID",
-        ],
-        category=SemanticCategory.COMPANY_INFO,
-        sub_category="Search",
-        parameter_hints={"query": IDENTIFIER_HINT},
-        response_hints={
-            "cusip": ResponseFieldInfo(
-                description="CUSIP identifier",
-                examples=["037833100"],
-                related_terms=["CUSIP", "security ID"],
-            )
-        },
-        use_cases=[
-            "Security identification",
-            "Trade processing",
-            "Portfolio management",
-            "Security lookup",
-        ],
-    ),
-    "search_by_isin": EndpointSemantics(
-        client_name="company",
-        method_name="search_by_isin",
-        natural_description=(
-            "Search for companies by their International "
-            "Securities Identification Number (ISIN)"
-        ),
-        example_queries=[
-            "Find company by ISIN",
-            "Search using ISIN number",
-            "Look up stock with ISIN",
-            "Get security details by ISIN",
-        ],
-        related_terms=[
-            "ISIN search",
-            "international identifier",
-            "ISIN lookup",
-            "global ID",
-        ],
-        category=SemanticCategory.COMPANY_INFO,
-        sub_category="Search",
-        parameter_hints={"query": IDENTIFIER_HINT},
-        response_hints={
-            "isin": ResponseFieldInfo(
-                description="International Securities Identification Number",
-                examples=["US0378331005"],
-                related_terms=["ISIN", "international ID"],
-            )
-        },
-        use_cases=[
-            "Global security identification",
-            "International trading",
-            "Cross-border transactions",
-            "Global portfolio management",
-        ],
-    ),
     "company_logo_url": EndpointSemantics(
         client_name="company",
         method_name="get_company_logo_url",
@@ -1073,54 +613,454 @@ COMPANY_ENDPOINTS_SEMANTICS = {
             "Management expense analysis",
         ],
     ),
-    "all_shares_float": EndpointSemantics(
-        client_name="company",
-        method_name="get_all_shares_float",
+    "quote": EndpointSemantics(
+        client_name="market",
+        method_name="get_quote",
         natural_description=(
-            "Get comprehensive share float data for all companies, showing the "
-            "number and percentage of shares available for public trading"
+            "Get real-time stock quote data including current price, "
+            "volume, day range, and other key market metrics"
         ),
         example_queries=[
-            "Get all companies' share float data",
-            "Show float information for all stocks",
-            "List share float for all companies",
-            "Get complete float data",
-            "Show all public float information",
+            "What's the current price of AAPL?",
+            "Get me a quote for MSFT",
+            "Show GOOGL's market data",
+            "What's TSLA trading at?",
+            "Get current market data for AMZN",
         ],
         related_terms=[
-            "market float",
-            "public float",
-            "tradable shares",
-            "floating stock",
-            "share availability",
-            "trading float",
+            "stock price",
+            "market price",
+            "trading price",
+            "quote",
+            "market data",
+            "stock quote",
         ],
         category=SemanticCategory.COMPANY_INFO,
-        sub_category="Float",
-        parameter_hints={},  # No parameters needed
+        sub_category="Real-time Quotes",
+        parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
-            "symbol": ResponseFieldInfo(
-                description="Company stock symbol",
-                examples=["AAPL", "MSFT"],
-                related_terms=["ticker", "trading symbol", "stock symbol"],
+            "price": ResponseFieldInfo(
+                description="Current stock price",
+                examples=["150.25", "3500.95"],
+                related_terms=["price", "current price", "trading price"],
             ),
-            "float_shares": ResponseFieldInfo(
-                description="Number of shares in public float",
-                examples=["5.2B", "750M"],
-                related_terms=["floating shares", "tradable shares", "public shares"],
+            "volume": ResponseFieldInfo(
+                description="Trading volume",
+                examples=["1000000", "500000"],
+                related_terms=["volume", "shares traded", "trading volume"],
             ),
-            "percentage_float": ResponseFieldInfo(
-                description="Percentage of shares in public float",
-                examples=["85.5%", "45.2%"],
-                related_terms=["float percentage", "public float ratio", "float ratio"],
+            "change_percentage": ResponseFieldInfo(
+                description="Price change percentage",
+                examples=["2.5", "-1.8"],
+                related_terms=["change", "percent change", "movement"],
             ),
         },
         use_cases=[
-            "Market liquidity analysis",
-            "Float comparison across companies",
-            "Trading volume analysis",
-            "Institutional ownership research",
-            "Market availability assessment",
+            "Real-time price monitoring",
+            "Trading decisions",
+            "Portfolio tracking",
+            "Market analysis",
+            "Price change monitoring",
+        ],
+    ),
+    "simple_quote": EndpointSemantics(
+        client_name="market",
+        method_name="get_simple_quote",
+        natural_description=(
+            "Get real-time basic stock quote "
+            "including price, volume, and change information"
+        ),
+        example_queries=[
+            "Get current price for AAPL",
+            "Show Microsoft stock quote",
+            "What's Tesla trading at?",
+            "Get Google stock price",
+            "Show Amazon quote",
+        ],
+        related_terms=[
+            "stock quote",
+            "current price",
+            "trading price",
+            "market price",
+            "live quote",
+            "real-time price",
+        ],
+        category=SemanticCategory.COMPANY_INFO,
+        sub_category="Real-time Quotes",
+        parameter_hints={"symbol": SYMBOL_HINT},
+        response_hints={
+            "price": ResponseFieldInfo(
+                description="Current stock price",
+                examples=["150.25", "3200.50"],
+                related_terms=["current price", "trading price", "market price"],
+            ),
+            "change": ResponseFieldInfo(
+                description="Price change",
+                examples=["+2.50", "-1.75"],
+                related_terms=["price change", "change amount", "price movement"],
+            ),
+            "volume": ResponseFieldInfo(
+                description="Trading volume",
+                examples=["1.2M", "500K"],
+                related_terms=["volume", "shares traded", "trading volume"],
+            ),
+        },
+        use_cases=[
+            "Real-time price monitoring",
+            "Basic stock tracking",
+            "Quick price checks",
+            "Portfolio monitoring",
+        ],
+    ),
+    "intraday_prices": EndpointSemantics(
+        client_name="market",
+        method_name="get_intraday_prices",
+        natural_description=(
+            "Get intraday price data with " "minute-by-minute or hourly intervals"
+        ),
+        example_queries=[
+            "Get AAPL intraday prices",
+            "Show Microsoft today's price movement",
+            "Tesla intraday data",
+            "Get Google price by minute",
+            "Show Amazon today's trading",
+        ],
+        related_terms=[
+            "intraday",
+            "minute data",
+            "day trading",
+            "price movement",
+            "daily chart",
+        ],
+        category=SemanticCategory.COMPANY_INFO,
+        sub_category="Intraday Data",
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "interval": INTERVAL_HINT,
+        },
+        response_hints={
+            "datetime": ResponseFieldInfo(
+                description="Exact time of the price",
+                examples=["2024-01-15 10:30:00", "2024-01-15 15:45:00"],
+                related_terms=["timestamp", "time", "minute"],
+            ),
+            "price": ResponseFieldInfo(
+                description="Price at that time",
+                examples=["150.25", "3200.50"],
+                related_terms=["price", "trade price", "current"],
+            ),
+        },
+        use_cases=[
+            "Day trading",
+            "Intraday analysis",
+            "Price monitoring",
+            "Short-term trading",
+        ],
+    ),
+    "historical_price": EndpointSemantics(
+        client_name="market",
+        method_name="get_historical_prices",
+        natural_description=(
+            "Retrieve historical daily price data including open, high, low, close, "
+            "and adjusted prices with volume information ."
+        ),
+        example_queries=[
+            "Get AAPL's historical prices",
+            "Show price history for MSFT",
+            "Get GOOGL prices from last month",
+            "Historical data for TSLA",
+            "Show AMZN's past performance",
+            "Get price history between dates",
+        ],
+        related_terms=[
+            "price history",
+            "historical data",
+            "past prices",
+            "historical performance",
+            "price chart data",
+            "ohlc data",
+        ],
+        category=SemanticCategory.COMPANY_INFO,
+        sub_category="Historical Data",
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+        },
+        response_hints={
+            "date": ResponseFieldInfo(
+                description="Trading date",
+                examples=["2024-01-15", "2023-12-31"],
+                related_terms=["date", "trading day", "session date"],
+            ),
+            "open": ResponseFieldInfo(
+                description="Opening price",
+                examples=["150.25", "3500.95"],
+                related_terms=["open price", "opening", "open"],
+            ),
+            "high": ResponseFieldInfo(
+                description="High price",
+                examples=["152.50", "3550.00"],
+                related_terms=["high", "day high", "session high"],
+            ),
+            "low": ResponseFieldInfo(
+                description="Low price",
+                examples=["148.75", "3475.50"],
+                related_terms=["low", "day low", "session low"],
+            ),
+            "close": ResponseFieldInfo(
+                description="Closing price",
+                examples=["151.00", "3525.75"],
+                related_terms=["close", "closing price", "final price"],
+            ),
+            "volume": ResponseFieldInfo(
+                description="Trading volume",
+                examples=["1000000", "500000"],
+                related_terms=["volume", "shares traded", "daily volume"],
+            ),
+        },
+        use_cases=[
+            "Technical analysis",
+            "Historical performance analysis",
+            "Backtesting trading strategies",
+            "Price trend analysis",
+            "Volatility analysis",
+            "Volume analysis",
+        ],
+    ),
+    "intraday_price": EndpointSemantics(
+        client_name="market",
+        method_name="get_intraday_prices",
+        natural_description=(
+            "Get intraday price data at various intervals (1min to 4hour) "
+            "for detailed analysis of price movements within the trading day"
+        ),
+        example_queries=[
+            "Get 1-minute data for AAPL",
+            "Show MSFT's intraday prices",
+            "Get 5-minute bars for GOOGL",
+            "Intraday chart data for TSLA",
+            "Get hourly prices for AMZN",
+        ],
+        related_terms=[
+            "intraday data",
+            "minute bars",
+            "tick data",
+            "time and sales",
+            "price ticks",
+            "intraday chart",
+        ],
+        category=SemanticCategory.COMPANY_INFO,
+        sub_category="Intraday Data",
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "interval": INTERVAL_HINT,
+        },
+        response_hints={
+            "date": ResponseFieldInfo(
+                description="Timestamp of the price data",
+                examples=["2024-01-15 14:30:00", "2024-01-15 14:31:00"],
+                related_terms=["time", "timestamp", "datetime"],
+            ),
+            "price": ResponseFieldInfo(
+                description="Price at the given time",
+                examples=["150.25", "150.30"],
+                related_terms=["price", "tick price", "trade price"],
+            ),
+            "volume": ResponseFieldInfo(
+                description="Volume for the interval",
+                examples=["1000", "500"],
+                related_terms=["interval volume", "tick volume"],
+            ),
+        },
+        use_cases=[
+            "Day trading analysis",
+            "High-frequency trading",
+            "Price momentum analysis",
+            "Real-time market monitoring",
+            "Short-term trading strategies",
+            "Volume profile analysis",
+        ],
+    ),
+    "market_cap": EndpointSemantics(
+        client_name="market",
+        method_name="get_market_cap",
+        natural_description=(
+            "Get current market capitalization data for a company, including "
+            "total market value and related metrics"
+        ),
+        example_queries=[
+            "What's AAPL's market cap?",
+            "Get market value for MSFT",
+            "Show GOOGL market capitalization",
+            "How much is TSLA worth?",
+            "Get AMZN's market value",
+        ],
+        related_terms=[
+            "market capitalization",
+            "company value",
+            "market value",
+            "company size",
+            "equity value",
+            "company worth",
+        ],
+        category=SemanticCategory.COMPANY_INFO,
+        sub_category="Company Valuation",
+        parameter_hints={"symbol": SYMBOL_HINT},
+        response_hints={
+            "market_cap": ResponseFieldInfo(
+                description="Total market capitalization",
+                examples=["2000000000000", "1500000000000"],
+                related_terms=["market value", "capitalization", "company value"],
+            ),
+        },
+        use_cases=[
+            "Company valuation analysis",
+            "Market size comparison",
+            "Index inclusion analysis",
+            "Investment screening",
+            "Portfolio weighting",
+        ],
+    ),
+    "historical_market_cap": EndpointSemantics(
+        client_name="market",
+        method_name="get_historical_market_cap",
+        natural_description=(
+            "Retrieve historical market capitalization data to track changes in "
+            "company value over time"
+        ),
+        example_queries=[
+            "Show AAPL's historical market cap",
+            "Get MSFT's past market value",
+            "Historical size of GOOGL",
+            "Track TSLA's market cap",
+            "AMZN market cap history",
+        ],
+        related_terms=[
+            "historical capitalization",
+            "market value history",
+            "size history",
+            "historical worth",
+            "past market cap",
+        ],
+        category=SemanticCategory.COMPANY_INFO,
+        sub_category="Historical Valuation",
+        parameter_hints={"symbol": SYMBOL_HINT},
+        response_hints={
+            "date": ResponseFieldInfo(
+                description="Date of the market cap value",
+                examples=["2024-01-15", "2023-12-31"],
+                related_terms=["valuation date", "as of date"],
+            ),
+            "market_cap": ResponseFieldInfo(
+                description="Market capitalization value",
+                examples=["2000000000000", "1500000000000"],
+                related_terms=["market value", "company value", "worth"],
+            ),
+        },
+        use_cases=[
+            "Growth analysis",
+            "Valuation trends",
+            "Size evolution tracking",
+            "Historical comparison",
+            "Market impact analysis",
+        ],
+    ),
+    "historical_prices": EndpointSemantics(
+        client_name="market",
+        method_name="get_historical_prices",
+        natural_description=(
+            "Retrieve historical price data including OHLCV (Open, High, Low, Close, "
+            "Volume) information for detailed technical and performance analysis."
+        ),
+        example_queries=[
+            "Get AAPL historical prices",
+            "Show MSFT price history from 2023-01-01 to 2023-12-31",
+            "Get GOOGL historical data between dates",
+            "TSLA price history last year",
+            "Show AMZN trading history",
+        ],
+        related_terms=[
+            "price history",
+            "historical data",
+            "past prices",
+            "trading history",
+            "historical performance",
+            "price chart data",
+        ],
+        category=SemanticCategory.COMPANY_INFO,
+        sub_category="Historical Data",
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+        },
+        response_hints={
+            "date": ResponseFieldInfo(
+                description="Trading date",
+                examples=["2024-01-15", "2023-12-31"],
+                related_terms=["date", "trading day", "session date"],
+            ),
+            "open": ResponseFieldInfo(
+                description="Opening price",
+                examples=["150.25", "3500.95"],
+                related_terms=["open price", "opening", "open"],
+            ),
+            "close": ResponseFieldInfo(
+                description="Closing price",
+                examples=["151.00", "3525.75"],
+                related_terms=["close price", "closing", "final price"],
+            ),
+        },
+        use_cases=[
+            "Technical analysis",
+            "Performance tracking",
+            "Backtesting",
+            "Trend analysis",
+            "Historical research",
+        ],
+    ),
+    "price_target": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_price_target",
+        natural_description=(
+            "Retrieve analyst price targets "
+            "for a specific stock, including target prices, "
+            "analyst details, and publication dates"
+        ),
+        example_queries=[
+            "Get AAPL price targets",
+            "Show analyst targets for TSLA",
+            "What's the price target for MSFT?",
+            "Latest analyst price predictions",
+        ],
+        related_terms=[
+            "analyst target",
+            "price prediction",
+            "stock valuation",
+            "analyst forecast",
+            "price estimate",
+        ],
+        category=SemanticCategory.COMPANY_INFO,
+        sub_category="Analyst Research",
+        parameter_hints={"symbol": SYMBOL_HINT},
+        response_hints={
+            "price_target": ResponseFieldInfo(
+                description="Target price set by analyst",
+                examples=["150.00", "3500.00"],
+                related_terms=["target", "prediction", "forecast"],
+            ),
+            "analyst_name": ResponseFieldInfo(
+                description="Name of the analyst",
+                examples=["John Smith", "Jane Doe"],
+                related_terms=["analyst", "researcher"],
+            ),
+        },
+        use_cases=[
+            "Investment research",
+            "Stock analysis",
+            "Valuation comparison",
+            "Market sentiment analysis",
         ],
     ),
 }

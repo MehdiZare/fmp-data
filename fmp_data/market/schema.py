@@ -1,21 +1,92 @@
 # fmp_data/market/schema.py
 
-from enum import Enum
 
 from pydantic import BaseModel, Field
 
 from fmp_data.schema import (
     BaseArgModel,
     DateRangeArg,
+    ExchangeArg,
     NoParamArg,
+    PaginationArg,
+    SearchArg,
     SymbolArg,
     TimeSeriesBaseArg,
 )
 
 
+class SearchArgs(SearchArg, PaginationArg):
+    """Arguments for market search"""
+
+    exchange: str | None = Field(
+        None,
+        description="Filter by stock exchange",
+        pattern=r"^[A-Z]{2,6}$",
+        json_schema_extra={"examples": ["NYSE", "NASDAQ"]},
+    )
+
+
+class BaseSearchArg(BaseModel):
+    """Base model for search-type endpoints"""
+
+    query: str = Field(description="Search query string", min_length=2)
+
+
+class BaseExchangeArg(BaseModel):
+    """Base model for exchange-related queries"""
+
+    exchange: str = Field(
+        description="Exchange code (e.g., NYSE, NASDAQ)",
+        pattern=r"^[A-Z]{2,6}$",
+        min_length=2,
+        max_length=6,
+        examples=["NYSE", "NASDAQ", "LSE", "TSX"],
+    )
+
+
+class ExchangeArgs(BaseExchangeArg):
+    """Arguments for getting exchange symbols
+
+    Extends BaseExchangeArg to potentially add more specific parameters
+    in the future while maintaining backward compatibility
+    """
+
+    pass
+
+
+class AvailableIndexesArgs(NoParamArg):
+    """Arguments for getting available indexes"""
+
+    pass
+
+
+class ExchangeSymbolsArgs(ExchangeArg):
+    """Arguments for getting exchange symbols"""
+
+    pass
+
+
 # Market Data Arguments
 class MarketQuoteArgs(SymbolArg):
     """Arguments for getting market quotes"""
+
+    pass
+
+
+class CIKSearchArgs(SearchArg):
+    """Arguments for CIK search"""
+
+    pass
+
+
+class CUSIPSearchArgs(SearchArg):
+    """Arguments for CUSIP search"""
+
+    pass
+
+
+class ISINSearchArgs(SearchArg):
+    """Arguments for ISIN search"""
 
     pass
 
@@ -90,17 +161,6 @@ class MarketMoversArgs(BaseArgModel):
     limit: int | None = Field(default=10, ge=1, le=100, description="Number of results")
 
 
-class TimeInterval(str, Enum):
-    """Available time intervals for intraday data"""
-
-    ONE_MINUTE = "1min"
-    FIVE_MINUTES = "5min"
-    FIFTEEN_MINUTES = "15min"
-    THIRTY_MINUTES = "30min"
-    ONE_HOUR = "1hour"
-    FOUR_HOURS = "4hour"
-
-
 class QuoteArgs(BaseModel):
     """Arguments for getting stock quotes"""
 
@@ -111,3 +171,16 @@ class MarketCapArgs(BaseModel):
     """Arguments for getting market capitalization data"""
 
     symbol: str = Field(description="Stock symbol (ticker)")
+
+
+# List Related
+class StockListArgs(NoParamArg):
+    """Arguments for getting stock list"""
+
+    pass
+
+
+class ETFListArgs(NoParamArg):
+    """Arguments for getting ETF list"""
+
+    pass

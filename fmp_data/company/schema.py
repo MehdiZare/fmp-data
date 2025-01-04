@@ -1,51 +1,32 @@
 # fmp_data/company/schema.py
 
-from pydantic import BaseModel, ConfigDict, Field
+from enum import Enum
 
+from pydantic import ConfigDict, Field
+
+from fmp_data.models import BaseSymbolArg
 from fmp_data.schema import (
-    ExchangeArg,
     NoParamArg,
-    PaginationArg,
     ReportingPeriodEnum,
-    SearchArg,
     StructureTypeEnum,
     SymbolArg,
 )
 
 
+class IntradayTimeInterval(str, Enum):
+    """Available time intervals for intraday data"""
+
+    ONE_MINUTE = "1min"
+    FIVE_MINUTES = "5min"
+    FIFTEEN_MINUTES = "15min"
+    THIRTY_MINUTES = "30min"
+    ONE_HOUR = "1hour"
+    FOUR_HOURS = "4hour"
+
+
 # Profile and Core Information
 class ProfileArgs(SymbolArg):
     """Arguments for getting company profile"""
-
-    pass
-
-
-class SearchArgs(SearchArg, PaginationArg):
-    """Arguments for company search"""
-
-    exchange: str | None = Field(
-        None,
-        description="Filter by stock exchange",
-        pattern=r"^[A-Z]{2,6}$",
-        json_schema_extra={"examples": ["NYSE", "NASDAQ"]},
-    )
-
-
-# Search Related
-class CIKSearchArgs(SearchArg):
-    """Arguments for CIK search"""
-
-    pass
-
-
-class CUSIPSearchArgs(SearchArg):
-    """Arguments for CUSIP search"""
-
-    pass
-
-
-class ISINSearchArgs(SearchArg):
-    """Arguments for ISIN search"""
 
     pass
 
@@ -72,31 +53,6 @@ class CompanyNotesArgs(SymbolArg):
 
 class EmployeeCountArgs(SymbolArg):
     """Arguments for getting employee count"""
-
-    pass
-
-
-# List Related
-class StockListArgs(NoParamArg):
-    """Arguments for getting stock list"""
-
-    pass
-
-
-class ETFListArgs(NoParamArg):
-    """Arguments for getting ETF list"""
-
-    pass
-
-
-class AvailableIndexesArgs(NoParamArg):
-    """Arguments for getting available indexes"""
-
-    pass
-
-
-class ExchangeSymbolsArgs(ExchangeArg):
-    """Arguments for getting exchange symbols"""
 
     pass
 
@@ -151,45 +107,8 @@ class SymbolChangesArgs(NoParamArg):
     pass
 
 
-class BaseSymbolArg(BaseModel):
-    """Base model for any endpoint requiring just a symbol"""
-
-    symbol: str = Field(
-        description="Stock symbol/ticker of the company (e.g., AAPL, MSFT)",
-        pattern=r"^[A-Z]{1,5}$",
-    )
-
-
-class BaseSearchArg(BaseModel):
-    """Base model for search-type endpoints"""
-
-    query: str = Field(description="Search query string", min_length=2)
-
-
-class BaseExchangeArg(BaseModel):
-    """Base model for exchange-related queries"""
-
-    exchange: str = Field(
-        description="Exchange code (e.g., NYSE, NASDAQ)",
-        pattern=r"^[A-Z]{2,6}$",
-        min_length=2,
-        max_length=6,
-        examples=["NYSE", "NASDAQ", "LSE", "TSX"],
-    )
-
-
 class CoreInformationArgs(BaseSymbolArg):
     """Arguments for getting core company information"""
-
-    pass
-
-
-class ExchangeArgs(BaseExchangeArg):
-    """Arguments for getting exchange symbols
-
-    Extends BaseExchangeArg to potentially add more specific parameters
-    in the future while maintaining backward compatibility
-    """
 
     pass
 

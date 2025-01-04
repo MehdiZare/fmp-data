@@ -1,6 +1,4 @@
 from fmp_data.intelligence.models import (
-    AnalystEstimate,
-    AnalystRecommendation,
     CrowdfundingOffering,
     CryptoNewsArticle,
     DividendEvent,
@@ -20,17 +18,12 @@ from fmp_data.intelligence.models import (
     IPOEvent,
     PressRelease,
     PressReleaseBySymbol,
-    PriceTarget,
-    PriceTargetConsensus,
-    PriceTargetSummary,
     SenateTrade,
     SocialSentimentChanges,
     StockNewsArticle,
     StockNewsSentiment,
     StockSplitEvent,
     TrendingSocialSentiment,
-    UpgradeDowngrade,
-    UpgradeDowngradeConsensus,
 )
 from fmp_data.models import (
     APIVersion,
@@ -40,146 +33,6 @@ from fmp_data.models import (
     ParamLocation,
     ParamType,
     URLType,
-)
-
-PRICE_TARGET = Endpoint(
-    name="price_target",
-    path="price-target",
-    version=APIVersion.V4,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description="Get price targets",
-    mandatory_params=[
-        EndpointParam(
-            name="symbol",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Stock symbol",
-        )
-    ],
-    optional_params=[],
-    response_model=PriceTarget,
-)
-
-PRICE_TARGET_SUMMARY = Endpoint(
-    name="price_target_summary",
-    path="price-target-summary",
-    version=APIVersion.V4,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description="Get price target summary",
-    mandatory_params=[
-        EndpointParam(
-            name="symbol",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Stock symbol",
-        )
-    ],
-    optional_params=[],
-    response_model=PriceTargetSummary,
-)
-
-PRICE_TARGET_CONSENSUS = Endpoint(
-    name="price_target_consensus",
-    path="price-target-consensus",
-    version=APIVersion.V4,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description="Get price target consensus",
-    mandatory_params=[
-        EndpointParam(
-            name="symbol",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Stock symbol",
-        )
-    ],
-    optional_params=[],
-    response_model=PriceTargetConsensus,
-)
-
-ANALYST_ESTIMATES = Endpoint(
-    name="analyst_estimates",
-    path="analyst-estimates/{symbol}",
-    version=APIVersion.V3,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description="Get analyst estimates",
-    mandatory_params=[
-        EndpointParam(
-            name="symbol",
-            location=ParamLocation.PATH,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Stock symbol",
-        )
-    ],
-    optional_params=[],
-    response_model=AnalystEstimate,
-)
-
-ANALYST_RECOMMENDATIONS = Endpoint(
-    name="analyst_recommendations",
-    path="analyst-stock-recommendations/{symbol}",
-    version=APIVersion.V3,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description="Get analyst recommendations",
-    mandatory_params=[
-        EndpointParam(
-            name="symbol",
-            location=ParamLocation.PATH,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Stock symbol",
-        )
-    ],
-    optional_params=[],
-    response_model=AnalystRecommendation,
-)
-
-UPGRADES_DOWNGRADES = Endpoint(
-    name="upgrades_downgrades",
-    path="upgrades-downgrades",
-    version=APIVersion.V4,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description="Get upgrades and downgrades",
-    mandatory_params=[
-        EndpointParam(
-            name="symbol",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Stock symbol",
-        )
-    ],
-    optional_params=[],
-    response_model=UpgradeDowngrade,
-)
-
-UPGRADES_DOWNGRADES_CONSENSUS = Endpoint(
-    name="upgrades_downgrades_consensus",
-    path="upgrades-downgrades-consensus",
-    version=APIVersion.V4,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description="Get upgrades and downgrades consensus",
-    mandatory_params=[
-        EndpointParam(
-            name="symbol",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Stock symbol",
-        )
-    ],
-    optional_params=[],
-    response_model=UpgradeDowngradeConsensus,
 )
 
 EARNINGS_CALENDAR = Endpoint(

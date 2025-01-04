@@ -1,8 +1,6 @@
 # fmp_data/intelligence/mapping.py
 
 from fmp_data.intelligence.endpoints import (
-    ANALYST_ESTIMATES,
-    ANALYST_RECOMMENDATIONS,
     CROWDFUNDING_BY_CIK,
     CROWDFUNDING_RSS,
     CROWDFUNDING_SEARCH,
@@ -27,9 +25,6 @@ from fmp_data.intelligence.endpoints import (
     IPO_CALENDAR,
     PRESS_RELEASES_BY_SYMBOL_ENDPOINT,
     PRESS_RELEASES_ENDPOINT,
-    PRICE_TARGET,
-    PRICE_TARGET_CONSENSUS,
-    PRICE_TARGET_SUMMARY,
     SENATE_TRADING,
     SENATE_TRADING_RSS,
     SOCIAL_SENTIMENT_CHANGES_ENDPOINT,
@@ -37,8 +32,6 @@ from fmp_data.intelligence.endpoints import (
     STOCK_NEWS_SENTIMENTS_ENDPOINT,
     STOCK_SPLITS_CALENDAR,
     TRENDING_SOCIAL_SENTIMENT_ENDPOINT,
-    UPGRADES_DOWNGRADES,
-    UPGRADES_DOWNGRADES_CONSENSUS,
 )
 from fmp_data.lc.models import (
     EndpointSemantics,
@@ -49,15 +42,6 @@ from fmp_data.lc.models import (
 
 # Endpoint to method mapping
 INTELLIGENCE_ENDPOINT_MAP = {
-    # Price Target endpoints
-    "get_price_target": PRICE_TARGET,
-    "get_price_target_summary": PRICE_TARGET_SUMMARY,
-    "get_price_target_consensus": PRICE_TARGET_CONSENSUS,
-    # Analyst endpoints
-    "get_analyst_estimates": ANALYST_ESTIMATES,
-    "get_analyst_recommendations": ANALYST_RECOMMENDATIONS,
-    "get_upgrades_downgrades": UPGRADES_DOWNGRADES,
-    "get_upgrades_downgrades_consensus": UPGRADES_DOWNGRADES_CONSENSUS,
     # Calendar endpoints
     "get_earnings_calendar": EARNINGS_CALENDAR,
     "get_earnings_confirmed": EARNINGS_CONFIRMED,
@@ -186,49 +170,6 @@ SPECIALIZED_RESPONSE_FIELDS = {
 }
 # Semantic definitions
 INTELLIGENCE_ENDPOINTS_SEMANTICS = {
-    "price_target": EndpointSemantics(
-        client_name="intelligence",
-        method_name="get_price_target",
-        natural_description=(
-            "Retrieve analyst price targets "
-            "for a specific stock, including target prices, "
-            "analyst details, and publication dates"
-        ),
-        example_queries=[
-            "Get AAPL price targets",
-            "Show analyst targets for TSLA",
-            "What's the price target for MSFT?",
-            "Latest analyst price predictions",
-        ],
-        related_terms=[
-            "analyst target",
-            "price prediction",
-            "stock valuation",
-            "analyst forecast",
-            "price estimate",
-        ],
-        category=SemanticCategory.INTELLIGENCE,
-        sub_category="Analyst Research",
-        parameter_hints={"symbol": SYMBOL_HINT},
-        response_hints={
-            "price_target": ResponseFieldInfo(
-                description="Target price set by analyst",
-                examples=["150.00", "3500.00"],
-                related_terms=["target", "prediction", "forecast"],
-            ),
-            "analyst_name": ResponseFieldInfo(
-                description="Name of the analyst",
-                examples=["John Smith", "Jane Doe"],
-                related_terms=["analyst", "researcher"],
-            ),
-        },
-        use_cases=[
-            "Investment research",
-            "Stock analysis",
-            "Valuation comparison",
-            "Market sentiment analysis",
-        ],
-    ),
     "earnings_calendar": EndpointSemantics(
         client_name="intelligence",
         method_name="get_earnings_calendar",

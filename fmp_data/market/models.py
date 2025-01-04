@@ -1,108 +1,93 @@
 # fmp_data/market/models.py
+import warnings
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
-class Quote(BaseModel):
-    """Real-time stock quote data"""
+class ExchangeSymbol(BaseModel):
+    """Exchange symbol information matching actual API response"""
 
-    model_config = ConfigDict(populate_by_name=True)
-
-    symbol: str = Field(description="Stock symbol")
-    name: str = Field(description="Company name")
-    price: float = Field(description="Current price")
-    change_percentage: float = Field(
-        alias="changesPercentage", description="Price change percentage"
-    )
-    change: float = Field(description="Price change")
-    day_low: float = Field(alias="dayLow", description="Day low price")
-    day_high: float = Field(alias="dayHigh", description="Day high price")
-    year_high: float = Field(alias="yearHigh", description="52-week high")
-    year_low: float = Field(alias="yearLow", description="52-week low")
-    market_cap: float = Field(alias="marketCap", description="Market capitalization")
-    price_avg_50: float = Field(alias="priceAvg50", description="50-day average price")
-    price_avg_200: float = Field(
-        alias="priceAvg200", description="200-day average price"
-    )
-    volume: int = Field(description="Trading volume")
-    avg_volume: int = Field(alias="avgVolume", description="Average volume")
-    open: float = Field(description="Opening price")
-    previous_close: float = Field(
-        alias="previousClose", description="Previous close price"
-    )
-    eps: float = Field(description="Earnings per share")
-    pe: float = Field(description="Price to earnings ratio")
-    timestamp: datetime = Field(description="Quote timestamp")
-
-
-class SimpleQuote(BaseModel):
-    """Simple stock quote data"""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    symbol: str = Field(description="Stock symbol")
-    price: float = Field(description="Current price")
-    volume: int = Field(description="Trading volume")
-
-
-class HistoricalPrice(BaseModel):
-    """Historical price data point"""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    date: datetime = Field(description="Date of the price data")
-    open: float = Field(description="Opening price")
-    high: float = Field(description="High price")
-    low: float = Field(description="Low price")
-    close: float = Field(description="Closing price")
-    adj_close: float = Field(alias="adjClose", description="Adjusted closing price")
-    volume: int = Field(description="Trading volume")
-    unadjusted_volume: int = Field(
-        alias="unadjustedVolume", description="Unadjusted volume"
-    )
-    change: float = Field(description="Price change")
-    change_percent: float = Field(
-        alias="changePercent", description="Price change percentage"
-    )
-    vwap: float = Field(description="Volume weighted average price")
-    label: str = Field(description="Date label")
-    change_over_time: float = Field(
-        alias="changeOverTime", description="Change over time"
+    model_config = ConfigDict(
+        populate_by_name=True,
+        extra="allow",
+        validate_assignment=True,
+        validate_default=True,
     )
 
-
-class HistoricalData(BaseModel):
-    """Model to parse the full historical data response"""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    symbol: str = Field(description="Stock symbol")
-    historical: list[HistoricalPrice] = Field(
-        description="List of historical price data"
+    symbol: str | None = Field(None, description="Stock symbol")
+    name: str | None = Field(None, description="Company name")
+    price: float | None = Field(None, description="Current price")
+    change_percentage: float | None = Field(
+        None, alias="changesPercentage", description="Price change percentage"
     )
+    change: float | None = Field(None, description="Price change")
+    day_low: float | None = Field(None, alias="dayLow", description="Day low price")
+    day_high: float | None = Field(None, alias="dayHigh", description="Day high price")
+    year_high: float | None = Field(None, alias="yearHigh", description="52-week high")
+    year_low: float | None = Field(None, alias="yearLow", description="52-week low")
+    market_cap: float | None = Field(
+        None, alias="marketCap", description="Market capitalization"
+    )
+    price_avg_50: float | None = Field(
+        None, alias="priceAvg50", description="50-day moving average"
+    )
+    price_avg_200: float | None = Field(
+        None, alias="priceAvg200", description="200-day moving average"
+    )
+    exchange: str | None = Field(None, description="Stock exchange")
+    volume: float | None = Field(None, description="Trading volume")
+    avg_volume: float | None = Field(
+        None, alias="avgVolume", description="Average volume"
+    )
+    open: float | None = Field(None, description="Opening price")
+    previous_close: float | None = Field(
+        None, alias="previousClose", description="Previous closing price"
+    )
+    eps: float | None = Field(None, description="Earnings per share")
+    pe: float | None = Field(None, description="Price to earnings ratio")
+    earnings_announcement: datetime | None = Field(None, alias="earningsAnnouncement")
+    shares_outstanding: float | None = Field(
+        None, alias="sharesOutstanding", description="Shares outstanding"
+    )
+    timestamp: int | None = Field(None, description="Quote timestamp")
 
     @classmethod
-    def parse_api_response(cls, data: dict):
-        """Parse raw API response into validated HistoricalData model."""
-        # Ensure historical data is validated
-        historical_prices = [
-            HistoricalPrice(**item) for item in data.get("historical", [])
-        ]
-        return cls(symbol=data["symbol"], historical=historical_prices)
+    @model_validator(mode="before")
+    def validate_data(cls, data):
+        """Validate data and convert invalid values to None with warnings"""
+        if not isinstance(data, dict):
+            return data
 
+        cleaned_data = {}
+        for field_name, field_value in data.items():
+            try:
+                # Check if field exists and is a float type
+                field_info = cls.model_fields.get(field_name)
+                if field_info and field_info.annotation in (float, float | None):
+                    try:
+                        if field_value is not None:
+                            cleaned_data[field_name] = float(field_value)
+                        else:
+                            cleaned_data[field_name] = None
+                    except (ValueError, TypeError):
+                        warnings.warn(
+                            f"Invalid value for {field_name}: "
+                            f"{field_value}. Setting to None",
+                            stacklevel=2,
+                        )
+                        cleaned_data[field_name] = None
+                else:
+                    cleaned_data[field_name] = field_value
+            except Exception as e:
+                warnings.warn(
+                    f"Error processing field {field_name}: {str(e)}. "
+                    f"Setting to None",
+                    stacklevel=2,
+                )
+                cleaned_data[field_name] = None
 
-class IntradayPrice(BaseModel):
-    """Intraday price data point"""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    date: datetime = Field(description="Date and time")
-    open: float = Field(description="Opening price")
-    low: float = Field(description="Low price")
-    high: float = Field(description="High price")
-    close: float = Field(description="Closing price")
-    volume: int = Field(description="Trading volume")
+        return cleaned_data
 
 
 class StockMarketHours(BaseModel):
@@ -181,16 +166,6 @@ class MarketHours(BaseModel):
         super().__init__(**data)
 
 
-class MarketCapitalization(BaseModel):
-    """Market capitalization data"""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    symbol: str = Field(description="Stock symbol")
-    date: datetime = Field(description="Date")
-    market_cap: float = Field(alias="marketCap", description="Market capitalization")
-
-
 class MarketMover(BaseModel):
     """Market mover (gainer/loser) data"""
 
@@ -238,3 +213,61 @@ class PrePostMarketQuote(BaseModel):
     price: float = Field(description="Current price")
     volume: int = Field(description="Trading volume")
     session: str = Field(description="Trading session (pre/post)")
+
+
+class CIKResult(BaseModel):
+    """CIK search result"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    cik: str = Field(description="CIK number")
+    name: str = Field(description="Company name")
+    symbol: str = Field(description="Stock symbol")
+
+
+class CUSIPResult(BaseModel):
+    """CUSIP search result"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    cusip: str = Field(description="CUSIP number")
+    symbol: str = Field(description="Stock symbol")
+    name: str = Field(description="Company name")
+
+
+class ISINResult(BaseModel):
+    """ISIN search result"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    isin: str = Field(description="ISIN number")
+    symbol: str = Field(description="Stock symbol")
+    name: str = Field(description="Company name")
+
+
+class AvailableIndex(BaseModel):
+    """Market index information"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    symbol: str = Field(description="Index symbol")
+    name: str = Field(description="Index name")
+    currency: str = Field(description="Trading currency")
+    stock_exchange: str = Field(alias="stockExchange", description="Stock exchange")
+    exchange_short_name: str = Field(
+        alias="exchangeShortName", description="Exchange short name"
+    )
+
+
+class CompanySearchResult(BaseModel):
+    """Company search result"""
+
+    symbol: str = Field(description="Stock symbol (ticker)")
+    name: str = Field(description="Company name")
+    currency: str | None = Field(None, description="Trading currency")
+    stock_exchange: str | None = Field(
+        None, alias="stockExchange", description="Stock exchange"
+    )
+    exchange_short_name: str | None = Field(
+        None, alias="exchangeShortName", description="Exchange short name"
+    )
