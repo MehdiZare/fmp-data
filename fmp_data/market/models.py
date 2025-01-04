@@ -194,7 +194,9 @@ class MarketCapitalization(BaseModel):
 class MarketMover(BaseModel):
     """Market mover (gainer/loser) data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(
+        populate_by_name=True, validate_assignment=True, extra="ignore"
+    )
 
     symbol: str = Field(description="Stock symbol")
     name: str = Field(description="Company name")
