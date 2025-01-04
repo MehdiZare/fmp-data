@@ -15,7 +15,6 @@ from langchain_core.embeddings import Embeddings
 from fmp_data import FMPDataClient
 from fmp_data.lc.config import LangChainConfig
 from fmp_data.lc.embedding import EmbeddingProvider
-from fmp_data.lc.manager import FMPToolManager
 from fmp_data.lc.mapping import ENDPOINT_GROUPS
 from fmp_data.lc.models import EndpointSemantics, SemanticCategory
 from fmp_data.lc.registry import EndpointRegistry
