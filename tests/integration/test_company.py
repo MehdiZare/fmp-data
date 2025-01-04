@@ -30,25 +30,15 @@ from fmp_data.company.models import (
     ShareFloat,
     SymbolChange,
 )
-from fmp_data.exceptions import FMPError, RateLimitError
+from fmp_data.exceptions import FMPError
+
+from .base import BaseTestCase
 
 logger = logging.getLogger(__name__)
 
 
-class TestCompanyEndpoints:
+class TestCompanyEndpoints(BaseTestCase):
     """Test company endpoints"""
-
-    def _handle_rate_limit(self, func, *args, **kwargs):
-        """Helper to handle rate limiting"""
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                return func(*args, **kwargs)
-            except RateLimitError as e:
-                if attempt == max_retries - 1:
-                    raise
-                time.sleep(e.retry_after or 1)
-                continue
 
     def test_get_profile(
         self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR, test_symbol
@@ -59,7 +49,9 @@ class TestCompanyEndpoints:
         cassette_path = "company/profile.yaml"
         with vcr_instance.use_cassette(cassette_path):
             try:
-                profile = fmp_client.company.get_profile(test_symbol)
+                profile = self._handle_rate_limit(
+                    fmp_client.company.get_profile, test_symbol
+                )
                 logger.info(f"Got profile response: {profile.symbol}")
 
                 assert isinstance(profile, CompanyProfile)
@@ -78,7 +70,9 @@ class TestCompanyEndpoints:
     ):
         """Test getting core company information"""
         with vcr_instance.use_cassette("company/core_information.yaml"):
-            info = fmp_client.company.get_core_information(test_symbol)
+            info = self._handle_rate_limit(
+                fmp_client.company.get_core_information, test_symbol
+            )
             assert isinstance(info, CompanyCoreInformation)
             assert info.symbol == test_symbol
 
@@ -89,7 +83,9 @@ class TestCompanyEndpoints:
     def test_search(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test company search"""
         with vcr_instance.use_cassette("company/search.yaml"):
-            results = fmp_client.company.search("Apple", limit=5)
+            results = self._handle_rate_limit(
+                fmp_client.company.search, "Apple", limit=5
+            )
             assert isinstance(results, list)
             assert len(results) <= 5
             assert all(isinstance(r, CompanySearchResult) for r in results)
@@ -97,7 +93,9 @@ class TestCompanyEndpoints:
     def test_get_executives(self, fmp_client: FMPDataClient, vcr_instance, test_symbol):
         """Test getting company executives"""
         with vcr_instance.use_cassette("company/executives.yaml"):
-            executives = fmp_client.company.get_executives(test_symbol)
+            executives = self._handle_rate_limit(
+                fmp_client.company.get_executives, test_symbol
+            )
             assert isinstance(executives, list)
             assert len(executives) > 0
             assert all(isinstance(e, CompanyExecutive) for e in executives)
@@ -132,7 +130,9 @@ class TestCompanyEndpoints:
 
     def test_get_company_logo_url(self, fmp_client: FMPDataClient, test_symbol: str):
         """Test getting company logo URL"""
-        url = fmp_client.company.get_company_logo_url(test_symbol)
+        url = self._handle_rate_limit(
+            fmp_client.company.get_company_logo_url, test_symbol
+        )
 
         # Check URL format
         assert isinstance(url, str)
@@ -159,7 +159,7 @@ class TestCompanyEndpoints:
     def test_get_stock_list(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test getting stock list"""
         with vcr_instance.use_cassette("company/stock_list.yaml"):
-            stocks = fmp_client.company.get_stock_list()
+            stocks = self._handle_rate_limit(fmp_client.company.get_stock_list)
             assert isinstance(stocks, list)
             assert len(stocks) > 0
             for stock in stocks:
@@ -170,7 +170,9 @@ class TestCompanyEndpoints:
     def test_get_etf_list(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test getting ETF list"""
         with vcr_instance.use_cassette("company/etf_list.yaml"):
-            etfs = fmp_client.company.get_etf_list()
+            etfs = self._handle_rate_limit(
+                fmp_client.company.get_etf_list,
+            )
             assert isinstance(etfs, list)
             assert all(isinstance(e, CompanySymbol) for e in etfs)
             assert len(etfs) > 0
@@ -180,7 +182,7 @@ class TestCompanyEndpoints:
     ):
         """Test getting available indexes"""
         with vcr_instance.use_cassette("company/indexes.yaml"):
-            indexes = fmp_client.company.get_available_indexes()
+            indexes = self._handle_rate_limit(fmp_client.company.get_available_indexes)
             assert isinstance(indexes, list)
             assert all(isinstance(i, AvailableIndex) for i in indexes)
             assert any(i.symbol == "^GSPC" for i in indexes)
@@ -194,7 +196,9 @@ class TestCompanyEndpoints:
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
 
-                symbols = fmp_client.company.get_exchange_symbols("NASDAQ")
+                symbols = self._handle_rate_limit(
+                    fmp_client.company.get_exchange_symbols, "NASDAQ"
+                )
 
                 # Basic validation
                 assert isinstance(symbols, list)
