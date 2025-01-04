@@ -5,7 +5,6 @@ from datetime import datetime
 import pytest
 
 from fmp_data import FMPDataClient
-from fmp_data.exceptions import RateLimitError
 from fmp_data.fundamental.models import (
     BalanceSheet,
     CashFlowStatement,
@@ -16,25 +15,15 @@ from fmp_data.fundamental.models import (
     KeyMetrics,
 )
 
+from .base import BaseTestCase
+
 logger = logging.getLogger(__name__)
 
 
-class TestFundamentalEndpoints:
+class TestFundamentalEndpoints(BaseTestCase):
     """Test fundamental data endpoints"""
 
     TEST_SYMBOL = "AAPL"  # Use a stable stock for testing
-
-    def _handle_rate_limit(self, func, *args, **kwargs):
-        """Helper to handle rate limiting"""
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                return func(*args, **kwargs)
-            except RateLimitError as e:
-                if attempt == max_retries - 1:
-                    raise
-                time.sleep(e.retry_after or 1)
-                continue
 
     def test_get_income_statement(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting income statements"""
