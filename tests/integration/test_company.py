@@ -1,36 +1,37 @@
 # tests/integration/test_company.py
 import logging
 import time
-import warnings
 from datetime import date, datetime
-from typing import Any
 
 import pytest
-import tenacity
 import vcr
 
 from fmp_data import FMPDataClient
 from fmp_data.company.models import (
-    AvailableIndex,
-    CIKResult,
+    AnalystEstimate,
+    AnalystRecommendation,
     CompanyCoreInformation,
     CompanyExecutive,
     CompanyNote,
     CompanyProfile,
-    CompanySearchResult,
-    CompanySymbol,
-    CUSIPResult,
     EmployeeCount,
-    ExchangeSymbol,
     ExecutiveCompensation,
     GeographicRevenueSegment,
+    HistoricalData,
     HistoricalShareFloat,
-    ISINResult,
+    IntradayPrice,
+    PriceTarget,
+    PriceTargetConsensus,
+    PriceTargetSummary,
     ProductRevenueSegment,
-    ShareFloat,
+    Quote,
+    SimpleQuote,
     SymbolChange,
+    UpgradeDowngrade,
+    UpgradeDowngradeConsensus,
 )
 from fmp_data.exceptions import FMPError
+from fmp_data.models import MarketCapitalization, ShareFloat
 
 from .base import BaseTestCase
 
@@ -39,6 +40,99 @@ logger = logging.getLogger(__name__)
 
 class TestCompanyEndpoints(BaseTestCase):
     """Test company endpoints"""
+
+    def test_get_quote(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting real-time stock quote"""
+        with vcr_instance.use_cassette("market/quote.yaml"):
+            quote = self._handle_rate_limit(fmp_client.company.get_quote, "AAPL")
+
+            assert isinstance(quote, Quote)
+            assert quote.symbol == "AAPL"
+            assert quote.name
+            assert isinstance(quote.price, float)
+            assert isinstance(quote.change_percentage, float)
+            assert isinstance(quote.market_cap, float)
+            assert isinstance(quote.volume, int)
+            assert isinstance(quote.timestamp, datetime)
+
+    def test_get_simple_quote(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting simple stock quote"""
+        with vcr_instance.use_cassette("market/simple_quote.yaml"):
+            quote = self._handle_rate_limit(fmp_client.company.get_simple_quote, "AAPL")
+
+            assert isinstance(quote, SimpleQuote)
+            assert quote.symbol == "AAPL"
+            assert isinstance(quote.price, float)
+            assert isinstance(quote.volume, int)
+
+    def test_get_historical_prices(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting historical price data"""
+        with vcr_instance.use_cassette("market/historical_prices.yaml"):
+            prices = self._handle_rate_limit(
+                fmp_client.company.get_historical_prices,
+                "AAPL",
+                from_date="2023-01-01",
+                to_date="2023-01-31",
+            )
+
+            assert isinstance(prices, HistoricalData)
+            assert len(prices.historical) > 0
+
+            for price in prices.historical:
+                assert isinstance(price.date, datetime)
+                assert isinstance(price.open, float)
+                assert isinstance(price.high, float)
+                assert isinstance(price.low, float)
+                assert isinstance(price.close, float)
+                assert isinstance(price.adj_close, float)
+                assert isinstance(price.volume, int)
+
+    def test_get_intraday_prices(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting intraday price data"""
+        with vcr_instance.use_cassette("market/intraday_prices.yaml"):
+            prices = self._handle_rate_limit(
+                fmp_client.company.get_intraday_prices, "AAPL", interval="5min"
+            )
+
+            assert isinstance(prices, list)
+            assert len(prices) > 0
+
+            for price in prices:
+                assert isinstance(price, IntradayPrice)
+                assert isinstance(price.date, datetime)
+                assert isinstance(price.open, float)
+                assert isinstance(price.high, float)
+                assert isinstance(price.low, float)
+                assert isinstance(price.close, float)
+                assert isinstance(price.volume, int)
+
+    def test_get_market_cap(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting market capitalization data"""
+        with vcr_instance.use_cassette("market/market_cap.yaml"):
+            cap = self._handle_rate_limit(fmp_client.company.get_market_cap, "AAPL")
+
+            assert isinstance(cap, MarketCapitalization)
+            assert cap.symbol == "AAPL"
+            assert isinstance(cap.date, datetime)
+            assert isinstance(cap.market_cap, float)
+            assert cap.market_cap > 0
+
+    def test_get_historical_market_cap(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting historical market capitalization data"""
+        with vcr_instance.use_cassette("market/historical_market_cap.yaml"):
+            caps = self._handle_rate_limit(
+                fmp_client.company.get_historical_market_cap, "AAPL"
+            )
+
+            assert isinstance(caps, list)
+            assert len(caps) > 0
+
+            for cap in caps:
+                assert isinstance(cap, MarketCapitalization)
+                assert cap.symbol == "AAPL"
+                assert isinstance(cap.date, datetime)
+                assert isinstance(cap.market_cap, float)
+                assert cap.market_cap > 0
 
     def test_get_profile(
         self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR, test_symbol
@@ -75,20 +169,6 @@ class TestCompanyEndpoints(BaseTestCase):
             )
             assert isinstance(info, CompanyCoreInformation)
             assert info.symbol == test_symbol
-
-    @tenacity.retry(
-        wait=tenacity.wait_exponential(multiplier=1, min=4, max=10),
-        stop=tenacity.stop_after_attempt(3),
-    )
-    def test_search(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
-        """Test company search"""
-        with vcr_instance.use_cassette("company/search.yaml"):
-            results = self._handle_rate_limit(
-                fmp_client.company.search, "Apple", limit=5
-            )
-            assert isinstance(results, list)
-            assert len(results) <= 5
-            assert all(isinstance(r, CompanySearchResult) for r in results)
 
     def test_get_executives(self, fmp_client: FMPDataClient, vcr_instance, test_symbol):
         """Test getting company executives"""
@@ -155,98 +235,6 @@ class TestCompanyEndpoints(BaseTestCase):
         # Test error case
         with pytest.raises(ValueError):
             fmp_client.company.get_company_logo_url("")
-
-    def test_get_stock_list(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
-        """Test getting stock list"""
-        with vcr_instance.use_cassette("company/stock_list.yaml"):
-            stocks = self._handle_rate_limit(fmp_client.company.get_stock_list)
-            assert isinstance(stocks, list)
-            assert len(stocks) > 0
-            for stock in stocks:
-                assert isinstance(stock, CompanySymbol)
-                assert hasattr(stock, "symbol")  # Only check required field
-                assert isinstance(stock.symbol, str)
-
-    def test_get_etf_list(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
-        """Test getting ETF list"""
-        with vcr_instance.use_cassette("company/etf_list.yaml"):
-            etfs = self._handle_rate_limit(
-                fmp_client.company.get_etf_list,
-            )
-            assert isinstance(etfs, list)
-            assert all(isinstance(e, CompanySymbol) for e in etfs)
-            assert len(etfs) > 0
-
-    def test_get_available_indexes(
-        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
-    ):
-        """Test getting available indexes"""
-        with vcr_instance.use_cassette("company/indexes.yaml"):
-            indexes = self._handle_rate_limit(fmp_client.company.get_available_indexes)
-            assert isinstance(indexes, list)
-            assert all(isinstance(i, AvailableIndex) for i in indexes)
-            assert any(i.symbol == "^GSPC" for i in indexes)
-
-    def test_get_exchange_symbols(
-        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
-    ):
-        """Test getting exchange symbols"""
-        with vcr_instance.use_cassette("company/exchange_symbols.yaml"):
-            # Capture warnings during test
-            with warnings.catch_warnings(record=True) as w:
-                warnings.simplefilter("always")
-
-                symbols = self._handle_rate_limit(
-                    fmp_client.company.get_exchange_symbols, "NASDAQ"
-                )
-
-                # Basic validation
-                assert isinstance(symbols, list)
-                assert len(symbols) > 0
-
-                # Test symbol attributes
-                for symbol in symbols:
-                    assert isinstance(symbol, ExchangeSymbol)
-                    # Only check presence of attributes, not values
-                    assert hasattr(symbol, "name")
-                    assert hasattr(symbol, "price")
-                    assert hasattr(symbol, "exchange")
-
-                # Verify we got some data
-                valid_symbols = [
-                    s for s in symbols if s.name is not None and s.price is not None
-                ]
-                assert len(valid_symbols) > 0
-
-                # Log warnings if any
-                if len(w) > 0:
-                    print(f"\nCaptured {len(w)} validation warnings:")
-                    for warning in w:
-                        print(f"  - {warning.message}")
-
-    @pytest.mark.parametrize(
-        "search_type,method,model,test_value",
-        [
-            ("cik", "search_by_cik", CIKResult, "0000320193"),
-            ("cusip", "search_by_cusip", CUSIPResult, "037833100"),
-            ("isin", "search_by_isin", ISINResult, "US0378331005"),
-        ],
-    )
-    def test_identifier_searches(
-        self,
-        fmp_client: FMPDataClient,
-        vcr_instance: vcr.VCR,
-        search_type: str,
-        method: str,
-        model: Any,
-        test_value: str,
-    ):
-        """Test searching by different identifiers"""
-        with vcr_instance.use_cassette(f"company/search_{search_type}.yaml"):
-            search_method = getattr(fmp_client.company, method)
-            results = self._handle_rate_limit(search_method, test_value)
-            assert isinstance(results, list)
-            assert all(isinstance(r, model) for r in results)
 
     def test_rate_limiting(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test rate limiting handling"""
@@ -323,18 +311,6 @@ class TestCompanyEndpoints(BaseTestCase):
                 assert isinstance(first_entry.outstanding_shares, float)
                 assert isinstance(first_entry.date, datetime)
 
-    def test_get_all_shares_float(
-        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
-    ):
-        """Test getting all companies share float data"""
-        with vcr_instance.use_cassette("company/all_shares_float.yaml"):
-            all_float_data = self._handle_rate_limit(
-                fmp_client.company.get_all_shares_float
-            )
-            assert isinstance(all_float_data, list)
-            assert len(all_float_data) > 0
-            assert all(isinstance(d, ShareFloat) for d in all_float_data)
-
     def test_get_product_revenue_segmentation(
         self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR, test_symbol: str
     ):
@@ -384,3 +360,123 @@ class TestCompanyEndpoints(BaseTestCase):
                 assert isinstance(first_change.new_symbol, str)
                 assert isinstance(first_change.change_date, date)
                 assert isinstance(first_change.name, str)
+
+    def test_get_price_target(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting price targets"""
+        with vcr_instance.use_cassette("intelligence/price_target.yaml"):
+            targets = self._handle_rate_limit(
+                fmp_client.company.get_price_target, "AAPL"
+            )
+
+            assert isinstance(targets, list)
+            assert len(targets) > 0
+
+            for target in targets:
+                assert isinstance(target, PriceTarget)
+                assert isinstance(target.published_date, datetime)
+                assert isinstance(target.price_target, float)
+                assert target.symbol == "AAPL"
+                assert isinstance(target.adj_price_target, float)
+                assert isinstance(target.price_when_posted, float)
+
+    def test_get_price_target_summary(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting price target summary"""
+        with vcr_instance.use_cassette("intelligence/price_target_summary.yaml"):
+            summary = self._handle_rate_limit(
+                fmp_client.company.get_price_target_summary, "AAPL"
+            )
+
+            assert isinstance(summary, PriceTargetSummary)
+            assert summary.symbol == "AAPL"
+            assert isinstance(summary.last_month, int)
+            assert isinstance(summary.last_month_avg_price_target, float)
+            assert isinstance(summary.last_quarter_avg_price_target, float)
+            assert isinstance(summary.last_year, int)
+            assert isinstance(summary.all_time_avg_price_target, float)
+
+    def test_get_price_target_consensus(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting price target consensus"""
+        with vcr_instance.use_cassette("intelligence/price_target_consensus.yaml"):
+            consensus = fmp_client.company.get_price_target_consensus("AAPL")
+
+            assert isinstance(consensus, PriceTargetConsensus)
+            assert consensus.symbol == "AAPL"
+            assert isinstance(consensus.target_consensus, float)
+            assert isinstance(consensus.target_high, float)
+            assert isinstance(consensus.target_low, float)
+
+    def test_get_analyst_estimates(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting analyst estimates"""
+        with vcr_instance.use_cassette("intelligence/analyst_estimates.yaml"):
+            estimates = self._handle_rate_limit(
+                fmp_client.company.get_analyst_estimates, "AAPL"
+            )
+
+            assert isinstance(estimates, list)
+            assert len(estimates) > 0
+
+            for estimate in estimates:
+                assert isinstance(estimate, AnalystEstimate)
+                assert isinstance(estimate.date, datetime)
+                assert isinstance(estimate.estimated_revenue_high, float)
+                assert estimate.symbol == "AAPL"
+                assert isinstance(estimate.estimated_ebitda_avg, float)
+                assert isinstance(estimate.number_analyst_estimated_revenue, int)
+
+    def test_get_analyst_recommendations(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting analyst recommendations"""
+        with vcr_instance.use_cassette("intelligence/analyst_recommendations.yaml"):
+            recommendations = self._handle_rate_limit(
+                fmp_client.company.get_analyst_recommendations, "AAPL"
+            )
+
+            assert isinstance(recommendations, list)
+            assert len(recommendations) > 0
+
+            for rec in recommendations:
+                assert isinstance(rec, AnalystRecommendation)
+                assert isinstance(rec.date, datetime)
+                assert rec.symbol == "AAPL"
+                assert isinstance(rec.analyst_ratings_buy, int)
+                assert isinstance(rec.analyst_ratings_strong_sell, int)
+
+    def test_get_upgrades_downgrades(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting upgrades and downgrades"""
+        with vcr_instance.use_cassette("intelligence/upgrades_downgrades.yaml"):
+            changes = self._handle_rate_limit(
+                fmp_client.company.get_upgrades_downgrades, "AAPL"
+            )
+
+            assert isinstance(changes, list)
+            assert len(changes) > 0
+
+            for change in changes:
+                assert isinstance(change, UpgradeDowngrade)
+                assert isinstance(change.published_date, datetime)
+                assert change.symbol == "AAPL"
+                assert isinstance(change.action, str)
+                assert (
+                    isinstance(change.previous_grade, str)
+                    if change.previous_grade is not None
+                    else True
+                )
+                assert isinstance(change.new_grade, str)
+
+    def test_get_upgrades_downgrades_consensus(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting upgrades/downgrades consensus"""
+        with vcr_instance.use_cassette(
+            "intelligence/upgrades_downgrades_consensus.yaml"
+        ):
+            consensus = self._handle_rate_limit(
+                fmp_client.company.get_upgrades_downgrades_consensus, "AAPL"
+            )
+
+            assert isinstance(consensus, UpgradeDowngradeConsensus)
+            assert consensus.symbol == "AAPL"
+            assert isinstance(consensus.strong_buy, int)
+            assert isinstance(consensus.buy, int)
+            assert isinstance(consensus.hold, int)
+            assert isinstance(consensus.sell, int)
+            assert isinstance(consensus.strong_sell, int)
