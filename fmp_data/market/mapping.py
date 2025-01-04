@@ -48,34 +48,26 @@ SYMBOL_HINT = ParameterHint(
     context_clues=["stock", "symbol", "ticker", "company"],
 )
 
-FROM_DATE_HINT = ParameterHint(
-    natural_names=["from date", "start date", "beginning"],
-    extraction_patterns=[
-        r"from\s+(\d{4}-\d{2}-\d{2})",
-        r"starting\s+(\d{4}-\d{2}-\d{2})",
-    ],
-    examples=["2024-01-01", "2023-12-01"],
-    context_clues=["from", "start", "beginning", "since"],
-)
-
-TO_DATE_HINT = ParameterHint(
-    natural_names=["to date", "end date", "until"],
-    extraction_patterns=[
-        r"to\s+(\d{4}-\d{2}-\d{2})",
-        r"until\s+(\d{4}-\d{2}-\d{2})",
-    ],
-    examples=["2024-12-31", "2023-12-31"],
-    context_clues=["to", "end", "until", "through"],
-)
-DATE_HINT = ParameterHint(
-    natural_names=["date", "as of", "trading date"],
-    extraction_patterns=[
-        r"(\d{4}-\d{2}-\d{2})",
-        r"(?:on|at|for)\s+(\d{4}-\d{2}-\d{2})",
-    ],
-    examples=["2024-01-15", "2023-12-31"],
-    context_clues=["date", "as of", "trading day", "on"],
-)
+DATE_HINTS = {
+    "start_date": ParameterHint(
+        natural_names=["start date", "from date", "beginning", "since"],
+        extraction_patterns=[
+            r"(\d{4}-\d{2}-\d{2})",
+            r"(?:from|since|after)\s+(\d{4}-\d{2}-\d{2})",
+        ],
+        examples=["2023-01-01", "2022-12-31"],
+        context_clues=["from", "since", "starting", "beginning", "after"],
+    ),
+    "end_date": ParameterHint(  # Changed from "to_date"
+        natural_names=["end date", "to date", "until", "through"],
+        extraction_patterns=[
+            r"(?:to|until|through)\s+(\d{4}-\d{2}-\d{2})",
+            r"(\d{4}-\d{2}-\d{2})",
+        ],
+        examples=["2024-01-01", "2023-12-31"],
+        context_clues=["to", "until", "through", "ending"],
+    ),
+}
 
 INTERVAL_HINT = ParameterHint(
     natural_names=["interval", "timeframe", "period"],
@@ -384,8 +376,8 @@ MARKET_ENDPOINTS_SEMANTICS = {
         sub_category="Historical Data",
         parameter_hints={
             "symbol": SYMBOL_HINT,
-            "from": DATE_HINT,
-            "to": DATE_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
         },
         response_hints={
             "date": ResponseFieldInfo(
@@ -880,8 +872,8 @@ MARKET_ENDPOINTS_SEMANTICS = {
         sub_category="Historical Data",
         parameter_hints={
             "symbol": SYMBOL_HINT,
-            "from": FROM_DATE_HINT,
-            "to": TO_DATE_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
         },
         response_hints={
             "date": ResponseFieldInfo(

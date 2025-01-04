@@ -73,8 +73,8 @@ COMMON_PARAMS = {
     "type": TYPE_HINT,
     "period": PERIOD_HINT,
     "interval": INTERVAL_HINT,
-    "from": FROM_DATE_HINT,
-    "to": TO_DATE_HINT,
+    "start_date": FROM_DATE_HINT,
+    "end_date": TO_DATE_HINT,
 }
 
 # Define each technical indicator explicitly

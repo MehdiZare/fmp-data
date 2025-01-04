@@ -50,6 +50,26 @@ ECONOMICS_COMMON_TERMS = {
     ],
 }
 
+DATE_HINTS = {
+    "start_date": ParameterHint(
+        natural_names=["start date", "from date", "beginning", "since"],
+        extraction_patterns=[
+            r"(\d{4}-\d{2}-\d{2})",
+            r"(?:from|since|after)\s+(\d{4}-\d{2}-\d{2})",
+        ],
+        examples=["2023-01-01", "2022-12-31"],
+        context_clues=["from", "since", "starting", "beginning", "after"],
+    ),
+    "end_date": ParameterHint(  # Changed from "to_date"
+        natural_names=["end date", "to date", "until", "through"],
+        extraction_patterns=[
+            r"(?:to|until|through)\s+(\d{4}-\d{2}-\d{2})",
+            r"(\d{4}-\d{2}-\d{2})",
+        ],
+        examples=["2024-01-01", "2023-12-31"],
+        context_clues=["to", "until", "through", "ending"],
+    ),
+}
 # Time period mapping for natural language processing
 ECONOMICS_TIME_PERIODS = {
     "daily": {
@@ -208,44 +228,8 @@ ECONOMICS_ENDPOINTS_SEMANTICS = {
         category=SemanticCategory.ECONOMIC,
         sub_category="Interest Rates",
         parameter_hints={
-            "from": ParameterHint(  # Changed from from_date to from
-                natural_names=["start date", "from date", "beginning", "since"],
-                extraction_patterns=[
-                    r"(\d{4}-\d{2}-\d{2})",
-                    r"(?:from|since|after)\s+(\d{4}-\d{2}-\d{2})",
-                    r"(?:starting|beginning)\s+(\d{4}-\d{2}-\d{2})",
-                    r"(\d{2}/\d{2}/\d{4})",
-                ],
-                examples=["2023-01-01", "2022-12-31", "01/15/2024"],
-                context_clues=[
-                    "from",
-                    "since",
-                    "starting",
-                    "beginning",
-                    "after",
-                    "historical",
-                    "past",
-                    "dated",
-                ],
-            ),
-            "to": ParameterHint(  # Changed from to_date to to
-                natural_names=["end date", "to date", "until", "through"],
-                extraction_patterns=[
-                    r"(?:to|until|through)\s+(\d{4}-\d{2}-\d{2})",
-                    r"(\d{4}-\d{2}-\d{2})",
-                    r"(\d{2}/\d{2}/\d{4})",
-                ],
-                examples=["2024-01-01", "2023-12-31", "03/31/2024"],
-                context_clues=[
-                    "to",
-                    "until",
-                    "through",
-                    "ending",
-                    "by",
-                    "up to",
-                    "no later than",
-                ],
-            ),
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
         },
         response_hints={
             "rate_date": ResponseFieldInfo(
@@ -428,7 +412,7 @@ ECONOMICS_ENDPOINTS_SEMANTICS = {
         category=SemanticCategory.ECONOMIC,
         sub_category="Economic Events",
         parameter_hints={
-            "from": ParameterHint(  # Changed from from_date to from
+            "start_date": ParameterHint(
                 natural_names=["start date", "from", "beginning"],
                 extraction_patterns=[
                     r"(\d{4}-\d{2}-\d{2})",
@@ -446,7 +430,7 @@ ECONOMICS_ENDPOINTS_SEMANTICS = {
                     "next",
                 ],
             ),
-            "to": ParameterHint(  # Changed from to_date to to
+            "end_date": ParameterHint(
                 natural_names=["end date", "until", "through"],
                 extraction_patterns=[
                     r"(?:to|until)\s+(\d{4}-\d{2}-\d{2})",
