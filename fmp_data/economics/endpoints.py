@@ -20,7 +20,7 @@ from fmp_data.models import (
     URLType,
 )
 
-TREASURY_RATES = Endpoint(
+TREASURY_RATES: Endpoint = Endpoint(
     name="treasury_rates",
     path="treasury",
     version=APIVersion.V4,
@@ -62,7 +62,7 @@ TREASURY_RATES = Endpoint(
     ],
 )
 
-ECONOMIC_INDICATORS = Endpoint(
+ECONOMIC_INDICATORS: Endpoint = Endpoint(
     name="economic_indicators",
     path="economic",
     version=APIVersion.V4,
@@ -96,7 +96,7 @@ ECONOMIC_INDICATORS = Endpoint(
     ],
 )
 
-ECONOMIC_CALENDAR = Endpoint(
+ECONOMIC_CALENDAR: Endpoint = Endpoint(
     name="economic_calendar",
     path="economic_calendar",
     version=APIVersion.V3,
@@ -138,7 +138,7 @@ ECONOMIC_CALENDAR = Endpoint(
     ],
 )
 
-MARKET_RISK_PREMIUM = Endpoint(
+MARKET_RISK_PREMIUM: Endpoint = Endpoint(
     name="market_risk_premium",
     path="market_risk_premium",
     version=APIVersion.V4,
