@@ -30,23 +30,24 @@ class TechnicalAnalysisRule(CommonValidationRule):
         ),
     }
 
-    PARAMETER_PATTERNS: ClassVar[dict[str, dict[str, list[str] | str | int]]] = {
-        # Common patterns
+    # Must match the parent type EXACTLY:
+    PARAMETER_PATTERNS: ClassVar[
+        dict[str, list[str] | dict[str, list[str] | str | int]]
+    ] = {
+        # Each top-level key is either a list[str] or a dict[str, list[str]|str|int]
         "symbol": [r"^[A-Z]{1,5}$"],
         "interval": [r"^(1min|5min|15min|30min|1hour|4hour|daily)$"],
         "date": [r"^\d{4}-\d{2}-\d{2}$"],
-        "period": [r"^([1-9]|[1-9][0-9]|1[0-9][0-9]|200)$"],  # 1-200
-        # Specific indicator patterns
-        "volatility_specific": {"std_dev": [r"^([1-9]|10)$"]},  # 1-10
-        "kama_specific": {"acceleration": [r"^0?\.[0-9]+$|^1\.0*$"]},  # 0-1
+        "period": [r"^([1-9]|[1-9][0-9]|1[0-9][0-9]|200)$"],
+        "volatility_specific": {"std_dev": [r"^([1-9]|10)$"]},
+        "kama_specific": {"acceleration": [r"^0?\.[0-9]+$|^1\.0*$"]},
         "momentum_specific": {
-            "slow_period": [r"^([1-9]|[1-9][0-9]|100)$"],  # 1-100
-            "fast_period": [r"^([1-9]|[1-4][0-9]|50)$"],  # 1-50
-            "signal_period": [r"^([1-9]|[1-4][0-9]|50)$"],  # 1-50
+            "slow_period": [r"^([1-9]|[1-9][0-9]|100)$"],
+            "fast_period": [r"^([1-9]|[1-4][0-9]|50)$"],
+            "signal_period": [r"^([1-9]|[1-4][0-9]|50)$"],
         },
     }
 
-    # Required parameters by indicator type
     REQUIRED_PARAMS: ClassVar[dict[str, set[str]]] = {
         "Moving Averages": {"symbol", "period"},
         "Oscillators": {"symbol", "period"},
@@ -57,36 +58,63 @@ class TechnicalAnalysisRule(CommonValidationRule):
 
     @property
     def expected_category(self) -> SemanticCategory:
-        """Category for technical analysis endpoints"""
         return SemanticCategory.TECHNICAL_ANALYSIS
 
     def get_parameter_requirements(
         self, method_name: str
     ) -> dict[str, list[str]] | None:
-        """Get parameter validation patterns with technical-specific logic"""
+        """
+        Return a dictionary of parameter regex lists for recognized endpoints.
+        E.g. "get_sma" => {"symbol": [...], "interval": [...], "period": [...]}
+        If 'method_name' does not match any subcategory or operation, return None.
+        """
         endpoint_info = self.get_endpoint_info(method_name)
         if not endpoint_info:
             return None
 
         subcategory, operation = endpoint_info
+        base_patterns: dict[str, list[str]] = {}
 
-        # Base requirements
-        base_patterns = {
-            "symbol": self.PARAMETER_PATTERNS["symbol"],
-            "interval": self.PARAMETER_PATTERNS["interval"],
-        }
+        # Always add symbol + interval if available
+        self._add_top_level_pattern("symbol", base_patterns)
+        self._add_top_level_pattern("interval", base_patterns)
 
-        # Add period requirement for applicable subcategories
-        if subcategory in ["Moving Averages", "Oscillators", "Momentum", "Volatility"]:
-            base_patterns["period"] = self.PARAMETER_PATTERNS["period"]
+        # Some subcategories require 'period'
+        if subcategory in {"Moving Averages", "Oscillators", "Momentum", "Volatility"}:
+            self._add_top_level_pattern("period", base_patterns)
 
-        # Add operation-specific patterns
+        # operation-based logic
         match operation:
             case "bbands":
-                base_patterns.update(self.PARAMETER_PATTERNS["volatility_specific"])
+                self._add_subdict_patterns("volatility_specific", base_patterns)
             case "kama":
-                base_patterns.update(self.PARAMETER_PATTERNS["kama_specific"])
+                self._add_subdict_patterns("kama_specific", base_patterns)
             case "macd" | "ppo":
-                base_patterns.update(self.PARAMETER_PATTERNS["momentum_specific"])
+                self._add_subdict_patterns("momentum_specific", base_patterns)
+            # etc. for other indicators if needed
 
-        return base_patterns
+        return base_patterns if base_patterns else None
+
+    def _add_top_level_pattern(
+        self, key: str, base_patterns: dict[str, list[str]]
+    ) -> None:
+        """
+        If the top-level PARAMETER_PATTERNS[key] is a list, copy it into base_patterns.
+        """
+        pattern_value = self.PARAMETER_PATTERNS.get(key)
+        if isinstance(pattern_value, list):
+            base_patterns[key] = pattern_value
+
+    def _add_subdict_patterns(
+        self, dict_key: str, base_patterns: dict[str, list[str]]
+    ) -> None:
+        """
+        If PARAMETER_PATTERNS[dict_key] is a dict, copy any list[str] entries
+        into base_patterns.
+        E.g. volatility_specific = {"std_dev": [r"..."], ...}
+        """
+        sub_dict = self.PARAMETER_PATTERNS.get(dict_key)
+        if isinstance(sub_dict, dict):
+            for sub_key, sub_val in sub_dict.items():
+                if isinstance(sub_val, list):
+                    base_patterns[sub_key] = sub_val
