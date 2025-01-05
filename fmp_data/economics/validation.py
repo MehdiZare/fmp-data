@@ -7,7 +7,6 @@ from fmp_data.lc.validation import CommonValidationRule
 class EconomicsRule(CommonValidationRule):
     """Validation rules for economics endpoints"""
 
-    # Method prefix to subcategory mapping
     METHOD_GROUPS: ClassVar[dict[str, tuple[str, list[str]]]] = {
         "Treasury": (
             "get_treasury_",
@@ -43,57 +42,79 @@ class EconomicsRule(CommonValidationRule):
         ),
     }
 
-    # Parameter patterns for validation with better organization
-    PARAMETER_PATTERNS: ClassVar[dict[str, dict[str, list[str] | str | int]]] = {
-        # Common patterns used across all economics endpoints
-        "date": [r"^\d{4}-\d{2}-\d{2}$"],  # YYYY-MM-DD format
-        "limit": [r"^\d+$"],  # Numeric only
+    # Must match parent's type exactly:
+    # dict[str, list[str] | dict[str, list[str] | str | int]]
+    PARAMETER_PATTERNS: ClassVar[
+        dict[str, list[str] | dict[str, list[str] | str | int]]
+    ] = {
+        # Top-level keys => list[str]
+        "date": [r"^\d{4}-\d{2}-\d{2}$"],  # YYYY-MM-DD
+        "limit": [r"^\d+$"],  # numeric
         "frequency": [r"^(daily|monthly|quarterly|annual)$"],
-        # Treasury specific patterns
+        # treasury_specific => a dict
         "treasury_specific": {
-            "maturity": [r"^(\d+[MY]|3M|6M|1Y|2Y|5Y|10Y|30Y)$"]  # Treasury maturities
+            "maturity": [r"^(\d+[MY]|3M|6M|1Y|2Y|5Y|10Y|30Y)$"]  # e.g. 3M, 5Y, 10Y
         },
-        # Economic indicators specific patterns
+        # economic_indicators_specific => a dict
         "economic_indicators_specific": {
-            "country": [r"^[A-Z]{2}$"],  # Two-letter country codes
+            "country": [r"^[A-Z]{2}$"],  # e.g. US
             "indicator": [r"^(GDP|CPI|PMI|NFP|RETAIL|TRADE|HOUSING|SENTIMENT)$"],
         },
-        # Market risk specific patterns
-        "market_risk_specific": {
-            "country": [r"^[A-Z]{2}$"]  # Two-letter country codes
-        },
+        # market_risk_specific => a dict
+        "market_risk_specific": {"country": [r"^[A-Z]{2}$"]},
     }
 
     @property
     def expected_category(self) -> SemanticCategory:
-        """Category for economics endpoints"""
         return SemanticCategory.ECONOMIC
 
     def get_parameter_requirements(
         self, method_name: str
     ) -> dict[str, list[str]] | None:
-        """Get parameter validation patterns with economics-specific logic"""
+        """
+        Get parameter validation patterns for economics endpoints.
+        Returns dict[str, list[str]] if recognized, else None.
+        """
         endpoint_info = self.get_endpoint_info(method_name)
         if not endpoint_info:
             return None
 
-        subcategory, operation = endpoint_info
+        subcategory, _ = endpoint_info
 
-        # Base requirements common to all economic endpoints
-        base_patterns = {
-            "date": self.PARAMETER_PATTERNS["date"],
-            "limit": self.PARAMETER_PATTERNS["limit"],
-            "frequency": self.PARAMETER_PATTERNS["frequency"],
-        }
+        # Build a dict[str, list[str]] by selectively copying patterns.
+        base_patterns: dict[str, list[str]] = {}
 
-        # Add subcategory-specific patterns
+        # Always add these top-level patterns
+        self._copy_top_level(["date", "limit", "frequency"], base_patterns)
+
+        # Subcategory-specific
         if subcategory == "Treasury":
-            base_patterns.update(self.PARAMETER_PATTERNS["treasury_specific"])
+            self._copy_subdict("treasury_specific", base_patterns)
         elif subcategory == "Economic Indicators":
-            base_patterns.update(
-                self.PARAMETER_PATTERNS["economic_indicators_specific"]
-            )
+            self._copy_subdict("economic_indicators_specific", base_patterns)
         elif subcategory == "Market Risk":
-            base_patterns.update(self.PARAMETER_PATTERNS["market_risk_specific"])
+            self._copy_subdict("market_risk_specific", base_patterns)
+        else:
+            return None
 
-        return base_patterns
+        return base_patterns if base_patterns else None
+
+    def _copy_top_level(self, keys: list[str], target: dict[str, list[str]]) -> None:
+        """
+        Copies only top-level list[str] from PARAMETER_PATTERNS.
+        """
+        for k in keys:
+            val = self.PARAMETER_PATTERNS.get(k)
+            if isinstance(val, list):
+                target[k] = val
+
+    def _copy_subdict(self, dict_key: str, target: dict[str, list[str]]) -> None:
+        """
+        Copies only the list[str] items from
+        a nested dict at PARAMETER_PATTERNS[dict_key].
+        """
+        sub_dict = self.PARAMETER_PATTERNS.get(dict_key)
+        if isinstance(sub_dict, dict):
+            for param, patterns in sub_dict.items():
+                if isinstance(patterns, list):
+                    target[param] = patterns
