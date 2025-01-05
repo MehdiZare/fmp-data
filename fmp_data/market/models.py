@@ -1,6 +1,7 @@
 # fmp_data/market/models.py
 import warnings
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -54,12 +55,25 @@ class ExchangeSymbol(BaseModel):
 
     @classmethod
     @model_validator(mode="before")
-    def validate_data(cls, data):
-        """Validate data and convert invalid values to None with warnings"""
-        if not isinstance(data, dict):
-            return data
+    def validate_data(cls, data: Any) -> dict[str, Any]:
+        """
+        Validate data and convert invalid values to None with warnings.
 
-        cleaned_data = {}
+        Args:
+            data: Raw data to validate
+
+        Returns:
+            Dict[str, Any]: Cleaned data with invalid values converted to None
+        """
+        if not isinstance(data, dict):
+            # Convert non-dict data to an empty dict or raise an error
+            warnings.warn(
+                f"Expected dict data but got {type(data)}. Converting to empty dict.",
+                stacklevel=2,
+            )
+            return {}
+
+        cleaned_data: dict[str, Any] = {}
         for field_name, field_value in data.items():
             try:
                 # Check if field exists and is a float type
@@ -104,7 +118,19 @@ class StockMarketHoliday(BaseModel):
     holidays: dict[str, str] = Field(description="Mapping of holiday names to dates")
 
     @classmethod
-    def from_api_data(cls, data):
+    def from_api_data(cls, data: dict[str, Any]) -> "StockMarketHoliday":
+        """
+        Create a StockMarketHoliday instance from API response data.
+
+        Args:
+            data: Dictionary containing year and holidays data from the API
+
+        Returns:
+            StockMarketHoliday: Initialized instance with parsed holiday data
+
+        Raises:
+            ValueError: If data is malformed or missing required fields
+        """
         if not isinstance(data, dict):
             raise ValueError(
                 f"Expected a dictionary but got {type(data).__name__}: {data}"
@@ -116,7 +142,7 @@ class StockMarketHoliday(BaseModel):
             raise ValueError("Missing 'year' field in data")
 
         # Aggregate holidays into a dictionary
-        holidays = {}
+        holidays: dict[str, str] = {}
         for holiday in data.get("holidays", []):
             if not isinstance(holiday, dict):
                 raise ValueError(
@@ -153,8 +179,13 @@ class MarketHours(BaseModel):
     isTheForexMarketOpen: bool = Field(description="Whether Forex market is open")
     isTheCryptoMarketOpen: bool = Field(description="Whether Crypto market is open")
 
-    def __init__(self, **data):
-        """Override the default initialization to preprocess API data."""
+    def __init__(self, **data: Any) -> None:
+        """
+        Override the default initialization to preprocess API data.
+
+        Args:
+            **data: Keyword arguments containing model data
+        """
         # Process stockMarketHolidays
         holidays = data.get("stockMarketHolidays", [])
         if holidays:
@@ -193,8 +224,19 @@ class SectorPerformance(BaseModel):
     )
 
     @field_validator("change_percentage", mode="before")
-    def parse_percentage(cls, value):
-        """Convert percentage string to a float."""
+    def parse_percentage(cls, value: Any) -> float:
+        """
+        Convert percentage string to a float.
+
+        Args:
+            value: Value to parse, expected to be a string ending with '%'
+
+        Returns:
+            float: Parsed percentage value as decimal
+
+        Raises:
+            ValueError: If value cannot be parsed as a percentage
+        """
         if isinstance(value, str) and value.endswith("%"):
             try:
                 return float(value.strip("%")) / 100
