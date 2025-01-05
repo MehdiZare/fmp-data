@@ -12,14 +12,18 @@ from fmp_data.investment.models import (
     PortfolioDate,
 )
 
+from .base import BaseTestCase
 
-class TestInvestmentEndpoints:
+
+class TestInvestmentEndpoints(BaseTestCase):
     """Integration tests for InvestmentClient endpoints using real API calls and VCR"""
 
     def test_get_etf_holdings(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting ETF holdings"""
         with vcr_instance.use_cassette("investment/etf_holdings.yaml"):
-            holdings = fmp_client.investment.get_etf_holdings("SPY", date(2023, 9, 30))
+            holdings = self._handle_rate_limit(
+                fmp_client.investment.get_etf_holdings, "SPY", date(2023, 9, 30)
+            )
 
             assert isinstance(holdings, list)
             assert len(holdings) >= 0
@@ -34,7 +38,9 @@ class TestInvestmentEndpoints:
     def test_get_etf_holding_dates(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting ETF holding dates"""
         with vcr_instance.use_cassette("investment/etf_holding_dates.yaml"):
-            dates = fmp_client.investment.get_etf_holding_dates("SPY")
+            dates = self._handle_rate_limit(
+                fmp_client.investment.get_etf_holding_dates, "SPY"
+            )
 
             assert isinstance(dates, list)
             assert dates
@@ -42,7 +48,7 @@ class TestInvestmentEndpoints:
     def test_get_etf_info(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting ETF information"""
         with vcr_instance.use_cassette("investment/etf_info.yaml"):
-            info = fmp_client.investment.get_etf_info("SPY")
+            info = self._handle_rate_limit(fmp_client.investment.get_etf_info, "SPY")
 
             assert isinstance(info, ETFInfo)
             assert info.symbol == "SPY"
@@ -58,7 +64,9 @@ class TestInvestmentEndpoints:
     def test_get_etf_sector_weightings(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting ETF sector weightings"""
         with vcr_instance.use_cassette("investment/etf_sector_weightings.yaml"):
-            weightings = fmp_client.investment.get_etf_sector_weightings("SPY")
+            weightings = self._handle_rate_limit(
+                fmp_client.investment.get_etf_sector_weightings, "SPY"
+            )
 
             assert isinstance(weightings, list)
             assert len(weightings) > 0
@@ -74,7 +82,9 @@ class TestInvestmentEndpoints:
     def test_get_etf_country_weightings(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting ETF country weightings"""
         with vcr_instance.use_cassette("investment/etf_country_weightings.yaml"):
-            weightings = fmp_client.investment.get_etf_country_weightings("SPY")
+            weightings = self._handle_rate_limit(
+                fmp_client.investment.get_etf_country_weightings, "SPY"
+            )
 
             assert isinstance(weightings, list)
             assert len(weightings) > 0
@@ -90,7 +100,9 @@ class TestInvestmentEndpoints:
     def test_get_etf_exposure(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting ETF stock exposure"""
         with vcr_instance.use_cassette("investment/etf_exposure.yaml"):
-            exposures = fmp_client.investment.get_etf_exposure("SPY")
+            exposures = self._handle_rate_limit(
+                fmp_client.investment.get_etf_exposure, "SPY"
+            )
 
             assert isinstance(exposures, list)
             assert len(exposures) > 0
@@ -110,7 +122,9 @@ class TestInvestmentEndpoints:
     def test_get_etf_holder(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting ETF holder information"""
         with vcr_instance.use_cassette("investment/etf_holder.yaml"):
-            holders = fmp_client.investment.get_etf_holder("SPY")
+            holders = self._handle_rate_limit(
+                fmp_client.investment.get_etf_holder, "SPY"
+            )
 
             assert isinstance(holders, list)
             assert len(holders) > 0
@@ -129,7 +143,9 @@ class TestInvestmentEndpoints:
     def test_get_mutual_fund_dates(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting mutual fund dates"""
         with vcr_instance.use_cassette("investment/mutual_fund_dates.yaml"):
-            dates = fmp_client.investment.get_mutual_fund_dates("VWO", "0000036405")
+            dates = self._handle_rate_limit(
+                fmp_client.investment.get_mutual_fund_dates, "VWO", "0000036405"
+            )
 
             assert isinstance(dates, list)
             assert len(dates) > 0
@@ -162,7 +178,9 @@ class TestInvestmentEndpoints:
     def test_get_mutual_fund_holder(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting mutual fund holder information"""
         with vcr_instance.use_cassette("investment/mutual_fund_holder.yaml"):
-            holders = fmp_client.investment.get_mutual_fund_holder("VWO")
+            holders = self._handle_rate_limit(
+                fmp_client.investment.get_mutual_fund_holder, "VWO"
+            )
 
             assert isinstance(holders, list)
             assert len(holders) > 0
@@ -181,13 +199,17 @@ class TestInvestmentEndpoints:
     ):
         """Test error handling with invalid symbol"""
         with vcr_instance.use_cassette("investment/invalid_symbol.yaml"):
-            result = fmp_client.investment.get_etf_info("INVALID_SYMBOL")
+            result = self._handle_rate_limit(
+                fmp_client.investment.get_etf_info, "INVALID_SYMBOL"
+            )
             assert result is None or (isinstance(result, list) and len(result) == 0)
 
     def test_error_handling_invalid_date(self, fmp_client: FMPDataClient, vcr_instance):
         """Test error handling with future date"""
         future_date = date.today() + timedelta(days=50)
         with vcr_instance.use_cassette("investment/invalid_date.yaml"):
-            holdings = fmp_client.investment.get_etf_holdings("SPY", future_date)
+            holdings = self._handle_rate_limit(
+                fmp_client.investment.get_etf_holdings, "SPY", future_date
+            )
             assert isinstance(holdings, list)
             assert len(holdings) == 0

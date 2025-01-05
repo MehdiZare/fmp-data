@@ -2,74 +2,82 @@
 
 from fmp_data.base import EndpointGroup
 from fmp_data.market.endpoints import (
+    ALL_SHARES_FLOAT,
+    AVAILABLE_INDEXES,
+    CIK_SEARCH,
+    CUSIP_SEARCH,
+    ETF_LIST,
+    EXCHANGE_SYMBOLS,
     GAINERS,
-    HISTORICAL_MARKET_CAP,
-    HISTORICAL_PRICE,
-    INTRADAY_PRICE,
+    ISIN_SEARCH,
     LOSERS,
-    MARKET_CAP,
     MARKET_HOURS,
     MOST_ACTIVE,
     PRE_POST_MARKET,
-    QUOTE,
+    SEARCH,
     SECTOR_PERFORMANCE,
-    SIMPLE_QUOTE,
+    STOCK_LIST,
 )
 from fmp_data.market.models import (
-    HistoricalPrice,
-    IntradayPrice,
-    MarketCapitalization,
+    AvailableIndex,
+    CIKResult,
+    CompanySearchResult,
+    CUSIPResult,
+    ExchangeSymbol,
+    ISINResult,
     MarketHours,
     MarketMover,
     PrePostMarketQuote,
-    Quote,
     SectorPerformance,
-    SimpleQuote,
 )
+from fmp_data.models import CompanySymbol, ShareFloat
 
 
 class MarketClient(EndpointGroup):
     """Client for market data endpoints"""
 
-    def get_quote(self, symbol: str) -> Quote:
-        """Get real-time stock quote"""
-        result = self.client.request(QUOTE, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
+    def search(
+        self, query: str, limit: int | None = None, exchange: str | None = None
+    ) -> list[CompanySearchResult]:
+        """Search for companies"""
+        params = {"query": query}
+        if limit is not None:
+            params["limit"] = str(limit)
+        if exchange is not None:
+            params["exchange"] = exchange
+        return self.client.request(SEARCH, **params)
 
-    def get_simple_quote(self, symbol: str) -> SimpleQuote:
-        """Get simple stock quote"""
-        result = self.client.request(SIMPLE_QUOTE, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
+    def get_stock_list(self) -> list[CompanySymbol]:
+        """Get list of all available stocks"""
+        return self.client.request(STOCK_LIST)
 
-    def get_historical_prices(
-        self,
-        symbol: str,
-        from_date: str | None = None,
-        to_date: str | None = None,
-    ) -> list[HistoricalPrice]:
-        """Get historical daily price data"""
-        return self.client.request(
-            HISTORICAL_PRICE, symbol=symbol, from_=from_date, to=to_date
-        )
+    def get_etf_list(self) -> list[CompanySymbol]:
+        """Get list of all available ETFs"""
+        return self.client.request(ETF_LIST)
 
-    def get_intraday_prices(
-        self, symbol: str, interval: str = "1min"
-    ) -> list[IntradayPrice]:
-        """Get intraday price data"""
-        return self.client.request(INTRADAY_PRICE, symbol=symbol, interval=interval)
+    def get_available_indexes(self) -> list[AvailableIndex]:
+        """Get list of all available indexes"""
+        return self.client.request(AVAILABLE_INDEXES)
+
+    def get_exchange_symbols(self, exchange: str) -> list[ExchangeSymbol]:
+        """Get all symbols for a specific exchange"""
+        return self.client.request(EXCHANGE_SYMBOLS, exchange=exchange)
+
+    def search_by_cik(self, query: str) -> list[CIKResult]:
+        """Search companies by CIK number"""
+        return self.client.request(CIK_SEARCH, query=query)
+
+    def search_by_cusip(self, query: str) -> list[CUSIPResult]:
+        """Search companies by CUSIP"""
+        return self.client.request(CUSIP_SEARCH, query=query)
+
+    def search_by_isin(self, query: str) -> list[ISINResult]:
+        """Search companies by ISIN"""
+        return self.client.request(ISIN_SEARCH, query=query)
 
     def get_market_hours(self) -> MarketHours:
         """Get market trading hours information"""
         return self.client.request(MARKET_HOURS)
-
-    def get_market_cap(self, symbol: str) -> MarketCapitalization:
-        """Get market capitalization data"""
-        result = self.client.request(MARKET_CAP, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
-
-    def get_historical_market_cap(self, symbol: str) -> list[MarketCapitalization]:
-        """Get historical market capitalization data"""
-        return self.client.request(HISTORICAL_MARKET_CAP, symbol=symbol)
 
     def get_gainers(self) -> list[MarketMover]:
         """Get market gainers"""
@@ -90,3 +98,7 @@ class MarketClient(EndpointGroup):
     def get_pre_post_market(self) -> list[PrePostMarketQuote]:
         """Get pre/post market data"""
         return self.client.request(PRE_POST_MARKET)
+
+    def get_all_shares_float(self) -> list[ShareFloat]:
+        """Get share float data for all companies"""
+        return self.client.request(ALL_SHARES_FLOAT)

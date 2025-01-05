@@ -7,7 +7,6 @@ from pydantic import HttpUrl
 
 from fmp_data.intelligence.client import MarketIntelligenceClient
 from fmp_data.intelligence.models import (
-    AnalystEstimate,
     CrowdfundingOffering,
     DividendEvent,
     EquityOffering,
@@ -20,8 +19,6 @@ from fmp_data.intelligence.models import (
     HouseDisclosure,
     IPOEvent,
     PressRelease,
-    PriceTarget,
-    PriceTargetSummary,
     SenateTrade,
     StockNewsArticle,
     StockNewsSentiment,
@@ -326,35 +323,6 @@ def equity_offering_data():
         "findersFees": 0,
         "grossProceedsUsed": 0,
     }
-
-
-# Tests
-def test_get_price_target(fmp_client, mock_client, price_target_data):
-    """Test fetching price targets"""
-    mock_client.request.return_value = [PriceTarget(**price_target_data[0])]
-    result = fmp_client.get_price_target(symbol="AAPL")
-    assert isinstance(result, list)
-    assert isinstance(result[0], PriceTarget)
-    assert result[0].symbol == "AAPL"
-
-
-def test_get_price_target_summary(fmp_client, mock_client, price_target_summary_data):
-    """Test fetching price target summary"""
-    mock_client.request.return_value = PriceTargetSummary(**price_target_summary_data)
-    result = fmp_client.get_price_target_summary(symbol="AAPL")
-    assert isinstance(result, PriceTargetSummary)
-    assert result.symbol == "AAPL"
-    assert result.last_month_avg_price_target == 190.0
-
-
-def test_get_analyst_estimates(fmp_client, mock_client, analyst_estimates_data):
-    """Test fetching analyst estimates"""
-    mock_client.request.return_value = [AnalystEstimate(**analyst_estimates_data[0])]
-    result = fmp_client.get_analyst_estimates(symbol="AAPL")
-    assert isinstance(result, list)
-    assert isinstance(result[0], AnalystEstimate)
-    assert result[0].symbol == "AAPL"
-    assert result[0].estimated_revenue_avg == 52500000.0
 
 
 def test_get_dividends_calendar(fmp_client, mock_client, dividends_calendar_data):

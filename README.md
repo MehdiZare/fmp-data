@@ -21,6 +21,7 @@ A Python client for the Financial Modeling Prep (FMP) API with comprehensive log
 - 📊 Support for all major FMP endpoints
 - 🔍 Detailed error messages
 - 🚦 Configurable retry strategies
+- 🤖 **NEW: Langchain Integration**
 
 ## Getting an API Key
 
@@ -36,7 +37,66 @@ pip install fmp-data
 
 # Using poetry
 poetry add fmp-data
+
+# For Langchain integration
+pip install fmp-data[langchain]
+# or
+poetry add fmp-data --extras langchain
 ```
+
+## Langchain Integration
+
+### Quick Start with Langchain
+
+The FMP Data Client now supports seamless integration with Langchain, allowing you to dynamically discover and use Financial Market Data endpoints as Structured Tools.
+
+#### Prerequisites
+- An FMP API Key
+- An OpenAI API Key (for embeddings)
+
+```python
+from fmp_data import FMPDataClient, ClientConfig
+from fmp_data.config import EmbeddingConfig, EmbeddingProvider
+
+# Configure the client with embedding support
+config = ClientConfig(
+    api_key="YOUR_FMP_API_KEY", # pragma: allowlist secret
+    embedding=EmbeddingConfig(
+        provider=EmbeddingProvider.OPENAI,
+        api_key="YOUR_OPENAI_API_KEY", # pragma: allowlist secret
+        model_name="text-embedding-3-small"
+    )
+)
+
+# Initialize the Tool Manager
+from fmp_data.lc.manager import FMPToolManager
+manager = FMPToolManager(config=config)
+
+# Get tools for a specific query
+query = "what is the price of Apple stock"
+match_tools = manager.get_tools(query)
+
+# Print available tools
+for tool in match_tools:
+    print(f"Tool: {tool.name}")
+    print(f"Description: {tool.description}")
+    print()
+
+# Search for relevant endpoints
+search_results = manager.search_endpoints(query)
+for result in search_results:
+    print(f"Endpoint: {result['name']}")
+    print(f"Description: {result['description']}")
+    print(f"Score: {result['score']}")
+    print()
+```
+
+### Langchain Integration Features
+
+- 🔍 Semantic endpoint discovery
+- 🛠️ Automatic conversion of FMP endpoints to Langchain Structured Tools
+- 📊 Flexible querying with natural language
+- 🤖 Compatible with any LLM supporting Langchain tools
 
 ## Quick Start
 
@@ -186,9 +246,8 @@ FMP_LOG_BACKUP_COUNT=5
 ```python
 from fmp_data import FMPDataClient, ClientConfig, LoggingConfig, RateLimitConfig
 
-
 config = ClientConfig(
-    api_key="your_api_key_here", # pragma: allowlist secret
+    api_key="your_api_key_here",  # pragma: allowlist secret
     timeout=30,
     max_retries=3,
     base_url="https://financialmodelingprep.com/api",

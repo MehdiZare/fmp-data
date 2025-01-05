@@ -5,8 +5,6 @@ from pydantic import HttpUrl
 
 from fmp_data import FMPDataClient
 from fmp_data.intelligence.models import (
-    AnalystEstimate,
-    AnalystRecommendation,
     CrowdfundingOffering,
     CryptoNewsArticle,
     DividendEvent,
@@ -26,134 +24,19 @@ from fmp_data.intelligence.models import (
     IPOEvent,
     PressRelease,
     PressReleaseBySymbol,
-    PriceTarget,
-    PriceTargetConsensus,
-    PriceTargetSummary,
     SenateTrade,
     SocialSentimentChanges,
     StockNewsArticle,
     StockNewsSentiment,
     StockSplitEvent,
     TrendingSocialSentiment,
-    UpgradeDowngrade,
-    UpgradeDowngradeConsensus,
 )
 
+from .base import BaseTestCase
 
-class TestIntelligenceEndpoints:
+
+class TestIntelligenceEndpoints(BaseTestCase):
     """Test market intelligence endpoints"""
-
-    def test_get_price_target(self, fmp_client: FMPDataClient, vcr_instance):
-        """Test getting price targets"""
-        with vcr_instance.use_cassette("intelligence/price_target.yaml"):
-            targets = fmp_client.intelligence.get_price_target("AAPL")
-
-            assert isinstance(targets, list)
-            assert len(targets) > 0
-
-            for target in targets:
-                assert isinstance(target, PriceTarget)
-                assert isinstance(target.published_date, datetime)
-                assert isinstance(target.price_target, float)
-                assert target.symbol == "AAPL"
-                assert isinstance(target.adj_price_target, float)
-                assert isinstance(target.price_when_posted, float)
-
-    def test_get_price_target_summary(self, fmp_client: FMPDataClient, vcr_instance):
-        """Test getting price target summary"""
-        with vcr_instance.use_cassette("intelligence/price_target_summary.yaml"):
-            summary = fmp_client.intelligence.get_price_target_summary("AAPL")
-
-            assert isinstance(summary, PriceTargetSummary)
-            assert summary.symbol == "AAPL"
-            assert isinstance(summary.last_month, int)
-            assert isinstance(summary.last_month_avg_price_target, float)
-            assert isinstance(summary.last_quarter_avg_price_target, float)
-            assert isinstance(summary.last_year, int)
-            assert isinstance(summary.all_time_avg_price_target, float)
-
-    def test_get_price_target_consensus(self, fmp_client: FMPDataClient, vcr_instance):
-        """Test getting price target consensus"""
-        with vcr_instance.use_cassette("intelligence/price_target_consensus.yaml"):
-            consensus = fmp_client.intelligence.get_price_target_consensus("AAPL")
-
-            assert isinstance(consensus, PriceTargetConsensus)
-            assert consensus.symbol == "AAPL"
-            assert isinstance(consensus.target_consensus, float)
-            assert isinstance(consensus.target_high, float)
-            assert isinstance(consensus.target_low, float)
-
-    def test_get_analyst_estimates(self, fmp_client: FMPDataClient, vcr_instance):
-        """Test getting analyst estimates"""
-        with vcr_instance.use_cassette("intelligence/analyst_estimates.yaml"):
-            estimates = fmp_client.intelligence.get_analyst_estimates("AAPL")
-
-            assert isinstance(estimates, list)
-            assert len(estimates) > 0
-
-            for estimate in estimates:
-                assert isinstance(estimate, AnalystEstimate)
-                assert isinstance(estimate.date, datetime)
-                assert isinstance(estimate.estimated_revenue_high, float)
-                assert estimate.symbol == "AAPL"
-                assert isinstance(estimate.estimated_ebitda_avg, float)
-                assert isinstance(estimate.number_analyst_estimated_revenue, int)
-
-    def test_get_analyst_recommendations(self, fmp_client: FMPDataClient, vcr_instance):
-        """Test getting analyst recommendations"""
-        with vcr_instance.use_cassette("intelligence/analyst_recommendations.yaml"):
-            recommendations = fmp_client.intelligence.get_analyst_recommendations(
-                "AAPL"
-            )
-
-            assert isinstance(recommendations, list)
-            assert len(recommendations) > 0
-
-            for rec in recommendations:
-                assert isinstance(rec, AnalystRecommendation)
-                assert isinstance(rec.date, datetime)
-                assert rec.symbol == "AAPL"
-                assert isinstance(rec.analyst_ratings_buy, int)
-                assert isinstance(rec.analyst_ratings_strong_sell, int)
-
-    def test_get_upgrades_downgrades(self, fmp_client: FMPDataClient, vcr_instance):
-        """Test getting upgrades and downgrades"""
-        with vcr_instance.use_cassette("intelligence/upgrades_downgrades.yaml"):
-            changes = fmp_client.intelligence.get_upgrades_downgrades("AAPL")
-
-            assert isinstance(changes, list)
-            assert len(changes) > 0
-
-            for change in changes:
-                assert isinstance(change, UpgradeDowngrade)
-                assert isinstance(change.published_date, datetime)
-                assert change.symbol == "AAPL"
-                assert isinstance(change.action, str)
-                assert (
-                    isinstance(change.previous_grade, str)
-                    if change.previous_grade is not None
-                    else True
-                )
-                assert isinstance(change.new_grade, str)
-
-    def test_get_upgrades_downgrades_consensus(
-        self, fmp_client: FMPDataClient, vcr_instance
-    ):
-        """Test getting upgrades/downgrades consensus"""
-        with vcr_instance.use_cassette(
-            "intelligence/upgrades_downgrades_consensus.yaml"
-        ):
-            consensus = fmp_client.intelligence.get_upgrades_downgrades_consensus(
-                "AAPL"
-            )
-
-            assert isinstance(consensus, UpgradeDowngradeConsensus)
-            assert consensus.symbol == "AAPL"
-            assert isinstance(consensus.strong_buy, int)
-            assert isinstance(consensus.buy, int)
-            assert isinstance(consensus.hold, int)
-            assert isinstance(consensus.sell, int)
-            assert isinstance(consensus.strong_sell, int)
 
     def test_get_earnings_calendar(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting earnings calendar"""
@@ -161,8 +44,10 @@ class TestIntelligenceEndpoints:
             start_date = date.today()
             end_date = start_date + timedelta(days=30)
 
-            events = fmp_client.intelligence.get_earnings_calendar(
-                start_date=start_date, end_date=end_date
+            events = self._handle_rate_limit(
+                fmp_client.intelligence.get_earnings_calendar,
+                start_date=start_date,
+                end_date=end_date,
             )
 
             assert isinstance(events, list)
@@ -183,8 +68,10 @@ class TestIntelligenceEndpoints:
             start_date = date.today()
             end_date = start_date + timedelta(days=30)
 
-            events = fmp_client.intelligence.get_earnings_confirmed(
-                start_date=start_date, end_date=end_date
+            events = self._handle_rate_limit(
+                fmp_client.intelligence.get_earnings_confirmed,
+                start_date=start_date,
+                end_date=end_date,
             )
 
             assert isinstance(events, list)
@@ -198,7 +85,9 @@ class TestIntelligenceEndpoints:
     def test_get_historical_earnings(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting historical earnings"""
         with vcr_instance.use_cassette("intelligence/historical_earnings.yaml"):
-            events = fmp_client.intelligence.get_historical_earnings("AAPL")
+            events = self._handle_rate_limit(
+                fmp_client.intelligence.get_historical_earnings, "AAPL"
+            )
 
             assert isinstance(events, list)
             assert len(events) > 0
@@ -212,7 +101,9 @@ class TestIntelligenceEndpoints:
     def test_get_earnings_surprises(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting earnings surprises"""
         with vcr_instance.use_cassette("intelligence/earnings_surprises.yaml"):
-            surprises = fmp_client.intelligence.get_earnings_surprises("AAPL")
+            surprises = self._handle_rate_limit(
+                fmp_client.intelligence.get_earnings_surprises, "AAPL"
+            )
 
             assert isinstance(surprises, list)
             assert len(surprises) > 0
@@ -230,8 +121,10 @@ class TestIntelligenceEndpoints:
             start_date = date.today()
             end_date = start_date + timedelta(days=30)
 
-            events = fmp_client.intelligence.get_dividends_calendar(
-                start_date=start_date, end_date=end_date
+            events = self._handle_rate_limit(
+                fmp_client.intelligence.get_dividends_calendar,
+                start_date=start_date,
+                end_date=end_date,
             )
 
             assert isinstance(events, list)
@@ -255,8 +148,10 @@ class TestIntelligenceEndpoints:
             start_date = date.today()
             end_date = start_date + timedelta(days=30)
 
-            events = fmp_client.intelligence.get_stock_splits_calendar(
-                start_date=start_date, end_date=end_date
+            events = self._handle_rate_limit(
+                fmp_client.intelligence.get_stock_splits_calendar,
+                start_date=start_date,
+                end_date=end_date,
             )
 
             assert isinstance(events, list)
@@ -275,8 +170,10 @@ class TestIntelligenceEndpoints:
             start_date = date.today()
             end_date = start_date + timedelta(days=30)
 
-            events = fmp_client.intelligence.get_ipo_calendar(
-                start_date=start_date, end_date=end_date
+            events = self._handle_rate_limit(
+                fmp_client.intelligence.get_ipo_calendar,
+                start_date=start_date,
+                end_date=end_date,
             )
 
             assert isinstance(events, list)
@@ -295,7 +192,9 @@ class TestIntelligenceEndpoints:
     def test_get_fmp_articles(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting FMP articles"""
         with vcr_instance.use_cassette("intelligence/fmp_articles.yaml"):
-            articles = fmp_client.intelligence.get_fmp_articles(page=0, size=5)
+            articles = self._handle_rate_limit(
+                fmp_client.intelligence.get_fmp_articles, page=0, size=5
+            )
 
             assert isinstance(articles, list)
             assert len(articles) > 0
@@ -314,7 +213,10 @@ class TestIntelligenceEndpoints:
     def test_get_general_news(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting general news articles"""
         with vcr_instance.use_cassette("intelligence/general_news.yaml"):
-            articles = fmp_client.intelligence.get_general_news(page=0)
+            articles = self._handle_rate_limit(
+                fmp_client.intelligence.get_general_news,
+                page=0,
+            )
 
             assert isinstance(articles, list)
             assert len(articles) > 0
@@ -331,7 +233,8 @@ class TestIntelligenceEndpoints:
     def test_get_stock_news(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting stock news articles"""
         with vcr_instance.use_cassette("intelligence/stock_news.yaml"):
-            articles = fmp_client.intelligence.get_stock_news(
+            articles = self._handle_rate_limit(
+                fmp_client.intelligence.get_stock_news,
                 tickers="AAPL,MSFT",
                 page=0,
                 from_date=date(2024, 1, 1),
@@ -355,7 +258,10 @@ class TestIntelligenceEndpoints:
     def test_get_stock_news_sentiments(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting stock news articles with sentiment"""
         with vcr_instance.use_cassette("intelligence/stock_news_sentiments.yaml"):
-            articles = fmp_client.intelligence.get_stock_news_sentiments(page=0)
+            articles = self._handle_rate_limit(
+                fmp_client.intelligence.get_stock_news_sentiments,
+                page=0,
+            )
 
             assert isinstance(articles, list)
             assert len(articles) > 0
@@ -372,7 +278,8 @@ class TestIntelligenceEndpoints:
     def test_get_forex_news(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting forex news articles"""
         with vcr_instance.use_cassette("intelligence/forex_news.yaml"):
-            articles = fmp_client.intelligence.get_forex_news(
+            articles = self._handle_rate_limit(
+                fmp_client.intelligence.get_forex_news,
                 page=0,
                 symbol="EURUSD",
                 from_date=date(2024, 1, 1),
@@ -393,7 +300,8 @@ class TestIntelligenceEndpoints:
     def test_get_crypto_news(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting crypto news articles"""
         with vcr_instance.use_cassette("intelligence/crypto_news.yaml"):
-            articles = fmp_client.intelligence.get_crypto_news(
+            articles = self._handle_rate_limit(
+                fmp_client.intelligence.get_crypto_news,
                 symbol="BTC",
                 from_date=date(2024, 1, 1),
             )
@@ -415,7 +323,10 @@ class TestIntelligenceEndpoints:
     def test_get_press_releases(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting press releases"""
         with vcr_instance.use_cassette("intelligence/press_releases.yaml"):
-            releases = fmp_client.intelligence.get_press_releases(page=0)
+            releases = self._handle_rate_limit(
+                fmp_client.intelligence.get_press_releases,
+                page=0,
+            )
 
             assert isinstance(releases, list)
             assert len(releases) > 0
@@ -432,8 +343,10 @@ class TestIntelligenceEndpoints:
     ):
         """Test getting press releases by symbol"""
         with vcr_instance.use_cassette("intelligence/press_releases_by_symbol.yaml"):
-            releases = fmp_client.intelligence.get_press_releases_by_symbol(
-                symbol="AAPL", page=0
+            releases = self._handle_rate_limit(
+                fmp_client.intelligence.get_press_releases_by_symbol,
+                symbol="AAPL",
+                page=0,
             )
 
             assert isinstance(releases, list)
@@ -451,8 +364,10 @@ class TestIntelligenceEndpoints:
     ):
         """Test getting historical social sentiment"""
         with vcr_instance.use_cassette("intelligence/historical_social_sentiment.yaml"):
-            sentiments = fmp_client.intelligence.get_historical_social_sentiment(
-                symbol="AAPL", page=0
+            sentiments = self._handle_rate_limit(
+                fmp_client.intelligence.get_historical_social_sentiment,
+                symbol="AAPL",
+                page=0,
             )
 
             assert isinstance(sentiments, list)
@@ -472,8 +387,10 @@ class TestIntelligenceEndpoints:
     ):
         """Test getting trending social sentiment"""
         with vcr_instance.use_cassette("intelligence/trending_social_sentiment.yaml"):
-            sentiments = fmp_client.intelligence.get_trending_social_sentiment(
-                type="bullish", source="stocktwits"
+            sentiments = self._handle_rate_limit(
+                fmp_client.intelligence.get_trending_social_sentiment,
+                type="bullish",
+                source="stocktwits",
             )
 
             assert isinstance(sentiments, list)
@@ -492,8 +409,10 @@ class TestIntelligenceEndpoints:
     ):
         """Test getting social sentiment changes"""
         with vcr_instance.use_cassette("intelligence/social_sentiment_changes.yaml"):
-            changes = fmp_client.intelligence.get_social_sentiment_changes(
-                type="bullish", source="stocktwits"
+            changes = self._handle_rate_limit(
+                fmp_client.intelligence.get_social_sentiment_changes,
+                type="bullish",
+                source="stocktwits",
             )
 
             assert isinstance(changes, list)
@@ -510,7 +429,10 @@ class TestIntelligenceEndpoints:
     def test_get_esg_data(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting ESG data"""
         with vcr_instance.use_cassette("intelligence/esg_data.yaml"):
-            data = fmp_client.intelligence.get_esg_data("AAPL")
+            data = self._handle_rate_limit(
+                fmp_client.intelligence.get_esg_data,
+                "AAPL",
+            )
 
             assert isinstance(data, ESGData)
             assert data.symbol == "AAPL"
@@ -523,7 +445,10 @@ class TestIntelligenceEndpoints:
     def test_get_esg_ratings(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting ESG ratings"""
         with vcr_instance.use_cassette("intelligence/esg_ratings.yaml"):
-            rating = fmp_client.intelligence.get_esg_ratings("AAPL")
+            rating = self._handle_rate_limit(
+                fmp_client.intelligence.get_esg_ratings,
+                "AAPL",
+            )
 
             assert isinstance(rating, ESGRating)
             assert rating.symbol == "AAPL"
@@ -533,7 +458,10 @@ class TestIntelligenceEndpoints:
     def test_get_esg_benchmark(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting ESG benchmark data"""
         with vcr_instance.use_cassette("intelligence/esg_benchmark.yaml"):
-            benchmarks = fmp_client.intelligence.get_esg_benchmark(2022)
+            benchmarks = self._handle_rate_limit(
+                fmp_client.intelligence.get_esg_benchmark,
+                2022,
+            )
 
             assert isinstance(benchmarks, list)
             assert len(benchmarks) > 0
@@ -550,7 +478,10 @@ class TestIntelligenceEndpoints:
     def test_get_senate_trading(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting senate trading data"""
         with vcr_instance.use_cassette("intelligence/senate_trading.yaml"):
-            trades = fmp_client.intelligence.get_senate_trading("AAPL")
+            trades = self._handle_rate_limit(
+                fmp_client.intelligence.get_senate_trading,
+                "AAPL",
+            )
 
             assert isinstance(trades, list)
             assert len(trades) > 0
@@ -565,7 +496,10 @@ class TestIntelligenceEndpoints:
     def test_get_senate_trading_rss(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting senate trading RSS feed"""
         with vcr_instance.use_cassette("intelligence/senate_trading_rss.yaml"):
-            trades = fmp_client.intelligence.get_senate_trading_rss(page=0)
+            trades = self._handle_rate_limit(
+                fmp_client.intelligence.get_senate_trading_rss,
+                page=0,
+            )
 
             assert isinstance(trades, list)
             assert len(trades) > 0
@@ -580,7 +514,10 @@ class TestIntelligenceEndpoints:
     def test_get_house_disclosure(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting house disclosure data"""
         with vcr_instance.use_cassette("intelligence/house_disclosure.yaml"):
-            disclosures = fmp_client.intelligence.get_house_disclosure("AAPL")
+            disclosures = self._handle_rate_limit(
+                fmp_client.intelligence.get_house_disclosure,
+                "AAPL",
+            )
 
             assert isinstance(disclosures, list)
             assert len(disclosures) > 0
@@ -598,7 +535,10 @@ class TestIntelligenceEndpoints:
     def test_get_house_disclosure_rss(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting house disclosure RSS feed"""
         with vcr_instance.use_cassette("intelligence/house_disclosure_rss.yaml"):
-            disclosures = fmp_client.intelligence.get_house_disclosure_rss(page=0)
+            disclosures = self._handle_rate_limit(
+                fmp_client.intelligence.get_house_disclosure_rss,
+                page=0,
+            )
 
             assert isinstance(disclosures, list)
             assert len(disclosures) > 0
@@ -616,7 +556,10 @@ class TestIntelligenceEndpoints:
     def test_get_crowdfunding_rss(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting crowdfunding RSS feed"""
         with vcr_instance.use_cassette("intelligence/crowdfunding_rss.yaml"):
-            offerings = fmp_client.intelligence.get_crowdfunding_rss(page=0)
+            offerings = self._handle_rate_limit(
+                fmp_client.intelligence.get_crowdfunding_rss,
+                page=0,
+            )
 
             assert isinstance(offerings, list)
             assert len(offerings) > 0
@@ -629,7 +572,10 @@ class TestIntelligenceEndpoints:
     def test_search_crowdfunding(self, fmp_client: FMPDataClient, vcr_instance):
         """Test searching crowdfunding offerings"""
         with vcr_instance.use_cassette("intelligence/crowdfunding_search.yaml"):
-            offerings = fmp_client.intelligence.search_crowdfunding("NJOY")
+            offerings = self._handle_rate_limit(
+                fmp_client.intelligence.search_crowdfunding,
+                "NJOY",
+            )
 
             assert isinstance(offerings, list)
             if len(offerings) > 0:
@@ -642,7 +588,10 @@ class TestIntelligenceEndpoints:
     def test_get_crowdfunding_by_cik(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting crowdfunding offerings by CIK"""
         with vcr_instance.use_cassette("intelligence/crowdfunding_by_cik.yaml"):
-            offerings = fmp_client.intelligence.get_crowdfunding_by_cik("0001388838")
+            offerings = self._handle_rate_limit(
+                fmp_client.intelligence.get_crowdfunding_by_cik,
+                "0001388838",
+            )
 
             assert isinstance(offerings, list)
             if len(offerings) > 0:
@@ -657,7 +606,10 @@ class TestIntelligenceEndpoints:
     def test_get_equity_offering_rss(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting equity offering RSS feed"""
         with vcr_instance.use_cassette("intelligence/equity_offering_rss.yaml"):
-            offerings = fmp_client.intelligence.get_equity_offering_rss(page=0)
+            offerings = self._handle_rate_limit(
+                fmp_client.intelligence.get_equity_offering_rss,
+                page=0,
+            )
 
             assert isinstance(offerings, list)
             assert len(offerings) > 0
@@ -673,7 +625,10 @@ class TestIntelligenceEndpoints:
     def test_search_equity_offering(self, fmp_client: FMPDataClient, vcr_instance):
         """Test searching equity offerings"""
         with vcr_instance.use_cassette("intelligence/equity_offering_search.yaml"):
-            offerings = fmp_client.intelligence.search_equity_offering("AAPL")
+            offerings = self._handle_rate_limit(
+                fmp_client.intelligence.search_equity_offering,
+                "AAPL",
+            )
 
             assert isinstance(offerings, list)
             if len(offerings) > 0:
@@ -685,7 +640,10 @@ class TestIntelligenceEndpoints:
     def test_get_equity_offering_by_cik(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting equity offerings by CIK"""
         with vcr_instance.use_cassette("intelligence/equity_offering_by_cik.yaml"):
-            offerings = fmp_client.intelligence.get_equity_offering_by_cik("0001388838")
+            offerings = self._handle_rate_limit(
+                fmp_client.intelligence.get_equity_offering_by_cik,
+                "0001388838",
+            )
 
             assert isinstance(offerings, list)
             if len(offerings) > 0:

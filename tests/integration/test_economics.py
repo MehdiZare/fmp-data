@@ -1,6 +1,7 @@
 import logging
-import time
 from datetime import date, datetime, timedelta
+
+import pytest
 
 from fmp_data import FMPDataClient
 from fmp_data.economics.models import (
@@ -9,25 +10,15 @@ from fmp_data.economics.models import (
     MarketRiskPremium,
     TreasuryRate,
 )
-from fmp_data.exceptions import RateLimitError
+from fmp_data.economics.schema import EconomicIndicatorType
+
+from .base import BaseTestCase
 
 logger = logging.getLogger(__name__)
 
 
-class TestEconomicsEndpoints:
+class TestEconomicsEndpoints(BaseTestCase):
     """Test economics endpoints"""
-
-    def _handle_rate_limit(self, func, *args, **kwargs):
-        """Helper to handle rate limiting"""
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                return func(*args, **kwargs)
-            except RateLimitError as e:
-                if attempt == max_retries - 1:
-                    raise
-                time.sleep(e.retry_after or 1)
-                continue
 
     def test_get_treasury_rates(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting treasury rates"""
@@ -119,10 +110,25 @@ class TestEconomicsEndpoints:
     def test_error_handling(self, fmp_client: FMPDataClient, vcr_instance):
         """Test error handling for invalid inputs"""
         with vcr_instance.use_cassette("economics/error_handling.yaml"):
-            # Test with invalid indicator - should return empty list
-            result = fmp_client.economics.get_economic_indicators("INVALID_INDICATOR")
-            assert isinstance(result, list)
-            assert len(result) == 0
+            # Test with invalid indicator - should raise ValueError
+            with pytest.raises(ValueError) as exc_info:
+                # Use _handle_rate_limit but preserve the ValueError
+                try:
+                    self._handle_rate_limit(
+                        fmp_client.economics.get_economic_indicators,
+                        indicator_name="INVALID_INDICATOR",
+                    )
+                except ValueError as e:
+                    # Re-raise ValueError to be caught by pytest.raises
+                    raise ValueError(str(e)) from e
+
+            error_msg = str(exc_info.value)
+            assert "Invalid value for name" in error_msg
+            assert "Must be one of:" in error_msg
+
+            # Verify the error includes all enum values
+            for indicator in EconomicIndicatorType:
+                assert str(indicator) in error_msg
 
     def test_rate_limiting(self, fmp_client: FMPDataClient, vcr_instance):
         """Test rate limiting with simple successful request"""

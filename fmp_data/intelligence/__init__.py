@@ -1,8 +1,6 @@
 # fmp_data/intelligence/__init__.py
 from fmp_data.intelligence.client import MarketIntelligenceClient
 from fmp_data.intelligence.models import (
-    AnalystEstimate,
-    AnalystRecommendation,
     CrowdfundingOffering,
     CryptoNewsArticle,
     DividendEvent,
@@ -22,28 +20,16 @@ from fmp_data.intelligence.models import (
     IPOEvent,
     PressRelease,
     PressReleaseBySymbol,
-    PriceTarget,
-    PriceTargetConsensus,
-    PriceTargetSummary,
     SenateTrade,
     SocialSentimentChanges,
     StockNewsArticle,
     StockNewsSentiment,
     StockSplitEvent,
     TrendingSocialSentiment,
-    UpgradeDowngrade,
-    UpgradeDowngradeConsensus,
 )
 
 __all__ = [
     "MarketIntelligenceClient",
-    "PriceTarget",
-    "PriceTargetSummary",
-    "PriceTargetConsensus",
-    "AnalystEstimate",
-    "AnalystRecommendation",
-    "UpgradeDowngrade",
-    "UpgradeDowngradeConsensus",
     "EarningEvent",
     "EarningConfirmed",
     "EarningSurprise",

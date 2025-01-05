@@ -1,9 +1,9 @@
-# config.py
+# fmp_data/config.py
 import os
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from fmp_data.exceptions import ConfigError
 
@@ -135,7 +135,7 @@ class RateLimitConfig(BaseModel):
 
 
 class ClientConfig(BaseModel):
-    """Client configuration using Pydantic v2"""
+    """Base client configuration for FMP Data API"""
 
     api_key: str = Field(
         description="FMP API key. Can be set via FMP_API_KEY environment variable"
@@ -159,6 +159,8 @@ class ClientConfig(BaseModel):
         default_factory=LoggingConfig, description="Logging configuration"
     )
 
+    model_config = ConfigDict(protected_namespaces=(), arbitrary_types_allowed=True)
+
     @classmethod
     @field_validator("api_key", mode="before")
     def validate_api_key(cls, v: str | None) -> str:
@@ -178,7 +180,6 @@ class ClientConfig(BaseModel):
     @classmethod
     def from_env(cls) -> "ClientConfig":
         """Create configuration from environment variables"""
-        # Ensure API key is validated
         api_key = os.getenv("FMP_API_KEY")
         if not api_key:
             raise ConfigError(
@@ -186,11 +187,15 @@ class ClientConfig(BaseModel):
                 "explicitly or via FMP_API_KEY environment variable"
             )
 
-        return cls(
-            api_key=api_key,
-            timeout=int(os.getenv("FMP_TIMEOUT", "30")),
-            max_retries=int(os.getenv("FMP_MAX_RETRIES", "3")),
-            base_url=os.getenv("FMP_BASE_URL", "https://financialmodelingprep.com/api"),
-            rate_limit=RateLimitConfig.from_env(),
-            logging=LoggingConfig.from_env(),
-        )
+        config_dict = {
+            "api_key": api_key,
+            "timeout": int(os.getenv("FMP_TIMEOUT", "30")),
+            "max_retries": int(os.getenv("FMP_MAX_RETRIES", "3")),
+            "base_url": os.getenv(
+                "FMP_BASE_URL", "https://financialmodelingprep.com/api"
+            ),
+            "rate_limit": RateLimitConfig.from_env(),
+            "logging": LoggingConfig.from_env(),
+        }
+
+        return cls(**config_dict)

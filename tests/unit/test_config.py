@@ -250,3 +250,18 @@ def test_logging_config_no_path():
         assert config.log_path is None
         assert "file" not in config.handlers
         assert "json" not in config.handlers
+
+
+@pytest.fixture
+def embedding_env_vars():
+    """Fixture to set up and tear down embedding environment variables"""
+    test_vars = {
+        "FMP_EMBEDDING_PROVIDER": "openai",
+        "FMP_EMBEDDING_MODEL": "text-embedding-ada-002",
+        "OPENAI_API_KEY": "test-openai-key",
+        "FMP_EMBEDDING_KWARGS": '{"batch_size": 8}',
+    }
+
+    with temp_environ() as env:
+        env.update(test_vars)
+        yield test_vars
