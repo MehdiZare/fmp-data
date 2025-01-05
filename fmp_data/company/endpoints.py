@@ -41,7 +41,7 @@ from fmp_data.models import (
     URLType,
 )
 
-QUOTE = Endpoint(
+QUOTE: Endpoint = Endpoint(
     name="quote",
     path="quote/{symbol}",
     version=APIVersion.V3,
@@ -59,7 +59,7 @@ QUOTE = Endpoint(
     response_model=Quote,
 )
 
-SIMPLE_QUOTE = Endpoint(
+SIMPLE_QUOTE: Endpoint = Endpoint(
     name="simple_quote",
     path="quote-short/{symbol}",
     version=APIVersion.V3,
@@ -77,7 +77,7 @@ SIMPLE_QUOTE = Endpoint(
     response_model=SimpleQuote,
 )
 
-HISTORICAL_PRICE = Endpoint(
+HISTORICAL_PRICE: Endpoint = Endpoint(
     name="historical_price",
     path="historical-price-full/{symbol}",
     version=APIVersion.V3,
@@ -112,7 +112,7 @@ HISTORICAL_PRICE = Endpoint(
     response_model=HistoricalData,
 )
 
-INTRADAY_PRICE = Endpoint(
+INTRADAY_PRICE: Endpoint = Endpoint(
     name="intraday_price",
     path="historical-chart/{interval}/{symbol}",
     version=APIVersion.V3,
@@ -137,7 +137,7 @@ INTRADAY_PRICE = Endpoint(
     response_model=IntradayPrice,
 )
 # Profile Endpoints
-PROFILE = Endpoint(
+PROFILE: Endpoint = Endpoint(
     name="profile",
     path="profile/{symbol}",
     version=APIVersion.V3,
@@ -169,7 +169,7 @@ PROFILE = Endpoint(
     ],
 )
 
-CORE_INFORMATION = Endpoint(
+CORE_INFORMATION: Endpoint = Endpoint(
     name="core_information",
     path="company-core-information",
     version=APIVersion.V4,
@@ -204,7 +204,7 @@ CORE_INFORMATION = Endpoint(
 # Search Endpoints
 
 # Executive Information Endpoints
-KEY_EXECUTIVES = Endpoint(
+KEY_EXECUTIVES: Endpoint = Endpoint(
     name="key_executives",
     path="key-executives/{symbol}",
     version=APIVersion.V3,
@@ -236,7 +236,7 @@ KEY_EXECUTIVES = Endpoint(
     ],
 )
 
-EXECUTIVE_COMPENSATION = Endpoint(
+EXECUTIVE_COMPENSATION: Endpoint = Endpoint(
     name="executive_compensation",
     path="governance/executive_compensation",
     version=APIVersion.V4,
@@ -266,7 +266,7 @@ EXECUTIVE_COMPENSATION = Endpoint(
     ],
 )
 
-EMPLOYEE_COUNT = Endpoint(
+EMPLOYEE_COUNT: Endpoint = Endpoint(
     name="employee_count",
     path="historical/employee_count",
     version=APIVersion.V4,
@@ -299,7 +299,7 @@ EMPLOYEE_COUNT = Endpoint(
 )
 
 # Symbol Related Endpoints
-COMPANY_LOGO = Endpoint(
+COMPANY_LOGO: Endpoint = Endpoint(
     name="company_logo",
     path="{symbol}.png",
     version=None,
@@ -333,7 +333,7 @@ COMPANY_LOGO = Endpoint(
 )
 
 # Company Operational Data
-COMPANY_NOTES = Endpoint(
+COMPANY_NOTES: Endpoint = Endpoint(
     name="company_notes",
     path="company-notes",
     version=APIVersion.V4,
@@ -365,7 +365,7 @@ COMPANY_NOTES = Endpoint(
     ],
 )
 
-HISTORICAL_SHARE_FLOAT = Endpoint(
+HISTORICAL_SHARE_FLOAT: Endpoint = Endpoint(
     name="historical_share_float",
     path="historical/shares_float",
     version=APIVersion.V4,
@@ -396,7 +396,7 @@ HISTORICAL_SHARE_FLOAT = Endpoint(
 )
 
 # Revenue Analysis Endpoints
-PRODUCT_REVENUE_SEGMENTATION = Endpoint(
+PRODUCT_REVENUE_SEGMENTATION: Endpoint = Endpoint(
     name="product_revenue_segmentation",
     path="revenue-product-segmentation",
     version=APIVersion.V4,
@@ -443,7 +443,7 @@ PRODUCT_REVENUE_SEGMENTATION = Endpoint(
     ],
 )
 
-GEOGRAPHIC_REVENUE_SEGMENTATION = Endpoint(
+GEOGRAPHIC_REVENUE_SEGMENTATION: Endpoint = Endpoint(
     name="geographic_revenue_segmentation",
     path="revenue-geographic-segmentation",
     version=APIVersion.V4,
@@ -481,7 +481,7 @@ GEOGRAPHIC_REVENUE_SEGMENTATION = Endpoint(
     ],
 )
 
-SYMBOL_CHANGES = Endpoint(
+SYMBOL_CHANGES: Endpoint = Endpoint(
     name="symbol_changes",
     path="symbol_change",
     version=APIVersion.V4,
@@ -503,7 +503,7 @@ SYMBOL_CHANGES = Endpoint(
     ],
 )
 
-SHARE_FLOAT = Endpoint(
+SHARE_FLOAT: Endpoint = Endpoint(
     name="share_float",
     path="shares_float",
     version=APIVersion.V4,
@@ -533,7 +533,7 @@ SHARE_FLOAT = Endpoint(
     ],
 )
 
-MARKET_CAP = Endpoint(
+MARKET_CAP: Endpoint = Endpoint(
     name="market_cap",
     path="market-capitalization/{symbol}",
     version=APIVersion.V3,
@@ -551,7 +551,7 @@ MARKET_CAP = Endpoint(
     response_model=MarketCapitalization,
 )
 
-HISTORICAL_MARKET_CAP = Endpoint(
+HISTORICAL_MARKET_CAP: Endpoint = Endpoint(
     name="historical_market_cap",
     path="historical-market-capitalization/{symbol}",
     version=APIVersion.V3,
@@ -568,7 +568,7 @@ HISTORICAL_MARKET_CAP = Endpoint(
     optional_params=[],
     response_model=MarketCapitalization,
 )
-PRICE_TARGET = Endpoint(
+PRICE_TARGET: Endpoint = Endpoint(
     name="price_target",
     path="price-target",
     version=APIVersion.V4,
@@ -588,7 +588,7 @@ PRICE_TARGET = Endpoint(
     response_model=PriceTarget,
 )
 
-PRICE_TARGET_SUMMARY = Endpoint(
+PRICE_TARGET_SUMMARY: Endpoint = Endpoint(
     name="price_target_summary",
     path="price-target-summary",
     version=APIVersion.V4,
@@ -608,7 +608,7 @@ PRICE_TARGET_SUMMARY = Endpoint(
     response_model=PriceTargetSummary,
 )
 
-PRICE_TARGET_CONSENSUS = Endpoint(
+PRICE_TARGET_CONSENSUS: Endpoint = Endpoint(
     name="price_target_consensus",
     path="price-target-consensus",
     version=APIVersion.V4,
@@ -628,7 +628,7 @@ PRICE_TARGET_CONSENSUS = Endpoint(
     response_model=PriceTargetConsensus,
 )
 
-ANALYST_ESTIMATES = Endpoint(
+ANALYST_ESTIMATES: Endpoint = Endpoint(
     name="analyst_estimates",
     path="analyst-estimates/{symbol}",
     version=APIVersion.V3,
@@ -648,7 +648,7 @@ ANALYST_ESTIMATES = Endpoint(
     response_model=AnalystEstimate,
 )
 
-ANALYST_RECOMMENDATIONS = Endpoint(
+ANALYST_RECOMMENDATIONS: Endpoint = Endpoint(
     name="analyst_recommendations",
     path="analyst-stock-recommendations/{symbol}",
     version=APIVersion.V3,
@@ -668,7 +668,7 @@ ANALYST_RECOMMENDATIONS = Endpoint(
     response_model=AnalystRecommendation,
 )
 
-UPGRADES_DOWNGRADES = Endpoint(
+UPGRADES_DOWNGRADES: Endpoint = Endpoint(
     name="upgrades_downgrades",
     path="upgrades-downgrades",
     version=APIVersion.V4,
@@ -688,7 +688,7 @@ UPGRADES_DOWNGRADES = Endpoint(
     response_model=UpgradeDowngrade,
 )
 
-UPGRADES_DOWNGRADES_CONSENSUS = Endpoint(
+UPGRADES_DOWNGRADES_CONSENSUS: Endpoint = Endpoint(
     name="upgrades_downgrades_consensus",
     path="upgrades-downgrades-consensus",
     version=APIVersion.V4,
