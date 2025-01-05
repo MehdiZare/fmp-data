@@ -1,10 +1,17 @@
 # fmp_data/lc/validation.py
 import re
 from abc import ABC, abstractmethod
-from typing import ClassVar
+from typing import ClassVar, TypedDict
 
 from fmp_data.lc.models import SemanticCategory
 from fmp_data.logger import FMPLogger
+
+ParameterPatternType = dict[str, list[str] | dict[str, list[str]]]
+
+
+class PatternDict(TypedDict):
+    patterns: list[str]
+    context: str | None
 
 
 class ValidationRule(ABC):
