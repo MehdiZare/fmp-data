@@ -20,6 +20,20 @@ class BaseArgModel(BaseModel):
         },
     )
 
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
+        """
+        Override model_dump to ensure proper serialization.
+
+        Args:
+            **kwargs: Additional keyword arguments for model_dump
+
+        Returns:
+            dict[str, Any]: Serialized model data
+        """
+        kwargs.setdefault("exclude_none", True)
+        kwargs.setdefault("mode", "json")
+        return super().model_dump(**kwargs)
+
 
 class BaseEnum(str, Enum):
     """Base class for all enums to ensure consistent serialization"""
@@ -62,7 +76,10 @@ class SymbolArg(BaseArgModel):
     symbol: str = Field(
         description="Stock symbol/ticker",
         pattern=r"^[A-Z]{1,5}$",
-        json_schema_extra={"examples": ["AAPL", "MSFT", "GOOGL"]},
+        json_schema_extra={
+            "examples": ["AAPL", "MSFT", "GOOGL"],
+            "description": "Stock ticker symbol (1-5 capital letters)",
+        },
     )
 
 
@@ -75,6 +92,16 @@ class DateRangeArg(BaseArgModel):
     end_date: date | None = Field(
         None, description="End date", json_schema_extra={"examples": ["2024-12-31"]}
     )
+
+    @field_validator("end_date")
+    @classmethod
+    def validate_date_range(cls, v: date | None, info: Any) -> date | None:
+        if v is None:
+            return v
+        start_date = info.data.get("start_date")
+        if start_date and v < start_date:
+            raise ValueError("end_date must be after start_date")
+        return v
 
 
 class PaginationArg(BaseArgModel):
@@ -129,52 +156,3 @@ class TimeSeriesBaseArg(SymbolArg, DateRangeArg):
     interval: IntervalEnum | None = Field(
         default=IntervalEnum.MIN_5, description="Time interval for data points"
     )
-
-
-class BaseArgModel(BaseModel):
-    """Base model for all API arguments"""
-
-    model_config = ConfigDict(
-        validate_assignment=True,
-        use_enum_values=True,
-        frozen=True,
-        arbitrary_types_allowed=True,
-        populate_by_name=True,
-    )
-
-    def model_dump(self, **kwargs):
-        """Override model_dump to ensure proper serialization"""
-        kwargs.setdefault("exclude_none", True)
-        kwargs.setdefault("mode", "json")
-        return super().model_dump(**kwargs)
-
-
-class SymbolArg(BaseArgModel):
-    """Base model for endpoints requiring a symbol"""
-
-    symbol: str = Field(
-        description="Stock symbol/ticker",
-        pattern=r"^[A-Z]{1,5}$",
-        json_schema_extra={
-            "examples": ["AAPL", "MSFT", "GOOGL"],
-            "description": "Stock ticker symbol (1-5 capital letters)",
-        },
-    )
-
-
-class DateRangeArg(BaseArgModel):
-    """Base model for date range arguments"""
-
-    start_date: date | None = Field(
-        None, description="Start date", json_schema_extra={"examples": ["2024-01-01"]}
-    )
-    end_date: date | None = Field(
-        None, description="End date", json_schema_extra={"examples": ["2024-12-31"]}
-    )
-
-    @field_validator("end_date")
-    def validate_date_range(cls, v: date | None, values: dict[str, Any]) -> date | None:
-        start_date = values.get("start_date")
-        if start_date and v and v < start_date:
-            raise ValueError("end_date must be after start_date")
-        return v
