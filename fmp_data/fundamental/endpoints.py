@@ -27,7 +27,7 @@ from fmp_data.models import (
     ParamType,
 )
 
-INCOME_STATEMENT = Endpoint(
+INCOME_STATEMENT: Endpoint = Endpoint(
     name="income_statement",
     path="income-statement/{symbol}",
     version=APIVersion.V3,
@@ -75,7 +75,7 @@ INCOME_STATEMENT = Endpoint(
     ],
 )
 
-BALANCE_SHEET = Endpoint(
+BALANCE_SHEET: Endpoint = Endpoint(
     name="balance_sheet",
     path="balance-sheet-statement/{symbol}",
     version=APIVersion.V3,
@@ -122,7 +122,7 @@ BALANCE_SHEET = Endpoint(
     ],
 )
 
-CASH_FLOW = Endpoint(
+CASH_FLOW: Endpoint = Endpoint(
     name="cash_flow",
     path="cash-flow-statement/{symbol}",
     version=APIVersion.V3,
@@ -169,7 +169,7 @@ CASH_FLOW = Endpoint(
     ],
 )
 
-KEY_METRICS = Endpoint(
+KEY_METRICS: Endpoint = Endpoint(
     name="key_metrics",
     path="key-metrics/{symbol}",
     version=APIVersion.V3,
@@ -216,7 +216,7 @@ KEY_METRICS = Endpoint(
     ],
 )
 
-FINANCIAL_RATIOS = Endpoint(
+FINANCIAL_RATIOS: Endpoint = Endpoint(
     name="financial_ratios",
     path="ratios/{symbol}",
     version=APIVersion.V3,
@@ -262,7 +262,7 @@ FINANCIAL_RATIOS = Endpoint(
         "Show Amazon's liquidity metrics",
     ],
 )
-FULL_FINANCIAL_STATEMENT = Endpoint(
+FULL_FINANCIAL_STATEMENT: Endpoint = Endpoint(
     name="full_financial_statement",
     path="financial-statement-full-as-reported/{symbol}",
     version=APIVersion.V3,
@@ -298,7 +298,7 @@ FULL_FINANCIAL_STATEMENT = Endpoint(
     response_model=FinancialStatementFull,
 )
 
-FINANCIAL_REPORTS_DATES = Endpoint(
+FINANCIAL_REPORTS_DATES: Endpoint = Endpoint(
     name="financial_reports_dates",
     path="financial-reports-dates",
     version=APIVersion.V4,
@@ -316,7 +316,7 @@ FINANCIAL_REPORTS_DATES = Endpoint(
     response_model=FinancialReportDate,
 )
 
-OWNER_EARNINGS = Endpoint(
+OWNER_EARNINGS: Endpoint = Endpoint(
     name="owner_earnings",
     path="owner_earnings",
     version=APIVersion.V4,
@@ -344,7 +344,7 @@ OWNER_EARNINGS = Endpoint(
     ],
 )
 
-LEVERED_DCF = Endpoint(
+LEVERED_DCF: Endpoint = Endpoint(
     name="levered_dcf",
     path="advanced_levered_discounted_cash_flow",
     version=APIVersion.V4,
@@ -373,7 +373,7 @@ LEVERED_DCF = Endpoint(
     ],
 )
 
-HISTORICAL_RATING = Endpoint(
+HISTORICAL_RATING: Endpoint = Endpoint(
     name="historical_rating",
     path="historical-rating/{symbol}",
     version=APIVersion.V3,
