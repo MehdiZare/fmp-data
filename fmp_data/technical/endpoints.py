@@ -33,7 +33,7 @@ INDICATOR_MODEL_MAP: dict[str, type[TechnicalIndicator]] = {
     "standardDeviation": StandardDeviationIndicator,
 }
 
-TECHNICAL_INDICATOR = Endpoint(
+TECHNICAL_INDICATOR: Endpoint = Endpoint(
     name="technical_indicator",
     path="technical_indicator/{interval}/{symbol}",
     version=APIVersion.V3,
