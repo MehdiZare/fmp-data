@@ -63,14 +63,37 @@ def test_endpoint_consistency():
 
 
 def test_endpoint_group_organization():
-    """Test endpoint group organization"""
-    # Test that endpoints are properly categorized
-    for _, group_data in ENDPOINT_GROUPS.items():
+    """Test endpoint group organization -
+    validates semantic mappings exist for all endpoints"""
+    errors = []
+
+    for group_name, group_data in ENDPOINT_GROUPS.items():
         endpoint_map = group_data["endpoint_map"]
         semantics_map = group_data["semantics_map"]
 
-        # Endpoints should follow naming conventions
+        # Track missing semantic mappings for this group
+        missing_semantics = []
+
+        # Check each endpoint in the group
         for endpoint_name in endpoint_map:
             if endpoint_name.startswith("get_"):
                 semantic_name = endpoint_name[4:]
-                assert semantic_name in semantics_map
+                if semantic_name not in semantics_map:
+                    missing_semantics.append(semantic_name)
+
+        # If we found any missing mappings for this group, add to errors
+        if missing_semantics:
+            errors.append(
+                f"\nGroup '{group_name}' is missing semantic mappings for:\n"
+                f"  Endpoints: {missing_semantics}\n"
+                f"  Available semantic mappings: {list(semantics_map.keys())}"
+            )
+
+    # If we collected any errors, raise AssertionError with detailed message
+    if errors:
+        raise AssertionError(
+            "Found endpoints without corresponding semantic mappings:\n"
+            + "\n".join(errors)
+            + "\nPlease ensure all endpoints that "
+            "start with 'get_' have semantic mappings"
+        )
