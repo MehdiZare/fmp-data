@@ -134,7 +134,7 @@ class TestMarketClientEndpoints(BaseTestCase):
     )
     def test_search(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test company search"""
-        with vcr_instance.use_cassette("company/search.yaml"):
+        with vcr_instance.use_cassette("market/search.yaml"):
             results = self._handle_rate_limit(
                 fmp_client.market.search, "Apple", limit=5
             )
@@ -144,7 +144,7 @@ class TestMarketClientEndpoints(BaseTestCase):
 
     def test_get_stock_list(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test getting stock list"""
-        with vcr_instance.use_cassette("company/stock_list.yaml"):
+        with vcr_instance.use_cassette("market/stock_list.yaml"):
             stocks = self._handle_rate_limit(fmp_client.market.get_stock_list)
             assert isinstance(stocks, list)
             assert len(stocks) > 0
@@ -155,7 +155,7 @@ class TestMarketClientEndpoints(BaseTestCase):
 
     def test_get_etf_list(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test getting ETF list"""
-        with vcr_instance.use_cassette("company/etf_list.yaml"):
+        with vcr_instance.use_cassette("market/etf_list.yaml"):
             etfs = self._handle_rate_limit(
                 fmp_client.market.get_etf_list,
             )
@@ -167,7 +167,7 @@ class TestMarketClientEndpoints(BaseTestCase):
         self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
     ):
         """Test getting available indexes"""
-        with vcr_instance.use_cassette("company/indexes.yaml"):
+        with vcr_instance.use_cassette("market/indexes.yaml"):
             indexes = self._handle_rate_limit(fmp_client.market.get_available_indexes)
             assert isinstance(indexes, list)
             assert all(isinstance(i, AvailableIndex) for i in indexes)
@@ -177,7 +177,7 @@ class TestMarketClientEndpoints(BaseTestCase):
         self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
     ):
         """Test getting exchange symbols"""
-        with vcr_instance.use_cassette("company/exchange_symbols.yaml"):
+        with vcr_instance.use_cassette("market/exchange_symbols.yaml"):
             # Capture warnings during test
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
@@ -228,8 +228,8 @@ class TestMarketClientEndpoints(BaseTestCase):
         test_value: str,
     ):
         """Test searching by different identifiers"""
-        with vcr_instance.use_cassette(f"company/search_{search_type}.yaml"):
-            search_method = getattr(fmp_client.company, method)
+        with vcr_instance.use_cassette(f"market/search_{search_type}.yaml"):
+            search_method = getattr(fmp_client.market, method)
             results = self._handle_rate_limit(search_method, test_value)
             assert isinstance(results, list)
             assert all(isinstance(r, model) for r in results)
@@ -238,7 +238,7 @@ class TestMarketClientEndpoints(BaseTestCase):
         self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
     ):
         """Test getting all companies share float data"""
-        with vcr_instance.use_cassette("company/all_shares_float.yaml"):
+        with vcr_instance.use_cassette("market/all_shares_float.yaml"):
             all_float_data = self._handle_rate_limit(
                 fmp_client.market.get_all_shares_float
             )
