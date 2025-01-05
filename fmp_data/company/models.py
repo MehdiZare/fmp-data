@@ -1,6 +1,7 @@
 import json
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Any
 
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
@@ -225,7 +226,7 @@ class HistoricalData(BaseModel):
     )
 
     @classmethod
-    def parse_api_response(cls, data: dict):
+    def parse_api_response(cls, data: dict[str, Any]) -> "HistoricalData":
         """Parse raw API response into validated HistoricalData model."""
         # Ensure historical data is validated
         historical_prices = [
@@ -296,9 +297,14 @@ class RevenueSegmentItem(BaseModel):
     date: str = Field(description="Fiscal year end date")
     segments: dict[str, float] = Field(description="Segment name to revenue mapping")
 
-    def __init__(self, **data):
-        """Custom init to handle the single-key dictionary structure"""
-        # Input looks like: {"2024-09-28": {"Mac": 29984000000, ...}}
+    def __init__(self, **data: Any) -> None:
+        """Custom init to handle the single-key dictionary structure.
+
+        Args:
+            **data: Dictionary of initialization parameters where either:
+                   - It contains a single key (date) mapping to a dict of segments
+                   - It contains 'date' and 'segments' keys directly
+        """
         if len(data) == 1:
             date_key = next(iter(data))
             segments = data[date_key]
@@ -405,15 +411,23 @@ class PriceTargetSummary(BaseModel):
         ),
     )
 
+    @classmethod
     @field_validator("publishers", mode="before")
-    def validate_publishers(cls, value):
+    def validate_publishers(cls, value: Any) -> list[str] | None:
         """Validate and parse publishers field if it is a JSON string."""
         if isinstance(value, str):
             try:
-                return json.loads(value)
+                parsed_value = json.loads(value)
+                if isinstance(parsed_value, list) and all(
+                    isinstance(x, str) for x in parsed_value
+                ):
+                    return parsed_value
+                return None  # Return None if the parsed value is not a list of strings
             except json.JSONDecodeError:
-                return None  # Return None if parsing fails
-        return value
+                return None
+        if isinstance(value, list) and all(isinstance(x, str) for x in value):
+            return value
+        return None  # Return None for any other type
 
 
 class PriceTargetConsensus(BaseModel):
