@@ -8,13 +8,23 @@ from pydantic import BaseModel, Field
 
 from fmp_data.schema import DateRangeArg, SymbolArg
 
+# Available intervals for technical analysis
+TimeInterval = Literal["1min", "5min", "15min", "30min", "1hour", "4hour", "daily"]
 
-# Base Technical Analysis Args
+
 class TechnicalIndicatorArgs(SymbolArg, DateRangeArg):
     """Base arguments for technical indicators"""
 
-    period: int | None = Field(
-        default=14, ge=1, le=500, description="Calculation period"
+    period: int = Field(
+        default=14,
+        description="Period for indicator calculation",
+        examples=[14, 20, 50, 200],
+        gt=0,
+        le=500,
+    )
+    interval: TimeInterval = Field(
+        default="daily",
+        description="Time interval for data points",
     )
 
 
@@ -90,10 +100,6 @@ class PivotPointsArgs(SymbolArg):
     )
 
 
-# Available intervals for technical analysis
-TimeInterval = Literal["1min", "5min", "15min", "30min", "1hour", "4hour", "daily"]
-
-
 # Types of technical indicators
 class IndicatorType(str, Enum):
     """Types of technical indicators available"""
@@ -107,33 +113,6 @@ class IndicatorType(str, Enum):
     RSI = "rsi"
     ADX = "adx"
     STANDARD_DEVIATION = "standardDeviation"
-
-
-# Base schema for technical indicator arguments
-class TechnicalIndicatorArgs(BaseModel):
-    """Base arguments for technical indicators"""
-
-    symbol: str = Field(
-        description="Stock symbol (ticker)",
-        examples=["AAPL", "MSFT", "GOOGL"],
-    )
-    period: int = Field(
-        description="Period for indicator calculation",
-        examples=[14, 20, 50, 200],
-        gt=0,
-    )
-    interval: TimeInterval = Field(
-        default="daily",
-        description="Time interval for data points",
-    )
-    start_date: date | None = Field(
-        None,
-        description="Start date for historical data",
-    )
-    end_date: date | None = Field(
-        None,
-        description="End date for historical data",
-    )
 
 
 # Specific argument schemas for different indicators
