@@ -1,4 +1,3 @@
-# fmp_data/config.py
 import os
 from pathlib import Path
 from typing import Any
@@ -19,7 +18,7 @@ class LogHandlerConfig(BaseModel):
     class_name: str = Field(
         description="Handler class name (FileHandler, StreamHandler, etc.)"
     )
-    kwargs: dict[str, Any] = Field(
+    handler_kwargs: dict[str, Any] = Field(
         default_factory=dict,
         description="Additional arguments for handler initialization",
     )
@@ -71,7 +70,7 @@ class LoggingConfig(BaseModel):
             handlers["file"] = LogHandlerConfig(
                 class_name="RotatingFileHandler",
                 level=os.getenv("FMP_LOG_FILE_LEVEL", "INFO"),
-                kwargs={
+                handler_kwargs={
                     "filename": str(log_path / "fmp.log"),
                     "maxBytes": int(
                         os.getenv("FMP_LOG_MAX_BYTES", str(10 * 1024 * 1024))
@@ -85,7 +84,7 @@ class LoggingConfig(BaseModel):
                 handlers["json"] = LogHandlerConfig(
                     class_name="JsonRotatingFileHandler",
                     level=os.getenv("FMP_LOG_JSON_LEVEL", "INFO"),
-                    kwargs={
+                    handler_kwargs={
                         "filename": str(log_path / "fmp.json"),
                         "maxBytes": int(
                             os.getenv("FMP_LOG_MAX_BYTES", str(10 * 1024 * 1024))
@@ -103,12 +102,6 @@ class LoggingConfig(BaseModel):
     def model_post_init(self, __context: Any) -> None:
         """
         Post-initialization validation and setup.
-
-        Args:
-            __context: Post init context from pydantic
-
-        Raises:
-            ValueError: If log directory cannot be created
         """
         if self.log_path:
             try:
@@ -122,7 +115,7 @@ class RateLimitConfig(BaseModel):
 
     daily_limit: int = Field(default=250, gt=0, description="Maximum daily API calls")
     requests_per_second: int = Field(
-        default=5,  # Default value aligned with test expectation
+        default=5,
         gt=0,
         description="Maximum requests per second",
     )
@@ -135,9 +128,7 @@ class RateLimitConfig(BaseModel):
         """Create rate limit config from environment variables"""
         return cls(
             daily_limit=int(os.getenv("FMP_DAILY_LIMIT", "250")),
-            requests_per_second=int(
-                os.getenv("FMP_REQUESTS_PER_SECOND", "5")
-            ),  # Default aligned with Field default
+            requests_per_second=int(os.getenv("FMP_REQUESTS_PER_SECOND", "5")),
             requests_per_minute=int(os.getenv("FMP_REQUESTS_PER_MINUTE", "300")),
         )
 
