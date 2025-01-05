@@ -26,31 +26,6 @@ def mock_market_hours_data():
     }
 
 
-@pytest.fixture
-def mock_historical_data():
-    """Mock historical data"""
-    return {
-        "symbol": "AAPL",
-        "historical": [
-            {
-                "date": "2024-01-05T16:00:00",
-                "open": 149.00,
-                "high": 151.00,
-                "low": 148.50,
-                "close": 150.25,
-                "adjClose": 150.25,
-                "volume": 82034567,
-                "unadjustedVolume": 82034567,
-                "change": 2.25,
-                "changePercent": 1.5,
-                "vwap": 149.92,
-                "label": "January 05",
-                "changeOverTime": 0.015,
-            }
-        ],
-    }
-
-
 @patch("httpx.Client.request")
 def test_get_market_hours(
     mock_request, fmp_client, mock_response, mock_market_hours_data
@@ -122,7 +97,7 @@ class TestCompanySearch:
             status_code=200, json_data=[search_result_data]
         )
 
-        results = fmp_client.company.search("Apple", limit=1)
+        results = fmp_client.market.search("Apple", limit=1)
         assert len(results) == 1
         result = results[0]
         assert isinstance(result, CompanySearchResult)
