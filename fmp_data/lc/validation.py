@@ -1,110 +1,188 @@
-# fmp_data/lc/validation.py
 import re
 from abc import ABC, abstractmethod
-from typing import ClassVar, TypedDict
+from typing import ClassVar
 
 from fmp_data.lc.models import SemanticCategory
 from fmp_data.logger import FMPLogger
 
-ParameterPatternType = dict[str, list[str] | dict[str, list[str]]]
-
-
-class PatternDict(TypedDict):
-    patterns: list[str]
-    context: str | None
-
 
 class ValidationRule(ABC):
     """
-    Abstract base class that defines the validation interface.
-    All market-specific validation rules must inherit from this.
+    Abstract base class for validation rules.
+    Subclasses must implement the abstract properties and methods below.
     """
-
-    # Required class variables that must be defined by subclasses
-    METHOD_GROUPS: ClassVar[dict[str, tuple[str, list[str]]]]
-    PARAMETER_PATTERNS: ClassVar[dict[str, dict[str, list[str] | str | int]]]
-
-    def __init__(self):
-        self.logger = FMPLogger().get_logger(self.__class__.__name__)
-
-    @property
-    @abstractmethod
-    def endpoint_prefixes(self) -> set[str]:
-        """Get all valid endpoint prefixes for this rule"""
-        pass
 
     @property
     @abstractmethod
     def expected_category(self) -> SemanticCategory:
-        """The category this rule validates"""
-        pass
+        """
+        The category this rule is responsible for validating.
+        """
+        ...
+
+    @property
+    @abstractmethod
+    def endpoint_prefixes(self) -> set[str]:
+        """
+        A set of prefixes that identify which methods belong to this rule.
+        Example: {"getPrice", "fetchData"}.
+        """
+        ...
 
     @abstractmethod
     def validate(
         self, method_name: str, category: SemanticCategory
     ) -> tuple[bool, str]:
         """
-        Validate if method name matches expected category
-
-        Args:
-            method_name: Name of the method to validate
-            category: Category to validate against
+        Validate that the `method_name` belongs to `category`.
 
         Returns:
-            Tuple of (is_valid, error_message)
+            A tuple of (is_valid, error_message).
         """
-        pass
+        ...
 
     @abstractmethod
     def validate_parameters(
         self, method_name: str, parameters: dict
     ) -> tuple[bool, str]:
         """
-        Validate parameters for a method
-
-        Args:
-            method_name: Name of the method
-            parameters: Dictionary of parameter names and values
+        Validate parameters for the specified method_name.
 
         Returns:
-            Tuple of (is_valid, error_message)
+            A tuple of (is_valid, error_message).
         """
-        pass
+        ...
 
     @classmethod
     @abstractmethod
     def get_endpoint_info(cls, method_name: str) -> tuple[str, str] | None:
         """
-        Get subcategory and operation for a method name
-
-        Args:
-            method_name: Name of the method
-
-        Returns:
-            Tuple of (subcategory, operation) or None if not found
+        Return metadata about the method (e.g., subcategory, operation),
+        or None if not recognized.
         """
-        pass
+        ...
 
     @abstractmethod
     def get_parameter_requirements(
         self, method_name: str
     ) -> dict[str, list[str]] | None:
         """
-        Get required parameter patterns for a method
-
-        Args:
-            method_name: Name of the method
-
-        Returns:
-            Dict of parameter patterns or None if not found
+        Return a dict of parameter requirements (param_name -> list of regex patterns),
+        or None if no pattern is enforced.
         """
-        pass
+        ...
+
+
+class CommonValidationRule(ValidationRule):
+    """
+    Common base class for validation. Subclasses define the actual
+    expected_category, endpoint_prefixes, etc.
+    """
+
+    # Each key can map to either a list of regex patterns or a nested dict.
+    PARAMETER_PATTERNS: ClassVar[
+        dict[str, list[str] | dict[str, list[str] | str | int]]
+    ] = {}
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.logger = FMPLogger().get_logger(self.__class__.__name__)
+
+    @property
+    @abstractmethod
+    def expected_category(self) -> SemanticCategory:
+        raise NotImplementedError
+
+    @property
+    def endpoint_prefixes(self) -> set[str]:
+        """
+        By default, return an empty set. Subclasses can override.
+        """
+        return set()
+
+    def validate(
+        self, method_name: str, category: SemanticCategory
+    ) -> tuple[bool, str]:
+        """
+        Default 'validate' just checks if categories match.
+        Subclasses can override for additional logic.
+        """
+        if category != self.expected_category:
+            return False, f"Expected {self.expected_category}, got {category}"
+        return True, ""
+
+    @classmethod
+    def get_endpoint_info(cls, method_name: str) -> tuple[str, str] | None:
+        """
+        Subclasses can override to return (subcategory, operation) if relevant.
+        """
+        return None
+
+    def validate_parameters(
+        self, method_name: str, parameters: dict
+    ) -> tuple[bool, str]:
+        """
+        Default implementation checks any known parameter requirements.
+        """
+        endpoint_info = self.get_endpoint_info(method_name)
+        if not endpoint_info:
+            return False, f"Invalid method name: {method_name}"
+
+        requirements = self.get_parameter_requirements(method_name)
+        if not requirements:
+            return True, ""  # No specific patterns
+
+        for param_name, param_value in parameters.items():
+            if param_name in requirements:
+                patterns = requirements[param_name]
+                # Ensure at least one pattern matches
+                if not any(re.match(p, str(param_value)) for p in patterns):
+                    return (
+                        False,
+                        f"Invalid value for parameter '{param_name}': {param_value}",
+                    )
+
+        return True, ""
+
+    def get_parameter_requirements(
+        self, method_name: str
+    ) -> dict[str, list[str]] | None:
+        if method_name == "historical":
+            return self._build_historical_patterns()
+        return None
+
+    def _build_historical_patterns(self) -> dict[str, list[str]]:
+        """
+        Example of building patterns for a 'historical' method.
+        """
+        base_patterns: dict[str, list[str]] = {}
+
+        date_patterns = self.PARAMETER_PATTERNS.get("date")
+        if isinstance(date_patterns, list):
+            # It's already a list[str]
+            base_patterns["start_date"] = date_patterns
+            base_patterns["end_date"] = date_patterns
+        elif isinstance(date_patterns, dict):
+            # A nested dict, e.g. {"common": [...], ...}
+            sub_list = date_patterns.get("common")
+            if isinstance(sub_list, list):
+                base_patterns["start_date"] = sub_list
+                base_patterns["end_date"] = sub_list
+            else:
+                base_patterns["start_date"] = []
+                base_patterns["end_date"] = []
+        else:
+            base_patterns["start_date"] = []
+            base_patterns["end_date"] = []
+
+        return base_patterns
 
 
 class ValidationRuleRegistry:
     """Registry that manages and coordinates all validation rules"""
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Initialize the registry."""
         self._rules: list[ValidationRule] = []
         self.logger = FMPLogger().get_logger(self.__class__.__name__)
 
@@ -133,16 +211,16 @@ class ValidationRuleRegistry:
         if not category_rules:
             return False, f"No rules found for category {category.value}"
 
-        # Then find the correct rule for this method based on its pattern
-        matching_rule = None
+        # Then find the correct rule for this method based on its prefix patterns
+        matching_rule: ValidationRule | None = None
         for rule in self._rules:
+            # Here we rely on rule.endpoint_prefixes existing
             if any(method_name.startswith(prefix) for prefix in rule.endpoint_prefixes):
                 matching_rule = rule
                 break
 
         if matching_rule:
-            # If we found a matching rule but
-            # its category doesn't match the requested one
+            # If we found a matching rule but category doesn't match
             if matching_rule.expected_category != category:
                 return (
                     False,
@@ -154,7 +232,7 @@ class ValidationRuleRegistry:
             # If categories match, validate the method pattern
             return matching_rule.validate(method_name, category)
 
-        # If no rule has a matching pattern
+        # If no rule has a matching prefix
         return (
             False,
             f"No matching rule found for {method_name} in category {category.value}",
@@ -178,122 +256,11 @@ class ValidationRuleRegistry:
         for rule in self._rules:
             if rule.expected_category == category:
                 return rule.validate_parameters(method_name, parameters)
-        return True, ""  # No rules found for category
+        return True, ""  # No rules for this category
 
     def get_expected_category(self, method_name: str) -> SemanticCategory | None:
-        """Determine expected category for a method name"""
+        """Determine the expected category for a method name"""
         for rule in self._rules:
             if any(method_name.startswith(prefix) for prefix in rule.endpoint_prefixes):
                 return rule.expected_category
         return None
-
-
-class CommonValidationRule(ValidationRule):
-    """
-    Common implementation of validation logic.
-    Market-specific rules should inherit from this.
-    """
-
-    METHOD_GROUPS: ClassVar[dict[str, tuple[str, list[str]]]] = {}
-    PARAMETER_PATTERNS: ClassVar[dict[str, dict[str, list[str] | str | int]]] = {}
-
-    @property
-    @abstractmethod
-    def expected_category(self) -> SemanticCategory:
-        """Must be implemented by market-specific rules"""
-        raise NotImplementedError
-
-    def validate(
-        self, method_name: str, category: SemanticCategory
-    ) -> tuple[bool, str]:
-        """Validate method name and category"""
-        # First check category
-        if category != self.expected_category:
-            return False, f"Expected category {self.expected_category}, got {category}"
-
-        # Check if method matches any group patterns
-        for _, (prefix, operations) in self.METHOD_GROUPS.items():
-            # Handle exact matches first
-            if method_name in operations:
-                return True, ""
-
-            # Then check prefix + operation combinations
-            if prefix:  # Only if prefix is not empty
-                for operation in operations:
-                    full_method = f"{prefix}{operation}"
-                    if method_name == full_method:
-                        return True, ""
-
-        return False, f"Method {method_name} does not match any expected patterns"
-
-    def validate_parameters(
-        self, method_name: str, parameters: dict
-    ) -> tuple[bool, str]:
-        """Common parameter validation implementation"""
-        endpoint_info = self.get_endpoint_info(method_name)
-        if not endpoint_info:
-            return False, f"Invalid method name: {method_name}"
-
-        requirements = self.get_parameter_requirements(method_name)
-        if not requirements:
-            return True, ""  # No requirements defined
-
-        for param_name, param_value in parameters.items():
-            if param_name in requirements:
-                patterns = requirements[param_name]
-                if not any(re.match(pattern, str(param_value)) for pattern in patterns):
-                    return (
-                        False,
-                        f"Invalid value for parameter {param_name}: {param_value}",
-                    )
-
-        return True, ""
-
-    @property
-    def endpoint_prefixes(self) -> set[str]:
-        """Get all valid endpoint prefixes"""
-        prefixes = set()
-        for _, (prefix, operations) in self.METHOD_GROUPS.items():
-            for operation in operations:
-                prefixes.add(f"{prefix}{operation}")
-        return prefixes
-
-    @classmethod
-    def get_endpoint_info(cls, method_name: str) -> tuple[str, str] | None:
-        """Get endpoint subcategory and operation"""
-        for subcategory, (prefix, operations) in cls.METHOD_GROUPS.items():
-            if method_name.startswith(prefix):
-                operation = method_name[len(prefix) :]
-                if operation in operations:
-                    return subcategory, operation
-        return None
-
-    def get_parameter_requirements(
-        self, method_name: str
-    ) -> dict[str, list[str]] | None:
-        """Get parameter validation patterns"""
-        endpoint_info = self.get_endpoint_info(method_name)
-        if not endpoint_info:
-            return None
-
-        subcategory, operation = endpoint_info
-        base_patterns = {}
-
-        # Add common patterns based on operation type
-        if operation == "historical":
-            base_patterns.update(
-                {
-                    "start_date": self.PARAMETER_PATTERNS.get("date", []),
-                    "end_date": self.PARAMETER_PATTERNS.get("date", []),
-                }
-            )
-        elif operation == "intraday":
-            base_patterns["interval"] = self.PARAMETER_PATTERNS.get("interval", [])
-
-        # Add subcategory-specific patterns
-        subcategory_patterns = self.PARAMETER_PATTERNS.get(
-            f"{subcategory.lower()}_specific", {}
-        )
-        base_patterns.update(subcategory_patterns)
-
-        return base_patterns
