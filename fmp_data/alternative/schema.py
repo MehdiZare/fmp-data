@@ -41,7 +41,7 @@ class BaseIntradayArgs(BaseQuoteArgs):
     )
 
     @field_validator("interval")
-    def validate_interval(cls, v):
+    def validate_interval(cls, v: str) -> str:
         valid_intervals = ["1min", "5min", "15min", "30min", "1hour", "4hour"]
         if v not in valid_intervals:
             raise ValueError(f"Interval must be one of: {valid_intervals}")
