@@ -190,6 +190,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
             "company lookup",
         ],
         category=SemanticCategory.MARKET_DATA,
+        sub_category="Search",
         parameter_hints={
             "query": COMPANY_SEARCH_HINT,
             "limit": LIMIT_HINT,
