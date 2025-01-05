@@ -1,7 +1,6 @@
 # fmp_data/lc/registry.py
 from __future__ import annotations
 
-import re
 from logging import Logger
 
 from fmp_data.alternative.validation import AlternativeMarketsRule
@@ -27,14 +26,9 @@ class EndpointRegistry:
 
     Handles endpoint registration, validation, and lookup. Stores endpoint
     configurations and semantic metadata for search and tool creation.
-
-    Examples:
-        registry = EndpointRegistry()
-        registry.register("get_company_profile", endpoint, semantics)
-        info = registry.get_endpoint("get_company_profile")
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._endpoints: dict[str, EndpointInfo] = {}
         self._validation = ValidationRuleRegistry()
         self.logger: Logger = (
@@ -45,7 +39,7 @@ class EndpointRegistry:
         self._register_validation_rules()
 
     def _register_validation_rules(self) -> None:
-        """Register all validation rules in order of precedence"""
+        """Register all validation rules in order of precedence."""
         rules = [
             FundamentalAnalysisRule(),
             MarketDataRule(),
@@ -75,7 +69,6 @@ class EndpointRegistry:
     @staticmethod
     def _validate_parameters(name: str, info: EndpointInfo) -> tuple[bool, str | None]:
         """Validate parameter consistency"""
-        # Get all endpoint parameters (mandatory + optional)
         endpoint_params = {p.name for p in info.endpoint.mandatory_params}
         if info.endpoint.optional_params:
             endpoint_params.update(p.name for p in info.endpoint.optional_params)
@@ -119,15 +112,10 @@ class EndpointRegistry:
         self, name: str, endpoint: Endpoint, semantics: EndpointSemantics
     ) -> None:
         """
-        Register an endpoint with validation
-
-        Args:
-            name: Method name for the endpoint
-            endpoint: Endpoint configuration
-            semantics: Semantic information for the endpoint
+        Register an endpoint with validation.
 
         Raises:
-            ValueError: If endpoint information is invalid or inconsistent
+            ValueError: If endpoint info is invalid or inconsistent
         """
         try:
             info = EndpointInfo(endpoint=endpoint, semantics=semantics)
@@ -139,11 +127,12 @@ class EndpointRegistry:
                         "endpoint_name": name,
                         "semantic_method_name": semantics.method_name,
                         "semantic_category": semantics.category,
-                        "validation_error": error_details,  # Add detailed error message
+                        "validation_error": error_details,
                     },
                 )
-                error_msg = f"Invalid endpoint information for {name}: {error_details}"
-                raise ValueError(error_msg)
+                raise ValueError(
+                    f"Invalid endpoint information for {name}: {error_details}"
+                )
 
             self._endpoints[name] = info
             self.logger.debug(f"Successfully registered endpoint: {name}")
@@ -156,7 +145,7 @@ class EndpointRegistry:
     def register_batch(
         self, endpoints: dict[str, tuple[Endpoint, EndpointSemantics]]
     ) -> None:
-        """Register multiple endpoints at once"""
+        """Register multiple endpoints at once."""
         for name, (endpoint, semantics) in endpoints.items():
             try:
                 self.register(name, endpoint, semantics)
@@ -167,32 +156,20 @@ class EndpointRegistry:
     def get_endpoint(self, name: str) -> EndpointInfo | None:
         """
         Get endpoint information by name.
-
-        Args:
-            name: Name of the endpoint to retrieve
-
-        Returns:
-            EndpointInfo if found, None otherwise
         """
         return self._endpoints.get(name)
 
     def get_endpoints_by_names(self, names: list[str]) -> dict[str, EndpointInfo]:
-        """Get multiple endpoints by their names"""
+        """Get multiple endpoints by their names."""
         return {name: info for name, info in self._endpoints.items() if name in names}
 
     def list_endpoints(self) -> dict[str, EndpointInfo]:
-        """Get all registered endpoints"""
+        """Get all registered endpoints."""
         return self._endpoints
 
     def filter_endpoints(self, category: str | None = None) -> dict[str, EndpointInfo]:
         """
         Filter endpoints by category.
-
-        Args:
-            category: Category to filter by (None returns all endpoints)
-
-        Returns:
-            Dict of endpoint names to EndpointInfo objects
         """
         if not category:
             return self._endpoints
@@ -205,7 +182,7 @@ class EndpointRegistry:
     def filter_endpoints_by_categories(
         self, categories: list[str]
     ) -> dict[str, EndpointInfo]:
-        """Filter endpoints by multiple categories"""
+        """Filter endpoints by multiple categories."""
         if not categories:
             return self._endpoints
         return {
@@ -215,22 +192,25 @@ class EndpointRegistry:
         }
 
     def get_embedding_text(self, name: str) -> str | None:
-        """Get text for embedding generation"""
+        """Get text for embedding generation."""
         info = self.get_endpoint(name)
         if not info:
             return None
 
         def normalize_text(text: str) -> str:
-            """Normalize text for consistent embeddings"""
+            """Normalize text for consistent embeddings."""
+            import re
+
             text = re.sub(r"\s+", " ", text).strip().lower()
             text = re.sub(r"[^\w\s\-/]", "", text)
             return text
 
         def format_list(items: list[str], prefix: str = "") -> list[str]:
-            """Format a list of items with optional prefix"""
+            """Format a list of items with optional prefix."""
             return [f"{prefix}{normalize_text(str(item))}" for item in items if item]
 
-        text_parts = [
+        # Build text parts from endpoint semantics
+        text_parts: list[str] = [
             normalize_text(info.semantics.natural_description),
             *format_list(info.semantics.example_queries, "example: "),
             *format_list(info.semantics.related_terms, "related: "),
@@ -241,6 +221,7 @@ class EndpointRegistry:
         if info.semantics.sub_category:
             text_parts.append(f"subcategory: {info.semantics.sub_category.lower()}")
 
+        # Parameter hints -> hint is ParameterHint
         for param_name, hint in info.semantics.parameter_hints.items():
             param_parts = [
                 f"parameter {param_name}:",
@@ -250,19 +231,20 @@ class EndpointRegistry:
             ]
             text_parts.extend(param_parts)
 
-        for field_name, hint in info.semantics.response_hints.items():
+        # Response hints -> resp_hint is ResponseFieldInfo
+        for field_name, resp_hint in info.semantics.response_hints.items():
             response_parts = [
                 f"response {field_name}:",
-                normalize_text(hint.description),
-                *format_list(hint.related_terms, "related: "),
-                *format_list([str(ex) for ex in hint.examples], "example: "),
+                normalize_text(resp_hint.description),
+                *format_list(resp_hint.related_terms, "related: "),
+                *format_list([str(ex) for ex in resp_hint.examples], "example: "),
             ]
             text_parts.extend(response_parts)
 
         return " ".join(filter(None, text_parts))
 
     def get_search_metadata(self, name: str) -> dict[str, str] | None:
-        """Get metadata for vector store search"""
+        """Get metadata for vector store search."""
         info = self.get_endpoint(name)
         if not info:
             return None
