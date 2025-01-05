@@ -14,8 +14,8 @@ class CompanyInfoRule(CommonValidationRule):
                 "get_analyst_estimates",
                 "get_analyst_recommendations",
                 "get_price_target",
-                "get_price_target_consensus",  # Only list once
-                "get_price_target_summary",  # Only list once
+                "get_price_target_consensus",
+                "get_price_target_summary",
                 "get_upgrades_downgrades",
                 "get_upgrades_downgrades_consensus",
             ],
@@ -55,15 +55,15 @@ class CompanyInfoRule(CommonValidationRule):
             ],
         ),
         "Profile": (
-            "get_company_",  # Changed prefix to be more specific
+            "get_company_",
             ["profile", "core_information", "notes", "employee_count"],
         ),
         "Search": (
-            "",  # Added underscore for consistency
+            "",
             ["notes"],
         ),
         "Float": (
-            "get_",  # Changed prefix
+            "get_",
             [
                 "share_float",
                 "historical_share_float",
@@ -74,7 +74,7 @@ class CompanyInfoRule(CommonValidationRule):
             ["product_revenue_segmentation", "geographic_revenue_segmentation"],
         ),
         "Symbol": (
-            "get_company_",  # Made prefix more specific
+            "get_company_",
             ["logo_url", "symbol_changes"],
         ),
         "Screening": (
@@ -83,37 +83,40 @@ class CompanyInfoRule(CommonValidationRule):
         ),
     }
 
-    PARAMETER_PATTERNS: ClassVar[dict[str, dict[str, list[str] | str | int]]] = {
-        # Common patterns
+    # Must match parent type: dict[str, list[str] | dict[str, list[str] | str | int]]
+    PARAMETER_PATTERNS: ClassVar[
+        dict[str, list[str]] | dict[str, dict[str, list[str] | str | int]]
+    ] = {
+        # Top-level keys => list[str] only
         "symbol": [
-            r"^[A-Z]{1,5}$",  # Standard stock symbols
-            r"^[A-Z]{1,5}\.[A-Z]{1,3}$",  # Symbols with exchange suffix
+            r"^[A-Z]{1,5}$",
+            r"^[A-Z]{1,5}\.[A-Z]{1,3}$",  # e.g. "TSLA.B"
         ],
         "exchange": [r"^[A-Z]{2,6}$"],
         "date": [
-            r"^\d{4}-\d{2}-\d{2}$",  # YYYY-MM-DD
-            r"^\d{4}-\d{2}$",  # YYYY-MM for monthly data
+            r"^\d{4}-\d{2}-\d{2}$",
+            r"^\d{4}-\d{2}$",  # Monthly
         ],
         "period": ["annual", "quarter"],
         "interval": [r"^(1min|5min|15min|30min|1hour|4hour|daily)$"],
         "limit": [r"^\d+$"],
-        # Search patterns
+        # search_specific => a dict
         "search_specific": {
-            "query": [r".{2,}"],  # At least 2 characters
+            "query": [r".{2,}"],
             "cik": [r"^\d{10}$"],
             "cusip": [r"^[A-Z0-9]{9}$"],
             "isin": [r"^[A-Z]{2}[A-Z0-9]{9}\d$"],
         },
-        # Technical patterns
+        # technical_specific => a dict
         "technical_specific": {
             "type": [
-                r"^(sma|ema|wma|dema|tema)$",  # Moving averages
-                r"^(williams|rsi|adx)$",  # Momentum
-                r"^(standardDeviation)$",  # Volatility
+                r"^(sma|ema|wma|dema|tema)$",
+                r"^(williams|rsi|adx)$",
+                r"^(standardDeviation)$",
             ],
             "time_period": [r"^\d+$"],
         },
-        # Screening patterns
+        # screening_specific => a dict
         "screening_specific": {
             "market_cap_min": [r"^\d+$"],
             "market_cap_max": [r"^\d+$"],
@@ -142,47 +145,48 @@ class CompanyInfoRule(CommonValidationRule):
 
     @property
     def expected_category(self) -> SemanticCategory:
-        """Category for company information endpoints"""
         return SemanticCategory.COMPANY_INFO
 
     def get_parameter_requirements(
         self, method_name: str
     ) -> dict[str, list[str]] | None:
-        """Get required parameter patterns for method"""
+        """
+        Return a dict[str, list[str]] if recognized, else None.
+        """
         endpoint_info = self.get_endpoint_info(method_name)
         if not endpoint_info:
             return None
 
         subcategory, operation = endpoint_info
-        base_patterns = {}
+        base_patterns: dict[str, list[str]] = {}
 
-        # Add symbol requirement for most endpoints
+        # If not a search-related or list method, add "symbol"
         if not any(x in method_name for x in ["search", "list", "indexes"]):
-            base_patterns["symbol"] = self.PARAMETER_PATTERNS["symbol"]
+            self._copy_top_level_list("symbol", base_patterns)
 
-        # Add subcategory-specific patterns
+        # Subcategory-specific
         if subcategory == "Technical":
-            base_patterns.update(
-                {
-                    "period": self.PARAMETER_PATTERNS["period"],
-                    "interval": self.PARAMETER_PATTERNS["interval"],
-                    "type": self.PARAMETER_PATTERNS["technical_specific"]["type"],
-                }
-            )
+            # e.g. add "period", "interval" from top-level plus "type" from sub-dict
+            self._copy_top_level_list("period", base_patterns)
+            self._copy_top_level_list("interval", base_patterns)
+            # Now copy "type" from technical_specific
+            self._copy_subdict_keys("technical_specific", ["type"], base_patterns)
 
         if subcategory == "Search":
-            base_patterns.update(self.PARAMETER_PATTERNS["search_specific"])
+            # Pull everything from search_specific
+            self._copy_subdict("search_specific", base_patterns)
 
         if subcategory == "Float" and "historical" in operation:
-            base_patterns.update({"date": self.PARAMETER_PATTERNS["date"]})
+            # e.g. need "date" for historical share float
+            self._copy_top_level_list("date", base_patterns)
 
         if subcategory == "Screening":
-            base_patterns.update(self.PARAMETER_PATTERNS["screening_specific"])
+            # copy entire screening_specific sub-dict
+            self._copy_subdict("screening_specific", base_patterns)
 
-        return base_patterns
+        return base_patterns if base_patterns else None
 
     def validate_response_type(self, method_name: str, response_type: str) -> bool:
-        """Validate if response type is supported for method"""
         endpoint_info = self.get_endpoint_info(method_name)
         if not endpoint_info:
             return False
@@ -195,20 +199,49 @@ class CompanyInfoRule(CommonValidationRule):
         self, method_name: str, category: SemanticCategory
     ) -> tuple[bool, str]:
         """Validate method name and category"""
-        # First check category
         if category != self.expected_category:
             return False, f"Expected category {self.expected_category}, got {category}"
 
         # Check if method matches any group patterns
         for _, (prefix, operations) in self.METHOD_GROUPS.items():
             if method_name.startswith(prefix):
-                # Get the operation part by removing prefix
-                operation = method_name[len(prefix) :]
+                operation_part = method_name[len(prefix) :]
 
-                # Handle both direct matches and compound operations
-                if operation in operations or any(
+                # Direct or partial matches
+                if operation_part in operations or any(
                     op in method_name for op in operations
                 ):
                     return True, ""
 
         return False, f"Method {method_name} does not match any expected patterns"
+
+    def _copy_top_level_list(self, key: str, target: dict[str, list[str]]) -> None:
+        """
+        Copies a top-level list[str] from PARAMETER_PATTERNS if it exists.
+        """
+        val = self.PARAMETER_PATTERNS.get(key)
+        if isinstance(val, list):
+            target[key] = val
+
+    def _copy_subdict(self, dict_key: str, target: dict[str, list[str]]) -> None:
+        """
+        Copies every list[str] from PARAMETER_PATTERNS[dict_key].
+        """
+        maybe_sub = self.PARAMETER_PATTERNS.get(dict_key)
+        if isinstance(maybe_sub, dict):
+            for sub_k, sub_v in maybe_sub.items():
+                if isinstance(sub_v, list):
+                    target[sub_k] = sub_v
+
+    def _copy_subdict_keys(
+        self, dict_key: str, keys: list[str], target: dict[str, list[str]]
+    ) -> None:
+        """
+        Copies only certain keys from PARAMETER_PATTERNS[dict_key] if they're list[str].
+        """
+        maybe_sub = self.PARAMETER_PATTERNS.get(dict_key)
+        if isinstance(maybe_sub, dict):
+            for k in keys:
+                v = maybe_sub.get(k)
+                if isinstance(v, list):
+                    target[k] = v
