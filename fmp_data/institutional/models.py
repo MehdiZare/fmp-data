@@ -1,6 +1,7 @@
 # fmp_data/institutional/models.py
 import warnings
 from datetime import date, datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -32,9 +33,20 @@ class Form13FDate(BaseModel):
     form_date: date = Field(description="Date of form 13F filing", alias="date")
 
     @field_validator("form_date", mode="before")
-    def validate_date(cls, value):
+    def validate_date(cls, value: Any) -> date | None:
         """
         Validate the date field. If validation fails, log a warning and return None.
+
+        Args:
+            value: The value to validate, can be date, string, or any other type
+
+        Returns:
+            date | None: Validated date object or None if validation fails
+
+        Example:
+            >>> "2023-01-01" -> date(2023, 1, 1)
+            >>> "invalid" -> None  # with warning
+            >>> None -> None
         """
         if value is None:
             return None
