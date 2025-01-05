@@ -100,8 +100,16 @@ class LoggingConfig(BaseModel):
             log_path=log_path,
         )
 
-    def model_post_init(self, __context) -> None:
-        """Post-initialization validation and setup"""
+    def model_post_init(self, __context: Any) -> None:
+        """
+        Post-initialization validation and setup.
+
+        Args:
+            __context: Post init context from pydantic
+
+        Raises:
+            ValueError: If log directory cannot be created
+        """
         if self.log_path:
             try:
                 self.log_path.mkdir(parents=True, exist_ok=True)
@@ -159,7 +167,7 @@ class ClientConfig(BaseModel):
         default_factory=LoggingConfig, description="Logging configuration"
     )
 
-    model_config = ConfigDict(protected_namespaces=(), arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @classmethod
     @field_validator("api_key", mode="before")
@@ -198,4 +206,4 @@ class ClientConfig(BaseModel):
             "logging": LoggingConfig.from_env(),
         }
 
-        return cls(**config_dict)
+        return cls.model_validate(config_dict)
