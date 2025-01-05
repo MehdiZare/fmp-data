@@ -76,15 +76,18 @@ class AllSharesFloatArgs(NoParamArg):
     pass
 
 
-# Revenue Related
 class RevenueSegmentationArgs(SymbolArg):
     """Base arguments for revenue segmentation"""
 
     structure: StructureTypeEnum = Field(
-        default=StructureTypeEnum.FLAT, description="Data structure format"
+        default=StructureTypeEnum.FLAT,
+        description="Data structure format",
+        json_schema_extra={"enum": ["flat", "nested"], "examples": ["flat"]},
     )
     period: ReportingPeriodEnum = Field(
-        default=ReportingPeriodEnum.ANNUAL, description="Data period"
+        default=ReportingPeriodEnum.ANNUAL,
+        description="Data period",
+        json_schema_extra={"enum": ["annual", "quarter"], "examples": ["annual"]},
     )
 
 
@@ -114,19 +117,6 @@ class CoreInformationArgs(BaseSymbolArg):
 
 
 # Revenue Related
-class RevenueSegmentationArgs(SymbolArg):
-    """Base arguments for revenue segmentation"""
-
-    structure: StructureTypeEnum = Field(
-        default=StructureTypeEnum.FLAT,
-        description="Data structure format",
-        json_schema_extra={"enum": ["flat", "nested"], "examples": ["flat"]},
-    )
-    period: ReportingPeriodEnum = Field(
-        default=ReportingPeriodEnum.ANNUAL,
-        description="Data period",
-        json_schema_extra={"enum": ["annual", "quarter"], "examples": ["annual"]},
-    )
 
 
 class ProductRevenueArgs(RevenueSegmentationArgs):
