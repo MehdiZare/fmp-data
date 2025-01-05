@@ -169,7 +169,7 @@ MARKET_TIME_PERIODS = {
 # Complete semantic definitions
 MARKET_ENDPOINTS_SEMANTICS = {
     "search": EndpointSemantics(
-        client_name="company",
+        client_name="market",
         method_name="search",
         natural_description=(
             "Search for companies by name, ticker, " "or other identifiers."
@@ -221,7 +221,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "exchange_symbols": EndpointSemantics(
-        client_name="company",
+        client_name="market",
         method_name="get_exchange_symbols",
         natural_description=(
             "Get all symbols listed on a specific exchange including stocks, ETFs, "
@@ -267,7 +267,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
     ),
     # Search variant semantics
     "search_by_cik": EndpointSemantics(
-        client_name="company",
+        client_name="market",
         method_name="search_by_cik",  # Match exact method name
         natural_description=(
             "Search for companies by their SEC " "Central Index Key (CIK) number"
@@ -304,7 +304,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "search_by_cusip": EndpointSemantics(
-        client_name="company",
+        client_name="market",
         method_name="search_by_cusip",
         natural_description="Search for companies by their CUSIP identifier",
         example_queries=[
@@ -337,7 +337,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "search_by_isin": EndpointSemantics(
-        client_name="company",
+        client_name="market",
         method_name="search_by_isin",
         natural_description=(
             "Search for companies by their International "
@@ -373,7 +373,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "all_shares_float": EndpointSemantics(
-        client_name="company",
+        client_name="market",
         method_name="get_all_shares_float",
         natural_description=(
             "Get comprehensive share float data for all companies, showing the "
@@ -423,7 +423,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "etf_list": EndpointSemantics(
-        client_name="company",
+        client_name="market",
         method_name="get_etf_list",
         natural_description=(
             "Get a complete list of all available "
@@ -469,7 +469,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "available_indexes": EndpointSemantics(
-        client_name="company",
+        client_name="market",
         method_name="get_available_indexes",
         natural_description=(
             "Get a list of all available market indexes including major stock market "
@@ -798,6 +798,56 @@ MARKET_ENDPOINTS_SEMANTICS = {
             "Early market direction indicators",
             "After-hours movement tracking",
             "Pre-market momentum analysis",
+        ],
+    ),
+    "stock_list": EndpointSemantics(
+        client_name="market",
+        method_name="get_stock_list",
+        natural_description=(
+            "Get a complete list of all available stocks in the market including their "
+            "basic information such as symbol, name, and exchange listing"
+        ),
+        example_queries=[
+            "List all available stocks",
+            "Show me all tradable stocks",
+            "Get complete stock list",
+            "What stocks can I trade?",
+            "Show all listed companies",
+        ],
+        related_terms=[
+            "stock listings",
+            "tradable securities",
+            "listed stocks",
+            "equity securities",
+            "stock universe",
+            "market listings",
+        ],
+        category=SemanticCategory.MARKET_DATA,
+        sub_category="Lists",
+        parameter_hints={},  # No parameters needed
+        response_hints={
+            "symbol": ResponseFieldInfo(
+                description="Stock trading symbol",
+                examples=["AAPL", "MSFT", "GOOGL"],
+                related_terms=["ticker", "trading symbol", "stock symbol"],
+            ),
+            "name": ResponseFieldInfo(
+                description="Company name",
+                examples=["Apple Inc.", "Microsoft Corporation"],
+                related_terms=["company name", "business name", "listing name"],
+            ),
+            "exchange": ResponseFieldInfo(
+                description="Stock exchange where the stock is listed",
+                examples=["NASDAQ", "NYSE"],
+                related_terms=["listing exchange", "trading venue", "market"],
+            ),
+        },
+        use_cases=[
+            "Market coverage analysis",
+            "Trading universe definition",
+            "Portfolio screening",
+            "Market research",
+            "Company discovery",
         ],
     ),
 }
