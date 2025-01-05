@@ -5,7 +5,9 @@ from fmp_data.lc.validation import CommonValidationRule
 
 
 class IntelligenceRule(CommonValidationRule):
-    """Validation rules for market intelligence endpoints"""
+    """
+    Validation rules for market intelligence endpoints
+    """
 
     METHOD_GROUPS: ClassVar[dict[str, tuple[str, list[str]]]] = {
         "Calendar Events": (
@@ -74,31 +76,23 @@ class IntelligenceRule(CommonValidationRule):
         ),
     }
 
-    PARAMETER_PATTERNS: ClassVar[dict[str, dict[str, list[str] | str | int]]] = {
-        # Common patterns
-        "limit": [r"^\d+$"],  # Numeric only
-        "order": [r"^(asc|desc)$"],  # Sort order
-        "symbol": [r"^[A-Z]{1,5}$"],  # Stock symbols
-        "cik": [r"^\d{10}$"],  # CIK numbers
+    PARAMETER_PATTERNS: ClassVar[
+        dict[str, list[str] | dict[str, list[str] | str | int]]
+    ] = {
+        # Top-level keys that map to list[str]
+        "limit": [r"^\d+$"],  # numeric-only
+        "order": [r"^(asc|desc)$"],  # sort order
+        "symbol": [r"^[A-Z]{1,5}$"],  # stock symbols
+        "cik": [r"^\d{10}$"],  # CIK numbers (10-digit)
         "date": [r"^\d{4}-\d{2}-\d{2}$"],  # YYYY-MM-DD format
-        # Analyst research specific
+        # Keys that map to dict[str, list[str] | str | int]
         "analyst_specific": {"symbol": [r"^[A-Z]{1,5}$"]},
-        # Calendar events specific
         "calendar_specific": {
             "quarter": [r"^[1-4]$"],  # Quarters 1-4
             "year": [r"^\d{4}$"],  # 4-digit year
         },
-        # ESG specific
-        "esg_specific": {
-            "category": [r"^(E|S|G|ESG)$"],  # ESG categories
-            "symbol": [r"^[A-Z]{1,5}$"],
-        },
-        # News & media specific
-        "news_specific": {
-            "source": [r"^[a-zA-Z_]+$"],  # News sources
-            "symbol": [r"^[A-Z]{1,5}$"],
-        },
-        # Government & fundraising specific
+        "esg_specific": {"category": [r"^(E|S|G|ESG)$"], "symbol": [r"^[A-Z]{1,5}$"]},
+        "news_specific": {"source": [r"^[a-zA-Z_]+$"], "symbol": [r"^[A-Z]{1,5}$"]},
         "gov_fundraising_specific": {"cik": [r"^\d{10}$"]},
     }
 
@@ -115,8 +109,9 @@ class IntelligenceRule(CommonValidationRule):
 
         if category != SemanticCategory.INTELLIGENCE:
             self.logger.debug(
-                f"Category mismatch: expected "
-                f"{SemanticCategory.INTELLIGENCE}, got {category}"
+                f"Category mismatch: "
+                f"expected {SemanticCategory.INTELLIGENCE}, "
+                f"got {category}"
             )
             return (
                 False,
@@ -125,13 +120,13 @@ class IntelligenceRule(CommonValidationRule):
 
         # Check if method exists in any group
         all_methods = set()
-        for subcategory, (_, operations) in self.METHOD_GROUPS.items():
+        for subcat, (_, operations) in self.METHOD_GROUPS.items():
             self.logger.debug(
-                f"Checking group {subcategory} with {len(operations)} operations"
+                f"Checking group {subcat} with {len(operations)} operations"
             )
             all_methods.update(operations)
             if method_name in operations:
-                self.logger.debug(f"Found {method_name} in {subcategory}")
+                self.logger.debug(f"Found {method_name} in {subcat}")
                 return True, ""
 
         self.logger.debug(f"Method {method_name} not found in any group")
@@ -143,34 +138,58 @@ class IntelligenceRule(CommonValidationRule):
     def get_parameter_requirements(
         self, method_name: str
     ) -> dict[str, list[str]] | None:
-        """Get parameter validation patterns with intelligence-specific logic"""
+        """
+        Get parameter validation patterns with intelligence-specific logic.
+        Returns a dict[str, list[str]] or None if no match.
+        """
         endpoint_info = self.get_endpoint_info(method_name)
         if not endpoint_info:
             return None
 
         subcategory, operation = endpoint_info
-        base_patterns = {}
 
-        # Add common patterns based on operation type
-        if any(x in operation for x in ["calendar", "historical", "dates"]):
-            base_patterns.update(
-                {
-                    "from": self.PARAMETER_PATTERNS.get("date", []),
-                    "to": self.PARAMETER_PATTERNS.get("date", []),
-                }
-            )
+        # Always annotate your dict
+        base_patterns: dict[str, list[str]] = {}
 
-        # Add subcategory-specific patterns
-        if subcategory in ["Analyst Research", "News & Media"]:
-            base_patterns["symbol"] = self.PARAMETER_PATTERNS["symbol"]
-        elif subcategory == "ESG":
-            base_patterns.update(
-                {
-                    "symbol": self.PARAMETER_PATTERNS["symbol"],
-                    "year": self.PARAMETER_PATTERNS.get("year", []),
-                }
-            )
-        elif subcategory in ["Government Trading", "Fundraising"]:
-            base_patterns["cik"] = self.PARAMETER_PATTERNS["cik"]
+        if any(x in operation for x in ("calendar", "historical", "dates")):
+            base_patterns["from"] = self._fetch_list_patterns("date")
+            base_patterns["to"] = self._fetch_list_patterns("date")
 
-        return base_patterns
+        # Possibly add 'limit'/'order'
+        base_patterns["limit"] = self._fetch_list_patterns("limit")
+        base_patterns["order"] = self._fetch_list_patterns("order")
+
+        # Add subcategory-specific:
+        match subcategory:
+            case "Analyst Research" | "News & Media":
+                # symbol is top-level => a list[str]
+                base_patterns["symbol"] = self._fetch_list_patterns("symbol")
+            case "ESG":
+                base_patterns["symbol"] = self._fetch_list_patterns("symbol")
+                base_patterns["year"] = self._fetch_list_patterns_in_subdict(
+                    "calendar_specific", "year"
+                )
+            case "Government Trading" | "Fundraising":
+                base_patterns["cik"] = self._fetch_list_patterns("cik")
+
+        return base_patterns if base_patterns else None
+
+    def _fetch_list_patterns(self, key: str) -> list[str]:
+        """
+        Safely retrieve a list of patterns from PARAMETER_PATTERNS[key].
+        Returns [] if not found or if it's not a list[str].
+        """
+        val = self.PARAMETER_PATTERNS.get(key)
+        return val if isinstance(val, list) else []
+
+    def _fetch_list_patterns_in_subdict(self, dict_key: str, param: str) -> list[str]:
+        """
+        If PARAMETER_PATTERNS[dict_key] is a dict, try to fetch a list[str]
+        under 'param'. Return [] if not found or mismatched type.
+        """
+        sub_dict = self.PARAMETER_PATTERNS.get(dict_key)
+        if isinstance(sub_dict, dict):
+            val = sub_dict.get(param)
+            if isinstance(val, list):
+                return val
+        return []
