@@ -8,6 +8,18 @@ class CompanyInfoRule(CommonValidationRule):
     """Validation rules for company information endpoints"""
 
     METHOD_GROUPS: ClassVar[dict[str, tuple[str, list[str]]]] = {
+        "Analyst Research": (
+            "",
+            [
+                "get_analyst_estimates",
+                "get_analyst_recommendations",
+                "get_price_target",
+                "get_price_target_consensus",  # Only list once
+                "get_price_target_summary",  # Only list once
+                "get_upgrades_downgrades",
+                "get_upgrades_downgrades_consensus",
+            ],
+        ),
         "Price Data": (
             "get_",
             [
