@@ -31,7 +31,7 @@ from fmp_data.models import (
     URLType,
 )
 
-STOCK_LIST = Endpoint(
+STOCK_LIST: Endpoint = Endpoint(
     name="stock_list",
     path="stock/list",
     version=APIVersion.V3,
@@ -55,7 +55,7 @@ STOCK_LIST = Endpoint(
     ],
 )
 
-ETF_LIST = Endpoint(
+ETF_LIST: Endpoint = Endpoint(
     name="etf_list",
     path="etf/list",
     version=APIVersion.V3,
@@ -77,7 +77,7 @@ ETF_LIST = Endpoint(
         "Show all exchange traded funds",
     ],
 )
-AVAILABLE_INDEXES = Endpoint(
+AVAILABLE_INDEXES: Endpoint = Endpoint(
     name="available_indexes",
     path="symbol/available-indexes",
     version=APIVersion.V3,
@@ -101,7 +101,7 @@ AVAILABLE_INDEXES = Endpoint(
         "Show all benchmark indexes",
     ],
 )
-SEARCH = Endpoint(
+SEARCH: Endpoint = Endpoint(
     name="search",
     path="search",
     version=APIVersion.V3,
@@ -148,7 +148,7 @@ SEARCH = Endpoint(
         "Find companies matching 'renewable energy'",
     ],
 )
-EXCHANGE_SYMBOLS = Endpoint(
+EXCHANGE_SYMBOLS: Endpoint = Endpoint(
     name="exchange_symbols",
     path="symbol/{exchange}",
     version=APIVersion.V3,
@@ -181,7 +181,7 @@ EXCHANGE_SYMBOLS = Endpoint(
     ],
 )
 
-CIK_SEARCH = Endpoint(
+CIK_SEARCH: Endpoint = Endpoint(
     name="cik_search",
     path="cik-search",
     version=APIVersion.V3,
@@ -212,7 +212,7 @@ CIK_SEARCH = Endpoint(
     ],
 )
 
-CUSIP_SEARCH = Endpoint(
+CUSIP_SEARCH: Endpoint = Endpoint(
     name="cusip_search",
     path="cusip",
     version=APIVersion.V3,
@@ -244,7 +244,7 @@ CUSIP_SEARCH = Endpoint(
     ],
 )
 
-ISIN_SEARCH = Endpoint(
+ISIN_SEARCH: Endpoint = Endpoint(
     name="isin_search",
     path="search/isin",
     version=APIVersion.V4,
@@ -275,7 +275,7 @@ ISIN_SEARCH = Endpoint(
     ],
 )
 
-MARKET_HOURS = Endpoint(
+MARKET_HOURS: Endpoint = Endpoint(
     name="market_hours",
     path="is-the-market-open",
     version=APIVersion.V3,
@@ -285,7 +285,7 @@ MARKET_HOURS = Endpoint(
     response_model=MarketHours,
 )
 
-GAINERS = Endpoint(
+GAINERS: Endpoint = Endpoint(
     name="gainers",
     path="stock_market/gainers",
     version=APIVersion.V3,
@@ -295,7 +295,7 @@ GAINERS = Endpoint(
     response_model=MarketMover,
 )
 
-LOSERS = Endpoint(
+LOSERS: Endpoint = Endpoint(
     name="losers",
     path="stock_market/losers",
     version=APIVersion.V3,
@@ -305,7 +305,7 @@ LOSERS = Endpoint(
     response_model=MarketMover,
 )
 
-MOST_ACTIVE = Endpoint(
+MOST_ACTIVE: Endpoint = Endpoint(
     name="most_active",
     path="stock_market/actives",
     version=APIVersion.V3,
@@ -315,7 +315,7 @@ MOST_ACTIVE = Endpoint(
     response_model=MarketMover,
 )
 
-SECTOR_PERFORMANCE = Endpoint(
+SECTOR_PERFORMANCE: Endpoint = Endpoint(
     name="sector_performance",
     path="sectors-performance",
     version=APIVersion.V3,
@@ -325,7 +325,7 @@ SECTOR_PERFORMANCE = Endpoint(
     response_model=SectorPerformance,
 )
 
-PRE_POST_MARKET = Endpoint(
+PRE_POST_MARKET: Endpoint = Endpoint(
     name="pre_post_market",
     path="pre-post-market",
     version=APIVersion.V4,
@@ -335,7 +335,7 @@ PRE_POST_MARKET = Endpoint(
     response_model=PrePostMarketQuote,
 )
 
-ALL_SHARES_FLOAT = Endpoint(
+ALL_SHARES_FLOAT: Endpoint = Endpoint(
     name="all_shares_float",
     path="shares_float/all",
     version=APIVersion.V4,
