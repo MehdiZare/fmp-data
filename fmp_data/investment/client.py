@@ -43,13 +43,27 @@ class InvestmentClient(EndpointGroup):
         return self.client.request(ETF_HOLDING_DATES, symbol=symbol)
 
     def get_etf_info(self, symbol: str) -> ETFInfo | None:
-        """Get ETF information"""
+        """
+        Get ETF information
+
+        Args:
+            symbol: ETF symbol
+
+        Returns:
+            ETFInfo object if found, or None if no data/error occurs
+        """
         try:
             result = self.client.request(ETF_INFO, symbol=symbol)
-            return result[0] if isinstance(result, list) else result
+            if isinstance(result, list):
+                return result[0] if result else None
+            if isinstance(result, ETFInfo):
+                return result
+            warnings.warn(
+                f"Unexpected result type from ETF_INFO: {type(result)}", stacklevel=2
+            )
+            return None
         except Exception as e:
-            error_msg = f"Error in get_etf_info, error: {str(e)}"
-            warnings.warn(error_msg, stacklevel=2)
+            warnings.warn(f"Error in get_etf_info: {str(e)}", stacklevel=2)
             return None
 
     def get_etf_sector_weightings(self, symbol: str) -> list[ETFSectorWeighting]:
