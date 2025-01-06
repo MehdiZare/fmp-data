@@ -1,26 +1,30 @@
-# logging.py
+# fmp_data/logger.py
 import inspect
 import json
 import logging
 import os
 import re
 import sys
+from collections.abc import Callable
 from copy import deepcopy
 from datetime import datetime
 from functools import wraps
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from typing import Any, Optional, TypeVar
 
 from fmp_data.config import LoggingConfig, LogHandlerConfig
+
+T = TypeVar("T")
 
 
 class SensitiveDataFilter(logging.Filter):
     """Filter to mask sensitive data in log records"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         # Patterns for sensitive data
-        self.patterns = {
+        self.patterns: dict[str, re.Pattern[str]] = {
             "api_key": re.compile(
                 r'([\'"]?api_?key[\'"]?\s*[=:]\s*[\'"]?)([^\'"\s&]+)([\'"]?)',
                 re.IGNORECASE,
@@ -42,8 +46,7 @@ class SensitiveDataFilter(logging.Filter):
             ),
         }
 
-        # Additional exact match keywords to mask
-        self.sensitive_keys = {
+        self.sensitive_keys: set[str] = {
             "api_key",
             "apikey",
             "api-key",
@@ -58,21 +61,19 @@ class SensitiveDataFilter(logging.Filter):
 
     @staticmethod
     def _mask_value(value: str, mask_char: str = "*") -> str:
-        """Mask a sensitive value, keeping first 2 and last 2 characters visible"""
         if not value:
             return value
         if len(value) <= 8:
             return mask_char * len(value)
         return f"{value[:2]}{mask_char * (len(value) - 4)}{value[-2:]}"
 
-    def _mask_dict_recursive(self, d: dict | list, parent_key: str = "") -> dict | list:
+    def _mask_dict_recursive(self, d: Any, parent_key: str = "") -> Any:
+        """Recursively mask sensitive values in dictionaries and lists"""
         """Recursively mask sensitive values in dictionaries and lists"""
         if isinstance(d, dict):
-            result = {}
+            result: dict[str, Any] = {}
             for k, v in d.items():
                 key = k.lower() if isinstance(k, str) else k
-
-                # Check if this key or its path contains sensitive information
                 is_sensitive = any(
                     sensitive in str(key).lower() for sensitive in self.sensitive_keys
                 ) or any(
@@ -85,16 +86,17 @@ class SensitiveDataFilter(logging.Filter):
                 elif isinstance(v, dict | list):
                     result[k] = json.dumps(
                         self._mask_dict_recursive(v, f"{parent_key}.{k}")
-                    )  # Convert to string
+                    )
                 else:
                     result[k] = v
             return result
+
         elif isinstance(d, list):
             return [self._mask_dict_recursive(item, parent_key) for item in d]
+
         return d
 
-    def _mask_patterns_in_string(self, text: str) -> str:
-        """Mask sensitive patterns in a string"""
+    def _mask_patterns_in_string(self, text: Any) -> Any:
         if not isinstance(text, str):
             return text
 
@@ -107,7 +109,6 @@ class SensitiveDataFilter(logging.Filter):
         return masked_text
 
     def filter(self, record: logging.LogRecord) -> bool:
-        """Filter and mask sensitive data in log records"""
         if hasattr(record, "msg"):
             record.msg = self._mask_patterns_in_string(str(record.msg))
 
@@ -118,7 +119,7 @@ class SensitiveDataFilter(logging.Filter):
             args = list(record.args)
             for i, arg in enumerate(args):
                 if isinstance(arg, dict | list):
-                    args[i] = self._mask_dict_recursive(deepcopy(arg))
+                    args[i] = self._mask_dict_recursive(arg)
                 elif isinstance(arg, str):
                     args[i] = self._mask_patterns_in_string(arg)
             record.args = tuple(args)
@@ -127,9 +128,7 @@ class SensitiveDataFilter(logging.Filter):
 
 
 class JsonFormatter(logging.Formatter):
-    """JSON log formatter with sensitive data masking"""
-
-    def format(self, record):
+    def format(self, record: logging.LogRecord) -> str:
         log_data = {
             "timestamp": datetime.fromtimestamp(record.created).isoformat(),
             "name": record.name,
@@ -142,15 +141,15 @@ class JsonFormatter(logging.Formatter):
             "threadName": record.threadName,
         }
 
-        # Add exception info if present
-        if record.exc_info:
+        if record.exc_info and record.exc_info[0]:
+            exc_type = record.exc_info[0]
+            exc_value = record.exc_info[1]
             log_data["exception"] = {
-                "type": record.exc_info[0].__name__,
-                "message": str(record.exc_info[1]),
+                "type": exc_type.__name__ if exc_type else "Unknown",
+                "message": str(exc_value) if exc_value else "",
                 "traceback": self.formatException(record.exc_info),
             }
 
-        # Add custom fields
         if hasattr(record, "extra"):
             log_data.update(record.extra)
 
@@ -158,23 +157,25 @@ class JsonFormatter(logging.Formatter):
 
 
 class SecureRotatingFileHandler(RotatingFileHandler):
-    """Rotating file handler with added security measures"""
-
     def __init__(
-        self, filename, mode="a", maxBytes=0, backupCount=0, encoding=None, delay=False
-    ):
+        self,
+        filename: str,
+        mode: str = "a",
+        maxBytes: int = 0,
+        backupCount: int = 0,
+        encoding: str | None = None,
+        delay: bool = False,
+    ) -> None:
         super().__init__(filename, mode, maxBytes, backupCount, encoding, delay)
         if not delay:
             self._set_secure_permissions()
 
-    def _open(self):
-        """Open the file with secure permissions"""
+    def _open(self) -> Any:
         stream = super()._open()
         self._set_secure_permissions()
         return stream
 
-    def _set_secure_permissions(self):
-        """Set secure file permissions"""
+    def _set_secure_permissions(self) -> None:
         if sys.platform != "win32":
             try:
                 os.chmod(self.baseFilename, 0o600)
@@ -185,41 +186,52 @@ class SecureRotatingFileHandler(RotatingFileHandler):
 
 
 class FMPLogger:
-    """Centralized logging configuration for FMP Data package"""
-
-    _instance = None
-    _handler_classes = {
+    _instance: Optional["FMPLogger"] = None
+    _handler_classes: dict[str, type[logging.Handler]] = {
         "StreamHandler": logging.StreamHandler,
         "FileHandler": logging.FileHandler,
         "RotatingFileHandler": SecureRotatingFileHandler,
         "JsonRotatingFileHandler": SecureRotatingFileHandler,
     }
+    _initialized: bool = False
 
-    def __new__(cls):
+    def __new__(cls) -> "FMPLogger":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
         if self._initialized:
             return
 
         self._initialized = True
         self._logger = logging.getLogger("fmp_data")
         self._logger.setLevel(logging.INFO)
-        self._handlers = {}
+        self._handlers: dict[str, logging.Handler] = {}
 
-        # Add sensitive data filter to root logger
         self._logger.addFilter(SensitiveDataFilter())
 
-        # Add default console handler if no handlers exist
         if not self._logger.handlers:
             self._add_default_console_handler()
 
-    def _add_default_console_handler(self):
+    def get_logger(self, name: str | None = None) -> logging.Logger:
+        """
+        Get a logger instance with the given name
+
+        Args:
+            name: Optional name for the logger
+
+        Returns:
+            logging.Logger: Logger instance
+        """
+        if name:
+            return self._logger.getChild(name)
+        return self._logger
+
+    def _add_default_console_handler(self) -> None:
         """Add default console handler with a reasonable format"""
-        handler = logging.StreamHandler(sys.stdout)
+        handler = logging.StreamHandler()  # Initialize without arguments
         formatter = logging.Formatter(
             "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         )
@@ -229,20 +241,15 @@ class FMPLogger:
         self._handlers["console"] = handler
 
     def configure(self, config: LoggingConfig) -> None:
-        """Configure logging based on provided configuration"""
-        # Set root logger level
         self._logger.setLevel(getattr(logging, config.level))
 
-        # Remove existing handlers
         for handler in list(self._handlers.values()):
             self._logger.removeHandler(handler)
             handler.close()
         self._handlers.clear()
 
-        # Create log directory if specified
         if config.log_path:
             config.log_path.mkdir(parents=True, exist_ok=True)
-            # Secure log directory permissions
             if sys.platform != "win32":
                 try:
                     os.chmod(config.log_path, 0o700)
@@ -251,76 +258,76 @@ class FMPLogger:
                         f"Could not set secure permissions on log directory: {e}"
                     )
 
-        # Add configured handlers
         for name, handler_config in config.handlers.items():
             self._add_handler(name, handler_config, config.log_path)
 
     def _add_handler(
         self, name: str, config: LogHandlerConfig, log_path: Path | None = None
     ) -> None:
-        """Add a handler based on configuration"""
-        if not (handler_class := self._handler_classes.get(config.class_name)):
+        """
+        Add a handler based on configuration.
+
+        Args:
+            name: Handler name
+            config: Handler configuration
+            log_path: Optional base path for log files
+        """
+        handler_class = self._handler_classes.get(config.class_name)
+        if not handler_class:
             raise ValueError(f"Unknown handler class: {config.class_name}")
 
-        kwargs = config.kwargs.copy()
+        # Use handler_kwargs instead of kwargs
+        kwargs = config.handler_kwargs.copy()
 
-        # Handle filename for file-based handlers
         if "filename" in kwargs and log_path:
             kwargs["filename"] = log_path / kwargs["filename"]
 
-        # Create handler
         if config.class_name == "StreamHandler":
-            handler = handler_class(sys.stdout)
+            handler = handler_class()  # Initialize without arguments
+            if hasattr(handler, "stream"):
+                handler.stream = sys.stdout  # Set stream after initialization
         else:
             handler = handler_class(**kwargs)
 
-        # Set formatter
         if config.class_name == "JsonRotatingFileHandler":
             handler.setFormatter(JsonFormatter())
         else:
             handler.setFormatter(logging.Formatter(config.format))
 
-        # Set level and add handler
         handler.setLevel(getattr(logging, config.level))
         self._logger.addHandler(handler)
         self._handlers[name] = handler
 
-    def get_logger(self, name: str | None = None) -> logging.Logger:
-        """Get a logger instance with the given name"""
-        if name:
-            return self._logger.getChild(name)
-        return self._logger
 
-
-def log_api_call(logger: logging.Logger | None = None, exclude_args: bool = False):
-    """
-    Decorator to log API calls with parameters and response
-
-    Args:
-        logger: Optional logger instance to use
-        exclude_args: Whether to exclude arguments from logs (useful for large payloads)
-    """
-
-    def decorator(func):
+def log_api_call(
+    logger: logging.Logger | None = None,
+    exclude_args: bool = False,
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> T:
             nonlocal logger
             if logger is None:
                 logger = FMPLogger().get_logger()
 
-            frame = inspect.currentframe().f_back
-            module = inspect.getmodule(frame)
-            module_name = module.__name__ if module else ""
+            current_frame = inspect.currentframe()
+            if current_frame:
+                back_frame = current_frame.f_back
+                module = inspect.getmodule(back_frame) if back_frame else None
+                module_name = module.__name__ if module else ""
+            else:
+                module_name = ""
 
-            # Create logging context - avoid using 'module' key
-            log_context = {"function_name": func.__name__, "module_path": module_name}
+            log_context: dict[str, Any] = {
+                "function_name": func.__name__,
+                "module_path": module_name,
+            }
 
             if not exclude_args:
-                # Create a sanitized copy of kwargs for logging
                 safe_kwargs = deepcopy(kwargs)
                 log_context.update(
                     {
-                        "call_args": args[1:],  # Skip self argument
+                        "call_args": args[1:],
                         "call_kwargs": safe_kwargs,
                     }
                 )
