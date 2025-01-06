@@ -1,32 +1,362 @@
 # fmp_data/lc/registry.py
 from __future__ import annotations
 
+import re
+from abc import ABC, abstractmethod
 from logging import Logger
+from typing import Any, TypedDict
 
-from fmp_data.alternative.validation import AlternativeMarketsRule
-from fmp_data.company.validation import CompanyInfoRule
-from fmp_data.economics.validation import EconomicsRule
-from fmp_data.fundamental.validation import FundamentalAnalysisRule
-from fmp_data.institutional.validation import InstitutionalRule
-from fmp_data.intelligence.validation import IntelligenceRule
-from fmp_data.investment.validation import InvestmentProductsRule
-from fmp_data.lc.models import EndpointInfo, EndpointSemantics
-from fmp_data.lc.validation import ValidationRuleRegistry
+from fmp_data.alternative.mapping import (
+    ALTERNATIVE_ENDPOINT_MAP,
+    ALTERNATIVE_ENDPOINTS_SEMANTICS,
+)
+from fmp_data.company.mapping import COMPANY_ENDPOINT_MAP, COMPANY_ENDPOINTS_SEMANTICS
+from fmp_data.economics.mapping import (
+    ECONOMICS_ENDPOINT_MAP,
+    ECONOMICS_ENDPOINTS_SEMANTICS,
+)
+from fmp_data.fundamental.mapping import (
+    FUNDAMENTAL_ENDPOINT_MAP,
+    FUNDAMENTAL_ENDPOINTS_SEMANTICS,
+)
+from fmp_data.institutional.mapping import (
+    INSTITUTIONAL_ENDPOINT_MAP,
+    INSTITUTIONAL_ENDPOINTS_SEMANTICS,
+)
+from fmp_data.intelligence.mapping import (
+    INTELLIGENCE_ENDPOINT_MAP,
+    INTELLIGENCE_ENDPOINTS_SEMANTICS,
+)
+from fmp_data.investment.mapping import (
+    INVESTMENT_ENDPOINT_MAP,
+    INVESTMENT_ENDPOINTS_SEMANTICS,
+)
+from fmp_data.lc.models import EndpointInfo, EndpointSemantics, SemanticCategory
 from fmp_data.logger import FMPLogger
-from fmp_data.market.validation import MarketDataRule
+from fmp_data.market.mapping import MARKET_ENDPOINT_MAP, MARKET_ENDPOINTS_SEMANTICS
 from fmp_data.models import Endpoint
-from fmp_data.technical.validation import TechnicalAnalysisRule
+from fmp_data.technical.mapping import (
+    TECHNICAL_ENDPOINT_MAP,
+    TECHNICAL_ENDPOINTS_SEMANTICS,
+)
 
 logger = FMPLogger().get_logger(__name__)
 
 
-class EndpointRegistry:
-    """
-    Registry for managing FMP API endpoints and their semantic information.
+class GroupConfig(TypedDict):
+    """Configuration for an endpoint group."""
 
-    Handles endpoint registration, validation, and lookup. Stores endpoint
-    configurations and semantic metadata for search and tool creation.
-    """
+    endpoint_map: dict[str, Endpoint[Any]]
+    semantics_map: dict[str, EndpointSemantics]
+    category: SemanticCategory
+
+
+# Make sure all categories are properly typed
+ENDPOINT_GROUPS: dict[str, GroupConfig] = {
+    "alternative": {
+        "endpoint_map": ALTERNATIVE_ENDPOINT_MAP,
+        "semantics_map": ALTERNATIVE_ENDPOINTS_SEMANTICS,
+        "category": SemanticCategory.ALTERNATIVE_DATA,
+    },
+    "company": {
+        "endpoint_map": COMPANY_ENDPOINT_MAP,
+        "semantics_map": COMPANY_ENDPOINTS_SEMANTICS,
+        "category": SemanticCategory.COMPANY_INFO,
+    },
+    "economics": {
+        "endpoint_map": ECONOMICS_ENDPOINT_MAP,
+        "semantics_map": ECONOMICS_ENDPOINTS_SEMANTICS,
+        "category": SemanticCategory.ECONOMIC,
+    },
+    "fundamental": {
+        "endpoint_map": FUNDAMENTAL_ENDPOINT_MAP,
+        "semantics_map": FUNDAMENTAL_ENDPOINTS_SEMANTICS,
+        "category": SemanticCategory.FUNDAMENTAL_ANALYSIS,
+    },
+    "market": {
+        "endpoint_map": MARKET_ENDPOINT_MAP,
+        "semantics_map": MARKET_ENDPOINTS_SEMANTICS,
+        "category": SemanticCategory.MARKET_DATA,
+    },
+    "technical": {
+        "endpoint_map": TECHNICAL_ENDPOINT_MAP,
+        "semantics_map": TECHNICAL_ENDPOINTS_SEMANTICS,
+        "category": SemanticCategory.TECHNICAL_ANALYSIS,
+    },
+    "institutional": {
+        "endpoint_map": INSTITUTIONAL_ENDPOINT_MAP,
+        "semantics_map": INSTITUTIONAL_ENDPOINTS_SEMANTICS,
+        "category": SemanticCategory.INSTITUTIONAL,
+    },
+    "intelligence": {
+        "endpoint_map": INTELLIGENCE_ENDPOINT_MAP,
+        "semantics_map": INTELLIGENCE_ENDPOINTS_SEMANTICS,
+        "category": SemanticCategory.INTELLIGENCE,
+    },
+    "investment": {
+        "endpoint_map": INVESTMENT_ENDPOINT_MAP,
+        "semantics_map": INVESTMENT_ENDPOINTS_SEMANTICS,
+        "category": SemanticCategory.INVESTMENT_PRODUCTS,
+    },
+}
+
+
+class ValidationRule(ABC):
+    """Abstract base class for validation rules."""
+
+    def __init__(self) -> None:
+        self.logger = FMPLogger().get_logger(self.__class__.__name__)
+
+    @property
+    @abstractmethod
+    def expected_category(self) -> SemanticCategory:
+        """The category this rule is responsible for validating."""
+        ...
+
+    @property
+    @abstractmethod
+    def endpoint_prefixes(self) -> set[str]:
+        """Set of prefixes that identify which methods belong to this rule."""
+        ...
+
+    @abstractmethod
+    def validate(
+        self, method_name: str, category: SemanticCategory
+    ) -> tuple[bool, str]:
+        """Validate that the method_name belongs to category."""
+        ...
+
+    @abstractmethod
+    def validate_parameters(
+        self, method_name: str, parameters: dict
+    ) -> tuple[bool, str]:
+        """Validate parameters for the specified method_name."""
+        ...
+
+    @abstractmethod
+    def get_parameter_requirements(
+        self, method_name: str
+    ) -> dict[str, list[str]] | None:
+        """Return parameter validation requirements."""
+        ...
+
+
+class EndpointBasedRule(ValidationRule):
+    """Validation rule that derives its rules from endpoint definitions."""
+
+    def __init__(self, endpoints: dict[str, Endpoint], category: SemanticCategory):
+        super().__init__()
+        self._endpoints = endpoints
+        self._category = category
+
+    @property
+    def expected_category(self) -> SemanticCategory:
+        """Return the category this rule validates."""
+        return self._category
+
+    @property
+    def endpoint_prefixes(self) -> set[str]:
+        """Get prefixes directly from endpoint names."""
+        prefixes = set()
+        for name in self._endpoints.keys():
+            # Add the method name as a prefix
+            prefixes.add(name)
+            # If it starts with get_, also add the base part
+            if name.startswith("get_"):
+                base = name[4:]
+                prefixes.add(base)
+                # Add component parts for nested prefixes
+                parts = base.split("_")
+                for i in range(len(parts)):
+                    prefix = "_".join(parts[: i + 1])
+                    prefixes.add(prefix)
+        return prefixes
+
+    def validate(
+        self, method_name: str, category: SemanticCategory
+    ) -> tuple[bool, str]:
+        """Validate method name and category."""
+        if category != self.expected_category:
+            return False, f"Expected {self.expected_category}, got {category}"
+
+        # Check if this method exists in our endpoints
+        if method_name in self._endpoints:
+            return True, ""
+
+        # If it doesn't match directly, see if it matches any of our prefixes
+        operation = method_name[4:] if method_name.startswith("get_") else method_name
+        for endpoint_name in self._endpoints.keys():
+            endpoint_base = (
+                endpoint_name[4:] if endpoint_name.startswith("get_") else endpoint_name
+            )
+            if operation == endpoint_base or operation.startswith(f"{endpoint_base}_"):
+                return True, ""
+
+        return False, f"Method {method_name} not found in registered endpoints"
+
+    def validate_parameters(
+        self, method_name: str, parameters: dict
+    ) -> tuple[bool, str]:
+        """Validate parameters against endpoint definition."""
+        endpoint = self._endpoints.get(method_name)
+        if not endpoint:
+            return False, f"No endpoint found for {method_name}"
+
+        # Get all valid parameter names
+        valid_params = {p.name for p in endpoint.mandatory_params}
+        if endpoint.optional_params:
+            valid_params.update(p.name for p in endpoint.optional_params)
+
+        # Check for invalid parameters
+        invalid_params = set(parameters.keys()) - valid_params
+        if invalid_params:
+            return False, f"Invalid parameters: {', '.join(invalid_params)}"
+
+        # Check for missing mandatory parameters
+        mandatory_params = {p.name for p in endpoint.mandatory_params}
+        missing_params = mandatory_params - set(parameters.keys())
+        if missing_params:
+            return False, f"Missing mandatory parameters: {', '.join(missing_params)}"
+
+        # Validate parameter values
+        for param_name, value in parameters.items():
+            param_def = next(
+                (
+                    p
+                    for p in endpoint.mandatory_params
+                    + (endpoint.optional_params or [])
+                    if p.name == param_name
+                ),
+                None,
+            )
+            if param_def:
+                try:
+                    param_def.validate_value(value)
+                except ValueError as e:
+                    return False, str(e)
+
+        return True, ""
+
+    @staticmethod
+    def _get_type_pattern(
+        param_type: str, valid_values: list[Any] | None = None
+    ) -> list[str]:
+        """Get regex patterns for a given parameter type."""
+        match param_type:
+            case "string":
+                if valid_values:
+                    return [f"^({'|'.join(map(str, valid_values))}))$"]
+                return [r"^.+$"]
+            case "integer":
+                return [r"^\d+$"]
+            case "float":
+                return [r"^\d*\.?\d+$"]
+            case "boolean":
+                return [r"^(true|false|0|1)$"]
+            case "date":
+                return [r"^\d{4}-\d{2}-\d{2}$"]
+            case "datetime":
+                return [r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$"]
+            case _:
+                return []
+
+    def get_parameter_requirements(
+        self, method_name: str
+    ) -> dict[str, list[str]] | None:
+        """Get parameter requirements from endpoint definition."""
+        endpoint = self._endpoints.get(method_name)
+        if not endpoint:
+            return None
+
+        patterns: dict[str, list[str]] = {}
+
+        # Add patterns for all parameters
+        for param in endpoint.mandatory_params + (endpoint.optional_params or []):
+            param_patterns = self._get_type_pattern(
+                param.param_type.value, param.valid_values
+            )
+            if param_patterns:
+                patterns[param.name] = param_patterns
+
+        return patterns if patterns else None
+
+
+class ValidationRuleRegistry:
+    """Registry that manages and coordinates validation rules."""
+
+    def __init__(self) -> None:
+        """Initialize the registry."""
+        self._rules: list[ValidationRule] = []
+        self.logger = FMPLogger().get_logger(self.__class__.__name__)
+
+    def register_rule(self, rule: ValidationRule) -> None:
+        """Register a validation rule."""
+        self._rules.append(rule)
+        self.logger.debug(f"Registered validation rule: {rule.__class__.__name__}")
+
+    def validate_category(
+        self, method_name: str, category: SemanticCategory
+    ) -> tuple[bool, str]:
+        """Validate category using registered rules."""
+        # First check if we have any rules for this category
+        category_rules = [
+            rule for rule in self._rules if rule.expected_category == category
+        ]
+        if not category_rules:
+            return False, f"No rules found for category {category.value}"
+
+        # Find matching rule based on prefix patterns
+        matching_rule: ValidationRule | None = None
+        for rule in self._rules:
+            if any(method_name.startswith(prefix) for prefix in rule.endpoint_prefixes):
+                matching_rule = rule
+                break
+
+        if matching_rule:
+            if matching_rule.expected_category != category:
+                return (
+                    False,
+                    f"Category mismatch: endpoint {method_name} "
+                    f"belongs to {matching_rule.expected_category.value}, "
+                    f"not {category.value}",
+                )
+            return matching_rule.validate(method_name, category)
+
+        return (
+            False,
+            f"No matching rule found for {method_name} in category {category.value}",
+        )
+
+    def get_parameter_requirements(
+        self, method_name: str, category: SemanticCategory
+    ) -> tuple[dict[str, list[str]] | None, str]:
+        """Get parameter requirements for a method."""
+        for rule in self._rules:
+            if rule.expected_category == category:
+                requirements = rule.get_parameter_requirements(method_name)
+                if requirements is not None:
+                    return requirements, ""
+        return None, f"No parameter requirements found for {method_name}"
+
+    def validate_parameters(
+        self, method_name: str, category: SemanticCategory, parameters: dict
+    ) -> tuple[bool, str]:
+        """Validate parameters using registered rules."""
+        for rule in self._rules:
+            if rule.expected_category == category:
+                return rule.validate_parameters(method_name, parameters)
+        return True, ""
+
+    def get_expected_category(self, method_name: str) -> SemanticCategory | None:
+        """Determine the expected category for a method name."""
+        for rule in self._rules:
+            if any(method_name.startswith(prefix) for prefix in rule.endpoint_prefixes):
+                return rule.expected_category
+        return None
+
+
+class EndpointRegistry:
+    """Registry for managing FMP API endpoints and their semantic information."""
 
     def __init__(self) -> None:
         self._endpoints: dict[str, EndpointInfo] = {}
@@ -34,31 +364,26 @@ class EndpointRegistry:
         self.logger: Logger = (
             FMPLogger().get_logger(__name__).getChild(self.__class__.__name__)
         )
-
-        # Register validation rules
         self._register_validation_rules()
 
     def _register_validation_rules(self) -> None:
-        """Register all validation rules in order of precedence."""
-        rules = [
-            FundamentalAnalysisRule(),
-            MarketDataRule(),
-            TechnicalAnalysisRule(),
-            CompanyInfoRule(),
-            InstitutionalRule(),
-            IntelligenceRule(),
-            AlternativeMarketsRule(),
-            EconomicsRule(),
-            InvestmentProductsRule(),
-        ]
-
-        for rule in rules:
+        """Register validation rules for each endpoint group."""
+        for group_name, config in ENDPOINT_GROUPS.items():
+            # Explicitly create the rule with properly typed arguments
+            rule = EndpointBasedRule(
+                endpoints=config[
+                    "endpoint_map"
+                ],  # TypedDict ensures this is dict[str, Endpoint[Any]]
+                category=config[
+                    "category"
+                ],  # TypedDict ensures this is SemanticCategory
+            )
             self._validation.register_rule(rule)
-            self.logger.debug(f"Registered validation rule: {rule.__class__.__name__}")
+            self.logger.debug(f"Registered validation rule for {group_name}")
 
     @staticmethod
     def _validate_method_name(name: str, info: EndpointInfo) -> tuple[bool, str | None]:
-        """Validate method name consistency"""
+        """Validate method name consistency."""
         if info.semantics.method_name != name:
             return False, (
                 f"Method name mismatch: endpoint uses '{name}' but semantics uses "
@@ -68,7 +393,7 @@ class EndpointRegistry:
 
     @staticmethod
     def _validate_parameters(name: str, info: EndpointInfo) -> tuple[bool, str | None]:
-        """Validate parameter consistency"""
+        """Validate parameter consistency."""
         endpoint_params = {p.name for p in info.endpoint.mandatory_params}
         if info.endpoint.optional_params:
             endpoint_params.update(p.name for p in info.endpoint.optional_params)
@@ -91,6 +416,7 @@ class EndpointRegistry:
         return True, None
 
     def validate_endpoint(self, name: str, info: EndpointInfo) -> tuple[bool, str]:
+        """Validate complete endpoint information."""
         # Method name validation
         valid, error = self._validate_method_name(name, info)
         if not valid:
@@ -108,11 +434,18 @@ class EndpointRegistry:
 
         return True, ""
 
+        # Continuing the EndpointRegistry class...
+
     def register(
         self, name: str, endpoint: Endpoint, semantics: EndpointSemantics
     ) -> None:
         """
         Register an endpoint with validation.
+
+        Args:
+            name: Name of the endpoint
+            endpoint: Endpoint definition
+            semantics: Semantic information for the endpoint
 
         Raises:
             ValueError: If endpoint info is invalid or inconsistent
@@ -145,7 +478,16 @@ class EndpointRegistry:
     def register_batch(
         self, endpoints: dict[str, tuple[Endpoint, EndpointSemantics]]
     ) -> None:
-        """Register multiple endpoints at once."""
+        """
+        Register multiple endpoints at once.
+
+        Args:
+            endpoints: Dictionary mapping
+            endpoint names to (Endpoint, EndpointSemantics) pairs
+
+        Raises:
+            ValueError: If any endpoint fails validation
+        """
         for name, (endpoint, semantics) in endpoints.items():
             try:
                 self.register(name, endpoint, semantics)
@@ -156,20 +498,45 @@ class EndpointRegistry:
     def get_endpoint(self, name: str) -> EndpointInfo | None:
         """
         Get endpoint information by name.
+
+        Args:
+            name: Name of the endpoint
+
+        Returns:
+            EndpointInfo if found, None otherwise
         """
         return self._endpoints.get(name)
 
     def get_endpoints_by_names(self, names: list[str]) -> dict[str, EndpointInfo]:
-        """Get multiple endpoints by their names."""
+        """
+        Get multiple endpoints by their names.
+
+        Args:
+            names: List of endpoint names to retrieve
+
+        Returns:
+            Dictionary mapping names to endpoint info for found endpoints
+        """
         return {name: info for name, info in self._endpoints.items() if name in names}
 
     def list_endpoints(self) -> dict[str, EndpointInfo]:
-        """Get all registered endpoints."""
+        """
+        Get all registered endpoints.
+
+        Returns:
+            Dictionary mapping endpoint names to their info
+        """
         return self._endpoints
 
     def filter_endpoints(self, category: str | None = None) -> dict[str, EndpointInfo]:
         """
         Filter endpoints by category.
+
+        Args:
+            category: Category to filter by, or None for all endpoints
+
+        Returns:
+            Dictionary of endpoints matching the category
         """
         if not category:
             return self._endpoints
@@ -182,7 +549,15 @@ class EndpointRegistry:
     def filter_endpoints_by_categories(
         self, categories: list[str]
     ) -> dict[str, EndpointInfo]:
-        """Filter endpoints by multiple categories."""
+        """
+        Filter endpoints by multiple categories.
+
+        Args:
+            categories: List of categories to filter by
+
+        Returns:
+            Dictionary of endpoints matching any of the categories
+        """
         if not categories:
             return self._endpoints
         return {
@@ -192,14 +567,22 @@ class EndpointRegistry:
         }
 
     def get_embedding_text(self, name: str) -> str | None:
-        """Get text for embedding generation."""
+        """
+        Get text for embedding generation.
+
+        Args:
+            name: Name of the endpoint
+
+        Returns:
+            Normalized text suitable for
+            embedding generation, or None if endpoint not found
+        """
         info = self.get_endpoint(name)
         if not info:
             return None
 
         def normalize_text(text: str) -> str:
             """Normalize text for consistent embeddings."""
-            import re
 
             text = re.sub(r"\s+", " ", text).strip().lower()
             text = re.sub(r"[^\w\s\-/]", "", text)
@@ -221,7 +604,7 @@ class EndpointRegistry:
         if info.semantics.sub_category:
             text_parts.append(f"subcategory: {info.semantics.sub_category.lower()}")
 
-        # Parameter hints -> hint is ParameterHint
+        # Parameter hints
         for param_name, hint in info.semantics.parameter_hints.items():
             param_parts = [
                 f"parameter {param_name}:",
@@ -231,7 +614,7 @@ class EndpointRegistry:
             ]
             text_parts.extend(param_parts)
 
-        # Response hints -> resp_hint is ResponseFieldInfo
+        # Response hints
         for field_name, resp_hint in info.semantics.response_hints.items():
             response_parts = [
                 f"response {field_name}:",
@@ -244,7 +627,16 @@ class EndpointRegistry:
         return " ".join(filter(None, text_parts))
 
     def get_search_metadata(self, name: str) -> dict[str, str] | None:
-        """Get metadata for vector store search."""
+        """
+        Get metadata for vector store search.
+
+        Args:
+            name: Name of the endpoint
+
+        Returns:
+            Dictionary of metadata suitable for
+            search indexing, or None if endpoint not found
+        """
         info = self.get_endpoint(name)
         if not info:
             return None
