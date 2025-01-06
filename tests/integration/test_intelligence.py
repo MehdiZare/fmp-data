@@ -161,8 +161,8 @@ class TestIntelligenceEndpoints(BaseTestCase):
                     assert isinstance(event.symbol, str)
                     assert isinstance(event.split_event_date, date)
                     assert isinstance(event.label, str)
-                    assert isinstance(event.numerator, int)
-                    assert isinstance(event.denominator, int)
+                    assert isinstance(event.numerator, float)
+                    assert isinstance(event.denominator, float)
 
     def test_get_ipo_calendar(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting IPO calendar"""
