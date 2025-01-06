@@ -381,7 +381,7 @@ class TestCompanyEndpoints(BaseTestCase):
 
     def test_get_price_target_summary(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting price target summary"""
-        with vcr_instance.use_cassette("intelligence/price_target_summary.yaml"):
+        with vcr_instance.use_cassette("company/price_target_summary.yaml"):
             summary = self._handle_rate_limit(
                 fmp_client.company.get_price_target_summary, "AAPL"
             )
