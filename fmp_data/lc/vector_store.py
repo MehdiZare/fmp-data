@@ -1,13 +1,13 @@
-# fmp_data/lc/vector_store.py
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from datetime import date, datetime
 from logging import Logger
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
-import faiss
+import faiss  # type: ignore # Acknowledge missing stubs
 from langchain.embeddings.base import Embeddings
 from langchain.tools import StructuredTool
 from langchain_community.docstore.in_memory import InMemoryDocstore
@@ -36,7 +36,17 @@ class ToolFactory:
 
     @staticmethod
     def get_field_type(param_type: ParamType, optional: bool) -> Any:
-        """Map ParamType to Python type, including optional wrapper."""
+        """
+        Map ParamType to Python type, including optional wrapper.
+
+        Args:
+            param_type: The parameter type from the ParamType enum
+            optional: Whether the parameter is optional
+
+        Returns:
+            The corresponding Python type
+        """
+
         base_type = ToolFactory.PARAM_TYPE_MAPPING.get(param_type, str)
         return base_type | None if optional else base_type
 
@@ -45,18 +55,18 @@ class ToolFactory:
         """Generate the description string for a parameter."""
         if hint:
             return (
-                f"{param.description}\n"
-                f"Examples: {', '.join(hint.examples)}\n"
-                f"Context clues: {', '.join(hint.context_clues)}"
+                f"{str(param.description)}\n"
+                f"Examples: {', '.join(str(ex) for ex in hint.examples)}\n"
+                f"Context clues: {', '.join(str(c) for c in hint.context_clues)}"
             )
-        return param.description
+        return str(param.description)
 
     @staticmethod
     def create_parameter_fields(
-        params: list, parameter_hints: dict
-    ) -> dict[str, tuple]:
+        params: list, parameter_hints: dict[str, Any]
+    ) -> dict[str, Any]:
         """Construct field definitions for parameters (mandatory or optional)."""
-        param_fields = {}
+        param_fields: dict[str, Any] = {}
         for param in params:
             hint = parameter_hints.get(param.name)
             description = ToolFactory.generate_description(param, hint)
@@ -193,7 +203,7 @@ class EndpointVectorStore:
     @staticmethod
     def _format_tool_for_provider(
         tool: StructuredTool, provider: str = "openai"
-    ) -> dict | StructuredTool:
+    ) -> dict[str, Any] | StructuredTool:
         """Format tool based on provider requirements."""
         match provider.lower():
             case "openai":
@@ -290,8 +300,6 @@ class EndpointVectorStore:
         self.vector_store.add_documents([document])
         self.logger.debug(f"Added endpoint to vector store: {name}")
 
-    # In EndpointVectorStore class
-
     def add_endpoints(self, names: list[str]) -> None:
         """Add multiple endpoints to vector store"""
         if not names:
@@ -371,17 +379,18 @@ class EndpointVectorStore:
                 if similarity < threshold:
                     continue
 
-                name = doc.metadata.get("endpoint")
-                info = self.registry.get_endpoint(name)
+                endpoint_name = cast(str, doc.metadata.get("endpoint"))
+                info = self.registry.get_endpoint(endpoint_name)
                 if info:
-                    results.append(SearchResult(score=similarity, name=name, info=info))
+                    results.append(
+                        SearchResult(score=similarity, name=endpoint_name, info=info)
+                    )
 
             return sorted(results, key=lambda x: x.score, reverse=True)
         except Exception as e:
             self.logger.error(f"Search failed: {str(e)}")
             raise
 
-    # pylint: disable=C901
     def create_tool(self, info: EndpointInfo) -> StructuredTool:
         """Create a LangChain tool from endpoint info."""
         if not info:
@@ -470,16 +479,16 @@ class EndpointVectorStore:
                             ],
                         }
 
-            # Create tool parameters model
+            # Create tool parameters model with fixed create_model call
             tool_args_model = create_model(
                 f"{semantics.method_name}Args",
-                __config__=ConfigDict(
-                    extra="forbid",
-                    arbitrary_types_allowed=True,
-                ),
                 **ToolFactory.create_parameter_fields(
                     endpoint.mandatory_params + (endpoint.optional_params or []),
                     semantics.parameter_hints,
+                ),
+                __config__=ConfigDict(
+                    extra="forbid",
+                    arbitrary_types_allowed=True,
                 ),
             )
 
@@ -509,8 +518,8 @@ class EndpointVectorStore:
         query: str | None = None,
         k: int = 3,
         threshold: float = 0.3,
-        provider: str | None = None,  # Made provider optional
-    ) -> list[StructuredTool | dict]:
+        provider: str | None = None,
+    ) -> Sequence[StructuredTool | dict[str, Any]]:
         """
         Get LangChain tools for relevant endpoints.
 
@@ -525,19 +534,18 @@ class EndpointVectorStore:
             List of tools (formatted or unformatted based on provider)
         """
         try:
+            tools: list[StructuredTool] = []
             if query:
                 results = self.search(query, k=k, threshold=threshold)
                 tools = [self.create_tool(r.info) for r in results]
             else:
                 stored_docs = self.vector_store.similarity_search("", k=10000)
-                tools = []
                 for doc in stored_docs:
-                    name = doc.metadata.get("endpoint")
-                    info = self.registry.get_endpoint(name)
+                    endpoint_name = cast(str, doc.metadata.get("endpoint"))
+                    info = self.registry.get_endpoint(endpoint_name)
                     if info:
                         tools.append(self.create_tool(info))
 
-            # Only format if provider is specified
             if provider:
                 return [
                     self._format_tool_for_provider(tool, provider) for tool in tools
