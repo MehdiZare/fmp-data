@@ -1,4 +1,6 @@
-# company/client.py
+# fmp_data/company/client.py
+
+from typing import cast
 
 from fmp_data.base import EndpointGroup
 from fmp_data.company.endpoints import (
@@ -62,12 +64,14 @@ class CompanyClient(EndpointGroup):
         result = self.client.request(PROFILE, symbol=symbol)
         if not result:
             raise FMPError(f"Symbol {symbol} not found")
-        return result[0] if isinstance(result, list) else result
+        return cast(CompanyProfile, result[0] if isinstance(result, list) else result)
 
     def get_core_information(self, symbol: str) -> CompanyCoreInformation:
         """Get core company information"""
         result = self.client.request(CORE_INFORMATION, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
+        return cast(
+            CompanyCoreInformation, result[0] if isinstance(result, list) else result
+        )
 
     def get_executives(self, symbol: str) -> list[CompanyExecutive]:
         """Get company executives information"""
@@ -104,12 +108,12 @@ class CompanyClient(EndpointGroup):
     def get_quote(self, symbol: str) -> Quote:
         """Get real-time stock quote"""
         result = self.client.request(QUOTE, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
+        return cast(Quote, result[0] if isinstance(result, list) else result)
 
     def get_simple_quote(self, symbol: str) -> SimpleQuote:
         """Get simple stock quote"""
         result = self.client.request(SIMPLE_QUOTE, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
+        return cast(SimpleQuote, result[0] if isinstance(result, list) else result)
 
     def get_historical_prices(
         self,
@@ -179,12 +183,14 @@ class CompanyClient(EndpointGroup):
     def get_share_float(self, symbol: str) -> ShareFloat:
         """Get current share float data for a company"""
         result = self.client.request(SHARE_FLOAT, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
+        return cast(ShareFloat, result[0] if isinstance(result, list) else result)
 
     def get_market_cap(self, symbol: str) -> MarketCapitalization:
         """Get market capitalization data"""
         result = self.client.request(MARKET_CAP, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
+        return cast(
+            MarketCapitalization, result[0] if isinstance(result, list) else result
+        )
 
     def get_historical_market_cap(self, symbol: str) -> list[MarketCapitalization]:
         """Get historical market capitalization data"""
@@ -197,12 +203,16 @@ class CompanyClient(EndpointGroup):
     def get_price_target_summary(self, symbol: str) -> PriceTargetSummary:
         """Get price target summary"""
         result = self.client.request(PRICE_TARGET_SUMMARY, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
+        return cast(
+            PriceTargetSummary, result[0] if isinstance(result, list) else result
+        )
 
     def get_price_target_consensus(self, symbol: str) -> PriceTargetConsensus:
         """Get price target consensus"""
         result = self.client.request(PRICE_TARGET_CONSENSUS, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
+        return cast(
+            PriceTargetConsensus, result[0] if isinstance(result, list) else result
+        )
 
     def get_analyst_estimates(self, symbol: str) -> list[AnalystEstimate]:
         """Get analyst estimates"""
@@ -221,4 +231,6 @@ class CompanyClient(EndpointGroup):
     ) -> UpgradeDowngradeConsensus:
         """Get upgrades and downgrades consensus"""
         result = self.client.request(UPGRADES_DOWNGRADES_CONSENSUS, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
+        return cast(
+            UpgradeDowngradeConsensus, result[0] if isinstance(result, list) else result
+        )
