@@ -1,5 +1,6 @@
 # fmp_data/intelligence/client.py
 from datetime import date
+from typing import cast
 
 from fmp_data.base import EndpointGroup
 from fmp_data.intelligence.endpoints import (
@@ -276,12 +277,12 @@ class MarketIntelligenceClient(EndpointGroup):
     def get_esg_data(self, symbol: str) -> ESGData:
         """Get ESG data for a company"""
         result = self.client.request(ESG_DATA, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
+        return cast(ESGData, result[0] if isinstance(result, list) else result)
 
     def get_esg_ratings(self, symbol: str) -> ESGRating:
         """Get ESG ratings for a company"""
         result = self.client.request(ESG_RATINGS, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
+        return cast(ESGRating, result[0] if isinstance(result, list) else result)
 
     def get_esg_benchmark(self, year: int) -> list[ESGBenchmark]:
         """Get ESG sector benchmark data"""
