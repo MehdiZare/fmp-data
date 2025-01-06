@@ -28,6 +28,10 @@ classifiers = [
     "Intended Audience :: Financial and Insurance Industry",
 ]
 
+include = [
+    { path = "fmp_data/py.typed" }
+]
+
 [tool.poetry.urls]
 "Homepage" = "https://github.com/MehdiZare/fmp-data"
 "Bug Tracker" = "https://github.com/MehdiZare/fmp-data/issues"
