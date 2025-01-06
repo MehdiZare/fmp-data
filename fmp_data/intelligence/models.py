@@ -92,8 +92,8 @@ class StockSplitEvent(BaseModel):
     symbol: str = Field(description="Company symbol")
     split_event_date: date = Field(description="Split date", alias="date")
     label: str = Field(description="Human-readable date label")
-    numerator: int = Field(description="Numerator of the split ratio")
-    denominator: int = Field(description="Denominator of the split ratio")
+    numerator: float = Field(description="Numerator of the split ratio")
+    denominator: float = Field(description="Denominator of the split ratio")
 
 
 class IPOEvent(BaseModel):
