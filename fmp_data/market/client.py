@@ -1,4 +1,5 @@
 # fmp_data/market/client.py
+from typing import cast
 
 from fmp_data.base import EndpointGroup
 from fmp_data.market.endpoints import (
@@ -77,7 +78,8 @@ class MarketClient(EndpointGroup):
 
     def get_market_hours(self) -> MarketHours:
         """Get market trading hours information"""
-        return self.client.request(MARKET_HOURS)
+        result = self.client.request(MARKET_HOURS)
+        return cast(MarketHours, result)
 
     def get_gainers(self) -> list[MarketMover]:
         """Get market gainers"""
