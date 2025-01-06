@@ -2,6 +2,7 @@
 
 import warnings
 from datetime import date, datetime
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -24,71 +25,68 @@ class PriceQuote(BaseModel):
     )
 
     # Optional fields
-    name: str | None | None = Field(None, description="Symbol name or pair name")
+    name: str | None = Field(None, description="Symbol name or pair name")
 
     # Day range
-    day_low: float | None | None = Field(
-        None, alias="dayLow", description="Day low price"
-    )
-    day_high: float | None | None = Field(
-        None, alias="dayHigh", description="Day high price"
-    )
+    day_low: float | None = Field(None, alias="dayLow", description="Day low price")
+    day_high: float | None = Field(None, alias="dayHigh", description="Day high price")
 
     # Year range
-    year_high: float | None | None = Field(
-        None, alias="yearHigh", description="52-week high"
-    )
-    year_low: float | None | None = Field(
-        None, alias="yearLow", description="52-week low"
-    )
+    year_high: float | None = Field(None, alias="yearHigh", description="52-week high")
+    year_low: float | None = Field(None, alias="yearLow", description="52-week low")
 
     # Moving averages
-    price_avg_50: float | None | None = Field(
+    price_avg_50: float | None = Field(
         None, alias="priceAvg50", description="50-day average"
     )
-    price_avg_200: float | None | None = Field(
+    price_avg_200: float | None = Field(
         None, alias="priceAvg200", description="200-day average"
     )
 
     # Volume
-    volume: float | None | None = Field(None, description="Trading volume")
-    avg_volume: float | None | None = Field(
+    volume: float | None = Field(None, description="Trading volume")
+    avg_volume: float | None = Field(
         None, alias="avgVolume", description="Average volume"
     )
 
     # Other price points
-    open: float | None | None = Field(None, description="Opening price")
-    previous_close: float | None | None = Field(
+    open: float | None = Field(None, description="Opening price")
+    previous_close: float | None = Field(
         None, alias="previousClose", description="Previous close"
     )
 
     # Market data
-    market_cap: float | None | None = Field(
+    market_cap: float | None = Field(
         None, alias="marketCap", description="Market capitalization"
     )
-    eps: float | None | None = Field(None, description="Earnings per share")
-    pe: float | None | None = Field(None, description="Price to earnings ratio")
-    shares_outstanding: float | None | None = Field(
+    eps: float | None = Field(None, description="Earnings per share")
+    pe: float | None = Field(None, description="Price to earnings ratio")
+    shares_outstanding: float | None = Field(
         None, alias="sharesOutstanding", description="Shares outstanding"
     )
-    earnings_announcement: datetime | None | None = Field(
+    earnings_announcement: datetime | None = Field(
         None, alias="earningsAnnouncement", description="Next earnings date"
     )
-    exchange: str | None | None = Field(None, description="Exchange name")
+    exchange: str | None = Field(None, description="Exchange name")
 
-    timestamp: datetime | None | None = Field(
+    timestamp: datetime | None = Field(
         None,
         description="Quote timestamp",
         json_schema_extra={"format": "unix-timestamp"},
     )
 
     @field_validator("timestamp", mode="before")
-    def parse_timestamp(cls, value):
-        """Parse Unix timestamp to datetime"""
+    def parse_timestamp(cls, value: Any) -> datetime | None:
         if value is None:
             return None
+
         try:
-            return datetime.fromtimestamp(value, tz=UTC)
+            if isinstance(value, str | int | float):
+                timestamp = float(value)
+            else:
+                raise ValueError(f"Unexpected type for timestamp: {type(value)}")
+
+            return datetime.fromtimestamp(timestamp, tz=ZoneInfo("UTC"))
         except Exception as e:
             warnings.warn(f"Failed to parse timestamp {value}: {e}", stacklevel=2)
             return None
@@ -156,11 +154,18 @@ class CryptoQuote(PriceQuote):
     model_config = ConfigDict(populate_by_name=True)
 
     @field_validator("timestamp", mode="before")
-    def parse_timestamp(cls, value: int) -> datetime | None:
-        """Convert Unix timestamp to datetime"""
+    def parse_timestamp(cls, value: Any) -> datetime | None:
+        if value is None:
+            return None
+
         try:
-            return datetime.fromtimestamp(value, tz=UTC)
-        except (ValueError, TypeError) as e:
+            if isinstance(value, str | int | float):
+                timestamp = float(value)
+            else:
+                raise ValueError(f"Unexpected type for timestamp: {type(value)}")
+
+            return datetime.fromtimestamp(timestamp, tz=ZoneInfo("UTC"))
+        except Exception as e:
             warnings.warn(f"Failed to parse timestamp {value}: {e}", stacklevel=2)
             return None
 
