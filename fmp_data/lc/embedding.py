@@ -4,6 +4,7 @@ import os
 from enum import Enum
 from typing import Any
 
+from langchain_core.embeddings import Embeddings
 from pydantic import BaseModel, ConfigDict, Field
 
 from fmp_data.exceptions import ConfigError
@@ -37,7 +38,7 @@ class EmbeddingConfig(BaseModel):
 
     model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
 
-    def get_embeddings(self):
+    def get_embeddings(self) -> Embeddings:
         """
         Get the configured embedding model
 
