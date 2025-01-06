@@ -100,7 +100,9 @@ def test_logging_config_from_env(env_vars):
     assert file_handler.level == "INFO"
     assert file_handler.class_name == "RotatingFileHandler"
     assert (
-        Path(file_handler.kwargs["filename"]).parent.resolve()
+        Path(
+            file_handler.handler_kwargs["filename"]
+        ).parent.resolve()  # Changed from kwargs to handler_kwargs
         == expected_path.resolve()
     )
 
@@ -110,7 +112,9 @@ def test_logging_config_from_env(env_vars):
     assert json_handler.level == "WARNING"
     assert json_handler.class_name == "JsonRotatingFileHandler"
     assert (
-        Path(json_handler.kwargs["filename"]).parent.resolve()
+        Path(
+            json_handler.handler_kwargs["filename"]
+        ).parent.resolve()  # Changed from kwargs to handler_kwargs
         == expected_path.resolve()
     )
 
