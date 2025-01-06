@@ -46,57 +46,98 @@ poetry add fmp-data --extras langchain
 
 ## Langchain Integration
 
-### Quick Start with Langchain
+### Prerequisites
+- FMP API Key (`FMP_API_KEY`) - [Get one here](https://site.financialmodelingprep.com/pricing-plans?couponCode=mehdi)
+- OpenAI API Key (`OPENAI_API_KEY`) - Required for embeddings
 
-The FMP Data Client now supports seamless integration with Langchain, allowing you to dynamically discover and use Financial Market Data endpoints as Structured Tools.
+### Quick Start with Vector Store
 
-#### Prerequisites
-- An FMP API Key
-- An OpenAI API Key (for embeddings)
+```python
+from fmp_data import create_vector_store
+
+# Initialize the vector store
+vector_store = create_vector_store(
+    fmp_api_key="YOUR_FMP_API_KEY",       # pragma: allowlist secret
+    openai_api_key="YOUR_OPENAI_API_KEY"  # pragma: allowlist secret
+)
+
+# Example queries
+queries = [
+    "what is the price of Apple stock?",
+    "what was the revenue of Tesla last year?",
+    "what's new in the market?"
+]
+
+# Search for relevant endpoints and tools
+for query in queries:
+    print(f"\nQuery: {query}")
+
+    # Get tools formatted for OpenAI
+    tools = vector_store.get_tools(query, provider="openai")
+
+    print("\nMatching Tools:")
+    for tool in tools:
+        print(f"Name: {tool.get('name')}")
+        print(f"Description: {tool.get('description')}")
+        print("Parameters:", tool.get('parameters'))
+        print()
+
+    # You can also search endpoints directly
+    results = vector_store.search(query)
+    print("\nRelevant Endpoints:")
+    for result in results:
+        print(f"Endpoint: {result.name}")
+        print(f"Score: {result.score:.2f}")
+        print()
+```
+
+### Alternative Setup: Using Configuration
 
 ```python
 from fmp_data import FMPDataClient, ClientConfig
-from fmp_data.config import EmbeddingConfig, EmbeddingProvider
+from fmp_data.lc.config import LangChainConfig
+from fmp_data.lc.embedding import EmbeddingProvider
 
-# Configure the client with embedding support
-config = ClientConfig(
-    api_key="YOUR_FMP_API_KEY", # pragma: allowlist secret
-    embedding=EmbeddingConfig(
-        provider=EmbeddingProvider.OPENAI,
-        api_key="YOUR_OPENAI_API_KEY", # pragma: allowlist secret
-        model_name="text-embedding-3-small"
-    )
+# Configure with LangChain support
+config = LangChainConfig(
+    api_key="YOUR_FMP_API_KEY",           # pragma: allowlist secret
+    embedding_provider=EmbeddingProvider.OPENAI,
+    embedding_api_key="YOUR_OPENAI_API_KEY", # pragma: allowlist secret
+    embedding_model="text-embedding-3-small"
 )
 
-# Initialize the Tool Manager
-from fmp_data.lc.manager import FMPToolManager
-manager = FMPToolManager(config=config)
+# Create client with LangChain config
+client = FMPDataClient(config=config)
 
-# Get tools for a specific query
-query = "what is the price of Apple stock"
-match_tools = manager.get_tools(query)
-
-# Print available tools
-for tool in match_tools:
-    print(f"Tool: {tool.name}")
-    print(f"Description: {tool.description}")
-    print()
+# Create vector store using the client
+vector_store = client.create_vector_store()
 
 # Search for relevant endpoints
-search_results = manager.search_endpoints(query)
-for result in search_results:
-    print(f"Endpoint: {result['name']}")
-    print(f"Description: {result['description']}")
-    print(f"Score: {result['score']}")
-    print()
+results = vector_store.search("show me Tesla's financial metrics")
+for result in results:
+    print(f"Found endpoint: {result.name}")
+    print(f"Relevance score: {result.score:.2f}")
 ```
 
-### Langchain Integration Features
+### Environment Variables
+You can also configure the integration using environment variables:
+```bash
+# Required
+export FMP_API_KEY=your_fmp_api_key_here
+export OPENAI_API_KEY=your_openai_api_key_here
 
-- 🔍 Semantic endpoint discovery
-- 🛠️ Automatic conversion of FMP endpoints to Langchain Structured Tools
-- 📊 Flexible querying with natural language
-- 🤖 Compatible with any LLM supporting Langchain tools
+# Optional
+export FMP_EMBEDDING_PROVIDER=openai
+export FMP_EMBEDDING_MODEL=text-embedding-3-small
+```
+
+### Features
+- 🔍 Semantic search across all FMP endpoints
+- 🤖 Auto-conversion to LangChain tools
+- 📊 Query endpoints using natural language
+- 🎯 Relevance scoring for search results
+- 🔄 Automatic caching of embeddings
+- 💾 Persistent vector store for faster lookups
 
 ## Quick Start
 
