@@ -9,6 +9,7 @@ This module provides LangChain integration features including:
 - Natural language endpoint discovery
 """
 import os
+from typing import Any, TypedDict, cast
 
 from langchain_core.embeddings import Embeddings
 
@@ -22,7 +23,25 @@ from fmp_data.lc.utils import is_langchain_available
 from fmp_data.lc.vector_store import EndpointVectorStore
 from fmp_data.logger import FMPLogger
 
+from .models import Endpoint
+
 logger = FMPLogger().get_logger(__name__)
+
+
+class GroupConfig(TypedDict):
+    """Configuration for an endpoint group"""
+
+    endpoint_map: dict[str, Endpoint[Any]]  # Maps endpoint names to Endpoint objects
+    semantics_map: dict[
+        str, EndpointSemantics
+    ]  # Maps endpoint names to their semantics
+    display_name: str  # Display name for the group
+
+
+# Define more specific types for ENDPOINT_GROUPS
+EndpointMap = dict[str, Endpoint[Any]]
+SemanticsMap = dict[str, EndpointSemantics]
+EndpointGroups = dict[str, GroupConfig]
 
 
 def init_langchain() -> bool:
@@ -67,7 +86,10 @@ def setup_registry(client: FMPDataClient) -> EndpointRegistry:
     """Initialize and populate endpoint registry."""
     registry = EndpointRegistry()
 
-    for _, group_config in ENDPOINT_GROUPS.items():
+    # Cast ENDPOINT_GROUPS to the correct type
+    endpoint_groups = cast(dict[str, GroupConfig], ENDPOINT_GROUPS)
+
+    for _, group_config in endpoint_groups.items():
         endpoints_dict = {}
         for name, endpoint in group_config["endpoint_map"].items():
             semantic_name = name[4:] if name.startswith("get_") else name
@@ -176,6 +198,11 @@ def create_vector_store(
 
         client = FMPDataClient(config=config)
         registry = setup_registry(client)
+
+        # Handle potential None case for embedding_config
+        if config.embedding_config is None:
+            raise ValueError("Embedding configuration is required")
+
         embeddings = config.embedding_config.get_embeddings()
 
         # Try loading existing store if not forcing creation
