@@ -1,3 +1,4 @@
+# fmp_data/lc/validation.py
 import re
 from abc import ABC, abstractmethod
 from typing import ClassVar
