@@ -3,7 +3,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, HttpUrl, field_validator
+from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, HttpUrl
 
 from fmp_data.models import ShareFloat
 
@@ -403,31 +403,24 @@ class PriceTargetSummary(BaseModel):
     all_time_avg_price_target: float = Field(
         alias="allTimeAvgPriceTarget", description="Average price target of all time"
     )
-    publishers: list[str] | None = Field(
-        None,
+    publishers: str = Field(
         description=(
-            "List of publishers. Must be a valid JSON array string and"
-            " will be parsed into a Python list."
-        ),
+            "JSON string containing list of " "publishers providing the price targets"
+        )
     )
 
-    @classmethod
-    @field_validator("publishers", mode="before")
-    def validate_publishers(cls, value: Any) -> list[str] | None:
-        """Validate and parse publishers field if it is a JSON string."""
-        if isinstance(value, str):
-            try:
-                parsed_value = json.loads(value)
-                if isinstance(parsed_value, list) and all(
-                    isinstance(x, str) for x in parsed_value
-                ):
-                    return parsed_value
-                return None  # Return None if the parsed value is not a list of strings
-            except json.JSONDecodeError:
-                return None
-        if isinstance(value, list) and all(isinstance(x, str) for x in value):
-            return value
-        return None  # Return None for any other type
+    @property
+    def publishers_list(self) -> list[str] | None:
+        """Get publishers as a parsed list."""
+        if not self.publishers:
+            return None
+        try:
+            parsed = json.loads(self.publishers)
+            if isinstance(parsed, list) and all(isinstance(x, str) for x in parsed):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+        return None
 
 
 class PriceTargetConsensus(BaseModel):
