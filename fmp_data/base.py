@@ -1,4 +1,4 @@
-# base.py
+# fmp_data/base.py
 import json
 import logging
 import time
@@ -33,7 +33,10 @@ logger = FMPLogger().get_logger(__name__)
 
 
 class BaseClient:
-    def __init__(self, config: ClientConfig):
+    def __init__(self, config: ClientConfig) -> None:
+        """
+        Initialize the BaseClient with the provided configuration.
+        """
         self.config = config
         self.logger = FMPLogger().get_logger(__name__)
         self.max_rate_limit_retries = getattr(config, "max_rate_limit_retries", 3)
@@ -57,8 +60,10 @@ class BaseClient:
             )
         )
 
-    def _setup_http_client(self):
-        """Setup HTTP client with default configuration"""
+    def _setup_http_client(self) -> None:
+        """
+        Setup HTTP client with default configuration.
+        """
         self.client = httpx.Client(
             timeout=self.config.timeout,
             follow_redirects=True,
@@ -68,14 +73,16 @@ class BaseClient:
             },
         )
 
-    def close(self):
-        """Clean up resources"""
+    def close(self) -> None:
+        """
+        Clean up resources (close the httpx client).
+        """
         if hasattr(self, "client") and self.client is not None:
             self.client.close()
 
     def _handle_rate_limit(self, wait_time: float) -> None:
         """
-        Handle rate limiting by waiting or raising an exception based on retry count
+        Handle rate limiting by waiting or raising an exception based on retry count.
         """
         self._rate_limit_retry_count += 1
 
@@ -105,8 +112,17 @@ class BaseClient:
         after=after_log(logger, logging.INFO),
     )
     @log_api_call()
-    def request(self, endpoint: Endpoint[T], **kwargs) -> T | list[T]:
-        """Make request with rate limiting and retry logic"""
+    def request(self, endpoint: Endpoint[T], **kwargs: Any) -> T | list[T]:
+        """
+        Make request with rate limiting and retry logic.
+
+        Args:
+            endpoint: The Endpoint object describing the request (method, path, etc.).
+            **kwargs: Arbitrary keyword arguments passed as request parameters.
+
+        Returns:
+            Either a single Pydantic model of type T or a list of T.
+        """
         # First, check if we're already over the rate limit
         if not self._rate_limiter.should_allow_request():
             wait_time = self._rate_limiter.get_wait_time()
@@ -163,13 +179,27 @@ class BaseClient:
             )
             raise
 
-    def handle_response(self, response: httpx.Response) -> dict[str, Any]:
-        """Handle API response and errors"""
+    def handle_response(self, response: httpx.Response) -> dict[str, Any] | list[Any]:
+        """
+        Handle API response and errors, returning dict or list from JSON.
+
+        Raises:
+            RateLimitError: If status is 429
+            AuthenticationError: If status is 401
+            ValidationError: If status is 400
+            FMPError: For other 4xx/5xx errors or invalid JSON
+        """
         try:
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            if not isinstance(data, dict | list):
+                raise FMPError(
+                    f"Unexpected response type: {type(data)}. Expected dict or list.",
+                    response={"data": data},
+                )
+            return data  # Now mypy knows this is dict[str, Any] | list[Any]
         except httpx.HTTPStatusError as e:
-            error_details = {}
+            error_details: dict[str, Any] = {}
             try:
                 error_details = e.response.json()
             except json.JSONDecodeError:
@@ -209,9 +239,11 @@ class BaseClient:
 
     @staticmethod
     def _process_response(endpoint: Endpoint[T], data: Any) -> T | list[T]:
-        """Process the response data with warning handling"""
+        """
+        Process the response data with warnings, returning T or list[T].
+        """
         if isinstance(data, dict):
-            # Check for different forms of error messages
+            # Check for error messages
             if "Error Message" in data:
                 raise FMPError(data["Error Message"])
             if "message" in data:
@@ -223,42 +255,37 @@ class BaseClient:
             processed_items: list[T] = []
             for item in data:
                 with warnings.catch_warnings(record=True) as w:
-                    # Enable all warnings
                     warnings.simplefilter("always")
-                    # Process item
                     if isinstance(item, dict):
                         processed_item = endpoint.response_model.model_validate(item)
                     else:
-                        # Get the first field info directly from model config
+                        # If it's not a dict, try to feed it into the first field
                         model = endpoint.response_model
                         try:
-                            # Get first field name from the model
                             first_field = next(iter(model.__annotations__))
-                            # Try to get alias from field info
                             field_info = model.model_fields[first_field]
                             field_name = field_info.alias or first_field
                             processed_item = model.model_validate({field_name: item})
-                        except (StopIteration, KeyError, AttributeError) as e:
+                        except (StopIteration, KeyError, AttributeError) as exc:
                             raise ValueError(
                                 f"Invalid model structure for {model.__name__}"
-                            ) from e
-
-                    # Log any warnings
+                            ) from exc
                     for warning in w:
                         logger.warning(f"Validation warning: {warning.message}")
                     processed_items.append(processed_item)
             return processed_items
         return endpoint.response_model.model_validate(data)
 
-    async def request_async(self, endpoint: Endpoint[T], **kwargs) -> T | list[T]:
-        """Make async request with rate limiting"""
+    async def request_async(self, endpoint: Endpoint[T], **kwargs: Any) -> T | list[T]:
+        """
+        Make async request with rate limiting, returning T or list[T].
+        """
         validated_params = endpoint.validate_params(kwargs)
         url = endpoint.build_url(self.config.base_url, validated_params)
         query_params = endpoint.get_query_params(validated_params)
         query_params["apikey"] = self.config.api_key
 
         try:
-            # Add timeout and other settings from config
             async with httpx.AsyncClient(
                 timeout=self.config.timeout,
                 follow_redirects=True,
@@ -280,10 +307,10 @@ class BaseClient:
 class EndpointGroup:
     """Abstract base class for endpoint groups"""
 
-    def __init__(self, client: BaseClient):
+    def __init__(self, client: BaseClient) -> None:
         self._client = client
 
     @property
     def client(self) -> BaseClient:
-        """Get the client instance"""
+        """Get the client instance."""
         return self._client
