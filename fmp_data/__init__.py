@@ -1,5 +1,4 @@
 # fmp_data/__init__.py
-import importlib.util
 import warnings
 
 from fmp_data.client import FMPDataClient
@@ -32,17 +31,28 @@ __all__ = [
     "is_langchain_available",
 ]
 
-# Only expose langchain components if dependencies are available
-if is_langchain_available:
+# Import vector store components if LangChain is available
+if is_langchain_available():
     try:
-        from fmp_data.lc import FMPLangChainClient, FMPLangChainLoader, FMPLangChainTool
+        from fmp_data.lc import (
+            EndpointSemantics,
+            EndpointVectorStore,
+            SemanticCategory,
+            create_vector_store,
+        )
 
-        __all__.extend(["FMPLangChainClient", "FMPLangChainLoader", "FMPLangChainTool"])
+        __all__.extend(
+            [
+                "EndpointVectorStore",
+                "EndpointSemantics",
+                "SemanticCategory",
+                "create_vector_store",
+            ]
+        )
     except ImportError:
         warnings.warn(
-            "LangChain dependencies are not fully installed. "
-            "To use LangChain features, install the package with: "
-            "pip install 'fmp-data[langchain]'",
+            "LangChain vector store components not available. "
+            "Install with: pip install 'fmp-data[langchain]'",
             ImportWarning,
             stacklevel=2,
         )
