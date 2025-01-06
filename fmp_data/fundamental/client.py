@@ -8,8 +8,11 @@ from fmp_data.fundamental.models import (
     CashFlowStatement,
     FinancialRatios,
     FinancialStatementFull,
+    HistoricalRating,
     IncomeStatement,
     KeyMetrics,
+    LeveredDCF,
+    OwnerEarnings,
 )
 
 
@@ -67,6 +70,18 @@ class FundamentalClient(EndpointGroup):
             limit=limit,
         )
 
-    def get_financial_report_dates(self, symbol: str) -> list[datetime]:
-        """Get list of financial report dates"""
+    def get_financial_reports_dates(self, symbol: str) -> list[datetime]:
+        """Get list of financial reports dates"""
         return self.client.request(endpoints.FINANCIAL_REPORTS_DATES, symbol=symbol)
+
+    def get_owner_earnings(self, symbol: str) -> list[OwnerEarnings]:
+        """Get owner earnings metrics"""
+        return self.client.request(endpoints.OWNER_EARNINGS, symbol=symbol)
+
+    def get_levered_dcf(self, symbol: str) -> list[LeveredDCF]:
+        """Get levered DCF valuation"""
+        return self.client.request(endpoints.LEVERED_DCF, symbol=symbol)
+
+    def get_historical_rating(self, symbol: str) -> list[HistoricalRating]:
+        """Get historical company ratings"""
+        return self.client.request(endpoints.HISTORICAL_RATING, symbol=symbol)

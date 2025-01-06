@@ -1,6 +1,4 @@
 from fmp_data.intelligence.models import (
-    AnalystEstimate,
-    AnalystRecommendation,
     CrowdfundingOffering,
     CryptoNewsArticle,
     DividendEvent,
@@ -20,17 +18,12 @@ from fmp_data.intelligence.models import (
     IPOEvent,
     PressRelease,
     PressReleaseBySymbol,
-    PriceTarget,
-    PriceTargetConsensus,
-    PriceTargetSummary,
     SenateTrade,
     SocialSentimentChanges,
     StockNewsArticle,
     StockNewsSentiment,
     StockSplitEvent,
     TrendingSocialSentiment,
-    UpgradeDowngrade,
-    UpgradeDowngradeConsensus,
 )
 from fmp_data.models import (
     APIVersion,
@@ -42,147 +35,7 @@ from fmp_data.models import (
     URLType,
 )
 
-PRICE_TARGET = Endpoint(
-    name="price_target",
-    path="price-target",
-    version=APIVersion.V4,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description="Get price targets",
-    mandatory_params=[
-        EndpointParam(
-            name="symbol",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Stock symbol",
-        )
-    ],
-    optional_params=[],
-    response_model=PriceTarget,
-)
-
-PRICE_TARGET_SUMMARY = Endpoint(
-    name="price_target_summary",
-    path="price-target-summary",
-    version=APIVersion.V4,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description="Get price target summary",
-    mandatory_params=[
-        EndpointParam(
-            name="symbol",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Stock symbol",
-        )
-    ],
-    optional_params=[],
-    response_model=PriceTargetSummary,
-)
-
-PRICE_TARGET_CONSENSUS = Endpoint(
-    name="price_target_consensus",
-    path="price-target-consensus",
-    version=APIVersion.V4,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description="Get price target consensus",
-    mandatory_params=[
-        EndpointParam(
-            name="symbol",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Stock symbol",
-        )
-    ],
-    optional_params=[],
-    response_model=PriceTargetConsensus,
-)
-
-ANALYST_ESTIMATES = Endpoint(
-    name="analyst_estimates",
-    path="analyst-estimates/{symbol}",
-    version=APIVersion.V3,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description="Get analyst estimates",
-    mandatory_params=[
-        EndpointParam(
-            name="symbol",
-            location=ParamLocation.PATH,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Stock symbol",
-        )
-    ],
-    optional_params=[],
-    response_model=AnalystEstimate,
-)
-
-ANALYST_RECOMMENDATIONS = Endpoint(
-    name="analyst_recommendations",
-    path="analyst-stock-recommendations/{symbol}",
-    version=APIVersion.V3,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description="Get analyst recommendations",
-    mandatory_params=[
-        EndpointParam(
-            name="symbol",
-            location=ParamLocation.PATH,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Stock symbol",
-        )
-    ],
-    optional_params=[],
-    response_model=AnalystRecommendation,
-)
-
-UPGRADES_DOWNGRADES = Endpoint(
-    name="upgrades_downgrades",
-    path="upgrades-downgrades",
-    version=APIVersion.V4,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description="Get upgrades and downgrades",
-    mandatory_params=[
-        EndpointParam(
-            name="symbol",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Stock symbol",
-        )
-    ],
-    optional_params=[],
-    response_model=UpgradeDowngrade,
-)
-
-UPGRADES_DOWNGRADES_CONSENSUS = Endpoint(
-    name="upgrades_downgrades_consensus",
-    path="upgrades-downgrades-consensus",
-    version=APIVersion.V4,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description="Get upgrades and downgrades consensus",
-    mandatory_params=[
-        EndpointParam(
-            name="symbol",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Stock symbol",
-        )
-    ],
-    optional_params=[],
-    response_model=UpgradeDowngradeConsensus,
-)
-
-EARNINGS_CALENDAR = Endpoint(
+EARNINGS_CALENDAR: Endpoint = Endpoint(
     name="earnings_calendar",
     path="earning_calendar",
     version=APIVersion.V3,
@@ -192,24 +45,26 @@ EARNINGS_CALENDAR = Endpoint(
     mandatory_params=[],
     optional_params=[
         EndpointParam(
-            name="from",
+            name="start_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="Start date",
+            alias="from",
         ),
         EndpointParam(
-            name="to",
+            name="end_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="End date",
+            alias="to",
         ),
     ],
     response_model=EarningEvent,
 )
 
-EARNINGS_CONFIRMED = Endpoint(
+EARNINGS_CONFIRMED: Endpoint = Endpoint(
     name="earnings_confirmed",
     path="earning-calendar-confirmed",
     version=APIVersion.V4,
@@ -219,24 +74,26 @@ EARNINGS_CONFIRMED = Endpoint(
     mandatory_params=[],
     optional_params=[
         EndpointParam(
-            name="from",
+            name="start_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="Start date",
+            alias="from",
         ),
         EndpointParam(
-            name="to",
+            name="end_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="End date",
+            alias="to",
         ),
     ],
     response_model=EarningConfirmed,
 )
 
-EARNINGS_SURPRISES = Endpoint(
+EARNINGS_SURPRISES: Endpoint = Endpoint(
     name="earnings_surprises",
     path="earnings-surprises/{symbol}",
     version=APIVersion.V3,
@@ -256,7 +113,7 @@ EARNINGS_SURPRISES = Endpoint(
     response_model=EarningSurprise,
 )
 
-HISTORICAL_EARNINGS = Endpoint(
+HISTORICAL_EARNINGS: Endpoint = Endpoint(
     name="historical_earnings",
     path="historical/earning_calendar/{symbol}",
     version=APIVersion.V3,
@@ -276,7 +133,7 @@ HISTORICAL_EARNINGS = Endpoint(
     response_model=EarningEvent,
 )
 
-DIVIDENDS_CALENDAR = Endpoint(
+DIVIDENDS_CALENDAR: Endpoint = Endpoint(
     name="dividends_calendar",
     path="stock_dividend_calendar",
     version=APIVersion.V3,
@@ -286,24 +143,26 @@ DIVIDENDS_CALENDAR = Endpoint(
     mandatory_params=[],
     optional_params=[
         EndpointParam(
-            name="from",
+            name="start_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="Start date",
+            alias="from",
         ),
         EndpointParam(
-            name="to",
+            name="end_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="End date",
+            alias="to",
         ),
     ],
     response_model=DividendEvent,
 )
 
-STOCK_SPLITS_CALENDAR = Endpoint(
+STOCK_SPLITS_CALENDAR: Endpoint = Endpoint(
     name="stock_splits_calendar",
     path="stock_split_calendar",
     version=APIVersion.V3,
@@ -313,24 +172,26 @@ STOCK_SPLITS_CALENDAR = Endpoint(
     mandatory_params=[],
     optional_params=[
         EndpointParam(
-            name="from",
+            name="start_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="Start date",
+            alias="from",
         ),
         EndpointParam(
-            name="to",
+            name="end_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="End date",
+            alias="to",
         ),
     ],
     response_model=StockSplitEvent,
 )
 
-IPO_CALENDAR = Endpoint(
+IPO_CALENDAR: Endpoint = Endpoint(
     name="ipo_calendar",
     path="ipo_calendar",
     version=APIVersion.V3,
@@ -340,24 +201,26 @@ IPO_CALENDAR = Endpoint(
     mandatory_params=[],
     optional_params=[
         EndpointParam(
-            name="from",
+            name="start_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
             required=False,
             description="Start date",
+            alias="from",
         ),
         EndpointParam(
-            name="to",
+            name="end_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
             required=False,
             description="End date",
+            alias="to",
         ),
     ],
     response_model=IPOEvent,
 )
 
-FMP_ARTICLES_ENDPOINT = Endpoint(
+FMP_ARTICLES_ENDPOINT: Endpoint = Endpoint(
     name="fmp_articles",
     path="fmp/articles",
     version=APIVersion.V3,
@@ -382,7 +245,7 @@ FMP_ARTICLES_ENDPOINT = Endpoint(
     response_model=FMPArticlesResponse,
 )
 
-GENERAL_NEWS_ENDPOINT = Endpoint(
+GENERAL_NEWS_ENDPOINT: Endpoint = Endpoint(
     name="general_news",
     path="general_news",
     version=APIVersion.V4,
@@ -400,7 +263,7 @@ GENERAL_NEWS_ENDPOINT = Endpoint(
     response_model=GeneralNewsArticle,
 )
 
-STOCK_NEWS_ENDPOINT = Endpoint(
+STOCK_NEWS_ENDPOINT: Endpoint = Endpoint(
     name="stock_news",
     path="stock_news",
     version=APIVersion.V3,
@@ -421,18 +284,20 @@ STOCK_NEWS_ENDPOINT = Endpoint(
             description="Page number",
         ),
         EndpointParam(
-            name="from",
+            name="start_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
             required=True,
             description="Start date",
+            alias="from",
         ),
         EndpointParam(
-            name="to",
+            name="end_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
             required=True,
             description="End date",
+            alias="to",
         ),
         EndpointParam(
             name="limit",
@@ -446,7 +311,7 @@ STOCK_NEWS_ENDPOINT = Endpoint(
     response_model=StockNewsArticle,
 )
 
-STOCK_NEWS_SENTIMENTS_ENDPOINT = Endpoint(
+STOCK_NEWS_SENTIMENTS_ENDPOINT: Endpoint = Endpoint(
     name="stock_news_sentiments",
     path="stock-news-sentiments-rss-feed",
     version=APIVersion.V4,
@@ -464,7 +329,7 @@ STOCK_NEWS_SENTIMENTS_ENDPOINT = Endpoint(
     response_model=StockNewsSentiment,
 )
 
-FOREX_NEWS_ENDPOINT = Endpoint(
+FOREX_NEWS_ENDPOINT: Endpoint = Endpoint(
     name="forex_news",
     path="forex_news",
     version=APIVersion.V4,
@@ -485,18 +350,20 @@ FOREX_NEWS_ENDPOINT = Endpoint(
             description="Forex symbol",
         ),
         EndpointParam(
-            name="from",
+            name="start_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="Start date",
+            alias="from",
         ),
         EndpointParam(
-            name="to",
+            name="end_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="End date",
+            alias="to",
         ),
         EndpointParam(
             name="limit",
@@ -510,7 +377,7 @@ FOREX_NEWS_ENDPOINT = Endpoint(
     response_model=ForexNewsArticle,
 )
 
-CRYPTO_NEWS_ENDPOINT = Endpoint(
+CRYPTO_NEWS_ENDPOINT: Endpoint = Endpoint(
     name="crypto_news",
     path="crypto_news",
     version=APIVersion.V4,
@@ -531,18 +398,20 @@ CRYPTO_NEWS_ENDPOINT = Endpoint(
             description="Crypto symbol",
         ),
         EndpointParam(
-            name="from",
+            name="start_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="Start date",
+            alias="from",
         ),
         EndpointParam(
-            name="to",
+            name="end_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="End date",
+            alias="to",
         ),
         EndpointParam(
             name="limit",
@@ -556,7 +425,7 @@ CRYPTO_NEWS_ENDPOINT = Endpoint(
     response_model=CryptoNewsArticle,
 )
 
-PRESS_RELEASES_ENDPOINT = Endpoint(
+PRESS_RELEASES_ENDPOINT: Endpoint = Endpoint(
     name="press_releases",
     path="press-releases",
     version=APIVersion.V3,
@@ -574,7 +443,7 @@ PRESS_RELEASES_ENDPOINT = Endpoint(
     response_model=PressRelease,
 )
 
-PRESS_RELEASES_BY_SYMBOL_ENDPOINT = Endpoint(
+PRESS_RELEASES_BY_SYMBOL_ENDPOINT: Endpoint = Endpoint(
     name="press_releases_by_symbol",
     path="press-releases/{symbol}",
     version=APIVersion.V3,
@@ -601,7 +470,7 @@ PRESS_RELEASES_BY_SYMBOL_ENDPOINT = Endpoint(
     response_model=PressReleaseBySymbol,
 )
 
-HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT = Endpoint(
+HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT: Endpoint = Endpoint(
     name="historical_social_sentiment",
     path="historical/social-sentiment",
     version=APIVersion.V4,
@@ -627,7 +496,7 @@ HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT = Endpoint(
     response_model=HistoricalSocialSentiment,
 )
 
-TRENDING_SOCIAL_SENTIMENT_ENDPOINT = Endpoint(
+TRENDING_SOCIAL_SENTIMENT_ENDPOINT: Endpoint = Endpoint(
     name="trending_social_sentiment",
     path="social-sentiments/trending",
     version=APIVersion.V4,
@@ -652,7 +521,7 @@ TRENDING_SOCIAL_SENTIMENT_ENDPOINT = Endpoint(
     response_model=TrendingSocialSentiment,
 )
 
-SOCIAL_SENTIMENT_CHANGES_ENDPOINT = Endpoint(
+SOCIAL_SENTIMENT_CHANGES_ENDPOINT: Endpoint = Endpoint(
     name="social_sentiment_changes",
     path="social-sentiments/change",
     version=APIVersion.V4,
@@ -678,7 +547,7 @@ SOCIAL_SENTIMENT_CHANGES_ENDPOINT = Endpoint(
 )
 
 # ESG Endpoints
-ESG_DATA = Endpoint(
+ESG_DATA: Endpoint = Endpoint(
     name="esg_data",
     path="esg-environmental-social-governance-data",
     version=APIVersion.V4,
@@ -696,7 +565,7 @@ ESG_DATA = Endpoint(
     response_model=ESGData,
 )
 
-ESG_RATINGS = Endpoint(
+ESG_RATINGS: Endpoint = Endpoint(
     name="esg_ratings",
     path="esg-environmental-social-governance-data-ratings",
     version=APIVersion.V4,
@@ -714,7 +583,7 @@ ESG_RATINGS = Endpoint(
     response_model=ESGRating,
 )
 
-ESG_BENCHMARK = Endpoint(
+ESG_BENCHMARK: Endpoint = Endpoint(
     name="esg_benchmark",
     path="esg-environmental-social-governance-sector-benchmark",
     version=APIVersion.V4,
@@ -733,7 +602,7 @@ ESG_BENCHMARK = Endpoint(
 )
 
 # Government Trading Endpoints
-SENATE_TRADING = Endpoint(
+SENATE_TRADING: Endpoint = Endpoint(
     name="senate_trading",
     path="senate-trading",
     version=APIVersion.V4,
@@ -751,7 +620,7 @@ SENATE_TRADING = Endpoint(
     response_model=SenateTrade,
 )
 
-SENATE_TRADING_RSS = Endpoint(
+SENATE_TRADING_RSS: Endpoint = Endpoint(
     name="senate_trading_rss",
     path="senate-trading-rss-feed",
     version=APIVersion.V4,
@@ -770,7 +639,7 @@ SENATE_TRADING_RSS = Endpoint(
     response_model=SenateTrade,
 )
 
-HOUSE_DISCLOSURE = Endpoint(
+HOUSE_DISCLOSURE: Endpoint = Endpoint(
     name="house_disclosure",
     path="senate-disclosure",
     version=APIVersion.V4,
@@ -788,7 +657,7 @@ HOUSE_DISCLOSURE = Endpoint(
     response_model=HouseDisclosure,
 )
 
-HOUSE_DISCLOSURE_RSS = Endpoint(
+HOUSE_DISCLOSURE_RSS: Endpoint = Endpoint(
     name="house_disclosure_rss",
     path="senate-disclosure-rss-feed",
     version=APIVersion.V4,
@@ -808,7 +677,7 @@ HOUSE_DISCLOSURE_RSS = Endpoint(
 )
 
 # Fundraising Endpoints
-CROWDFUNDING_RSS = Endpoint(
+CROWDFUNDING_RSS: Endpoint = Endpoint(
     name="crowdfunding_rss",
     path="crowdfunding-offerings-rss-feed",
     version=APIVersion.V4,
@@ -827,7 +696,7 @@ CROWDFUNDING_RSS = Endpoint(
     response_model=CrowdfundingOffering,
 )
 
-CROWDFUNDING_SEARCH = Endpoint(
+CROWDFUNDING_SEARCH: Endpoint = Endpoint(
     name="crowdfunding_search",
     path="crowdfunding-offerings/search",
     version=APIVersion.V4,
@@ -845,7 +714,7 @@ CROWDFUNDING_SEARCH = Endpoint(
     response_model=CrowdfundingOffering,
 )
 
-CROWDFUNDING_BY_CIK = Endpoint(
+CROWDFUNDING_BY_CIK: Endpoint = Endpoint(
     name="crowdfunding_by_cik",
     path="crowdfunding-offerings",
     version=APIVersion.V4,
@@ -863,7 +732,7 @@ CROWDFUNDING_BY_CIK = Endpoint(
     response_model=CrowdfundingOffering,
 )
 
-EQUITY_OFFERING_RSS = Endpoint(
+EQUITY_OFFERING_RSS: Endpoint = Endpoint(
     name="equity_offering_rss",
     path="fundraising-rss-feed",
     version=APIVersion.V4,
@@ -882,7 +751,7 @@ EQUITY_OFFERING_RSS = Endpoint(
     response_model=EquityOffering,
 )
 
-EQUITY_OFFERING_SEARCH = Endpoint(
+EQUITY_OFFERING_SEARCH: Endpoint = Endpoint(
     name="equity_offering_search",
     path="fundraising/search",
     version=APIVersion.V4,
@@ -900,7 +769,7 @@ EQUITY_OFFERING_SEARCH = Endpoint(
     response_model=EquityOfferingSearchItem,
 )
 
-EQUITY_OFFERING_BY_CIK = Endpoint(
+EQUITY_OFFERING_BY_CIK: Endpoint = Endpoint(
     name="equity_offering_by_cik",
     path="fundraising",
     version=APIVersion.V4,

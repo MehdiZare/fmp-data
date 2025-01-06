@@ -1,6 +1,8 @@
 # fmp_data/alternative/models.py
+
 import warnings
 from datetime import date, datetime
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -74,12 +76,17 @@ class PriceQuote(BaseModel):
     )
 
     @field_validator("timestamp", mode="before")
-    def parse_timestamp(cls, value):
-        """Parse Unix timestamp to datetime"""
+    def parse_timestamp(cls, value: Any) -> datetime | None:
         if value is None:
             return None
+
         try:
-            return datetime.fromtimestamp(value, tz=UTC)
+            if isinstance(value, str | int | float):
+                timestamp = float(value)
+            else:
+                raise ValueError(f"Unexpected type for timestamp: {type(value)}")
+
+            return datetime.fromtimestamp(timestamp, tz=ZoneInfo("UTC"))
         except Exception as e:
             warnings.warn(f"Failed to parse timestamp {value}: {e}", stacklevel=2)
             return None
@@ -147,11 +154,18 @@ class CryptoQuote(PriceQuote):
     model_config = ConfigDict(populate_by_name=True)
 
     @field_validator("timestamp", mode="before")
-    def parse_timestamp(cls, value: int) -> datetime | None:
-        """Convert Unix timestamp to datetime"""
+    def parse_timestamp(cls, value: Any) -> datetime | None:
+        if value is None:
+            return None
+
         try:
-            return datetime.fromtimestamp(value, tz=UTC)
-        except (ValueError, TypeError) as e:
+            if isinstance(value, str | int | float):
+                timestamp = float(value)
+            else:
+                raise ValueError(f"Unexpected type for timestamp: {type(value)}")
+
+            return datetime.fromtimestamp(timestamp, tz=ZoneInfo("UTC"))
+        except Exception as e:
             warnings.warn(f"Failed to parse timestamp {value}: {e}", stacklevel=2)
             return None
 

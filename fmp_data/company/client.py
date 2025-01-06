@@ -1,49 +1,60 @@
-# company/client.py
+# fmp_data/company/client.py
+
+from typing import cast
 
 from fmp_data.base import EndpointGroup
 from fmp_data.company.endpoints import (
-    ALL_SHARES_FLOAT,
-    AVAILABLE_INDEXES,
-    CIK_SEARCH,
+    ANALYST_ESTIMATES,
+    ANALYST_RECOMMENDATIONS,
     COMPANY_NOTES,
     CORE_INFORMATION,
-    CUSIP_SEARCH,
     EMPLOYEE_COUNT,
-    ETF_LIST,
-    EXCHANGE_SYMBOLS,
     EXECUTIVE_COMPENSATION,
     GEOGRAPHIC_REVENUE_SEGMENTATION,
+    HISTORICAL_MARKET_CAP,
+    HISTORICAL_PRICE,
     HISTORICAL_SHARE_FLOAT,
-    ISIN_SEARCH,
+    INTRADAY_PRICE,
     KEY_EXECUTIVES,
+    MARKET_CAP,
+    PRICE_TARGET,
+    PRICE_TARGET_CONSENSUS,
+    PRICE_TARGET_SUMMARY,
     PRODUCT_REVENUE_SEGMENTATION,
     PROFILE,
-    SEARCH,
+    QUOTE,
     SHARE_FLOAT,
-    STOCK_LIST,
+    SIMPLE_QUOTE,
     SYMBOL_CHANGES,
+    UPGRADES_DOWNGRADES,
+    UPGRADES_DOWNGRADES_CONSENSUS,
 )
 from fmp_data.company.models import (
-    AvailableIndex,
-    CIKResult,
+    AnalystEstimate,
+    AnalystRecommendation,
     CompanyCoreInformation,
     CompanyExecutive,
     CompanyNote,
     CompanyProfile,
-    CompanySearchResult,
-    CompanySymbol,
-    CUSIPResult,
     EmployeeCount,
-    ExchangeSymbol,
     ExecutiveCompensation,
     GeographicRevenueSegment,
+    HistoricalPrice,
     HistoricalShareFloat,
-    ISINResult,
+    IntradayPrice,
+    PriceTarget,
+    PriceTargetConsensus,
+    PriceTargetSummary,
     ProductRevenueSegment,
+    Quote,
     ShareFloat,
+    SimpleQuote,
     SymbolChange,
+    UpgradeDowngrade,
+    UpgradeDowngradeConsensus,
 )
 from fmp_data.exceptions import FMPError
+from fmp_data.models import MarketCapitalization
 
 
 class CompanyClient(EndpointGroup):
@@ -53,23 +64,14 @@ class CompanyClient(EndpointGroup):
         result = self.client.request(PROFILE, symbol=symbol)
         if not result:
             raise FMPError(f"Symbol {symbol} not found")
-        return result[0] if isinstance(result, list) else result
+        return cast(CompanyProfile, result[0] if isinstance(result, list) else result)
 
     def get_core_information(self, symbol: str) -> CompanyCoreInformation:
         """Get core company information"""
         result = self.client.request(CORE_INFORMATION, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
-
-    def search(
-        self, query: str, limit: int | None = None, exchange: str | None = None
-    ) -> list[CompanySearchResult]:
-        """Search for companies"""
-        params = {"query": query}
-        if limit is not None:
-            params["limit"] = str(limit)
-        if exchange is not None:
-            params["exchange"] = exchange
-        return self.client.request(SEARCH, **params)
+        return cast(
+            CompanyCoreInformation, result[0] if isinstance(result, list) else result
+        )
 
     def get_executives(self, symbol: str) -> list[CompanyExecutive]:
         """Get company executives information"""
@@ -103,52 +105,41 @@ class CompanyClient(EndpointGroup):
         base_url = self.client.config.base_url.replace("/api", "").replace("site.", "")
         return f"{base_url}/image-stock/{symbol}.png"
 
-    def get_stock_list(self) -> list[CompanySymbol]:
-        """Get list of all available stocks"""
-        return self.client.request(STOCK_LIST)
+    def get_quote(self, symbol: str) -> Quote:
+        """Get real-time stock quote"""
+        result = self.client.request(QUOTE, symbol=symbol)
+        return cast(Quote, result[0] if isinstance(result, list) else result)
 
-    def get_etf_list(self) -> list[CompanySymbol]:
-        """Get list of all available ETFs"""
-        return self.client.request(ETF_LIST)
+    def get_simple_quote(self, symbol: str) -> SimpleQuote:
+        """Get simple stock quote"""
+        result = self.client.request(SIMPLE_QUOTE, symbol=symbol)
+        return cast(SimpleQuote, result[0] if isinstance(result, list) else result)
 
-    def get_available_indexes(self) -> list[AvailableIndex]:
-        """Get list of all available indexes"""
-        return self.client.request(AVAILABLE_INDEXES)
+    def get_historical_prices(
+        self,
+        symbol: str,
+        from_date: str | None = None,
+        to_date: str | None = None,
+    ) -> list[HistoricalPrice]:
+        """Get historical daily price data"""
+        return self.client.request(
+            HISTORICAL_PRICE, symbol=symbol, from_=from_date, to=to_date
+        )
 
-    def get_exchange_symbols(self, exchange: str) -> list[ExchangeSymbol]:
-        """Get all symbols for a specific exchange"""
-        return self.client.request(EXCHANGE_SYMBOLS, exchange=exchange)
-
-    def search_by_cik(self, query: str) -> list[CIKResult]:
-        """Search companies by CIK number"""
-        return self.client.request(CIK_SEARCH, query=query)
-
-    def search_by_cusip(self, query: str) -> list[CUSIPResult]:
-        """Search companies by CUSIP"""
-        return self.client.request(CUSIP_SEARCH, query=query)
-
-    def search_by_isin(self, query: str) -> list[ISINResult]:
-        """Search companies by ISIN"""
-        return self.client.request(ISIN_SEARCH, query=query)
+    def get_intraday_prices(
+        self, symbol: str, interval: str = "1min"
+    ) -> list[IntradayPrice]:
+        """Get intraday price data"""
+        return self.client.request(INTRADAY_PRICE, symbol=symbol, interval=interval)
 
     def get_executive_compensation(self, symbol: str) -> list[ExecutiveCompensation]:
         """Get executive compensation data for a company"""
         return self.client.request(EXECUTIVE_COMPENSATION, symbol=symbol)
 
-    def get_share_float(self, symbol: str) -> ShareFloat:
-        """Get current share float data for a company"""
-        result = self.client.request(SHARE_FLOAT, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
-
     def get_historical_share_float(self, symbol: str) -> list[HistoricalShareFloat]:
         """Get historical share float data for a company"""
         return self.client.request(HISTORICAL_SHARE_FLOAT, symbol=symbol)
 
-    def get_all_shares_float(self) -> list[ShareFloat]:
-        """Get share float data for all companies"""
-        return self.client.request(ALL_SHARES_FLOAT)
-
-    # client.py additions
     def get_product_revenue_segmentation(
         self, symbol: str, period: str = "annual"
     ) -> list[ProductRevenueSegment]:
@@ -188,3 +179,58 @@ class CompanyClient(EndpointGroup):
     def get_symbol_changes(self) -> list[SymbolChange]:
         """Get symbol change history"""
         return self.client.request(SYMBOL_CHANGES)
+
+    def get_share_float(self, symbol: str) -> ShareFloat:
+        """Get current share float data for a company"""
+        result = self.client.request(SHARE_FLOAT, symbol=symbol)
+        return cast(ShareFloat, result[0] if isinstance(result, list) else result)
+
+    def get_market_cap(self, symbol: str) -> MarketCapitalization:
+        """Get market capitalization data"""
+        result = self.client.request(MARKET_CAP, symbol=symbol)
+        return cast(
+            MarketCapitalization, result[0] if isinstance(result, list) else result
+        )
+
+    def get_historical_market_cap(self, symbol: str) -> list[MarketCapitalization]:
+        """Get historical market capitalization data"""
+        return self.client.request(HISTORICAL_MARKET_CAP, symbol=symbol)
+
+    def get_price_target(self, symbol: str) -> list[PriceTarget]:
+        """Get price targets"""
+        return self.client.request(PRICE_TARGET, symbol=symbol)
+
+    def get_price_target_summary(self, symbol: str) -> PriceTargetSummary:
+        """Get price target summary"""
+        result = self.client.request(PRICE_TARGET_SUMMARY, symbol=symbol)
+        return cast(
+            PriceTargetSummary, result[0] if isinstance(result, list) else result
+        )
+
+    def get_price_target_consensus(self, symbol: str) -> PriceTargetConsensus:
+        """Get price target consensus"""
+        result = self.client.request(PRICE_TARGET_CONSENSUS, symbol=symbol)
+        return cast(
+            PriceTargetConsensus, result[0] if isinstance(result, list) else result
+        )
+
+    def get_analyst_estimates(self, symbol: str) -> list[AnalystEstimate]:
+        """Get analyst estimates"""
+        return self.client.request(ANALYST_ESTIMATES, symbol=symbol)
+
+    def get_analyst_recommendations(self, symbol: str) -> list[AnalystRecommendation]:
+        """Get analyst recommendations"""
+        return self.client.request(ANALYST_RECOMMENDATIONS, symbol=symbol)
+
+    def get_upgrades_downgrades(self, symbol: str) -> list[UpgradeDowngrade]:
+        """Get upgrades and downgrades"""
+        return self.client.request(UPGRADES_DOWNGRADES, symbol=symbol)
+
+    def get_upgrades_downgrades_consensus(
+        self, symbol: str
+    ) -> UpgradeDowngradeConsensus:
+        """Get upgrades and downgrades consensus"""
+        result = self.client.request(UPGRADES_DOWNGRADES_CONSENSUS, symbol=symbol)
+        return cast(
+            UpgradeDowngradeConsensus, result[0] if isinstance(result, list) else result
+        )

@@ -227,7 +227,6 @@ class KeyMetrics(BaseModel):
     free_cash_flow_per_share: float = Field(
         alias="freeCashFlowPerShare", description="Free cash flow per share"
     )
-    # Add more fields as needed
 
 
 class KeyMetricsTTM(KeyMetrics):
@@ -884,4 +883,4 @@ class FinancialReportDate(BaseModel):
 class FinancialReportDates(BaseModel):
     """Financial report date"""
 
-    financial_report_dates: list[FinancialReportDate]
+    financial_reports_dates: list[FinancialReportDate]

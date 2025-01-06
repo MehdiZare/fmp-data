@@ -33,7 +33,7 @@ INDICATOR_MODEL_MAP: dict[str, type[TechnicalIndicator]] = {
     "standardDeviation": StandardDeviationIndicator,
 }
 
-TECHNICAL_INDICATOR = Endpoint(
+TECHNICAL_INDICATOR: Endpoint = Endpoint(
     name="technical_indicator",
     path="technical_indicator/{interval}/{symbol}",
     version=APIVersion.V3,
@@ -82,18 +82,20 @@ TECHNICAL_INDICATOR = Endpoint(
     ],
     optional_params=[
         EndpointParam(
-            name="from",
+            name="start_date",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
+            param_type=ParamType.DATE,
             required=True,
-            description="Start date (YYYY-MM-DD)",
+            description="Start date",
+            alias="from",
         ),
         EndpointParam(
-            name="to",
+            name="end_date",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
+            param_type=ParamType.DATE,
             required=True,
-            description="End date (YYYY-MM-DD)",
+            description="End date",
+            alias="to",
         ),
     ],
     response_model=TechnicalIndicator,

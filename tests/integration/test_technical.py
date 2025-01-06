@@ -11,15 +11,17 @@ from fmp_data.technical.models import (
     WMAIndicator,
 )
 
+from .base import BaseTestCase
 
-class TestTechnicalClientEndpoints:
+
+class TestTechnicalClientEndpoints(BaseTestCase):
     """Integration tests for TechnicalClient endpoints using VCR"""
 
     def test_get_sma(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting Simple Moving Average (SMA)"""
         with vcr_instance.use_cassette("technical/sma.yaml"):
-            sma_data = fmp_client.technical.get_sma(
-                symbol="AAPL", period=20, interval="daily"
+            sma_data = self._handle_rate_limit(
+                fmp_client.technical.get_sma, symbol="AAPL", period=20, interval="daily"
             )
 
             assert isinstance(sma_data, list)
@@ -30,8 +32,8 @@ class TestTechnicalClientEndpoints:
     def test_get_ema(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting Exponential Moving Average (EMA)"""
         with vcr_instance.use_cassette("technical/ema.yaml"):
-            ema_data = fmp_client.technical.get_ema(
-                symbol="AAPL", period=20, interval="daily"
+            ema_data = self._handle_rate_limit(
+                fmp_client.technical.get_ema, symbol="AAPL", period=20, interval="daily"
             )
 
             assert isinstance(ema_data, list)
@@ -42,8 +44,8 @@ class TestTechnicalClientEndpoints:
     def test_get_wma(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting Weighted Moving Average (WMA)"""
         with vcr_instance.use_cassette("technical/wma.yaml"):
-            wma_data = fmp_client.technical.get_wma(
-                symbol="AAPL", period=20, interval="daily"
+            wma_data = self._handle_rate_limit(
+                fmp_client.technical.get_wma, symbol="AAPL", period=20, interval="daily"
             )
 
             assert isinstance(wma_data, list)
@@ -54,8 +56,11 @@ class TestTechnicalClientEndpoints:
     def test_get_dema(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting Double Exponential Moving Average (DEMA)"""
         with vcr_instance.use_cassette("technical/dema.yaml"):
-            dema_data = fmp_client.technical.get_dema(
-                symbol="AAPL", period=20, interval="daily"
+            dema_data = self._handle_rate_limit(
+                fmp_client.technical.get_dema,
+                symbol="AAPL",
+                period=20,
+                interval="daily",
             )
 
             assert isinstance(dema_data, list)
@@ -66,8 +71,11 @@ class TestTechnicalClientEndpoints:
     def test_get_tema(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting Triple Exponential Moving Average (TEMA)"""
         with vcr_instance.use_cassette("technical/tema.yaml"):
-            tema_data = fmp_client.technical.get_tema(
-                symbol="AAPL", period=20, interval="daily"
+            tema_data = self._handle_rate_limit(
+                fmp_client.technical.get_tema,
+                symbol="AAPL",
+                period=20,
+                interval="daily",
             )
 
             assert isinstance(tema_data, list)
@@ -78,8 +86,11 @@ class TestTechnicalClientEndpoints:
     def test_get_williams(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting Williams %R"""
         with vcr_instance.use_cassette("technical/williams.yaml"):
-            williams_data = fmp_client.technical.get_williams(
-                symbol="AAPL", period=14, interval="daily"
+            williams_data = self._handle_rate_limit(
+                fmp_client.technical.get_williams,
+                symbol="AAPL",
+                period=14,
+                interval="daily",
             )
 
             assert isinstance(williams_data, list)
@@ -90,8 +101,8 @@ class TestTechnicalClientEndpoints:
     def test_get_rsi(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting Relative Strength Index (RSI)"""
         with vcr_instance.use_cassette("technical/rsi.yaml"):
-            rsi_data = fmp_client.technical.get_rsi(
-                symbol="AAPL", period=14, interval="daily"
+            rsi_data = self._handle_rate_limit(
+                fmp_client.technical.get_rsi, symbol="AAPL", period=14, interval="daily"
             )
 
             assert isinstance(rsi_data, list)
@@ -102,8 +113,8 @@ class TestTechnicalClientEndpoints:
     def test_get_adx(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting Average Directional Index (ADX)"""
         with vcr_instance.use_cassette("technical/adx.yaml"):
-            adx_data = fmp_client.technical.get_adx(
-                symbol="AAPL", period=14, interval="daily"
+            adx_data = self._handle_rate_limit(
+                fmp_client.technical.get_adx, symbol="AAPL", period=14, interval="daily"
             )
 
             assert isinstance(adx_data, list)
@@ -114,8 +125,11 @@ class TestTechnicalClientEndpoints:
     def test_get_standard_deviation(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting Standard Deviation"""
         with vcr_instance.use_cassette("technical/standard_deviation.yaml"):
-            sd_data = fmp_client.technical.get_standard_deviation(
-                symbol="AAPL", period=20, interval="daily"
+            sd_data = self._handle_rate_limit(
+                fmp_client.technical.get_standard_deviation,
+                symbol="AAPL",
+                period=20,
+                interval="daily",
             )
 
             assert isinstance(sd_data, list)

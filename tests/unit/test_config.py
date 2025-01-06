@@ -100,7 +100,9 @@ def test_logging_config_from_env(env_vars):
     assert file_handler.level == "INFO"
     assert file_handler.class_name == "RotatingFileHandler"
     assert (
-        Path(file_handler.kwargs["filename"]).parent.resolve()
+        Path(
+            file_handler.handler_kwargs["filename"]
+        ).parent.resolve()  # Changed from kwargs to handler_kwargs
         == expected_path.resolve()
     )
 
@@ -110,7 +112,9 @@ def test_logging_config_from_env(env_vars):
     assert json_handler.level == "WARNING"
     assert json_handler.class_name == "JsonRotatingFileHandler"
     assert (
-        Path(json_handler.kwargs["filename"]).parent.resolve()
+        Path(
+            json_handler.handler_kwargs["filename"]
+        ).parent.resolve()  # Changed from kwargs to handler_kwargs
         == expected_path.resolve()
     )
 
@@ -250,3 +254,18 @@ def test_logging_config_no_path():
         assert config.log_path is None
         assert "file" not in config.handlers
         assert "json" not in config.handlers
+
+
+@pytest.fixture
+def embedding_env_vars():
+    """Fixture to set up and tear down embedding environment variables"""
+    test_vars = {
+        "FMP_EMBEDDING_PROVIDER": "openai",
+        "FMP_EMBEDDING_MODEL": "text-embedding-ada-002",
+        "OPENAI_API_KEY": "test-openai-key",
+        "FMP_EMBEDDING_KWARGS": '{"batch_size": 8}',
+    }
+
+    with temp_environ() as env:
+        env.update(test_vars)
+        yield test_vars

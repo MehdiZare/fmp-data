@@ -135,5 +135,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: coverage-report
-        path: coverage_html/
+        path: htmlcov/
         if-no-files-found: error

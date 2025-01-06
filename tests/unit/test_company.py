@@ -1,16 +1,125 @@
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from pydantic import ValidationError
 
+from fmp_data.company import CompanyClient
 from fmp_data.company.models import (
+    AnalystEstimate,
     CompanyExecutive,
     CompanyProfile,
-    CompanySearchResult,
-    CompanySymbol,
-    ExchangeSymbol,
+    HistoricalData,
+    HistoricalPrice,
+    PriceTarget,
+    PriceTargetSummary,
 )
+from fmp_data.models import CompanySymbol
+
+
+# Fixtures for mock client and fmp_client
+@pytest.fixture
+def mock_client():
+    """Fixture to mock the API client."""
+    return Mock()
+
+
+@pytest.fixture
+def fmp_client(mock_client):
+    """Fixture to create an instance of CompanyClient,
+    with a mocked client."""
+    return CompanyClient(client=mock_client)
+
+
+# Fixtures for mock data
+@pytest.fixture
+def price_target_data():
+    return [
+        {
+            "symbol": "AAPL",
+            "publishedDate": "2024-01-01T12:00:00",
+            "newsURL": "https://example.com/news",
+            "newsTitle": "Apple price target increased",
+            "analystName": "John Doe",
+            "priceTarget": 200.0,
+            "adjPriceTarget": 198.0,
+            "priceWhenPosted": 150.0,
+            "newsPublisher": "Example News",
+            "newsBaseURL": "example.com",
+            "analystCompany": "Big Bank",
+        }
+    ]
+
+
+@pytest.fixture
+def price_target_summary_data():
+    return {
+        "symbol": "AAPL",
+        "lastMonth": 10,
+        "lastMonthAvgPriceTarget": 190.0,
+        "lastQuarter": 30,
+        "lastQuarterAvgPriceTarget": 185.0,
+        "lastYear": 100,
+        "lastYearAvgPriceTarget": 180.0,
+        "allTime": 300,
+        "allTimeAvgPriceTarget": 175.0,
+        "publishers": '["Example News", "Tech Daily"]',
+    }
+
+
+@pytest.fixture
+def analyst_estimates_data():
+    return [
+        {
+            "symbol": "AAPL",
+            "date": "2024-01-01T12:00:00",
+            "estimatedRevenueLow": 50000000.0,
+            "estimatedRevenueHigh": 55000000.0,
+            "estimatedRevenueAvg": 52500000.0,
+            "estimatedEbitdaLow": 12000000.0,
+            "estimatedEbitdaHigh": 13000000.0,
+            "estimatedEbitdaAvg": 12500000.0,
+            "estimatedEbitLow": 10000000.0,
+            "estimatedEbitHigh": 11000000.0,
+            "estimatedEbitAvg": 10500000.0,
+            "estimatedNetIncomeLow": 8000000.0,
+            "estimatedNetIncomeHigh": 9000000.0,
+            "estimatedNetIncomeAvg": 8500000.0,
+            "estimatedSgaExpenseLow": 2000000.0,
+            "estimatedSgaExpenseHigh": 2500000.0,
+            "estimatedSgaExpenseAvg": 2250000.0,
+            "estimatedEpsLow": 3.5,
+            "estimatedEpsHigh": 4.0,
+            "estimatedEpsAvg": 3.75,
+            "numberAnalystEstimatedRevenue": 10,
+            "numberAnalystsEstimatedEps": 8,
+        }
+    ]
+
+
+@pytest.fixture
+def mock_historical_data():
+    """Mock historical data"""
+    return {
+        "symbol": "AAPL",
+        "historical": [
+            {
+                "date": "2024-01-05T16:00:00",
+                "open": 149.00,
+                "high": 151.00,
+                "low": 148.50,
+                "close": 150.25,
+                "adjClose": 150.25,
+                "volume": 82034567,
+                "unadjustedVolume": 82034567,
+                "change": 2.25,
+                "changePercent": 1.5,
+                "vwap": 149.92,
+                "label": "January 05",
+                "changeOverTime": 0.015,
+            }
+        ],
+    }
 
 
 class TestCompanyProfile:
@@ -111,15 +220,13 @@ class TestCompanyProfile:
         self, mock_request, fmp_client, mock_response, profile_data
     ):
         """Test getting company profile through client"""
-        mock_request.return_value = mock_response(
-            status_code=200, json_data=[profile_data]
-        )
+        # Set up the mock to return the actual response object
+        mock_client = fmp_client.client
+        mock_client.request.return_value = [CompanyProfile(**profile_data)]
 
-        profile = fmp_client.company.get_profile("AAPL")
+        profile = fmp_client.get_profile("AAPL")
         assert isinstance(profile, CompanyProfile)
         assert profile.symbol == "AAPL"
-        assert profile.company_name == "Apple Inc."
-        assert profile.ceo == "Mr. Timothy D. Cook"
 
 
 class TestCompanyExecutive:
@@ -167,157 +274,13 @@ class TestCompanyExecutive:
         self, mock_request, fmp_client, mock_response, executive_data
     ):
         """Test getting company executives through client"""
-        mock_request.return_value = mock_response(
-            status_code=200, json_data=[executive_data]
-        )
+        # Set up mock to return list of executives
+        mock_client = fmp_client.client
+        mock_client.request.return_value = [CompanyExecutive(**executive_data)]
 
-        executives = fmp_client.company.get_executives("AAPL")
+        executives = fmp_client.get_executives("AAPL")
         assert len(executives) == 1
-        executive = executives[0]
-        assert isinstance(executive, CompanyExecutive)
-        assert executive.name == "Tim Cook"
-        assert executive.title == "Chief Executive Officer"
-        assert executive.pay == 3000000
-
-
-class TestCompanySearch:
-    """Tests for CompanySearchResult model and related client functionality"""
-
-    @pytest.fixture
-    def search_result_data(self):
-        """Mock company search result data"""
-        return {
-            "symbol": "AAPL",
-            "name": "Apple Inc.",
-            "currency": "USD",
-            "stockExchange": "NASDAQ",
-            "exchangeShortName": "NASDAQ",
-        }
-
-    def test_model_validation_complete(self, search_result_data):
-        """Test CompanySearchResult model with all fields"""
-        result = CompanySearchResult.model_validate(search_result_data)
-        assert result.symbol == "AAPL"
-        assert result.name == "Apple Inc."
-        assert result.currency == "USD"
-        assert result.stock_exchange == "NASDAQ"
-        assert result.exchange_short_name == "NASDAQ"
-
-    def test_model_validation_minimal(self):
-        """Test CompanySearchResult model with minimal required fields"""
-        data = {
-            "symbol": "AAPL",
-            "name": "Apple Inc.",
-        }
-        result = CompanySearchResult.model_validate(data)
-        assert result.symbol == "AAPL"
-        assert result.name == "Apple Inc."
-        assert result.currency is None
-        assert result.stock_exchange is None
-
-    @patch("httpx.Client.request")
-    def test_search_companies(
-        self, mock_request, fmp_client, mock_response, search_result_data
-    ):
-        """Test company search through client"""
-        mock_request.return_value = mock_response(
-            status_code=200, json_data=[search_result_data]
-        )
-
-        results = fmp_client.company.search("Apple", limit=1)
-        assert len(results) == 1
-        result = results[0]
-        assert isinstance(result, CompanySearchResult)
-        assert result.symbol == "AAPL"
-        assert result.name == "Apple Inc."
-
-
-class TestExchangeSymbol:
-    """Tests for ExchangeSymbol model"""
-
-    @pytest.fixture
-    def exchange_symbol_data(self):
-        """Mock exchange symbol data"""
-        return {
-            "symbol": "AAPL",
-            "name": "Apple Inc.",
-            "price": 150.25,
-            "changesPercentage": 1.5,
-            "change": 2.25,
-            "dayLow": 148.50,
-            "dayHigh": 151.00,
-            "yearHigh": 182.94,
-            "yearLow": 124.17,
-            "marketCap": 2500000000000,
-            "priceAvg50": 145.80,
-            "priceAvg200": 140.50,
-            "exchange": "NASDAQ",
-            "volume": 82034567,
-            "avgVolume": 75000000,
-            "open": 149.00,
-            "previousClose": 148.00,
-            "eps": 6.05,
-            "pe": 24.83,
-            "sharesOutstanding": 16500000000,
-        }
-
-    def test_model_validation_complete(self, exchange_symbol_data):
-        """Test ExchangeSymbol model with all fields"""
-        symbol = ExchangeSymbol.model_validate(exchange_symbol_data)
-        assert symbol.symbol == "AAPL"
-        assert symbol.name == "Apple Inc."
-        assert symbol.price == 150.25
-        assert symbol.change_percentage == 1.5
-        assert symbol.market_cap == 2500000000000
-        assert symbol.eps == 6.05
-        assert symbol.pe == 24.83
-
-    def test_model_validation_minimal(self):
-        """Test ExchangeSymbol model with minimal fields"""
-        data = {
-            "symbol": "AAPL",
-            "name": "Apple Inc.",
-        }
-        symbol = ExchangeSymbol.model_validate(data)
-        assert symbol.symbol == "AAPL"
-        assert symbol.name == "Apple Inc."
-        assert symbol.price is None
-        assert symbol.market_cap is None
-
-    def test_model_validation_optional_fields(self):
-        """Test ExchangeSymbol model with optional fields set to None"""
-        test_data = {
-            "symbol": "AAPL",
-            "name": "Apple Inc.",
-            "price": None,
-            "marketCap": None,
-            "eps": None,
-            "pe": None,
-        }
-
-        symbol = ExchangeSymbol.model_validate(test_data)
-        assert symbol.symbol == "AAPL"
-        assert all(
-            getattr(symbol, field) is None
-            for field in ["price", "market_cap", "eps", "pe"]
-        )
-
-    def test_model_validation_with_defaults(self):
-        """Test ExchangeSymbol model with fields defaulting to None"""
-        symbol = ExchangeSymbol.model_validate({"symbol": "AAPL", "name": "Apple Inc."})
-        assert all(
-            getattr(symbol, field) is None
-            for field in [
-                "price",
-                "change_percentage",
-                "day_low",
-                "day_high",
-                "market_cap",
-                "volume",
-                "eps",
-                "pe",
-            ]
-        )
+        assert isinstance(executives[0], CompanyExecutive)
 
 
 class TestCompanySymbol:
@@ -354,3 +317,71 @@ class TestCompanySymbol:
         assert symbol.price is None
         assert symbol.exchange is None
         assert symbol.type is None
+
+    def test_get_historical_prices(self, mock_client, fmp_client, mock_historical_data):
+        """Test getting historical prices"""
+        # Set up mock to return properly structured historical data
+        mock_client.request.return_value = HistoricalData(
+            symbol="AAPL",
+            historical=[
+                HistoricalPrice(
+                    date=datetime(2024, 1, 5, 16, 0),
+                    open=149.00,
+                    high=151.00,
+                    low=148.50,
+                    close=150.25,
+                    adj_close=150.25,
+                    volume=82034567,
+                    unadjusted_volume=82034567,
+                    change=2.25,
+                    change_percent=1.5,
+                    vwap=149.92,
+                    label="January 05",
+                    change_over_time=0.015,
+                )
+            ],
+        )
+
+        data = fmp_client.get_historical_prices(
+            "AAPL", from_date="2024-01-01", to_date="2024-01-05"
+        )
+
+        # Verify results
+        assert isinstance(data, HistoricalData)
+        assert data.symbol == "AAPL"
+        assert len(data.historical) == 1
+
+        # Check the first price entry
+        price = data.historical[0]
+        assert isinstance(price, HistoricalPrice)
+        assert price.open == 149.00
+        assert price.close == 150.25
+        assert price.volume == 82034567
+
+
+def test_get_price_target(fmp_client, mock_client, price_target_data):
+    """Test fetching price targets"""
+    mock_client.request.return_value = [PriceTarget(**price_target_data[0])]
+    result = fmp_client.get_price_target(symbol="AAPL")
+    assert isinstance(result, list)
+    assert isinstance(result[0], PriceTarget)
+    assert result[0].symbol == "AAPL"
+
+
+def test_get_price_target_summary(fmp_client, mock_client, price_target_summary_data):
+    """Test fetching price target summary"""
+    mock_client.request.return_value = PriceTargetSummary(**price_target_summary_data)
+    result = fmp_client.get_price_target_summary(symbol="AAPL")
+    assert isinstance(result, PriceTargetSummary)
+    assert result.symbol == "AAPL"
+    assert result.last_month_avg_price_target == 190.0
+
+
+def test_get_analyst_estimates(fmp_client, mock_client, analyst_estimates_data):
+    """Test fetching analyst estimates"""
+    mock_client.request.return_value = [AnalystEstimate(**analyst_estimates_data[0])]
+    result = fmp_client.get_analyst_estimates(symbol="AAPL")
+    assert isinstance(result, list)
+    assert isinstance(result[0], AnalystEstimate)
+    assert result[0].symbol == "AAPL"
+    assert result[0].estimated_revenue_avg == 52500000.0

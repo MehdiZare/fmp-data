@@ -1,9 +1,8 @@
-# config.py
 import os
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from fmp_data.exceptions import ConfigError
 
@@ -19,7 +18,7 @@ class LogHandlerConfig(BaseModel):
     class_name: str = Field(
         description="Handler class name (FileHandler, StreamHandler, etc.)"
     )
-    kwargs: dict[str, Any] = Field(
+    handler_kwargs: dict[str, Any] = Field(
         default_factory=dict,
         description="Additional arguments for handler initialization",
     )
@@ -71,7 +70,7 @@ class LoggingConfig(BaseModel):
             handlers["file"] = LogHandlerConfig(
                 class_name="RotatingFileHandler",
                 level=os.getenv("FMP_LOG_FILE_LEVEL", "INFO"),
-                kwargs={
+                handler_kwargs={
                     "filename": str(log_path / "fmp.log"),
                     "maxBytes": int(
                         os.getenv("FMP_LOG_MAX_BYTES", str(10 * 1024 * 1024))
@@ -85,7 +84,7 @@ class LoggingConfig(BaseModel):
                 handlers["json"] = LogHandlerConfig(
                     class_name="JsonRotatingFileHandler",
                     level=os.getenv("FMP_LOG_JSON_LEVEL", "INFO"),
-                    kwargs={
+                    handler_kwargs={
                         "filename": str(log_path / "fmp.json"),
                         "maxBytes": int(
                             os.getenv("FMP_LOG_MAX_BYTES", str(10 * 1024 * 1024))
@@ -100,8 +99,10 @@ class LoggingConfig(BaseModel):
             log_path=log_path,
         )
 
-    def model_post_init(self, __context) -> None:
-        """Post-initialization validation and setup"""
+    def model_post_init(self, __context: Any) -> None:
+        """
+        Post-initialization validation and setup.
+        """
         if self.log_path:
             try:
                 self.log_path.mkdir(parents=True, exist_ok=True)
@@ -114,7 +115,7 @@ class RateLimitConfig(BaseModel):
 
     daily_limit: int = Field(default=250, gt=0, description="Maximum daily API calls")
     requests_per_second: int = Field(
-        default=5,  # Default value aligned with test expectation
+        default=5,
         gt=0,
         description="Maximum requests per second",
     )
@@ -127,15 +128,13 @@ class RateLimitConfig(BaseModel):
         """Create rate limit config from environment variables"""
         return cls(
             daily_limit=int(os.getenv("FMP_DAILY_LIMIT", "250")),
-            requests_per_second=int(
-                os.getenv("FMP_REQUESTS_PER_SECOND", "5")
-            ),  # Default aligned with Field default
+            requests_per_second=int(os.getenv("FMP_REQUESTS_PER_SECOND", "5")),
             requests_per_minute=int(os.getenv("FMP_REQUESTS_PER_MINUTE", "300")),
         )
 
 
 class ClientConfig(BaseModel):
-    """Client configuration using Pydantic v2"""
+    """Base client configuration for FMP Data API"""
 
     api_key: str = Field(
         description="FMP API key. Can be set via FMP_API_KEY environment variable"
@@ -159,6 +158,8 @@ class ClientConfig(BaseModel):
         default_factory=LoggingConfig, description="Logging configuration"
     )
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     @classmethod
     @field_validator("api_key", mode="before")
     def validate_api_key(cls, v: str | None) -> str:
@@ -178,7 +179,6 @@ class ClientConfig(BaseModel):
     @classmethod
     def from_env(cls) -> "ClientConfig":
         """Create configuration from environment variables"""
-        # Ensure API key is validated
         api_key = os.getenv("FMP_API_KEY")
         if not api_key:
             raise ConfigError(
@@ -186,11 +186,15 @@ class ClientConfig(BaseModel):
                 "explicitly or via FMP_API_KEY environment variable"
             )
 
-        return cls(
-            api_key=api_key,
-            timeout=int(os.getenv("FMP_TIMEOUT", "30")),
-            max_retries=int(os.getenv("FMP_MAX_RETRIES", "3")),
-            base_url=os.getenv("FMP_BASE_URL", "https://financialmodelingprep.com/api"),
-            rate_limit=RateLimitConfig.from_env(),
-            logging=LoggingConfig.from_env(),
-        )
+        config_dict = {
+            "api_key": api_key,
+            "timeout": int(os.getenv("FMP_TIMEOUT", "30")),
+            "max_retries": int(os.getenv("FMP_MAX_RETRIES", "3")),
+            "base_url": os.getenv(
+                "FMP_BASE_URL", "https://financialmodelingprep.com/api"
+            ),
+            "rate_limit": RateLimitConfig.from_env(),
+            "logging": LoggingConfig.from_env(),
+        }
+
+        return cls.model_validate(config_dict)

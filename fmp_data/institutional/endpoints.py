@@ -23,7 +23,7 @@ from fmp_data.models import (
     URLType,
 )
 
-FORM_13F = Endpoint(
+FORM_13F: Endpoint = Endpoint(
     name="form_13f",
     path="form-thirteen/{cik}",
     version=APIVersion.V3,
@@ -50,7 +50,7 @@ FORM_13F = Endpoint(
     response_model=Form13F,
 )
 
-FORM_13F_DATES = Endpoint(
+FORM_13F_DATES: Endpoint = Endpoint(
     name="form_13f_dates",
     path="form-thirteen-date/{cik}",
     version=APIVersion.V3,
@@ -70,7 +70,7 @@ FORM_13F_DATES = Endpoint(
     response_model=Form13FDate,
 )
 
-ASSET_ALLOCATION = Endpoint(
+ASSET_ALLOCATION: Endpoint = Endpoint(
     name="asset_allocation",
     path="13f-asset-allocation",
     version=APIVersion.V4,
@@ -90,7 +90,7 @@ ASSET_ALLOCATION = Endpoint(
     response_model=AssetAllocation,
 )
 
-INSTITUTIONAL_HOLDERS = Endpoint(
+INSTITUTIONAL_HOLDERS: Endpoint = Endpoint(
     name="institutional_holders",
     path="institutional-ownership/list",
     version=APIVersion.V4,
@@ -102,7 +102,7 @@ INSTITUTIONAL_HOLDERS = Endpoint(
     response_model=InstitutionalHolder,
 )
 
-INSTITUTIONAL_HOLDINGS = Endpoint(
+INSTITUTIONAL_HOLDINGS: Endpoint = Endpoint(
     name="institutional_holdings",
     path="institutional-ownership/symbol-ownership",
     version=APIVersion.V4,
@@ -130,7 +130,7 @@ INSTITUTIONAL_HOLDINGS = Endpoint(
     response_model=InstitutionalHolding,
 )
 
-INSIDER_TRADES = Endpoint(
+INSIDER_TRADES: Endpoint = Endpoint(
     name="insider_trades",
     path="insider-trading",
     version=APIVersion.V4,
@@ -159,7 +159,7 @@ INSIDER_TRADES = Endpoint(
     response_model=InsiderTrade,
 )
 
-TRANSACTION_TYPES = Endpoint(
+TRANSACTION_TYPES: Endpoint = Endpoint(
     name="transaction_types",
     path="insider-trading-transaction-type",
     version=APIVersion.V4,
@@ -171,7 +171,7 @@ TRANSACTION_TYPES = Endpoint(
     response_model=InsiderTransactionType,
 )
 
-INSIDER_ROSTER = Endpoint(
+INSIDER_ROSTER: Endpoint = Endpoint(
     name="insider_roster",
     path="insider-roaster",
     version=APIVersion.V4,
@@ -191,7 +191,7 @@ INSIDER_ROSTER = Endpoint(
     response_model=InsiderRoster,
 )
 
-INSIDER_STATISTICS = Endpoint(
+INSIDER_STATISTICS: Endpoint = Endpoint(
     name="insider_statistics",
     path="insider-roaster-statistic",
     version=APIVersion.V4,
@@ -211,7 +211,7 @@ INSIDER_STATISTICS = Endpoint(
     response_model=InsiderStatistic,
 )
 
-CIK_MAPPER = Endpoint(
+CIK_MAPPER: Endpoint = Endpoint(
     name="cik_mapper",
     path="mapper-cik-name",
     version=APIVersion.V4,
@@ -230,7 +230,7 @@ CIK_MAPPER = Endpoint(
     response_model=CIKMapping,
 )
 
-CIK_MAPPER_BY_NAME = Endpoint(
+CIK_MAPPER_BY_NAME: Endpoint = Endpoint(
     name="cik_mapper_by_name",
     path="mapper-cik-name",
     version=APIVersion.V4,
@@ -257,7 +257,7 @@ CIK_MAPPER_BY_NAME = Endpoint(
     response_model=CIKMapping,
 )
 
-CIK_MAPPER_BY_SYMBOL = Endpoint(
+CIK_MAPPER_BY_SYMBOL: Endpoint = Endpoint(
     name="cik_mapper_by_symbol",
     path="mapper-cik-company/{symbol}",
     version=APIVersion.V4,
@@ -275,7 +275,7 @@ CIK_MAPPER_BY_SYMBOL = Endpoint(
     response_model=CIKCompanyMap,
 )
 
-BENEFICIAL_OWNERSHIP = Endpoint(
+BENEFICIAL_OWNERSHIP: Endpoint = Endpoint(
     name="beneficial_ownership",
     path="insider/ownership/acquisition_of_beneficial_ownership",
     version=APIVersion.V4,
@@ -293,7 +293,7 @@ BENEFICIAL_OWNERSHIP = Endpoint(
     response_model=BeneficialOwnership,
 )
 
-FAIL_TO_DELIVER = Endpoint(
+FAIL_TO_DELIVER: Endpoint = Endpoint(
     name="fail_to_deliver",
     path="fail_to_deliver",
     version=APIVersion.V4,

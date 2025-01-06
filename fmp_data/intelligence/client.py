@@ -1,10 +1,9 @@
 # fmp_data/intelligence/client.py
 from datetime import date
+from typing import cast
 
 from fmp_data.base import EndpointGroup
 from fmp_data.intelligence.endpoints import (
-    ANALYST_ESTIMATES,
-    ANALYST_RECOMMENDATIONS,
     CROWDFUNDING_BY_CIK,
     CROWDFUNDING_RSS,
     CROWDFUNDING_SEARCH,
@@ -29,9 +28,6 @@ from fmp_data.intelligence.endpoints import (
     IPO_CALENDAR,
     PRESS_RELEASES_BY_SYMBOL_ENDPOINT,
     PRESS_RELEASES_ENDPOINT,
-    PRICE_TARGET,
-    PRICE_TARGET_CONSENSUS,
-    PRICE_TARGET_SUMMARY,
     SENATE_TRADING,
     SENATE_TRADING_RSS,
     SOCIAL_SENTIMENT_CHANGES_ENDPOINT,
@@ -39,13 +35,9 @@ from fmp_data.intelligence.endpoints import (
     STOCK_NEWS_SENTIMENTS_ENDPOINT,
     STOCK_SPLITS_CALENDAR,
     TRENDING_SOCIAL_SENTIMENT_ENDPOINT,
-    UPGRADES_DOWNGRADES,
-    UPGRADES_DOWNGRADES_CONSENSUS,
     IPOEvent,
 )
 from fmp_data.intelligence.models import (
-    AnalystEstimate,
-    AnalystRecommendation,
     CrowdfundingOffering,
     CryptoNewsArticle,
     DividendEvent,
@@ -64,55 +56,17 @@ from fmp_data.intelligence.models import (
     HouseDisclosure,
     PressRelease,
     PressReleaseBySymbol,
-    PriceTarget,
-    PriceTargetConsensus,
-    PriceTargetSummary,
     SenateTrade,
     SocialSentimentChanges,
     StockNewsArticle,
     StockNewsSentiment,
     StockSplitEvent,
     TrendingSocialSentiment,
-    UpgradeDowngrade,
-    UpgradeDowngradeConsensus,
 )
 
 
 class MarketIntelligenceClient(EndpointGroup):
     """Client for market intelligence endpoints"""
-
-    def get_price_target(self, symbol: str) -> list[PriceTarget]:
-        """Get price targets"""
-        return self.client.request(PRICE_TARGET, symbol=symbol)
-
-    def get_price_target_summary(self, symbol: str) -> PriceTargetSummary:
-        """Get price target summary"""
-        result = self.client.request(PRICE_TARGET_SUMMARY, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
-
-    def get_price_target_consensus(self, symbol: str) -> PriceTargetConsensus:
-        """Get price target consensus"""
-        result = self.client.request(PRICE_TARGET_CONSENSUS, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
-
-    def get_analyst_estimates(self, symbol: str) -> list[AnalystEstimate]:
-        """Get analyst estimates"""
-        return self.client.request(ANALYST_ESTIMATES, symbol=symbol)
-
-    def get_analyst_recommendations(self, symbol: str) -> list[AnalystRecommendation]:
-        """Get analyst recommendations"""
-        return self.client.request(ANALYST_RECOMMENDATIONS, symbol=symbol)
-
-    def get_upgrades_downgrades(self, symbol: str) -> list[UpgradeDowngrade]:
-        """Get upgrades and downgrades"""
-        return self.client.request(UPGRADES_DOWNGRADES, symbol=symbol)
-
-    def get_upgrades_downgrades_consensus(
-        self, symbol: str
-    ) -> UpgradeDowngradeConsensus:
-        """Get upgrades and downgrades consensus"""
-        result = self.client.request(UPGRADES_DOWNGRADES_CONSENSUS, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
 
     def get_earnings_calendar(
         self, start_date: date | None = None, end_date: date | None = None
@@ -323,12 +277,12 @@ class MarketIntelligenceClient(EndpointGroup):
     def get_esg_data(self, symbol: str) -> ESGData:
         """Get ESG data for a company"""
         result = self.client.request(ESG_DATA, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
+        return cast(ESGData, result[0] if isinstance(result, list) else result)
 
     def get_esg_ratings(self, symbol: str) -> ESGRating:
         """Get ESG ratings for a company"""
         result = self.client.request(ESG_RATINGS, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
+        return cast(ESGRating, result[0] if isinstance(result, list) else result)
 
     def get_esg_benchmark(self, year: int) -> list[ESGBenchmark]:
         """Get ESG sector benchmark data"""

@@ -20,7 +20,7 @@ from fmp_data.models import (
 )
 
 # ETF endpoints
-ETF_HOLDINGS = Endpoint(
+ETF_HOLDINGS: Endpoint = Endpoint(
     name="etf_holdings",
     path="etf-holdings",
     version=APIVersion.V4,
@@ -45,7 +45,7 @@ ETF_HOLDINGS = Endpoint(
     response_model=ETFHolding,
 )
 
-ETF_HOLDING_DATES = Endpoint(
+ETF_HOLDING_DATES: Endpoint = Endpoint(
     name="etf_holding_dates",
     path="etf-holdings/portfolio-date",
     version=APIVersion.V4,
@@ -63,7 +63,7 @@ ETF_HOLDING_DATES = Endpoint(
     response_model=ETFPortfolioDate,
 )
 
-ETF_INFO = Endpoint(
+ETF_INFO: Endpoint = Endpoint(
     name="etf_info",
     path="etf-info",
     version=APIVersion.V4,
@@ -81,7 +81,7 @@ ETF_INFO = Endpoint(
     response_model=ETFInfo,
 )
 
-ETF_SECTOR_WEIGHTINGS = Endpoint(
+ETF_SECTOR_WEIGHTINGS: Endpoint = Endpoint(
     name="etf_sector_weightings",
     path="etf-sector-weightings/{symbol}",
     version=APIVersion.V3,
@@ -99,7 +99,7 @@ ETF_SECTOR_WEIGHTINGS = Endpoint(
     response_model=ETFSectorWeighting,
 )
 
-ETF_COUNTRY_WEIGHTINGS = Endpoint(
+ETF_COUNTRY_WEIGHTINGS: Endpoint = Endpoint(
     name="etf_country_weightings",
     path="etf-country-weightings/{symbol}",
     version=APIVersion.V3,
@@ -117,7 +117,7 @@ ETF_COUNTRY_WEIGHTINGS = Endpoint(
     response_model=ETFCountryWeighting,
 )
 
-ETF_EXPOSURE = Endpoint(
+ETF_EXPOSURE: Endpoint = Endpoint(
     name="etf_exposure",
     path="etf-stock-exposure/{symbol}",
     version=APIVersion.V3,
@@ -135,7 +135,7 @@ ETF_EXPOSURE = Endpoint(
     response_model=ETFExposure,
 )
 
-ETF_HOLDER = Endpoint(
+ETF_HOLDER: Endpoint = Endpoint(
     name="etf_holder",
     path="etf-holder/{symbol}",
     version=APIVersion.V3,
@@ -154,7 +154,7 @@ ETF_HOLDER = Endpoint(
 )
 
 # Mutual Fund endpoints
-MUTUAL_FUND_DATES = Endpoint(
+MUTUAL_FUND_DATES: Endpoint = Endpoint(
     name="mutual_fund_dates",
     path="mutual-fund-holdings/portfolio-date",
     version=APIVersion.V4,
@@ -179,7 +179,7 @@ MUTUAL_FUND_DATES = Endpoint(
     response_model=PortfolioDate,
 )
 
-MUTUAL_FUND_HOLDINGS = Endpoint(
+MUTUAL_FUND_HOLDINGS: Endpoint = Endpoint(
     name="mutual_fund_holdings",
     path="mutual-fund-holdings",
     version=APIVersion.V4,
@@ -204,7 +204,7 @@ MUTUAL_FUND_HOLDINGS = Endpoint(
     response_model=MutualFundHolding,
 )
 
-MUTUAL_FUND_BY_NAME = Endpoint(
+MUTUAL_FUND_BY_NAME: Endpoint = Endpoint(
     name="mutual_fund_by_name",
     path="mutual-fund-holdings/name",
     version=APIVersion.V4,
@@ -222,7 +222,7 @@ MUTUAL_FUND_BY_NAME = Endpoint(
     response_model=MutualFundHolding,
 )
 
-MUTUAL_FUND_HOLDER = Endpoint(
+MUTUAL_FUND_HOLDER: Endpoint = Endpoint(
     name="mutual_fund_holder",
     path="mutual-fund-holder/{symbol}",
     version=APIVersion.V3,

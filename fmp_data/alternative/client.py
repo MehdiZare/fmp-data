@@ -1,5 +1,6 @@
 # fmp_data/alternative/client.py
 from datetime import date
+from typing import TypeVar, cast
 
 from fmp_data.alternative.endpoints import (
     COMMODITIES_LIST,
@@ -34,6 +35,8 @@ from fmp_data.alternative.models import (
 )
 from fmp_data.base import EndpointGroup
 
+T = TypeVar("T")
+
 
 class AlternativeMarketsClient(EndpointGroup):
     """Client for alternative markets endpoints"""
@@ -50,7 +53,7 @@ class AlternativeMarketsClient(EndpointGroup):
     def get_crypto_quote(self, symbol: str) -> CryptoQuote:
         """Get cryptocurrency quote"""
         result = self.client.request(CRYPTO_QUOTE, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
+        return cast(CryptoQuote, result[0] if isinstance(result, list) else result)
 
     def get_crypto_historical(
         self,
@@ -65,7 +68,8 @@ class AlternativeMarketsClient(EndpointGroup):
         if end_date:
             params["to"] = end_date.strftime("%Y-%m-%d")
 
-        return self.client.request(CRYPTO_HISTORICAL, **params)
+        result = self.client.request(CRYPTO_HISTORICAL, **params)
+        return cast(CryptoHistoricalData, result)
 
     def get_crypto_intraday(
         self, symbol: str, interval: str = "5min"
@@ -85,7 +89,7 @@ class AlternativeMarketsClient(EndpointGroup):
     def get_forex_quote(self, symbol: str) -> ForexQuote:
         """Get forex quote"""
         result = self.client.request(FOREX_QUOTE, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
+        return cast(ForexQuote, result[0] if isinstance(result, list) else result)
 
     def get_forex_historical(
         self,
@@ -100,7 +104,8 @@ class AlternativeMarketsClient(EndpointGroup):
         if end_date:
             params["to"] = end_date.strftime("%Y-%m-%d")
 
-        return self.client.request(FOREX_HISTORICAL, **params)
+        result = self.client.request(FOREX_HISTORICAL, **params)
+        return cast(ForexPriceHistory, result)
 
     def get_forex_intraday(
         self, symbol: str, interval: str = "5min"
@@ -120,7 +125,7 @@ class AlternativeMarketsClient(EndpointGroup):
     def get_commodity_quote(self, symbol: str) -> CommodityQuote:
         """Get commodity quote"""
         result = self.client.request(COMMODITY_QUOTE, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
+        return cast(CommodityQuote, result[0] if isinstance(result, list) else result)
 
     def get_commodity_historical(
         self,
@@ -135,7 +140,8 @@ class AlternativeMarketsClient(EndpointGroup):
         if end_date:
             params["to"] = end_date.strftime("%Y-%m-%d")
 
-        return self.client.request(COMMODITY_HISTORICAL, **params)
+        result = self.client.request(COMMODITY_HISTORICAL, **params)
+        return cast(CommodityPriceHistory, result)
 
     def get_commodity_intraday(
         self, symbol: str, interval: str = "5min"

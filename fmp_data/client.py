@@ -1,5 +1,6 @@
 # client.py
 import logging
+import types
 import warnings
 
 from pydantic import ValidationError as PydanticValidationError
@@ -103,23 +104,35 @@ class FMPDataClient(BaseClient):
 
         return cls(config=config)
 
-    def __enter__(self):
+    def __enter__(self) -> "FMPDataClient":
         """Context manager enter"""
         if not self._initialized:
             self._setup_http_client()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit"""
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
+        """
+        Context manager exit
+
+        Args:
+            exc_type: Exception type if an error occurred
+            exc_val: Exception value if an error occurred
+            exc_tb: Exception traceback if an error occurred
+        """
         self.close()
-        if exc_type is not None and self.logger:
+        if exc_type is not None and exc_val is not None and self.logger:
             self.logger.error(
                 "Error in context manager",
                 extra={"error_type": exc_type.__name__, "error": str(exc_val)},
-                exc_info=(exc_type, exc_val, exc_tb),
+                exc_info=True,  # Use True instead of tuple to let logger handle it
             )
 
-    def close(self):
+    def close(self) -> None:
         """Clean up resources"""
         try:
             if hasattr(self, "client") and self.client is not None:
@@ -134,7 +147,7 @@ class FMPDataClient(BaseClient):
             if logger is not None:
                 logger.error(f"Error during cleanup: {str(e)}")
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Destructor that ensures resources are cleaned up"""
         try:
             if hasattr(self, "_initialized") and self._initialized:
