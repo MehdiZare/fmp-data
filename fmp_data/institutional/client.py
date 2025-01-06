@@ -1,5 +1,6 @@
 # fmp_data/institutional/client.py
 from datetime import date
+from typing import cast
 
 from fmp_data.base import EndpointGroup
 from fmp_data.institutional.endpoints import (
@@ -37,15 +38,50 @@ from fmp_data.institutional.models import (
 class InstitutionalClient(EndpointGroup):
     """Client for institutional activity endpoints"""
 
-    def get_form_13f(self, cik: str, filing_date: date) -> Form13F:
-        """Get Form 13F filing data"""
-        return self.client.request(
-            FORM_13F, cik=cik, date=filing_date.strftime("%Y-%m-%d")
-        )
+    def get_form_13f(self, cik: str, filing_date: date) -> list[Form13F]:
+        """
+        Get Form 13F filing data
 
-    def get_form_13f_dates(self, cik: str) -> Form13F:
-        """Get Form 13F filing data"""
-        return self.client.request(FORM_13F_DATES, cik=cik)
+        Args:
+            cik: Central Index Key (CIK)
+            filing_date: Filing date
+
+        Returns:
+            List of Form13F objects. Empty list if no records found.
+        """
+        try:
+            result = self.client.request(
+                FORM_13F, cik=cik, date=filing_date.strftime("%Y-%m-%d")
+            )
+            # Ensure we always return a list
+            return result if isinstance(result, list) else [result]
+        except Exception as e:
+            # Log the error but return empty list instead of raising
+            self.client.logger.warning(
+                f"No Form 13F data found for CIK {cik} on {filing_date}: {str(e)}"
+            )
+            return []
+
+    def get_form_13f_dates(self, cik: str) -> list[Form13F]:
+        """
+        Get Form 13F filing dates
+
+        Args:
+            cik: Central Index Key (CIK)
+
+        Returns:
+            List of Form13F objects with filing dates. Empty list if no records found.
+        """
+        try:
+            result = self.client.request(FORM_13F_DATES, cik=cik)
+            # Ensure we always return a list
+            return result if isinstance(result, list) else [result]
+        except Exception as e:
+            # Log the error but return empty list instead of raising
+            self.client.logger.warning(
+                f"No Form 13F filings found for CIK {cik}: {str(e)}"
+            )
+            return []
 
     def get_asset_allocation(self, filing_date: date) -> list[AssetAllocation]:
         """Get 13F asset allocation data"""
@@ -82,7 +118,7 @@ class InstitutionalClient(EndpointGroup):
     def get_insider_statistics(self, symbol: str) -> InsiderStatistic:
         """Get insider trading statistics"""
         result = self.client.request(INSIDER_STATISTICS, symbol=symbol)
-        return result[0] if isinstance(result, list) else result
+        return cast(InsiderStatistic, result[0] if isinstance(result, list) else result)
 
     def get_cik_mappings(self, page: int = 0) -> list[CIKMapping]:
         """Get CIK to name mappings"""
