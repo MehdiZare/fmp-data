@@ -35,10 +35,10 @@ def basic_config(temp_log_dir):
                 format="%(levelname)s: %(message)s",
             ),
             "file": LogHandlerConfig(
-                class_name="RotatingFileHandler",  # Using standard RotatingFileHandler
+                class_name="RotatingFileHandler",
                 level="DEBUG",
                 format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-                kwargs={
+                handler_kwargs={  # Changed from kwargs to handler_kwargs
                     "filename": str(temp_log_dir / "test.log"),
                     "maxBytes": 1024,
                     "backupCount": 3,
@@ -128,16 +128,17 @@ def test_logger_configuration(basic_config):
     root_logger = logger.get_logger()
     assert root_logger.level == logging.DEBUG
 
-    # Get handler types
-    handler_types = set()
-    for handler in root_logger.handlers:
-        if isinstance(handler, SecureRotatingFileHandler):
-            handler_types.add("SecureRotatingFileHandler")
-        else:
-            handler_types.add(handler.__class__.__name__)
+    # Verify handler types and count
+    handlers = root_logger.handlers
+    handler_types = {handler.__class__.__name__ for handler in handlers}
 
+    assert len(handlers) == 2  # Should have exactly two handlers
     assert "StreamHandler" in handler_types
     assert "SecureRotatingFileHandler" in handler_types
+
+    # Verify handler levels
+    for handler in handlers:
+        assert handler.level == logging.DEBUG
 
 
 def test_logger_message_filtering():
@@ -176,7 +177,7 @@ def test_log_rotation(temp_log_dir):
             "file": LogHandlerConfig(
                 class_name="RotatingFileHandler",
                 level="DEBUG",
-                kwargs={
+                handler_kwargs={  # Changed from kwargs to handler_kwargs
                     "filename": str(temp_log_dir / "rotating.log"),
                     "maxBytes": 100,  # Small size to trigger rotation
                     "backupCount": 2,
