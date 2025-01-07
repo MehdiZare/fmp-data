@@ -114,11 +114,14 @@ mkdocstrings-python = "mkdocstrings.cli:main"
 
 [tool.poetry-dynamic-versioning]
 enable = true
-write_to = "fmp_data/__init__.py"
 vcs = "git"
 style = "pep440"
 pattern = "v(?P<base>\\d+\\.\\d+)(?:-(?P<stage>beta|alpha))?(?:\\.(?P<rev>\\d+))?"
 strict = true
+
+[tool.poetry-dynamic-versioning.dynamic]
+version = true
+write_to = "fmp_data/__init__.py"
 
 format-jinja = """
 {%- if env.get("TEST_PYPI_TOKEN") -%}
@@ -136,12 +139,14 @@ format-jinja = """
 {%- endif -%}
 """
 
-
-
 [tool.poetry-dynamic-versioning.substitution]
 folders = [
     { path = "fmp_data" }
 ]
+
+[build-system]
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0"]
+build-backend = "poetry-dynamic-versioning.backend"
 
 # Tool configurations
 [tool.black]
@@ -272,9 +277,3 @@ output = "coverage.xml"
 [tool.bandit]
 exclude_dirs = ["tests", "scripts"]
 skips = ["B101", "B404", "B603", "B607"]
-
-
-
-[build-system]
-requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0"]
-build-backend = "poetry-dynamic-versioning.backend"
