@@ -92,6 +92,16 @@ mkdocs = "^1.6.1"
 mkdocs-material = "^9.5.42"
 mkdocstrings-python = "^1.12.2"
 
+[tool.poetry.extras]
+langchain = [
+    "langchain",
+    "openai",
+    "tiktoken",
+    "langchain-community",
+    "langchain-openai",
+    "faiss-cpu",
+    "langgraph"
+]
 
 [tool.poetry.scripts]
 format = "scripts:format_code"
