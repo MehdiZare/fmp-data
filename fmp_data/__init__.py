@@ -2,7 +2,12 @@
 import warnings
 
 from fmp_data.client import FMPDataClient
-from fmp_data.config import ClientConfig, LoggingConfig, RateLimitConfig
+from fmp_data.config import (
+    ClientConfig,
+    LoggingConfig,
+    LogHandlerConfig,
+    RateLimitConfig,
+)
 from fmp_data.exceptions import (
     AuthenticationError,
     ConfigError,
@@ -20,6 +25,7 @@ __all__ = [
     "FMPDataClient",
     "ClientConfig",
     "LoggingConfig",
+    "LogHandlerConfig",
     "RateLimitConfig",
     "FMPError",
     "FMPLogger",
