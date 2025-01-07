@@ -116,26 +116,13 @@ mkdocstrings-python = "mkdocstrings.cli:main"
 enable = true
 vcs = "git"
 style = "pep440"
-pattern = "v(?P<base>\\d+\\.\\d+)(?:-(?P<stage>beta|alpha))?(?:\\.(?P<rev>\\d+))?"
-strict = true
-
-[tool.poetry-dynamic-versioning.dynamic]
-version = true
-write_to = "fmp_data/__init__.py"
-
+metadata = false
+pattern = "v(?P<base>\\d+\\.\\d+\\.\\d+)(?:-(?P<stage>beta|alpha))?(?:\\.(?P<rev>\\d+))?"
 format-jinja = """
-{%- if env.get("TEST_PYPI_TOKEN") -%}
-    {%- if stage -%}
-        {{base}}{{stage[0]}}{{rev if rev else "1"}}.dev{{distance}}
-    {%- else -%}
-        {{base}}.0.dev{{distance}}
-    {%- endif -%}
+{%- if distance == 0 -%}
+    {{base}}
 {%- else -%}
-    {%- if stage -%}
-        {{base}}{{stage[0]}}{{rev if rev else "1"}}
-    {%- else -%}
-        {{base}}.0
-    {%- endif -%}
+    {{base}}.post{{distance}}+{{rev}}
 {%- endif -%}
 """
 
