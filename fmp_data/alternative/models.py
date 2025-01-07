@@ -1,7 +1,8 @@
 # fmp_data/alternative/models.py
 
+import datetime
 import warnings
-from datetime import date, datetime
+from datetime import date
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -64,19 +65,19 @@ class PriceQuote(BaseModel):
     shares_outstanding: float | None = Field(
         None, alias="sharesOutstanding", description="Shares outstanding"
     )
-    earnings_announcement: datetime | None = Field(
+    earnings_announcement: datetime.datetime | None = Field(
         None, alias="earningsAnnouncement", description="Next earnings date"
     )
     exchange: str | None = Field(None, description="Exchange name")
 
-    timestamp: datetime | None = Field(
+    timestamp: datetime.datetime | None = Field(
         None,
         description="Quote timestamp",
         json_schema_extra={"format": "unix-timestamp"},
     )
 
     @field_validator("timestamp", mode="before")
-    def parse_timestamp(cls, value: Any) -> datetime | None:
+    def parse_timestamp(cls, value: Any) -> datetime.datetime | None:
         if value is None:
             return None
 
@@ -86,7 +87,7 @@ class PriceQuote(BaseModel):
             else:
                 raise ValueError(f"Unexpected type for timestamp: {type(value)}")
 
-            return datetime.fromtimestamp(timestamp, tz=ZoneInfo("UTC"))
+            return datetime.datetime.fromtimestamp(timestamp, tz=ZoneInfo("UTC"))
         except Exception as e:
             warnings.warn(f"Failed to parse timestamp {value}: {e}", stacklevel=2)
             return None
@@ -123,7 +124,7 @@ class IntradayPrice(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    date: datetime = Field(description="Price date and time")
+    date: datetime.datetime = Field(description="Price date and time")
     open: float = Field(description="Opening price")
     high: float = Field(description="High price")
     low: float = Field(description="Low price")
@@ -151,20 +152,33 @@ class CryptoPair(BaseModel):
 class CryptoQuote(PriceQuote):
     """Cryptocurrency price quote"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(
+        populate_by_name=True,
+        validate_assignment=True,
+        extra="ignore",  # Allow extra fields from API
+    )
+
+    # Override the base class field to make it optional
+    change_percent: float | None = Field(
+        None, alias="changesPercentage", description="Percent change"
+    )
 
     @field_validator("timestamp", mode="before")
-    def parse_timestamp(cls, value: Any) -> datetime | None:
+    def parse_timestamp(cls, value: Any) -> datetime.datetime | None:
+        """Parse Unix timestamp to datetime."""
         if value is None:
             return None
 
         try:
-            if isinstance(value, str | int | float):
+            # Handle different timestamp formats
+            if isinstance(value, int | float):
                 timestamp = float(value)
+            elif isinstance(value, str):
+                timestamp = float(value.strip())
             else:
                 raise ValueError(f"Unexpected type for timestamp: {type(value)}")
 
-            return datetime.fromtimestamp(timestamp, tz=ZoneInfo("UTC"))
+            return datetime.datetime.fromtimestamp(timestamp, tz=datetime.UTC)
         except Exception as e:
             warnings.warn(f"Failed to parse timestamp {value}: {e}", stacklevel=2)
             return None
