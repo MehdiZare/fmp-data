@@ -22,7 +22,9 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Ensure full Git history for versioning
+          fetch-depth: 0
+          ref: ${{ github.ref }}
+
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
