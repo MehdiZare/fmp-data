@@ -118,7 +118,16 @@ for result in results:
     print(f"Found endpoint: {result.name}")
     print(f"Relevance score: {result.score:.2f}")
 ```
+### Interactive Example
+Try out the LangChain integration in our interactive Colab notebook:
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](link-to-your-colab-notebook)
 
+This notebook demonstrates how to:
+- Build an intelligent financial agent using fmp-data and LangChain
+- Access real-time market data through natural language queries
+- Use semantic search to select relevant financial tools
+- Create multi-turn conversations about financial data
+-
 ### Environment Variables
 You can also configure the integration using environment variables:
 ```bash
@@ -285,7 +294,7 @@ FMP_LOG_BACKUP_COUNT=5
 
 ### Custom Configuration
 ```python
-from fmp_data import FMPDataClient, ClientConfig, LoggingConfig, RateLimitConfig
+from fmp_data import FMPDataClient, ClientConfig, LoggingConfig, RateLimitConfig, LogHandlerConfig
 
 config = ClientConfig(
     api_key="your_api_key_here",  # pragma: allowlist secret
@@ -300,17 +309,21 @@ config = ClientConfig(
     logging=LoggingConfig(
         level="DEBUG",
         handlers={
-            "console": {
-                "class_name": "StreamHandler",
-                "level": "INFO"
-            },
-            "file": {
-                "class_name": "RotatingFileHandler",
-                "level": "DEBUG",
-                "filename": "fmp.log",
-                "maxBytes": 10485760,
-                "backupCount": 5
-            }
+            "console": LogHandlerConfig(
+                class_name="StreamHandler",
+                level="INFO",
+                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            ),
+            "file": LogHandlerConfig(
+                class_name="RotatingFileHandler",
+                level="DEBUG",
+                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                handler_kwargs={
+                    "filename": "fmp.log",
+                    "maxBytes": 10485760,
+                    "backupCount": 5
+                }
+            )
         }
     )
 )
@@ -414,7 +427,24 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 
 - GitHub Issues: [Create an issue](https://github.com/MehdiZare/fmp-data/issues)
 - Documentation: [Read the docs](./docs)
-- Examples: [View examples](./examples)
+
+## Examples
+
+### Interactive Notebooks
+- [Financial Agent Tutorial](https://colab.research.google.com/drive/1cSyLX-j9XhyrXyVJ2HwMZJvPy1Lf2CuA?usp=sharing): Build an intelligent financial agent with LangChain integration
+- [Basic Usage Examples](./examples): Simple code examples demonstrating key features
+
+### Code Examples
+
+```python
+# Basic usage example
+from fmp_data import FMPDataClient
+
+with FMPDataClient.from_env() as client:
+    # Get company profile
+    profile = client.company.get_profile("AAPL")
+    print(f"Company: {profile.company_name}")
+```
 
 ## Release Notes
 
