@@ -25,7 +25,6 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.ref }}
 
-
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
