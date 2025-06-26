@@ -7,13 +7,20 @@ from logging import Logger
 from pathlib import Path
 from typing import Any, cast
 
-import faiss  # type: ignore # Acknowledge missing stubs
 from langchain.embeddings.base import Embeddings
 from langchain.tools import StructuredTool
 from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from pydantic import BaseModel, ConfigDict, Field, create_model
+
+try:
+    import faiss
+except ModuleNotFoundError:  # pragma: no cover
+    raise ImportError(
+        "FAISS is required for vector-store support. "
+        "Install with:  pip install 'fmp-data[langchain]'"
+    ) from None
 
 from fmp_data.base import BaseClient
 from fmp_data.exceptions import ConfigError
