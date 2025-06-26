@@ -158,9 +158,9 @@ class CryptoQuote(PriceQuote):
         extra="ignore",  # Allow extra fields from API
     )
 
-    # Override the base class field to make it optional
-    change_percent: float | None = Field(
-        None, alias="changesPercentage", description="Percent change"
+    # Override the base class field with the same type but different default
+    change_percent: float = Field(
+        0.0, alias="changesPercentage", description="Percent change"
     )
 
     @field_validator("timestamp", mode="before")
@@ -178,7 +178,7 @@ class CryptoQuote(PriceQuote):
             else:
                 raise ValueError(f"Unexpected type for timestamp: {type(value)}")
 
-            return datetime.datetime.fromtimestamp(timestamp, tz=datetime.UTC)
+            return datetime.datetime.fromtimestamp(timestamp, tz=UTC)
         except Exception as e:
             warnings.warn(f"Failed to parse timestamp {value}: {e}", stacklevel=2)
             return None
