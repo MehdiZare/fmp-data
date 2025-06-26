@@ -39,18 +39,21 @@ pydantic-settings = "^2.6.0"
 python-dotenv = "^1.0.1"
 tenacity = "^9.0.0"
 tqdm = "^4.66.5"
-cachetools = "^6.1.0"
-structlog = "^25.4.0"
+cachetools = "^5.5.0"
+structlog = "^24.4.0"
 pandas = "^2.2.3"
 
 # Optional dependencies for langchain integration
 langchain = { version = "^0.3.13", optional = true }
 openai = { version = "^1.58.1", optional = true }
-tiktoken = { version = "^0.9.0", optional = true }
+tiktoken = { version = "^0.8.0", optional = true }
 langchain-community = { version = "^0.3.13", optional = true }
-langchain-openai = { version = "^0.3.13", optional = true }
+langchain-openai = { version = "^0.2.14", optional = true }
 faiss-cpu = { version = "^1.9.0.post1", optional = true }
-langgraph = { version = "^0.4.10", optional = true }
+langgraph = { version = "^0.2.60", optional = true }
+
+[tool.poetry.scripts]
+fmp-check = "fmp_data.utils.check_install:main"
 
 [tool.poetry.group.dev.dependencies]
 # Testing
@@ -105,12 +108,12 @@ enable = true
 vcs = "git"
 style = "pep440"
 metadata = false
-pattern = "v(?P<base>\\d+\\.\\d+\\.\\d+)(?:-(?P<stage>beta|alpha))?(?:\\.(?P<rev>\\d+))?"
+pattern = "default"
 format-jinja = """
 {%- if distance == 0 -%}
-    {{base}}
+    {{ base }}
 {%- else -%}
-    {{base}}.post{{distance}}+{{rev}}
+    {{ base }}.post{{ distance }}
 {%- endif -%}
 """
 
@@ -196,10 +199,13 @@ python_classes = "Test*"
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::UserWarning",
+    "ignore::ImportWarning",
 ]
 markers = [
     "integration: marks tests as integration tests (require API key)",
     "slow: marks tests as slow running",
+    "langchain: marks tests that require LangChain dependencies",
+    "core: marks tests for core functionality only",
 ]
 
 [tool.coverage.run]
