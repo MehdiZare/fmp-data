@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  # Codecov upload in last step
+  id-token: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0            # required for accurate coverage paths
+
+      # Host interpreter; nox will fetch 3.10-3.13 via pyenv
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Cache Poetry + uv between runs
+      - name: Cache tool caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}-v1
+
+      - name: Install uv & nox
+        run: |
+          python -m pip install --upgrade pip
+          pip install uv nox
+
+      - name: Run full QA suite via nox
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          nox -s tests lint typecheck security
+
+      # === Optional: single Codecov upload (Ubuntu+Py3.12) ===
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+          files: ./coverage.xml

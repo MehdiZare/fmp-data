@@ -1,0 +1,137 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write        # push tag + create release
+  pages: write           # deploy GitHub Pages
+  id-token: write        # OIDC upload to Pages + (future) trusted PyPI
+
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # required for gh CLI commands
+
+jobs:
+  guard-label:
+    name: Verify release label
+    runs-on: ubuntu-latest
+    outputs:
+      bump: ${{ steps.bump.outputs.bump }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+
+      - name: Determine bump from PR label via gh
+        id: bump
+        run: |
+          # Find the PR that merged the current commit
+          sha=$GITHUB_SHA
+          pr_number=$(gh api \
+            "repos/${{ github.repository }}/commits/$sha/pulls" \
+            --jq '.[0].number')          # GitHub REST: list PRs for commit :contentReference[oaicite:2]{index=2}
+          echo "Merged PR: #$pr_number"
+
+          # Extract label names
+          labels=$(gh pr view "$pr_number" --json labels \
+                    --jq '.labels[].name')            # gh pr view fields :contentReference[oaicite:3]{index=3}
+          echo "Labels: $labels"
+
+          # Map to bump type
+          bump=""
+          [[ $labels == *"release:patch"* ]] && bump="patch"
+          [[ $labels == *"release:minor"* ]] && bump="minor"
+          [[ $labels == *"release:major"* ]] && bump="major"
+
+          echo "bump=$bump" >> "$GITHUB_OUTPUT"
+
+          # Fail if ambiguous / missing
+          count=$(echo "$labels" | grep -c 'release:')
+          if [[ -z "$bump" || $count -ne 1 ]]; then
+            echo "::error::Exactly one of release:patch|minor|major must be present."
+            exit 1
+          fi
+
+  tag-version:
+    needs: guard-label
+    runs-on: ubuntu-latest
+    outputs:
+      new_tag: ${{ steps.tag.outputs.new_tag }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+
+      - name: Bump version and push tag
+        id: tag
+        env:
+          BUMP: ${{ needs.guard-label.outputs.bump }}
+        run: |
+          latest=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $latest"
+          ver=${latest#v}
+          IFS='.' read -r major minor patch <<<"$ver"
+
+          case "$BUMP" in
+            patch) patch=$((patch+1));;
+            minor) minor=$((minor+1)); patch=0;;
+            major) major=$((major+1)); minor=0; patch=0;;
+          esac
+
+          new_tag="v${major}.${minor}.${patch}"
+          echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "$new_tag"
+          git push origin "$new_tag"
+
+  publish:
+    name: Build, publish, deploy docs
+    needs: tag-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.tag-version.outputs.new_tag }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: python -m pip install --upgrade pip uv nox
+
+      - name: Smoke tests (optional but good hygiene)
+        run: nox -s tests
+
+      - name: Build & publish to PyPI
+        env:
+          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          poetry build
+          python -m twine upload \
+            --non-interactive \
+            --skip-existing \
+            -u __token__ -p "$PYPI_TOKEN" \
+            dist/*
+
+      # ── Docs ──────────────────────────────────────────────
+      - name: Build MkDocs site
+        run: nox -s docs
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3      # official action :contentReference[oaicite:4]{index=4}
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4               # official deploy action :contentReference[oaicite:5]{index=5}
+
+      # ── GitHub Release ──────────────────────────────────
+      - name: Draft GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.tag-version.outputs.new_tag }}
+          name: Release ${{ needs.tag-version.outputs.new_tag }}
