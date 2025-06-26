@@ -1,158 +1,132 @@
 # .github/workflows/release.yml
-name: Release
+name: Release and PyPI
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   workflow_dispatch:
-
-permissions:
-  contents: write
-  pull-requests: read
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
 
 jobs:
   determine-version:
-    name: Determine Version
+    name: Determine Version Bump
     runs-on: ubuntu-latest
     outputs:
-      should_release: ${{ steps.check-release.outputs.should_release }}
-      version_type: ${{ steps.check-release.outputs.version_type }}
-      pr_number: ${{ steps.check-release.outputs.pr_number }}
+      version_type: ${{ steps.version.outputs.type }}
+      should_release: ${{ steps.version.outputs.should_release }}
+      pr_number: ${{ steps.pr.outputs.number }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Check if should release
-        id: check-release
-        uses: actions/github-script@v7
+      - name: Get PR number
+        id: pr
+        if: github.event_name == 'push'
+        run: |
+          PR_NUMBER=$(gh pr list --state merged --base main --limit 1 --json number --jq '.[0].number')
+          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get PR labels
+        id: labels
+        if: github.event_name == 'push' && steps.pr.outputs.number
+        run: |
+          LABELS=$(gh pr view ${{ steps.pr.outputs.number }} --json labels --jq '.labels[].name' | tr '\n' ',' | sed 's/,$//')
+          echo "labels=$LABELS" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine version type
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION_TYPE="${{ github.event.inputs.version_type }}"
+            SHOULD_RELEASE="true"
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            LABELS="${{ steps.labels.outputs.labels }}"
+            if [[ "$LABELS" == *"release:major"* ]]; then
+              VERSION_TYPE="major"
+              SHOULD_RELEASE="true"
+            elif [[ "$LABELS" == *"release:minor"* ]]; then
+              VERSION_TYPE="minor"
+              SHOULD_RELEASE="true"
+            elif [[ "$LABELS" == *"release:patch"* ]]; then
+              VERSION_TYPE="patch"
+              SHOULD_RELEASE="true"
+            elif [[ "$LABELS" == *"no-release"* ]]; then
+              VERSION_TYPE=""
+              SHOULD_RELEASE="false"
+            else
+              # Default to patch for any merged PR without explicit labels
+              VERSION_TYPE="patch"
+              SHOULD_RELEASE="true"
+            fi
+          else
+            VERSION_TYPE=""
+            SHOULD_RELEASE="false"
+          fi
+
+          echo "type=$VERSION_TYPE" >> $GITHUB_OUTPUT
+          echo "should_release=$SHOULD_RELEASE" >> $GITHUB_OUTPUT
+          echo "Determined version type: $VERSION_TYPE, should release: $SHOULD_RELEASE"
+
+  test-before-release:
+    name: Full Test Suite
+    runs-on: ubuntu-latest
+    needs: determine-version
+    if: needs.determine-version.outputs.should_release == 'true'
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          script: |
-            // Get the latest commit
-            const { data: commits } = await github.rest.repos.listCommits({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha: context.sha,
-              per_page: 1
-            });
+          python-version: "3.12"
 
-            const commitMessage = commits[0].commit.message;
-            console.log('Commit message:', commitMessage);
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
 
-            // Check if this is a merge commit from a PR
-            const prMatch = commitMessage.match(/\(#(\d+)\)/);
-            if (!prMatch) {
-              console.log('Not a PR merge commit, skipping release');
-              core.setOutput('should_release', 'false');
-              return;
-            }
+      - name: Install dependencies
+        run: poetry install --no-interaction --with dev,langchain
 
-            const prNumber = prMatch[1];
-            console.log('PR number:', prNumber);
-            core.setOutput('pr_number', prNumber);
-
-            // Get PR labels
-            const { data: pr } = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: prNumber
-            });
-
-            const labels = pr.labels.map(l => l.name);
-            console.log('PR labels:', labels);
-
-            if (labels.includes('skip-release')) {
-              console.log('Skip release label found');
-              core.setOutput('should_release', 'false');
-              return;
-            }
-
-            let versionType = 'patch'; // default
-            if (labels.includes('major')) {
-              versionType = 'major';
-            } else if (labels.includes('minor')) {
-              versionType = 'minor';
-            } else if (labels.includes('patch')) {
-              versionType = 'patch';
-            }
-
-            console.log('Version type:', versionType);
-            core.setOutput('should_release', 'true');
-            core.setOutput('version_type', versionType);
+      - name: Run full test suite
+        run: |
+          poetry run pytest \
+            --cov=fmp_data \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            -v
 
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
-    needs: determine-version
+    needs: [ determine-version, test-before-release ]
     if: needs.determine-version.outputs.should_release == 'true'
     outputs:
-      tag: ${{ steps.create-tag.outputs.tag }}
+      version: ${{ steps.tag.outputs.version }}
+      tag: ${{ steps.tag.outputs.tag }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Create version tag
-        id: create-tag
-        run: |
-          # Get current version
-          CURRENT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          echo "Current tag: $CURRENT_TAG"
-
-          # Parse version
-          CURRENT_VERSION=${CURRENT_TAG#v}
-          IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
-          MAJOR=${VERSION_PARTS[0]}
-          MINOR=${VERSION_PARTS[1]}
-          PATCH=${VERSION_PARTS[2]}
-
-          # Bump version
-          VERSION_TYPE="${{ needs.determine-version.outputs.version_type }}"
-          case $VERSION_TYPE in
-            major)
-              MAJOR=$((MAJOR + 1))
-              MINOR=0
-              PATCH=0
-              ;;
-            minor)
-              MINOR=$((MINOR + 1))
-              PATCH=0
-              ;;
-            patch)
-              PATCH=$((PATCH + 1))
-              ;;
-          esac
-
-          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
-          NEW_TAG="v$NEW_VERSION"
-
-          echo "New tag: $NEW_TAG"
-
-          # Create and push tag
-          git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
-          git push origin "$NEW_TAG"
-
-          echo "tag=$NEW_TAG" >> $GITHUB_OUTPUT
-
-  publish:
-    name: Publish Package
-    runs-on: ubuntu-latest
-    needs: [determine-version, create-release]
-    environment: production
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.create-release.outputs.tag }}
-          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -162,86 +136,126 @@ jobs:
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
-          version: "1.8.4"
-          virtualenvs-create: true
-          virtualenvs-in-project: true
+          virtualenvs-create: false
 
-      - name: Add dynamic versioning plugin
-        run: poetry self add poetry-dynamic-versioning
-
-      - name: Install dependencies
-        run: poetry install --no-interaction --with dev
-
-      - name: Run final tests
-        env:
-          FMP_TEST_API_KEY: ${{ secrets.FMP_TEST_API_KEY }}
-        run: poetry run pytest --cov=fmp_data
-
-      - name: Build package
+      - name: Configure git
         run: |
-          poetry build
-          echo "Built packages:"
-          ls -la dist/
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
 
-      - name: Publish to TestPyPI
-        if: github.event_name != 'workflow_dispatch'
+      - name: Get current version
+        id: current
+        run: |
+          CURRENT_VERSION=$(poetry version -s)
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Bump version
+        id: bump
+        run: |
+          poetry version ${{ needs.determine-version.outputs.version_type }}
+          NEW_VERSION=$(poetry version -s)
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create and push tag
+        id: tag
+        run: |
+          NEW_TAG="v${{ steps.bump.outputs.version }}"
+          echo "tag=$NEW_TAG" >> $GITHUB_OUTPUT
+          echo "version=${{ steps.bump.outputs.version }}" >> $GITHUB_OUTPUT
+
+          git add pyproject.toml
+          git commit -m "Bump version to ${{ steps.bump.outputs.version }}"
+          git tag $NEW_TAG
+          git push origin main
+          git push origin $NEW_TAG
+
+  publish-testpypi:
+    name: Publish to TestPyPI
+    runs-on: ubuntu-latest
+    needs: create-release
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.create-release.outputs.tag }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Configure Poetry for TestPyPI
         run: |
           poetry config repositories.testpypi https://test.pypi.org/legacy/
           poetry config pypi-token.testpypi ${{ secrets.TEST_PYPI_TOKEN }}
+
+      - name: Build and publish to TestPyPI
+        run: |
+          poetry build
           poetry publish -r testpypi --skip-existing
 
-      - name: Publish to PyPI
-        run: |
-          poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
-          poetry publish
-
-  github-release:
-    name: GitHub Release
+  publish-pypi:
+    name: Publish to PyPI
     runs-on: ubuntu-latest
-    needs: [determine-version, create-release, publish]
+    needs: [ create-release, publish-testpypi ]
+    environment: production
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          ref: ${{ needs.create-release.outputs.tag }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Configure Poetry for PyPI
+        run: poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
+
+      - name: Build and publish to PyPI
+        run: |
+          poetry build
+          poetry publish
+
+  create-github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [ create-release, publish-pypi ]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.create-release.outputs.tag }}
 
       - name: Generate changelog
         id: changelog
         run: |
-          TAG="${{ needs.create-release.outputs.tag }}"
-          PREV_TAG=$(git describe --tags --abbrev=0 $TAG^ 2>/dev/null || echo "")
-
-          if [ -n "$PREV_TAG" ]; then
-            echo "Generating changelog from $PREV_TAG to $TAG"
-            CHANGELOG=$(git log --pretty=format:"- %s (%h)" $PREV_TAG..$TAG | head -20)
+          if [[ "${{ needs.determine-version.outputs.pr_number }}" != "" ]]; then
+            CHANGELOG="## What's Changed\n\nMerged PR #${{ needs.determine-version.outputs.pr_number }}\n\n### Changes\n- Automatic release via semantic versioning\n- Version bump: ${{ needs.determine-version.outputs.version_type }}"
           else
-            echo "First release"
-            CHANGELOG="- Initial release"
+            CHANGELOG="## What's Changed\n\n### Changes\n- Manual release\n- Version bump: ${{ needs.determine-version.outputs.version_type }}"
           fi
-
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo -e "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.create-release.outputs.tag }}
-          name: Release ${{ needs.create-release.outputs.tag }}
-          body: |
-            ## Changes
-
-            ${{ steps.changelog.outputs.changelog }}
-
-            **Type:** ${{ needs.determine-version.outputs.version_type }}
-            **PR:** #${{ needs.determine-version.outputs.pr_number }}
-
-            ## Installation
-
-            ```bash
-            pip install --upgrade fmp-data
-            ```
-
-            **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ needs.create-release.outputs.tag }}
-          draft: false
-          prerelease: false
+          name: Release ${{ needs.create-release.outputs.version }}
+          body: ${{ steps.changelog.outputs.changelog }}
+          generate_release_notes: true
+          make_latest: true

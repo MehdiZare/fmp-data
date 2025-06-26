@@ -1,0 +1,346 @@
+# .github/workflows/docs.yml
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'fmp_data/**'
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'README.md'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'fmp_data/**'
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'README.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  check-docs:
+    name: Check Documentation
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --with docs,dev
+
+      - name: Generate API documentation
+        run: |
+          mkdir -p docs/api/generated
+          poetry run python scripts/generate_docs.py
+
+      - name: Check documentation links
+        run: |
+          poetry run mkdocs build --strict
+
+      - name: Validate documentation structure
+        run: |
+          # Check that all modules have documentation
+          find fmp_data -name "*.py" -not -path "*/tests/*" -not -name "__*" | while read file; do
+            module_name=$(echo $file | sed 's|/|.|g' | sed 's|\.py$||' | sed 's|^fmp_data\.|fmp_data.|')
+            if ! grep -r "$module_name" docs/ >/dev/null 2>&1; then
+              echo "Warning: $module_name not found in documentation"
+            fi
+          done
+
+  extract-endpoints:
+    name: Extract FMP Endpoints
+    runs-on: ubuntu-latest
+    outputs:
+      endpoints-changed: ${{ steps.check.outputs.changed }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --with dev
+
+      - name: Extract endpoint information
+        run: |
+          poetry run python -c "
+          import ast
+          import os
+          import json
+          from pathlib import Path
+
+          def extract_endpoints(file_path):
+              with open(file_path, 'r') as f:
+                  content = f.read()
+
+              tree = ast.parse(content)
+              endpoints = []
+
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.FunctionDef):
+                      # Look for methods that make HTTP requests
+                      for child in ast.walk(node):
+                          if (isinstance(child, ast.Call) and
+                              hasattr(child.func, 'attr') and
+                              child.func.attr in ['get', 'post', 'put', 'delete']):
+                              endpoints.append({
+                                  'method': node.name,
+                                  'file': str(file_path),
+                                  'http_method': child.func.attr.upper()
+                              })
+                              break
+              return endpoints
+
+          all_endpoints = []
+          for py_file in Path('fmp_data').rglob('*.py'):
+              if '__pycache__' not in str(py_file) and py_file.name != '__init__.py':
+                  endpoints = extract_endpoints(py_file)
+                  all_endpoints.extend(endpoints)
+
+          # Save endpoints to file
+          with open('endpoints.json', 'w') as f:
+              json.dump(all_endpoints, f, indent=2)
+
+          print(f'Extracted {len(all_endpoints)} endpoints')
+          "
+
+      - name: Check if endpoints changed
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            git fetch origin ${{ github.base_ref }}
+            if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E "fmp_data/.*\.py$"; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload endpoints artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: endpoints
+          path: endpoints.json
+
+  update-api-docs:
+    name: Update API Documentation
+    runs-on: ubuntu-latest
+    needs: extract-endpoints
+    if: needs.extract-endpoints.outputs.endpoints-changed == 'true'
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --with docs,dev
+
+      - name: Download endpoints artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: endpoints
+
+      - name: Generate API reference
+        run: |
+          # Create scripts directory if it doesn't exist
+          mkdir -p scripts
+
+          # Create documentation generator script
+          cat > scripts/generate_api_docs.py << 'EOF'
+          #!/usr/bin/env python3
+          """Generate API documentation from FMP client methods."""
+
+          import json
+          import os
+          from pathlib import Path
+          import importlib
+          import inspect
+          from typing import get_type_hints
+
+          def generate_method_docs(module_path: str, method_name: str) -> str:
+              """Generate documentation for a specific method."""
+              try:
+                  # Convert file path to module path
+                  module_name = module_path.replace('/', '.').replace('.py', '')
+                  if module_name.startswith('fmp_data.'):
+                      module_name = module_name[9:]  # Remove 'fmp_data.' prefix
+
+                  full_module_name = f"fmp_data.{module_name}"
+
+                  module = importlib.import_module(full_module_name)
+
+                  # Find the class that contains the method
+                  for name, obj in inspect.getmembers(module, inspect.isclass):
+                      if hasattr(obj, method_name):
+                          method = getattr(obj, method_name)
+                          doc = inspect.getdoc(method) or "No documentation available."
+
+                          # Get type hints
+                          try:
+                              hints = get_type_hints(method)
+                              params = inspect.signature(method)
+                          except Exception:
+                              hints = {}
+                              params = None
+
+                          return f"""
+          ### `{name}.{method_name}`
+
+          {doc}
+
+          **Class:** `{full_module_name}.{name}`
+
+          """
+
+                  return f"### `{method_name}`\n\nMethod documentation not available.\n\n"
+
+              except Exception as e:
+                  return f"### `{method_name}`\n\nError loading documentation: {e}\n\n"
+
+          def main():
+              # Load endpoints
+              with open('endpoints.json', 'r') as f:
+                  endpoints = json.load(f)
+
+              # Group endpoints by module
+              modules = {}
+              for endpoint in endpoints:
+                  module_path = endpoint['file']
+                  method_name = endpoint['method']
+
+                  if module_path not in modules:
+                      modules[module_path] = []
+                  modules[module_path].append(endpoint)
+
+              # Generate documentation
+              docs_content = """# API Reference
+
+          This page contains auto-generated documentation for all FMP Data client methods.
+
+          """
+
+              for module_path, methods in modules.items():
+                  relative_path = module_path.replace('fmp_data/', '')
+                  docs_content += f"## {relative_path}\n\n"
+
+                  for method in methods:
+                      docs_content += generate_method_docs(module_path, method['method'])
+
+              # Write to docs directory
+              os.makedirs('docs/api', exist_ok=True)
+              with open('docs/api/reference.md', 'w') as f:
+                  f.write(docs_content)
+
+              print("API documentation generated successfully!")
+
+          if __name__ == "__main__":
+              main()
+          EOF
+
+          poetry run python scripts/generate_api_docs.py
+
+      - name: Commit documentation changes
+        if: github.event_name == 'push'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          if [[ -n $(git status --porcelain docs/) ]]; then
+            git add docs/
+            git commit -m "docs: auto-update API documentation [skip ci]"
+            git push
+          else
+            echo "No documentation changes to commit"
+          fi
+
+  build-docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    needs: [update-api-docs]
+    # Run if docs were updated OR on push to main OR on manual trigger
+    if: always() && (needs.update-api-docs.result == 'success' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          # Fetch latest changes if docs were updated
+          ref: ${{ github.ref }}
+
+      - name: Setup Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/configure-pages@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --with docs
+
+      - name: Build documentation
+        run: |
+          poetry run mkdocs build --clean --strict
+
+      - name: Upload Pages artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy-docs:
+    name: Deploy Documentation
+    runs-on: ubuntu-latest
+    needs: build-docs
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
