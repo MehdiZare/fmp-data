@@ -21,50 +21,47 @@ EXTRA_IDS = ["core", "lang"]  # ids must be a list/tuple (not lambda)
 
 
 # ─────────────── Helper: install with Poetry ─────────
-def _install(
-    session: nox.Session, *, group: str | None = None, extras: str | None = None
-) -> None:
-    """Install project into this session’s venv via Poetry."""
-    session.install("poetry")  # ensure Poetry is available
-
-    cmd = ["poetry", "install", "--sync", "--no-interaction"]
-    if group:
-        cmd += ["--with", group]
+def _install(session, *, extras: str | None = None) -> None:
+    """Install project + *test* group; add extras if requested."""
+    session.install("poetry")  # put Poetry in venv
+    cmd = ["poetry", "install", "--no-interaction", "--with", "test"]
     if extras:
-        cmd += ["--extras", extras]
+        cmd += ["--extras", extras]  # install optional stack
     session.run(*cmd, external=True)
 
 
-# ─────────────── Test matrix ────────────────────────
+# ── test matrix ─────────────────────────────────────────────────
 @nox.session(python=PY_VERS, reuse_venv=True, tags=["tests"])
 @nox.parametrize("extra", EXTRAS, ids=EXTRA_IDS)
-def tests(session: nox.Session, extra: str | None):
-    """Run pytest under every interpreter / extras combo."""
-    _install(session, group="dev", extras=extra)
+def tests(session, extra):
+    _install(session, extras=extra)
     session.run("pytest", "-q")
 
 
-# ─────────────── QA sessions (run on 3.12 only) ─────
-@nox.session(python="3.12", reuse_venv=True, tags=["qa"])
+# ── QA sessions on one interpreter ─────────────────────────────
+@nox.session(python="3.12", reuse_venv=True)
 def lint(session):
-    _install(session, group="dev")
+    _install(session)
     session.run("ruff", "check", "fmp_data", "tests")
 
 
-@nox.session(python="3.12", reuse_venv=True, tags=["qa"])
+@nox.session(python="3.12", reuse_venv=True)
 def typecheck(session):
-    _install(session, group="dev")
+    _install(session)
     session.run("mypy", "fmp_data")
 
 
-@nox.session(python="3.12", reuse_venv=True, tags=["qa"])
+@nox.session(python="3.12", reuse_venv=True)
 def security(session):
-    _install(session, group="dev")
+    _install(session)
     session.run("bandit", "-r", "fmp_data", "-ll")
 
 
 # ─────────────── Docs build (MkDocs) ────────────────
+
+
 @nox.session(python="3.12", reuse_venv=True, tags=["docs"])
 def docs(session):
-    _install(session, group="docs,dev")
+    _install(session)
+    session.install("mkdocs", "mkdocs-material", "mkdocstrings-python")
     session.run("mkdocs", "build", "--strict")

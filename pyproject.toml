@@ -51,64 +51,41 @@ types-cachetools  = "^6.0.0.20250525"
 structlog         = "^25.4.0"
 pandas            = "^2.2.3"
 
-# ────────────────────────────────  Dev-all-in  ───────────────────────────────
-[tool.poetry.group.dev.dependencies]      # everything you need locally
-# ❶ testing
-pytest          = "^8.3.3"
-pytest-asyncio  = "^0.24.0"
-pytest-cov      = "^5.0.0"
-pytest-mock     = "^3.14.0"
-responses       = "^0.25.3"
-freezegun       = "^1.5.1"
-vcrpy           = "^6.0.2"
-coverage        = "^7.6.4"
-# ❷ style / static
-black           = "^24.10.0"
-isort           = "^5.13.2"
-ruff            = "^0.7.1"
-mypy            = "^1.13.0"
-bandit          = "^1.7.10"
-rich            = "^13.9.3"
-pre-commit      = "^4.0.1"
-# ❸ packaging / release
-twine           = "^5.1.1"
-poetry-dynamic-versioning = "^1.4.1"
-# ❹ optional-runtime stack (duplicated on purpose for full “dev” env)
-langchain           = "^0.3.13"
-openai              = "^1.58.1"
-tiktoken            = "^0.8.0"
-langchain-community = "^0.3.13"
-langchain-openai    = "^0.2.14"
-faiss-cpu           = "^1.9.0.post1"
-langgraph           = "^0.2.60"
-# ❺ build / automation
-nox            = "^2025.4.15"
-nox-poetry     = "^1.0.3"
-uv             = "^0.2.7"          # lightning-fast installer inside CI
+# ── developer-only tools go in the *test* group ─────────────────
+[tool.poetry.group.test.dependencies]        # ← new group
+pytest            = "^8.3.3"
+pytest-asyncio    = "^0.24.0"
+pytest-cov        = "^5.0.0"
+pytest-mock       = "^3.14.0"
+freezegun         = "^1.5.1"
+responses         = "^0.25.3"
+vcrpy             = "^6.0.2"
+coverage          = "^7.6.4"
+black             = "^24.10.0"
+isort             = "^5.13.2"
+ruff              = "^0.7.1"
+mypy              = "^1.13.0"
+bandit            = "^1.7.10"
+rich              = "^13.9.3"
+pre-commit        = "^4.0.1"
+twine             = "^5.1.1"
 
-# ────────────────────────────────  Optional extra  ───────────────────────────
-[tool.poetry.group.langchain]             # still optional for downstream users
-optional = true
-[tool.poetry.group.langchain.dependencies]
-langchain           = "^0.3.13"
-openai              = "^1.58.1"
-tiktoken            = "^0.8.0"
-langchain-community = "^0.3.13"
-langchain-openai    = "^0.2.14"
-faiss-cpu           = "^1.9.0.post1"
-langgraph           = "^0.2.60"
-
-# ────────────────────────────────  Docs build  ───────────────────────────────
+# ── docs group (optional) ───────────────────────────────────────
 [tool.poetry.group.docs.dependencies]
 mkdocs                 = "^1.6.1"
 mkdocs-material        = "^9.5.42"
 mkdocstrings-python    = "^1.12.2"
 
-# ────────────────────────────────  Extras tag  ───────────────────────────────
+# ── runtime optional extra for end-users ────────────────────────
 [tool.poetry.extras]
 langchain = [
-  "langchain", "openai", "tiktoken", "langchain-community",
-  "langchain-openai", "faiss-cpu", "langgraph"
+  "langchain",
+  "openai",
+  "tiktoken",
+  "langchain-community",
+  "langchain-openai",
+  "faiss-cpu",
+  "langgraph"
 ]
 
 # ────────────────────────────────  CLI scripts  ──────────────────────────────
