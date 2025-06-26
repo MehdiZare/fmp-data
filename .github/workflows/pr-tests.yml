@@ -1,0 +1,171 @@
+# .github/workflows/pr-tests.yml
+name: PR Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  test-core:
+    name: Core Tests - Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-core-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Install core dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction --with dev
+
+      - name: Run linting
+        run: |
+          poetry run black . --check --diff
+          poetry run isort . --check-only --diff
+          poetry run ruff check .
+
+      - name: Run type checking
+        run: poetry run mypy fmp_data
+
+      - name: Run security checks
+        run: poetry run bandit -r fmp_data -f json -o bandit-report.json
+
+      - name: Run core tests
+        run: |
+          poetry run pytest tests/unit/ \
+            --ignore=tests/unit/lc/ \
+            --cov=fmp_data \
+            --cov-exclude=fmp_data/lc/ \
+            --cov-report=xml:coverage-core.xml \
+            --cov-report=term-missing \
+            -v
+
+      - name: Upload core coverage
+        uses: codecov/codecov-action@v5
+        with:
+          file: ./coverage-core.xml
+          flags: core
+          name: core-${{ matrix.python-version }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  test-langchain:
+    name: LangChain Tests - Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-langchain-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Install langchain dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction --with dev,langchain
+
+      - name: Run LangChain tests
+        run: |
+          poetry run pytest tests/unit/lc/ \
+            --cov=fmp_data/lc/ \
+            --cov-report=xml:coverage-langchain.xml \
+            --cov-report=term-missing \
+            -v
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+
+      - name: Upload LangChain coverage
+        uses: codecov/codecov-action@v5
+        with:
+          file: ./coverage-langchain.xml
+          flags: langchain
+          name: langchain-${{ matrix.python-version }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [test-core]
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --with dev,langchain
+
+      - name: Run integration tests
+        if: ${{ secrets.FMP_TEST_API_KEY != '' }}
+        run: |
+          poetry run pytest tests/integration/ -v --tb=short
+        env:
+          FMP_TEST_API_KEY: ${{ secrets.FMP_TEST_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+  pre-commit:
+    name: Pre-commit hooks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1
