@@ -70,6 +70,7 @@ rich = "^13.9.3"
 twine = "^5.1.1"
 poetry-dynamic-versioning = "^1.4.1"
 types-cachetools = "^5.5.0.20240820"
+pylint = "^3.3.7"
 
 [tool.poetry.group.langchain]
 optional = true
