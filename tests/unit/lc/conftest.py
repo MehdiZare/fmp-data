@@ -67,8 +67,9 @@ def mock_fmp_api_key() -> str:
 
 
 @pytest.fixture
-def lc_env_vars(tmp_path: Path, mock_fmp_api_key: str, mock_openai_api_key: str) -> Generator[
-    dict[str, str], None, None]:
+def lc_env_vars(
+    tmp_path: Path, mock_fmp_api_key: str, mock_openai_api_key: str
+) -> Generator[dict[str, str], None, None]:
     """Fixture to set up and tear down LangChain environment variables"""
     vector_store_path = str(tmp_path / "vector_store")
     test_vars = {
@@ -86,7 +87,9 @@ def lc_env_vars(tmp_path: Path, mock_fmp_api_key: str, mock_openai_api_key: str)
 
 
 @pytest.fixture
-def mock_langchain_config(mock_fmp_api_key: str, mock_openai_api_key: str) -> LangChainConfig:
+def mock_langchain_config(
+    mock_fmp_api_key: str, mock_openai_api_key: str
+) -> LangChainConfig:
     """Provide a mock LangChain configuration."""
     return LangChainConfig(
         api_key=mock_fmp_api_key,
@@ -159,8 +162,10 @@ def mock_openai_embeddings():
 @pytest.fixture
 def mock_faiss():
     """Mock FAISS to avoid dependency issues."""
-    with patch("faiss.IndexFlatL2") as mock_index, \
-            patch("langchain_community.vectorstores.FAISS") as mock_faiss:
+    with (
+        patch("faiss.IndexFlatL2") as mock_index,
+        patch("langchain_community.vectorstores.FAISS") as mock_faiss,
+    ):
         # Mock FAISS index
         index_instance = Mock()
         mock_index.return_value = index_instance
@@ -183,7 +188,7 @@ def ensure_langchain_available():
 
 # Mark all tests in this directory as langchain tests
 def pytest_collection_modifyitems(
-        config: pytest.Config, items: list[pytest.Item]
+    config: pytest.Config, items: list[pytest.Item]
 ) -> None:
     """Auto-mark all tests in lc directory as langchain tests."""
     for item in items:

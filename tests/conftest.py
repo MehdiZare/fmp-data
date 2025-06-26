@@ -57,7 +57,7 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 def pytest_collection_modifyitems(
-        config: pytest.Config, items: list[pytest.Item]
+    config: pytest.Config, items: list[pytest.Item]
 ) -> None:
     """Modify test collection to skip tests based on available dependencies."""
 
@@ -67,26 +67,20 @@ def pytest_collection_modifyitems(
             item.add_marker(
                 pytest.mark.skip(
                     reason="LangChain dependencies not installed. "
-                           "Install with: pip install 'fmp-data[langchain]'"
+                    "Install with: pip install 'fmp-data[langchain]'"
                 )
             )
 
         # Skip integration tests if no API key
         if item.get_closest_marker("integration") and not config._fmp_api_key:  # type: ignore
-            item.add_marker(
-                pytest.mark.skip(reason="FMP_TEST_API_KEY not set")
-            )
+            item.add_marker(pytest.mark.skip(reason="FMP_TEST_API_KEY not set"))
 
         # Skip tests requiring API keys
         if item.get_closest_marker("requires_api_key") and not config._fmp_api_key:  # type: ignore
-            item.add_marker(
-                pytest.mark.skip(reason="FMP_TEST_API_KEY not set")
-            )
+            item.add_marker(pytest.mark.skip(reason="FMP_TEST_API_KEY not set"))
 
         if item.get_closest_marker("requires_openai_key") and not config._openai_api_key:  # type: ignore
-            item.add_marker(
-                pytest.mark.skip(reason="OPENAI_API_KEY not set")
-            )
+            item.add_marker(pytest.mark.skip(reason="OPENAI_API_KEY not set"))
 
 
 def pytest_runtest_setup(item: pytest.Item) -> None:
@@ -152,6 +146,7 @@ def safe_fmp_imports() -> dict[str, Any]:
 
         # Import specific classes
         from fmp_data import FMPDataClient, FMPError, ClientConfig
+
         imports["FMPDataClient"] = FMPDataClient
         imports["FMPError"] = FMPError
         imports["ClientConfig"] = ClientConfig
@@ -173,7 +168,9 @@ def safe_langchain_imports() -> dict[str, Any]:
     # Try importing LangChain modules
     imports["create_vector_store"] = _safe_import("fmp_data", "create_vector_store")
     imports["LangChainConfig"] = _safe_import("fmp_data.lc.config", "LangChainConfig")
-    imports["EndpointSemantics"] = _safe_import("fmp_data.lc.models", "EndpointSemantics")
+    imports["EndpointSemantics"] = _safe_import(
+        "fmp_data.lc.models", "EndpointSemantics"
+    )
 
     return imports
 

@@ -85,7 +85,9 @@ def rate_limit_config() -> RateLimitConfig:
 
 
 @pytest.fixture(scope="session")
-def fmp_client(rate_limit_config: RateLimitConfig) -> Generator[FMPDataClient, None, None]:
+def fmp_client(
+    rate_limit_config: RateLimitConfig,
+) -> Generator[FMPDataClient, None, None]:
     """Create FMP client for testing"""
     api_key = os.getenv("FMP_TEST_API_KEY")
     if not api_key:
