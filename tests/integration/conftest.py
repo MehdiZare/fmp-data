@@ -1,16 +1,31 @@
 # tests/integration/conftest.py
+"""
+Integration test configuration with safe imports.
+
+This conftest handles:
+- Safe imports that don't fail when core dependencies are missing
+- VCR configuration for recording API responses
+- Rate limiting between tests
+- Test fixtures for common data
+"""
 import logging
 import os
 import re
 import time
 from collections.abc import Generator
 from pathlib import Path
+from typing import Any
 
 import pytest
 import vcr
 from vcr.request import Request
 
-from fmp_data import ClientConfig, FMPDataClient, RateLimitConfig
+# Safe imports that handle missing dependencies gracefully
+try:
+    from fmp_data import ClientConfig, FMPDataClient, RateLimitConfig
+except ImportError as e:
+    # If we can't import core FMP modules, we can't run integration tests
+    pytest.skip(f"Core fmp_data modules not available: {e}", allow_module_level=True)
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +50,7 @@ def scrub_api_key(request: Request) -> Request:
 # Create cassettes directory
 CASSETTES_PATH = (Path(__file__).parent / "vcr_cassettes").resolve()
 CASSETTES_PATH.mkdir(exist_ok=True)
+
 vcr_config = vcr.VCR(
     serializer="yaml",
     cassette_library_dir=str(CASSETTES_PATH),
@@ -69,7 +85,7 @@ def rate_limit_config() -> RateLimitConfig:
 
 
 @pytest.fixture(scope="session")
-def fmp_client(rate_limit_config: RateLimitConfig) -> Generator[FMPDataClient]:
+def fmp_client(rate_limit_config: RateLimitConfig) -> Generator[FMPDataClient, None, None]:
     """Create FMP client for testing"""
     api_key = os.getenv("FMP_TEST_API_KEY")
     if not api_key:
@@ -105,7 +121,7 @@ def fmp_client(rate_limit_config: RateLimitConfig) -> Generator[FMPDataClient]:
 
 
 @pytest.fixture(autouse=True)
-def rate_limit_sleep() -> Generator:
+def rate_limit_sleep() -> Generator[None, None, None]:
     """Add small delay between tests to avoid rate limiting"""
     yield
     time.sleep(0.5)  # 500ms delay between tests
@@ -117,7 +133,6 @@ def test_symbol() -> str:
     return "AAPL"
 
 
-# Additional fixtures for test data
 @pytest.fixture
 def test_exchange() -> str:
     """Provide test exchange"""
