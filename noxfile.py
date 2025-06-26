@@ -16,7 +16,7 @@ import nox
 from nox import Session
 
 # Global default: always try to re-use when possible
-nox.options.reuse_venv = True
+nox.options.reuse_venv = "yes"
 
 # ─────────────── Matrix definitions ────────────────
 PY_VERS = ["3.10", "3.11", "3.12", "3.13"]
