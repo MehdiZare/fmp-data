@@ -10,12 +10,12 @@ from typing import Any, cast
 from langchain.embeddings.base import Embeddings
 from langchain.tools import StructuredTool
 from langchain_community.docstore.in_memory import InMemoryDocstore
-from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
 try:
     import faiss
+    from langchain_community.vectorstores import FAISS
 except ModuleNotFoundError:  # pragma: no cover
     raise ImportError(
         "FAISS is required for vector-store support. "
