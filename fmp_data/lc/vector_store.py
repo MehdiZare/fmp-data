@@ -223,7 +223,9 @@ class EndpointVectorStore:
                 return {
                     "name": tool.name,
                     "description": tool.description,
-                    "parameters": tool.args_schema.schema() if tool.args_schema else {},
+                    "parameters": (
+                        tool.args_schema.model_json_schema() if tool.args_schema else {}
+                    ),
                 }
             case _:
                 return tool

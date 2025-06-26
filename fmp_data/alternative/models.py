@@ -164,7 +164,7 @@ class CryptoQuote(PriceQuote):
     )
 
     @field_validator("timestamp", mode="before")
-    def parse_timestamp(cls, value: Any) -> datetime | None:
+    def parse_timestamp(cls, value: Any) -> datetime.datetime | None:
         """Parse Unix timestamp (int, float, str) into a TZ-aware UTC datetime."""
         if value is None:
             return None
