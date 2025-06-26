@@ -11,6 +11,7 @@ from langchain.embeddings.base import Embeddings
 from langchain.tools import StructuredTool
 from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_core.documents import Document
+from langchain_core.utils.function_calling import convert_to_openai_function
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
 try:
@@ -207,7 +208,7 @@ class EndpointVectorStore:
         except Exception as e:
             raise ConfigError(f"Failed to load vector store: {str(e)}") from e
 
-    from typing import Any, cast
+    from typing import Any
 
     from pydantic import BaseModel
 
@@ -234,21 +235,17 @@ class EndpointVectorStore:
         match provider.lower():
             case "openai":
                 # Pydantic-v2 works out of the box with LangChain’s helper
-                from langchain_core.utils.function_calling import (
-                    convert_to_openai_function,
-                )
-
                 return convert_to_openai_function(tool)
 
             case "anthropic":
                 if isinstance(tool.args_schema, type) and issubclass(
                     tool.args_schema, BaseModel
                 ):
-                    # Pydantic v2: always has model_json_schema()
+                    # first (and only) definition – annotate here
                     model_schema: dict[str, Any] = tool.args_schema.model_json_schema()
                 else:
-                    # args_schema is already a dict or None (zero-arg tool)
-                    model_schema = cast(dict[str, Any], tool.args_schema or {})
+                    # just assign, no new annotation
+                    model_schema = tool.args_schema or {}
 
                 return {
                     "name": tool.name,

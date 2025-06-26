@@ -16,6 +16,7 @@ from __future__ import annotations
 import importlib.util as _importlib_util
 import types as _types
 import warnings as _warnings
+from typing import Any
 
 from fmp_data.client import FMPDataClient
 from fmp_data.config import (
@@ -110,7 +111,7 @@ _lazy_attrs = {
 __all__.extend(_lazy_attrs.keys())
 
 
-def __getattr__(name: str):  # pragma: no cover
+def __getattr__(name: str) -> Any:  # pragma: no cover
     """
     PEP 562 hook: resolve optional symbols at first access.
 
