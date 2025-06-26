@@ -1,3 +1,10 @@
+"""
+Configuration module for FMP Data API client.
+
+This module provides configuration classes for the FMP Data API client,
+including logging, rate limiting, and client settings.
+"""
+
 import os
 from pathlib import Path
 from typing import Any
@@ -99,11 +106,11 @@ class LoggingConfig(BaseModel):
             log_path=log_path,
         )
 
-    def model_post_init(self, __context: Any) -> None:
+    def model_post_init(self, __context: Any = None) -> None:
         """
         Post-initialization validation and setup.
         """
-        if self.log_path:
+        if self.log_path and isinstance(self.log_path, Path):
             try:
                 self.log_path.mkdir(parents=True, exist_ok=True)
             except (OSError, PermissionError) as e:
