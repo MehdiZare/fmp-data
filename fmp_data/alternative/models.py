@@ -21,7 +21,7 @@ class PriceQuote(BaseModel):
     symbol: str = Field(description="Trading symbol")
     price: float | None = Field(None, description="Current price")
     change: float | None = Field(None, description="Price change")
-    change_percent: float = Field(
+    change_percent: float | None = Field(
         alias="changesPercentage", description="Percent change"
     )
 
@@ -87,7 +87,7 @@ class PriceQuote(BaseModel):
             else:
                 raise ValueError(f"Unexpected type for timestamp: {type(value)}")
 
-            return datetime.datetime.fromtimestamp(timestamp, tz=ZoneInfo("UTC"))
+            return datetime.datetime.fromtimestamp(timestamp, tz=UTC)
         except Exception as e:
             warnings.warn(f"Failed to parse timestamp {value}: {e}", stacklevel=2)
             return None
@@ -165,22 +165,14 @@ class CryptoQuote(PriceQuote):
 
     @field_validator("timestamp", mode="before")
     def parse_timestamp(cls, value: Any) -> datetime.datetime | None:
-        """Parse Unix timestamp to datetime."""
+        """Parse Unix timestamp (int, float, str) into a TZ-aware UTC datetime."""
         if value is None:
             return None
-
         try:
-            # Handle different timestamp formats
-            if isinstance(value, int | float):
-                timestamp = float(value)
-            elif isinstance(value, str):
-                timestamp = float(value.strip())
-            else:
-                raise ValueError(f"Unexpected type for timestamp: {type(value)}")
-
-            return datetime.datetime.fromtimestamp(timestamp, tz=datetime.UTC)
-        except Exception as e:
-            warnings.warn(f"Failed to parse timestamp {value}: {e}", stacklevel=2)
+            ts_float = float(value)  # handles int, float, str transparently
+            return datetime.datetime.fromtimestamp(ts_float, tz=UTC)
+        except (ValueError, TypeError) as exc:
+            warnings.warn(f"Failed to parse timestamp {value!r}: {exc}", stacklevel=2)
             return None
 
 

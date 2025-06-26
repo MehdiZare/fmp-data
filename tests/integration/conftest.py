@@ -14,6 +14,10 @@ from fmp_data import ClientConfig, FMPDataClient, RateLimitConfig
 
 logger = logging.getLogger(__name__)
 
+pytest.importorskip("langchain_core", reason="langchain extra not installed")
+pytest.importorskip("langchain_openai", reason="langchain extra not installed")
+pytest.importorskip("faiss", reason="faiss extra not installed")
+
 
 def scrub_api_key(request: Request) -> Request:
     """Remove API key for recording only"""

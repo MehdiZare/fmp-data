@@ -7,13 +7,21 @@ from logging import Logger
 from pathlib import Path
 from typing import Any, cast
 
-import faiss  # type: ignore # Acknowledge missing stubs
 from langchain.embeddings.base import Embeddings
 from langchain.tools import StructuredTool
 from langchain_community.docstore.in_memory import InMemoryDocstore
-from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
+from langchain_core.utils.function_calling import convert_to_openai_function
 from pydantic import BaseModel, ConfigDict, Field, create_model
+
+try:
+    import faiss
+    from langchain_community.vectorstores import FAISS
+except ModuleNotFoundError:  # pragma: no cover
+    raise ImportError(
+        "FAISS is required for vector-store support. "
+        "Install with:  pip install 'fmp-data[langchain]'"
+    ) from None
 
 from fmp_data.base import BaseClient
 from fmp_data.exceptions import ConfigError
@@ -200,24 +208,51 @@ class EndpointVectorStore:
         except Exception as e:
             raise ConfigError(f"Failed to load vector store: {str(e)}") from e
 
+    from typing import Any
+
+    from pydantic import BaseModel
+
     @staticmethod
     def _format_tool_for_provider(
-        tool: StructuredTool, provider: str = "openai"
+        tool: StructuredTool,
+        provider: str = "openai",
     ) -> dict[str, Any] | StructuredTool:
-        """Format tool based on provider requirements."""
+        """
+        Convert a LangChain ``StructuredTool`` into the JSON/function spec required
+        by a specific provider.
+
+        Args:
+            tool:      The LangChain tool to transform.
+            provider:  Target provider (“openai”, “anthropic”, …).
+
+        Returns
+        -------
+        dict | StructuredTool
+            * OpenAI → OpenAI-function spec (dict).
+            * Anthropic → Claude JSON-tool spec (dict).
+            * default → original ``StructuredTool`` unchanged.
+        """
         match provider.lower():
             case "openai":
-                from langchain_core.utils.function_calling import (
-                    convert_to_openai_function,
-                )
-
+                # Pydantic-v2 works out of the box with LangChain’s helper
                 return convert_to_openai_function(tool)
+
             case "anthropic":
+                if isinstance(tool.args_schema, type) and issubclass(
+                    tool.args_schema, BaseModel
+                ):
+                    # first (and only) definition – annotate here
+                    model_schema: dict[str, Any] = tool.args_schema.model_json_schema()
+                else:
+                    # just assign, no new annotation
+                    model_schema = tool.args_schema or {}
+
                 return {
                     "name": tool.name,
                     "description": tool.description,
-                    "parameters": tool.args_schema.schema() if tool.args_schema else {},
+                    "parameters": model_schema,
                 }
+
             case _:
                 return tool
 
