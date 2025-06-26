@@ -15,6 +15,9 @@ Poetry is installed in every session; we use *poetry install* directly
 import nox
 from nox import Session
 
+# Global default: always try to re-use when possible
+nox.options.reuse_venv = True
+
 # ─────────────── Matrix definitions ────────────────
 PY_VERS = ["3.10", "3.11", "3.12", "3.13"]
 EXTRAS = [None, "langchain"]
