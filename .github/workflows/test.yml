@@ -39,8 +39,8 @@ jobs:
           key: venv-${{ runner.os }}-${{ matrix.python-version }}-core-${{ hashFiles('**/poetry.lock') }}
 
       - name: Install core dependencies (no LangChain)
-        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction --with dev
+
 
       - name: Run linting
         run: |
