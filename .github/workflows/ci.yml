@@ -2,14 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 permissions:
   contents: read
-  # Codecov upload in last step
-  id-token: read
 
 defaults:
   run:
