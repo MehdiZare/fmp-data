@@ -25,6 +25,7 @@ def _install(
     """
     Install project with Poetry; prefer uv if available.
     """
+    session.install("poetry")
     use_uv = shutil.which("uv") is not None
 
     if use_uv:

@@ -16,18 +16,20 @@ defaults:
 jobs:
   qa:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0            # required for accurate coverage paths
+        with: { fetch-depth: 0 }
 
-      # Host interpreter; nox will fetch 3.10-3.13 via pyenv
+      # ── make every interpreter visible to nox ──────────────────────
       - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+        with: { python-version: "3.10" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
 
-      # Cache Poetry + uv between runs
       - name: Cache tool caches
         uses: actions/cache@v4
         with:
@@ -36,18 +38,16 @@ jobs:
             ~/.cache/pypoetry
           key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}-v1
 
-      - name: Install uv & nox
+      - name: Install uv, poetry & nox globally
         run: |
           python -m pip install --upgrade pip
-          pip install uv nox
+          pip install uv "poetry>=1.8.0" nox
 
       - name: Run full QA suite via nox
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        run: |
-          nox -s tests lint typecheck security
+        run: nox -s tests lint typecheck security
 
-      # === Optional: single Codecov upload (Ubuntu+Py3.12) ===
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
