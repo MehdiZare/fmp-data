@@ -9,6 +9,10 @@ from pydantic import SecretStr
 from fmp_data import FMPDataClient
 from fmp_data.lc import EndpointVectorStore, LangChainConfig, create_vector_store
 
+pytest.importorskip("langchain_core", reason="langchain extra not installed")
+pytest.importorskip("langchain_openai", reason="langchain extra not installed")
+pytest.importorskip("faiss", reason="faiss extra not installed")
+
 
 @pytest.fixture(scope="session")
 def openai_api_key() -> str:
