@@ -57,6 +57,12 @@ def security(session):
     session.run("bandit", "-r", "fmp_data", "-ll")
 
 
+@nox.session(python="3.12", reuse_venv=True)
+def typecheck_lang(session):
+    _install(session, extras="langchain")  # test+langchain
+    session.run("mypy", "fmp_data")
+
+
 # ─────────────── Docs build (MkDocs) ────────────────
 
 
