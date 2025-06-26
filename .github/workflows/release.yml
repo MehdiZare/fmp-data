@@ -3,6 +3,8 @@ name: Release
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+
 
 permissions:
   contents: write        # push tag + create release
@@ -104,7 +106,7 @@ jobs:
       - run: python -m pip install --upgrade pip uv nox
 
       - name: Smoke tests (optional but good hygiene)
-        run: nox -s tests
+        run: nox -s smoke
 
       - name: Build & publish to PyPI
         env:

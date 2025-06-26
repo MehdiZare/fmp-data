@@ -116,7 +116,7 @@ format-jinja = """
 {%- if distance == 0 -%}
     {{base}}
 {%- else -%}
-    {{base}}.post{{distance}}+{{rev}}
+    {{base}}.post{{distance}}
 {%- endif -%}
 """
 [tool.poetry-dynamic-versioning.substitution]
