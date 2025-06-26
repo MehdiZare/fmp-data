@@ -39,6 +39,12 @@ def tests(session: Session, extra: str | None) -> None:
     session.run("pytest", "-q")
 
 
+@nox.session(python="3.12")
+def smoke(session: nox.Session) -> None:
+    _install(session, extras="langchain")
+    session.run("pytest", "-q")
+
+
 # ── QA sessions on one interpreter ─────────────────────────────
 @nox.session(python="3.12", reuse_venv=True)
 def lint(session: Session) -> None:
