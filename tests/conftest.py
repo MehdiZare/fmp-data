@@ -1,35 +1,39 @@
-# conftest.py (root level)
+# tests/conftest.py
 """
-Root conftest.py for managing optional dependencies and test configuration.
+Root conftest.py combining existing fixtures with dependency management.
 
 This file handles:
+- All existing test fixtures (preserved)
 - Detection of available optional dependencies
 - Automatic test skipping based on markers and dependencies
-- Global fixtures for dependency management
 - Safe imports that don't fail when dependencies are missing
 """
 import importlib.util
+import json
 import os
 import warnings
 from typing import Any
+from unittest.mock import Mock, create_autospec
 
+import httpx
 import pytest
 
+# Safe imports for core functionality - these should always work
+try:
+    from fmp_data import FMPDataClient
+    from fmp_data.config import ClientConfig, LoggingConfig, RateLimitConfig
+    from fmp_data.models import APIVersion, Endpoint
+except ImportError as e:
+    pytest.skip(f"Core fmp_data modules not available: {e}", allow_module_level=True)
+
+
+# ============================================================================
+# DEPENDENCY DETECTION (New)
+# ============================================================================
 
 def _is_package_available(package_name: str) -> bool:
     """Check if a package is available for import."""
     return importlib.util.find_spec(package_name) is not None
-
-
-def _safe_import(module_name: str, attr_name: str | None = None) -> Any | None:
-    """Safely import a module/attribute, returning None if not available."""
-    try:
-        module = importlib.import_module(module_name)
-        if attr_name:
-            return getattr(module, attr_name, None)
-        return module
-    except ImportError:
-        return None
 
 
 # Check available dependencies at import time
@@ -57,46 +61,74 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 def pytest_collection_modifyitems(
-    config: pytest.Config, items: list[pytest.Item]
+        config: pytest.Config, items: list[pytest.Item]
 ) -> None:
     """Modify test collection to skip tests based on available dependencies."""
 
     for item in items:
+        # Auto-mark tests based on location
+        if "/unit/" in str(item.fspath) and "/lc/" not in str(item.fspath):
+            item.add_marker(pytest.mark.core)
+            item.add_marker(pytest.mark.unit)
+        elif "/lc/" in str(item.fspath):
+            item.add_marker(pytest.mark.langchain)
+            item.add_marker(pytest.mark.unit)
+        elif "/integration/" in str(item.fspath):
+            item.add_marker(pytest.mark.integration)
+
         # Skip LangChain tests if LangChain not available
         if item.get_closest_marker("langchain") and not LANGCHAIN_AVAILABLE:
             item.add_marker(
                 pytest.mark.skip(
                     reason="LangChain dependencies not installed. "
-                    "Install with: pip install 'fmp-data[langchain]'"
+                           "Install with: pip install 'fmp-data[langchain]'"
                 )
             )
 
         # Skip integration tests if no API key
         if item.get_closest_marker("integration") and not config._fmp_api_key:  # type: ignore
-            item.add_marker(pytest.mark.skip(reason="FMP_TEST_API_KEY not set"))
+            item.add_marker(
+                pytest.mark.skip(reason="FMP_TEST_API_KEY not set")
+            )
 
         # Skip tests requiring API keys
         if item.get_closest_marker("requires_api_key") and not config._fmp_api_key:  # type: ignore
-            item.add_marker(pytest.mark.skip(reason="FMP_TEST_API_KEY not set"))
+            item.add_marker(
+                pytest.mark.skip(reason="FMP_TEST_API_KEY not set")
+            )
 
         if item.get_closest_marker("requires_openai_key") and not config._openai_api_key:  # type: ignore
-            item.add_marker(pytest.mark.skip(reason="OPENAI_API_KEY not set"))
+            item.add_marker(
+                pytest.mark.skip(reason="OPENAI_API_KEY not set")
+            )
 
 
-def pytest_runtest_setup(item: pytest.Item) -> None:
-    """Setup for individual test runs with dependency checks."""
+def pytest_ignore_collect(collection_path: str, config: pytest.Config) -> bool | None:
+    """Skip collecting certain test files based on dependencies."""
+    path_str = str(collection_path)
 
-    # Additional runtime checks for edge cases
-    if item.get_closest_marker("langchain"):
-        # Double check that LangChain is really available
+    # Skip LangChain test files if LangChain not available
+    if "/lc/" in path_str or "langchain" in path_str.lower():
         if not LANGCHAIN_AVAILABLE:
-            pytest.skip("LangChain not available at runtime")
+            return True
 
-        # For LangChain tests, try importing key modules
-        langchain_core = _safe_import("langchain_core.embeddings")
-        if not langchain_core:
-            pytest.skip("langchain_core not available")
+    return None
 
+
+@pytest.fixture(autouse=True)
+def suppress_dependency_warnings() -> None:
+    """Automatically suppress dependency-related warnings."""
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=ImportWarning)
+        warnings.filterwarnings("ignore", message=".*langchain.*")
+        warnings.filterwarnings("ignore", message=".*faiss.*")
+        warnings.filterwarnings("ignore", message=".*openai.*")
+        yield
+
+
+# ============================================================================
+# DEPENDENCY STATUS FIXTURES (New)
+# ============================================================================
 
 @pytest.fixture(scope="session")
 def langchain_available() -> bool:
@@ -122,74 +154,206 @@ def has_openai_api_key() -> bool:
     return bool(os.getenv("OPENAI_API_KEY"))
 
 
-@pytest.fixture(autouse=True)
-def suppress_dependency_warnings() -> None:
-    """Automatically suppress dependency-related warnings."""
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", category=ImportWarning)
-        warnings.filterwarnings("ignore", message=".*langchain.*")
-        warnings.filterwarnings("ignore", message=".*faiss.*")
-        warnings.filterwarnings("ignore", message=".*openai.*")
-        yield
+# ============================================================================
+# EXISTING FIXTURES (Preserved)
+# ============================================================================
 
-
-# Safe imports for tests - these won't fail if dependencies are missing
-@pytest.fixture(scope="session")
-def safe_fmp_imports() -> dict[str, Any]:
-    """Safely import core FMP modules."""
-    imports = {}
-
-    # Core imports that should always work
-    try:
-        fmp_data = importlib.import_module("fmp_data")
-        imports["fmp_data"] = fmp_data
-
-        # Import specific classes
-        from fmp_data import FMPDataClient, FMPError, ClientConfig
-
-        imports["FMPDataClient"] = FMPDataClient
-        imports["FMPError"] = FMPError
-        imports["ClientConfig"] = ClientConfig
-
-    except ImportError as e:
-        pytest.fail(f"Core fmp_data imports failed: {e}")
-
-    return imports
-
-
-@pytest.fixture(scope="session")
-def safe_langchain_imports() -> dict[str, Any]:
-    """Safely import LangChain modules if available."""
-    imports = {}
-
-    if not LANGCHAIN_AVAILABLE:
-        return imports
-
-    # Try importing LangChain modules
-    imports["create_vector_store"] = _safe_import("fmp_data", "create_vector_store")
-    imports["LangChainConfig"] = _safe_import("fmp_data.lc.config", "LangChainConfig")
-    imports["EndpointSemantics"] = _safe_import(
-        "fmp_data.lc.models", "EndpointSemantics"
+@pytest.fixture
+def client_config():
+    """Create a test client configuration"""
+    return ClientConfig(
+        api_key="test_api_key",
+        timeout=5,
+        max_retries=1,
+        max_rate_limit_retries=5,
+        base_url="https://test.financialmodelingprep.com/api",
+        logging=LoggingConfig(
+            level="ERROR",
+            handlers={
+                "console": {
+                    "class_name": "StreamHandler",
+                    "level": "ERROR",
+                    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                }
+            },
+        ),
+        rate_limit=RateLimitConfig(
+            daily_limit=1000, requests_per_second=10, requests_per_minute=300
+        ),
     )
 
-    return imports
+
+@pytest.fixture
+def fmp_client(client_config):
+    """Create a test FMP client"""
+    client = FMPDataClient(config=client_config)
+    yield client
+    client.close()
 
 
-# Skip entire test files based on path and dependencies
-def pytest_ignore_collect(collection_path: str, config: pytest.Config) -> bool | None:
-    """Skip collecting certain test files based on dependencies."""
+@pytest.fixture
+def mock_company_profile():
+    """Complete mock company profile data"""
+    return {
+        "symbol": "AAPL",
+        "price": 150.25,
+        "beta": 1.2,
+        "volAvg": 82034567,
+        "mktCap": 2500000000000,
+        "lastDiv": 0.88,
+        "range": "120.5-155.75",
+        "changes": 2.35,
+        "companyName": "Apple Inc.",
+        "currency": "USD",
+        "cik": "0000320193",
+        "isin": "US0378331005",
+        "cusip": "037833100",
+        "exchange": "NASDAQ",
+        "exchangeShortName": "NASDAQ",
+        "industry": "Consumer Electronics",
+        "website": "https://www.apple.com",
+        "description": "Apple Inc. designs, manufactures, and markets smartphones...",
+        "ceo": "Tim Cook",
+        "sector": "Technology",
+        "country": "US",
+        "fullTimeEmployees": "147000",
+        "phone": "14089961010",
+        "address": "One Apple Park Way",
+        "city": "Cupertino",
+        "state": "CA",
+        "zip": "95014",
+        "dcfDiff": 1.5,
+        "dcf": 155.75,
+        "image": "https://financialmodelingprep.com/image-stock/AAPL.png",
+        "ipoDate": "1980-12-12",
+        "defaultImage": False,
+        "isEtf": False,
+        "isActivelyTrading": True,
+        "isAdr": False,
+        "isFund": False,
+    }
 
-    # Convert to string for path checking
-    path_str = str(collection_path)
 
-    # Skip LangChain test files if LangChain not available
-    if "/lc/" in path_str or "langchain" in path_str.lower():
-        if not LANGCHAIN_AVAILABLE:
-            return True
+@pytest.fixture
+def mock_api_response():
+    """Mock validated API response with proper attributes"""
+    mock_resp = Mock()
+    mock_resp.text = ""
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {}
+    return mock_resp
 
-    # Skip integration tests if no API key (optional - can be handled by markers instead)
-    if "/integration/" in path_str:
-        if not config._fmp_api_key and not config.getoption("--collect-only"):  # type: ignore
-            return True
 
-    return None
+@pytest.fixture
+def mock_company_executive():
+    """Mock company executive data"""
+    return {
+        "title": "Chief Executive Officer",
+        "name": "Tim Cook",
+        "pay": 3000000,
+        "currencyPay": "USD",
+        "gender": "M",
+        "yearBorn": 1960,
+        "titleSince": "2011-08-24",
+    }
+
+
+@pytest.fixture
+def mock_search_result():
+    """Mock company search result"""
+    return {
+        "symbol": "AAPL",
+        "name": "Apple Inc.",
+        "currency": "USD",
+        "stockExchange": "NASDAQ",
+        "exchangeShortName": "NASDAQ",
+    }
+
+
+@pytest.fixture
+def mock_endpoint():
+    """Create a mock endpoint with proper response model"""
+    endpoint = create_autospec(Endpoint)
+    endpoint.name = "test_endpoint"
+    endpoint.version = APIVersion.V3
+    endpoint.path = "test/path"
+    endpoint.validate_params.return_value = {}
+    endpoint.build_url.return_value = "https://test.url"
+    endpoint.response_model = Mock()
+    endpoint.response_model.model_validate = Mock(return_value={"test": "data"})
+    return endpoint
+
+
+@pytest.fixture
+def mock_company_response():
+    """Mock company profile response"""
+    return {
+        "symbol": "AAPL",
+        "price": 150.25,
+        "beta": 1.2,
+        "volAvg": 82034567,
+        "mktCap": 2500000000000,
+        "lastDiv": 0.88,
+        "range": "120.5-155.75",
+        "changes": 2.35,
+        "companyName": "Apple Inc.",
+        "currency": "USD",
+        "cik": "0000320193",
+        "isin": "US0378331005",
+        "cusip": "037833100",
+        "exchange": "NASDAQ",
+        "exchangeShortName": "NASDAQ",
+        "industry": "Consumer Electronics",
+        "website": "https://www.apple.com",
+        "description": "Apple Inc. designs, manufactures, and markets smartphones...",
+        "ceo": "Tim Cook",
+        "sector": "Technology",
+        "country": "US",
+        "fullTimeEmployees": "147000",
+        "phone": "14089961010",
+        "address": "One Apple Park Way",
+        "city": "Cupertino",
+        "state": "CA",
+        "zip": "95014",
+        "dcfDiff": 1.5,
+        "dcf": 155.75,
+        "image": "https://financialmodelingprep.com/image-stock/AAPL.png",
+        "ipoDate": "1980-12-12",
+        "defaultImage": False,
+        "isEtf": False,
+        "isActivelyTrading": True,
+        "isAdr": False,
+        "isFund": False,
+    }
+
+
+@pytest.fixture
+def mock_error_response():
+    """Mock error response"""
+
+    def _create_error(message="Error occurred", code=500):
+        return {"message": message, "code": str(code)}
+
+    return _create_error
+
+
+@pytest.fixture
+def mock_response():
+    """Create a mock HTTP response"""
+
+    def _create_response(status_code=200, json_data=None, raise_error=False):
+        response = Mock()
+        response.status_code = status_code
+        response.json.return_value = json_data or {}
+        response.text = json.dumps(json_data) if json_data else ""
+
+        if raise_error:
+            response.raise_for_status.side_effect = httpx.HTTPStatusError(
+                "Not Found", request=Mock(), response=response
+            )
+        else:
+            response.raise_for_status.return_value = None
+
+        return response
+
+    return _create_response

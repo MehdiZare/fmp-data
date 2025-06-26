@@ -56,7 +56,8 @@ jobs:
 
       - name: Run core tests only
         run: |
-          poetry run pytest -m "core" \
+          poetry run pytest tests/unit/ \
+            --ignore=tests/unit/lc/ \
             --cov=fmp_data \
             --cov-exclude=fmp_data/lc/ \
             --cov-report=xml:coverage-core.xml \
@@ -107,7 +108,7 @@ jobs:
 
       - name: Run LangChain tests only
         run: |
-          poetry run pytest -m "langchain" \
+          poetry run pytest tests/unit/lc/ \
             --cov=fmp_data/lc/ \
             --cov-report=xml:coverage-langchain.xml \
             --cov-report=term-missing \
@@ -145,13 +146,28 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction --with dev,langchain
 
-      - name: Run integration tests
-        if: ${{ secrets.FMP_TEST_API_KEY != '' }}
+      - name: Check API key availability
+        id: check-keys
         run: |
-          poetry run pytest -m "integration" -v --tb=short
+          if [ -n "${{ secrets.FMP_TEST_API_KEY }}" ]; then
+            echo "fmp_key_available=true" >> $GITHUB_OUTPUT
+          else
+            echo "fmp_key_available=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run integration tests
+        if: steps.check-keys.outputs.fmp_key_available == 'true'
+        run: |
+          poetry run pytest tests/integration/ -v --tb=short
         env:
           FMP_TEST_API_KEY: ${{ secrets.FMP_TEST_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Skip integration tests
+        if: steps.check-keys.outputs.fmp_key_available == 'false'
+        run: |
+          echo "⚠️ Skipping integration tests - FMP_TEST_API_KEY not available"
+          echo "Set FMP_TEST_API_KEY in repository secrets to enable integration tests"
 
   pre-commit:
     name: Pre-commit hooks
