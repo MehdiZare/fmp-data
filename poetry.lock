@@ -1575,15 +1575,15 @@ typing-extensions = ">=4.7"
 
 [[package]]
 name = "langchain-openai"
-version = "0.3.25"
+version = "0.3.26"
 description = "An integration package connecting OpenAI and LangChain"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 markers = "extra == \"langchain\""
 files = [
-    {file = "langchain_openai-0.3.25-py3-none-any.whl", hash = "sha256:a7d5c9d4f4ff2b6156f313e92e652833fdfd42084ecfd0980e719dc8472ea51c"},
-    {file = "langchain_openai-0.3.25.tar.gz", hash = "sha256:6dd33e4a2513cf915af6c2508e782d2c90956a88650739fd8d31e14bdb7f7e44"},
+    {file = "langchain_openai-0.3.26-py3-none-any.whl", hash = "sha256:2f216b92195e43fc30a28af8842cf704e72abe3b0ae2cbf85004ca75c5274575"},
+    {file = "langchain_openai-0.3.26.tar.gz", hash = "sha256:6f8420f164095834477d13715bc08a7553cdc229df30110d390c3d8880b728f3"},
 ]
 
 [package.dependencies]
@@ -1664,15 +1664,15 @@ langgraph-checkpoint = ">=2.0.10"
 
 [[package]]
 name = "langgraph-sdk"
-version = "0.1.70"
+version = "0.1.71"
 description = "SDK for interacting with LangGraph API"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 markers = "extra == \"langchain\""
 files = [
-    {file = "langgraph_sdk-0.1.70-py3-none-any.whl", hash = "sha256:47f2b04a964f40a610c1636b387ea52f961ce7a233afc21d3103e5faac8ca1e5"},
-    {file = "langgraph_sdk-0.1.70.tar.gz", hash = "sha256:cc65ec33bcdf8c7008d43da2d2b0bc1dd09f98d21a7f636828d9379535069cf9"},
+    {file = "langgraph_sdk-0.1.71-py3-none-any.whl", hash = "sha256:df14c6781520fefeb5031699e60ca2168703b9ccd5b3b45b39e4616e0a401f8e"},
+    {file = "langgraph_sdk-0.1.71.tar.gz", hash = "sha256:14053a3e7a426026f013a035f67d791faa8a2476c81a4cb600316be574ac08e4"},
 ]
 
 [package.dependencies]
@@ -2384,15 +2384,15 @@ files = [
 
 [[package]]
 name = "openai"
-version = "1.92.0"
+version = "1.92.2"
 description = "The official Python library for the openai API"
 optional = true
 python-versions = ">=3.8"
 groups = ["main"]
 markers = "extra == \"langchain\""
 files = [
-    {file = "openai-1.92.0-py3-none-any.whl", hash = "sha256:99210715bad1a4de5a387993aca7e4e8e5a742f1e185eefe2f805001cc2c21f3"},
-    {file = "openai-1.92.0.tar.gz", hash = "sha256:acaf4ee5fca8611a09035e37ceb69a352b4a84e25b103f0fc1ccc696bf9a16f0"},
+    {file = "openai-1.92.2-py3-none-any.whl", hash = "sha256:abb64bee7f2571709edf9a856f598ffe871730129a7d807a8a4d8d2958f5c842"},
+    {file = "openai-1.92.2.tar.gz", hash = "sha256:b571a79fc7e165e7d00e6963a8a95eb5f42b60ac89fd316f1dc0a2dac5c6fae1"},
 ]
 
 [package.dependencies]
