@@ -7,7 +7,7 @@ on:
 
 
 permissions:
-  contents: write        # push tag + create release
+  contents: write        # push tag / create a release
   pages: write           # deploy GitHub Pages
   id-token: write        # OIDC upload to Pages + (future) trusted PyPI
 
