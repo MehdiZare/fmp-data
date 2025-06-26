@@ -8,7 +8,7 @@ on:
   workflow_dispatch:        # manual run
 
 permissions:
-  contents: write        # push tag / create release
+  contents: write        # push tag / create a release
   pages: write           # deploy GitHub Pages
   id-token: write        # OIDC (future trusted PyPI)
 
