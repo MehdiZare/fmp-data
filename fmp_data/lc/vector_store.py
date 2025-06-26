@@ -207,26 +207,55 @@ class EndpointVectorStore:
         except Exception as e:
             raise ConfigError(f"Failed to load vector store: {str(e)}") from e
 
+    from typing import Any, cast
+
+    from pydantic import BaseModel
+
     @staticmethod
     def _format_tool_for_provider(
-        tool: StructuredTool, provider: str = "openai"
+        tool: StructuredTool,
+        provider: str = "openai",
     ) -> dict[str, Any] | StructuredTool:
-        """Format tool based on provider requirements."""
+        """
+        Convert a LangChain ``StructuredTool`` into the JSON/function spec required
+        by a specific provider.
+
+        Args:
+            tool:      The LangChain tool to transform.
+            provider:  Target provider (“openai”, “anthropic”, …).
+
+        Returns
+        -------
+        dict | StructuredTool
+            * OpenAI → OpenAI-function spec (dict).
+            * Anthropic → Claude JSON-tool spec (dict).
+            * default → original ``StructuredTool`` unchanged.
+        """
         match provider.lower():
             case "openai":
+                # Pydantic-v2 works out of the box with LangChain’s helper
                 from langchain_core.utils.function_calling import (
                     convert_to_openai_function,
                 )
 
                 return convert_to_openai_function(tool)
+
             case "anthropic":
+                if isinstance(tool.args_schema, type) and issubclass(
+                    tool.args_schema, BaseModel
+                ):
+                    # Pydantic v2: always has model_json_schema()
+                    model_schema: dict[str, Any] = tool.args_schema.model_json_schema()
+                else:
+                    # args_schema is already a dict or None (zero-arg tool)
+                    model_schema = cast(dict[str, Any], tool.args_schema or {})
+
                 return {
                     "name": tool.name,
                     "description": tool.description,
-                    "parameters": (
-                        tool.args_schema.model_json_schema() if tool.args_schema else {}
-                    ),
+                    "parameters": model_schema,
                 }
+
             case _:
                 return tool
 
