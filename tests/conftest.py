@@ -12,7 +12,6 @@ import importlib.util
 import json
 import os
 import warnings
-from typing import Any
 from unittest.mock import Mock, create_autospec
 
 import httpx
@@ -30,6 +29,7 @@ except ImportError as e:
 # ============================================================================
 # DEPENDENCY DETECTION (New)
 # ============================================================================
+
 
 def _is_package_available(package_name: str) -> bool:
     """Check if a package is available for import."""
@@ -52,7 +52,7 @@ def pytest_configure(config: pytest.Config) -> None:
 
     # Print dependency status
     if config.option.verbose >= 1:
-        print(f"\n🔍 Dependency Check:")
+        print("\n🔍 Dependency Check:")
         print(f"   LangChain: {'✅' if LANGCHAIN_AVAILABLE else '❌'}")
         print(f"   OpenAI: {'✅' if OPENAI_AVAILABLE else '❌'}")
         print(f"   FAISS: {'✅' if FAISS_AVAILABLE else '❌'}")
@@ -61,7 +61,7 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 def pytest_collection_modifyitems(
-        config: pytest.Config, items: list[pytest.Item]
+    config: pytest.Config, items: list[pytest.Item]
 ) -> None:
     """Modify test collection to skip tests based on available dependencies."""
 
@@ -81,26 +81,20 @@ def pytest_collection_modifyitems(
             item.add_marker(
                 pytest.mark.skip(
                     reason="LangChain dependencies not installed. "
-                           "Install with: pip install 'fmp-data[langchain]'"
+                    "Install with: pip install 'fmp-data[langchain]'"
                 )
             )
 
         # Skip integration tests if no API key
         if item.get_closest_marker("integration") and not config._fmp_api_key:  # type: ignore
-            item.add_marker(
-                pytest.mark.skip(reason="FMP_TEST_API_KEY not set")
-            )
+            item.add_marker(pytest.mark.skip(reason="FMP_TEST_API_KEY not set"))
 
         # Skip tests requiring API keys
         if item.get_closest_marker("requires_api_key") and not config._fmp_api_key:  # type: ignore
-            item.add_marker(
-                pytest.mark.skip(reason="FMP_TEST_API_KEY not set")
-            )
+            item.add_marker(pytest.mark.skip(reason="FMP_TEST_API_KEY not set"))
 
         if item.get_closest_marker("requires_openai_key") and not config._openai_api_key:  # type: ignore
-            item.add_marker(
-                pytest.mark.skip(reason="OPENAI_API_KEY not set")
-            )
+            item.add_marker(pytest.mark.skip(reason="OPENAI_API_KEY not set"))
 
 
 def pytest_ignore_collect(collection_path: str, config: pytest.Config) -> bool | None:
@@ -130,6 +124,7 @@ def suppress_dependency_warnings() -> None:
 # DEPENDENCY STATUS FIXTURES (New)
 # ============================================================================
 
+
 @pytest.fixture(scope="session")
 def langchain_available() -> bool:
     """Fixture indicating if LangChain is available."""
@@ -157,6 +152,7 @@ def has_openai_api_key() -> bool:
 # ============================================================================
 # EXISTING FIXTURES (Preserved)
 # ============================================================================
+
 
 @pytest.fixture
 def client_config():
