@@ -9,61 +9,54 @@ The sessions auto-switch to `uv` for speed; they fall back to `poetry install`
 if uv isn’t present.
 """
 
+import shutil
 import tempfile
 
 import nox
 
 PY_VERS = ["3.10", "3.11", "3.12", "3.13"]
-EXTRAS = [None, "langchain"]  # core + optional stack
+EXTRAS = [None, "langchain"]
+EXTRA_IDS = ["core", "lang"]  # list, not callable
 
 
-def _install(session, group: str | None = None, extras: str | None = None) -> None:
+def _install(
+    session: nox.Session, *, group: str | None = None, extras: str | None = None
+) -> None:
     """
-    Fast installer helper.
-    * group   – poetry group to include (e.g. 'dev', 'docs')
-    * extras  – extras tag (e.g. 'langchain')
+    Install project with Poetry; prefer uv if available.
     """
-    # prefer uv if available (3-4× faster on CI)
-    try:
-        session.run("uv", "--version", silent=True)
-        use_uv = True
-    except nox.command.CommandFailed:
-        use_uv = False
-
-    base_cmd = ["poetry", "install", "--sync", "--no-interaction"]
-    if group:
-        base_cmd += ["--with", group]
-    if extras:
-        base_cmd += ["--extras", extras]
+    use_uv = shutil.which("uv") is not None
 
     if use_uv:
-        # Export lock-file requirements and feed to uv
+        # export lockfile subset → uv pip install
         with tempfile.NamedTemporaryFile() as reqs:
-            session.run(
-                *(
-                    "poetry",
-                    "export",
-                    "--without-hashes",
-                    "--format=requirements.txt",
-                    f"--with={group}" if group else "",
-                    f"--extras={extras}" if extras else "",
-                    "--output",
-                    reqs.name,
-                ),
-                external=True,
-                silent=True,
-            )
+            export_cmd = [
+                "poetry",
+                "export",
+                "--without-hashes",
+                "--format=requirements.txt",
+            ]
+            if group:
+                export_cmd += ["--with", group]
+            if extras:
+                export_cmd += ["--extras", extras]
+            export_cmd += ["--output", reqs.name]
+            session.run(*export_cmd, external=True, silent=True)
             session.run("uv", "pip", "install", "-r", reqs.name, external=True)
     else:
+        base_cmd = ["poetry", "install", "--sync", "--no-interaction"]
+        if group:
+            base_cmd += ["--with", group]
+        if extras:
+            base_cmd += ["--extras", extras]
         session.run(*base_cmd, external=True)
 
 
-# ─────────────────────────────────  TESTS  ───────────────────────────────────
-@nox.parametrize("python", PY_VERS)
-@nox.parametrize("extra", EXTRAS, ids=lambda e: e or "core")
-@nox.session(reuse_venv=True)
-def tests(session: nox.Session, python: str, extra: str | None) -> None:
-    """Run pytest for given Python + extras combo."""
+# ───────────────────────── Test matrix ──────────────────────────
+@nox.session(python=PY_VERS, reuse_venv=True, tags=["tests"])
+@nox.parametrize("extra", EXTRAS, ids=EXTRA_IDS)
+def tests(session: nox.Session, extra: str | None) -> None:
+    """PyTest for every Python + extras combo."""
     _install(session, group="dev", extras=extra)
     session.run("pytest", "-q", *session.posargs)
 
