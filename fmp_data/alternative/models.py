@@ -21,7 +21,7 @@ class PriceQuote(BaseModel):
     symbol: str = Field(description="Trading symbol")
     price: float | None = Field(None, description="Current price")
     change: float | None = Field(None, description="Price change")
-    change_percent: float = Field(
+    change_percent: float | None = Field(
         alias="changesPercentage", description="Percent change"
     )
 
