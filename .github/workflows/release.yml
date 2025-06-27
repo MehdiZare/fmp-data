@@ -188,7 +188,7 @@ jobs:
       - uses: actions/deploy-pages@v4.0.5
 
       # ─── Draft GitHub release page ───────────────────────────────────
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8
         with:
           tag_name: ${{ needs.tag-version.outputs.new_tag }}
           name: Release ${{ needs.tag-version.outputs.new_tag }}
