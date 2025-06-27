@@ -1,42 +1,62 @@
 site_name: FMP Data
 site_description: Financial Modeling Prep API Client
-repo_url: https://github.com/MehdiZare/fmp-data
+site_url: https://mehdi.dev/fmp-data/          # canonical URL (for SEO & sitemap)
 
+# ─────────── Repository links ───────────
+repo_url: https://github.com/MehdiZare/fmp-data
+repo_name: MehdiZare/fmp-data
+edit_uri: edit/main/docs/                     # enables “Edit on GitHub”  :contentReference[oaicite:1]{index=1}
+
+# ─────────── Theme ───────────
 theme:
   name: material
   features:
-    - navigation.tabs
-    - navigation.sections
-    - navigation.expand
+    - navigation.tabs           # top-level tabs
+    - navigation.sections       # collapsible sub-sections
+    - navigation.expand         # auto-expand active section
     - search.highlight
     - content.code.copy
+  palette:
+    scheme: default
+    primary: blue
+    accent: amber
 
+# ─────────── Navigation ───────────
 nav:
   - Home: index.md
   - Contributing:
-    - Development Setup: contributing/development.md
-    - Workflow Guide: contributing/workflow.md
-    - Testing: contributing/testing.md
-    - Releasing: contributing/releasing.md
+      - Development Setup: contributing/development.md
+      - Workflow Guide: contributing/workflow.md
+      - Testing: contributing/testing.md
+      - Releasing: contributing/releasing.md
   - API Reference:
-    - Client: api/reference.md
+      - Client: api/reference.md
 
+# ─────────── Markdown extensions ───────────
 markdown_extensions:
-  - pymdownx.highlight:
-      anchor_linenums: true
-  - pymdownx.superfences
-  - pymdownx.inlinehilite
   - admonition
   - footnotes
   - attr_list
   - def_list
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
 
+# ─────────── Plugins ───────────
 plugins:
   - search
   - mkdocstrings:
       handlers:
         python:
-          paths: [fmp_data]
+          paths:
+            - fmp_data           # explicit; safer when building from CI  :contentReference[oaicite:2]{index=2}
           options:
             show_source: false
             show_root_heading: true
+            show_root_full_path: true
+            merge_init_into_class: true
+  - mike:                       # optional – version dropdown  :contentReference[oaicite:3]{index=3}
+
+# Fail the build on any broken link or warning (CI safety)  :contentReference[oaicite:4]{index=4}
+strict: true
