@@ -25,7 +25,7 @@ theme:
 nav:
   - Home: index.md
   - Contributing:
-      - - Overview: contributing/index.md
+      - Overview: contributing/index.md
       - Development Setup: contributing/development.md
       - Workflow Guide: contributing/workflow.md
       - Testing: contributing/testing.md

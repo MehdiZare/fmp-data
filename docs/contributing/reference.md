@@ -3,7 +3,7 @@
 
 ## Client
 
-::: fmp_data.client.FMPClient
+::: fmp_data.client.FMPDataClient
     handler: python
     options:
       show_root_heading: true
