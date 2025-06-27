@@ -84,6 +84,12 @@ mkdocs-material = "^9.5.42"
 mkdocstrings-python = "^1.12.2"
 
 # ── runtime optional extra for end-users ────────────────────────
+
+[tool.poetry.group.doc.dependencies]
+mkdocs = "^1.6.1"
+mkdocs-material = "^9.6.14"
+mkdocstrings-python = "^1.16.12"
+
 [tool.poetry.extras]
 langchain = [
     "langchain",
