@@ -1009,7 +1009,7 @@ description = "Lightweight in-process concurrent programming"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "(platform_machine == \"aarch64\" or platform_machine == \"ppc64le\" or platform_machine == \"x86_64\" or platform_machine == \"amd64\" or platform_machine == \"AMD64\" or platform_machine == \"win32\" or platform_machine == \"WIN32\") and extra == \"langchain\" and python_version <= \"3.13\""
+markers = "python_version < \"3.14\" and (platform_machine == \"aarch64\" or platform_machine == \"ppc64le\" or platform_machine == \"x86_64\" or platform_machine == \"amd64\" or platform_machine == \"AMD64\" or platform_machine == \"win32\" or platform_machine == \"WIN32\") and extra == \"langchain\""
 files = [
     {file = "greenlet-3.2.3-cp310-cp310-macosx_11_0_universal2.whl", hash = "sha256:1afd685acd5597349ee6d7a88a8bec83ce13c106ac78c196ee9dde7c04fe87be"},
     {file = "greenlet-3.2.3-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:761917cac215c61e9dc7324b2606107b3b292a8349bdebb31503ab4de3f559ac"},
@@ -1664,15 +1664,15 @@ langgraph-checkpoint = ">=2.1.0"
 
 [[package]]
 name = "langgraph-sdk"
-version = "0.1.71"
+version = "0.1.72"
 description = "SDK for interacting with LangGraph API"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 markers = "extra == \"langchain\""
 files = [
-    {file = "langgraph_sdk-0.1.71-py3-none-any.whl", hash = "sha256:df14c6781520fefeb5031699e60ca2168703b9ccd5b3b45b39e4616e0a401f8e"},
-    {file = "langgraph_sdk-0.1.71.tar.gz", hash = "sha256:14053a3e7a426026f013a035f67d791faa8a2476c81a4cb600316be574ac08e4"},
+    {file = "langgraph_sdk-0.1.72-py3-none-any.whl", hash = "sha256:925d3fcc7a26361db04f9c4beb3ec05bc36361b2a836d181ff2ab145071ec3ce"},
+    {file = "langgraph_sdk-0.1.72.tar.gz", hash = "sha256:396d8195881830700e2d54a0a9ee273e8b1173428e667502ef9c182a3cec7ab7"},
 ]
 
 [package.dependencies]
@@ -1681,24 +1681,21 @@ orjson = ">=3.10.1"
 
 [[package]]
 name = "langsmith"
-version = "0.4.2"
+version = "0.4.3"
 description = "Client library to connect to the LangSmith LLM Tracing and Evaluation Platform."
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "langsmith-0.4.2-py3-none-any.whl", hash = "sha256:2b1a3f889e134546dc5d67e23e5e8c6be5f91fd86827276ac874e3a25a04498a"},
-    {file = "langsmith-0.4.2.tar.gz", hash = "sha256:51df086a9ae17ffa16538f52ef3bb8b3d85b0e52c84958980553cb6cadd9e565"},
+    {file = "langsmith-0.4.3-py3-none-any.whl", hash = "sha256:b8ed57fb21fb3370bc7e4e8c4a3003017040336df694a66a34afe6f9872e68da"},
+    {file = "langsmith-0.4.3.tar.gz", hash = "sha256:151d8cbf3d26a49f67bd720462eae20d3282196958f86b59d1ac1aad484c52f1"},
 ]
 
 [package.dependencies]
 httpx = ">=0.23.0,<1"
 orjson = {version = ">=3.9.14,<4.0.0", markers = "platform_python_implementation != \"PyPy\""}
 packaging = ">=23.2"
-pydantic = [
-    {version = ">=1,<3", markers = "python_full_version < \"3.12.4\""},
-    {version = ">=2.7.4,<3.0.0", markers = "python_full_version >= \"3.12.4\""},
-]
+pydantic = ">=1,<3"
 requests = ">=2,<3"
 requests-toolbelt = ">=1.0.0,<2.0.0"
 zstandard = ">=0.23.0,<0.24.0"
