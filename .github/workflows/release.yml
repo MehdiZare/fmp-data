@@ -1,24 +1,26 @@
 name: Release
 
 on:
-  push:
+  push:                 # real release
     branches:
-      - main            # after PR is merged → real PyPI
-  pull_request:
+      - main
+  pull_request:         # dry-run to Test PyPI
     branches:
-      - main            # PRs targeting main → Test PyPI
-  workflow_dispatch:     # manual trigger
+      - main
+  workflow_dispatch:    # manual run
 
 permissions:
-  contents: write        # tag + create release
-  pages:    write        # deploy GitHub Pages
-  id-token: write        # OIDC (future trusted PyPI)
+  contents: write       # tag / create release
+  pages: write          # deploy GitHub Pages
+  id-token: write       # OIDC (trusted PyPI later)
 
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+###############################################################################
+# 1) VERIFY LABEL & CHOOSE VERSION BUMP  (runs only on push to main)
+###############################################################################
 jobs:
-  # ── 1. Derive bump from PR label (only on push) ──────────────────────────
   guard-label:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -30,23 +32,24 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Determine bump from PR label
+      - name: Derive bump from PR label
         id: bump
         run: |
-          sha=$GITHUB_SHA
-          pr_number=$(gh api \
-            "repos/${{ github.repository }}/commits/$sha/pulls" \
-            --jq '.[0].number')
-          labels=$(gh pr view "$pr_number" --json labels --jq '.labels[].name')
+          pr=$(gh api "repos/${{ github.repository }}/commits/$GITHUB_SHA/pulls" --jq '.[0].number')
+          labels=$(gh pr view "$pr" --json labels --jq '.labels[].name')
           bump=""
-          [[ $labels == *"release:patch"* ]] && bump=patch
-          [[ $labels == *"release:minor"* ]] && bump=minor
-          [[ $labels == *"release:major"* ]] && bump=major
-          echo "bump=$bump" >> "$GITHUB_OUTPUT"
-          [[ -z $bump || $(echo "$labels" | grep -c 'release:') -ne 1 ]] && \
-            (echo "::error::Exactly one label release:* is required." && exit 1)
+          [[ $labels == *release:patch* ]] && bump=patch
+          [[ $labels == *release:minor* ]] && bump=minor
+          [[ $labels == *release:major* ]] && bump=major
+          echo "bump=$bump" >>"$GITHUB_OUTPUT"
+          [[ -z $bump || $(grep -c release: <<<"$labels") -ne 1 ]] && {
+            echo "::error::Exactly one release:* label required."
+            exit 1
+          }
 
-  # ── 2. Tag version (only on push) ────────────────────────────────────────
+###############################################################################
+# 2) TAG NEW VERSION  (push only)
+###############################################################################
   tag-version:
     if: github.event_name == 'push'
     needs: guard-label
@@ -65,45 +68,43 @@ jobs:
           BUMP: ${{ needs.guard-label.outputs.bump }}
         run: |
           latest=$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)
-          ver=${latest#v}; IFS='.' read -r major minor patch <<<"$ver"
+          IFS='.' read -r major minor patch <<<"${latest#v}"
           case "$BUMP" in
             patch) patch=$((patch+1));;
             minor) minor=$((minor+1)); patch=0;;
             major) major=$((major+1)); minor=0; patch=0;;
           esac
           new_tag="v${major}.${minor}.${patch}"
-          echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
-          git config user.name  github-actions[bot]
-          git config user.email github-actions[bot]@users.noreply.github.com
+          echo "new_tag=$new_tag" >>"$GITHUB_OUTPUT"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag "$new_tag"
           git push origin "$new_tag"
 
-  # ── 3. Build & test once (shared) ───────────────────────────────────────
-  build-wheel:
-    name: Build & Test
+###############################################################################
+# 3) COMMON BUILD  (used by both release paths)
+###############################################################################
+  build:
     runs-on: ubuntu-latest
     outputs:
-      dist_path: dist
+      dist_dir: dist
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
-          # push → new tag; PR → HEAD
+          # for push: checkout the tag we just made
           ref: ${{ github.event_name == 'push' && needs.tag-version.outputs.new_tag || '' }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5.6.0
         with:
           python-version: "3.12"
 
-      - name: Install base tool-chain
-        run: python -m pip install --upgrade pip uv nox twine
+      - name: Base toolchain
+        run: |
+          python -m pip install --upgrade pip poetry nox build
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          virtualenvs-create: false
-
-      - run: poetry self add poetry-dynamic-versioning
+      - name: Enable dynamic versioning
+        run: poetry self add poetry-dynamic-versioning
 
       - name: Smoke tests
         run: nox -s smoke
@@ -111,77 +112,83 @@ jobs:
       - name: Build wheel & sdist
         run: poetry build
 
-      - name: Upload dist artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload dist as artifact
+        uses: actions/upload-artifact@v4.6.2
         with:
-          name: python-dist
+          name: dist
           path: dist/*
 
-  # ── 4a. Dry-run → Test PyPI (for PRs) ───────────────────────────────────
-  publish-testpypi:
+###############################################################################
+# 4a) DRY-RUN – upload to Test PyPI on PRs
+###############################################################################
+  test-publish:
     if: github.event_name == 'pull_request'
-    needs: build-wheel
+    needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4.3.0
         with:
-          name: python-dist
+          name: dist
           path: dist
+
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Install twine
+        run: python -m pip install --upgrade twine
 
       - name: Upload to Test PyPI
         env:
-          TEST_PYPI_TOKEN: ${{ secrets.TEST_PYPI_TOKEN }}
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
         run: |
-          python -m twine upload \
-            --non-interactive \
+          python -m twine upload --non-interactive --skip-existing \
             --repository-url https://test.pypi.org/legacy/ \
-            --skip-existing \
-            -u __token__ -p "$TEST_PYPI_TOKEN" dist/*
+            -u __token__ -p "$TWINE_PASSWORD" dist/*
 
-  # ── 4b. Real release → PyPI + docs + GH release (push) ──────────────────
+###############################################################################
+# 4b) REAL RELEASE – upload to PyPI + docs + GH release
+###############################################################################
   publish:
     if: github.event_name == 'push'
-    needs:
-      - tag-version
-      - build-wheel
+    needs: [tag-version, build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: python-dist
+          name: dist
           path: dist
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install twine
+        run: python -m pip install --upgrade twine
 
       - name: Upload to PyPI
         env:
-          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: |
-          python -m twine upload \
-            --non-interactive \
-            --skip-existing \
-            -u __token__ -p "$PYPI_TOKEN" dist/*
+          python -m twine upload --non-interactive --skip-existing \
+            -u __token__ -p "$TWINE_PASSWORD" dist/*
 
-      # ── Docs ────────────────────────────────────────────────────────────
+      # ─── Build & Deploy documentation ────────────────────────────────
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ needs.tag-version.outputs.new_tag }}
 
-      - run: python -m pip install --upgrade pip nox
-
-      - name: Build MkDocs
-        run: nox -s docs
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - run: |
+          python -m pip install --upgrade nox
+          nox -s docs
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
         with:
           path: site
+      - uses: actions/deploy-pages@v4.0.5
 
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4
-
-      # ── Draft GitHub Release ────────────────────────────────────────────
-      - name: Draft GitHub Release
-        uses: softprops/action-gh-release@v2
+      # ─── Draft GitHub release page ───────────────────────────────────
+      - uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8
         with:
           tag_name: ${{ needs.tag-version.outputs.new_tag }}
           name: Release ${{ needs.tag-version.outputs.new_tag }}

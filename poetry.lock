@@ -1647,20 +1647,20 @@ ormsgpack = ">=1.10.0"
 
 [[package]]
 name = "langgraph-prebuilt"
-version = "0.2.3"
+version = "0.5.0"
 description = "Library with high-level APIs for creating and executing LangGraph agents and tools."
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 markers = "extra == \"langchain\""
 files = [
-    {file = "langgraph_prebuilt-0.2.3-py3-none-any.whl", hash = "sha256:efa0bdfaf6e0b5b20e4fa55193ba7871c4aae70026be1c51d3960cb1742404c9"},
-    {file = "langgraph_prebuilt-0.2.3.tar.gz", hash = "sha256:4e5f81c062ae30c42384ece8d7a6e234216cf079320fd643a2cecb4cb80c33da"},
+    {file = "langgraph_prebuilt-0.5.0-py3-none-any.whl", hash = "sha256:de28282048e03d2198d41ec114e57a2c4bff3421039c4828b6c72720dfe5bcb5"},
+    {file = "langgraph_prebuilt-0.5.0.tar.gz", hash = "sha256:c295f31328462034f457a1560c7d87e6433571be2a7aa3a16dd8e17199b79493"},
 ]
 
 [package.dependencies]
 langchain-core = ">=0.3.22"
-langgraph-checkpoint = ">=2.0.10"
+langgraph-checkpoint = ">=2.1.0"
 
 [[package]]
 name = "langgraph-sdk"
