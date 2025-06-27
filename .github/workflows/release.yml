@@ -89,13 +89,13 @@ jobs:
     outputs:
       dist_dir: dist
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
           # for push: checkout the tag we just made
           ref: ${{ github.event_name == 'push' && needs.tag-version.outputs.new_tag || '' }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5.6.0
         with:
           python-version: "3.12"
 
@@ -113,7 +113,7 @@ jobs:
         run: poetry build
 
       - name: Upload dist as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: dist
           path: dist/*
@@ -126,12 +126,12 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4.3.0
         with:
           name: dist
           path: dist
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5.6.0
         with:
           python-version: "3.12"
 
@@ -182,10 +182,10 @@ jobs:
       - run: |
           python -m pip install --upgrade nox
           nox -s docs
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v3.0.1
         with:
           path: site
-      - uses: actions/deploy-pages@v4
+      - uses: actions/deploy-pages@v4.0.5
 
       # ─── Draft GitHub release page ───────────────────────────────────
       - uses: softprops/action-gh-release@v2
