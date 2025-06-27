@@ -30,13 +30,13 @@
 ### Basic Usage
 
 ```python
-from fmp_data import FMPClient
+from fmp_data import FMPDataClient
 
 # Initialize client
-client = FMPClient(api_key="your_api_key")
+client = FMPDataClient(api_key="your_api_key")
 
 # Get company profile
-profile = client.get_company_profile("AAPL")
+profile = client.company.get_profile("AAPL")
 print(profile.company_name)
 ```
 
@@ -44,25 +44,22 @@ print(profile.company_name)
 
 ```python
 from fmp_data import FMPClient
-from fmp_data.exceptions import RateLimitExceeded
+from fmp_data.exceptions import RateLimitError
 
 client = FMPClient(api_key="your_api_key") # pragma: allowlist secret
 
 try:
     profile = client.get_company_profile("AAPL")
-except RateLimitExceeded:
+except RateLimitError:
     print("Rate limit reached, waiting...")
 ```
 
 ### With Custom Configuration
 
 ```python
-from fmp_data import FMPClient
+from fmp_data import FMPDataClient
 
-client = FMPClient(
+client = FMPDataClient(
     api_key="your_api_key", # pragma: allowlist secret
-    rate_limit=100,  # requests per minute
-    cache_ttl=300,   # cache for 5 minutes
-    retries=3        # retry failed requests
 )
 ```
