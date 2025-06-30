@@ -48,7 +48,7 @@ def test_get_embeddings_openai(mock_openai):
 
     config.get_embeddings()
     mock_openai.assert_called_once_with(
-        openai_api_key="test-key", model="text-embedding-ada-002"
+        api_key="test-key", model="text-embedding-ada-002"
     )
 
 
