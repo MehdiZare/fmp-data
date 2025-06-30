@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from datetime import date, datetime
 from decimal import Decimal
@@ -226,7 +228,7 @@ class HistoricalData(BaseModel):
     )
 
     @classmethod
-    def parse_api_response(cls, data: dict[str, Any]) -> "HistoricalData":
+    def parse_api_response(cls, data: dict[str, Any]) -> HistoricalData:
         """Parse raw API response into validated HistoricalData model."""
         # Ensure historical data is validated
         historical_prices = [

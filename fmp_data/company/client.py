@@ -1,4 +1,5 @@
 # fmp_data/company/client.py
+from __future__ import annotations
 
 from typing import cast
 

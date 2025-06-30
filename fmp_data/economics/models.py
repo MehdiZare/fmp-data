@@ -48,7 +48,7 @@ class EconomicEvent(BaseModel):
     actual: float | None = Field(None, description="Actual value")
     change: float | None = Field(None, description="Change value")
     impact: str | None = Field(None, description="Impact level")
-    change_percent: float = Field(0, alias="changePercentage")
+    change_percent: float | None = Field(0, alias="changePercentage")
 
 
 class MarketRiskPremium(BaseModel):

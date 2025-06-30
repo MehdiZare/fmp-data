@@ -1,6 +1,7 @@
 # fmp_data/lc/__init__.py
 """
 LangChain integration for FMP Data API.
+Relative path: fmp_data/lc/__init__.py
 
 This module provides LangChain integration features including:
 - Semantic search for API endpoints
@@ -8,40 +9,25 @@ This module provides LangChain integration features including:
 - Vector store management
 - Natural language endpoint discovery
 """
+from __future__ import annotations
+
 import os
-from typing import Any, TypedDict, cast
+from typing import TYPE_CHECKING, Any
 
-from langchain_core.embeddings import Embeddings
-
-from fmp_data import FMPDataClient
 from fmp_data.lc.config import LangChainConfig
 from fmp_data.lc.embedding import EmbeddingProvider
-from fmp_data.lc.mapping import ENDPOINT_GROUPS
 from fmp_data.lc.models import EndpointSemantics, SemanticCategory
 from fmp_data.lc.registry import EndpointRegistry
 from fmp_data.lc.utils import is_langchain_available
 from fmp_data.lc.vector_store import EndpointVectorStore
 from fmp_data.logger import FMPLogger
+from fmp_data.models import Endpoint
 
-from .models import Endpoint
+# Only import for type checking, not at runtime
+if TYPE_CHECKING:
+    from fmp_data.client import FMPDataClient
 
 logger = FMPLogger().get_logger(__name__)
-
-
-class GroupConfig(TypedDict):
-    """Configuration for an endpoint group"""
-
-    endpoint_map: dict[str, Endpoint[Any]]  # Maps endpoint names to Endpoint objects
-    semantics_map: dict[
-        str, EndpointSemantics
-    ]  # Maps endpoint names to their semantics
-    display_name: str  # Display name for the group
-
-
-# Define more specific types for ENDPOINT_GROUPS
-EndpointMap = dict[str, Endpoint[Any]]
-SemanticsMap = dict[str, EndpointSemantics]
-EndpointGroups = dict[str, GroupConfig]
 
 
 def init_langchain() -> bool:
@@ -57,7 +43,6 @@ def init_langchain() -> bool:
             "Install with: pip install 'fmp-data[langchain]'"
         )
         return False
-
     return True
 
 
@@ -83,36 +68,129 @@ def validate_api_keys(
 
 
 def setup_registry(client: FMPDataClient) -> EndpointRegistry:
-    """Initialize and populate endpoint registry."""
+    """
+    Initialize and populate endpoint registry.
+
+    Args:
+        client: The FMP Data client instance
+
+    Returns:
+        Configured endpoint registry
+    """
     registry = EndpointRegistry()
 
-    # Cast ENDPOINT_GROUPS to the correct type
-    endpoint_groups = cast(dict[str, GroupConfig], ENDPOINT_GROUPS)
+    # Get endpoint groups with lazy loading to avoid circular imports
+    from fmp_data.lc.registry import get_endpoint_groups
 
-    for _, group_config in endpoint_groups.items():
-        endpoints_dict = {}
-        for name, endpoint in group_config["endpoint_map"].items():
-            semantic_name = name[4:] if name.startswith("get_") else name
-            if semantic_name in group_config["semantics_map"]:
-                endpoints_dict[name] = (
-                    endpoint,
-                    group_config["semantics_map"][semantic_name],
+    endpoint_groups = get_endpoint_groups()
+
+    # Register endpoints from all client modules using the actual interface
+    for group_name, group_config in endpoint_groups.items():
+        endpoint_map = group_config["endpoint_map"]
+        semantics_map = group_config["semantics_map"]
+
+        # Transform to the format expected by register_batch:
+        # dict[str, tuple[Endpoint, EndpointSemantics]]
+        endpoints_for_batch: dict[str, tuple[Endpoint[Any], EndpointSemantics]] = {}
+
+        for endpoint_name, endpoint in endpoint_map.items():
+            # Look for semantics - try exact match first, then without 'get_' prefix
+            semantics = semantics_map.get(endpoint_name)
+            if semantics is None and endpoint_name.startswith("get_"):
+                # Try without the 'get_' prefix
+                base_name = endpoint_name[4:]
+                semantics = semantics_map.get(base_name)
+
+            if semantics is not None:
+                endpoints_for_batch[endpoint_name] = (endpoint, semantics)
+            else:
+                logger.warning(f"No semantics found for endpoint: {endpoint_name}")
+
+        # Register the batch for this group
+        if endpoints_for_batch:
+            try:
+                registry.register_batch(endpoints_for_batch)
+                logger.debug(
+                    f"Registered {len(endpoints_for_batch)} endpoints from {group_name}"
                 )
-
-        if endpoints_dict:
-            registry.register_batch(endpoints_dict)
+            except Exception as e:
+                logger.error(f"Failed to register {group_name} endpoints: {e}")
 
     return registry
+
+
+def create_vector_store(
+    fmp_api_key: str | None = None,
+    openai_api_key: str | None = None,
+    cache_dir: str | None = None,
+    store_name: str = "fmp_endpoints",
+    force_create: bool = False,
+    embedding_provider: EmbeddingProvider = EmbeddingProvider.OPENAI,
+    embedding_model: str | None = None,
+) -> EndpointVectorStore | None:
+    """
+    Create a vector store for endpoint semantic search.
+
+    Args:
+        fmp_api_key: FMP API key (or from env)
+        openai_api_key: OpenAI API key (or from env)
+        cache_dir: Directory to store vector index
+        store_name: Name for the vector store
+        force_create: Whether to recreate existing store
+        embedding_provider: Provider for embeddings
+        embedding_model: Specific model name
+
+    Returns:
+        Configured vector store or None if setup fails
+    """
+    # Late import to avoid circular dependency
+    from fmp_data.client import FMPDataClient
+
+    try:
+        # Validate API keys
+        fmp_key, openai_key = validate_api_keys(fmp_api_key, openai_api_key)
+
+        # Create client
+        client = FMPDataClient(api_key=fmp_key)
+
+        # Setup registry
+        registry = setup_registry(client)
+
+        # Configure embeddings
+        from fmp_data.lc.embedding import EmbeddingConfig
+
+        embedding_config = EmbeddingConfig(
+            provider=embedding_provider, model_name=embedding_model, api_key=openai_key
+        )
+        embeddings = embedding_config.get_embeddings()
+
+        # Use existing helper functions from your codebase
+        if not force_create:
+            # Try loading existing store first
+            existing_store = try_load_existing_store(
+                client, registry, embeddings, cache_dir, store_name
+            )
+            if existing_store:
+                logger.info("Successfully loaded existing vector store")
+                return existing_store
+
+        # Create new store using your existing pattern
+        logger.info("Creating new vector store...")
+        return create_new_store(client, registry, embeddings, cache_dir, store_name)
+
+    except Exception as e:
+        logger.error(f"Failed to create vector store: {e}")
+        return None
 
 
 def try_load_existing_store(
     client: FMPDataClient,
     registry: EndpointRegistry,
-    embeddings: Embeddings,
+    embeddings,
     cache_dir: str | None,
     store_name: str,
 ) -> EndpointVectorStore | None:
-    """Attempt to load existing vector store."""
+    """Attempt to load existing vector store (using existing pattern)."""
     try:
         vector_store = EndpointVectorStore(
             client=client,
@@ -122,6 +200,7 @@ def try_load_existing_store(
             store_name=store_name,
         )
 
+        # Use the validate method that exists in your codebase
         if vector_store.validate():
             logger.info("Successfully loaded existing vector store")
             return vector_store
@@ -137,11 +216,11 @@ def try_load_existing_store(
 def create_new_store(
     client: FMPDataClient,
     registry: EndpointRegistry,
-    embeddings: Embeddings,
+    embeddings,
     cache_dir: str | None,
     store_name: str,
 ) -> EndpointVectorStore:
-    """Create and initialize new vector store."""
+    """Create and populate new vector store (using existing pattern)."""
     vector_store = EndpointVectorStore(
         client=client,
         registry=registry,
@@ -150,82 +229,26 @@ def create_new_store(
         store_name=store_name,
     )
 
+    # Get all endpoints from registry and populate store
     endpoint_names = list(registry.list_endpoints().keys())
-    vector_store.add_endpoints(endpoint_names)
-    vector_store.save()
+    vector_store.add_endpoints(endpoint_names)  # Use the actual method
+    vector_store.save()  # Use the actual method
 
     logger.info(f"Created new vector store with {len(endpoint_names)} endpoints")
     return vector_store
 
 
-def create_vector_store(
-    fmp_api_key: str | None = None,
-    openai_api_key: str | None = None,
-    store_name: str = "fmp_endpoints",
-    cache_dir: str | None = None,
-    force_create: bool = False,
-) -> EndpointVectorStore | None:
-    """
-    Create or load a vector store for FMP API endpoint search.
-
-    Args:
-        fmp_api_key: FMP API key (defaults to FMP_API_KEY environment variable)
-        openai_api_key: OpenAI API key (defaults to OPENAI_API_KEY environment variable)
-        store_name: Name for the vector store
-        cache_dir: Directory for storing vector store cache (defaults to ~/.fmp_cache)
-        force_create: Whether to force creation of new store even if cache exists
-
-    Returns:
-        Configured EndpointVectorStore instance or None if setup fails
-    """
-    if not is_langchain_available():
-        logger.warning(
-            "LangChain dependencies not available. "
-            "Install with: pip install 'fmp-data[langchain]'"
-        )
-        return None
-
-    try:
-        # Validate API keys
-        fmp_key, openai_key = validate_api_keys(fmp_api_key, openai_api_key)
-
-        # Create config and initialize components
-        config = LangChainConfig(
-            api_key=fmp_key,
-            embedding_provider=EmbeddingProvider.OPENAI,
-            embedding_api_key=openai_key,
-        )
-
-        client = FMPDataClient(config=config)
-        registry = setup_registry(client)
-
-        # Handle potential None case for embedding_config
-        if config.embedding_config is None:
-            raise ValueError("Embedding configuration is required")
-
-        embeddings = config.embedding_config.get_embeddings()
-
-        # Try loading existing store if not forcing creation
-        if not force_create:
-            existing_store = try_load_existing_store(
-                client, registry, embeddings, cache_dir, store_name
-            )
-            if existing_store:
-                return existing_store
-
-        # Create new store
-        return create_new_store(client, registry, embeddings, cache_dir, store_name)
-
-    except Exception as e:
-        logger.error(f"Failed to create vector store: {str(e)}")
-        return None
-
-
+# Export main functions - including the existing helper functions
 __all__ = [
+    "init_langchain",
+    "create_vector_store",
+    "setup_registry",
+    "validate_api_keys",
+    "try_load_existing_store",  # Your existing helper
+    "create_new_store",  # Your existing helper
     "EndpointVectorStore",
     "EndpointSemantics",
     "SemanticCategory",
-    "is_langchain_available",
     "LangChainConfig",
-    "create_vector_store",
+    "EmbeddingProvider",
 ]

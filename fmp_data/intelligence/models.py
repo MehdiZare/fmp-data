@@ -36,8 +36,8 @@ class EarningConfirmed(BaseModel):
 
     symbol: str = Field(description="Company symbol")
     exchange: str = Field(description="Stock exchange")
-    time: str = Field(description="Earnings announcement time (HH:MM)")
-    when: str = Field(description="Time of day (pre market/post market)")
+    time: str | None = Field(None, description="Earnings announcement time (HH:MM)")
+    when: str | None = Field(None, description="Time of day (pre market/post market)")
     event_date: datetime = Field(description="Earnings announcement date", alias="date")
     publication_date: datetime = Field(
         alias="publicationDate", description="Publication date of the announcement"
