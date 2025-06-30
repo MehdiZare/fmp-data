@@ -1,44 +1,20 @@
 # fmp_data/lc/registry.py
+"""
+Endpoint registry for LangChain integration with
+lazy imports to avoid circular dependencies.
+"""
 from __future__ import annotations
 
 import re
 from abc import ABC, abstractmethod
 from logging import Logger
-from typing import Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
-from fmp_data.alternative.mapping import (
-    ALTERNATIVE_ENDPOINT_MAP,
-    ALTERNATIVE_ENDPOINTS_SEMANTICS,
-)
-from fmp_data.company.mapping import COMPANY_ENDPOINT_MAP, COMPANY_ENDPOINTS_SEMANTICS
-from fmp_data.economics.mapping import (
-    ECONOMICS_ENDPOINT_MAP,
-    ECONOMICS_ENDPOINTS_SEMANTICS,
-)
-from fmp_data.fundamental.mapping import (
-    FUNDAMENTAL_ENDPOINT_MAP,
-    FUNDAMENTAL_ENDPOINTS_SEMANTICS,
-)
-from fmp_data.institutional.mapping import (
-    INSTITUTIONAL_ENDPOINT_MAP,
-    INSTITUTIONAL_ENDPOINTS_SEMANTICS,
-)
-from fmp_data.intelligence.mapping import (
-    INTELLIGENCE_ENDPOINT_MAP,
-    INTELLIGENCE_ENDPOINTS_SEMANTICS,
-)
-from fmp_data.investment.mapping import (
-    INVESTMENT_ENDPOINT_MAP,
-    INVESTMENT_ENDPOINTS_SEMANTICS,
-)
 from fmp_data.lc.models import EndpointInfo, EndpointSemantics, SemanticCategory
 from fmp_data.logger import FMPLogger
-from fmp_data.market.mapping import MARKET_ENDPOINT_MAP, MARKET_ENDPOINTS_SEMANTICS
-from fmp_data.models import Endpoint
-from fmp_data.technical.mapping import (
-    TECHNICAL_ENDPOINT_MAP,
-    TECHNICAL_ENDPOINTS_SEMANTICS,
-)
+
+if TYPE_CHECKING:
+    from fmp_data.models import Endpoint
 
 logger = FMPLogger().get_logger(__name__)
 
@@ -51,54 +27,101 @@ class GroupConfig(TypedDict):
     category: SemanticCategory
 
 
-# Make sure all categories are properly typed
-ENDPOINT_GROUPS: dict[str, GroupConfig] = {
-    "alternative": {
-        "endpoint_map": ALTERNATIVE_ENDPOINT_MAP,
-        "semantics_map": ALTERNATIVE_ENDPOINTS_SEMANTICS,
-        "category": SemanticCategory.ALTERNATIVE_DATA,
-    },
-    "company": {
-        "endpoint_map": COMPANY_ENDPOINT_MAP,
-        "semantics_map": COMPANY_ENDPOINTS_SEMANTICS,
-        "category": SemanticCategory.COMPANY_INFO,
-    },
-    "economics": {
-        "endpoint_map": ECONOMICS_ENDPOINT_MAP,
-        "semantics_map": ECONOMICS_ENDPOINTS_SEMANTICS,
-        "category": SemanticCategory.ECONOMIC,
-    },
-    "fundamental": {
-        "endpoint_map": FUNDAMENTAL_ENDPOINT_MAP,
-        "semantics_map": FUNDAMENTAL_ENDPOINTS_SEMANTICS,
-        "category": SemanticCategory.FUNDAMENTAL_ANALYSIS,
-    },
-    "market": {
-        "endpoint_map": MARKET_ENDPOINT_MAP,
-        "semantics_map": MARKET_ENDPOINTS_SEMANTICS,
-        "category": SemanticCategory.MARKET_DATA,
-    },
-    "technical": {
-        "endpoint_map": TECHNICAL_ENDPOINT_MAP,
-        "semantics_map": TECHNICAL_ENDPOINTS_SEMANTICS,
-        "category": SemanticCategory.TECHNICAL_ANALYSIS,
-    },
-    "institutional": {
-        "endpoint_map": INSTITUTIONAL_ENDPOINT_MAP,
-        "semantics_map": INSTITUTIONAL_ENDPOINTS_SEMANTICS,
-        "category": SemanticCategory.INSTITUTIONAL,
-    },
-    "intelligence": {
-        "endpoint_map": INTELLIGENCE_ENDPOINT_MAP,
-        "semantics_map": INTELLIGENCE_ENDPOINTS_SEMANTICS,
-        "category": SemanticCategory.INTELLIGENCE,
-    },
-    "investment": {
-        "endpoint_map": INVESTMENT_ENDPOINT_MAP,
-        "semantics_map": INVESTMENT_ENDPOINTS_SEMANTICS,
-        "category": SemanticCategory.INVESTMENT_PRODUCTS,
-    },
-}
+def _get_endpoint_groups() -> dict[str, GroupConfig]:
+    """
+    Lazily load endpoint groups to avoid circular imports.
+
+    Returns:
+        Dictionary of endpoint groups with their mappings
+    """
+    # Import mappings only when needed to avoid circular imports
+    from fmp_data.alternative.mapping import (
+        ALTERNATIVE_ENDPOINT_MAP,
+        ALTERNATIVE_ENDPOINTS_SEMANTICS,
+    )
+    from fmp_data.company.mapping import (
+        COMPANY_ENDPOINT_MAP,
+        COMPANY_ENDPOINTS_SEMANTICS,
+    )
+    from fmp_data.economics.mapping import (
+        ECONOMICS_ENDPOINT_MAP,
+        ECONOMICS_ENDPOINTS_SEMANTICS,
+    )
+    from fmp_data.fundamental.mapping import (
+        FUNDAMENTAL_ENDPOINT_MAP,
+        FUNDAMENTAL_ENDPOINTS_SEMANTICS,
+    )
+    from fmp_data.institutional.mapping import (
+        INSTITUTIONAL_ENDPOINT_MAP,
+        INSTITUTIONAL_ENDPOINTS_SEMANTICS,
+    )
+    from fmp_data.intelligence.mapping import (
+        INTELLIGENCE_ENDPOINT_MAP,
+        INTELLIGENCE_ENDPOINTS_SEMANTICS,
+    )
+    from fmp_data.investment.mapping import (
+        INVESTMENT_ENDPOINT_MAP,
+        INVESTMENT_ENDPOINTS_SEMANTICS,
+    )
+    from fmp_data.market.mapping import MARKET_ENDPOINT_MAP, MARKET_ENDPOINTS_SEMANTICS
+    from fmp_data.technical.mapping import (
+        TECHNICAL_ENDPOINT_MAP,
+        TECHNICAL_ENDPOINTS_SEMANTICS,
+    )
+
+    return {
+        "alternative": {
+            "endpoint_map": ALTERNATIVE_ENDPOINT_MAP,
+            "semantics_map": ALTERNATIVE_ENDPOINTS_SEMANTICS,
+            "category": SemanticCategory.ALTERNATIVE_DATA,
+        },
+        "company": {
+            "endpoint_map": COMPANY_ENDPOINT_MAP,
+            "semantics_map": COMPANY_ENDPOINTS_SEMANTICS,
+            "category": SemanticCategory.COMPANY_INFO,
+        },
+        "economics": {
+            "endpoint_map": ECONOMICS_ENDPOINT_MAP,
+            "semantics_map": ECONOMICS_ENDPOINTS_SEMANTICS,
+            "category": SemanticCategory.ECONOMIC,
+        },
+        "fundamental": {
+            "endpoint_map": FUNDAMENTAL_ENDPOINT_MAP,
+            "semantics_map": FUNDAMENTAL_ENDPOINTS_SEMANTICS,
+            "category": SemanticCategory.FUNDAMENTAL_ANALYSIS,
+        },
+        "market": {
+            "endpoint_map": MARKET_ENDPOINT_MAP,
+            "semantics_map": MARKET_ENDPOINTS_SEMANTICS,
+            "category": SemanticCategory.MARKET_DATA,
+        },
+        "technical": {
+            "endpoint_map": TECHNICAL_ENDPOINT_MAP,
+            "semantics_map": TECHNICAL_ENDPOINTS_SEMANTICS,
+            "category": SemanticCategory.TECHNICAL_ANALYSIS,
+        },
+        "institutional": {
+            "endpoint_map": INSTITUTIONAL_ENDPOINT_MAP,
+            "semantics_map": INSTITUTIONAL_ENDPOINTS_SEMANTICS,
+            "category": SemanticCategory.INSTITUTIONAL,
+        },
+        "intelligence": {
+            "endpoint_map": INTELLIGENCE_ENDPOINT_MAP,
+            "semantics_map": INTELLIGENCE_ENDPOINTS_SEMANTICS,
+            "category": SemanticCategory.INTELLIGENCE,
+        },
+        "investment": {
+            "endpoint_map": INVESTMENT_ENDPOINT_MAP,
+            "semantics_map": INVESTMENT_ENDPOINTS_SEMANTICS,
+            "category": SemanticCategory.INVESTMENT_PRODUCTS,
+        },
+    }
+
+
+# Lazy property to get ENDPOINT_GROUPS only when needed
+def get_endpoint_groups() -> dict[str, GroupConfig]:
+    """Get endpoint groups with lazy loading."""
+    return _get_endpoint_groups()
 
 
 class ValidationRule(ABC):
@@ -360,26 +383,38 @@ class EndpointRegistry:
 
     def __init__(self) -> None:
         self._endpoints: dict[str, EndpointInfo] = {}
-        self._validation = ValidationRuleRegistry()
+        self._validation: ValidationRuleRegistry | None = None  # Lazy initialization
         self.logger: Logger = (
             FMPLogger().get_logger(__name__).getChild(self.__class__.__name__)
         )
-        self._register_validation_rules()
+        # Don't register validation rules immediately - do it lazily
+
+    def _ensure_validation_initialized(self) -> None:
+        """Ensure validation registry is initialized (lazy initialization)."""
+        if self._validation is None:
+            self._validation = ValidationRuleRegistry()
+            self._register_validation_rules()
 
     def _register_validation_rules(self) -> None:
         """Register validation rules for each endpoint group."""
-        for group_name, config in ENDPOINT_GROUPS.items():
+        if self._validation is None:
+            return
+
+        endpoint_groups = get_endpoint_groups()  # Use lazy loading
+        for group_name, config in endpoint_groups.items():
             # Explicitly create the rule with properly typed arguments
             rule = EndpointBasedRule(
-                endpoints=config[
-                    "endpoint_map"
-                ],  # TypedDict ensures this is dict[str, Endpoint[Any]]
-                category=config[
-                    "category"
-                ],  # TypedDict ensures this is SemanticCategory
+                endpoints=config["endpoint_map"],
+                category=config["category"],
             )
             self._validation.register_rule(rule)
             self.logger.debug(f"Registered validation rule for {group_name}")
+
+    @property
+    def validation(self) -> ValidationRuleRegistry:
+        """Get validation registry with lazy initialization."""
+        self._ensure_validation_initialized()
+        return self._validation
 
     @staticmethod
     def _validate_method_name(name: str, info: EndpointInfo) -> tuple[bool, str | None]:
@@ -422,8 +457,8 @@ class EndpointRegistry:
         if not valid:
             return False, f"Method name validation failed: {error}"
 
-        # Category validation
-        valid, error = self._validation.validate_category(name, info.semantics.category)
+        # Category validation - use property to trigger lazy init
+        valid, error = self.validation.validate_category(name, info.semantics.category)
         if not valid:
             return False, f"Category validation failed: {error}"
 
@@ -433,8 +468,6 @@ class EndpointRegistry:
             return False, f"Parameter validation failed: {error}"
 
         return True, ""
-
-        # Continuing the EndpointRegistry class...
 
     def register(
         self, name: str, endpoint: Endpoint, semantics: EndpointSemantics
@@ -649,3 +682,9 @@ class EndpointRegistry:
             "has_optional_params": str(bool(info.endpoint.optional_params)),
             "response_model": info.endpoint.response_model.__name__,
         }
+
+
+# Convenience access function for external use
+def get_all_endpoint_groups() -> dict[str, GroupConfig]:
+    """Get all endpoint groups (for external use)."""
+    return get_endpoint_groups()
