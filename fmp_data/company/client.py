@@ -40,7 +40,7 @@ from fmp_data.company.models import (
     EmployeeCount,
     ExecutiveCompensation,
     GeographicRevenueSegment,
-    HistoricalPrice,
+    HistoricalData,
     HistoricalShareFloat,
     IntradayPrice,
     PriceTarget,
@@ -121,7 +121,7 @@ class CompanyClient(EndpointGroup):
         symbol: str,
         from_date: str | None = None,
         to_date: str | None = None,
-    ) -> list[HistoricalPrice]:
+    ) -> HistoricalData:
         """Get historical daily price data"""
         return self.client.request(
             HISTORICAL_PRICE, symbol=symbol, from_=from_date, to=to_date
