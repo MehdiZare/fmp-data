@@ -17,7 +17,7 @@ def main():
 
     try:
         # Get basic stock quote
-        quote = client.market.get_quote(symbol)
+        quote = client.company.get_quote(symbol)
         print("\nCurrent Stock Quote:")
         print(f"Price: ${quote.price:.2f}")
         print(f"Change: {quote.change_percentage:.2f}%")
@@ -34,24 +34,27 @@ def main():
         end_date = datetime.now().date()
         start_date = end_date - timedelta(days=30)
 
-        historical = client.market.get_historical_prices(
+        historical = client.company.get_historical_prices(
             symbol=symbol,
             from_date=start_date.strftime("%Y-%m-%d"),
             to_date=end_date.strftime("%Y-%m-%d"),
         )
 
         print("\nHistorical Prices (Last 30 Days):")
-        for price in historical[:5]:  # Show first 5 days
+        for price in historical.historical[:5]:  # Show first 5 days
             print(f"Date: {price.date.strftime('%Y-%m-%d')}, Close: ${price.close:.2f}")
 
         # Get latest earnings
         earnings = client.intelligence.get_historical_earnings(symbol)
         if earnings:
             print("\nLatest Earnings:")
-            latest = earnings[0]
+            latest = earnings[-1]
             print(f"Date: {latest.event_date}")
-            print(f"EPS: ${latest.eps:.2f}")
-            print(f"Estimated EPS: ${latest.eps_estimated:.2f}")
+            print(f"EPS: ${latest.eps if latest.eps else 'N/A'}")
+            print(
+                f"Estimated EPS: "
+                f"${latest.eps_estimated if latest.eps_estimated else 'N/A'}"
+            )
 
         # Get technical indicators
         rsi = client.technical.get_rsi(symbol, period=14)
