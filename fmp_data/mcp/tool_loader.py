@@ -4,6 +4,7 @@ from __future__ import annotations
 import importlib
 import inspect
 from collections.abc import Callable
+from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
@@ -19,10 +20,10 @@ def _resolve_attr(obj: object, dotted: str) -> Callable:
             raise ERR(f"Attribute chain '{dotted}' failed at '{part}'")
     if not callable(obj):
         raise ERR(f"'{dotted}' is not callable")
-    return obj  # type: ignore[return-value]
+    return obj
 
 
-def _load_semantics(client_slug: str, key: str):
+def _load_semantics(client_slug: str, key: str) -> Any:
     mod_path = f"fmp_data.{client_slug}.mapping"
     try:
         mapping_mod = importlib.import_module(mod_path)
