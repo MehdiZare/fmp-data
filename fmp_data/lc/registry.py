@@ -414,6 +414,9 @@ class EndpointRegistry:
     def validation(self) -> ValidationRuleRegistry:
         """Get validation registry with lazy initialization."""
         self._ensure_validation_initialized()
+
+        # After initialization, _validation is guaranteed to be not None
+        assert self._validation is not None, "Validation registry should be initialized"
         return self._validation
 
     @staticmethod
