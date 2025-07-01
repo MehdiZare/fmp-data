@@ -123,9 +123,10 @@ class CompanyClient(EndpointGroup):
         to_date: str | None = None,
     ) -> HistoricalData:
         """Get historical daily price data"""
-        return self.client.request(
+        result = self.client.request(
             HISTORICAL_PRICE, symbol=symbol, from_=from_date, to=to_date
         )
+        return cast(HistoricalData, result)
 
     def get_intraday_prices(
         self, symbol: str, interval: str = "1min"
