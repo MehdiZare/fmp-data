@@ -29,8 +29,8 @@ def _load_py_manifest(path: str | Path) -> list[str]:
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Cannot import manifest at {path}")
 
-    module = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
-    spec.loader.exec_module(module)  # type: ignore[attr-defined]
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
 
     if not hasattr(module, "TOOLS"):
         raise AttributeError(f"{path} does not define a global variable 'TOOLS'")
