@@ -6,100 +6,86 @@ from decimal import Decimal
 from typing import Any
 
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, HttpUrl
+from pydantic.alias_generators import to_camel
 
 from fmp_data.models import ShareFloat
+
+default_model_config = ConfigDict(
+    populate_by_name=True,
+    validate_assignment=True,
+    str_strip_whitespace=True,
+    extra="allow",
+    alias_generator=to_camel,
+)
 
 
 class CompanyProfile(BaseModel):
     """Company profile information."""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol (ticker)")
     price: float = Field(description="Current stock price")
     beta: float = Field(description="Beta value")
-    vol_avg: int = Field(alias="volAvg", description="Average volume")
-    mkt_cap: float = Field(alias="mktCap", description="Market capitalization")
-    last_div: float = Field(alias="lastDiv", description="Last dividend payment")
-    range: str = Field(description="52-week price range")
-    changes: float = Field(description="Price change")
-    company_name: str = Field(alias="companyName", description="Company name")
-    currency: str = Field(description="Trading currency")
+    vol_avg: int | None = Field(None, description="Average volume")
+    mkt_cap: float | None = Field(None, description="Market capitalization")
+    last_div: float | None = Field(None, description="Last dividend payment")
+    range: str | None = Field(None, description="52-week price range")
+    changes: float | None = Field(None, description="Price change")
+    company_name: str | None = Field(None, description="Company name")
+    currency: str | None = Field(None, description="Trading currency")
     cik: str = Field(description="CIK number")
     isin: str = Field(description="ISIN number")
     cusip: str = Field(description="CUSIP number")
-    exchange: str = Field(description="Stock exchange")
-    exchange_short_name: str = Field(
-        alias="exchangeShortName", description="Exchange short name"
-    )
-    industry: str = Field(description="Industry classification")
-    website: AnyHttpUrl = Field(description="Company website")
+    exchange: str | None = Field(None, description="Stock exchange")
+    exchange_short_name: str | None = Field(None, description="Exchange short name")
+    industry: str | None = Field(None, description="Industry classification")
+    website: AnyHttpUrl | None = Field(None, description="Company website")
     description: str = Field(description="Company description")
     ceo: str = Field(description="CEO name")
     sector: str = Field(description="Sector classification")
     country: str = Field(description="Country of incorporation")
-    full_time_employees: str = Field(
-        alias="fullTimeEmployees", description="Number of full-time employees"
+    full_time_employees: str | None = Field(
+        None, description="Number of full-time employees"
     )
     phone: str = Field(description="Contact phone number")
     address: str = Field(description="Company address")
     city: str = Field(description="City")
     state: str = Field(description="State")
     zip: str = Field(description="ZIP/Postal code")
-    dcf_diff: float = Field(alias="dcfDiff", description="DCF difference")
+    dcf_diff: float | None = Field(None, description="DCF difference")
     dcf: float = Field(description="Discounted Cash Flow value")
     image: AnyHttpUrl = Field(description="Company logo URL")
-    ipo_date: datetime = Field(alias="ipoDate", description="IPO date")
-    default_image: bool = Field(
-        alias="defaultImage", description="Whether using default image"
+    ipo_date: datetime | None = Field(None, description="IPO date")
+    default_image: bool | None = Field(None, description="Whether using default image")
+    is_etf: bool | None = Field(None, description="Whether the symbol is an ETF")
+    is_actively_trading: bool | None = Field(
+        None, description="Whether actively trading"
     )
-    is_etf: bool = Field(alias="isEtf", description="Whether the symbol is an ETF")
-    is_actively_trading: bool = Field(
-        alias="isActivelyTrading", description="Whether actively trading"
-    )
-    is_adr: bool = Field(alias="isAdr", description="Whether is ADR")
-    is_fund: bool = Field(alias="isFund", description="Whether is a fund")
+    is_adr: bool | None = Field(None, description="Whether is ADR")
+    is_fund: bool | None = Field(None, description="Whether is a fund")
 
 
 class CompanyCoreInformation(BaseModel):
     """Core company information."""
 
-    model_config = ConfigDict(
-        populate_by_name=True,
-        validate_assignment=True,
-        str_strip_whitespace=True,
-        extra="allow",
-    )
+    model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol (ticker)")
     cik: str = Field(description="CIK number")
-    exchange: str = Field(description="Exchange name")
-    sic_code: str | None = Field(None, alias="sicCode", description="SIC code")
-    sic_group: str | None = Field(None, alias="sicGroup", description="SIC group")
-    sic_description: str | None = Field(
-        None, alias="sicDescription", description="SIC description"
-    )
-    state_location: str | None = Field(
-        None, alias="stateLocation", description="Company state location"
-    )
+    exchange: str | None = Field(None, description="Exchange name")
+    sic_code: str | None = Field(None, description="SIC code")
+    sic_group: str | None = Field(None, description="SIC group")
+    sic_description: str | None = Field(None, description="SIC description")
+    state_location: str | None = Field(None, description="Company state location")
     state_of_incorporation: str | None = Field(
-        None, alias="stateOfIncorporation", description="State of incorporation"
+        None, description="State of incorporation"
     )
-    fiscal_year_end: str | None = Field(
-        None, alias="fiscalYearEnd", description="Fiscal year end date"
-    )
-    business_address: str | None = Field(
-        None, alias="businessAddress", description="Business address"
-    )
-    mailing_address: str | None = Field(
-        None, alias="mailingAddress", description="Mailing address"
-    )
-    tax_identification_number: str | None = Field(
-        None, alias="taxIdentificationNumber", description="Tax ID"
-    )
-    registrant_name: str | None = Field(
-        None, alias="registrantName", description="Registrant name"
-    )
+    fiscal_year_end: str | None = Field(None, description="Fiscal year end date")
+    business_address: str | None = Field(None, description="Business address")
+    mailing_address: str | None = Field(None, description="Mailing address")
+    tax_identification_number: str | None = Field(None, description="Tax ID")
+    registrant_name: str | None = Field(None, description="Registrant name")
 
 
 class CompanyExecutive(BaseModel):
@@ -121,7 +107,7 @@ class CompanyExecutive(BaseModel):
 class CompanyNote(BaseModel):
     """Company financial note."""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     title: str = Field(description="Note title")
     cik: str = Field(description="CIK number")
@@ -132,27 +118,23 @@ class CompanyNote(BaseModel):
 class EmployeeCount(BaseModel):
     """Company employee count history."""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     cik: str = Field(description="CIK number")
-    acceptance_time: datetime = Field(
-        alias="acceptanceTime", description="Filing acceptance time"
-    )
-    period_of_report: str = Field(alias="periodOfReport", description="Report period")
-    company_name: str = Field(alias="companyName", description="Company name")
-    form_type: str = Field(alias="formType", description="SEC form type")
-    filing_date: str = Field(alias="filingDate", description="Filing date")
-    employee_count: int = Field(
-        alias="employeeCount", description="Number of employees"
-    )
+    acceptance_time: datetime = Field(description="Filing acceptance time")
+    period_of_report: str = Field(description="Report period")
+    company_name: str | None = Field(None, description="Company name")
+    form_type: str = Field(description="SEC form type")
+    filing_date: str = Field(description="Filing date")
+    employee_count: int = Field(description="Number of employees")
     source: str | None = Field(None, description="SEC filing source URL")
 
 
 class Quote(BaseModel):
     """Real-time stock quote data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol")
     name: str = Field(description="Company name")
@@ -161,21 +143,17 @@ class Quote(BaseModel):
         alias="changesPercentage", description="Price change percentage"
     )
     change: float = Field(description="Price change")
-    day_low: float = Field(alias="dayLow", description="Day low price")
-    day_high: float = Field(alias="dayHigh", description="Day high price")
-    year_high: float = Field(alias="yearHigh", description="52-week high")
-    year_low: float = Field(alias="yearLow", description="52-week low")
-    market_cap: float = Field(alias="marketCap", description="Market capitalization")
-    price_avg_50: float = Field(alias="priceAvg50", description="50-day average price")
-    price_avg_200: float = Field(
-        alias="priceAvg200", description="200-day average price"
-    )
+    day_low: float = Field(description="Day low price")
+    day_high: float = Field(description="Day high price")
+    year_high: float = Field(description="52-week high")
+    year_low: float = Field(description="52-week low")
+    market_cap: float | None = Field(None, description="Market capitalization")
+    price_avg_50: float | None = Field(None, description="50-day average price")
+    price_avg_200: float | None = Field(None, description="200-day average price")
     volume: int = Field(description="Trading volume")
-    avg_volume: int = Field(alias="avgVolume", description="Average volume")
+    avg_volume: int | None = Field(None, description="Average volume")
     open: float = Field(description="Opening price")
-    previous_close: float = Field(
-        alias="previousClose", description="Previous close price"
-    )
+    previous_close: float | None = Field(None, description="Previous close price")
     eps: float = Field(description="Earnings per share")
     pe: float = Field(description="Price to earnings ratio")
     timestamp: datetime = Field(description="Quote timestamp")
@@ -184,7 +162,7 @@ class Quote(BaseModel):
 class SimpleQuote(BaseModel):
     """Simple stock quote data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol")
     price: float = Field(description="Current price")
@@ -194,7 +172,7 @@ class SimpleQuote(BaseModel):
 class HistoricalPrice(BaseModel):
     """Historical price data point"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     date: datetime = Field(description="Date of the price data")
     open: float = Field(description="Opening price")
@@ -203,24 +181,18 @@ class HistoricalPrice(BaseModel):
     close: float = Field(description="Closing price")
     adj_close: float = Field(alias="adjClose", description="Adjusted closing price")
     volume: int = Field(description="Trading volume")
-    unadjusted_volume: int = Field(
-        alias="unadjustedVolume", description="Unadjusted volume"
-    )
+    unadjusted_volume: int = Field(description="Unadjusted volume")
     change: float = Field(description="Price change")
-    change_percent: float = Field(
-        alias="changePercent", description="Price change percentage"
-    )
+    change_percent: float = Field(description="Price change percentage")
     vwap: float = Field(description="Volume weighted average price")
     label: str = Field(description="Date label")
-    change_over_time: float = Field(
-        alias="changeOverTime", description="Change over time"
-    )
+    change_over_time: float = Field(description="Change over time")
 
 
 class HistoricalData(BaseModel):
     """Model to parse the full historical data response"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol")
     historical: list[HistoricalPrice] = Field(
@@ -240,7 +212,7 @@ class HistoricalData(BaseModel):
 class IntradayPrice(BaseModel):
     """Intraday price data point"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     date: datetime = Field(description="Date and time")
     open: float = Field(description="Opening price")
@@ -253,34 +225,24 @@ class IntradayPrice(BaseModel):
 class ExecutiveCompensation(BaseModel):
     """Executive compensation information based on SEC filings"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     cik: str = Field(description="SEC CIK number")
     symbol: str = Field(description="Company symbol")
-    company_name: str = Field(alias="companyName", description="Company name")
-    industry_title: str = Field(
-        alias="industryTitle", description="Industry classification"
-    )
-    filing_date: date = Field(alias="filingDate", description="SEC filing date")
-    accepted_date: datetime = Field(
-        alias="acceptedDate", description="SEC acceptance date"
-    )
-    name_and_position: str = Field(
-        alias="nameAndPosition", description="Executive name and title"
-    )
+    company_name: str = Field(description="Company name")
+    industry_title: str = Field(description="Industry classification")
+    filing_date: date = Field(description="SEC filing date")
+    accepted_date: datetime = Field(description="SEC acceptance date")
+    name_and_position: str = Field(description="Executive name and title")
     year: int = Field(description="Compensation year")
     salary: float = Field(description="Base salary")
     bonus: float = Field(description="Annual bonus")
-    stock_award: float = Field(alias="stock_award", description="Stock awards value")
-    option_award: float | None | None = Field(
-        None, alias="option_award", description="Option awards value"
-    )
+    stock_award: float = Field(description="Stock awards value")
+    option_award: float | None | None = Field(None, description="Option awards value")
     incentive_plan_compensation: float = Field(
-        alias="incentive_plan_compensation", description="Incentive plan compensation"
+        description="Incentive plan compensation"
     )
-    all_other_compensation: float = Field(
-        alias="all_other_compensation", description="All other compensation"
-    )
+    all_other_compensation: float = Field(description="All other compensation")
     total: float = Field(description="Total compensation")
     url: HttpUrl = Field(description="SEC filing URL")
 
@@ -294,7 +256,7 @@ class HistoricalShareFloat(ShareFloat):
 class RevenueSegmentItem(BaseModel):
     """Single year revenue segment data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     date: str = Field(description="Fiscal year end date")
     segments: dict[str, float] = Field(description="Segment name to revenue mapping")
@@ -330,7 +292,7 @@ class GeographicRevenueSegment(RevenueSegmentItem):
 class SymbolChange(BaseModel):
     """Symbol change information from the FMP API"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     change_date: date = Field(
         description="Date when the symbol change occurred", alias="date"
@@ -343,7 +305,7 @@ class SymbolChange(BaseModel):
 class PriceTarget(BaseModel):
     """Price target data based on FMP API response"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     published_date: datetime = Field(
@@ -377,7 +339,7 @@ class PriceTarget(BaseModel):
 class PriceTargetSummary(BaseModel):
     """Price target summary statistics"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     last_month: int = Field(
@@ -428,7 +390,7 @@ class PriceTargetSummary(BaseModel):
 class PriceTargetConsensus(BaseModel):
     """Price target consensus data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     target_high: float = Field(alias="targetHigh", description="Highest price target")
@@ -444,7 +406,7 @@ class PriceTargetConsensus(BaseModel):
 class AnalystEstimate(BaseModel):
     """Analyst earnings and revenue estimates"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     date: datetime = Field(description="Estimate date")
@@ -515,7 +477,7 @@ class AnalystEstimate(BaseModel):
 class AnalystRecommendation(BaseModel):
     """Analyst stock recommendation"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     date: datetime = Field(description="Recommendation date")
@@ -539,7 +501,7 @@ class AnalystRecommendation(BaseModel):
 class UpgradeDowngrade(BaseModel):
     """Stock upgrade/downgrade data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     published_date: datetime = Field(
@@ -570,7 +532,7 @@ class UpgradeDowngrade(BaseModel):
 class UpgradeDowngradeConsensus(BaseModel):
     """Upgrade/downgrade consensus data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     consensus: str = Field(description="Overall consensus")
