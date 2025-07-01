@@ -14,6 +14,8 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING, Any
 
+from langchain.embeddings.base import Embeddings
+
 from fmp_data.lc.config import LangChainConfig
 from fmp_data.lc.embedding import EmbeddingProvider
 from fmp_data.lc.models import EndpointSemantics, SemanticCategory
@@ -186,7 +188,7 @@ def create_vector_store(
 def try_load_existing_store(
     client: FMPDataClient,
     registry: EndpointRegistry,
-    embeddings,
+    embeddings: Embeddings,
     cache_dir: str | None,
     store_name: str,
 ) -> EndpointVectorStore | None:
@@ -216,7 +218,7 @@ def try_load_existing_store(
 def create_new_store(
     client: FMPDataClient,
     registry: EndpointRegistry,
-    embeddings,
+    embeddings: Embeddings,
     cache_dir: str | None,
     store_name: str,
 ) -> EndpointVectorStore:
