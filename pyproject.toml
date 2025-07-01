@@ -34,16 +34,16 @@ classifiers = [
 ]
 
 dependencies = [
-    "httpx>=0.28.1",
-    "pydantic>=2.9.2",
+    "httpx (>=0.28.1)",
+    "pydantic (>=2.11.7,<3.0.0)",
     "pydantic-settings>=2.6.0",
-    "python-dotenv>=1.0.1",
+    "python-dotenv (>=1.1.1,<2.0.0)",
     "tenacity>=9.0.0",
     "tqdm>=4.66.5",
     "cachetools>=6.1.0",
     "types-cachetools>=6.0.0.20250525",
     "structlog>=25.4.0",
-    "pandas>=2.2.3",
+    "pandas (>=2.3.0,<3.0.0)",
 ]
 
 [project.optional-dependencies]

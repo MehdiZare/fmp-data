@@ -367,7 +367,7 @@ description = "Foreign Function Interface for Python calling C code."
 optional = true
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "platform_python_implementation != \"PyPy\" and platform_machine != \"ppc64le\" and platform_machine != \"s390x\" and sys_platform == \"linux\" and extra == \"test\" or platform_python_implementation == \"PyPy\" and extra == \"langchain\" or extra == \"langchain\" and extra == \"test\" and platform_machine != \"ppc64le\" and platform_machine != \"s390x\" and sys_platform == \"linux\""
+markers = "extra == \"langchain\" and platform_python_implementation == \"PyPy\" or extra == \"test\" and platform_machine != \"ppc64le\" and platform_machine != \"s390x\" and sys_platform == \"linux\" and platform_python_implementation != \"PyPy\""
 files = [
     {file = "cffi-1.17.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:df8b1c11f177bc2313ec4b2d46baec87a5f3e71fc8b45dab2ee7cae86d9aba14"},
     {file = "cffi-1.17.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:8f2cdc858323644ab277e9bb925ad72ae0e67f69e804f4898c070998d50b1a67"},
@@ -1022,7 +1022,7 @@ description = "Lightweight in-process concurrent programming"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version < \"3.14\" and (platform_machine == \"aarch64\" or platform_machine == \"ppc64le\" or platform_machine == \"x86_64\" or platform_machine == \"amd64\" or platform_machine == \"AMD64\" or platform_machine == \"win32\" or platform_machine == \"WIN32\") and extra == \"langchain\""
+markers = "(platform_machine == \"aarch64\" or platform_machine == \"ppc64le\" or platform_machine == \"x86_64\" or platform_machine == \"amd64\" or platform_machine == \"AMD64\" or platform_machine == \"win32\" or platform_machine == \"WIN32\") and extra == \"langchain\" and python_version < \"3.14\""
 files = [
     {file = "greenlet-3.2.3-cp310-cp310-macosx_11_0_universal2.whl", hash = "sha256:1afd685acd5597349ee6d7a88a8bec83ce13c106ac78c196ee9dde7c04fe87be"},
     {file = "greenlet-3.2.3-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:761917cac215c61e9dc7324b2606107b3b292a8349bdebb31503ab4de3f559ac"},
@@ -3008,7 +3008,7 @@ description = "C parser in Python"
 optional = true
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "platform_python_implementation != \"PyPy\" and platform_machine != \"ppc64le\" and platform_machine != \"s390x\" and sys_platform == \"linux\" and extra == \"test\" or platform_python_implementation == \"PyPy\" and extra == \"langchain\" or extra == \"langchain\" and extra == \"test\" and platform_machine != \"ppc64le\" and platform_machine != \"s390x\" and sys_platform == \"linux\""
+markers = "extra == \"langchain\" and platform_python_implementation == \"PyPy\" or extra == \"test\" and platform_machine != \"ppc64le\" and platform_machine != \"s390x\" and sys_platform == \"linux\" and platform_python_implementation != \"PyPy\""
 files = [
     {file = "pycparser-2.22-py3-none-any.whl", hash = "sha256:c3702b6d3dd8c7abc1afa565d7e63d53a1d0bd86cdc24edd75470f4de499cfcc"},
     {file = "pycparser-2.22.tar.gz", hash = "sha256:491c8be9c040f5390f5bf44a5b07752bd07f56edf992381b05c701439eec10f6"},
@@ -4967,4 +4967,4 @@ test = ["bandit", "black", "coverage", "freezegun", "isort", "mypy", "pre-commit
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "2ab32ae2d6eb0e58d58afdd69df5ade0136724b17f50e6ea64058bc421c6711c"
+content-hash = "028d4ad3ca58c1a82c216c27501c7fea72df278cfd0449288c3e6177f475e932"
