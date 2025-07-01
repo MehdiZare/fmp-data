@@ -170,6 +170,8 @@ module = [
     "langchain_openai.*",
     "faiss",
     "faiss.*",
+    "mcp",
+    "mcp.*",
 ]
 
 ignore_missing_imports = true
