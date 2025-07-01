@@ -20,7 +20,9 @@ class ETFHolding(BaseModel):
     model_config = default_model_config
 
     cik: str = Field(description="Central Index Key (CIK)")
-    acceptance_time: datetime = Field(None, description="Acceptance time of the filing")
+    acceptance_time: datetime | None = Field(
+        None, description="Acceptance time of the filing"
+    )
     holding_date: date | None = Field(None, description="Holding date")
     symbol: str = Field(description="Ticker symbol")
     name: str = Field(description="Asset name")
