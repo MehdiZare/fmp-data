@@ -1,4 +1,4 @@
-# tests/unit/test_mcp.py
+# tests/unit/test_mcp.py - Fixed tests
 """
 Basic tests for MCP server functionality.
 
@@ -19,8 +19,9 @@ class TestMCPServer:
     """Test suite for MCP server functionality."""
 
     @patch.dict(os.environ, {"FMP_API_KEY": "test_key"})
+    @patch("fmp_data.mcp.server.register_from_manifest")
     @patch("fmp_data.mcp.server.FMPDataClient")
-    def test_create_app_default_tools(self, mock_client_class):
+    def test_create_app_default_tools(self, mock_client_class, mock_register):
         """Test creating MCP app with default tools."""
         from fmp_data.mcp.server import create_app
 
@@ -31,12 +32,14 @@ class TestMCPServer:
 
         assert app is not None
         assert app.name == "fmp-data"
-        assert "Financial Modeling Prep" in app.description
+        # FastMCP doesn't have a description attribute, just check basic functionality
         mock_client_class.from_env.assert_called_once()
+        mock_register.assert_called_once()
 
     @patch.dict(os.environ, {"FMP_API_KEY": "test_key"})
+    @patch("fmp_data.mcp.server.register_from_manifest")
     @patch("fmp_data.mcp.server.FMPDataClient")
-    def test_create_app_custom_tools(self, mock_client_class):
+    def test_create_app_custom_tools(self, mock_client_class, mock_register):
         """Test creating MCP app with custom tool list."""
         from fmp_data.mcp.server import create_app
 
@@ -48,6 +51,7 @@ class TestMCPServer:
 
         assert app is not None
         mock_client_class.from_env.assert_called_once()
+        mock_register.assert_called_once()
 
     def test_tool_iterable_type_alias(self):
         """Test that ToolIterable type alias works correctly."""
@@ -70,23 +74,32 @@ class TestToolLoader:
         """Test successful attribute resolution."""
         from fmp_data.mcp.tool_loader import _resolve_attr
 
-        # Create a mock object with nested attributes
+        # Create a mock object with nested attributes and proper callable
         mock_obj = Mock()
-        mock_obj.client.method = Mock(return_value="success")
+        mock_method = Mock()
+        mock_method.__name__ = "test_method"  # Add required __name__ attribute
+        mock_obj.client.method = mock_method
 
         result = _resolve_attr(mock_obj, "client.method")
         assert callable(result)
+        assert hasattr(result, "__name__")
 
     def test_resolve_attr_missing_attribute(self):
         """Test attribute resolution failure."""
         from fmp_data.mcp.tool_loader import _resolve_attr
 
-        mock_obj = Mock()
-        mock_obj.client = Mock()
-        # Don't set the missing_method attribute
+        # Use a real object instead of Mock to test missing attributes
+        class TestObj:
+            def __init__(self):
+                self.client = Mock()
+                # Don't add the missing_method
+
+        test_obj = TestObj()
+        # Ensure the attribute really doesn't exist
+        del test_obj.client.missing_method
 
         with pytest.raises(RuntimeError, match="Attribute chain .* failed"):
-            _resolve_attr(mock_obj, "client.missing_method")
+            _resolve_attr(test_obj, "client.missing_method")
 
     def test_resolve_attr_not_callable(self):
         """Test resolution of non-callable attribute."""
@@ -113,8 +126,8 @@ class TestToolLoader:
         """Test loading semantics with missing semantics table."""
         from fmp_data.mcp.tool_loader import _load_semantics
 
-        mock_module = Mock()
-        # Don't set the expected table attribute
+        # Create a mock module that definitely doesn't have the attribute
+        mock_module = Mock(spec=[])  # Empty spec means no attributes
         mock_import.return_value = mock_module
 
         with pytest.raises(RuntimeError, match="lacks.*ENDPOINTS_SEMANTICS"):
@@ -170,7 +183,9 @@ class TestMCPIntegration:
         try:
             app = create_app(tools=["company.profile"])
             assert app is not None
-            assert len(app.tools) > 0
+            # Check if the app has tools registered (use _tools instead of tools)
+            assert hasattr(app, "_tool_manager")
+            assert len(app._tool_manager._tools) > 0
         except Exception as e:
             pytest.fail(f"Failed to create MCP app with real client: {e}")
 
