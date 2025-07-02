@@ -123,9 +123,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          poetry install --with dev
           # Install poetry-dynamic-versioning plugin
           poetry self add poetry-dynamic-versioning[plugin]
+          poetry install --with dev
 
       - name: 🔍 Verify dynamic versioning
         run: |
