@@ -5,12 +5,13 @@
 ###############################################################################
 [project]
 name            = "fmp-data"
-version         = "0.0.0"                    # ← placeholder; hatch-vcs rewrites
 description     = "Python client for the Financial Modeling Prep API"
 readme          = "README.md"
 requires-python = ">=3.10,<4.0"
 license         = "MIT"
 license-files   = ["LICENSE*"]
+dynamic         = ["version"]
+version = "0.0.0"
 
 authors = [
   { name = "Mehdi Zare", email = "mehdizare@users.noreply.github.com" },
@@ -99,23 +100,24 @@ Issues        = "https://github.com/MehdiZare/fmp-data/issues"
 #  Build-system                                                               #
 ###############################################################################
 [build-system]
-requires      = ["hatchling>=1.24", "hatch-vcs"]
-build-backend = "hatchling.build"
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
 
-[tool.hatch.version]
-source       = "vcs"
-pattern      = "v(?P<base>\\d+\\.\\d+\\.\\d+)(?:-(?P<stage>beta|alpha))?(?:\\.(?P<rev>\\d+))?"
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+style = "semver"
 format-jinja = """
-{% if distance == 0 -%}
-  {{ base }}
-{% else -%}
-  {{ base }}.post{{ distance }}
-{% endif -%}
+{%- if distance == 0 -%}
+{{ base }}
+{%- else -%}
+{{ base }}.post{{ distance }}+{{ commit }}
+{%- endif -%}
 """
 
-[tool.hatch.build.targets.wheel]
-packages = ["fmp_data"]
-include  = ["fmp_data/py.typed"]
+[tool.poetry-dynamic-versioning.substitution]
+files = ["fmp_data/__init__.py"]
+
 
 ###############################################################################
 #  Developer dependency groups                                                #
@@ -128,6 +130,7 @@ optional = true
 ruff        = "^0.7.1"
 black       = "^24.10.0"
 isort       = "^5.13.2"
+poetry-dynamic-versioning = "^1.4.1"
 
 # Static typing
 mypy            = "^1.13.0"
