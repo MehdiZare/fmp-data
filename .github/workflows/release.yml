@@ -316,7 +316,8 @@ jobs:
 
           # Verify tag matches package version
           if [[ "${{ needs.tag-version.outputs.new_version }}" != "${{ needs.build.outputs.package_version }}" ]]; then
-            echo "::warning::⚠️  Tag version (${{ needs.tag-version.outputs.new_version }}) doesn't match package version (${{ needs.build.outputs.package_version }})"
+            echo "::error::❌ Tag version (${{ needs.tag-version.outputs.new_version }}) doesn't match package version (${{ needs.build.outputs.package_version }})"
+            exit 1
           fi
 
           python -m twine upload --non-interactive --skip-existing \
