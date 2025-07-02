@@ -1,16 +1,17 @@
-# pyproject.toml — Poetry ≥ 2.1 + Hatch 1.24  (July 2025)
+# pyproject.toml — Poetry with Dynamic Versioning (Fixed)
 
 ###############################################################################
 #  Core project metadata  (PEP 621)                                           #
 ###############################################################################
 [project]
 name            = "fmp-data"
-version         = "0.0.0"                    # ← placeholder; hatch-vcs rewrites
 description     = "Python client for the Financial Modeling Prep API"
 readme          = "README.md"
 requires-python = ">=3.10,<4.0"
 license         = "MIT"
 license-files   = ["LICENSE*"]
+dynamic         = ["version"]
+# REMOVED: version = "0.0.0"  ← This was causing the conflict!
 
 authors = [
   { name = "Mehdi Zare", email = "mehdizare@users.noreply.github.com" },
@@ -99,23 +100,37 @@ Issues        = "https://github.com/MehdiZare/fmp-data/issues"
 #  Build-system                                                               #
 ###############################################################################
 [build-system]
-requires      = ["hatchling>=1.24", "hatch-vcs"]
-build-backend = "hatchling.build"
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
 
-[tool.hatch.version]
-source       = "vcs"
-pattern      = "v(?P<base>\\d+\\.\\d+\\.\\d+)(?:-(?P<stage>beta|alpha))?(?:\\.(?P<rev>\\d+))?"
+###############################################################################
+#  Poetry configuration (ADDED - was missing!)                               #
+###############################################################################
+[tool.poetry]
+name = "fmp-data"
+version = "0.0.0"  # This gets overridden by dynamic versioning
+description = "Python client for the Financial Modeling Prep API"
+authors = ["Mehdi Zare <mehdizare@users.noreply.github.com>"]
+readme = "README.md"
+packages = [{include = "fmp_data"}]
+
+###############################################################################
+#  Poetry Dynamic Versioning                                                  #
+###############################################################################
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+style = "pep440"
 format-jinja = """
-{% if distance == 0 -%}
-  {{ base }}
-{% else -%}
-  {{ base }}.post{{ distance }}
-{% endif -%}
+{%- if distance == 0 -%}
+{{ base }}
+{%- else -%}
+{{ base }}.post{{ distance }}
+{%- endif -%}
 """
 
-[tool.hatch.build.targets.wheel]
-packages = ["fmp_data"]
-include  = ["fmp_data/py.typed"]
+[tool.poetry-dynamic-versioning.substitution]
+files = ["fmp_data/__init__.py"]
 
 ###############################################################################
 #  Developer dependency groups                                                #
@@ -124,6 +139,9 @@ include  = ["fmp_data/py.typed"]
 optional = true
 
 [tool.poetry.group.dev.dependencies]
+# Dynamic versioning
+poetry-dynamic-versioning = "^1.4.1"
+
 # Linting / formatting
 ruff        = "^0.7.1"
 black       = "^24.10.0"
