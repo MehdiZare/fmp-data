@@ -119,7 +119,7 @@ jobs:
           python-version: "3.12"
 
       - name: Base toolchain
-        run: python -m pip install --upgrade pip poetry nox build
+        run: python -m pip install --upgrade pip poetry nox build packaging
 
       - name: Install dependencies
         run: |
@@ -189,24 +189,17 @@ jobs:
           fi
 
           # Extract version using Python and the packaging library
-          # This handles all wheel tag variations correctly (py3, cp311, cp312, etc.)
+          # (packaging library is pre-installed in base toolchain step)
           version=$(python3 -c "
-          import sys
           from pathlib import Path
+          from packaging.utils import parse_wheel_filename
+          import sys
           try:
-              from packaging.utils import parse_wheel_filename
-          except ImportError:
-              print('Installing packaging library...', file=sys.stderr)
-              import subprocess
-              subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'packaging'])
-              from packaging.utils import parse_wheel_filename
-
-          wheel_path = Path('$wheel_file')
-          try:
+              wheel_path = Path('$wheel_file')
               name, version, build_tag, tags = parse_wheel_filename(wheel_path.name)
               print(version)
           except Exception as e:
-              print(f'Error parsing wheel filename: {e}', file=sys.stderr)
+              print(f'Error parsing wheel: {e}', file=sys.stderr)
               sys.exit(1)
           ")
 
@@ -237,7 +230,7 @@ jobs:
           echo "| **Version** | \`$version\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Wheel** | \`$(basename "$wheel_file")\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Sdist** | \`$(basename "$sdist_file")\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Wheel Tags** | \`$(python3 -c "from packaging.utils import parse_wheel_filename; print(','.join(str(t) for t in parse_wheel_filename('$(basename "$wheel_file")')[3]))")\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Wheel Tags** | \`$(python3 -c "from packaging.utils import parse_wheel_filename; print(','.join(str(t) for t in parse_wheel_filename('$(basename "$wheel_file")')[3]))" 2>/dev/null || echo 'N/A')\` |" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload dist as artifact
         uses: actions/upload-artifact@v4.6.2
