@@ -4,17 +4,21 @@ from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic.alias_generators import to_camel
+
+default_model_config = ConfigDict(
+    populate_by_name=True,
+    validate_assignment=True,
+    str_strip_whitespace=True,
+    extra="allow",
+    alias_generator=to_camel,
+)
 
 
 class ExchangeSymbol(BaseModel):
     """Exchange symbol information matching actual API response"""
 
-    model_config = ConfigDict(
-        populate_by_name=True,
-        extra="allow",
-        validate_assignment=True,
-        validate_default=True,
-    )
+    model_config = default_model_config
 
     symbol: str | None = Field(None, description="Stock symbol")
     name: str | None = Field(None, description="Company name")
@@ -30,27 +34,17 @@ class ExchangeSymbol(BaseModel):
     market_cap: float | None = Field(
         None, alias="marketCap", description="Market capitalization"
     )
-    price_avg_50: float | None = Field(
-        None, alias="priceAvg50", description="50-day moving average"
-    )
-    price_avg_200: float | None = Field(
-        None, alias="priceAvg200", description="200-day moving average"
-    )
+    price_avg_50: float | None = Field(None, description="50-day moving average")
+    price_avg_200: float | None = Field(None, description="200-day moving average")
     exchange: str | None = Field(None, description="Stock exchange")
     volume: float | None = Field(None, description="Trading volume")
-    avg_volume: float | None = Field(
-        None, alias="avgVolume", description="Average volume"
-    )
+    avg_volume: float | None = Field(None, description="Average volume")
     open: float | None = Field(None, description="Opening price")
-    previous_close: float | None = Field(
-        None, alias="previousClose", description="Previous closing price"
-    )
+    previous_close: float | None = Field(None, description="Previous closing price")
     eps: float | None = Field(None, description="Earnings per share")
     pe: float | None = Field(None, description="Price to earnings ratio")
     earnings_announcement: datetime | None = Field(None, alias="earningsAnnouncement")
-    shares_outstanding: float | None = Field(
-        None, alias="sharesOutstanding", description="Shares outstanding"
-    )
+    shares_outstanding: float | None = Field(None, description="Shares outstanding")
     timestamp: int | None = Field(None, description="Quote timestamp")
 
     @classmethod
@@ -107,12 +101,15 @@ class ExchangeSymbol(BaseModel):
 class StockMarketHours(BaseModel):
     """Opening and closing hours of the stock market"""
 
+    model_config = default_model_config
     openingHour: str = Field(description="Opening hour of the market")
     closingHour: str = Field(description="Closing hour of the market")
 
 
 class StockMarketHoliday(BaseModel):
     """Stock market holiday for a specific year"""
+
+    model_config = default_model_config
 
     year: int = Field(description="Year of the holiday schedule")
     holidays: dict[str, str] = Field(description="Mapping of holiday names to dates")
@@ -165,7 +162,7 @@ class StockMarketHoliday(BaseModel):
 class MarketHours(BaseModel):
     """Market trading hours information"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     stockExchangeName: str = Field(description="Stock exchange name")
     stockMarketHours: StockMarketHours = Field(description="Market hours")
@@ -208,19 +205,19 @@ class MarketMover(BaseModel):
     name: str = Field(description="Company name")
     change: float = Field(description="Price change")
     price: float = Field(description="Current price")
-    change_percentage: float = Field(
-        alias="changesPercentage", description="Price change percentage"
+    change_percentage: float | None = Field(
+        None, alias="changesPercentage", description="Price change percentage"
     )
 
 
 class SectorPerformance(BaseModel):
     """Sector performance data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     sector: str = Field(description="Sector name")
-    change_percentage: float = Field(
-        alias="changesPercentage", description="Change percentage as a float"
+    change_percentage: float | None = Field(
+        None, alias="changesPercentage", description="Change percentage as a float"
     )
 
     @field_validator("change_percentage", mode="before")
@@ -248,7 +245,7 @@ class SectorPerformance(BaseModel):
 class PrePostMarketQuote(BaseModel):
     """Pre/Post market quote data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol")
     timestamp: datetime = Field(description="Quote timestamp")
@@ -260,7 +257,7 @@ class PrePostMarketQuote(BaseModel):
 class CIKResult(BaseModel):
     """CIK search result"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     cik: str = Field(description="CIK number")
     name: str = Field(description="Company name")
@@ -270,7 +267,7 @@ class CIKResult(BaseModel):
 class CUSIPResult(BaseModel):
     """CUSIP search result"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     cusip: str = Field(description="CUSIP number")
     symbol: str = Field(description="Stock symbol")
@@ -280,7 +277,7 @@ class CUSIPResult(BaseModel):
 class ISINResult(BaseModel):
     """ISIN search result"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     isin: str = Field(description="ISIN number")
     symbol: str = Field(description="Stock symbol")
@@ -290,7 +287,7 @@ class ISINResult(BaseModel):
 class AvailableIndex(BaseModel):
     """Market index information"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Index symbol")
     name: str = Field(description="Index name")
@@ -304,12 +301,10 @@ class AvailableIndex(BaseModel):
 class CompanySearchResult(BaseModel):
     """Company search result"""
 
+    model_config = default_model_config
+
     symbol: str = Field(description="Stock symbol (ticker)")
     name: str = Field(description="Company name")
     currency: str | None = Field(None, description="Trading currency")
-    stock_exchange: str | None = Field(
-        None, alias="stockExchange", description="Stock exchange"
-    )
-    exchange_short_name: str | None = Field(
-        None, alias="exchangeShortName", description="Exchange short name"
-    )
+    stock_exchange: str | None = Field(None, description="Stock exchange")
+    exchange_short_name: str | None = Field(None, description="Exchange short name")

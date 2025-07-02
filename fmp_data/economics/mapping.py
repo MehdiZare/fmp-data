@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from fmp_data.economics.endpoints import (
     ECONOMIC_CALENDAR,
     ECONOMIC_INDICATORS,

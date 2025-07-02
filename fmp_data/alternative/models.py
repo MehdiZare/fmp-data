@@ -7,8 +7,17 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic.alias_generators import to_camel
 
 UTC = ZoneInfo("UTC")
+
+default_model_config = ConfigDict(
+    populate_by_name=True,
+    validate_assignment=True,
+    str_strip_whitespace=True,
+    extra="allow",
+    alias_generator=to_camel,
+)
 
 
 # Base Models

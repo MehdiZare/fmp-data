@@ -3,12 +3,21 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+from pydantic.alias_generators import to_camel
+
+default_model_config = ConfigDict(
+    populate_by_name=True,
+    validate_assignment=True,
+    str_strip_whitespace=True,
+    extra="allow",
+    alias_generator=to_camel,
+)
 
 
 class EarningEvent(BaseModel):
     """Earnings calendar event based on FMP API response"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     event_date: date = Field(description="Earnings date", alias="date")
     symbol: str = Field(description="Company symbol")
@@ -32,12 +41,12 @@ class EarningEvent(BaseModel):
 class EarningConfirmed(BaseModel):
     """Confirmed earnings event"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     exchange: str = Field(description="Stock exchange")
-    time: str = Field(description="Earnings announcement time (HH:MM)")
-    when: str = Field(description="Time of day (pre market/post market)")
+    time: str | None = Field(None, description="Earnings announcement time (HH:MM)")
+    when: str | None = Field(None, description="Time of day (pre market/post market)")
     event_date: datetime = Field(description="Earnings announcement date", alias="date")
     publication_date: datetime = Field(
         alias="publicationDate", description="Publication date of the announcement"
@@ -49,7 +58,7 @@ class EarningConfirmed(BaseModel):
 class EarningSurprise(BaseModel):
     """Earnings surprise data based on FMP API response"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     surprise_date: date = Field(description="Earnings date", alias="date")
@@ -64,7 +73,7 @@ class EarningSurprise(BaseModel):
 class DividendEvent(BaseModel):
     """Dividend calendar event"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     ex_dividend_date: date = Field(description="Ex-dividend date", alias="date")
@@ -87,7 +96,7 @@ class DividendEvent(BaseModel):
 class StockSplitEvent(BaseModel):
     """Stock split calendar event"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     split_event_date: date = Field(description="Split date", alias="date")
@@ -99,7 +108,7 @@ class StockSplitEvent(BaseModel):
 class IPOEvent(BaseModel):
     """IPO calendar event"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     company: str = Field(description="Company name")
@@ -118,6 +127,8 @@ class IPOEvent(BaseModel):
 class FMPArticle(BaseModel):
     """Individual FMP article data"""
 
+    model_config = default_model_config
+
     title: str | None = Field(description="Article title")
     date: datetime = Field(description="Publication date and time")
     content: str | None = Field(description="Article content in HTML format")
@@ -131,13 +142,15 @@ class FMPArticle(BaseModel):
 class FMPArticlesResponse(BaseModel):
     """Root response containing array of articles"""
 
-    content: list[FMPArticle] = Field(description="List of articles")
+    model_config = default_model_config
 
-    model_config = ConfigDict(populate_by_name=True, str_strip_whitespace=True)
+    content: list[FMPArticle] = Field(description="List of articles")
 
 
 class GeneralNewsArticle(BaseModel):
     """General news article data"""
+
+    model_config = default_model_config
 
     publishedDate: datetime
     title: str
@@ -150,6 +163,8 @@ class GeneralNewsArticle(BaseModel):
 class StockNewsArticle(BaseModel):
     """Stock news article data"""
 
+    model_config = default_model_config
+
     symbol: str
     publishedDate: datetime
     title: str
@@ -161,6 +176,8 @@ class StockNewsArticle(BaseModel):
 
 class StockNewsSentiment(BaseModel):
     """Stock news article with sentiment data"""
+
+    model_config = default_model_config
 
     symbol: str
     publishedDate: datetime
@@ -176,6 +193,8 @@ class StockNewsSentiment(BaseModel):
 class ForexNewsArticle(BaseModel):
     """Forex news article data"""
 
+    model_config = default_model_config
+
     publishedDate: datetime = Field(description="Article publication date and time")
     title: str = Field(description="Article title")
     image: HttpUrl = Field(description="URL of the article image")
@@ -184,11 +203,11 @@ class ForexNewsArticle(BaseModel):
     url: HttpUrl = Field(description="Full article URL")
     symbol: str = Field(description="Forex pair symbol")
 
-    model_config = ConfigDict(populate_by_name=True, str_strip_whitespace=True)
-
 
 class CryptoNewsArticle(BaseModel):
     """Crypto news article data"""
+
+    model_config = default_model_config
 
     publishedDate: datetime = Field(description="Article publication date and time")
     title: str = Field(description="Article title")
@@ -198,11 +217,11 @@ class CryptoNewsArticle(BaseModel):
     url: HttpUrl = Field(description="Full article URL")
     symbol: str = Field(description="Cryptocurrency trading pair symbol")
 
-    model_config = ConfigDict(populate_by_name=True, str_strip_whitespace=True)
-
 
 class PressRelease(BaseModel):
     """Press release data"""
+
+    model_config = default_model_config
 
     symbol: str
     date: datetime
@@ -213,6 +232,8 @@ class PressRelease(BaseModel):
 class PressReleaseBySymbol(BaseModel):
     """Press release data by company symbol"""
 
+    model_config = default_model_config
+
     symbol: str
     date: datetime
     title: str
@@ -221,6 +242,8 @@ class PressReleaseBySymbol(BaseModel):
 
 class HistoricalSocialSentiment(BaseModel):
     """Historical social sentiment data"""
+
+    model_config = default_model_config
 
     date: datetime
     symbol: str
@@ -239,6 +262,8 @@ class HistoricalSocialSentiment(BaseModel):
 class TrendingSocialSentiment(BaseModel):
     """Trending social sentiment data"""
 
+    model_config = default_model_config
+
     symbol: str
     name: str
     rank: int
@@ -248,6 +273,8 @@ class TrendingSocialSentiment(BaseModel):
 
 class SocialSentimentChanges(BaseModel):
     """Changes in social sentiment data"""
+
+    model_config = default_model_config
 
     symbol: str
     name: str
@@ -259,7 +286,7 @@ class SocialSentimentChanges(BaseModel):
 class ESGData(BaseModel):
     """ESG environmental, social and governance data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     cik: str = Field(description="CIK number")
@@ -284,7 +311,7 @@ class ESGData(BaseModel):
 class ESGRating(BaseModel):
     """ESG rating data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     cik: str = Field(description="CIK number")
@@ -302,7 +329,7 @@ class ESGRating(BaseModel):
 class ESGBenchmark(BaseModel):
     """ESG sector benchmark data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     year: int = Field(description="Benchmark year")
     sector: str = Field(description="Industry sector")
@@ -320,7 +347,7 @@ class ESGBenchmark(BaseModel):
 class SenateTrade(BaseModel):
     """Senate trading data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     first_name: str = Field(alias="firstName", description="Senator's first name")
     last_name: str = Field(alias="lastName", description="Senator's last name")
@@ -346,7 +373,7 @@ class SenateTrade(BaseModel):
 class HouseDisclosure(BaseModel):
     """House disclosure data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     disclosure_year: str = Field(
         alias="disclosureYear", description="Year of disclosure"
@@ -376,7 +403,7 @@ class HouseDisclosure(BaseModel):
 class CrowdfundingOffering(BaseModel):
     """Crowdfunding offering data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     cik: str = Field(description="Company CIK number")
     company_name: str | None | None = Field(
@@ -539,7 +566,7 @@ class CrowdfundingOffering(BaseModel):
 class EquityOffering(BaseModel):
     """Equity offering data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     # Filing information
     form_type: str = Field(alias="formType", description="SEC form type")
@@ -673,7 +700,8 @@ class EquityOffering(BaseModel):
 class EquityOfferingSearchItem(BaseModel):
     """Equity offering search item"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
+
     cik: str = Field(description="Company CIK number")
     name: str = Field(description="Company name")
     date: datetime = Field(description="Date of filing")

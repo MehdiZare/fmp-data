@@ -1,4 +1,6 @@
 # fmp_data/alternative/mapping.py
+from __future__ import annotations
+
 from fmp_data.alternative.endpoints import (
     COMMODITIES_LIST,
     COMMODITIES_QUOTES,

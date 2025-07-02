@@ -1,4 +1,5 @@
 # fmp_data/company/mapping.py
+from __future__ import annotations
 
 from fmp_data.company.endpoints import (
     ANALYST_ESTIMATES,
@@ -27,15 +28,14 @@ from fmp_data.company.endpoints import (
     UPGRADES_DOWNGRADES,
     UPGRADES_DOWNGRADES_CONSENSUS,
 )
-from fmp_data.lc.hints import DATE_HINTS, PERIOD_HINT, SYMBOL_HINT
-from fmp_data.lc.models import EndpointSemantics, ResponseFieldInfo, SemanticCategory
-
-from .hints import (
+from fmp_data.company.hints import (
     FLOAT_RESPONSE_HINTS,
     INTERVAL_HINT,
     PROFILE_RESPONSE_HINTS,
     STRUCTURE_HINT,
 )
+from fmp_data.lc.hints import DATE_HINTS, PERIOD_HINT, SYMBOL_HINT
+from fmp_data.lc.models import EndpointSemantics, ResponseFieldInfo, SemanticCategory
 
 # Company endpoints mapping
 COMPANY_ENDPOINT_MAP = {
