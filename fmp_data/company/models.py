@@ -238,7 +238,7 @@ class ExecutiveCompensation(BaseModel):
     salary: float = Field(description="Base salary")
     bonus: float = Field(description="Annual bonus")
     stock_award: float = Field(description="Stock awards value")
-    option_award: float | None | None = Field(None, description="Option awards value")
+    option_award: float | None = Field(None, description="Option awards value")
     incentive_plan_compensation: float = Field(
         description="Incentive plan compensation"
     )
