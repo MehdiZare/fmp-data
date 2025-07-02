@@ -1,4 +1,4 @@
-# pyproject.toml — Poetry ≥ 2.1 + Hatch 1.24  (July 2025)
+# pyproject.toml — Poetry with Dynamic Versioning (Fixed)
 
 ###############################################################################
 #  Core project metadata  (PEP 621)                                           #
@@ -11,7 +11,7 @@ requires-python = ">=3.10,<4.0"
 license         = "MIT"
 license-files   = ["LICENSE*"]
 dynamic         = ["version"]
-version = "0.0.0"
+# REMOVED: version = "0.0.0"  ← This was causing the conflict!
 
 authors = [
   { name = "Mehdi Zare", email = "mehdizare@users.noreply.github.com" },
@@ -103,21 +103,34 @@ Issues        = "https://github.com/MehdiZare/fmp-data/issues"
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
 build-backend = "poetry_dynamic_versioning.backend"
 
+###############################################################################
+#  Poetry configuration (ADDED - was missing!)                               #
+###############################################################################
+[tool.poetry]
+name = "fmp-data"
+version = "0.0.0"  # This gets overridden by dynamic versioning
+description = "Python client for the Financial Modeling Prep API"
+authors = ["Mehdi Zare <mehdizare@users.noreply.github.com>"]
+readme = "README.md"
+packages = [{include = "fmp_data"}]
+
+###############################################################################
+#  Poetry Dynamic Versioning                                                  #
+###############################################################################
 [tool.poetry-dynamic-versioning]
 enable = true
 vcs = "git"
-style = "semver"
+style = "pep440"
 format-jinja = """
 {%- if distance == 0 -%}
 {{ base }}
 {%- else -%}
-{{ base }}.post{{ distance }}+{{ commit }}
+{{ base }}.post{{ distance }}
 {%- endif -%}
 """
 
 [tool.poetry-dynamic-versioning.substitution]
 files = ["fmp_data/__init__.py"]
-
 
 ###############################################################################
 #  Developer dependency groups                                                #
@@ -126,11 +139,13 @@ files = ["fmp_data/__init__.py"]
 optional = true
 
 [tool.poetry.group.dev.dependencies]
+# Dynamic versioning
+poetry-dynamic-versioning = "^1.4.1"
+
 # Linting / formatting
 ruff        = "^0.7.1"
 black       = "^24.10.0"
 isort       = "^5.13.2"
-poetry-dynamic-versioning = "^1.4.1"
 
 # Static typing
 mypy            = "^1.13.0"
