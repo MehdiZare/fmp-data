@@ -8,8 +8,7 @@ Matrix:
   • security  : bandit
   • docs   : mkdocs build
 
-Poetry is installed in every session; we use *poetry install* directly
-(no poetry-plugin-export) for maximum simplicity.
+Uses poetry dependency groups for cleaner management.
 """
 
 import nox
@@ -25,45 +24,44 @@ EXTRA_IDS = ["core", "lang", "mcp-server"]
 
 
 # ─────────────── Helper: install with Poetry ─────────
-def _install(session: Session, *, extras: str | None = None) -> None:
-    """Install project with test dependencies."""
-    session.install("poetry")  # put Poetry in venv
+def _install(
+    session: Session, *, extras: str | None = None, groups: list[str] | None = None
+) -> None:
+    """Install project with specified extras and dependency groups."""
+    session.install("poetry")
 
-    # Base install
     cmd = ["poetry", "install", "--no-interaction"]
-    if extras:
-        cmd += ["--extras", extras]
-    session.run(*cmd, external=True)
 
-    # Install test dependencies directly
-    session.install(
-        "pytest",
-        "pytest-asyncio",
-        "pytest-cov",
-        "pytest-mock",
-        "freezegun",
-        "responses",
-        "vcrpy",
-        "coverage",
-    )
+    # Add dependency groups
+    if groups:
+        for group in groups:
+            cmd.extend(["--with", group])
+
+    # Add extras
+    if extras:
+        cmd.extend(["--extras", extras])
+
+    session.run(*cmd, external=True)
 
 
 # ── test matrix ─────────────────────────────────────────────────
 @nox.session(python=PY_VERS, reuse_venv=True, tags=["tests"])
 @nox.parametrize("extra", EXTRAS, ids=EXTRA_IDS)
 def tests(session: Session, extra: str | None) -> None:
-    _install(session, extras=extra)
+    """Run tests for given Python version and optional extras."""
+    _install(session, extras=extra, groups=["dev"])
 
     # Run different test sets based on extra
-    if extra == "mcp":
+    if extra == "mcp-server":
         session.run("pytest", "-q", "tests/unit/test_mcp.py", "-m", "not integration")
     else:
         session.run("pytest", "-q")
 
 
 @nox.session(python="3.12")
-def smoke(session: nox.Session) -> None:
-    _install(session, extras="langchain")
+def smoke(session: Session) -> None:
+    """Quick smoke test with all extras."""
+    _install(session, extras="langchain", groups=["dev"])
     session.run("pytest", "-q")
 
 
@@ -71,45 +69,49 @@ def smoke(session: nox.Session) -> None:
 @nox.session(python="3.12", reuse_venv=True, tags=["mcp"])
 def test_mcp(session: Session) -> None:
     """Run MCP-specific tests only."""
-    _install(session, extras="mcp")
+    _install(session, extras="mcp-server", groups=["dev"])
     session.run("pytest", "-q", "tests/unit/test_mcp.py", "-v")
 
 
 # ── QA sessions on one interpreter ─────────────────────────────
 @nox.session(python="3.12", reuse_venv=True)
 def lint(session: Session) -> None:
-    _install(session)
+    """Run ruff linting."""
+    _install(session, groups=["dev"])
     session.run("ruff", "check", "fmp_data", "tests")
 
 
 @nox.session(python="3.12", reuse_venv=True)
 def typecheck(session: Session) -> None:
-    _install(session)
+    """Run mypy type checking on core package."""
+    _install(session, groups=["dev"])
     session.run("mypy", "fmp_data")
 
 
 @nox.session(python="3.12", reuse_venv=True)
 def security(session: Session) -> None:
-    _install(session)
+    """Run bandit security checks."""
+    _install(session, groups=["dev"])
     session.run("bandit", "-r", "fmp_data", "-ll")
 
 
 @nox.session(python="3.12", reuse_venv=True)
 def typecheck_lang(session: Session) -> None:
-    _install(session, extras="langchain")  # test+langchain
+    """Run mypy type checking with langchain extras."""
+    _install(session, extras="langchain", groups=["dev"])
     session.run("mypy", "fmp_data")
 
 
 @nox.session(python="3.12", reuse_venv=True)
 def typecheck_mcp(session: Session) -> None:
     """Run mypy type checking with MCP extras."""
-    _install(session, extras="mcp")
+    _install(session, extras="mcp-server", groups=["dev"])
     session.run("mypy", "fmp_data")
 
 
 # ─────────────── Docs build (MkDocs) ────────────────
 @nox.session(python="3.12", reuse_venv=True, tags=["docs"])
 def docs(session: Session) -> None:
-    _install(session)
-    session.install("mkdocs", "mkdocs-material", "mkdocstrings-python")
+    """Build documentation with MkDocs."""
+    _install(session, groups=["docs"])
     session.run("mkdocs", "build", "--strict")

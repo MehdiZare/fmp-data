@@ -252,3 +252,41 @@ output = "coverage.xml"
 [tool.bandit]
 exclude_dirs = ["tests", "scripts"]
 skips = ["B101", "B404", "B603", "B607"]
+
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]
+# Linting and formatting
+ruff = "^0.7.1"
+black = "^24.10.0"
+isort = "^5.13.2"
+
+# Type checking
+mypy = "^1.13.0"
+
+# Security
+bandit = {extras = ["toml"], version = "^1.7.10"}
+
+# Testing
+pytest = "^8.0.0"
+pytest-asyncio = "^0.24.0"
+pytest-cov = "^6.0.0"
+pytest-mock = "^3.14.0"
+freezegun = "^1.5.1"
+responses = "^0.25.3"
+vcrpy = "^6.0.1"
+coverage = "^7.6.1"
+
+# Development tools
+pre-commit = "^4.0.1"
+rich = "^13.9.3"
+twine = "^5.1.1"
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+mkdocs = "^1.6.1"
+mkdocs-material = "^9.5.42"
+mkdocstrings-python = "^1.12.2"
