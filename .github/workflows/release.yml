@@ -92,6 +92,8 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    needs: [tag-version]
+    if: always() && (needs.tag-version.result == 'success' || needs.tag-version.result == 'skipped')
     outputs:
       package_version: ${{ steps.extract-version.outputs.version }}
       wheel_file: ${{ steps.extract-version.outputs.wheel_file }}
