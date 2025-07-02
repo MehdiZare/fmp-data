@@ -123,9 +123,9 @@ jobs:
 
       - name: Install dependencies
         run: |
+          poetry install --with dev
           # Install poetry-dynamic-versioning plugin
           poetry self add poetry-dynamic-versioning[plugin]
-          poetry install --with dev
 
       - name: 🔍 Verify dynamic versioning
         run: |
@@ -174,19 +174,54 @@ jobs:
           ls -la dist/
           echo ""
 
-          # Extract version from wheel filename
+          # Find wheel and sdist files
           wheel_file=$(ls dist/*.whl | head -1)
           sdist_file=$(ls dist/*.tar.gz | head -1)
 
-          if [[ -n "$wheel_file" ]]; then
-            # Extract version from filename: fmp_data-1.2.3-py3-none-any.whl
-            version=$(basename "$wheel_file" | sed 's/fmp_data-\(.*\)-py3.*/\1/')
-            echo "🎯 Extracted version from wheel: $version"
-            echo "🌟 Wheel file: $(basename "$wheel_file")"
-            echo "📦 Sdist file: $(basename "$sdist_file")"
-          else
+          if [[ -z "$wheel_file" ]]; then
             echo "::error::❌ No wheel file found in dist/"
             exit 1
+          fi
+
+          if [[ -z "$sdist_file" ]]; then
+            echo "::error::❌ No sdist file found in dist/"
+            exit 1
+          fi
+
+          # Extract version using Python and the packaging library
+          # This handles all wheel tag variations correctly (py3, cp311, cp312, etc.)
+          version=$(python3 -c "
+          import sys
+          from pathlib import Path
+          try:
+              from packaging.utils import parse_wheel_filename
+          except ImportError:
+              print('Installing packaging library...', file=sys.stderr)
+              import subprocess
+              subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'packaging'])
+              from packaging.utils import parse_wheel_filename
+
+          wheel_path = Path('$wheel_file')
+          try:
+              name, version, build_tag, tags = parse_wheel_filename(wheel_path.name)
+              print(version)
+          except Exception as e:
+              print(f'Error parsing wheel filename: {e}', file=sys.stderr)
+              sys.exit(1)
+          ")
+
+          if [[ -z "$version" ]]; then
+            echo "::error::❌ Failed to extract version from wheel filename"
+            exit 1
+          fi
+
+          echo "🎯 Extracted version from wheel: $version"
+          echo "🌟 Wheel file: $(basename "$wheel_file")"
+          echo "📦 Sdist file: $(basename "$sdist_file")"
+
+          # Validate version format
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "::warning::⚠️  Version '$version' may not follow semantic versioning"
           fi
 
           # Set outputs for later jobs
@@ -202,6 +237,7 @@ jobs:
           echo "| **Version** | \`$version\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Wheel** | \`$(basename "$wheel_file")\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Sdist** | \`$(basename "$sdist_file")\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Wheel Tags** | \`$(python3 -c "from packaging.utils import parse_wheel_filename; print(','.join(str(t) for t in parse_wheel_filename('$(basename "$wheel_file")')[3]))")\` |" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload dist as artifact
         uses: actions/upload-artifact@v4.6.2
