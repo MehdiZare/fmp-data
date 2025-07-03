@@ -10,6 +10,18 @@ Matrix:
 
 Automatically detects and uses uv when available for faster installs,
 gracefully falls back to Poetry when uv is not available.
+
+Local Development Quick Start:
+────────────────────────────
+1. Check available Python versions:  nox -s check_python
+2. Run tests on available version:   nox -s tests-3.12
+3. Quick quality checks:             nox -s quick_check
+4. Set up dev environment:           nox -s dev_install
+
+Environment Variables:
+────────────────────
+• NOX_USE_UV=1                    : Force use of uv over Poetry
+• NOX_PYTHON_VERSIONS=3.12,3.13   : Limit test matrix to specific versions
 """
 
 import os
@@ -26,6 +38,13 @@ nox.options.reuse_venv = "yes"
 PY_VERS = ["3.10", "3.11", "3.12", "3.13"]
 EXTRAS = [None, "langchain", "mcp-server"]
 EXTRA_IDS = ["core", "lang", "mcp-server"]
+
+# For local development, you can override to test only available versions
+LOCAL_PY_VERS = (
+    os.getenv("NOX_PYTHON_VERSIONS", "").split(",")
+    if os.getenv("NOX_PYTHON_VERSIONS")
+    else PY_VERS
+)
 
 # Check if uv is available and preferred
 USE_UV = os.getenv("NOX_USE_UV", "").lower() in ("1", "true", "yes")
@@ -149,7 +168,7 @@ def _install_deps_only(session: Session, extras: list[str] | None = None) -> Non
 
 
 # ── test matrix ─────────────────────────────────────────────────
-@nox.session(python=PY_VERS, reuse_venv=True, tags=["tests"])
+@nox.session(python=LOCAL_PY_VERS, reuse_venv=True, tags=["tests"])
 @nox.parametrize("extra", EXTRAS, ids=EXTRA_IDS)
 def tests(session: Session, extra: str | None) -> None:
     """Run tests for given Python version and optional extras."""
@@ -247,9 +266,10 @@ def coverage(session: Session) -> None:
     session.run(
         "pytest",
         "--cov=fmp_data",
-        "--cov-report=html",
-        "--cov-report=xml",
+        "--cov-report=html:htmlcov",
+        "--cov-report=xml:coverage.xml",
         "--cov-report=term-missing",
+        "--cov-fail-under=80",  # Optional: fail if coverage below 80%
     )
 
 
@@ -270,6 +290,30 @@ def dev_install(session: Session) -> None:
         session.log("💡 To run commands: poetry run <command>")
     else:
         session.log("💡 To activate: source .nox/dev-install/bin/activate")
+
+
+@nox.session(python="3.12")
+def local_test(session: Session) -> None:
+    """Quick local test suite - runs core tests on current Python version."""
+    _install(session, dev=True)
+    session.run("pytest", "-v", "--tb=short")
+
+
+@nox.session(python="3.12")
+def quick_check(session: Session) -> None:
+    """Run quick quality checks for local development."""
+    _install_deps_only(session, ["dev"])
+
+    session.log("🔍 Running quick quality checks...")
+
+    # Format check
+    session.run("black", "--check", "fmp_data", "tests", external=True)
+    session.run("isort", "--check-only", "fmp_data", "tests", external=True)
+
+    # Lint
+    session.run("ruff", "check", "fmp_data", "tests", external=True)
+
+    session.log("✅ Quick checks complete!")
 
 
 @nox.session(python="3.12")
@@ -330,6 +374,39 @@ def check_tools(session: Session) -> None:
     session.log(
         f"🔧 NOX_USE_UV environment variable: {os.getenv('NOX_USE_UV', 'not set')}"
     )
+
+
+@nox.session(python=False)
+def check_python(session: Session) -> None:
+    """Check which Python versions are available on the system."""
+    python_versions = ["3.10", "3.11", "3.12", "3.13"]
+
+    session.log("🐍 Checking available Python versions...")
+
+    available_versions = []
+    for version in python_versions:
+        try:
+            session.run(f"python{version}", "--version", external=True, silent=True)
+            session.log(f"✅ Python {version}: Available")
+            available_versions.append(version)
+        except Exception:
+            session.log(f"❌ Python {version}: Not found")
+
+    if available_versions:
+        session.log("💡 To run tests on available versions only:")
+        session.log(f"   NOX_PYTHON_VERSIONS={','.join(available_versions)} nox")
+        session.log(
+            f"💡 To run on specific version: nox -s tests-{available_versions[0]}"
+        )
+    else:
+        session.log("⚠️  No Python versions found. Check your Python installation.")
+
+    # Show how to install missing versions
+    missing_versions = [v for v in python_versions if v not in available_versions]
+    if missing_versions:
+        session.log("📦 To install missing versions with pyenv:")
+        for version in missing_versions:
+            session.log(f"   pyenv install {version}")
 
 
 # ── Benchmark sessions ──────────────────────────────────────────
