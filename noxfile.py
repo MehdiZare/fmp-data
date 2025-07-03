@@ -60,17 +60,21 @@ def _install_with_uv(
     """Install dependencies using uv."""
     session.log("📦 Installing dependencies with uv...")
 
-    # Build the installation command
+    # Build the installation command with separate --extra flags
+    cmd = ["uv", "sync"]
+
+    # Add each extra as a separate --extra flag
     extras_list = []
     if extras:
-        extras_list.append(extras)
+        extras_list.extend(extras.split(","))
     if dev:
         extras_list.append("dev")
 
-    if extras_list:
-        session.run("uv", "sync", f"--extra={','.join(extras_list)}", external=True)
-    else:
-        session.run("uv", "sync", external=True)
+    # Add separate --extra flags for each extra
+    for extra in extras_list:
+        cmd.extend(["--extra", extra.strip()])
+
+    session.run(*cmd, external=True)
 
 
 def _install_with_poetry(
@@ -130,8 +134,10 @@ def _install_deps_only(session: Session, extras: list[str] | None = None) -> Non
     if tool == "uv":
         # For uv, we can use sync to install from lock file
         if extras:
+            cmd = ["uv", "sync"]
             for extra in extras:
-                session.run("uv", "sync", f"--extra={extra}", external=True)
+                cmd.extend(["--extra", extra])
+            session.run(*cmd, external=True)
         else:
             session.run("uv", "sync", external=True)
     else:
@@ -173,52 +179,61 @@ def test_mcp(session: Session) -> None:
 def lint(session: Session) -> None:
     """Run ruff linting."""
     _install_deps_only(session, ["dev"])
-    session.run("ruff", "check", "fmp_data", "tests")
+    session.run("ruff", "check", "fmp_data", "tests", external=True)
 
 
 @nox.session(python="3.12", reuse_venv=True)
 def typecheck(session: Session) -> None:
     """Run mypy type checking on core package."""
     _install(session, dev=True)
-    session.run("mypy", "fmp_data")
+    session.run("mypy", "fmp_data", external=True)
 
 
 @nox.session(python="3.12", reuse_venv=True)
 def typecheck_lang(session: Session) -> None:
     """Run mypy type checking with langchain extras."""
     _install(session, extras="langchain", dev=True)
-    session.run("mypy", "fmp_data")
+    session.run("mypy", "fmp_data", external=True)
 
 
 @nox.session(python="3.12", reuse_venv=True)
 def security(session: Session) -> None:
     """Run bandit security checks."""
     _install_deps_only(session, ["dev"])
-    session.run("bandit", "-r", "fmp_data", "-f", "json", "-o", "bandit-report.json")
-    session.run("bandit", "-r", "fmp_data")
+    session.run(
+        "bandit",
+        "-r",
+        "fmp_data",
+        "-f",
+        "json",
+        "-o",
+        "bandit-report.json",
+        external=True,
+    )
+    session.run("bandit", "-r", "fmp_data", external=True)
 
 
 @nox.session(python="3.12", reuse_venv=True)
 def docs(session: Session) -> None:
     """Build documentation with mkdocs."""
     _install(session, extras="docs", dev=True)
-    session.run("mkdocs", "build", "--strict")
+    session.run("mkdocs", "build", "--strict", external=True)
 
 
 @nox.session(python="3.12", reuse_venv=True)
 def format_check(session: Session) -> None:
     """Check code formatting."""
     _install_deps_only(session, ["dev"])
-    session.run("black", "--check", "--diff", "fmp_data", "tests")
-    session.run("isort", "--check-only", "--diff", "fmp_data", "tests")
+    session.run("black", "--check", "--diff", "fmp_data", "tests", external=True)
+    session.run("isort", "--check-only", "--diff", "fmp_data", "tests", external=True)
 
 
 @nox.session(python="3.12", reuse_venv=True)
 def format_fix(session: Session) -> None:
     """Fix code formatting."""
     _install_deps_only(session, ["dev"])
-    session.run("black", "fmp_data", "tests")
-    session.run("isort", "fmp_data", "tests")
+    session.run("black", "fmp_data", "tests", external=True)
+    session.run("isort", "fmp_data", "tests", external=True)
 
 
 # ── Coverage reporting ──────────────────────────────────────────
@@ -257,8 +272,6 @@ def dev_install(session: Session) -> None:
 @nox.session(python="3.12")
 def clean(session: Session) -> None:
     """Clean up build artifacts and caches."""
-    import shutil
-
     dirs_to_clean = [
         "build",
         "dist",
@@ -324,21 +337,21 @@ def benchmark_install(session: Session) -> None:
     # Clean slate
     session.run(
         "rm", "-rf", ".venv", ".nox/benchmark*", external=True, success_codes=[0, 1]
-    )  # noqa: S607
+    )
 
     session.log("🏁 Benchmarking installation speed...")
 
     if _has_uv():
         start = time.time()
-        session.run("uv", "sync", "--extra=dev", external=True)  # noqa: S607
+        session.run("uv", "sync", "--extra", "dev", external=True)
         uv_time = time.time() - start
         session.log(f"⚡ uv installation time: {uv_time:.2f}s")
-        session.run("rm", "-rf", ".venv", external=True)  # noqa: S607
+        session.run("rm", "-rf", ".venv", external=True)
 
     if _has_poetry():
         start = time.time()
         session.install("poetry")
-        session.run("poetry", "install", "--with=dev", external=True)  # noqa: S607
+        session.run("poetry", "install", "--with=dev", external=True)
         poetry_time = time.time() - start
         session.log(f"🐍 Poetry installation time: {poetry_time:.2f}s")
 
