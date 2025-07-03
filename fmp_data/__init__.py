@@ -1,23 +1,18 @@
 """
-fmp-data top-level package
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+FMP Data Client
+==============
 
-Core usage:
+A Python client for the Financial Modeling Prep (FMP) API with comprehensive
+logging, rate limiting, and error handling.
 
-    import fmp_data as fmp
-    client = fmp.FMPDataClient(...)
-
-Optional LangChain / FAISS helpers are exposed lazily and raise
-ImportError with guidance if the extra is not installed.
+File: fmp_data/__init__.py
 """
 
 from __future__ import annotations
 
-import importlib.util as _importlib_util
-import types as _types
-import warnings as _warnings
-from typing import Any
+import os
 
+# Main API exports
 from fmp_data.client import FMPDataClient
 from fmp_data.config import (
     ClientConfig,
@@ -34,105 +29,111 @@ from fmp_data.exceptions import (
 )
 from fmp_data.logger import FMPLogger
 
-__version__ = "0.0.0"
-
-# --------------------------------------------------------------------------- #
-#  Public re-exports guaranteed to work without optional dependencies
-# --------------------------------------------------------------------------- #
-__all__ = [
-    "FMPDataClient",
-    "ClientConfig",
-    "LoggingConfig",
-    "LogHandlerConfig",
-    "RateLimitConfig",
-    "FMPError",
-    "FMPLogger",
-    "RateLimitError",
-    "AuthenticationError",
-    "ValidationError",
-    "ConfigError",
-    "logger",
-    "is_langchain_available",
-]
-
+# Convenience logger instance
 logger = FMPLogger()
 
 
-# --------------------------------------------------------------------------- #
-#  Helper: detect whether LangChain core stack is available
-# --------------------------------------------------------------------------- #
-def is_langchain_available() -> bool:
-    """
-    Return ``True`` if the optional *langchain* extra is installed.
+# Version handling - compatible with both Poetry and uv approaches
+def _get_version() -> str:
+    """Get package version from multiple possible sources."""
+    # Try Poetry dynamic versioning first (if available)
+    try:
+        # This gets populated by poetry-dynamic-versioning
+        from fmp_data._version import __version__
 
-    We check for ``langchain_core`` because it is imported by every
-    sub-module that fmp-data’s LC helpers rely on.
-    """
-    return _importlib_util.find_spec("langchain_core") is not None
+        return __version__
+    except ImportError:
+        # Continue to next method
+        pass
 
+    # Try setuptools-scm generated version (for uv builds)
+    try:
+        from fmp_data._version import version
 
-# --------------------------------------------------------------------------- #
-#  Lazy import machinery for optional vector-store helpers
-# --------------------------------------------------------------------------- #
-def _lazy_import_vector_store() -> _types.ModuleType:
-    """
-    Import fmp_data.lc only when a LC-specific symbol is first accessed.
-    Raises ImportError with installation hint if LangChain (or FAISS) is missing.
-    """
-    if not is_langchain_available():
-        raise ImportError(
-            "Optional LangChain features are not installed. "
-            "Run:  pip install 'fmp-data[langchain]'"
-        ) from None
+        return version
+    except ImportError:
+        # Continue to next method
+        pass
 
-    # Import inside the function to keep top-level import cheap.
-    from fmp_data import lc as _lc  # noqa: WPS433 (allow internal import)
+    # Try importlib.metadata (standard approach)
+    try:
+        from importlib.metadata import version
 
-    # Check FAISS at runtime to give a clearer error than module not found.
-    if _importlib_util.find_spec("faiss") is None:
-        raise ImportError(
-            "FAISS is required for vector-store helpers. "
-            "Run:  pip install 'fmp-data[langchain]'"
-        ) from None
+        return version("fmp-data")
+    except ImportError:
+        # Continue to next method
+        pass
 
-    return _lc
+    # Try pkg_resources (older approach)
+    try:
+        import pkg_resources
 
+        return pkg_resources.get_distribution("fmp-data").version
+    except Exception:  # noqa: S110
+        # All version detection methods failed
+        return "unknown"
 
-# Map attribute names to callables that will supply them on demand.
-# Keys must match what you later append to __all__.
-_lazy_attrs = {
-    "EndpointVectorStore": lambda: _lazy_import_vector_store().EndpointVectorStore,
-    "EndpointSemantics": lambda: _lazy_import_vector_store().EndpointSemantics,
-    "SemanticCategory": lambda: _lazy_import_vector_store().SemanticCategory,
-    "create_vector_store": lambda: _lazy_import_vector_store().create_vector_store,
-}
-
-# extend __all__ so IDEs still see the names when LC is installed
-__all__.extend(_lazy_attrs.keys())
+    # Development fallback (should not reach here)
+    return "unknown"
 
 
-def __getattr__(name: str) -> Any:  # pragma: no cover
-    """
-    PEP 562 hook: resolve optional symbols at first access.
+__version__ = _get_version()
 
-    If *name* is one of the LC helpers, call the associated factory,
-    cache the result in the module dict, and return it.
-    """
-    if name in _lazy_attrs:
-        value = _lazy_attrs[name]()
-        globals()[name] = value  # cache so subsequent access is fast
-        return value
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+# Optional imports with graceful degradation
+_HAS_LANGCHAIN = False
+_HAS_MCP = False
+
+try:
+    from fmp_data.langchain import FMPDataLoader
+
+    _HAS_LANGCHAIN = True
+except ImportError:
+    # LangChain integration not available
+    FMPDataLoader = None  # type: ignore
+
+try:
+    from fmp_data.mcp import FMPMCPServer
+
+    _HAS_MCP = True
+except ImportError:
+    # MCP integration not available
+    FMPMCPServer = None  # type: ignore
+
+__all__ = [
+    "__version__",
+    "FMPClient",
+    "FMPError",
+    "AuthenticationError",
+    "RateLimitError",
+    "ValidationError",
+    "ConfigError",
+]
+
+# Conditionally add optional exports
+if _HAS_LANGCHAIN:
+    __all__.append("FMPDataLoader")
+
+if _HAS_MCP:
+    __all__.append("FMPMCPServer")
+
+# Package metadata
+__author__ = "Mehdi Zare"
+__email__ = "mehdizare@users.noreply.github.com"
+__license__ = "MIT"
+__description__ = "Python client for the Financial Modeling Prep API"
 
 
-# --------------------------------------------------------------------------- #
-#  Warn immediately if user tried to import LC helpers without extras
-# --------------------------------------------------------------------------- #
-if not is_langchain_available():
-    _warnings.filterwarnings("once", category=ImportWarning)
-    _warnings.warn(
-        "LangChain extras not installed; vector-store helpers will be unavailable "
-        "until you run:  pip install 'fmp-data[langchain]'",
-        ImportWarning,
-        stacklevel=2,
-    )
+# Compatibility flags for runtime detection
+def _detect_build_tool() -> str:
+    """Detect which build tool was used."""
+    # Check if we're in a uv environment
+    if os.getenv("VIRTUAL_ENV") and "uv" in os.getenv("VIRTUAL_ENV", ""):
+        return "uv"
+    # Check if we're in a Poetry environment
+    elif os.getenv("POETRY_ACTIVE"):
+        return "poetry"
+    else:
+        return "unknown"
+
+
+__build_tool__ = _detect_build_tool()
