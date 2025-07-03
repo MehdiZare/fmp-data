@@ -258,20 +258,20 @@ ignore = ["S101"]
 known-first-party = ["fmp_data"]
 
 [tool.mypy]
-python_version = "3.10"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-warn_unreachable = true
-strict_optional = true
-exclude = ["tests/", "examples/"]
-plugins = ["pydantic.mypy"]
+python_version            = "3.10"
+warn_return_any           = true
+warn_unused_configs       = true
+disallow_untyped_defs     = true
+disallow_incomplete_defs  = true
+check_untyped_defs        = true
+no_implicit_optional      = true
+warn_redundant_casts      = true
+warn_unused_ignores       = true
+warn_no_return            = true
+warn_unreachable          = true
+strict_optional           = true
+exclude                   = ["tests/", "examples/"]
+plugins                   = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 module = [
@@ -284,8 +284,14 @@ module = [
   "faiss.*",
   "mcp",
   "mcp.*",
+  "fmp_data._version",  # Dynamic versioning module
 ]
 ignore_missing_imports = true
+
+# Handle dynamic version imports and optional modules in __init__.py
+[[tool.mypy.overrides]]
+module = "fmp_data.__init__"
+disable_error_code = ["import-untyped", "no-any-return", "attr-defined"]
 
 [tool.pydocstyle]
 convention = "google"
@@ -340,3 +346,8 @@ output = "coverage.xml"
 [tool.bandit]
 exclude_dirs = ["tests", "scripts"]
 skips = ["B101", "B404", "B603", "B607"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.16.1",
+]
