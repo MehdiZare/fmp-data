@@ -1,17 +1,13 @@
-# pyproject.toml — Poetry with Dynamic Versioning (Fixed)
-
 ###############################################################################
-#  Core project metadata  (PEP 621)                                           #
+#  Core project metadata (PEP 621) - Compatible with both Poetry and uv     #
 ###############################################################################
 [project]
-name            = "fmp-data"
-description     = "Python client for the Financial Modeling Prep API"
-readme          = "README.md"
+name = "fmp-data"
+description = "Python client for the Financial Modeling Prep API"
+readme = "README.md"
 requires-python = ">=3.10,<4.0"
-license         = "MIT"
-license-files   = ["LICENSE*"]
-dynamic         = ["version"]
-# REMOVED: version = "0.0.0"  ← This was causing the conflict!
+license = { text = "MIT" }
+dynamic = ["version"]
 
 authors = [
   { name = "Mehdi Zare", email = "mehdizare@users.noreply.github.com" },
@@ -73,38 +69,71 @@ mcp-server = [
   "pyyaml>=6.0.1",
 ]
 
+# ——— Development dependencies (for uv) ———
+dev = [
+  # Linting / formatting
+  "ruff>=0.7.1",
+  "black>=24.10.0",
+  "isort>=5.13.2",
+
+  # Static typing
+  "mypy>=1.13.0",
+  "types-cachetools>=6.0.0.20250525",
+
+  # Security
+  "bandit[toml]>=1.7.10",
+
+  # Testing
+  "pytest>=8.3.3",
+  "pytest-asyncio>=0.24.0",
+  "pytest-cov>=6.0.0",
+  "pytest-mock>=3.14.0",
+  "freezegun>=1.5.1",
+  "responses>=0.25.3",
+  "vcrpy>=6.0.2",
+  "coverage>=7.6.4",
+
+  # Dev utilities
+  "pre-commit>=4.0.1",
+  "rich>=13.9.3",
+  "twine>=5.1.1",
+  "nox>=2024.4.15",
+]
+
+# ——— Documentation dependencies (for uv) ———
+docs = [
+  "mkdocs>=1.6.1",
+  "mkdocs-material>=9.6.14",
+  "mkdocstrings-python>=1.16.12",
+]
+
 ###############################################################################
 #  Command-line entry points                                                  #
 ###############################################################################
 [project.scripts]
-format            = "scripts:format_code"
-lint              = "scripts:lint"
-typecheck         = "scripts:typecheck"
-test              = "scripts:test"
-security          = "scripts:security_check"
-fmp               = "fmp_data.scripts.dev:main"
-fmp-mcp           = "fmp_data.mcp.server:main"
-fmp-mcp-dev       = "fmp_data.scripts.dev_server:main"
-mkdocstrings-python = "mkdocstrings.cli:main"
+fmp = "fmp_data.scripts.dev:main"
+fmp-mcp = "fmp_data.mcp.server:main"
+fmp-mcp-dev = "fmp_data.scripts.dev_server:main"
 
 ###############################################################################
 #  Project links                                                              #
 ###############################################################################
 [project.urls]
-Homepage      = "https://github.com/MehdiZare/fmp-data"
+Homepage = "https://github.com/MehdiZare/fmp-data"
 Documentation = "https://github.com/MehdiZare/fmp-data#readme"
-Source        = "https://github.com/MehdiZare/fmp-data"
-Issues        = "https://github.com/MehdiZare/fmp-data/issues"
+Source = "https://github.com/MehdiZare/fmp-data"
+Issues = "https://github.com/MehdiZare/fmp-data/issues"
 
 ###############################################################################
-#  Build-system                                                               #
+#  Build system - Dual compatibility                                          #
 ###############################################################################
 [build-system]
+# Primary: Poetry with dynamic versioning (for Poetry users)
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
 build-backend = "poetry_dynamic_versioning.backend"
 
 ###############################################################################
-#  Poetry configuration (ADDED - was missing!)                               #
+#  Poetry configuration (for Poetry users)                                   #
 ###############################################################################
 [tool.poetry]
 name = "fmp-data"
@@ -133,7 +162,7 @@ format-jinja = """
 files = ["fmp_data/__init__.py"]
 
 ###############################################################################
-#  Developer dependency groups                                                #
+#  Poetry dependency groups (for Poetry users)                               #
 ###############################################################################
 [tool.poetry.group.dev]
 optional = true
@@ -143,89 +172,105 @@ optional = true
 poetry-dynamic-versioning = "^1.4.1"
 
 # Linting / formatting
-ruff        = "^0.7.1"
-black       = "^24.10.0"
-isort       = "^5.13.2"
+ruff = "^0.7.1"
+black = "^24.10.0"
+isort = "^5.13.2"
 
 # Static typing
-mypy            = "^1.13.0"
+mypy = "^1.13.0"
 types-cachetools = "^6.0.0.20250525"
 
 # Security
-bandit       = { version = "^1.7.10", extras = ["toml"] }
+bandit = { version = "^1.7.10", extras = ["toml"] }
 
 # Testing
-pytest          = "^8.3.3"
-pytest-asyncio  = "^0.24.0"
-pytest-cov      = "^6.0.0"
-pytest-mock     = "^3.14.0"
-freezegun       = "^1.5.1"
-responses       = "^0.25.3"
-vcrpy           = "^6.0.2"
-coverage        = "^7.6.4"
+pytest = "^8.3.3"
+pytest-asyncio = "^0.24.0"
+pytest-cov = "^6.0.0"
+pytest-mock = "^3.14.0"
+freezegun = "^1.5.1"
+responses = "^0.25.3"
+vcrpy = "^6.0.2"
+coverage = "^7.6.4"
 
 # Dev utilities
-pre-commit  = "^4.0.1"
-rich        = "^13.9.3"
-twine       = "^5.1.1"
+pre-commit = "^4.0.1"
+rich = "^13.9.3"
+twine = "^5.1.1"
 
 [tool.poetry.group.docs]
 optional = true
 
 [tool.poetry.group.docs.dependencies]
-mkdocs              = "^1.6.1"
-mkdocs-material     = "^9.6.14"
+mkdocs = "^1.6.1"
+mkdocs-material = "^9.6.14"
 mkdocstrings-python = "^1.16.12"
 
 ###############################################################################
-#  Black / isort / Ruff / Mypy                                                #
+#  Alternative build system for uv (commented out)                           #
+###############################################################################
+# Uncomment this section and comment out the Poetry build-system above
+# if you want to use setuptools-scm with uv exclusively:
+#
+# [build-system]
+# requires = ["setuptools>=64", "setuptools-scm>=8"]
+# build-backend = "setuptools.build_meta"
+#
+# [tool.setuptools-scm]
+# version_scheme = "post-release"
+# local_scheme = "no-local-version"
+# write_to = "fmp_data/_version.py"
+# fallback_version = "0.0.0"
+
+###############################################################################
+#  Shared tool configuration (works with both Poetry and uv)                 #
 ###############################################################################
 [tool.black]
-line-length     = 88
-target-version  = ["py310", "py311", "py312", "py313"]
-include         = "\\.pyi?$"
+line-length = 88
+target-version = ["py310", "py311", "py312", "py313"]
+include = "\\.pyi?$"
 
 [tool.isort]
-profile                       = "black"
-multi_line_output             = 3
-include_trailing_comma        = true
-force_grid_wrap               = 0
-use_parentheses               = true
+profile = "black"
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
 ensure_newline_before_comments = true
-line_length                   = 88
+line_length = 88
 
 [tool.ruff]
 target-version = "py310"
-line-length    = 88
+line-length = 88
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "C", "B", "S", "UP"]
-ignore = ["S101"]                    # allow assert in tests
+ignore = ["S101"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*"        = ["S101"]
-"scripts/*"      = ["S603", "S607"]
+"tests/*" = ["S101"]
+"scripts/*" = ["S603", "S607"]
 "**/conftest.py" = ["S101"]
-"__init__.py"    = ["F401"]
+"__init__.py" = ["F401"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["fmp_data"]
 
 [tool.mypy]
-python_version            = "3.10"
-warn_return_any           = true
-warn_unused_configs       = true
-disallow_untyped_defs     = true
-disallow_incomplete_defs  = true
-check_untyped_defs        = true
-no_implicit_optional      = true
-warn_redundant_casts      = true
-warn_unused_ignores       = true
-warn_no_return            = true
-warn_unreachable          = true
-strict_optional           = true
-exclude                   = ["tests/", "examples/"]
-plugins                   = ["pydantic.mypy"]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_optional = true
+exclude = ["tests/", "examples/"]
+plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 module = [
@@ -241,32 +286,23 @@ module = [
 ]
 ignore_missing_imports = true
 
-###############################################################################
-#  PyDocstyle                                                                 #
-###############################################################################
 [tool.pydocstyle]
-convention          = "google"
-add-select          = ["D100", "D101", "D102", "D103", "D104"]
-add-ignore          = ["D105", "D107", "D200", "D203", "D213", "D406", "D407"]
-ignore-decorators   = "overrides"
+convention = "google"
+add-select = ["D100", "D101", "D102", "D103", "D104"]
+add-ignore = ["D105", "D107", "D200", "D203", "D213", "D406", "D407"]
+ignore-decorators = "overrides"
 
-###############################################################################
-#  Pytest defaults                                                            #
-###############################################################################
 [tool.pytest.ini_options]
-minversion  = "6.0"
-addopts     = "--quiet --no-header --tb=short -v --disable-warnings"
-testpaths   = ["tests"]
-python_files      = "test_*.py"
-python_functions  = "test_*"
+minversion = "6.0"
+addopts = "--quiet --no-header --tb=short -v --disable-warnings"
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
 filterwarnings = [
   "ignore::DeprecationWarning",
   "ignore::UserWarning",
 ]
 
-###############################################################################
-#  Coverage                                                                   #
-###############################################################################
 [tool.coverage.run]
 source = ["fmp_data"]
 branch = true
@@ -292,7 +328,7 @@ exclude_lines = [
   "if TYPE_CHECKING:",
 ]
 show_missing = true
-fail_under   = 80
+fail_under = 80
 
 [tool.coverage.html]
 directory = "coverage_html"
@@ -300,9 +336,6 @@ directory = "coverage_html"
 [tool.coverage.xml]
 output = "coverage.xml"
 
-###############################################################################
-#  Bandit (security)                                                          #
-###############################################################################
 [tool.bandit]
 exclude_dirs = ["tests", "scripts"]
-skips        = ["B101", "B404", "B603", "B607"]
+skips = ["B101", "B404", "B603", "B607"]
