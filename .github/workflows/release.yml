@@ -105,48 +105,60 @@ jobs:
           fetch-depth: 0
           ref: "${{ github.event_name == 'push' && needs.tag-version.outputs.new_tag || '' }}"
 
-      # Install uv for fast dependency management
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
       - uses: actions/setup-python@v5.6.0
         with:
           python-version: "3.12"
 
-      # Cache uv environments for faster builds
-      - name: Cache uv
+      # Install uv for faster dependency management (optional)
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+        continue-on-error: true
+
+      # Cache based on Poetry files since that's our source of truth
+      - name: Cache dependencies
         uses: actions/cache@v4
         with:
           path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
             ~/.cache/uv
             ~/.local/share/uv
-          key: ${{ runner.os }}-uv-build-${{ hashFiles('**/uv.lock', '**/pyproject.toml') }}
+          key: ${{ runner.os }}-build-${{ hashFiles('**/poetry.lock', '**/pyproject.toml') }}
           restore-keys: |
-            ${{ runner.os }}-uv-build-
+            ${{ runner.os }}-build-${{ hashFiles('**/pyproject.toml') }}
+            ${{ runner.os }}-build-
 
-      # Fast dependency installation with uv, but still use Poetry for building
-      # to maintain compatibility with poetry-dynamic-versioning
       - name: Install toolchain
         run: |
-          # Install Poetry for building (keeps dynamic versioning working)
+          # Install Poetry first (required for building and dynamic versioning)
           python -m pip install --upgrade pip poetry build packaging
-
-          # Install dependencies with uv for speed, but Poetry + Nox for tools
-          if command -v uv &> /dev/null; then
-            echo "Using uv for fast dependency installation"
-            uv sync --extra dev
-            uv add nox
-          else
-            echo "Fallback to Poetry"
-            poetry install --with dev
-            poetry run pip install nox
-          fi
 
           # Add poetry-dynamic-versioning plugin
           poetry self add poetry-dynamic-versioning[plugin]
+
+          # Try to use uv for faster dependency installation
+          if command -v uv &> /dev/null; then
+            echo "✅ uv available, using for fast dependency installation"
+
+            # Use uv to sync dependencies from pyproject.toml
+            if uv sync --extra dev --extra langchain --extra mcp-server; then
+              echo "✅ uv sync successful"
+              uv add --dev nox
+              echo "UV_AVAILABLE=true" >> $GITHUB_ENV
+            else
+              echo "⚠️ uv sync failed, falling back to Poetry"
+              poetry install --with dev --extras "langchain mcp-server"
+              poetry run pip install nox
+              echo "UV_AVAILABLE=false" >> $GITHUB_ENV
+            fi
+          else
+            echo "⚠️ uv not available, using Poetry"
+            poetry install --with dev --extras "langchain mcp-server"
+            poetry run pip install nox
+            echo "UV_AVAILABLE=false" >> $GITHUB_ENV
+          fi
 
       - name: Verify dynamic versioning
         run: |
@@ -182,20 +194,21 @@ jobs:
             exit 1
           fi
 
-      # Use uv to run nox for faster testing, but fallback to poetry
       - name: Run smoke tests
         run: |
-          if command -v uv &> /dev/null && uv run --help &> /dev/null; then
-            echo "Running tests with uv"
+          if [[ "$UV_AVAILABLE" == "true" ]]; then
+            echo "🚀 Running tests with uv"
             NOX_USE_UV=1 uv run nox -s smoke
           else
-            echo "Running tests with poetry"
+            echo "🐍 Running tests with Poetry"
             poetry run nox -s smoke
           fi
 
-      # Use Poetry for building to maintain dynamic versioning compatibility
+      # Always use Poetry for building to maintain dynamic versioning compatibility
       - name: Build package
-        run: poetry build
+        run: |
+          echo "Building package with Poetry (maintains dynamic versioning)"
+          poetry build
 
       - name: Extract version from built package
         id: extract-version
@@ -260,7 +273,8 @@ jobs:
           echo "| **Type** | $([ "$is_development" = "true" ] && echo "Development" || echo "Release") |" >> $GITHUB_STEP_SUMMARY
           echo "| **Wheel** | \`$(basename "$wheel_file")\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Sdist** | \`$(basename "$sdist_file")\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Build Tool** | Poetry + uv dependencies |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Dependency Tool** | $([ "$UV_AVAILABLE" = "true" ] && echo "uv (fast)" || echo "Poetry") |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Build Tool** | Poetry (dynamic versioning) |" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4.6.2
@@ -359,21 +373,30 @@ jobs:
           fetch-depth: 0
           ref: ${{ needs.tag-version.outputs.new_tag }}
 
-      # Use uv for faster docs build if available
+      # Install uv for faster docs build if available
       - name: Install uv
         uses: astral-sh/setup-uv@v4
         with:
           enable-cache: true
+        continue-on-error: true
 
       - name: Build and deploy docs
         run: |
+          python -m pip install --upgrade poetry nox
+
           if command -v uv &> /dev/null; then
-            echo "Building docs with uv"
-            uv sync --extra docs
-            NOX_USE_UV=1 uv run nox -s docs
+            echo "🚀 Building docs with uv"
+
+            # Use uv to sync with docs extras
+            if uv sync --extra docs; then
+              NOX_USE_UV=1 uv run nox -s docs
+            else
+              echo "⚠️ uv sync failed, falling back to Poetry"
+              poetry install --with docs
+              poetry run nox -s docs
+            fi
           else
-            echo "Building docs with poetry"
-            python -m pip install --upgrade poetry nox
+            echo "🐍 Building docs with Poetry"
             poetry install --with docs
             poetry run nox -s docs
           fi
@@ -404,7 +427,7 @@ jobs:
             This release was built using uv for dependency management, resulting in:
             - ⚡ 5-10x faster dependency installation
             - 🚀 2-3x faster overall CI time
-            - 💾 Smaller cache sizes and better caching
+            - 💾 Better caching efficiency
 
             ## Links
 

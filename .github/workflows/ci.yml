@@ -14,46 +14,43 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
+        with:
+          fetch-depth: 0
 
-      # Install uv first for faster dependency management
+      # Setup all Python versions for nox matrix testing
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # Install uv for faster dependency management (optional)
       - name: Install uv
         uses: astral-sh/setup-uv@v4
         with:
           enable-cache: true
+        continue-on-error: true
 
-      # make all interpreters visible to Nox
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.10" }
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.11" }
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.13" }
-
-      # Cache uv for faster builds
-      - name: Cache uv
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/uv
-            ~/.local/share/uv
-          key: ${{ runner.os }}-uv-ci-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('**/uv.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-uv-ci-${{ hashFiles('**/pyproject.toml') }}-
-            ${{ runner.os }}-uv-ci-
-
-      # Cache Poetry wheels as fallback
-      - name: Cache poetry/pip wheels
+      # Cache dependencies based on Poetry lock file
+      - name: Cache Poetry dependencies
         uses: actions/cache@v4
         with:
           path: |
             ~/.cache/pypoetry
             ~/.cache/pip
-          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock', '**/pyproject.toml') }}
+            ~/.cache/uv
+            ~/.local/share/uv
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/poetry.lock', '**/pyproject.toml') }}
           restore-keys: |
-            ${{ runner.os }}-poetry-
+            ${{ runner.os }}-deps-${{ hashFiles('**/pyproject.toml') }}
+            ${{ runner.os }}-deps-
 
       - name: Install toolchain
         run: |
@@ -61,33 +58,46 @@ jobs:
           python -m pip install --upgrade pip
           pip install "poetry>=1.8" nox
 
-          # Try to use uv for dependency management if possible
+          # Check if uv is available and working
           if command -v uv &> /dev/null; then
-            echo "Using uv for fast dependency management"
+            echo "✅ uv is available"
+            uv --version
 
-            # Generate uv.lock if it doesn't exist
-            if [ ! -f "uv.lock" ]; then
-              echo "uv.lock not found, generating from pyproject.toml..."
-              uv sync || echo "uv sync failed, falling back to poetry"
+            # Try to sync from Poetry's pyproject.toml
+            # This creates a virtual environment and installs dependencies
+            if uv sync --extra dev --extra langchain --extra mcp-server; then
+              echo "✅ uv sync successful"
+              # Install nox in the uv environment
+              uv add --dev nox
+              echo "UV_AVAILABLE=true" >> $GITHUB_ENV
             else
-              echo "uv.lock found, using existing lock file"
-              uv sync --frozen || uv sync || echo "uv sync failed, falling back to poetry"
+              echo "⚠️ uv sync failed, falling back to Poetry"
+              poetry install --with dev --extras "langchain mcp-server"
+              echo "UV_AVAILABLE=false" >> $GITHUB_ENV
             fi
-
-            # Install nox in uv environment
-            uv add --dev nox || pip install nox
           else
-            echo "uv not available, using poetry"
-            poetry install --with dev
+            echo "⚠️ uv not available, using Poetry"
+            poetry install --with dev --extras "langchain mcp-server"
+            echo "UV_AVAILABLE=false" >> $GITHUB_ENV
           fi
 
-      - name: Run Nox matrix
+      - name: Run quality checks
         run: |
-          # Set environment variable to use uv if available
-          if command -v uv &> /dev/null && [ -f "uv.lock" ]; then
-            echo "Running Nox with uv support"
-            NOX_USE_UV=1 nox -s tests lint typecheck typecheck_lang security
+          if [[ "$UV_AVAILABLE" == "true" ]]; then
+            echo "🚀 Running with uv"
+            NOX_USE_UV=1 uv run nox -s tests lint typecheck typecheck_lang security
           else
-            echo "Running Nox with poetry"
-            nox -s tests lint typecheck typecheck_lang security
+            echo "🐍 Running with Poetry"
+            poetry run nox -s tests lint typecheck typecheck_lang security
           fi
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            coverage.xml
+            htmlcov/
+          retention-days: 7
+        continue-on-error: true
