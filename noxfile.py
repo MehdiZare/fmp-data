@@ -90,9 +90,11 @@ def _install_with_poetry(
     if dev:
         cmd.extend(["--with", "dev"])
 
-    # Add extras
+    # Add extras - Poetry expects space-separated values
     if extras:
-        cmd.extend(["--extras", extras])
+        # Convert comma-separated to space-separated for Poetry
+        poetry_extras = extras.replace(",", " ")
+        cmd.extend(["--extras", poetry_extras])
 
     session.run(*cmd, external=True)
 
@@ -142,7 +144,8 @@ def _install_deps_only(session: Session, extras: list[str] | None = None) -> Non
             session.run("uv", "sync", external=True)
     else:
         # For Poetry/pip, install project which pulls dependencies
-        _install(session, extras=",".join(extras) if extras else None, dev=True)
+        extras_str = ",".join(extras) if extras else None
+        _install(session, extras=extras_str, dev=True)
 
 
 # ── test matrix ─────────────────────────────────────────────────
@@ -277,7 +280,7 @@ def clean(session: Session) -> None:
         "dist",
         "*.egg-info",
         ".coverage",
-        "coverage_html",
+        "htmlcov",  # Changed from "coverage_html" to standard pytest-cov output
         "coverage.xml",
         ".pytest_cache",
         ".mypy_cache",
@@ -285,6 +288,7 @@ def clean(session: Session) -> None:
         "__pycache__",
         ".venv",  # uv venv
         ".nox",  # nox environments
+        "bandit-report.json",  # bandit output
     ]
 
     for pattern in dirs_to_clean:

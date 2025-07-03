@@ -14,50 +14,80 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Needed for setuptools-scm
+        with: { fetch-depth: 0 }
 
-      # Install uv
+      # Install uv first for faster dependency management
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v4
         with:
           enable-cache: true
-          cache-dependency-glob: "uv.lock"
 
-      # Setup Python versions for Nox
+      # make all interpreters visible to Nox
       - uses: actions/setup-python@v5
-        with:
-          python-version: |
-            3.10
-            3.11
-            3.12
-            3.13
+        with: { python-version: "3.10" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
 
-      # Cache uv and Python environments
+      # Cache uv for faster builds
       - name: Cache uv
         uses: actions/cache@v4
         with:
           path: |
             ~/.cache/uv
             ~/.local/share/uv
-          key: ${{ runner.os }}-uv-${{ hashFiles('**/uv.lock', '**/pyproject.toml') }}
+          key: ${{ runner.os }}-uv-ci-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('**/uv.lock') }}
           restore-keys: |
-            ${{ runner.os }}-uv-
+            ${{ runner.os }}-uv-ci-${{ hashFiles('**/pyproject.toml') }}-
+            ${{ runner.os }}-uv-ci-
 
-      # Install dependencies and Nox
-      - name: Install dependencies
+      # Cache Poetry wheels as fallback
+      - name: Cache poetry/pip wheels
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock', '**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: Install toolchain
         run: |
-          # Install the project with dev dependencies
-          uv sync --extra dev
+          # Install Poetry and Nox
+          python -m pip install --upgrade pip
+          pip install "poetry>=1.8" nox
 
-          # Install Nox in the same environment
-          uv add --dev nox
+          # Try to use uv for dependency management if possible
+          if command -v uv &> /dev/null; then
+            echo "Using uv for fast dependency management"
 
-      # Run Nox matrix with uv environment
+            # Generate uv.lock if it doesn't exist
+            if [ ! -f "uv.lock" ]; then
+              echo "uv.lock not found, generating from pyproject.toml..."
+              uv sync || echo "uv sync failed, falling back to poetry"
+            else
+              echo "uv.lock found, using existing lock file"
+              uv sync --frozen || uv sync || echo "uv sync failed, falling back to poetry"
+            fi
+
+            # Install nox in uv environment
+            uv add --dev nox || pip install nox
+          else
+            echo "uv not available, using poetry"
+            poetry install --with dev
+          fi
+
       - name: Run Nox matrix
         run: |
-          # Activate uv environment and run Nox
-          uv run nox -s tests lint typecheck security
-        env:
-          # Tell Nox to use uv for faster installs
-          NOX_USE_UV: "1"
+          # Set environment variable to use uv if available
+          if command -v uv &> /dev/null && [ -f "uv.lock" ]; then
+            echo "Running Nox with uv support"
+            NOX_USE_UV=1 nox -s tests lint typecheck typecheck_lang security
+          else
+            echo "Running Nox with poetry"
+            nox -s tests lint typecheck typecheck_lang security
+          fi
