@@ -111,12 +111,12 @@ jobs:
 
       # Install uv for faster dependency management (optional)
       - name: Install uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v6
         with:
-          enable-cache: true
+          enable-cache: false  # We'll manage caching manually since we're Poetry-first
         continue-on-error: true
 
-      # Cache based on Poetry files since that's our source of truth
+      # Cache dependencies (Poetry-first with optional uv acceleration)
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
@@ -124,10 +124,8 @@ jobs:
             ~/.cache/pypoetry
             ~/.cache/pip
             ~/.cache/uv
-            ~/.local/share/uv
-          key: ${{ runner.os }}-build-${{ hashFiles('**/poetry.lock', '**/pyproject.toml') }}
+          key: ${{ runner.os }}-build-${{ hashFiles('**/poetry.lock') }}
           restore-keys: |
-            ${{ runner.os }}-build-${{ hashFiles('**/pyproject.toml') }}
             ${{ runner.os }}-build-
 
       - name: Install toolchain
@@ -283,10 +281,17 @@ jobs:
           path: dist/*
 
   test-publish:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && needs.build.result == 'success'
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: Debug job conditions
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          echo "Build job result: ${{ needs.build.result }}"
+          echo "Package version: ${{ needs.build.outputs.package_version }}"
+          echo "Is development: ${{ needs.build.outputs.is_development }}"
+
       - uses: actions/download-artifact@v4.3.0
         with:
           name: dist
@@ -296,12 +301,26 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Verify downloaded artifacts
+        run: |
+          echo "Contents of dist/ directory:"
+          ls -la dist/
+          echo ""
+          echo "Files to upload:"
+          find dist/ -name "*.whl" -o -name "*.tar.gz"
+
       - run: python -m pip install --upgrade twine
 
       - name: Upload to Test PyPI
         env:
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
         run: |
+          if [[ -z "$TWINE_PASSWORD" ]]; then
+            echo "::error::TEST_PYPI_TOKEN secret is not set"
+            echo "Please add TEST_PYPI_TOKEN to your repository secrets"
+            exit 1
+          fi
+
           echo "Uploading to Test PyPI"
           echo "Version: ${{ needs.build.outputs.package_version }}"
           echo "Type: $([ "${{ needs.build.outputs.is_development }}" = "true" ] && echo "Development" || echo "Release")"
@@ -375,9 +394,9 @@ jobs:
 
       # Install uv for faster docs build if available
       - name: Install uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v6
         with:
-          enable-cache: true
+          enable-cache: false  # Manual cache management
         continue-on-error: true
 
       - name: Build and deploy docs
