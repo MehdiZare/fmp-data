@@ -252,6 +252,7 @@ ignore = ["S101"]
 "scripts/*" = ["S603", "S607"]
 "**/conftest.py" = ["S101"]
 "__init__.py" = ["F401"]
+"noxfile.py" = ["S603", "S607"]  # Allow subprocess calls for tool management
 
 [tool.ruff.lint.isort]
 known-first-party = ["fmp_data"]
