@@ -14,8 +14,13 @@ permissions:
 
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  PYTHON_VERSION: "3.12"
 
 jobs:
+  # ══════════════════════════════════════════════════════════════════════════
+  # Production Release Jobs (Push to main only)
+  # ══════════════════════════════════════════════════════════════════════════
+
   guard-label:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -28,27 +33,30 @@ jobs:
 
       - name: Derive bump from PR label
         id: bump
-        shell: bash
         run: |
           set -euo pipefail
           pr_json="$(gh api "repos/${{ github.repository }}/commits/${GITHUB_SHA}/pulls" || true)"
           pr="$(jq -r '.[0].number // empty' <<<"$pr_json")"
+
           if [[ -z "$pr" ]]; then
             echo "::error::Commit ${GITHUB_SHA} is not part of a merged PR."
             exit 1
           fi
-          labels="$(gh pr view "$pr" --json labels --jq '.labels[].name')"
 
+          labels="$(gh pr view "$pr" --json labels --jq '.labels[].name')"
           bump=""
           [[ "$labels" == *"release:patch"* ]] && bump="patch"
           [[ "$labels" == *"release:minor"* ]] && bump="minor"
           [[ "$labels" == *"release:major"* ]] && bump="major"
-          echo "bump=$bump" >>"$GITHUB_OUTPUT"
+
+          echo "bump=$bump" >> "$GITHUB_OUTPUT"
 
           if [[ -z "$bump" || "$(grep -c 'release:' <<<"$labels")" -ne 1 ]]; then
-            echo "::error::Exactly one release:* label required."
+            echo "::error::Exactly one release:* label required (found: $labels)"
             exit 1
           fi
+
+          echo "✅ Release bump: $bump"
 
   tag-version:
     if: github.event_name == 'push'
@@ -58,7 +66,7 @@ jobs:
       new_tag: ${{ steps.tag.outputs.new_tag }}
       new_version: ${{ steps.tag.outputs.new_version }}
     steps:
-      - uses: actions/checkout@v4.2.0
+      - uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
 
@@ -66,57 +74,59 @@ jobs:
         id: tag
         env:
           BUMP: ${{ needs.guard-label.outputs.bump }}
-        shell: bash
         run: |
           set -euo pipefail
           latest=$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)
           IFS='.' read -r major minor patch <<<"${latest#v}"
+
           case "$BUMP" in
             patch) patch=$((patch+1));;
             minor) minor=$((minor+1)); patch=0;;
             major) major=$((major+1)); minor=0; patch=0;;
           esac
+
           new_tag="v${major}.${minor}.${patch}"
           new_version="${major}.${minor}.${patch}"
 
-          echo "Creating new tag: $new_tag"
-          echo "New version will be: $new_version"
-
-          echo "new_tag=$new_tag" >>"$GITHUB_OUTPUT"
-          echo "new_version=$new_version" >>"$GITHUB_OUTPUT"
+          echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
+          echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag "$new_tag"
           git push origin "$new_tag"
 
+          echo "✅ Created and pushed tag: $new_tag"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # Build Job (Runs for both PRs and pushes)
+  # ══════════════════════════════════════════════════════════════════════════
+
   build:
     runs-on: ubuntu-latest
     needs: [tag-version]
     if: always() && (needs.tag-version.result == 'success' || needs.tag-version.result == 'skipped')
     outputs:
-      package_version: ${{ steps.extract-version.outputs.version }}
+      version: ${{ steps.extract-version.outputs.version }}
       wheel_file: ${{ steps.extract-version.outputs.wheel_file }}
       sdist_file: ${{ steps.extract-version.outputs.sdist_file }}
       is_development: ${{ steps.extract-version.outputs.is_development }}
     steps:
-      - uses: actions/checkout@v4.2.0
+      - uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
-          ref: "${{ github.event_name == 'push' && needs.tag-version.outputs.new_tag || '' }}"
+          ref: ${{ github.event_name == 'push' && needs.tag-version.outputs.new_tag || '' }}
 
       - uses: actions/setup-python@v5.6.0
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      # Install uv for faster dependency management (optional)
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
-          enable-cache: false  # We'll manage caching manually since we're Poetry-first
+          enable-cache: true
         continue-on-error: true
 
-      # Cache dependencies (Poetry-first with optional uv acceleration)
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
@@ -124,138 +134,94 @@ jobs:
             ~/.cache/pypoetry
             ~/.cache/pip
             ~/.cache/uv
-          key: ${{ runner.os }}-build-${{ hashFiles('**/poetry.lock') }}
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/pyproject.toml', '**/poetry.lock') }}
           restore-keys: |
-            ${{ runner.os }}-build-
+            ${{ runner.os }}-deps-
 
-      - name: Install toolchain
+      - name: Setup toolchain and dependencies
         run: |
-          # Install Poetry first (required for building and dynamic versioning)
+          # Install core toolchain
           python -m pip install --upgrade pip poetry build packaging
-
-          # Add poetry-dynamic-versioning plugin
           poetry self add poetry-dynamic-versioning[plugin]
 
-          # Try to use uv for faster dependency installation
+          # Determine installation method
           if command -v uv &> /dev/null; then
-            echo "✅ uv available, using for fast dependency installation"
+            echo "🚀 Using uv for fast dependency installation"
 
-            # Use uv to sync dependencies from pyproject.toml
-            if uv sync --extra dev --extra langchain --extra mcp-server; then
-              echo "✅ uv sync successful"
-              uv add --dev nox
-              echo "UV_AVAILABLE=true" >> $GITHUB_ENV
-            else
-              echo "⚠️ uv sync failed, falling back to Poetry"
-              poetry install --with dev --extras "langchain mcp-server"
-              poetry run pip install nox
-              echo "UV_AVAILABLE=false" >> $GITHUB_ENV
-            fi
+            # Install project with extras and dependency groups (PEP 735)
+            uv pip install -e .[langchain,mcp-server] --dependency-groups dev
+            echo "TOOL=uv" >> $GITHUB_ENV
           else
-            echo "⚠️ uv not available, using Poetry"
+            echo "🐍 Using Poetry for dependency installation"
             poetry install --with dev --extras "langchain mcp-server"
-            poetry run pip install nox
-            echo "UV_AVAILABLE=false" >> $GITHUB_ENV
+            echo "TOOL=poetry" >> $GITHUB_ENV
           fi
 
       - name: Verify dynamic versioning
         run: |
-          echo "Git information:"
-          echo "  Current commit: $(git rev-parse --short HEAD)"
-          echo "  Current branch: $(git branch --show-current || echo 'detached HEAD')"
-          echo "  Latest tag: $(git describe --tags --abbrev=0 2>/dev/null || echo 'No tags found')"
+          echo "📋 Build Information"
+          echo "  Event: ${{ github.event_name }}"
+          echo "  Commit: $(git rev-parse --short HEAD)"
+          echo "  Branch: $(git branch --show-current || echo 'detached')"
+          echo "  Latest tag: $(git describe --tags --abbrev=0 2>/dev/null || echo 'none')"
           echo "  Git describe: $(git describe --tags --always)"
           echo ""
 
-          poetry_version=$(poetry version --short)
-          echo "Poetry detected version: $poetry_version"
+          version=$(poetry version --short)
+          echo "📦 Version: $version"
+
+          # Validate version
+          if [[ "$version" == "0.0.0" ]]; then
+            echo "::error::Dynamic versioning failed - still showing 0.0.0"
+            exit 1
+          fi
 
           # Check version type
-          if [[ "$poetry_version" == *.post* ]]; then
-            echo "Development version detected (contains .post)"
-            echo "Suitable for Test PyPI"
+          if [[ "$version" == *.post* ]]; then
+            echo "📝 Development version detected"
             if [[ "${{ github.event_name }}" == "push" ]]; then
-              echo "::error::Production release must be from clean tag, not development version"
-              echo "Current version: $poetry_version"
-              echo "Expected: Clean version like 1.0.0, 1.1.0, etc."
+              echo "::error::Production release cannot use development version: $version"
               exit 1
             fi
           else
-            echo "Clean release version detected"
-            echo "Suitable for Production PyPI"
-          fi
-
-          # Fail if still seeing 0.0.0
-          if [[ "$poetry_version" == "0.0.0" ]]; then
-            echo "::error::Dynamic versioning failed - still seeing 0.0.0"
-            echo "Check that poetry-dynamic-versioning is configured correctly"
-            exit 1
+            echo "🎯 Clean release version detected"
           fi
 
       - name: Run smoke tests
         run: |
-          if [[ "$UV_AVAILABLE" == "true" ]]; then
-            echo "🚀 Running tests with uv"
+          if [[ "$TOOL" == "uv" ]]; then
             NOX_USE_UV=1 uv run nox -s smoke
           else
-            echo "🐍 Running tests with Poetry"
             poetry run nox -s smoke
           fi
 
-      # Always use Poetry for building to maintain dynamic versioning compatibility
       - name: Build package
-        run: |
-          echo "Building package with Poetry (maintains dynamic versioning)"
-          poetry build
+        run: poetry build
 
-      - name: Extract version from built package
+      - name: Extract package metadata
         id: extract-version
         run: |
-          echo "Contents of dist/ directory:"
-          ls -la dist/
-          echo ""
-
           wheel_file=$(ls dist/*.whl | head -1)
           sdist_file=$(ls dist/*.tar.gz | head -1)
 
-          if [[ -z "$wheel_file" ]]; then
-            echo "::error::No wheel file found in dist/"
-            exit 1
-          fi
+          # Validate files exist
+          [[ -n "$wheel_file" ]] || { echo "::error::No wheel file found"; exit 1; }
+          [[ -n "$sdist_file" ]] || { echo "::error::No sdist file found"; exit 1; }
 
-          if [[ -z "$sdist_file" ]]; then
-            echo "::error::No sdist file found in dist/"
-            exit 1
-          fi
-
-          # Extract version using packaging library
-          version=$(python3 -c "
+          # Extract version from wheel filename
+          version=$(python -c "
           from pathlib import Path
           from packaging.utils import parse_wheel_filename
-          import sys
-          try:
-              wheel_path = Path('$wheel_file')
-              name, version, build_tag, tags = parse_wheel_filename(wheel_path.name)
-              print(version)
-          except Exception as e:
-              print(f'Error parsing wheel: {e}', file=sys.stderr)
-              sys.exit(1)
+          wheel_path = Path('$wheel_file')
+          name, version, build_tag, tags = parse_wheel_filename(wheel_path.name)
+          print(version)
           ")
 
-          if [[ -z "$version" ]]; then
-            echo "::error::Failed to extract version from wheel filename"
-            exit 1
-          fi
+          [[ -n "$version" ]] || { echo "::error::Failed to extract version"; exit 1; }
 
-          echo "Extracted version: $version"
-          echo "Wheel file: $(basename "$wheel_file")"
-          echo "Sdist file: $(basename "$sdist_file")"
-
-          # Check if development version
+          # Determine if development version
           is_development="false"
-          if [[ "$version" == *.post* ]]; then
-            is_development="true"
-          fi
+          [[ "$version" == *.post* ]] && is_development="true"
 
           # Set outputs
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -264,156 +230,200 @@ jobs:
           echo "is_development=$is_development" >> "$GITHUB_OUTPUT"
 
           # Create summary
-          echo "## Package Build Summary" >> $GITHUB_STEP_SUMMARY
-          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| **Version** | \`$version\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Type** | $([ "$is_development" = "true" ] && echo "Development" || echo "Release") |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Wheel** | \`$(basename "$wheel_file")\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Sdist** | \`$(basename "$sdist_file")\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Dependency Tool** | $([ "$UV_AVAILABLE" = "true" ] && echo "uv (fast)" || echo "Poetry") |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Build Tool** | Poetry (dynamic versioning) |" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## 📦 Package Build Summary"
+            echo "| Item | Value |"
+            echo "|------|-------|"
+            echo "| **Version** | \`$version\` |"
+            echo "| **Type** | $([ "$is_development" = "true" ] && echo "Development 🔄" || echo "Release 🎯") |"
+            echo "| **Wheel** | \`$(basename "$wheel_file")\` |"
+            echo "| **Sdist** | \`$(basename "$sdist_file")\` |"
+            echo "| **Tool** | $TOOL |"
+            echo "| **Event** | ${{ github.event_name }} |"
+          } >> $GITHUB_STEP_SUMMARY
 
-      - name: Upload artifacts
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4.6.2
         with:
-          name: dist
+          name: dist-${{ github.run_id }}
           path: dist/*
+          retention-days: 7
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # Test Publishing (PRs only)
+  # ══════════════════════════════════════════════════════════════════════════
 
   test-publish:
-    if: github.event_name == 'pull_request' && needs.build.result == 'success'
+    if: github.event_name == 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Debug job conditions
+      - name: Validate build success
+        if: needs.build.result != 'success'
         run: |
-          echo "Event: ${{ github.event_name }}"
-          echo "Build job result: ${{ needs.build.result }}"
-          echo "Package version: ${{ needs.build.outputs.package_version }}"
-          echo "Is development: ${{ needs.build.outputs.is_development }}"
+          echo "::error::Build job failed with status: ${{ needs.build.result }}"
+          exit 1
 
-      - uses: actions/download-artifact@v4.3.0
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4.3.0
         with:
-          name: dist
+          name: dist-${{ github.run_id }}
           path: dist
 
       - uses: actions/setup-python@v5.6.0
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Verify downloaded artifacts
+      - name: Verify artifacts
         run: |
-          echo "Contents of dist/ directory:"
+          echo "📁 Artifact contents:"
           ls -la dist/
           echo ""
-          echo "Files to upload:"
-          find dist/ -name "*.whl" -o -name "*.tar.gz"
+          echo "📋 Files to upload:"
+          find dist/ -name "*.whl" -o -name "*.tar.gz" | sort
 
-      - run: python -m pip install --upgrade twine
+      - name: Install twine
+        run: python -m pip install --upgrade twine
 
       - name: Upload to Test PyPI
         env:
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
         run: |
           if [[ -z "$TWINE_PASSWORD" ]]; then
-            echo "::error::TEST_PYPI_TOKEN secret is not set"
+            echo "::error::TEST_PYPI_TOKEN secret is not configured"
             echo "Please add TEST_PYPI_TOKEN to your repository secrets"
             exit 1
           fi
 
-          echo "Uploading to Test PyPI"
-          echo "Version: ${{ needs.build.outputs.package_version }}"
-          echo "Type: $([ "${{ needs.build.outputs.is_development }}" = "true" ] && echo "Development" || echo "Release")"
-          echo "Wheel: ${{ needs.build.outputs.wheel_file }}"
-          echo "Sdist: ${{ needs.build.outputs.sdist_file }}"
+          echo "🚀 Uploading to Test PyPI"
+          echo "  Version: ${{ needs.build.outputs.version }}"
+          echo "  Wheel: ${{ needs.build.outputs.wheel_file }}"
+          echo "  Sdist: ${{ needs.build.outputs.sdist_file }}"
           echo ""
 
-          python -m twine upload --non-interactive --skip-existing \
+          python -m twine upload \
+            --non-interactive \
+            --skip-existing \
             --repository-url https://test.pypi.org/legacy/ \
-            -u __token__ -p "$TWINE_PASSWORD" dist/*
+            -u __token__ \
+            -p "$TWINE_PASSWORD" \
+            dist/*
 
+          test_pypi_url="https://test.pypi.org/project/fmp-data/${{ needs.build.outputs.version }}/"
           echo ""
-          echo "Successfully uploaded to Test PyPI"
-          echo "View at: https://test.pypi.org/project/fmp-data/${{ needs.build.outputs.package_version }}/"
+          echo "✅ Successfully uploaded to Test PyPI"
+          echo "🔗 View at: $test_pypi_url"
 
           # Add to summary
-          echo "## Test PyPI Upload" >> $GITHUB_STEP_SUMMARY
-          echo "Successfully uploaded version \`${{ needs.build.outputs.package_version }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "[View on Test PyPI](https://test.pypi.org/project/fmp-data/${{ needs.build.outputs.package_version }}/)" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## 🧪 Test PyPI Upload"
+            echo "Successfully uploaded version \`${{ needs.build.outputs.version }}\`"
+            echo ""
+            echo "🔗 [View on Test PyPI]($test_pypi_url)"
+            echo ""
+            echo "### Test Installation"
+            echo "\`\`\`bash"
+            echo "pip install --index-url https://test.pypi.org/simple/ fmp-data==${{ needs.build.outputs.version }}"
+            echo "\`\`\`"
+          } >> $GITHUB_STEP_SUMMARY
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # Production Publishing (Push to main only)
+  # ══════════════════════════════════════════════════════════════════════════
 
   publish:
     if: github.event_name == 'push'
     needs: [tag-version, build]
     runs-on: ubuntu-latest
+    environment: production
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4.3.0
         with:
-          name: dist
+          name: dist-${{ github.run_id }}
           path: dist
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5.6.0
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - run: python -m pip install --upgrade twine
+      - name: Install twine
+        run: python -m pip install --upgrade twine
 
       - name: Upload to PyPI
         env:
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: |
-          echo "Uploading to Production PyPI"
-          echo "Git tag: ${{ needs.tag-version.outputs.new_tag }}"
-          echo "Package version: ${{ needs.build.outputs.package_version }}"
-          echo "Wheel: ${{ needs.build.outputs.wheel_file }}"
-          echo "Sdist: ${{ needs.build.outputs.sdist_file }}"
+          echo "🚀 Uploading to Production PyPI"
+          echo "  Tag: ${{ needs.tag-version.outputs.new_tag }}"
+          echo "  Version: ${{ needs.build.outputs.version }}"
+          echo "  Wheel: ${{ needs.build.outputs.wheel_file }}"
+          echo "  Sdist: ${{ needs.build.outputs.sdist_file }}"
           echo ""
 
-          # Verify versions match
-          if [[ "${{ needs.tag-version.outputs.new_version }}" != "${{ needs.build.outputs.package_version }}" ]]; then
-            echo "::warning::Tag version (${{ needs.tag-version.outputs.new_version }}) doesn't match package version (${{ needs.build.outputs.package_version }})"
+          # Validate version consistency
+          if [[ "${{ needs.tag-version.outputs.new_version }}" != "${{ needs.build.outputs.version }}" ]]; then
+            echo "::warning::Version mismatch - Tag: ${{ needs.tag-version.outputs.new_version }}, Package: ${{ needs.build.outputs.version }}"
           fi
 
-          python -m twine upload --non-interactive --skip-existing \
-            -u __token__ -p "$TWINE_PASSWORD" dist/*
+          python -m twine upload \
+            --non-interactive \
+            --skip-existing \
+            -u __token__ \
+            -p "$TWINE_PASSWORD" \
+            dist/*
 
+          pypi_url="https://pypi.org/project/fmp-data/${{ needs.build.outputs.version }}/"
           echo ""
-          echo "Successfully released to PyPI"
-          echo "View at: https://pypi.org/project/fmp-data/${{ needs.build.outputs.package_version }}/"
+          echo "✅ Successfully published to PyPI"
+          echo "🔗 View at: $pypi_url"
 
           # Add to summary
-          echo "## PyPI Release" >> $GITHUB_STEP_SUMMARY
-          echo "Successfully released version \`${{ needs.build.outputs.package_version }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "[View on PyPI](https://pypi.org/project/fmp-data/${{ needs.build.outputs.package_version }}/)" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## 🎉 PyPI Release"
+            echo "Successfully released version \`${{ needs.build.outputs.version }}\`"
+            echo ""
+            echo "🔗 [View on PyPI]($pypi_url)"
+            echo ""
+            echo "### Installation"
+            echo "\`\`\`bash"
+            echo "pip install fmp-data==${{ needs.build.outputs.version }}"
+            echo "\`\`\`"
+          } >> $GITHUB_STEP_SUMMARY
 
-      - uses: actions/checkout@v4.2.0
+  # ══════════════════════════════════════════════════════════════════════════
+  # Documentation and Release Notes (Production only)
+  # ══════════════════════════════════════════════════════════════════════════
+
+  docs-and-release:
+    if: github.event_name == 'push'
+    needs: [tag-version, build, publish]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
           ref: ${{ needs.tag-version.outputs.new_tag }}
 
-      # Install uv for faster docs build if available
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
-          enable-cache: false  # Manual cache management
+          enable-cache: true
         continue-on-error: true
 
-      - name: Build and deploy docs
+      - name: Build documentation
         run: |
           python -m pip install --upgrade poetry nox
 
           if command -v uv &> /dev/null; then
             echo "🚀 Building docs with uv"
-
-            # Use uv to sync with docs extras
-            if uv sync --extra docs; then
-              NOX_USE_UV=1 uv run nox -s docs
-            else
-              echo "⚠️ uv sync failed, falling back to Poetry"
-              poetry install --with docs
-              poetry run nox -s docs
-            fi
+            uv pip install --dependency-groups docs
+            NOX_USE_UV=1 uv run nox -s docs
           else
             echo "🐍 Building docs with Poetry"
             poetry install --with docs
@@ -428,28 +438,36 @@ jobs:
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
 
-      - name: Create GitHub release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.tag-version.outputs.new_tag }}
           name: Release ${{ needs.tag-version.outputs.new_tag }}
+          generate_release_notes: true
           body: |
-            ## Package Information
+            ## 📦 Package Information
 
-            - **Version:** `${{ needs.build.outputs.package_version }}`
+            - **Version:** `${{ needs.build.outputs.version }}`
             - **Wheel:** `${{ needs.build.outputs.wheel_file }}`
             - **Sdist:** `${{ needs.build.outputs.sdist_file }}`
-            - **Build:** Poetry + uv dependencies for faster CI
 
-            ## Performance Improvements
+            ## 🚀 Installation
 
-            This release was built using uv for dependency management, resulting in:
-            - ⚡ 5-10x faster dependency installation
-            - 🚀 2-3x faster overall CI time
-            - 💾 Better caching efficiency
+            ```bash
+            pip install fmp-data==${{ needs.build.outputs.version }}
 
-            ## Links
+            # With optional features
+            pip install fmp-data[langchain]==${{ needs.build.outputs.version }}
+            pip install fmp-data[mcp-server]==${{ needs.build.outputs.version }}
+            ```
 
-            - [PyPI Package](https://pypi.org/project/fmp-data/${{ needs.build.outputs.package_version }}/)
-            - [Documentation](https://github.com/MehdiZare/fmp-data#readme)
-            - [Source Code](https://github.com/MehdiZare/fmp-data/tree/${{ needs.tag-version.outputs.new_tag }})
+            ## 🔗 Links
+
+            - [📦 PyPI Package](https://pypi.org/project/fmp-data/${{ needs.build.outputs.version }}/)
+            - [📚 Documentation](https://mehdizare.github.io/fmp-data/)
+            - [📋 Source Code](https://github.com/MehdiZare/fmp-data/tree/${{ needs.tag-version.outputs.new_tag }})
+            - [🐛 Issues](https://github.com/MehdiZare/fmp-data/issues)
+
+            ## 🎯 What's Changed
+
+            ${{ github.event.head_commit.message }}
