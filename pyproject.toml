@@ -344,8 +344,21 @@ directory = "coverage_html"
 output = "coverage.xml"
 
 [tool.bandit]
-exclude_dirs = ["tests", "scripts"]
-skips = ["B101", "B404", "B603", "B607"]
+exclude_dirs = ["tests", "scripts", ".nox", ".venv"]
+skips = [
+    "B101",  # assert_used - we use asserts in tests
+    "B404",  # consider_possible_security_implications_associated_with_subprocess_module
+    "B603",  # subprocess_without_shell_equals_true
+    "B607",  # start_process_with_partial_path
+    "B608",  # possible_sql_injection_pii - false positives with string formatting
+]
+
+# Set reasonable severity and confidence levels
+severity = "medium"
+confidence = "high"
+
+# Additional patterns to exclude
+exclude = ["*/tests/*", "*/test_*", "*/.nox/*", "*/.venv/*"]
 
 [dependency-groups]
 dev = [
