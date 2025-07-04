@@ -79,7 +79,7 @@ class ParamType(str, Enum):
             raise ValueError(f"Unsupported type: {self}")
         except (ValueError, TypeError) as e:
             raise ValueError(
-                f"Failed to convert value '{value}' to type {self.value}: {str(e)}"
+                f"Failed to convert value '{value}' to type {self.value}: {e!s}"
             ) from e
 
     def _convert_to_string(self, value: Any) -> str:
@@ -135,8 +135,7 @@ class EndpointParam:
         # Validate against allowed values if specified
         if self.valid_values and converted_value not in self.valid_values:
             raise ValueError(
-                f"Invalid value for {self.name}. "
-                f"Must be one of: {self.valid_values}"
+                f"Invalid value for {self.name}. Must be one of: {self.valid_values}"
             )
 
         return converted_value

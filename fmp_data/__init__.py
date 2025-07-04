@@ -44,20 +44,20 @@ except ImportError:
 #  Public re-exports guaranteed to work without optional dependencies
 # --------------------------------------------------------------------------- #
 __all__ = [
-    "FMPDataClient",
+    "AuthenticationError",
     "ClientConfig",
-    "LoggingConfig",
-    "LogHandlerConfig",
-    "RateLimitConfig",
+    "ConfigError",
+    "FMPDataClient",
     "FMPError",
     "FMPLogger",
+    "LogHandlerConfig",
+    "LoggingConfig",
+    "RateLimitConfig",
     "RateLimitError",
-    "AuthenticationError",
     "ValidationError",
-    "ConfigError",
-    "logger",
-    "is_langchain_available",
     "__version__",
+    "is_langchain_available",
+    "logger",
 ]
 
 logger = FMPLogger()
@@ -91,7 +91,7 @@ def _lazy_import_vector_store() -> _types.ModuleType:
         ) from None
 
     # Import inside the function to keep top-level import cheap.
-    from fmp_data import lc as _lc  # noqa: WPS433 (allow internal import)
+    from fmp_data import lc as _lc
 
     # Check FAISS at runtime to give a clearer error than module not found.
     if _importlib_util.find_spec("faiss") is None:

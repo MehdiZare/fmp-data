@@ -9,6 +9,7 @@ This module provides LangChain integration features including:
 - Vector store management
 - Natural language endpoint discovery
 """
+
 from __future__ import annotations
 
 import os
@@ -211,7 +212,7 @@ def try_load_existing_store(
         return None
 
     except Exception as e:
-        logger.warning(f"Failed to load vector store: {str(e)}")
+        logger.warning(f"Failed to load vector store: {e!s}")
         return None
 
 
@@ -242,15 +243,15 @@ def create_new_store(
 
 # Export main functions - including the existing helper functions
 __all__ = [
-    "init_langchain",
-    "create_vector_store",
-    "setup_registry",
-    "validate_api_keys",
-    "try_load_existing_store",  # Your existing helper
-    "create_new_store",  # Your existing helper
-    "EndpointVectorStore",
-    "EndpointSemantics",
-    "SemanticCategory",
-    "LangChainConfig",
     "EmbeddingProvider",
+    "EndpointSemantics",
+    "EndpointVectorStore",
+    "LangChainConfig",
+    "SemanticCategory",
+    "create_new_store",
+    "create_vector_store",
+    "init_langchain",
+    "setup_registry",
+    "try_load_existing_store",
+    "validate_api_keys",
 ]

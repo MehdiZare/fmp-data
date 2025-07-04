@@ -1,6 +1,6 @@
 # fmp_data/lc/validation.py
-import re
 from abc import ABC, abstractmethod
+import re
 from typing import ClassVar
 
 from fmp_data.lc.models import SemanticCategory

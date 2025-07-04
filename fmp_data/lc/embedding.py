@@ -1,7 +1,7 @@
 # fmp_data/lc/embedding.py
+from enum import Enum
 import json
 import os
-from enum import Enum
 from typing import Any
 
 from langchain_core.embeddings import Embeddings
@@ -102,10 +102,10 @@ class EmbeddingConfig(BaseModel):
 
         except ImportError as e:
             raise ConfigError(
-                f"Error importing required packages for {self.provider}: {str(e)}"
+                f"Error importing required packages for {self.provider}: {e!s}"
             ) from e
         except Exception as e:
-            error_message = f"Error initializing {self.provider} embeddings: {str(e)}"
+            error_message = f"Error initializing {self.provider} embeddings: {e!s}"
             raise ConfigError(error_message) from e
 
     @classmethod
@@ -136,5 +136,5 @@ class EmbeddingConfig(BaseModel):
 
         except (ValueError, json.JSONDecodeError) as e:
             raise ConfigError(
-                f"Error creating embedding config from environment: {str(e)}"
+                f"Error creating embedding config from environment: {e!s}"
             ) from e

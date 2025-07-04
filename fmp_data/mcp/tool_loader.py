@@ -1,9 +1,9 @@
 # fmp_data/mcp/tool_loader.py
 from __future__ import annotations
 
+from collections.abc import Callable
 import importlib
 import inspect
-from collections.abc import Callable
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
@@ -63,7 +63,7 @@ def register_from_manifest(
         dotted_method = f"{client_slug}.{sem.method_name}"
         func = _resolve_attr(fmp_client, dotted_method)
 
-        # Build description – fall back to callable docstring if required
+        # Build description - fall back to callable docstring if required
         description = sem.natural_description or inspect.getdoc(func) or ""
 
         # Attach as MCP tool

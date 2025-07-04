@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import json
 from datetime import date, datetime
 from decimal import Decimal
+import json
 from typing import Any
 
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, HttpUrl
@@ -369,7 +369,7 @@ class PriceTargetSummary(BaseModel):
     )
     publishers: str = Field(
         description=(
-            "JSON string containing list of " "publishers providing the price targets"
+            "JSON string containing list of publishers providing the price targets"
         )
     )
 

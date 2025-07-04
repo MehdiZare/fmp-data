@@ -3,11 +3,12 @@
 Endpoint registry for LangChain integration with
 lazy imports to avoid circular dependencies.
 """
+
 from __future__ import annotations
 
-import re
 from abc import ABC, abstractmethod
 from logging import Logger
+import re
 from typing import TYPE_CHECKING, Any, TypedDict
 
 from fmp_data.lc.models import EndpointInfo, EndpointSemantics, SemanticCategory
@@ -511,7 +512,7 @@ class EndpointRegistry:
             self.logger.debug(f"Successfully registered endpoint: {name}")
         except Exception as e:
             self.logger.error(
-                f"Failed to register endpoint {name}: {str(e)}", exc_info=True
+                f"Failed to register endpoint {name}: {e!s}", exc_info=True
             )
             raise
 
@@ -532,7 +533,7 @@ class EndpointRegistry:
             try:
                 self.register(name, endpoint, semantics)
             except ValueError as e:
-                self.logger.error(f"Failed to register endpoint {name}: {str(e)}")
+                self.logger.error(f"Failed to register endpoint {name}: {e!s}")
                 raise
 
     def get_endpoint(self, name: str) -> EndpointInfo | None:

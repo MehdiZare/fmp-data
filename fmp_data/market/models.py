@@ -1,7 +1,7 @@
 # fmp_data/market/models.py
-import warnings
 from datetime import datetime
 from typing import Any
+import warnings
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic.alias_generators import to_camel
@@ -89,8 +89,7 @@ class ExchangeSymbol(BaseModel):
                     cleaned_data[field_name] = field_value
             except Exception as e:
                 warnings.warn(
-                    f"Error processing field {field_name}: {str(e)}. "
-                    f"Setting to None",
+                    f"Error processing field {field_name}: {e!s}. Setting to None",
                     stacklevel=2,
                 )
                 cleaned_data[field_name] = None

@@ -1,7 +1,7 @@
 from datetime import date, datetime
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from fmp_data.alternative.models import (
     CommodityQuote,

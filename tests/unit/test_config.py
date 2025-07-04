@@ -1,9 +1,9 @@
-import os
 from contextlib import contextmanager
+import os
 from pathlib import Path
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from fmp_data.config import (
     ClientConfig,
@@ -71,7 +71,8 @@ def test_log_handler_config_validation():
 
     # Test that level is converted to uppercase
     config = LogHandlerConfig(
-        class_name="StreamHandler", level="debug"  # lowercase input
+        class_name="StreamHandler",
+        level="debug",  # lowercase input
     )
     assert (
         config.level == "debug"

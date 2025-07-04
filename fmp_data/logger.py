@@ -1,17 +1,17 @@
 # fmp_data/logger.py
-import inspect
-import json
-import logging
-import os
-import re
-import sys
 from collections.abc import Callable
 from copy import deepcopy
 from datetime import datetime
 from functools import wraps
+import inspect
+import json
+import logging
 from logging.handlers import RotatingFileHandler
+import os
 from pathlib import Path
-from typing import Any, Optional, TypeVar
+import re
+import sys
+from typing import Any, ClassVar, Optional, TypeVar
 
 from fmp_data.config import LoggingConfig, LogHandlerConfig
 
@@ -186,14 +186,14 @@ class SecureRotatingFileHandler(RotatingFileHandler):
 
 
 class FMPLogger:
-    _instance: Optional["FMPLogger"] = None
-    _handler_classes: dict[str, type[logging.Handler]] = {
+    _instance: ClassVar[Optional["FMPLogger"]] = None
+    _handler_classes: ClassVar[dict[str, type[logging.Handler]]] = {
         "StreamHandler": logging.StreamHandler,
         "FileHandler": logging.FileHandler,
         "RotatingFileHandler": SecureRotatingFileHandler,
         "JsonRotatingFileHandler": SecureRotatingFileHandler,
     }
-    _initialized: bool = False
+    _initialized: ClassVar[bool] = False
 
     def __new__(cls) -> "FMPLogger":
         if cls._instance is None:
@@ -343,7 +343,7 @@ def log_api_call(
                 return result
             except Exception as e:
                 logger.error(
-                    f"API error in {module_name}.{func.__name__}: {str(e)}",
+                    f"API error in {module_name}.{func.__name__}: {e!s}",
                     extra={
                         **log_context,
                         "error": str(e),

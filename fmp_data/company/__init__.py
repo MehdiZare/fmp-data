@@ -21,20 +21,20 @@ from fmp_data.company.models import (
 )
 
 __all__ = [
-    "Quote",
-    "SimpleQuote",
-    "HistoricalPrice",
-    "IntradayPrice",
     "CompanyClient",
-    "CompanyProfile",
     "CompanyCoreInformation",
     "CompanyExecutive",
     "CompanyNote",
+    "CompanyProfile",
     "EmployeeCount",
     "ExecutiveCompensation",
-    "ShareFloat",
-    "HistoricalShareFloat",
     "GeographicRevenueSegment",
+    "HistoricalPrice",
+    "HistoricalShareFloat",
+    "IntradayPrice",
     "ProductRevenueSegment",
+    "Quote",
+    "ShareFloat",
+    "SimpleQuote",
     "SymbolChange",
 ]

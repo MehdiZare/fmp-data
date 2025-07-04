@@ -12,13 +12,13 @@ from fmp_data.investment.models import (  # ETF Models; Mutual Fund Models
 )
 
 __all__ = [
-    "InvestmentClient",
-    "ETFHolding",
-    "ETFInfo",
-    "ETFSectorWeighting",
     "ETFCountryWeighting",
     "ETFExposure",
     "ETFHolder",
-    "MutualFundHolding",
+    "ETFHolding",
+    "ETFInfo",
+    "ETFSectorWeighting",
+    "InvestmentClient",
     "MutualFundHolder",
+    "MutualFundHolding",
 ]

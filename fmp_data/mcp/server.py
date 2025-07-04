@@ -1,9 +1,9 @@
 # fmp_data/mcp/server.py
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 import importlib.util
 import os
-from collections.abc import Iterable, Sequence
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
@@ -49,9 +49,9 @@ def create_app(tools: ToolIterable | None = None) -> FastMCP:
     Parameters
     ----------
     tools
-        * **None** (default) – look for env-var ``FMP_MCP_MANIFEST`` or use defaults.
-        * **str | Path**     – path to a *.py* manifest that defines ``TOOLS``.
-        * **Iterable[str]**  – already-constructed list/tuple/etc. of tool specs.
+        * **None** (default)    - look for env-var ``FMP_MCP_MANIFEST`` or use defaults.
+        * **str | Path**        - path to a *.py* manifest that defines ``TOOLS``.
+        * **Iterable[str]**     - already-constructed list/tuple/etc. of tool specs.
 
     Returns
     -------
