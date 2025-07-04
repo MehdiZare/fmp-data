@@ -140,15 +140,12 @@ jobs:
           echo "🚀 Installing with uv"
           uv --version
 
-          # Install core toolchain
-          uv tool install poetry
-          poetry self add poetry-dynamic-versioning[plugin]
+          # Install core toolchain using uvx (uv tool run)
+          uvx poetry --version || uv tool install poetry
+          uvx poetry self add poetry-dynamic-versioning[plugin]
 
           # Install project with all optional features and dev dependencies
           uv sync --group langchain --group mcp-server --group dev
-
-          # Install build tools
-          uv tool install build
 
       - name: Verify dynamic versioning
         run: |
@@ -160,7 +157,7 @@ jobs:
           echo "  Git describe: $(git describe --tags --always)"
           echo ""
 
-          version=$(poetry version --short)
+          version=$(uvx poetry version --short)
           echo "📦 Version: $version"
 
           # Validate version
@@ -188,7 +185,7 @@ jobs:
       - name: Build package
         run: |
           echo "📦 Building package"
-          poetry build
+          uvx poetry build
 
       - name: Extract package metadata
         id: extract-version
@@ -201,7 +198,7 @@ jobs:
           [[ -n "$sdist_file" ]] || { echo "::error::No sdist file found"; exit 1; }
 
           # Extract version using poetry (simpler approach)
-          version=$(uv run poetry version --short)
+          version=$(uvx poetry version --short)
 
           [[ -n "$version" ]] || { echo "::error::Failed to extract version"; exit 1; }
 
@@ -224,7 +221,7 @@ jobs:
             echo "| **Type** | $([ "$is_development" = "true" ] && echo "Development 🔄" || echo "Release 🎯") |"
             echo "| **Wheel** | \`$(basename "$wheel_file")\` |"
             echo "| **Sdist** | \`$(basename "$sdist_file")\` |"
-            echo "| **Tool** | uv |"
+            echo "| **Tool** | uv + poetry |"
             echo "| **Event** | ${{ github.event_name }} |"
           } >> $GITHUB_STEP_SUMMARY
 
@@ -270,9 +267,6 @@ jobs:
           echo ""
           echo "📋 Files to upload:"
           find dist/ -name "*.whl" -o -name "*.tar.gz" | sort
-
-      - name: Install twine
-        run: uv tool install twine
 
       - name: Upload to Test PyPI
         env:
