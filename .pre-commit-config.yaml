@@ -13,33 +13,28 @@ repos:
       - id: debug-statements
 
   - repo: https://github.com/psf/black
-    rev: 24.10.0
+    rev: 25.1.0
     hooks:
       - id: black
         language_version: python3.12
 
   - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
+    rev: 6.0.1
     hooks:
       - id: isort
         args: [ "--profile", "black", "--filter-files" ]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.7.1
+    rev: v0.12.2
     hooks:
       - id: ruff
-        # Updated args to include the specific rules and auto-fix
-        args: [
-          --fix,
-          --exit-non-zero-on-fix,
-          --select=E,W,F,I,C,B,S,UP,RUF,
-          --ignore=S101
-        ]
+        # Let ruff use pyproject.toml config instead of overriding here
+        args: [ --fix, --exit-non-zero-on-fix ]
       # Add ruff formatter for consistent formatting
       - id: ruff-format
 
   - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.10
+    rev: 1.8.5
     hooks:
       - id: bandit
         args: [ "-c", "pyproject.toml" ]
@@ -51,18 +46,9 @@ repos:
       - id: detect-secrets
         exclude: tests/.*
 
-  # Add a custom hook to run our lint fixer
+  # Local hooks
   - repo: local
     hooks:
-    - id: fix-lint-issues
-      name: Auto-fix common lint issues
-      entry: python scripts/fix_lint_issues.py
-      language: system
-      types: [python]
-      pass_filenames: false
-      always_run: false
-      stages: [pre-commit]
-
     - id: pytest-check
       name: pytest-check
       entry: pytest
