@@ -295,7 +295,13 @@ warn_no_return = true
 warn_unreachable = true
 strict_optional = true
 show_error_codes = true
-exclude = ["tests/", "examples/", "scripts/", "build/", "dist/"]
+exclude = [
+    "tests/",
+    "examples/",
+    "scripts/",
+    "build/",
+    "dist/",
+]
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
