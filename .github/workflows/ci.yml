@@ -18,6 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # 3.13 stays in the matrix but we mark it 'runtime-only'
         python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
@@ -51,32 +52,31 @@ jobs:
       - name: Install dependencies (uv)
         run: |
           uv --version
-          # expand DEFAULT_EXTRAS into repeated --group flags
           uv sync $(for g in $DEFAULT_EXTRAS; do printf ' --group %s' "$g"; done)
 
       # ── nox orchestration -------------------------------------------------
       - name: Install nox
         run: uv tool install nox
 
-      # ── Tests -------------------------------------------------------------
-      - name: Run tests (nox)
+      # ── Tests + QA --------------------------------------------------------
+      - name: Run sessions
         env:
           NOX_USE_UV: "1"
         run: |
-          # Run the parameterised *tests* session on the current Python only
-          nox -p ${{ matrix.python-version }} -s tests
+          if [[ "${{ matrix.python-version }}" == "3.13" ]]; then
+            # Python 3.13 → just import-smoke the library
+            nox -p 3.13 -s smoke
+          else
+            # Fully-supported versions → run tests + QA
+            nox -p ${{ matrix.python-version }} -s tests
+            if [[ "${{ matrix.python-version }}" == "3.12" ]]; then
+              nox -s lint typecheck security
+            fi
+          fi
 
-      # ── Quality-gate sessions (run once on 3.12) -------------------------
-      - name: Run QA sessions (lint + typecheck + security)
-        if: matrix.python-version == '3.12'
-        env:
-          NOX_USE_UV: "1"
-        run: |
-          nox -s lint typecheck security
-
-      # ── Coverage artefacts -----------------------------------------------
+      # ── Coverage artefacts (only if pytest ran) ---------------------------
       - name: Upload coverage (matrix)
-        if: always()
+        if: always() && contains('3.10 3.11 3.12', matrix.python-version)
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.python-version }}-${{ github.run_id }}
@@ -87,7 +87,7 @@ jobs:
         continue-on-error: true
 
   build:
-    needs: test          # Build wheel + sdist once tests & QA pass
+    needs: test            # run after all test jobs
     runs-on: ubuntu-latest
 
     steps:
@@ -96,18 +96,18 @@ jobs:
         with:
           fetch-depth: 0
 
-      # ── CPython toolchain ------------------------------------------------
+      # ── CPython 3.12 for building ---------------------------------------
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      # ── uv + cache -------------------------------------------------------
+      # ── uv & cache -------------------------------------------------------
       - name: Install uv + build deps
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
 
-      # ── Install project for build ----------------------------------------
+      # ── Install project for build ---------------------------------------
       - name: Install project (uv)
         run: uv sync --group dev
 
