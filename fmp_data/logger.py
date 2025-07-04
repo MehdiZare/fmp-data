@@ -69,7 +69,6 @@ class SensitiveDataFilter(logging.Filter):
 
     def _mask_dict_recursive(self, d: Any, parent_key: str = "") -> Any:
         """Recursively mask sensitive values in dictionaries and lists"""
-        """Recursively mask sensitive values in dictionaries and lists"""
         if isinstance(d, dict):
             result: dict[str, Any] = {}
             for k, v in d.items():
@@ -129,7 +128,7 @@ class SensitiveDataFilter(logging.Filter):
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
-        log_data = {
+        log_data: dict[str, Any] = {
             "timestamp": datetime.fromtimestamp(record.created).isoformat(),
             "name": record.name,
             "level": record.levelname,
@@ -193,19 +192,18 @@ class FMPLogger:
         "RotatingFileHandler": SecureRotatingFileHandler,
         "JsonRotatingFileHandler": SecureRotatingFileHandler,
     }
-    _initialized: ClassVar[bool] = False
 
     def __new__(cls) -> "FMPLogger":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
         return cls._instance
 
     def __init__(self) -> None:
-        if self._initialized:
+        # Check if already initialized using hasattr to avoid type issues
+        if hasattr(self, "_initialized") and self._initialized:
             return
 
-        self._initialized = True
+        self._initialized: bool = True
         self._logger = logging.getLogger("fmp_data")
         self._logger.setLevel(logging.INFO)
         self._handlers: dict[str, logging.Handler] = {}
