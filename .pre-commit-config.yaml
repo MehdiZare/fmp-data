@@ -19,9 +19,6 @@ repos:
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
 
-  # Remove isort and black since ruff handles both
-  # Keep only if you have specific needs they can't handle
-
   - repo: https://github.com/PyCQA/bandit
     rev: 1.8.5
     hooks:
@@ -35,19 +32,50 @@ repos:
       - id: detect-secrets
         exclude: tests/.*
 
+  # Local hooks using nox
   - repo: local
     hooks:
-    - id: pytest-check
-      name: pytest-check
-      entry: pytest
-      language: system
-      pass_filenames: false
-      always_run: true
-      stages: [pre-push]
-      args: [
-          "--quiet",
-          "--no-header",
-          "--tb=short",
-          "-v",
-          "--disable-warnings",
-      ]
+      # Core typecheck - runs on every commit (excludes optional features)
+      - id: mypy-core
+        name: "mypy: core package"
+        entry: nox -s typecheck --no-install
+        language: system
+        types: [python]
+        pass_filenames: false
+        require_serial: true
+
+      # Optional: LangChain typecheck (manual only - slow)
+      - id: mypy-langchain
+        name: "mypy: langchain features"
+        entry: nox -s typecheck_lang --no-install
+        language: system
+        types: [python]
+        pass_filenames: false
+        require_serial: true
+        stages: [manual]  # Only run when explicitly called
+
+      # Optional: MCP typecheck (manual only - slow)
+      - id: mypy-mcp
+        name: "mypy: mcp features"
+        entry: nox -s typecheck_mcp --no-install
+        language: system
+        types: [python]
+        pass_filenames: false
+        require_serial: true
+        stages: [manual]  # Only run when explicitly called
+
+      # Test runner on push
+      - id: pytest-check
+        name: pytest-check
+        entry: pytest
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+        args: [
+            "--quiet",
+            "--no-header",
+            "--tb=short",
+            "-v",
+            "--disable-warnings",
+        ]
