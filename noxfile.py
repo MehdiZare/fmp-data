@@ -1,205 +1,163 @@
 """
-Nox automation for fmp-data with pure PEP 735 dependency groups
-──────────────────────────────────────────────────────────────
+Nox automation for fmp-data with PEP 735 dependency groups
+──────────────────────────────────────────────────────────
 Matrix:
-  • tests     : Python 3.10-3.13 × (core | langchain | mcp-server groups)
-  • lint      : ruff (style)
-  • typecheck : mypy
-  • security  : bandit
-  • docs      : mkdocs build
+  • tests: Python 3.10-3.13 × (core | langchain | mcp-server)
+  • lint: ruff + mypy + bandit
+  • docs: mkdocs build
 
-Uses PEP 735 dependency groups with uv/pip for modern dependency management.
-All optional features (langchain, mcp-server) are now dependency groups.
+Uses PEP 735 dependency groups for clean, modern dependency management.
 """
 
 import os
 import shutil
+import sys
 from pathlib import Path
 
 import nox
 from nox import Session
 
-# Global default: always try to re-use when possible
+# Global settings
 nox.options.reuse_venv = "yes"
 
 # ─────────────── Matrix definitions ────────────────
-PY_VERS = ["3.10", "3.11", "3.12", "3.13"]
-# Note: These are now dependency groups, not extras
+PYTHON_VERSIONS = ["3.10", "3.11", "3.12", "3.13"]
 FEATURE_GROUPS = [None, "langchain", "mcp-server"]
 FEATURE_IDS = ["core", "lang", "mcp-server"]
 
-# For local development, you can override to test only available versions
-LOCAL_PY_VERS = (
+# Allow local override for faster development
+LOCAL_PYTHON_VERSIONS = (
     os.getenv("NOX_PYTHON_VERSIONS", "").split(",")
     if os.getenv("NOX_PYTHON_VERSIONS")
-    else PY_VERS
+    else PYTHON_VERSIONS
 )
 
-# Check if uv is available and preferred
-USE_UV = os.getenv("NOX_USE_UV", "1").lower() in ("1", "true", "yes")
 
-
-def _has_uv() -> bool:
-    """Check if uv is available in the system."""
-    return shutil.which("uv") is not None
-
-
-def _detect_tool() -> str:
-    """Detect which tool to use based on availability and preferences."""
-    if USE_UV and _has_uv():
+def _detect_installer() -> str:
+    """Detect the best available package installer."""
+    if shutil.which("uv"):
         return "uv"
-    else:
-        return "pip"
+    return "pip"
 
 
-# ─────────────── Install helpers ─────────────────────
-def _install_with_uv(
-    session: Session, *, extras: str | None = None, groups: list[str] | None = None
-) -> None:
-    """Install dependencies using uv with PEP 735 dependency groups."""
-    session.log("📦 Installing dependencies with uv...")
+def _load_dependency_groups() -> dict[str, list[str]]:
+    """Load and expand dependency groups from pyproject.toml."""
+    try:
+        import tomllib
+    except ImportError:
+        print("Error: tomllib not available. Please use Python 3.11+ or install tomli")
+        sys.exit(1)
 
-    # Install the project with extras
-    if extras:
-        session.run("uv", "pip", "install", "-e", f".[{extras}]", external=True)
-    else:
-        session.run("uv", "pip", "install", "-e", ".", external=True)
+    pyproject_path = Path("pyproject.toml")
+    if not pyproject_path.exists():
+        print("Error: pyproject.toml not found")
+        sys.exit(1)
 
-    # Install dependency groups manually (uv doesn't support --dependency-groups yet)
-    if groups:
-        session.run(
-            "python",
-            "-c",
-            f"""
-import tomllib
-with open('pyproject.toml', 'rb') as f:
-    config = tomllib.load(f)
+    with open(pyproject_path, "rb") as f:
+        config = tomllib.load(f)
 
-dependency_groups = config.get('dependency-groups', {{}})
-for group in {groups!r}:
-    if group in dependency_groups:
-        deps = dependency_groups[group]
-        if deps:
-            import subprocess
-            subprocess.run(['uv', 'pip', 'install'] + deps, check=True)
-            print(f'Installed {{len(deps)}} dependencies from {{group}} group')
-""",
-            external=True,
-        )
+    return config.get("dependency-groups", {})
 
 
-def _install_with_pip(
-    session: Session, *, extras: str | None = None, groups: list[str] | None = None
-) -> None:
-    """Install dependencies using pip with dependency groups."""
-    session.log("📦 Installing dependencies with pip...")
+def _expand_group(
+    group_name: str, all_groups: dict[str, list[str]], visited: set[str] | None = None
+) -> list[str]:
+    """Recursively expand dependency groups, handling include-group references."""
+    if visited is None:
+        visited = set()
 
-    # Install the project with extras
-    if extras:
-        session.install(f"-e.[{extras}]")
-    else:
-        session.install("-e.")
+    if group_name in visited:
+        print(f"Warning: Circular dependency detected for group '{group_name}'")
+        return []
 
-    # Install dependency groups manually
-    if groups:
-        session.run(
-            "python",
-            "-c",
-            f"""
-import tomllib
-with open('pyproject.toml', 'rb') as f:
-    config = tomllib.load(f)
+    if group_name not in all_groups:
+        print(f"Warning: Group '{group_name}' not found")
+        return []
 
-dependency_groups = config.get('dependency-groups', {{}})
-for group in {groups!r}:
-    if group in dependency_groups:
-        deps = dependency_groups[group]
-        for dep in deps:
-            import subprocess
-            subprocess.run(['pip', 'install', dep], check=True)
-        print(f'Installed {{len(deps)}} dependencies from {{group}} group')
-""",
-            external=True,
-        )
+    visited.add(group_name)
+    expanded = []
+
+    for dep in all_groups[group_name]:
+        if isinstance(dep, dict) and "include-group" in dep:
+            included_group = dep["include-group"]
+            expanded.extend(_expand_group(included_group, all_groups, visited.copy()))
+        else:
+            expanded.append(str(dep))
+
+    return expanded
 
 
-def _install(session: Session, *, groups: list[str] | None = None) -> None:
-    """Install project with specified dependency groups."""
-    tool = _detect_tool()
-    session.log(f"🔧 Using {tool} for dependency management")
-
-    if tool == "uv":
-        _install_with_uv(session, groups=groups)
-    else:
-        _install_with_pip(session, groups=groups)
-
-
-def _install_deps_only(session: Session, groups: list[str] | None = None) -> None:
-    """Install only dependency groups without the project itself."""
+def _install_groups(session: Session, groups: list[str]) -> None:
+    """Install dependency groups using the best available installer."""
     if not groups:
         return
 
-    tool = _detect_tool()
+    installer = _detect_installer()
+    all_groups = _load_dependency_groups()
 
-    if tool == "uv":
-        # Install dependency groups manually since
-        # uv doesn't support --dependency-groups yet
-        session.run(
-            "python",
-            "-c",
-            f"""
-import tomllib
-with open('pyproject.toml', 'rb') as f:
-    config = tomllib.load(f)
+    # Collect all dependencies from specified groups
+    all_deps = []
+    for group in groups:
+        deps = _expand_group(group, all_groups)
+        all_deps.extend(deps)
 
-dependency_groups = config.get('dependency-groups', {{}})
-for group in {groups!r}:
-    if group in dependency_groups:
-        deps = dependency_groups[group]
-        if deps:
-            import subprocess
-            subprocess.run(['uv', 'pip', 'install'] + deps, check=True)
-            print(f'Installed {{len(deps)}} dependencies from {{group}} group')
-""",
-            external=True,
-        )
+    # Remove duplicates while preserving order
+    unique_deps = []
+    seen = set()
+    for dep in all_deps:
+        if dep not in seen:
+            unique_deps.append(dep)
+            seen.add(dep)
+
+    if not unique_deps:
+        session.log(f"No dependencies found for groups: {groups}")
+        return
+
+    session.log(f"Installing {len(unique_deps)} dependencies with {installer}")
+
+    if installer == "uv":
+        session.run("uv", "pip", "install", *unique_deps, external=True)
     else:
-        # Fallback for pip
-        session.run(
-            "python",
-            "-c",
-            f"""
-import tomllib
-with open('pyproject.toml', 'rb') as f:
-    config = tomllib.load(f)
-
-dependency_groups = config.get('dependency-groups', {{}})
-for group in {groups!r}:
-    if group in dependency_groups:
-        deps = dependency_groups[group]
-        for dep in deps:
-            import subprocess
-            subprocess.run(['pip', 'install', dep], check=True)
-""",
-            external=True,
-        )
+        session.run("python", "-m", "pip", "install", *unique_deps)
 
 
-# ── test matrix ─────────────────────────────────────────────────
-@nox.session(python=LOCAL_PY_VERS, reuse_venv=True, tags=["tests"])
+def _install_project_and_groups(
+    session: Session, *, extras: str | None = None, groups: list[str] | None = None
+) -> None:
+    """Install the project with optional extras and dependency groups."""
+    installer = _detect_installer()
+
+    # Install the project (with optional extras)
+    if extras:
+        install_target = f"-e.[{extras}]"
+    else:
+        install_target = "-e."
+
+    session.log(f"Installing project with {installer}: {install_target}")
+
+    if installer == "uv":
+        session.run("uv", "pip", "install", install_target, external=True)
+    else:
+        session.run("python", "-m", "pip", "install", install_target)
+
+    # Install dependency groups
+    if groups:
+        _install_groups(session, groups)
+
+
+# ── Test matrix ─────────────────────────────────────────────────
+@nox.session(python=LOCAL_PYTHON_VERSIONS, reuse_venv=True, tags=["tests"])
 @nox.parametrize("feature_group", FEATURE_GROUPS, ids=FEATURE_IDS)
 def tests(session: Session, feature_group: str | None) -> None:
-    """Run tests for given Python version and optional dependency groups."""
-    # Map features to dependency groups
-    groups = ["test"]
-    if feature_group == "langchain":
-        groups.append("langchain")
-    elif feature_group == "mcp-server":
-        groups.append("mcp-server")
+    """Run tests for given Python version and optional feature group."""
+    # Determine extras and groups based on feature
+    extras = feature_group
+    base_groups = ["test"]
 
-    _install(session, groups=groups)
+    # Install project with appropriate dependencies
+    _install_project_and_groups(session, extras=extras, groups=base_groups)
 
-    # Run different test sets based on feature
+    # Run appropriate test suite
     if feature_group == "mcp-server":
         session.run("pytest", "-q", "tests/unit/test_mcp.py", "-m", "not integration")
     else:
@@ -209,7 +167,7 @@ def tests(session: Session, feature_group: str | None) -> None:
 @nox.session(python="3.12")
 def smoke(session: Session) -> None:
     """Quick smoke test with all features."""
-    _install(session, groups=["test", "langchain", "mcp-server"])
+    _install_project_and_groups(session, extras="langchain,mcp-server", groups=["test"])
     session.run("pytest", "-q", "--maxfail=1")
 
 
@@ -217,204 +175,103 @@ def smoke(session: Session) -> None:
 @nox.session(python="3.12", reuse_venv=True, tags=["mcp"])
 def test_mcp(session: Session) -> None:
     """Run MCP-specific tests only."""
-    _install(session, groups=["test", "mcp-server"])
+    _install_project_and_groups(session, extras="mcp-server", groups=["test"])
     session.run("pytest", "-q", "tests/unit/test_mcp.py", "-v")
 
 
-# ── QA sessions on one interpreter ─────────────────────────────
+# ── Quality assurance sessions ─────────────────────────────
 @nox.session(python="3.12", reuse_venv=True)
 def lint(session: Session) -> None:
     """Run ruff linting."""
-    _install_deps_only(session, ["lint"])
-    session.run("ruff", "check", "fmp_data", "tests", external=True)
+    _install_groups(session, ["ci-lint"])
+    session.run("ruff", "check", "fmp_data", "tests")
+
+
+@nox.session(python="3.12", reuse_venv=True)
+def format_check(session: Session) -> None:
+    """Check code formatting with black and isort."""
+    _install_groups(session, ["lint"])
+    session.run("black", "--check", "--diff", "fmp_data", "tests")
+    session.run("isort", "--check-only", "--diff", "fmp_data", "tests")
+
+
+@nox.session(python="3.12", reuse_venv=True)
+def format_fix(session: Session) -> None:
+    """Fix code formatting with black and isort."""
+    _install_groups(session, ["lint"])
+    session.run("black", "fmp_data", "tests")
+    session.run("isort", "fmp_data", "tests")
 
 
 @nox.session(python="3.12", reuse_venv=True)
 def typecheck(session: Session) -> None:
     """Run mypy type checking on core package."""
-    _install(session, groups=["lint"])  # lint group contains mypy
-    session.run("mypy", "fmp_data", external=True)
+    _install_project_and_groups(session, groups=["ci-lint"])
+    session.run("mypy", "fmp_data")
 
 
 @nox.session(python="3.12", reuse_venv=True)
 def typecheck_lang(session: Session) -> None:
     """Run mypy type checking with langchain dependencies."""
-    _install(session, groups=["lint", "langchain"])
-    session.run("mypy", "fmp_data", external=True)
+    _install_project_and_groups(session, extras="langchain", groups=["ci-lint"])
+    session.run("mypy", "fmp_data")
+
+
+@nox.session(python="3.12", reuse_venv=True)
+def typecheck_mcp(session: Session) -> None:
+    """Run mypy type checking with MCP dependencies."""
+    _install_project_and_groups(session, extras="mcp-server", groups=["ci-lint"])
+    session.run("mypy", "fmp_data")
 
 
 @nox.session(python="3.12", reuse_venv=True)
 def security(session: Session) -> None:
     """Run bandit security checks."""
-    _install_deps_only(session, ["lint"])  # lint group contains bandit
-
-    # Run bandit with project configuration from pyproject.toml
+    _install_groups(session, ["ci-lint"])
     session.run(
         "bandit",
         "-r",
         "fmp_data",
         "--configfile",
         "pyproject.toml",
-        external=True,
     )
 
 
-@nox.session(python="3.12", reuse_venv=True)
+# ── Documentation ───────────────────────────────────────────────
+@nox.session(python="3.12", reuse_venv=True, tags=["docs"])
 def docs(session: Session) -> None:
     """Build documentation with mkdocs."""
-    _install(session, groups=["docs"])
-    session.run("mkdocs", "build", "--strict", external=True)
+    _install_groups(session, ["docs"])
+    session.run("mkdocs", "build", "--strict")
 
 
 @nox.session(python="3.12", reuse_venv=True)
-def format_check(session: Session) -> None:
-    """Check code formatting."""
-    _install_deps_only(session, ["lint"])
-    session.run("black", "--check", "--diff", "fmp_data", "tests", external=True)
-    session.run("isort", "--check-only", "--diff", "fmp_data", "tests", external=True)
-
-
-@nox.session(python="3.12", reuse_venv=True)
-def format_fix(session: Session) -> None:
-    """Fix code formatting."""
-    _install_deps_only(session, ["lint"])
-    session.run("black", "fmp_data", "tests", external=True)
-    session.run("isort", "fmp_data", "tests", external=True)
-
-
-# ── Coverage reporting ──────────────────────────────────────────
-@nox.session(python="3.12")
-def coverage(session: Session) -> None:
-    """Run tests with coverage reporting."""
-    _install(session, groups=["test"])
-    session.run(
-        "pytest",
-        "--cov=fmp_data",
-        "--cov-report=html:htmlcov",
-        "--cov-report=xml:coverage.xml",
-        "--cov-report=term-missing",
-        "--cov-fail-under=80",
-    )
+def docs_serve(session: Session) -> None:
+    """Serve documentation locally for development."""
+    _install_groups(session, ["docs"])
+    session.run("mkdocs", "serve")
 
 
 # ── Development utilities ───────────────────────────────────────
-@nox.session(python="3.12")
+@nox.session(python="3.12", reuse_venv=True)
 def dev_install(session: Session) -> None:
-    """Install project in development mode with all features."""
-    _install(session, groups=["dev"])
-
-    tool = _detect_tool()
+    """Install the package in development mode with all dependencies."""
+    _install_project_and_groups(session, extras="langchain,mcp-server", groups=["dev"])
     session.log("✅ Development environment ready!")
-
-    if tool == "uv":
-        session.log("💡 To activate: source .venv/bin/activate")
-        session.log("💡 To run commands: uv run <command>")
-    else:
-        session.log("💡 To activate: source .nox/dev-install/bin/activate")
+    session.log("Run 'pytest' to run tests or 'mkdocs serve' for docs")
 
 
-@nox.session(python="3.12")
-def local_test(session: Session) -> None:
-    """Quick local test suite - runs core tests on current Python version."""
-    _install(session, groups=["test"])
-    session.run("pytest", "-v", "--tb=short")
+# ── CI/CD helpers ──────────────────────────────────────────────
+@nox.session(python="3.12", reuse_venv=True, tags=["ci"])
+def ci_test(session: Session) -> None:
+    """Minimal test suite for CI."""
+    _install_project_and_groups(session, groups=["ci-test"])
+    session.run("pytest", "-q", "--cov=fmp_data", "--cov-fail-under=80")
 
 
-@nox.session(python="3.12")
-def quick_check(session: Session) -> None:
-    """Run quick quality checks for local development."""
-    _install_deps_only(session, ["ci-lint"])
-
-    session.log("🔍 Running quick quality checks...")
-
-    # Format check
-    session.run("black", "--check", "fmp_data", "tests", external=True)
-    session.run("isort", "--check-only", "fmp_data", "tests", external=True)
-
-    # Lint
-    session.run("ruff", "check", "fmp_data", "tests", external=True)
-
-    session.log("✅ Quick checks complete!")
-
-
-@nox.session(python="3.12")
-def clean(session: Session) -> None:
-    """Clean up build artifacts and caches."""
-    dirs_to_clean = [
-        "build",
-        "dist",
-        "*.egg-info",
-        ".coverage",
-        "htmlcov",
-        "coverage.xml",
-        ".pytest_cache",
-        ".mypy_cache",
-        ".ruff_cache",
-        "__pycache__",
-        ".venv",
-        ".nox",
-        "bandit-report.json",
-    ]
-
-    for pattern in dirs_to_clean:
-        for path in Path(".").glob(f"**/{pattern}"):
-            if path.is_dir():
-                session.log(f"Removing directory: {path}")
-                shutil.rmtree(path)
-            elif path.is_file():
-                session.log(f"Removing file: {path}")
-                path.unlink()
-
-    session.log("✅ Cleanup complete!")
-
-
-# ── Tool compatibility checks ───────────────────────────────────
-@nox.session(python="3.12")
-def check_tools(session: Session) -> None:
-    """Check which tools are available and their versions."""
-    tools = {
-        "uv": ["uv", "--version"],
-        "pip": ["pip", "--version"],
-        "nox": ["nox", "--version"],
-        "git": ["git", "--version"],
-    }
-
-    session.log("🔍 Checking available tools...")
-
-    for tool_name, cmd in tools.items():
-        try:
-            session.run(*cmd, external=True, silent=True)
-            session.log(f"✅ {tool_name}: Available")
-        except Exception:
-            session.log(f"❌ {tool_name}: Not available")
-
-    # Show current configuration
-    tool = _detect_tool()
-    session.log(f"🎯 Currently configured to use: {tool}")
-    session.log(f"🔧 NOX_USE_UV environment variable: {os.getenv('NOX_USE_UV', '1')}")
-
-
-@nox.session(python=False)
-def check_python(session: Session) -> None:
-    """Check which Python versions are available on the system."""
-    python_versions = ["3.10", "3.11", "3.12", "3.13"]
-
-    session.log("🐍 Checking available Python versions...")
-
-    available_versions = []
-    for version in python_versions:
-        try:
-            session.run(f"python{version}", "--version", external=True, silent=True)
-            session.log(f"✅ Python {version}: Available")
-            available_versions.append(version)
-        except Exception:
-            session.log(f"❌ Python {version}: Not found")
-
-    if available_versions:
-        session.log("💡 To run tests on available versions only:")
-        session.log(f"   NOX_PYTHON_VERSIONS={','.join(available_versions)} nox")
-        session.log(
-            f"💡 To run on specific version: nox -s tests-{available_versions[0]}"
-        )
-    else:
-        session.log("⚠️  No Python versions found. Check your Python installation.")
+@nox.session(python="3.12", reuse_venv=True, tags=["ci"])
+def ci_lint(session: Session) -> None:
+    """Minimal linting for CI."""
+    _install_groups(session, ["ci-lint"])
+    session.run("ruff", "check", "fmp_data", "tests")
+    session.run("mypy", "fmp_data")
