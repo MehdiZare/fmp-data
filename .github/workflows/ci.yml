@@ -21,14 +21,17 @@ jobs:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
+      # ── Checkout ──────────────────────────────────────────────────────────
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # ── CPython toolchain ────────────────────────────────────────────────
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
+      # ── uv installer + cache ─────────────────────────────────────────────
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -44,21 +47,34 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-py${{ matrix.python-version }}-uv-
 
+      # ── Project dependencies via uv --------------------------------------
       - name: Install dependencies (uv)
         run: |
           uv --version
           # expand DEFAULT_EXTRAS into repeated --group flags
           uv sync $(for g in $DEFAULT_EXTRAS; do printf ' --group %s' "$g"; done)
 
+      # ── nox orchestration -------------------------------------------------
       - name: Install nox
         run: uv tool install nox
 
-      - name: Run tests + quality gates (nox)
+      # ── Tests -------------------------------------------------------------
+      - name: Run tests (nox)
         env:
           NOX_USE_UV: "1"
         run: |
-          nox -p py${{ matrix.python-version }} -s tests lint typecheck security
+          # Run the parameterised *tests* session on the current Python only
+          nox -p ${{ matrix.python-version }} -s tests
 
+      # ── Quality-gate sessions (run once on 3.12) -------------------------
+      - name: Run QA sessions (lint + typecheck + security)
+        if: matrix.python-version == '3.12'
+        env:
+          NOX_USE_UV: "1"
+        run: |
+          nox -s lint typecheck security
+
+      # ── Coverage artefacts -----------------------------------------------
       - name: Upload coverage (matrix)
         if: always()
         uses: actions/upload-artifact@v4
@@ -71,25 +87,31 @@ jobs:
         continue-on-error: true
 
   build:
-    needs: test        # build wheel + sdist once after the test matrix
+    needs: test          # Build wheel + sdist once tests & QA pass
     runs-on: ubuntu-latest
+
     steps:
+      # ── Checkout ---------------------------------------------------------
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # ── CPython toolchain ------------------------------------------------
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
+      # ── uv + cache -------------------------------------------------------
       - name: Install uv + build deps
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
 
+      # ── Install project for build ----------------------------------------
       - name: Install project (uv)
         run: uv sync --group dev
 
+      # ── Build wheel & sdist ---------------------------------------------
       - name: Build distribution
         run: |
           uv run python -m build --wheel --sdist
