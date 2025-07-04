@@ -1,5 +1,5 @@
 ###############################################################################
-#  Core project metadata (PEP 621) - Compatible with both Poetry and uv     #
+#  Core project metadata (PEP 621)                                            #
 ###############################################################################
 [project]
 name = "fmp-data"
@@ -33,7 +33,7 @@ classifiers = [
 ]
 
 ###############################################################################
-#  Runtime dependencies                                                       #
+#  Runtime dependencies - Core functionality only                             #
 ###############################################################################
 dependencies = [
   "httpx>=0.28.1",
@@ -45,66 +45,6 @@ dependencies = [
   "cachetools>=6.1.0",
   "structlog>=25.4.0",
   "pandas>=2.3.0,<3.0.0",
-]
-
-###############################################################################
-#  Optional runtime features (extras)                                         #
-###############################################################################
-[project.optional-dependencies]
-
-# ——— LangChain integration ———
-langchain = [
-  "faiss-cpu>=1.11.0",
-  "langchain-core>=0.3.66",
-  "langchain-community>=0.3.26",
-  "langchain-openai>=0.3.25",
-  "langgraph>=0.4.10",
-  "openai>=1.92.0",
-  "tiktoken>=0.9.0",
-]
-
-# ——— Run an MCP server alongside the client ———
-mcp-server = [
-  "mcp[cli]>=1.0.0",
-  "pyyaml>=6.0.1",
-]
-
-# ——— Development dependencies (for uv) ———
-dev = [
-  # Linting / formatting
-  "ruff>=0.7.1",
-  "black>=24.10.0",
-  "isort>=5.13.2",
-
-  # Static typing
-  "mypy>=1.13.0",
-  "types-cachetools>=6.0.0.20250525",
-
-  # Security
-  "bandit[toml]>=1.7.10",
-
-  # Testing
-  "pytest>=8.3.3",
-  "pytest-asyncio>=0.24.0",
-  "pytest-cov>=6.0.0",
-  "pytest-mock>=3.14.0",
-  "freezegun>=1.5.1",
-  "responses>=0.25.3",
-  "vcrpy>=6.0.2",
-  "coverage>=7.6.4",
-
-  # Dev utilities
-  "pre-commit>=4.0.1",
-  "rich>=13.9.3",
-  "twine>=5.1.1",
-  "nox>=2024.4.15",
-]
-
-# ——— Documentation dependencies (for uv) ———
-docs = [
-  "mkdocs>=1.6.1",
-  "mkdocs-material>=9.6.14",
-  "mkdocstrings-python>=1.16.12",
 ]
 
 ###############################################################################
@@ -125,27 +65,23 @@ Source = "https://github.com/MehdiZare/fmp-data"
 Issues = "https://github.com/MehdiZare/fmp-data/issues"
 
 ###############################################################################
-#  Build system - Dual compatibility                                          #
+#  Build system                                                               #
 ###############################################################################
 [build-system]
-# Primary: Poetry with dynamic versioning (for Poetry users)
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
 build-backend = "poetry_dynamic_versioning.backend"
 
 ###############################################################################
-#  Poetry configuration (for Poetry users)                                   #
+#  Poetry minimal config (only for dynamic versioning)                       #
 ###############################################################################
 [tool.poetry]
 name = "fmp-data"
-version = "0.0.0"  # This gets overridden by dynamic versioning
+version = "0.0.0"  # Overridden by dynamic versioning
 description = "Python client for the Financial Modeling Prep API"
 authors = ["Mehdi Zare <mehdizare@users.noreply.github.com>"]
 readme = "README.md"
 packages = [{include = "fmp_data"}]
 
-###############################################################################
-#  Poetry Dynamic Versioning                                                  #
-###############################################################################
 [tool.poetry-dynamic-versioning]
 enable = true
 vcs = "git"
@@ -162,68 +98,116 @@ format-jinja = """
 files = ["fmp_data/__init__.py"]
 
 ###############################################################################
-#  Poetry dependency groups (for Poetry users)                               #
+#  PEP 735 Dependency Groups - EVERYTHING as dependency groups               #
 ###############################################################################
-[tool.poetry.group.dev]
-optional = true
+[dependency-groups]
+# ═══════════════════════════════════════════════════════════════════════════
+# User Features (what end users install for additional functionality)
+# ═══════════════════════════════════════════════════════════════════════════
 
-[tool.poetry.group.dev.dependencies]
-# Dynamic versioning
-poetry-dynamic-versioning = "^1.4.1"
+# LangChain AI integration
+langchain = [
+  "faiss-cpu>=1.11.0",
+  "langchain-core>=0.3.66",
+  "langchain-community>=0.3.26",
+  "langchain-openai>=0.3.25",
+  "langgraph>=0.4.10",
+  "openai>=1.92.0",
+  "tiktoken>=0.9.0",
+]
 
-# Linting / formatting
-ruff = "^0.7.1"
-black = "^24.10.0"
-isort = "^5.13.2"
+# Model Context Protocol server
+mcp-server = [
+  "mcp[cli]>=1.0.0",
+  "pyyaml>=6.0.1",
+]
 
-# Static typing
-mypy = "^1.13.0"
-types-cachetools = "^6.0.0.20250525"
+# All user features combined (convenience group)
+all-features = [
+  {include-group = "langchain"},
+  {include-group = "mcp-server"},
+]
 
-# Security
-bandit = { version = "^1.7.10", extras = ["toml"] }
+# ═══════════════════════════════════════════════════════════════════════════
+# Development Dependencies (what developers need)
+# ═══════════════════════════════════════════════════════════════════════════
 
-# Testing
-pytest = "^8.3.3"
-pytest-asyncio = "^0.24.0"
-pytest-cov = "^6.0.0"
-pytest-mock = "^3.14.0"
-freezegun = "^1.5.1"
-responses = "^0.25.3"
-vcrpy = "^6.0.2"
-coverage = "^7.6.4"
+# Complete development environment
+dev = [
+  # Dynamic versioning (Poetry-specific)
+  "poetry-dynamic-versioning>=1.4.1",
 
-# Dev utilities
-pre-commit = "^4.0.1"
-rich = "^13.9.3"
-twine = "^5.1.1"
+  # Include all dev sub-groups
+  {include-group = "lint"},
+  {include-group = "test"},
+  {include-group = "docs"},
 
-[tool.poetry.group.docs]
-optional = true
+  # Additional dev utilities
+  "pre-commit>=4.0.1",
+  "rich>=13.9.3",
+  "twine>=5.1.1",
+  "nox>=2024.4.15",
+]
 
-[tool.poetry.group.docs.dependencies]
-mkdocs = "^1.6.1"
-mkdocs-material = "^9.6.14"
-mkdocstrings-python = "^1.16.12"
+# Linting and formatting tools
+lint = [
+  "ruff>=0.7.1",
+  "black>=24.10.0",
+  "isort>=5.13.2",
+  "mypy>=1.13.0",
+  "types-cachetools>=6.0.0.20250525",
+  "bandit[toml]>=1.7.10",
+]
+
+# Testing tools
+test = [
+  "pytest>=8.3.3",
+  "pytest-asyncio>=0.24.0",
+  "pytest-cov>=6.0.0",
+  "pytest-mock>=3.14.0",
+  "freezegun>=1.5.1",
+  "responses>=0.25.3",
+  "vcrpy>=6.0.2",
+  "coverage>=7.6.4",
+]
+
+# Documentation tools
+docs = [
+  "mkdocs>=1.6.1",
+  "mkdocs-material>=9.6.14",
+  "mkdocstrings-python>=1.16.12",
+]
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Specialized Groups (for CI/CD and specific workflows)
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Minimal testing (for fast CI)
+ci-test = [
+  "pytest>=8.3.3",
+  "pytest-cov>=6.0.0",
+  "coverage>=7.6.4",
+]
+
+# Minimal linting (for fast CI)
+ci-lint = [
+  "ruff>=0.7.1",
+  "mypy>=1.13.0",
+  "types-cachetools>=6.0.0.20250525",
+]
+
+# Local development (dev without heavy deps)
+local = [
+  "poetry-dynamic-versioning>=1.4.1",
+  {include-group = "ci-lint"},
+  {include-group = "ci-test"},
+  "pre-commit>=4.0.1",
+  "rich>=13.9.3",
+  "nox>=2024.4.15",
+]
 
 ###############################################################################
-#  Alternative build system for uv (commented out)                           #
-###############################################################################
-# Uncomment this section and comment out the Poetry build-system above
-# if you want to use setuptools-scm with uv exclusively:
-#
-# [build-system]
-# requires = ["setuptools>=64", "setuptools-scm>=8"]
-# build-backend = "setuptools.build_meta"
-#
-# [tool.setuptools-scm]
-# version_scheme = "post-release"
-# local_scheme = "no-local-version"
-# write_to = "fmp_data/_version.py"
-# fallback_version = "0.0.0"
-
-###############################################################################
-#  Shared tool configuration (works with both Poetry and uv)                 #
+#  Tool configuration                                                         #
 ###############################################################################
 [tool.black]
 line-length = 88
@@ -252,26 +236,26 @@ ignore = ["S101"]
 "scripts/*" = ["S603", "S607"]
 "**/conftest.py" = ["S101"]
 "__init__.py" = ["F401"]
-"noxfile.py" = ["S603", "S607"]  # Allow subprocess calls for tool management
+"noxfile.py" = ["S603", "S607"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["fmp_data"]
 
 [tool.mypy]
-python_version            = "3.10"
-warn_return_any           = true
-warn_unused_configs       = true
-disallow_untyped_defs     = true
-disallow_incomplete_defs  = true
-check_untyped_defs        = true
-no_implicit_optional      = true
-warn_redundant_casts      = true
-warn_unused_ignores       = true
-warn_no_return            = true
-warn_unreachable          = true
-strict_optional           = true
-exclude                   = ["tests/", "examples/"]
-plugins                   = ["pydantic.mypy"]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_optional = true
+exclude = ["tests/", "examples/", "scripts/"]
+plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 module = [
@@ -280,24 +264,38 @@ module = [
   "langchain_core.*",
   "langchain_community.*",
   "langchain_openai.*",
+  "langgraph.*",
   "faiss",
   "faiss.*",
   "mcp",
   "mcp.*",
-  "fmp_data._version",  # Dynamic versioning module
+  "tiktoken.*",
+  "openai.*",
+  "yaml.*",
+  "rich.*",
+  "tqdm.*",
+  "pandas.*",
+  "responses.*",
+  "freezegun.*",
+  "structlog.*",
+  "tenacity.*",
+  "fmp_data._version",
 ]
 ignore_missing_imports = true
 
-# Handle dynamic version imports and optional modules in __init__.py
 [[tool.mypy.overrides]]
 module = "fmp_data.__init__"
 disable_error_code = ["import-untyped", "no-any-return", "attr-defined"]
 
-[tool.pydocstyle]
-convention = "google"
-add-select = ["D100", "D101", "D102", "D103", "D104"]
-add-ignore = ["D105", "D107", "D200", "D203", "D213", "D406", "D407"]
-ignore-decorators = "overrides"
+[[tool.mypy.overrides]]
+module = "fmp_data.lc.*"
+disable_error_code = ["import-untyped"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "fmp_data.mcp.*"
+disable_error_code = ["import-untyped"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -345,22 +343,4 @@ output = "coverage.xml"
 
 [tool.bandit]
 exclude_dirs = ["tests", "scripts", ".nox", ".venv"]
-skips = [
-    "B101",  # assert_used - we use asserts in tests
-    "B404",  # consider_possible_security_implications_associated_with_subprocess_module
-    "B603",  # subprocess_without_shell_equals_true
-    "B607",  # start_process_with_partial_path
-    "B608",  # possible_sql_injection_pii - false positives with string formatting
-]
-
-# Set reasonable severity and confidence levels
-severity = "medium"
-confidence = "high"
-
-# Additional patterns to exclude
-exclude = ["*/tests/*", "*/test_*", "*/.nox/*", "*/.venv/*"]
-
-[dependency-groups]
-dev = [
-    "mypy>=1.16.1",
-]
+skips = ["B101", "B404", "B603", "B607", "B608"]
