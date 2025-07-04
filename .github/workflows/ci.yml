@@ -65,7 +65,7 @@ jobs:
             uv --version
 
             echo "🚀 Installing with uv"
-            uv pip install -e .
+            uv pip install --system -e .
 
             if python scripts/install_groups.py uv langchain mcp-server dev; then
               echo "✅ uv installation successful"

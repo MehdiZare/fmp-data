@@ -66,7 +66,7 @@ jobs:
           # Install core project (needed for API docs)
           if command -v uv &> /dev/null; then
             echo "🚀 Installing with uv"
-            uv pip install -e .
+            uv pip install --system -e .
             python scripts/install_groups.py uv docs
             echo "TOOL=uv" >> $GITHUB_ENV
           else

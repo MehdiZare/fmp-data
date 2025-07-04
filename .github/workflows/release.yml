@@ -146,7 +146,7 @@ jobs:
           # Install project
           if command -v uv &> /dev/null; then
             echo "🚀 Using uv for fast dependency installation"
-            uv pip install -e .
+            uv pip install --system -e .
             python scripts/install_groups.py uv langchain mcp-server dev
             echo "TOOL=uv" >> $GITHUB_ENV
           else
