@@ -9,37 +9,40 @@ on:
 permissions:
   contents: read
 
+env:
+  PYTHON_VERSION: "3.12"
+
 jobs:
   qa:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
 
       # Setup all Python versions for nox matrix testing
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5.6.0
         with:
           python-version: "3.10"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5.6.0
         with:
           python-version: "3.11"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5.6.0
         with:
           python-version: "3.12"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5.6.0
         with:
           python-version: "3.13"
 
-      # Install uv for faster dependency management (optional)
+      # Install uv for faster dependency management
       - name: Install uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
         continue-on-error: true
 
-      # Cache dependencies based on Poetry lock file
-      - name: Cache Poetry dependencies
+      # Cache dependencies
+      - name: Cache dependencies
         uses: actions/cache@v4
         with:
           path: |
@@ -47,57 +50,86 @@ jobs:
             ~/.cache/pip
             ~/.cache/uv
             ~/.local/share/uv
-          key: ${{ runner.os }}-deps-${{ hashFiles('**/poetry.lock', '**/pyproject.toml') }}
+          key: ${{ runner.os }}-ci-deps-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: |
-            ${{ runner.os }}-deps-${{ hashFiles('**/pyproject.toml') }}
-            ${{ runner.os }}-deps-
+            ${{ runner.os }}-ci-deps-
 
-      - name: Install toolchain
+      - name: Install toolchain and dependencies
         run: |
-          # Install Poetry and Nox
-          python -m pip install --upgrade pip
-          pip install "poetry>=1.8" nox
+          # Install core toolchain
+          python -m pip install --upgrade pip nox
 
-          # Check if uv is available and working
+          # Install project and dependencies
           if command -v uv &> /dev/null; then
             echo "✅ uv is available"
             uv --version
 
-            # Try to sync from Poetry's pyproject.toml
-            # This creates a virtual environment and installs dependencies
-            if uv sync --extra dev --extra langchain --extra mcp-server; then
-              echo "✅ uv sync successful"
-              # Install nox in the uv environment
-              uv add --dev nox
-              echo "UV_AVAILABLE=true" >> $GITHUB_ENV
+            echo "🚀 Installing with uv"
+            uv pip install -e .
+
+            if python scripts/install_groups.py uv langchain mcp-server dev; then
+              echo "✅ uv installation successful"
+              echo "TOOL=uv" >> $GITHUB_ENV
             else
-              echo "⚠️ uv sync failed, falling back to Poetry"
-              poetry install --with dev --extras "langchain mcp-server"
-              echo "UV_AVAILABLE=false" >> $GITHUB_ENV
+              echo "⚠️ uv installation failed, falling back to pip"
+              pip install -e .
+              python scripts/install_groups.py pip langchain mcp-server dev
+              echo "TOOL=pip" >> $GITHUB_ENV
             fi
           else
-            echo "⚠️ uv not available, using Poetry"
-            poetry install --with dev --extras "langchain mcp-server"
-            echo "UV_AVAILABLE=false" >> $GITHUB_ENV
+            echo "⚠️ uv not available, using pip"
+            pip install -e .
+            python scripts/install_groups.py pip langchain mcp-server dev
+            echo "TOOL=pip" >> $GITHUB_ENV
           fi
 
       - name: Run quality checks
         run: |
-          if [[ "$UV_AVAILABLE" == "true" ]]; then
-            echo "🚀 Running with uv"
+          # Run comprehensive test suite
+          if [[ "$TOOL" == "uv" ]]; then
+            echo "🚀 Running quality checks with uv"
             NOX_USE_UV=1 uv run nox -s tests lint typecheck typecheck_lang security
           else
-            echo "🐍 Running with Poetry"
-            poetry run nox -s tests lint typecheck typecheck_lang security
+            echo "🐍 Running quality checks with nox"
+            nox -s tests lint typecheck typecheck_lang security
           fi
+
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "## 🧪 CI Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          # Check if coverage file exists
+          if [ -f "coverage.xml" ]; then
+            echo "| Coverage | ✅ Generated |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Coverage | ❌ Missing |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Check tool used
+          echo "| Tool | $TOOL |" >> $GITHUB_STEP_SUMMARY
+          echo "| Python Versions | 3.10, 3.11, 3.12, 3.13 |" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload coverage reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
-          name: coverage-reports
+          name: coverage-reports-${{ github.run_id }}
           path: |
             coverage.xml
             htmlcov/
           retention-days: 7
+        continue-on-error: true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: test-results-${{ github.run_id }}
+          path: |
+            bandit-report.json
+            .pytest_cache/
+          retention-days: 3
         continue-on-error: true
