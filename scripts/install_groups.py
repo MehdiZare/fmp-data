@@ -11,9 +11,14 @@ Examples:
     python scripts/install_groups.py uv dev
     python scripts/install_groups.py pip langchain mcp-server test
     python scripts/install_groups.py uv ci-lint ci-test
+    python scripts/install_groups.py uv dev --system  # Force system install
+
+Author: Generated for fmp-data project
+License: MIT
 """
 
 import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -50,10 +55,11 @@ def expand_dependencies(
         visited = set()
 
     if group_name in visited:
-        print(
-            f"⚠️  Warning: Circular dependency detected "
-            f"for group '{group_name}', skipping"
+        warning_msg = (
+            f"⚠️  Warning: Circular dependency detected for group "
+            f"'{group_name}', skipping"
         )
+        print(warning_msg)
         return []
 
     visited.add(group_name)
@@ -78,7 +84,66 @@ def expand_dependencies(
     return expanded_deps
 
 
-def install_groups(tool: str, groups: list[str]) -> bool:
+def should_use_system_install(tool: str, force_system: bool) -> bool:
+    """Determine if --system flag should be used for installation."""
+    return force_system or (
+        os.getenv("CI") == "true"  # GitHub Actions, GitLab CI, etc.
+        or os.getenv("GITHUB_ACTIONS") == "true"  # GitHub Actions specifically
+        or not os.getenv("VIRTUAL_ENV")  # Not in a virtual environment
+    )
+
+
+def build_install_command(
+    tool: str, expanded_deps: list[str], use_system: bool
+) -> list[str]:
+    """Build the installation command based on tool and options."""
+    if tool == "uv":
+        cmd = ["uv", "pip", "install"]
+        if use_system:
+            cmd.append("--system")
+        cmd.extend(expanded_deps)
+    elif tool == "pip":
+        cmd = ["pip", "install"] + expanded_deps
+    else:
+        raise ValueError(f"Unsupported tool '{tool}'. Use 'uv' or 'pip'")
+
+    return cmd
+
+
+def install_single_group(
+    group: str, dependency_groups: dict, tool: str, use_system: bool
+) -> bool:
+    """Install a single dependency group."""
+    print(f"\n📦 Installing group: {group}")
+    expanded_deps = expand_dependencies(group, dependency_groups)
+
+    if not expanded_deps:
+        print(f"ℹ️  No dependencies found for group '{group}'")
+        return True
+
+    print(f"📋 Dependencies to install: {len(expanded_deps)}")
+    for dep in expanded_deps:
+        print(f"  • {dep}")
+
+    try:
+        cmd = build_install_command(tool, expanded_deps, use_system)
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        success_msg = (
+            f"✅ Successfully installed {len(expanded_deps)} dependencies "
+            f"from '{group}' group"
+        )
+        print(success_msg)
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Failed to install group '{group}': {e}")
+        if e.stdout:
+            print(f"   stdout: {e.stdout}")
+        if e.stderr:
+            print(f"   stderr: {e.stderr}")
+        return False
+
+
+def install_groups(tool: str, groups: list[str], force_system: bool = False) -> bool:
     """Install specified dependency groups using the given tool."""
     config = load_pyproject()
     dependency_groups = config.get("dependency-groups", {})
@@ -89,42 +154,15 @@ def install_groups(tool: str, groups: list[str]) -> bool:
 
     print(f"🔧 Using {tool} to install dependency groups: {', '.join(groups)}")
 
+    use_system = should_use_system_install(tool, force_system)
+
+    if tool == "uv" and use_system:
+        print("🌐 Using --system flag for uv (detected CI or no venv)")
+
     success = True
     for group in groups:
-        print(f"\n📦 Installing group: {group}")
-        expanded_deps = expand_dependencies(group, dependency_groups)
-
-        if not expanded_deps:
-            print(f"ℹ️  No dependencies found for group '{group}'")
-            continue
-
-        print(f"📋 Dependencies to install: {len(expanded_deps)}")
-        for dep in expanded_deps:
-            print(f"  • {dep}")
-
-        # Build command based on tool
-        if tool == "uv":
-            cmd = ["uv", "pip", "install"] + expanded_deps
-        elif tool == "pip":
-            cmd = ["pip", "install"] + expanded_deps
-        else:
-            print(f"❌ Error: Unsupported tool '{tool}'. Use 'uv' or 'pip'")
-            return False
-
-        try:
-            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-            print(
-                f"✅ Successfully installed "
-                f"{len(expanded_deps)} dependencies from '{group}' group"
-                f"\n   stdout: {result.stdout}"
-            )
-        except subprocess.CalledProcessError as e:
-            print(f"❌ Failed to install group '{group}': {e}")
-            if e.stdout:
-                print(f"   stdout: {e.stdout}")
-            if e.stderr:
-                print(f"   stderr: {e.stderr}")
-            success = False
+        group_success = install_single_group(group, dependency_groups, tool, use_system)
+        success = success and group_success
 
     return success
 
@@ -145,6 +183,11 @@ def main():
         action="store_true",
         help="Show what would be installed without actually installing",
     )
+    parser.add_argument(
+        "--system",
+        action="store_true",
+        help="Force use of --system flag with uv (for CI environments)",
+    )
 
     args = parser.parse_args()
 
@@ -160,7 +203,7 @@ def main():
                 print(f"  • {dep}")
         return
 
-    success = install_groups(args.tool, args.groups)
+    success = install_groups(args.tool, args.groups, force_system=args.system)
     sys.exit(0 if success else 1)
 
 
