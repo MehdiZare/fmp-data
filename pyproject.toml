@@ -275,6 +275,11 @@ ignore = [
 [tool.ruff.lint.isort]
 known-first-party = ["fmp_data"]
 
+# Specifically enable the rules you want to catch
+[tool.ruff.lint.ruff]
+# Enable explicit string conversion in f-strings
+explicit-string-concatenation = true
+
 # ── Type checking ───────────────────────────────────────────────────────────
 [tool.mypy]
 python_version = "3.10"
