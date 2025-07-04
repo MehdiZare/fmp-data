@@ -26,6 +26,9 @@ jobs:
       version: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - uses: actions/setup-python@v5
         with:
