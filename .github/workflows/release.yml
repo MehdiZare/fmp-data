@@ -30,6 +30,10 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
+      - name: Fetch tags from origin (fork PRs only)
+        if: github.event.pull_request.head.repo.full_name != github.repository
+        run: git fetch origin --tags
+
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
