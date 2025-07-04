@@ -3,9 +3,9 @@ name: Build-and-Release
 
 on:
   pull_request:
-    branches: [main]   # PR → build + Test PyPI
+    branches: [ main ]   # PR → build + Test PyPI
   push:
-    branches: [main]   # main → tag + build + PyPI
+    branches: [ main ]   # main → tag + build + PyPI
   workflow_dispatch:
 
 env:
@@ -16,14 +16,14 @@ permissions:
   id-token: write
 
 jobs:
-##############################################################################
-# Build (always)
-##############################################################################
+  ##############################################################################
+  # Build (always)
+  ##############################################################################
   build:
     runs-on: ubuntu-latest
     outputs:
       dist-path: ${{ steps.meta.outputs.dist }}
-      version:   ${{ steps.meta.outputs.version }}
+      version: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -55,9 +55,9 @@ jobs:
           name: dist
           path: ${{ steps.meta.outputs.dist }}
 
-##############################################################################
-# Publish to Test PyPI (internal PRs)
-##############################################################################
+  ##############################################################################
+  # Publish to Test PyPI (internal PRs)
+  ##############################################################################
   publish-testpypi:
     if: |
       github.event_name == 'pull_request' &&
@@ -80,21 +80,21 @@ jobs:
           fi
 
       - name: Publish to Test PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
           repository-url: https://test.pypi.org/legacy/
-          packages-dir:   dist
-          skip-existing:  true
-          password:       ${{ secrets.TEST_PYPI_TOKEN }}
+          packages-dir: dist
+          skip-existing: true
+          attestations: true
 
-##############################################################################
-# Create new tag (main pushes)
-##############################################################################
+  ##############################################################################
+  # Create new tag (main pushes)
+  ##############################################################################
   tag-version:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
-      tag:     ${{ steps.bump.outputs.tag }}
+      tag: ${{ steps.bump.outputs.tag }}
       version: ${{ steps.bump.outputs.version }}
     steps:
       - uses: actions/checkout@v4
@@ -129,12 +129,12 @@ jobs:
           git tag "$tag"
           git push origin "$tag"
 
-##############################################################################
-# Publish to Production PyPI (main pushes)
-##############################################################################
+  ##############################################################################
+  # Publish to Production PyPI (main pushes)
+  ##############################################################################
   publish-pypi:
     if: github.event_name == 'push'
-    needs: [build, tag-version]
+    needs: [ build, tag-version ]
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -144,18 +144,18 @@ jobs:
           path: dist
 
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
-          packages-dir:  dist
+          packages-dir: dist
           skip-existing: true
-          password:      ${{ secrets.PYPI_TOKEN }}
+          attestations: true
 
-##############################################################################
-# GitHub release notes (main pushes)
-##############################################################################
+  ##############################################################################
+  # GitHub release notes (main pushes)
+  ##############################################################################
   github-release:
     if: github.event_name == 'push'
-    needs: [publish-pypi, tag-version]
+    needs: [ publish-pypi, tag-version ]
     runs-on: ubuntu-latest
     steps:
       - uses: softprops/action-gh-release@v2
