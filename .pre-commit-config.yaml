@@ -28,7 +28,15 @@ repos:
     rev: v0.7.1
     hooks:
       - id: ruff
-        args: [ --fix, --exit-non-zero-on-fix ]
+        # Updated args to include the specific rules and auto-fix
+        args: [
+          --fix,
+          --exit-non-zero-on-fix,
+          --select=E,W,F,I,C,B,S,UP,RUF,
+          --ignore=S101
+        ]
+      # Add ruff formatter for consistent formatting
+      - id: ruff-format
 
   - repo: https://github.com/PyCQA/bandit
     rev: 1.7.10
@@ -43,19 +51,29 @@ repos:
       - id: detect-secrets
         exclude: tests/.*
 
+  # Add a custom hook to run our lint fixer
   - repo: local
     hooks:
-    -   id: pytest-check
-        name: pytest-check
-        entry: pytest
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-push]  # Only run on push, not on every commit
-        args: [
-            "--quiet",
-            "--no-header",
-            "--tb=short",
-            "-v",
-            "--disable-warnings",
-        ]
+    - id: fix-lint-issues
+      name: Auto-fix common lint issues
+      entry: python scripts/fix_lint_issues.py
+      language: system
+      types: [python]
+      pass_filenames: false
+      always_run: false
+      stages: [pre-commit]
+
+    - id: pytest-check
+      name: pytest-check
+      entry: pytest
+      language: system
+      pass_filenames: false
+      always_run: true
+      stages: [pre-push]  # Only run on push, not on every commit
+      args: [
+          "--quiet",
+          "--no-header",
+          "--tb=short",
+          "-v",
+          "--disable-warnings",
+      ]
