@@ -31,12 +31,21 @@ IS_CI = os.getenv("CI", "").lower() in {"true", "1", "yes"}
 
 # ── Dependency installer ───────────────────────────────────────────────────
 def _sync_with_uv(session: Session, *, extras: list[str] | None = None) -> None:
-    """Install runtime first, then any requested extras."""
-    session.run("uv", "sync", external=True)          # runtime
+    """
+    Use a single uv sync call per session.
+
+    • If no extras → runtime only.
+    • If extras    → runtime + all extras in one go.
+    """
+    cmd: list[str] = ["uv", "sync"]
     if extras:
         for grp in extras:
-            session.run("uv", "sync", "--group", grp, external=True)
-        session.log(f"✓ installed extras: {', '.join(extras)}")
+            cmd += ["--group", grp]
+
+    session.log(f"⎈  {' '.join(cmd)}")
+    session.run(*cmd, external=True)
+
+
 
 
 # ── Test matrix ────────────────────────────────────────────────────────────
