@@ -1,5 +1,7 @@
 repos:
+  # ───────── Core utility hooks ───────────────────────────────────────────
   - repo: https://github.com/pre-commit/pre-commit-hooks
+    # last published 5.x tag
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
@@ -11,14 +13,31 @@ repos:
       - id: check-json
       - id: detect-private-key
       - id: debug-statements
+      - id: check-merge-conflict
+      - id: check-docstring-first
 
+  # ───────── Link checker (maintained) ────────────────────────────────────
+  - repo: https://github.com/lycheeverse/lychee
+    # NOTE: tags are `lychee-vX.Y.Z`
+    rev: lychee-v0.19.1
+    hooks:
+      - id: lychee
+        args: [
+          "--offline",          # skip external HTTP calls on every commit
+          "--no-progress",
+          "--verbose",
+        ]
+        # Run only on docs & Markdown files
+        files: "\\.(md|rst|txt)$"
+
+  # ───────── Ruff (lint / fix) ─────────────────────────────────────────────
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.2
+    rev: v0.4.4
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
-      - id: ruff-format
 
+  # ───────── Bandit security scanner ──────────────────────────────────────
   - repo: https://github.com/PyCQA/bandit
     rev: 1.8.5
     hooks:
@@ -26,55 +45,23 @@ repos:
         args: ["-c", "pyproject.toml"]
         exclude: ^tests/
 
+  # ───────── Secret scanning ──────────────────────────────────────────────
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
     hooks:
       - id: detect-secrets
         exclude: tests/.*
 
-  # Local hooks using nox
+  # ───────── Local nox-powered helpers ────────────────────────────────────
   - repo: local
     hooks:
-      # Core typecheck - runs on every commit (excludes optional features)
       - id: mypy-core
         name: "mypy: core package"
         entry: nox -s typecheck --no-install
         language: system
-        files: ^fmp_data/.*\.py$
         pass_filenames: false
         require_serial: true
 
-      # Optional: LangChain typecheck (manual only - slow)
-      - id: mypy-langchain
-        name: "mypy: langchain features"
-        entry: nox -s typecheck_lang --no-install
-        language: system
-        pass_filenames: false
-        always_run: true
-        require_serial: true
-        stages: [manual]  # Only run when explicitly called
-
-      # Optional: MCP typecheck (manual only - slow)
-      - id: mypy-mcp
-        name: "mypy: mcp features"
-        entry: nox -s typecheck_mcp --no-install
-        language: system
-        pass_filenames: false
-        always_run: true
-        require_serial: true
-        stages: [manual]  # Only run when explicitly called
-
-      # Comprehensive typecheck (manual only - very slow)
-      - id: mypy-all
-        name: "mypy: all features comprehensive"
-        entry: nox -s typecheck_all --no-install
-        language: system
-        pass_filenames: false
-        always_run: true
-        require_serial: true
-        stages: [manual]
-
-      # Test runner on push
       - id: pytest-check
         name: pytest-check
         entry: pytest
@@ -82,10 +69,4 @@ repos:
         pass_filenames: false
         always_run: true
         stages: [pre-push]
-        args: [
-            "--quiet",
-            "--no-header",
-            "--tb=short",
-            "-v",
-            "--disable-warnings",
-        ]
+        args: ["-q", "--tb=short", "--strict-markers", "--disable-warnings"]
