@@ -40,7 +40,7 @@ repos:
         name: "mypy: core package"
         entry: nox -s typecheck --no-install
         language: system
-        types: [python]
+        files: ^fmp_data/.*\.py$
         pass_filenames: false
         require_serial: true
 
@@ -49,8 +49,8 @@ repos:
         name: "mypy: langchain features"
         entry: nox -s typecheck_lang --no-install
         language: system
-        types: [python]
         pass_filenames: false
+        always_run: true
         require_serial: true
         stages: [manual]  # Only run when explicitly called
 
@@ -59,10 +59,20 @@ repos:
         name: "mypy: mcp features"
         entry: nox -s typecheck_mcp --no-install
         language: system
-        types: [python]
         pass_filenames: false
+        always_run: true
         require_serial: true
         stages: [manual]  # Only run when explicitly called
+
+      # Comprehensive typecheck (manual only - very slow)
+      - id: mypy-all
+        name: "mypy: all features comprehensive"
+        entry: nox -s typecheck_all --no-install
+        language: system
+        pass_filenames: false
+        always_run: true
+        require_serial: true
+        stages: [manual]
 
       # Test runner on push
       - id: pytest-check
