@@ -43,12 +43,19 @@ def _sync_with_uv(session: Session, *, extras: list[str] | None = None) -> None:
 @nox.session(python=LOCAL_PY_VERSIONS, tags=["tests"])
 @nox.parametrize("feature_group", FEATURE_GROUPS, ids=FEATURE_IDS)
 def tests(session: Session, feature_group: str | None) -> None:
-    extras = ["dev"]
+    """
+    Run the unit-test matrix.
+
+    • Always pull *dev* and *test* extras (linters + pytest)
+    • Optionally pull the feature-specific runtime extras
+    """
+    extras: list[str] = ["dev", "test"]
     if feature_group:
         extras.append(feature_group)
 
     _sync_with_uv(session, extras=extras)
 
+    # ---- pytest ----------------------------------------------------------
     if feature_group == "mcp-server":
         session.run("pytest", "-q", "tests/unit/test_mcp.py", "-m", "not integration")
     else:
