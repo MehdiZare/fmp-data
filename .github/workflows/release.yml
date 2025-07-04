@@ -22,7 +22,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      dist-path: ${{ steps.meta.outputs.dist }}
+      dist: ${{ steps.meta.outputs.dist }}
       version:   ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@v4
@@ -47,13 +47,13 @@ jobs:
       - name: Capture metadata
         id: meta
         run: |
-          echo "dist=$(pwd)/dist" >>"$GITHUB_OUTPUT"
+          echo "dist=$DIST_DIR" >>"$GITHUB_OUTPUT"
           echo "version=$(uvx poetry version --short)" >>"$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: ${{ steps.meta.outputs.dist-path }}
+          path: ${{ steps.meta.outputs.dist }}
 
 ##############################################################################
 # 2. Publish to **Test PyPI** on internal PRs (Trusted Publishing, no token)
