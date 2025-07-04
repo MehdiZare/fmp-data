@@ -18,64 +18,61 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 3.13 stays in the matrix but we mark it 'runtime-only'
         python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
-      # ── Checkout ──────────────────────────────────────────────────────────
+      # Checkout ----------------------------------------------------------------
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # ── CPython toolchain ────────────────────────────────────────────────
+      # CPython toolchain --------------------------------------------------------
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      # ── uv installer + cache ─────────────────────────────────────────────
+      # uv installer + cache -----------------------------------------------------
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
 
-      - name: Cache uv
+      - name: Cache uv wheels
         uses: actions/cache@v4
         with:
           path: |
             ~/.cache/uv
             ~/.local/share/uv
-          key: ${{ runner.os }}-py${{ matrix.python-version }}-uv-${{ hashFiles('**/pyproject.toml', 'uv.lock') }}
+          key: ${{ runner.os }}-py${{ matrix.python-version }}-uv-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-py${{ matrix.python-version }}-uv-
 
-      # ── Project dependencies via uv --------------------------------------
+      # Install deps (runtime + extras) -----------------------------------------
       - name: Install dependencies (uv)
         run: |
           uv --version
           uv sync $(for g in $DEFAULT_EXTRAS; do printf ' --group %s' "$g"; done)
 
-      # ── nox orchestration -------------------------------------------------
+      # nox orchestration --------------------------------------------------------
       - name: Install nox
         run: uv tool install nox
 
-      # ── Tests + QA --------------------------------------------------------
+      # Run sessions -------------------------------------------------------------
       - name: Run sessions
         env:
           NOX_USE_UV: "1"
         run: |
           if [[ "${{ matrix.python-version }}" == "3.13" ]]; then
-            # Python 3.13 → just import-smoke the library
-            nox -p 3.13 -s smoke
+            nox -p 3.13 -s smoke          # import-only test
           else
-            # Fully-supported versions → run tests + QA
             nox -p ${{ matrix.python-version }} -s tests
             if [[ "${{ matrix.python-version }}" == "3.12" ]]; then
               nox -s lint typecheck security
             fi
           fi
 
-      # ── Coverage artefacts (only if pytest ran) ---------------------------
-      - name: Upload coverage (matrix)
+      # Upload coverage (only where pytest ran) ---------------------------------
+      - name: Upload coverage
         if: always() && contains('3.10 3.11 3.12', matrix.python-version)
         uses: actions/upload-artifact@v4
         with:
@@ -87,32 +84,42 @@ jobs:
         continue-on-error: true
 
   build:
-    needs: test            # run after all test jobs
+    needs: test
     runs-on: ubuntu-latest
 
     steps:
-      # ── Checkout ---------------------------------------------------------
+      # Checkout ----------------------------------------------------------------
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # ── CPython 3.12 for building ---------------------------------------
+      # CPython 3.12 -------------------------------------------------------------
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      # ── uv & cache -------------------------------------------------------
-      - name: Install uv + build deps
+      # uv + cache ---------------------------------------------------------------
+      - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
 
-      # ── Install project for build ---------------------------------------
+      - name: Cache uv wheels
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            ~/.local/share/uv
+          key: build-uv-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            build-uv-
+
+      # Install build tooling ----------------------------------------------------
       - name: Install project (uv)
         run: uv sync --group dev
 
-      # ── Build wheel & sdist ---------------------------------------------
-      - name: Build distribution
+      # Build distribution -------------------------------------------------------
+      - name: Build wheel & sdist
         run: |
           uv run python -m build --wheel --sdist
           uv run twine check dist/*
