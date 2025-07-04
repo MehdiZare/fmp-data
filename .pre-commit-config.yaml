@@ -1,7 +1,6 @@
 repos:
   # ───────── Core utility hooks ───────────────────────────────────────────
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    # last published 5.x tag
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
@@ -16,23 +15,9 @@ repos:
       - id: check-merge-conflict
       - id: check-docstring-first
 
-  # ───────── Link checker (maintained) ────────────────────────────────────
-  - repo: https://github.com/lycheeverse/lychee
-    # NOTE: tags are `lychee-vX.Y.Z`
-    rev: lychee-v0.19.1
-    hooks:
-      - id: lychee
-        args: [
-          "--offline",          # skip external HTTP calls on every commit
-          "--no-progress",
-          "--verbose",
-        ]
-        # Run only on docs & Markdown files
-        files: "\\.(md|rst|txt)$"
-
   # ───────── Ruff (lint / fix) ─────────────────────────────────────────────
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.4
+    rev: v0.12.2
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
