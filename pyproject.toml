@@ -274,11 +274,11 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["fmp_data"]
+force-sort-within-sections = true
 
-# Specifically enable the rules you want to catch
-[tool.ruff.lint.ruff]
-# Enable explicit string conversion in f-strings
-explicit-string-concatenation = true
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
 
 # ── Type checking ───────────────────────────────────────────────────────────
 [tool.mypy]
