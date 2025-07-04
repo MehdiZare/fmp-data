@@ -1,27 +1,15 @@
 """
-Nox automation for fmp-data with dual Poetry/uv support
-──────────────────────────────────────────────────────
+Nox automation for fmp-data with pure PEP 735 dependency groups
+──────────────────────────────────────────────────────────────
 Matrix:
-  • tests     : Python 3.10-3.13 × (core | langchain | mcp extra)
+  • tests     : Python 3.10-3.13 × (core | langchain | mcp-server groups)
   • lint      : ruff (style)
   • typecheck : mypy
   • security  : bandit
   • docs      : mkdocs build
 
-Automatically detects and uses uv when available for faster installs,
-gracefully falls back to Poetry when uv is not available.
-
-Local Development Quick Start:
-────────────────────────────
-1. Check available Python versions:  nox -s check_python
-2. Run tests on available version:   nox -s tests-3.12
-3. Quick quality checks:             nox -s quick_check
-4. Set up dev environment:           nox -s dev_install
-
-Environment Variables:
-────────────────────
-• NOX_USE_UV=1                    : Force use of uv over Poetry
-• NOX_PYTHON_VERSIONS=3.12,3.13   : Limit test matrix to specific versions
+Uses PEP 735 dependency groups with uv/pip for modern dependency management.
+All optional features (langchain, mcp-server) are now dependency groups.
 """
 
 import os
@@ -36,8 +24,9 @@ nox.options.reuse_venv = "yes"
 
 # ─────────────── Matrix definitions ────────────────
 PY_VERS = ["3.10", "3.11", "3.12", "3.13"]
-EXTRAS = [None, "langchain", "mcp-server"]
-EXTRA_IDS = ["core", "lang", "mcp-server"]
+# Note: These are now dependency groups, not extras
+FEATURE_GROUPS = [None, "langchain", "mcp-server"]
+FEATURE_IDS = ["core", "lang", "mcp-server"]
 
 # For local development, you can override to test only available versions
 LOCAL_PY_VERS = (
@@ -47,7 +36,7 @@ LOCAL_PY_VERS = (
 )
 
 # Check if uv is available and preferred
-USE_UV = os.getenv("NOX_USE_UV", "").lower() in ("1", "true", "yes")
+USE_UV = os.getenv("NOX_USE_UV", "1").lower() in ("1", "true", "yes")
 
 
 def _has_uv() -> bool:
@@ -55,18 +44,9 @@ def _has_uv() -> bool:
     return shutil.which("uv") is not None
 
 
-def _has_poetry() -> bool:
-    """Check if Poetry is available in the system."""
-    return shutil.which("poetry") is not None
-
-
 def _detect_tool() -> str:
     """Detect which tool to use based on availability and preferences."""
     if USE_UV and _has_uv():
-        return "uv"
-    elif _has_poetry():
-        return "poetry"
-    elif _has_uv():
         return "uv"
     else:
         return "pip"
@@ -74,108 +54,153 @@ def _detect_tool() -> str:
 
 # ─────────────── Install helpers ─────────────────────
 def _install_with_uv(
-    session: Session, *, extras: str | None = None, dev: bool = False
+    session: Session, *, extras: str | None = None, groups: list[str] | None = None
 ) -> None:
-    """Install dependencies using uv."""
+    """Install dependencies using uv with PEP 735 dependency groups."""
     session.log("📦 Installing dependencies with uv...")
 
-    # Build the installation command with separate --extra flags
-    cmd = ["uv", "sync"]
-
-    # Add each extra as a separate --extra flag
-    extras_list = []
+    # Install the project with extras
     if extras:
-        extras_list.extend(extras.split(","))
-    if dev:
-        extras_list.append("dev")
+        session.run("uv", "pip", "install", "-e", f".[{extras}]", external=True)
+    else:
+        session.run("uv", "pip", "install", "-e", ".", external=True)
 
-    # Add separate --extra flags for each extra
-    for extra in extras_list:
-        cmd.extend(["--extra", extra.strip()])
+    # Install dependency groups manually (uv doesn't support --dependency-groups yet)
+    if groups:
+        session.run(
+            "python",
+            "-c",
+            f"""
+import tomllib
+with open('pyproject.toml', 'rb') as f:
+    config = tomllib.load(f)
 
-    session.run(*cmd, external=True)
-
-
-def _install_with_poetry(
-    session: Session, *, extras: str | None = None, dev: bool = False
-) -> None:
-    """Install dependencies using Poetry."""
-    session.log("📦 Installing dependencies with Poetry...")
-    session.install("poetry")
-
-    cmd = ["poetry", "install", "--no-interaction"]
-
-    # Add dev dependencies
-    if dev:
-        cmd.extend(["--with", "dev"])
-
-    # Add extras - Poetry expects space-separated values
-    if extras:
-        # Convert comma-separated to space-separated for Poetry
-        poetry_extras = extras.replace(",", " ")
-        cmd.extend(["--extras", poetry_extras])
-
-    session.run(*cmd, external=True)
+dependency_groups = config.get('dependency-groups', {{}})
+for group in {groups!r}:
+    if group in dependency_groups:
+        deps = dependency_groups[group]
+        if deps:
+            import subprocess
+            subprocess.run(['uv', 'pip', 'install'] + deps, check=True)
+            print(f'Installed {{len(deps)}} dependencies from {{group}} group')
+""",
+            external=True,
+        )
 
 
 def _install_with_pip(
-    session: Session, *, extras: str | None = None, dev: bool = False
+    session: Session, *, extras: str | None = None, groups: list[str] | None = None
 ) -> None:
-    """Fallback installation using pip."""
+    """Install dependencies using pip with dependency groups."""
     session.log("📦 Installing dependencies with pip...")
 
-    # Install the project
-    if extras and dev:
-        session.install(f".[{extras},dev]")
-    elif extras:
-        session.install(f".[{extras}]")
-    elif dev:
-        session.install(".[dev]")
+    # Install the project with extras
+    if extras:
+        session.install(f"-e.[{extras}]")
     else:
-        session.install(".")
+        session.install("-e.")
+
+    # Install dependency groups manually
+    if groups:
+        session.run(
+            "python",
+            "-c",
+            f"""
+import tomllib
+with open('pyproject.toml', 'rb') as f:
+    config = tomllib.load(f)
+
+dependency_groups = config.get('dependency-groups', {{}})
+for group in {groups!r}:
+    if group in dependency_groups:
+        deps = dependency_groups[group]
+        for dep in deps:
+            import subprocess
+            subprocess.run(['pip', 'install', dep], check=True)
+        print(f'Installed {{len(deps)}} dependencies from {{group}} group')
+""",
+            external=True,
+        )
 
 
-def _install(session: Session, *, extras: str | None = None, dev: bool = False) -> None:
-    """Install project with specified extras using the best available tool."""
+def _install(session: Session, *, groups: list[str] | None = None) -> None:
+    """Install project with specified dependency groups."""
     tool = _detect_tool()
     session.log(f"🔧 Using {tool} for dependency management")
 
     if tool == "uv":
-        _install_with_uv(session, extras=extras, dev=dev)
-    elif tool == "poetry":
-        _install_with_poetry(session, extras=extras, dev=dev)
+        _install_with_uv(session, groups=groups)
     else:
-        _install_with_pip(session, extras=extras, dev=dev)
+        _install_with_pip(session, groups=groups)
 
 
-def _install_deps_only(session: Session, extras: list[str] | None = None) -> None:
-    """Install only dependencies without the project itself."""
+def _install_deps_only(session: Session, groups: list[str] | None = None) -> None:
+    """Install only dependency groups without the project itself."""
+    if not groups:
+        return
+
     tool = _detect_tool()
 
     if tool == "uv":
-        # For uv, we can use sync to install from lock file
-        if extras:
-            cmd = ["uv", "sync"]
-            for extra in extras:
-                cmd.extend(["--extra", extra])
-            session.run(*cmd, external=True)
-        else:
-            session.run("uv", "sync", external=True)
+        # Install dependency groups manually since
+        # uv doesn't support --dependency-groups yet
+        session.run(
+            "python",
+            "-c",
+            f"""
+import tomllib
+with open('pyproject.toml', 'rb') as f:
+    config = tomllib.load(f)
+
+dependency_groups = config.get('dependency-groups', {{}})
+for group in {groups!r}:
+    if group in dependency_groups:
+        deps = dependency_groups[group]
+        if deps:
+            import subprocess
+            subprocess.run(['uv', 'pip', 'install'] + deps, check=True)
+            print(f'Installed {{len(deps)}} dependencies from {{group}} group')
+""",
+            external=True,
+        )
     else:
-        # For Poetry/pip, install project which pulls dependencies
-        extras_str = ",".join(extras) if extras else None
-        _install(session, extras=extras_str, dev=True)
+        # Fallback for pip
+        session.run(
+            "python",
+            "-c",
+            f"""
+import tomllib
+with open('pyproject.toml', 'rb') as f:
+    config = tomllib.load(f)
+
+dependency_groups = config.get('dependency-groups', {{}})
+for group in {groups!r}:
+    if group in dependency_groups:
+        deps = dependency_groups[group]
+        for dep in deps:
+            import subprocess
+            subprocess.run(['pip', 'install', dep], check=True)
+""",
+            external=True,
+        )
 
 
 # ── test matrix ─────────────────────────────────────────────────
 @nox.session(python=LOCAL_PY_VERS, reuse_venv=True, tags=["tests"])
-@nox.parametrize("extra", EXTRAS, ids=EXTRA_IDS)
-def tests(session: Session, extra: str | None) -> None:
-    """Run tests for given Python version and optional extras."""
-    _install(session, extras=extra, dev=True)
+@nox.parametrize("feature_group", FEATURE_GROUPS, ids=FEATURE_IDS)
+def tests(session: Session, feature_group: str | None) -> None:
+    """Run tests for given Python version and optional dependency groups."""
+    # Map features to dependency groups
+    groups = ["test"]
+    if feature_group == "langchain":
+        groups.append("langchain")
+    elif feature_group == "mcp-server":
+        groups.append("mcp-server")
 
-    # Run different test sets based on extra
-    if extra == "mcp-server":
+    _install(session, groups=groups)
+
+    # Run different test sets based on feature
+    if feature_group == "mcp-server":
         session.run("pytest", "-q", "tests/unit/test_mcp.py", "-m", "not integration")
     else:
         session.run("pytest", "-q")
@@ -183,8 +208,8 @@ def tests(session: Session, extra: str | None) -> None:
 
 @nox.session(python="3.12")
 def smoke(session: Session) -> None:
-    """Quick smoke test with all extras."""
-    _install(session, extras="langchain,mcp-server", dev=True)
+    """Quick smoke test with all features."""
+    _install(session, groups=["test", "langchain", "mcp-server"])
     session.run("pytest", "-q", "--maxfail=1")
 
 
@@ -192,7 +217,7 @@ def smoke(session: Session) -> None:
 @nox.session(python="3.12", reuse_venv=True, tags=["mcp"])
 def test_mcp(session: Session) -> None:
     """Run MCP-specific tests only."""
-    _install(session, extras="mcp-server", dev=True)
+    _install(session, groups=["test", "mcp-server"])
     session.run("pytest", "-q", "tests/unit/test_mcp.py", "-v")
 
 
@@ -200,52 +225,51 @@ def test_mcp(session: Session) -> None:
 @nox.session(python="3.12", reuse_venv=True)
 def lint(session: Session) -> None:
     """Run ruff linting."""
-    _install_deps_only(session, ["dev"])
+    _install_deps_only(session, ["lint"])
     session.run("ruff", "check", "fmp_data", "tests", external=True)
 
 
 @nox.session(python="3.12", reuse_venv=True)
 def typecheck(session: Session) -> None:
     """Run mypy type checking on core package."""
-    _install(session, dev=True)
+    _install(session, groups=["lint"])  # lint group contains mypy
     session.run("mypy", "fmp_data", external=True)
 
 
 @nox.session(python="3.12", reuse_venv=True)
 def typecheck_lang(session: Session) -> None:
-    """Run mypy type checking with langchain extras."""
-    _install(session, extras="langchain", dev=True)
+    """Run mypy type checking with langchain dependencies."""
+    _install(session, groups=["lint", "langchain"])
     session.run("mypy", "fmp_data", external=True)
 
 
 @nox.session(python="3.12", reuse_venv=True)
 def security(session: Session) -> None:
     """Run bandit security checks."""
-    _install_deps_only(session, ["dev"])
+    _install_deps_only(session, ["lint"])  # lint group contains bandit
+
+    # Run bandit with project configuration from pyproject.toml
     session.run(
         "bandit",
         "-r",
         "fmp_data",
-        "-f",
-        "json",
-        "-o",
-        "bandit-report.json",
+        "--configfile",
+        "pyproject.toml",
         external=True,
     )
-    session.run("bandit", "-r", "fmp_data", external=True)
 
 
 @nox.session(python="3.12", reuse_venv=True)
 def docs(session: Session) -> None:
     """Build documentation with mkdocs."""
-    _install(session, extras="docs", dev=True)
+    _install(session, groups=["docs"])
     session.run("mkdocs", "build", "--strict", external=True)
 
 
 @nox.session(python="3.12", reuse_venv=True)
 def format_check(session: Session) -> None:
     """Check code formatting."""
-    _install_deps_only(session, ["dev"])
+    _install_deps_only(session, ["lint"])
     session.run("black", "--check", "--diff", "fmp_data", "tests", external=True)
     session.run("isort", "--check-only", "--diff", "fmp_data", "tests", external=True)
 
@@ -253,7 +277,7 @@ def format_check(session: Session) -> None:
 @nox.session(python="3.12", reuse_venv=True)
 def format_fix(session: Session) -> None:
     """Fix code formatting."""
-    _install_deps_only(session, ["dev"])
+    _install_deps_only(session, ["lint"])
     session.run("black", "fmp_data", "tests", external=True)
     session.run("isort", "fmp_data", "tests", external=True)
 
@@ -262,22 +286,22 @@ def format_fix(session: Session) -> None:
 @nox.session(python="3.12")
 def coverage(session: Session) -> None:
     """Run tests with coverage reporting."""
-    _install(session, dev=True)
+    _install(session, groups=["test"])
     session.run(
         "pytest",
         "--cov=fmp_data",
         "--cov-report=html:htmlcov",
         "--cov-report=xml:coverage.xml",
         "--cov-report=term-missing",
-        "--cov-fail-under=80",  # Optional: fail if coverage below 80%
+        "--cov-fail-under=80",
     )
 
 
 # ── Development utilities ───────────────────────────────────────
 @nox.session(python="3.12")
 def dev_install(session: Session) -> None:
-    """Install project in development mode with all extras."""
-    _install(session, extras="langchain,mcp-server", dev=True)
+    """Install project in development mode with all features."""
+    _install(session, groups=["dev"])
 
     tool = _detect_tool()
     session.log("✅ Development environment ready!")
@@ -285,9 +309,6 @@ def dev_install(session: Session) -> None:
     if tool == "uv":
         session.log("💡 To activate: source .venv/bin/activate")
         session.log("💡 To run commands: uv run <command>")
-    elif tool == "poetry":
-        session.log("💡 To activate: poetry shell")
-        session.log("💡 To run commands: poetry run <command>")
     else:
         session.log("💡 To activate: source .nox/dev-install/bin/activate")
 
@@ -295,14 +316,14 @@ def dev_install(session: Session) -> None:
 @nox.session(python="3.12")
 def local_test(session: Session) -> None:
     """Quick local test suite - runs core tests on current Python version."""
-    _install(session, dev=True)
+    _install(session, groups=["test"])
     session.run("pytest", "-v", "--tb=short")
 
 
 @nox.session(python="3.12")
 def quick_check(session: Session) -> None:
     """Run quick quality checks for local development."""
-    _install_deps_only(session, ["dev"])
+    _install_deps_only(session, ["ci-lint"])
 
     session.log("🔍 Running quick quality checks...")
 
@@ -324,15 +345,15 @@ def clean(session: Session) -> None:
         "dist",
         "*.egg-info",
         ".coverage",
-        "htmlcov",  # Changed from "coverage_html" to standard pytest-cov output
+        "htmlcov",
         "coverage.xml",
         ".pytest_cache",
         ".mypy_cache",
         ".ruff_cache",
         "__pycache__",
-        ".venv",  # uv venv
-        ".nox",  # nox environments
-        "bandit-report.json",  # bandit output
+        ".venv",
+        ".nox",
+        "bandit-report.json",
     ]
 
     for pattern in dirs_to_clean:
@@ -353,7 +374,6 @@ def check_tools(session: Session) -> None:
     """Check which tools are available and their versions."""
     tools = {
         "uv": ["uv", "--version"],
-        "poetry": ["poetry", "--version"],
         "pip": ["pip", "--version"],
         "nox": ["nox", "--version"],
         "git": ["git", "--version"],
@@ -371,9 +391,7 @@ def check_tools(session: Session) -> None:
     # Show current configuration
     tool = _detect_tool()
     session.log(f"🎯 Currently configured to use: {tool}")
-    session.log(
-        f"🔧 NOX_USE_UV environment variable: {os.getenv('NOX_USE_UV', 'not set')}"
-    )
+    session.log(f"🔧 NOX_USE_UV environment variable: {os.getenv('NOX_USE_UV', '1')}")
 
 
 @nox.session(python=False)
@@ -400,44 +418,3 @@ def check_python(session: Session) -> None:
         )
     else:
         session.log("⚠️  No Python versions found. Check your Python installation.")
-
-    # Show how to install missing versions
-    missing_versions = [v for v in python_versions if v not in available_versions]
-    if missing_versions:
-        session.log("📦 To install missing versions with pyenv:")
-        for version in missing_versions:
-            session.log(f"   pyenv install {version}")
-
-
-# ── Benchmark sessions ──────────────────────────────────────────
-@nox.session(python="3.12")
-def benchmark_install(session: Session) -> None:
-    """Benchmark installation speed of different tools."""
-    import time
-
-    # Clean slate
-    session.run(
-        "rm", "-rf", ".venv", ".nox/benchmark*", external=True, success_codes=[0, 1]
-    )
-
-    session.log("🏁 Benchmarking installation speed...")
-
-    if _has_uv():
-        start = time.time()
-        session.run("uv", "sync", "--extra", "dev", external=True)
-        uv_time = time.time() - start
-        session.log(f"⚡ uv installation time: {uv_time:.2f}s")
-        session.run("rm", "-rf", ".venv", external=True)
-
-    if _has_poetry():
-        start = time.time()
-        session.install("poetry")
-        session.run("poetry", "install", "--with=dev", external=True)
-        poetry_time = time.time() - start
-        session.log(f"🐍 Poetry installation time: {poetry_time:.2f}s")
-
-        if _has_uv():
-            speedup = poetry_time / uv_time
-            session.log(f"🚀 uv is {speedup:.1f}x faster than Poetry")
-
-    session.log("✅ Benchmark complete!")
