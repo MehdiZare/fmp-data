@@ -2,28 +2,28 @@
 name: Build-and-Release
 
 on:
-  pull_request:
-    branches: [ main ]   # PR → build + Test PyPI
-  push:
-    branches: [ main ]   # main → tag + build + PyPI
+  pull_request:       # PR → build + Test PyPI
+    branches: [main]
+  push:               # main → bump tag + build + PyPI
+    branches: [main]
   workflow_dispatch:
 
 env:
   PYTHON_VERSION: "3.12"
 
 permissions:
-  contents: write
-  id-token: write
+  contents: write     # create tags / releases
+  id-token: write     # OIDC token for Trusted Publishing
 
+##############################################################################
+# 1. Build & smoke-test  (always)
+##############################################################################
 jobs:
-  ##############################################################################
-  # Build (always)
-  ##############################################################################
   build:
     runs-on: ubuntu-latest
     outputs:
       dist-path: ${{ steps.meta.outputs.dist }}
-      version: ${{ steps.meta.outputs.version }}
+      version:   ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -35,7 +35,7 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install deps & smoke-test
+      - name: Install deps & smoke-tests
         run: |
           uvx poetry self add poetry-dynamic-versioning[plugin]
           uv sync --group langchain --group mcp-server --group dev
@@ -53,11 +53,11 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: ${{ steps.meta.outputs.dist }}
+          path: ${{ steps.meta.outputs.dist-path }}
 
-  ##############################################################################
-  # Publish to Test PyPI (internal PRs)
-  ##############################################################################
+##############################################################################
+# 2. Publish to **Test PyPI** on internal PRs (Trusted Publishing, no token)
+##############################################################################
   publish-testpypi:
     if: |
       github.event_name == 'pull_request' &&
@@ -70,31 +70,22 @@ jobs:
           name: dist
           path: dist
 
-      - name: Skip when secret absent
-        env:
-          TOKEN: ${{ secrets.TEST_PYPI_TOKEN }}
-        run: |
-          if [[ -z "$TOKEN" ]]; then
-            echo "🔒  TEST_PYPI_TOKEN not available – skipping upload"
-            exit 0
-          fi
-
       - name: Publish to Test PyPI
         uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
           repository-url: https://test.pypi.org/legacy/
-          packages-dir: dist
-          skip-existing: true
-          attestations: true
+          packages-dir:   dist
+          skip-existing:  true
+          attestations:   true        # ← OIDC / Trusted Publishing
 
-  ##############################################################################
-  # Create new tag (main pushes)
-  ##############################################################################
+##############################################################################
+# 3. Derive & push new tag on **main** merges
+##############################################################################
   tag-version:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
-      tag: ${{ steps.bump.outputs.tag }}
+      tag:     ${{ steps.bump.outputs.tag }}
       version: ${{ steps.bump.outputs.version }}
     steps:
       - uses: actions/checkout@v4
@@ -117,9 +108,11 @@ jobs:
 
           cur=$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)
           IFS='.' read -r M m p <<<"${cur#v}"
-          case $bump in patch) p=$((p+1));;
-                          minor) m=$((m+1)); p=0;;
-                          major) M=$((M+1)); m=0; p=0;; esac
+          case $bump in
+            patch) p=$((p+1));;
+            minor) m=$((m+1)); p=0;;
+            major) M=$((M+1)); m=0; p=0;;
+          esac
           tag="v${M}.${m}.${p}"
           echo "tag=$tag"       >>"$GITHUB_OUTPUT"
           echo "version=${M}.${m}.${p}" >>"$GITHUB_OUTPUT"
@@ -129,12 +122,12 @@ jobs:
           git tag "$tag"
           git push origin "$tag"
 
-  ##############################################################################
-  # Publish to Production PyPI (main pushes)
-  ##############################################################################
+##############################################################################
+# 4. Publish to **PyPI** after tagging (Trusted Publishing, no token)
+##############################################################################
   publish-pypi:
     if: github.event_name == 'push'
-    needs: [ build, tag-version ]
+    needs: [build, tag-version]
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -146,16 +139,16 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
-          packages-dir: dist
+          packages-dir:  dist
           skip-existing: true
-          attestations: true
+          attestations:  true         # ← OIDC / Trusted Publishing
 
-  ##############################################################################
-  # GitHub release notes (main pushes)
-  ##############################################################################
+##############################################################################
+# 5. GitHub Release notes
+##############################################################################
   github-release:
     if: github.event_name == 'push'
-    needs: [ publish-pypi, tag-version ]
+    needs: [publish-pypi, tag-version]
     runs-on: ubuntu-latest
     steps:
       - uses: softprops/action-gh-release@v2
