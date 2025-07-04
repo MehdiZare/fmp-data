@@ -92,7 +92,7 @@ def _lazy_import_vector_store() -> _types.ModuleType:
         ) from None
 
     # Import inside the function to keep top-level import cheap.
-    from fmp_data import lc as _lc
+    _lc = importlib.import_module("fmp_data.lc")
 
     # Check FAISS at runtime to give a clearer error than module not found.
     if _importlib_util.find_spec("faiss") is None:
@@ -116,8 +116,7 @@ def _lazy_import_langchain() -> _types.ModuleType:
         ) from None
 
     try:
-        from fmp_data import langchain as _langchain
-
+        _langchain = importlib.import_module("fmp_data.langchain")
         return _langchain
     except ImportError as e:
         raise ImportError(
