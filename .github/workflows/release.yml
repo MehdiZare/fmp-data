@@ -2,10 +2,10 @@
 name: Build-and-Release
 
 on:
-  pull_request:       # PR → build + Test PyPI
-    branches: [main]
-  push:               # main → bump tag + build + PyPI
-    branches: [main]
+  pull_request: # PR → build + Test PyPI
+    branches: [ main ]
+  push: # main → bump tag + build + PyPI
+    branches: [ main ]
   workflow_dispatch:
 
 env:
@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       dist: ${{ steps.meta.outputs.dist }}
-      version:   ${{ steps.meta.outputs.version }}
+      version: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -47,7 +47,8 @@ jobs:
       - name: Capture metadata
         id: meta
         run: |
-          echo "dist=$DIST_DIR" >>"$GITHUB_OUTPUT"
+          DIST_DIR="$(pwd)/dist"
+          echo "dist=$DIST_DIR"           >>"$GITHUB_OUTPUT"
           echo "version=$(uvx poetry version --short)" >>"$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
@@ -55,9 +56,9 @@ jobs:
           name: dist
           path: ${{ steps.meta.outputs.dist }}
 
-##############################################################################
-# 2. Publish to **Test PyPI** on internal PRs (Trusted Publishing, no token)
-##############################################################################
+  ##############################################################################
+  # 2. Publish to **Test PyPI** on internal PRs (Trusted Publishing, no token)
+  ##############################################################################
   publish-testpypi:
     if: |
       github.event_name == 'pull_request' &&
@@ -74,18 +75,18 @@ jobs:
         uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
           repository-url: https://test.pypi.org/legacy/
-          packages-dir:   dist
-          skip-existing:  true
-          attestations:   true        # ← OIDC / Trusted Publishing
+          packages-dir: dist
+          skip-existing: true
+          attestations: true        # ← OIDC / Trusted Publishing
 
-##############################################################################
-# 3. Derive & push new tag on **main** merges
-##############################################################################
+  ##############################################################################
+  # 3. Derive & push new tag on **main** merges
+  ##############################################################################
   tag-version:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
-      tag:     ${{ steps.bump.outputs.tag }}
+      tag: ${{ steps.bump.outputs.tag }}
       version: ${{ steps.bump.outputs.version }}
     steps:
       - uses: actions/checkout@v4
@@ -122,12 +123,12 @@ jobs:
           git tag "$tag"
           git push origin "$tag"
 
-##############################################################################
-# 4. Publish to **PyPI** after tagging (Trusted Publishing, no token)
-##############################################################################
+  ##############################################################################
+  # 4. Publish to **PyPI** after tagging (Trusted Publishing, no token)
+  ##############################################################################
   publish-pypi:
     if: github.event_name == 'push'
-    needs: [build, tag-version]
+    needs: [ build, tag-version ]
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -139,16 +140,16 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
-          packages-dir:  dist
+          packages-dir: dist
           skip-existing: true
-          attestations:  true         # ← OIDC / Trusted Publishing
+          attestations: true         # ← OIDC / Trusted Publishing
 
-##############################################################################
-# 5. GitHub Release notes
-##############################################################################
+  ##############################################################################
+  # 5. GitHub Release notes
+  ##############################################################################
   github-release:
     if: github.event_name == 'push'
-    needs: [publish-pypi, tag-version]
+    needs: [ publish-pypi, tag-version ]
     runs-on: ubuntu-latest
     steps:
       - uses: softprops/action-gh-release@v2
