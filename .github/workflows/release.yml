@@ -53,7 +53,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: ${{ steps.meta.outputs.dist-path }}
+          path: ${{ steps.meta.outputs.dist }}
 
 ##############################################################################
 # Publish to Test PyPI (internal PRs)
