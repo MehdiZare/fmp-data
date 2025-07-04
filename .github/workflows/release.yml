@@ -104,7 +104,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     needs: [tag-version]
-    if: always() && (needs.tag-version.result == 'success' || needs.tag-version.result == 'skipped')
+    if: always() && (github.event_name == 'pull_request' || needs.tag-version.result == 'success')
     outputs:
       version: ${{ steps.extract-version.outputs.version }}
       wheel_file: ${{ steps.extract-version.outputs.wheel_file }}
@@ -237,16 +237,10 @@ jobs:
   # ══════════════════════════════════════════════════════════════════════════
 
   test-publish:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && needs.build.result == 'success'
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Validate build success
-        if: needs.build.result != 'success'
-        run: |
-          echo "::error::Build job failed with status: ${{ needs.build.result }}"
-          exit 1
-
       - name: Download build artifacts
         uses: actions/download-artifact@v4.3.0
         with:
@@ -406,8 +400,7 @@ jobs:
             ```bash
             pip install fmp-data==${{ needs.build.outputs.version }}
 
-            # With optional
-            features (using uv)
+            # With optional features (using uv)
             uv add fmp-data[langchain]
             uv add fmp-data[mcp-server]
             ```
