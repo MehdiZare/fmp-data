@@ -200,14 +200,8 @@ jobs:
           [[ -n "$wheel_file" ]] || { echo "::error::No wheel file found"; exit 1; }
           [[ -n "$sdist_file" ]] || { echo "::error::No sdist file found"; exit 1; }
 
-          # Extract version from wheel filename
-          version=$(python -c "
-          from pathlib import Path
-          from packaging.utils import parse_wheel_filename
-          wheel_path = Path('$wheel_file')
-          name, version, build_tag, tags = parse_wheel_filename(wheel_path.name)
-          print(version)
-          ")
+          # Extract version using poetry (simpler approach)
+          version=$(uv run poetry version --short)
 
           [[ -n "$version" ]] || { echo "::error::Failed to extract version"; exit 1; }
 
