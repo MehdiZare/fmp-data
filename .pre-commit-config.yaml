@@ -27,6 +27,8 @@ repos:
     rev: 1.8.5
     hooks:
       - id: bandit
+        name: bandit
+        additional_dependencies: ["bandit[toml]"]
         args: ["-c", "pyproject.toml"]
         exclude: ^tests/
 
