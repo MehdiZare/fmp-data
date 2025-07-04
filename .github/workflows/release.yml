@@ -406,7 +406,8 @@ jobs:
             ```bash
             pip install fmp-data==${{ needs.build.outputs.version }}
 
-            # With optional features (using uv)
+            # With optional
+            features (using uv)
             uv add fmp-data[langchain]
             uv add fmp-data[mcp-server]
             ```
