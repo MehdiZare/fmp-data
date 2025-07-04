@@ -124,37 +124,31 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-        continue-on-error: true
 
-      - name: Cache dependencies
+      - name: Cache uv dependencies
         uses: actions/cache@v4
         with:
           path: |
-            ~/.cache/pypoetry
-            ~/.cache/pip
             ~/.cache/uv
-          key: ${{ runner.os }}-deps-${{ hashFiles('**/pyproject.toml') }}
+            ~/.local/share/uv
+          key: ${{ runner.os }}-build-${{ hashFiles('**/pyproject.toml', 'uv.lock') }}
           restore-keys: |
-            ${{ runner.os }}-deps-
+            ${{ runner.os }}-build-
 
       - name: Setup toolchain and dependencies
         run: |
+          echo "🚀 Installing with uv"
+          uv --version
+
           # Install core toolchain
-          python -m pip install --upgrade pip poetry build packaging
+          uv tool install poetry
           poetry self add poetry-dynamic-versioning[plugin]
 
-          # Install project
-          if command -v uv &> /dev/null; then
-            echo "🚀 Using uv for fast dependency installation"
-            uv pip install --system -e .
-            python scripts/install_groups.py uv langchain mcp-server dev
-            echo "TOOL=uv" >> $GITHUB_ENV
-          else
-            echo "🐍 Using pip for dependency installation"
-            pip install -e .
-            python scripts/install_groups.py pip langchain mcp-server dev
-            echo "TOOL=pip" >> $GITHUB_ENV
-          fi
+          # Install project with all optional features and dev dependencies
+          uv sync --group langchain --group mcp-server --group dev
+
+          # Install build tools
+          uv tool install build
 
       - name: Verify dynamic versioning
         run: |
@@ -188,14 +182,13 @@ jobs:
 
       - name: Run smoke tests
         run: |
-          if [[ "$TOOL" == "uv" ]]; then
-            NOX_USE_UV=1 uv run nox -s smoke
-          else
-            nox -s smoke
-          fi
+          echo "🧪 Running smoke tests"
+          NOX_USE_UV=1 uv run nox -s smoke
 
       - name: Build package
-        run: poetry build
+        run: |
+          echo "📦 Building package"
+          poetry build
 
       - name: Extract package metadata
         id: extract-version
@@ -237,7 +230,7 @@ jobs:
             echo "| **Type** | $([ "$is_development" = "true" ] && echo "Development 🔄" || echo "Release 🎯") |"
             echo "| **Wheel** | \`$(basename "$wheel_file")\` |"
             echo "| **Sdist** | \`$(basename "$sdist_file")\` |"
-            echo "| **Tool** | $TOOL |"
+            echo "| **Tool** | uv |"
             echo "| **Event** | ${{ github.event_name }} |"
           } >> $GITHUB_STEP_SUMMARY
 
@@ -273,6 +266,9 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
       - name: Verify artifacts
         run: |
           echo "📁 Artifact contents:"
@@ -282,7 +278,7 @@ jobs:
           find dist/ -name "*.whl" -o -name "*.tar.gz" | sort
 
       - name: Install twine
-        run: python -m pip install --upgrade twine
+        run: uv tool install twine
 
       - name: Upload to Test PyPI
         env:
@@ -300,7 +296,7 @@ jobs:
           echo "  Sdist: ${{ needs.build.outputs.sdist_file }}"
           echo ""
 
-          python -m twine upload \
+          uvx twine upload \
             --non-interactive \
             --skip-existing \
             --repository-url https://test.pypi.org/legacy/ \
@@ -346,8 +342,8 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install twine
-        run: python -m pip install --upgrade twine
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
 
       - name: Upload to PyPI
         env:
@@ -365,7 +361,7 @@ jobs:
             echo "::warning::Version mismatch - Tag: ${{ needs.tag-version.outputs.new_version }}, Package: ${{ needs.build.outputs.version }}"
           fi
 
-          python -m twine upload \
+          uvx twine upload \
             --non-interactive \
             --skip-existing \
             -u __token__ \
@@ -423,8 +419,8 @@ jobs:
             pip install fmp-data==${{ needs.build.outputs.version }}
 
             # With optional features (using uv)
-            uv sync --group langchain
-            uv sync --group mcp-server
+            uv add fmp-data[langchain]
+            uv add fmp-data[mcp-server]
             ```
 
             ## 🔗 Links

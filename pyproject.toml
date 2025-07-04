@@ -1,138 +1,3 @@
-[project]
-name = "fmp-data"
-dynamic = ["version"]
-description = "Python client for the Financial Modeling Prep API"
-authors = [
-    {name = "Mehdi Zare", email = "mehdizare@users.noreply.github.com"}
-]
-readme = "README.md"
-license = {text = "MIT"}
-keywords = ["finance", "api", "financial-modeling-prep", "stocks", "market-data"]
-classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Financial and Insurance Industry",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Topic :: Office/Business :: Financial",
-    "Topic :: Software Development :: Libraries :: Python Modules",
-    "Typing :: Typed",
-]
-requires-python = ">=3.10"
-
-# Core dependencies - minimal for basic functionality
-dependencies = [
-    "httpx>=0.27.0",
-    "pydantic>=2.10.3",
-    "cachetools>=5.5.0",
-    "tenacity>=9.0.0",
-    "structlog>=24.4.0",
-    "pydantic-settings>=2.6.1",
-]
-
-[project.optional-dependencies]
-# Keep these for backward compatibility, but map to dependency groups
-langchain = [
-    "faiss-cpu>=1.11.0",
-    "langchain-core>=0.3.66",
-    "langchain-community>=0.3.26",
-    "langchain-openai>=0.3.25",
-    "langgraph>=0.4.10",
-    "openai>=1.92.0",
-    "tiktoken>=0.9.0",
-]
-mcp-server = [
-    "mcp[cli]>=1.0.0",
-    "pyyaml>=6.0.1",
-]
-
-[project.scripts]
-fmp-dev-server = "fmp_data.scripts.dev_server:main"
-
-[project.urls]
-Homepage = "https://github.com/MehdiZare/fmp-data"
-Documentation = "https://github.com/MehdiZare/fmp-data#readme"
-Source = "https://github.com/MehdiZare/fmp-data"
-Issues = "https://github.com/MehdiZare/fmp-data/issues"
-
-###############################################################################
-#  PEP 735 Dependency Groups                                                  #
-###############################################################################
-[dependency-groups]
-# User-facing feature groups
-langchain = [
-    "faiss-cpu>=1.11.0",
-    "langchain-core>=0.3.66",
-    "langchain-community>=0.3.26",
-    "langchain-openai>=0.3.25",
-    "langgraph>=0.4.10",
-    "openai>=1.92.0",
-    "tiktoken>=0.9.0",
-]
-
-mcp-server = [
-    "mcp[cli]>=1.0.0",
-    "pyyaml>=6.0.1",
-]
-
-# Development groups
-test = [
-    "pytest>=8.3.3",
-    "pytest-asyncio>=0.24.0",
-    "pytest-cov>=6.0.0",
-    "pytest-mock>=3.14.0",
-    "freezegun>=1.5.1",
-    "responses>=0.25.3",
-    "vcrpy>=6.0.2",
-    "coverage>=7.6.4",
-]
-
-lint = [
-    "ruff>=0.7.1",
-    "black>=24.10.0",
-    "isort>=5.13.2",
-    "mypy>=1.13.0",
-    "types-cachetools>=6.0.0.20250525",
-    "bandit[toml]>=1.7.10",
-]
-
-docs = [
-    "mkdocs>=1.6.1",
-    "mkdocs-material>=9.6.14",
-    "mkdocstrings-python>=1.16.12",
-]
-
-# Combined groups for convenience
-dev = [
-    {include-group = "test"},
-    {include-group = "lint"},
-    {include-group = "docs"},
-    "pre-commit>=4.0.1",
-    "rich>=13.9.3",
-    "nox>=2024.4.15",
-]
-
-all-features = [
-    {include-group = "langchain"},
-    {include-group = "mcp-server"},
-]
-
-# CI-specific minimal groups
-ci-test = [
-    "pytest>=8.3.3",
-    "pytest-cov>=6.0.0",
-    "coverage>=7.6.4",
-]
-
-ci-lint = [
-    "ruff>=0.7.1",
-    "mypy>=1.13.0",
-    "types-cachetools>=6.0.0.20250525",
-]
-
 ###############################################################################
 #  Build system                                                               #
 ###############################################################################
@@ -141,7 +6,101 @@ requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
 build-backend = "poetry_dynamic_versioning.backend"
 
 ###############################################################################
-#  Poetry config (minimal, only for dynamic versioning)                      #
+#  Core project metadata (PEP 621)                                            #
+###############################################################################
+[project]
+name = "fmp-data"
+description = "Python client for the Financial Modeling Prep API"
+readme = "README.md"
+requires-python = ">=3.10,<4.0"
+license = { text = "MIT" }
+dynamic = ["version"]
+
+authors = [
+  { name = "Mehdi Zare", email = "mehdizare@users.noreply.github.com" },
+]
+maintainers = [
+  { name = "Mehdi Zare", email = "mehdizare@users.noreply.github.com" },
+]
+
+keywords = [
+  "fmp", "financial", "api", "stocks", "market-data",
+  "stock market", "financial data",
+]
+
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Financial and Insurance Industry",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Framework :: AsyncIO",
+  "Topic :: Office/Business :: Financial",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+###############################################################################
+#  Runtime dependencies                                                       #
+###############################################################################
+dependencies = [
+  "httpx>=0.28.1",
+  "pydantic>=2.11.7,<3.0.0",
+  "pydantic-settings>=2.6.0",
+  "python-dotenv>=1.1.1,<2.0.0",
+  "tenacity>=9.0.0",
+  "tqdm>=4.66.5",
+  "cachetools>=6.1.0",
+  "structlog>=25.4.0",
+  "pandas>=2.3.0,<3.0.0",
+]
+
+###############################################################################
+#  Optional dependencies (PEP 621)                                            #
+###############################################################################
+[project.optional-dependencies]
+# LangChain AI integration
+langchain = [
+  "faiss-cpu>=1.11.0",
+  "langchain-core>=0.3.66",
+  "langchain-community>=0.3.26",
+  "langchain-openai>=0.3.25",
+  "langgraph>=0.4.10",
+  "openai>=1.92.0",
+  "tiktoken>=0.9.0",
+]
+
+# Model Context Protocol server
+mcp-server = [
+  "mcp[cli]>=1.0.0",
+  "pyyaml>=6.0.1",
+]
+
+###############################################################################
+#  Command-line entry points                                                  #
+###############################################################################
+[project.scripts]
+fmp = "fmp_data.scripts.dev:main"
+fmp-mcp = "fmp_data.mcp.server:main"
+fmp-mcp-dev = "fmp_data.scripts.dev_server:main"
+
+###############################################################################
+#  Project links                                                              #
+###############################################################################
+[project.urls]
+Homepage = "https://github.com/MehdiZare/fmp-data"
+Documentation = "https://mehdizare.github.io/fmp-data/"
+Source = "https://github.com/MehdiZare/fmp-data"
+Issues = "https://github.com/MehdiZare/fmp-data/issues"
+Changelog = "https://github.com/MehdiZare/fmp-data/blob/main/CHANGELOG.md"
+
+###############################################################################
+#  Poetry minimal config (only for dynamic versioning and building)          #
 ###############################################################################
 [tool.poetry]
 name = "fmp-data"
@@ -167,12 +126,100 @@ format-jinja = """
 files = ["fmp_data/__init__.py"]
 
 ###############################################################################
+#  PEP 735 Dependency Groups (for uv and modern tooling)                     #
+###############################################################################
+[dependency-groups]
+# ═══════════════════════════════════════════════════════════════════════════
+# User Features (what end users install for additional functionality)
+# ═══════════════════════════════════════════════════════════════════════════
+
+# LangChain AI integration
+langchain = [
+  "faiss-cpu>=1.11.0",
+  "langchain-core>=0.3.66",
+  "langchain-community>=0.3.26",
+  "langchain-openai>=0.3.25",
+  "langgraph>=0.4.10",
+  "openai>=1.92.0",
+  "tiktoken>=0.9.0",
+]
+
+# Model Context Protocol server
+mcp-server = [
+  "mcp[cli]>=1.0.0",
+  "pyyaml>=6.0.1",
+]
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Development Dependencies (simplified for uv)
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Complete development environment
+dev = [
+  # Dynamic versioning (Poetry-specific)
+  "poetry-dynamic-versioning>=1.4.1",
+
+  # Linting and formatting tools
+  "ruff>=0.7.1",
+  "black>=24.10.0",
+  "isort>=5.13.2",
+
+  # Static typing
+  "mypy>=1.13.0",
+  "types-cachetools>=6.0.0.20250525",
+
+  # Security
+  "bandit[toml]>=1.7.10",
+
+  # Testing tools
+  "pytest>=8.3.3",
+  "pytest-asyncio>=0.24.0",
+  "pytest-cov>=6.0.0",
+  "pytest-mock>=3.14.0",
+  "freezegun>=1.5.1",
+  "responses>=0.25.3",
+  "vcrpy>=6.0.2",
+  "coverage>=7.6.4",
+
+  # Dev utilities
+  "pre-commit>=4.0.1",
+  "rich>=13.9.3",
+  "twine>=5.1.1",
+  "nox>=2024.4.15",
+]
+
+# Documentation tools
+docs = [
+  "mkdocs>=1.6.1",
+  "mkdocs-material>=9.6.14",
+  "mkdocstrings-python>=1.16.12",
+]
+
+###############################################################################
 #  Tool configuration                                                         #
 ###############################################################################
+
+# ── Code formatting ─────────────────────────────────────────────────────────
 [tool.black]
 line-length = 88
 target-version = ["py310", "py311", "py312", "py313"]
 include = "\\.pyi?$"
+extend-exclude = """
+^/(
+  (
+      \\.eggs
+    | \\.git
+    | \\.hg
+    | \\.mypy_cache
+    | \\.tox
+    | \\.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+  )/
+)
+"""
 
 [tool.isort]
 profile = "black"
@@ -182,25 +229,53 @@ force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
 line_length = 88
+known_first_party = ["fmp_data"]
 
+# ── Linting ─────────────────────────────────────────────────────────────────
 [tool.ruff]
 target-version = "py310"
 line-length = 88
+extend-exclude = [
+    ".git",
+    ".mypy_cache",
+    ".nox",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+]
 
 [tool.ruff.lint]
-select = ["E", "W", "F", "I", "C", "B", "S", "UP"]
-ignore = ["S101"]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "C",    # flake8-comprehensions
+    "B",    # flake8-bugbear
+    "S",    # flake8-bandit
+    "UP",   # pyupgrade
+    "RUF",  # Ruff-specific rules
+]
+ignore = [
+    "S101",  # Use of assert detected (needed for pytest)
+    "S603",  # subprocess call without shell=True (needed for scripts)
+    "S607",  # Starting a process with a partial executable path
+]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101"]
-"scripts/*" = ["S603", "S607"]
-"**/conftest.py" = ["S101"]
-"__init__.py" = ["F401"]
-"noxfile.py" = ["S603", "S607"]
+"tests/*" = ["S101", "S106", "S107"]  # Allow assert and hardcoded passwords in tests
+"scripts/*" = ["S603", "S607"]        # Allow subprocess calls in scripts
+"**/conftest.py" = ["S101"]           # Allow assert in conftest
+"__init__.py" = ["F401"]              # Allow unused imports in __init__.py
+"noxfile.py" = ["S603", "S607"]       # Allow subprocess calls in nox
 
 [tool.ruff.lint.isort]
 known-first-party = ["fmp_data"]
 
+# ── Type checking ───────────────────────────────────────────────────────────
 [tool.mypy]
 python_version = "3.10"
 warn_return_any = true
@@ -214,32 +289,33 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_optional = true
-exclude = ["tests/", "examples/", "scripts/"]
+show_error_codes = true
+exclude = ["tests/", "examples/", "scripts/", "build/", "dist/"]
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 module = [
-    "vcr.*",
-    "langchain.*",
-    "langchain_core.*",
-    "langchain_community.*",
-    "langchain_openai.*",
-    "langgraph.*",
-    "faiss",
-    "faiss.*",
-    "mcp",
-    "mcp.*",
-    "tiktoken.*",
-    "openai.*",
-    "yaml.*",
-    "rich.*",
-    "tqdm.*",
-    "pandas.*",
-    "responses.*",
-    "freezegun.*",
-    "structlog.*",
-    "tenacity.*",
-    "fmp_data._version",
+  "vcr.*",
+  "langchain.*",
+  "langchain_core.*",
+  "langchain_community.*",
+  "langchain_openai.*",
+  "langgraph.*",
+  "faiss",
+  "faiss.*",
+  "mcp",
+  "mcp.*",
+  "tiktoken.*",
+  "openai.*",
+  "yaml.*",
+  "rich.*",
+  "tqdm.*",
+  "pandas.*",
+  "responses.*",
+  "freezegun.*",
+  "structlog.*",
+  "tenacity.*",
+  "fmp_data._version",
 ]
 ignore_missing_imports = true
 
@@ -257,53 +333,102 @@ module = "fmp_data.mcp.*"
 disable_error_code = ["import-untyped"]
 ignore_missing_imports = true
 
+# ── Testing ─────────────────────────────────────────────────────────────────
 [tool.pytest.ini_options]
-minversion = "8.0"
+minversion = "6.0"
 addopts = [
+    "--quiet",
+    "--no-header",
+    "--tb=short",
+    "-v",
+    "--disable-warnings",
     "--strict-markers",
     "--strict-config",
-    "--cov=fmp_data",
-    "--cov-report=term-missing",
-    "--cov-report=html",
-    "--cov-report=xml",
-    "--cov-fail-under=80",
 ]
 testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_functions = ["test_*"]
+python_classes = ["Test*"]
 filterwarnings = [
-    "error",
-    "ignore::UserWarning",
     "ignore::DeprecationWarning",
+    "ignore::UserWarning",
     "ignore::PendingDeprecationWarning",
 ]
 markers = [
-    "integration: marks tests as integration tests (may require API keys)",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
+    "asyncio: marks tests as asyncio tests",
 ]
 
+# ── Coverage ────────────────────────────────────────────────────────────────
 [tool.coverage.run]
 source = ["fmp_data"]
+branch = true
+parallel = true
 omit = [
+    "fmp_data/endpoints/definitions.py",
+    "fmp_data/example.py",
+    "fmp_data/_version.py",
+    "*/__init__.py",
+    "tests/*",
     "*/tests/*",
-    "*/examples/*",
-    "*/__pycache__/*",
-    "*/scripts/*",
+    "setup.py",
+    "noxfile.py",
+    "scripts/*",
+]
+
+[tool.coverage.paths]
+source = [
+    "fmp_data/",
+    "*/site-packages/fmp_data/",
 ]
 
 [tool.coverage.report]
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
-    "if self.debug:",
-    "if settings.DEBUG",
-    "raise AssertionError",
+    "def __str__",
     "raise NotImplementedError",
-    "if 0:",
-    "if __name__ == .__main__.:",
-    "class .*\\bProtocol\\):",
-    "@(abc\\.)?abstractmethod",
+    "if __name__ == ['\"]__main__['\"]:",
+    "if TYPE_CHECKING:",
+    "pass",
+    "raise ImportError",
+    "except ImportError",
+    "def main():",
+    "class .*\\(Protocol\\):",
+    "@abstractmethod",
+]
+show_missing = true
+fail_under = 80
+precision = 2
+skip_covered = false
+skip_empty = false
+
+[tool.coverage.html]
+directory = "htmlcov"
+show_contexts = true
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+# ── Security ────────────────────────────────────────────────────────────────
+[tool.bandit]
+exclude_dirs = [
+    "tests",
+    "scripts",
+    ".nox",
+    ".venv",
+    "build",
+    "dist",
+]
+skips = [
+    "B101",  # Use of assert detected
+    "B404",  # Consider possible security implications associated with subprocess module
+    "B603",  # subprocess call - check for execution of untrusted input
+    "B607",  # Starting a process with a partial executable path
+    "B608",  # Possible SQL injection vector through string-based query construction
 ]
 
-[tool.bandit]
-exclude_dirs = ["tests", "examples", "scripts"]
-skips = ["B101"]
+[tool.bandit.assert_used]
+skips = ["*/test_*.py", "*/tests/*"]

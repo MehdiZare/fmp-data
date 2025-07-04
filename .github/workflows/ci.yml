@@ -23,76 +23,45 @@ jobs:
       # Setup all Python versions for nox matrix testing
       - uses: actions/setup-python@v5.6.0
         with:
-          python-version: "3.10"
-      - uses: actions/setup-python@v5.6.0
-        with:
-          python-version: "3.11"
-      - uses: actions/setup-python@v5.6.0
-        with:
-          python-version: "3.12"
-      - uses: actions/setup-python@v5.6.0
-        with:
-          python-version: "3.13"
+          python-version: |
+            3.10
+            3.11
+            3.12
+            3.13
 
       # Install uv for faster dependency management
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-        continue-on-error: true
 
-      # Cache dependencies
-      - name: Cache dependencies
+      # Cache uv dependencies
+      - name: Cache uv dependencies
         uses: actions/cache@v4
         with:
           path: |
-            ~/.cache/pypoetry
-            ~/.cache/pip
             ~/.cache/uv
             ~/.local/share/uv
-          key: ${{ runner.os }}-ci-deps-${{ hashFiles('**/pyproject.toml') }}
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml', 'uv.lock') }}
           restore-keys: |
-            ${{ runner.os }}-ci-deps-
+            ${{ runner.os }}-uv-
 
-      - name: Install toolchain and dependencies
+      - name: Install dependencies
         run: |
-          # Install core toolchain
-          python -m pip install --upgrade pip nox
+          echo "🚀 Installing with uv"
+          uv --version
 
-          # Install project and dependencies
-          if command -v uv &> /dev/null; then
-            echo "✅ uv is available"
-            uv --version
+          # Install project with all optional features and dev dependencies
+          uv sync --group langchain --group mcp-server --group dev
 
-            echo "🚀 Installing with uv"
-            uv pip install --system -e .
-
-            if python scripts/install_groups.py uv langchain mcp-server dev; then
-              echo "✅ uv installation successful"
-              echo "TOOL=uv" >> $GITHUB_ENV
-            else
-              echo "⚠️ uv installation failed, falling back to pip"
-              pip install -e .
-              python scripts/install_groups.py pip langchain mcp-server dev
-              echo "TOOL=pip" >> $GITHUB_ENV
-            fi
-          else
-            echo "⚠️ uv not available, using pip"
-            pip install -e .
-            python scripts/install_groups.py pip langchain mcp-server dev
-            echo "TOOL=pip" >> $GITHUB_ENV
-          fi
+          # Install nox separately for test orchestration
+          uv tool install nox
 
       - name: Run quality checks
         run: |
-          # Run comprehensive test suite
-          if [[ "$TOOL" == "uv" ]]; then
-            echo "🚀 Running quality checks with uv"
-            NOX_USE_UV=1 uv run nox -s tests lint typecheck typecheck_lang security
-          else
-            echo "🐍 Running quality checks with nox"
-            nox -s tests lint typecheck typecheck_lang security
-          fi
+          echo "🧪 Running quality checks with uv + nox"
+          # Set NOX_USE_UV to make nox use uv for session management
+          NOX_USE_UV=1 uv run nox -s tests lint typecheck typecheck_lang security
 
       - name: Generate test summary
         if: always()
@@ -108,8 +77,7 @@ jobs:
             echo "| Coverage | ❌ Missing |" >> $GITHUB_STEP_SUMMARY
           fi
 
-          # Check tool used
-          echo "| Tool | $TOOL |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tool | uv |" >> $GITHUB_STEP_SUMMARY
           echo "| Python Versions | 3.10, 3.11, 3.12, 3.13 |" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload coverage reports

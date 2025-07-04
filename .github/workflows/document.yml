@@ -49,40 +49,29 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-        continue-on-error: true
 
-      - name: Cache dependencies
+      - name: Cache uv dependencies
         uses: actions/cache@v4
         with:
           path: |
-            ~/.cache/pip
             ~/.cache/uv
-          key: ${{ runner.os }}-docs-${{ hashFiles('**/pyproject.toml') }}
+            ~/.local/share/uv
+          key: ${{ runner.os }}-docs-${{ hashFiles('**/pyproject.toml', 'uv.lock') }}
           restore-keys: |
             ${{ runner.os }}-docs-
 
       - name: Install dependencies
         run: |
-          # Install core project (needed for API docs)
-          if command -v uv &> /dev/null; then
-            echo "🚀 Installing with uv"
-            uv pip install --system -e .
-            python scripts/install_groups.py uv docs
-            echo "TOOL=uv" >> $GITHUB_ENV
-          else
-            echo "🐍 Installing with pip"
-            pip install -e .
-            python scripts/install_groups.py pip docs
-            echo "TOOL=pip" >> $GITHUB_ENV
-          fi
+          echo "🚀 Installing with uv"
+          uv --version
+
+          # Install project with docs dependencies
+          uv sync --group docs
 
       - name: Build documentation
         run: |
-          if [[ "$TOOL" == "uv" ]]; then
-            uv run mkdocs build --strict
-          else
-            mkdocs build --strict
-          fi
+          echo "📚 Building documentation"
+          uv run mkdocs build --strict
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
@@ -94,7 +83,7 @@ jobs:
           echo "## 📚 Documentation Build" >> $GITHUB_STEP_SUMMARY
           echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| **Tool** | $TOOL |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Tool** | uv |" >> $GITHUB_STEP_SUMMARY
           echo "| **Event** | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Branch** | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
 
