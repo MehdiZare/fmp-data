@@ -42,13 +42,6 @@ repos:
   # ───────── Local nox-powered helpers ────────────────────────────────────
   - repo: local
     hooks:
-      - id: uv-lock-update
-        name: "uv lock: runtime-only"
-        entry: bash -c 'uv pip compile -o uv.lock'
-        language: system
-        files: ^pyproject\.toml$
-        pass_filenames: false
-
       - id: mypy-core
         name: "mypy: core package"
         entry: nox -s typecheck --no-install
