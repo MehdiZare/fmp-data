@@ -66,7 +66,7 @@ class CryptoQuoteArgs(BaseQuoteArgs):
 
     symbol: str = Field(
         description=(
-            "Trading symbol for the cryptocurrency" " (e.g., 'BTCUSD' for Bitcoin/USD)"
+            "Trading symbol for the cryptocurrency (e.g., 'BTCUSD' for Bitcoin/USD)"
         ),
         pattern=r"^[A-Z]{3,4}USD$",
     )

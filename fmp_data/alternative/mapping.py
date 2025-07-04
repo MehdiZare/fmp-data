@@ -117,8 +117,7 @@ ALTERNATIVE_ENDPOINTS_SEMANTICS = {
         client_name="alternative",
         method_name="get_crypto_list",
         natural_description=(
-            "Get a list of all available cryptocurrencies "
-            "and their basic information"
+            "Get a list of all available cryptocurrencies and their basic information"
         ),
         example_queries=[
             "What cryptocurrencies are available?",
@@ -204,7 +203,7 @@ ALTERNATIVE_ENDPOINTS_SEMANTICS = {
         client_name="alternative",
         method_name="get_crypto_quotes",
         natural_description=(
-            "Get current price quotes for all available " "cryptocurrencies"
+            "Get current price quotes for all available cryptocurrencies"
         ),
         example_queries=[
             "What's the current Bitcoin price?",
@@ -245,7 +244,7 @@ ALTERNATIVE_ENDPOINTS_SEMANTICS = {
         client_name="alternative",
         method_name="get_crypto_quote",
         natural_description=(
-            "Get detailed real-time quote for a specific " "cryptocurrency"
+            "Get detailed real-time quote for a specific cryptocurrency"
         ),
         example_queries=[
             "Get current Bitcoin price",
@@ -369,7 +368,7 @@ ALTERNATIVE_ENDPOINTS_SEMANTICS = {
         client_name="alternative",
         method_name="get_forex_quotes",
         natural_description=(
-            "Get real-time quotes for all available " "forex currency pairs"
+            "Get real-time quotes for all available forex currency pairs"
         ),
         example_queries=[
             "Get all forex rates",

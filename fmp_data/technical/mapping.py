@@ -360,8 +360,7 @@ TECHNICAL_ENDPOINTS_SEMANTICS = {
         client_name="technical",
         method_name="get_standard_deviation",
         natural_description=(
-            "Calculate price Standard Deviation to measure volatility and "
-            "dispersion."
+            "Calculate price Standard Deviation to measure volatility and dispersion."
         ),
         example_queries=[
             "Calculate price volatility for AAPL",
