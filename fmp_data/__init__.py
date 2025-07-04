@@ -13,6 +13,7 @@ ImportError with guidance if the extra is not installed.
 
 from __future__ import annotations
 
+import importlib
 import importlib.util as _importlib_util
 import types as _types
 from typing import Any
@@ -131,8 +132,7 @@ def _lazy_import_mcp() -> _types.ModuleType:
     Raises ImportError with installation hint if MCP is missing.
     """
     try:
-        from fmp_data import mcp as _mcp
-
+        _mcp = importlib.import_module("fmp_data.mcp")
         return _mcp
     except ImportError as e:
         raise ImportError(
