@@ -2,102 +2,95 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 permissions:
   contents: read
 
 env:
-  PYTHON_VERSION: "3.12"
+  DEFAULT_EXTRAS: "langchain mcp-server dev"
 
 jobs:
-  qa:
+  test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # Setup all Python versions for nox matrix testing
-      - uses: actions/setup-python@v5.6.0
+      - uses: actions/setup-python@v5
         with:
-          python-version: |
-            3.10
-            3.11
-            3.12
-            3.13
+          python-version: ${{ matrix.python-version }}
 
-      # Install uv for faster dependency management
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
 
-      # Cache uv dependencies
-      - name: Cache uv dependencies
+      - name: Cache uv
         uses: actions/cache@v4
         with:
           path: |
             ~/.cache/uv
             ~/.local/share/uv
-          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml', 'uv.lock') }}
+          key: ${{ runner.os }}-py${{ matrix.python-version }}-uv-${{ hashFiles('**/pyproject.toml', 'uv.lock') }}
           restore-keys: |
-            ${{ runner.os }}-uv-
+            ${{ runner.os }}-py${{ matrix.python-version }}-uv-
 
-      - name: Install dependencies
+      - name: Install dependencies (uv)
         run: |
-          echo "🚀 Installing with uv"
           uv --version
+          uv sync --strict $(echo $DEFAULT_EXTRAS | sed 's/ / --group /g')
 
-          # Install project with all optional features and dev dependencies
-          uv sync --group langchain --group mcp-server --group dev
+      - name: Install nox
+        run: uv tool install nox
 
-          # Install nox separately for test orchestration
-          uv tool install nox
-
-      - name: Run quality checks
+      - name: Run tests + quality gates (nox)
+        env:
+          NOX_USE_UV: "1"
         run: |
-          echo "🧪 Running quality checks with uv + nox"
-          # Set NOX_USE_UV to make nox use uv for session management
-          NOX_USE_UV=1 uv run nox -s tests lint typecheck typecheck_lang security
+          nox -p py${{ matrix.python-version }} -s tests lint typecheck security
 
-      - name: Generate test summary
+      - name: Upload coverage (matrix)
         if: always()
-        run: |
-          echo "## 🧪 CI Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-
-          # Check if coverage file exists
-          if [ -f "coverage.xml" ]; then
-            echo "| Coverage | ✅ Generated |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| Coverage | ❌ Missing |" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          echo "| Tool | uv |" >> $GITHUB_STEP_SUMMARY
-          echo "| Python Versions | 3.10, 3.11, 3.12, 3.13 |" >> $GITHUB_STEP_SUMMARY
-
-      - name: Upload coverage reports
-        if: always()
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v4
         with:
-          name: coverage-reports-${{ github.run_id }}
+          name: coverage-${{ matrix.python-version }}-${{ github.run_id }}
           path: |
             coverage.xml
-            htmlcov/
+            htmlcov
           retention-days: 7
         continue-on-error: true
 
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4.6.2
+  build:
+    # Build wheel + sdist once on 3.12, after all tests
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
         with:
-          name: test-results-${{ github.run_id }}
-          path: |
-            bandit-report.json
-            .pytest_cache/
-          retention-days: 3
-        continue-on-error: true
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv + build deps
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install project (uv)
+        run: uv sync --strict dev
+
+      - name: Build distribution
+        run: |
+          uv run python -m build --wheel --sdist
+          uv run twine check dist/*
