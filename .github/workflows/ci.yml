@@ -60,3 +60,12 @@ jobs:
           if [[ "${{ matrix.python }}" == "3.13" ]]; then
             uv tool run nox -s lint typecheck security
           fi
+
+      - name: � coverage upload
+        if: matrix.python == '3.13'                       # upload once
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          flags: unittests
+          fail_ci_if_error: false
