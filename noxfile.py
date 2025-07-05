@@ -100,42 +100,39 @@ def tests(session: Session, feature_group: str | None) -> None:
     # Use unique coverage file names to avoid conflicts in parallel runs
     coverage_file = f".coverage.{session.python}.{feature_group or 'core'}"
 
+    # Base pytest args - no coverage threshold during individual runs
     pytest_args = [
         "-q",
         "--cov", PACKAGE_NAME,
-        "--cov-append",  # Append to existing coverage
+        "--cov-append",
         "--cov-config=pyproject.toml",
         "--cov-report=term-missing",
+        "--cov-fail-under=0",  # No threshold during individual sessions
     ]
 
     # Set environment variable for coverage file
     env = {"COVERAGE_FILE": coverage_file}
 
     if feature_group == "mcp-server":
-        # MCP tests - collect coverage but no threshold (specialized subset)
         session.run(
             "pytest",
-            "-q",
-            "--cov", PACKAGE_NAME,
-            "--cov-append",
-            "--cov-config=pyproject.toml",
-            "--cov-report=term-missing",
-            "--cov-fail-under=0",  # No coverage threshold for MCP
+            *pytest_args,
             "tests/unit/test_mcp.py",
             "-m",
             "not integration",
             env=env,
         )
     else:
-        # Core and langchain tests with coverage threshold
         session.run("pytest", *pytest_args, env=env)
 
-    # Only generate final report for the default Python version
+    # Only generate final combined report for the default Python version + core session
     if session.python == DEFAULT_PYTHON and feature_group is None:
-        # Combine all coverage files
+        # Combine all coverage files from all sessions
         session.run("coverage", "combine")
+
+        # Now apply the 80% threshold to combined coverage
+        session.run("coverage", "report", "--fail-under=80")
         session.run("coverage", "xml")
-        session.run("coverage", "report")
 
         session.log(f"Copying coverage.xml for CI artifact (Python {DEFAULT_PYTHON})")
         session.run(
