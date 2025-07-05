@@ -16,6 +16,7 @@ from nox import Session
 
 # ── Global config ──────────────────────────────────────────────────────────
 nox.options.reuse_venv = "yes"
+nox.options.default_venv_backend = "uv"
 
 PYTHON_VERSIONS = ["3.10", "3.11", "3.12", "3.13"]
 FEATURE_GROUPS  = [None, "langchain", "mcp-server"]
@@ -30,20 +31,56 @@ IS_CI = os.getenv("CI", "").lower() in {"true", "1", "yes"}
 
 
 # ── Dependency installer ───────────────────────────────────────────────────
-def _sync_with_uv(session: Session, *, extras: list[str] | None = None) -> None:
+def _install_with_uv(session: Session, *, groups: list[str] | None = None) -> None:
     """
-    Use a single uv sync call per session.
+    Install the project with optional dependency groups.
 
-    • If no extras → runtime only.
-    • If extras    → runtime + all extras in one go.
+    This installs the project in editable mode along with specified groups.
     """
-    cmd: list[str] = ["uv", "sync"]
-    if extras:
-        for grp in extras:
-            cmd += ["--group", grp]
+    # First install the project itself
+    session.install("-e", ".")
 
-    session.log(f"⎈  {' '.join(cmd)}")
-    session.run(*cmd, external=True)
+    # Then install additional groups if specified
+    if groups:
+        for group in groups:
+            _install_group_fallback(session, group)
+
+
+def _install_group_fallback(session: Session, group: str) -> None:
+    """Install dependency group by parsing pyproject.toml."""
+    try:
+        # Python 3.11+ has tomllib built-in
+        import tomllib
+    except ImportError:
+        # Python < 3.11 fallback
+        try:
+            import tomli as tomllib
+        except ImportError:
+            session.install("tomli")
+            import tomli as tomllib
+
+    pyproject_path = Path("pyproject.toml")
+    if not pyproject_path.exists():
+        session.log(f"⚠️  pyproject.toml not found, skipping group {group}")
+        return
+
+    with open(pyproject_path, "rb") as f:
+        data = tomllib.load(f)
+
+    # Try dependency-groups first, then project.optional-dependencies
+    groups_data = data.get("dependency-groups", {})
+    if group not in groups_data:
+        groups_data = data.get("project", {}).get("optional-dependencies", {})
+
+    if group in groups_data:
+        deps = groups_data[group]
+        if deps:
+            session.log(f"📦  Installing {group} group: {len(deps)} packages")
+            session.install(*deps)
+        else:
+            session.log(f"📦  Group {group} is empty")
+    else:
+        session.log(f"⚠️  Group {group} not found in pyproject.toml")
 
 
 
@@ -58,11 +95,11 @@ def tests(session: Session, feature_group: str | None) -> None:
     • Always pull *dev* and *test* extras (linters + pytest)
     • Optionally pull the feature-specific runtime extras
     """
-    extras: list[str] = ["dev", "test"]
+    groups: list[str] = ["dev", "test"]
     if feature_group:
-        extras.append(feature_group)
+        groups.append(feature_group)
 
-    _sync_with_uv(session, extras=extras)
+    _install_with_uv(session, groups=groups)
 
     # ---- pytest ----------------------------------------------------------
     if feature_group == "mcp-server":
@@ -74,20 +111,20 @@ def tests(session: Session, feature_group: str | None) -> None:
 @nox.session(python="3.13")
 def smoke(session: Session) -> None:
     """Lightweight import test for bleeding-edge interpreter."""
-    _sync_with_uv(session, extras=["dev", "langchain", "mcp-server"])
+    _install_with_uv(session, groups=["dev", "langchain", "mcp-server"])
     session.run("pytest", "-q", "--maxfail=1", "tests/smoke")
 
 
 # ── QA sessions (run on 3.12) ──────────────────────────────────────────────
 @nox.session(python="3.12", tags=["qa"])
 def lint(session: Session) -> None:
-    _sync_with_uv(session, extras=["dev"])
+    _install_with_uv(session, groups=["dev"])
     session.run("ruff", "check", "fmp_data", "tests")
 
 
 @nox.session(python="3.12", tags=["qa"])
 def typecheck(session: Session) -> None:
-    _sync_with_uv(session, extras=["dev"])
+    _install_with_uv(session, groups=["dev"])
     session.run(
         "mypy",
         "fmp_data",
@@ -99,7 +136,7 @@ def typecheck(session: Session) -> None:
 
 @nox.session(python="3.12", tags=["qa"])
 def security(session: Session) -> None:
-    _sync_with_uv(session, extras=["dev"])
+    _install_with_uv(session, groups=["dev"])
     Path("reports").mkdir(exist_ok=True)
     session.run(
         "bandit", "-r", "fmp_data",
@@ -112,27 +149,27 @@ def security(session: Session) -> None:
 # ── Documentation ──────────────────────────────────────────────────────────
 @nox.session(python="3.12", tags=["docs"])
 def docs(session: Session) -> None:
-    _sync_with_uv(session, extras=["docs"])
+    _install_with_uv(session, groups=["docs"])
     session.run("mkdocs", "build", "--strict")
 
 
 @nox.session(python="3.12", tags=["docs"])
 def docs_serve(session: Session) -> None:
-    _sync_with_uv(session, extras=["docs"])
+    _install_with_uv(session, groups=["docs"])
     session.run("mkdocs", "serve", "--dev-addr", "0.0.0.0:8000")
 
 
 # ── Dev convenience ────────────────────────────────────────────────────────
 @nox.session(python="3.12")
 def dev_install(session: Session) -> None:
-    _sync_with_uv(session, extras=["dev", "docs", "langchain", "mcp-server"])
+    _install_with_uv(session, groups=["dev", "docs", "langchain", "mcp-server"])
     session.log("Dev env ready → try `uv run pytest` or `mkdocs serve`.")
 
 
 # ── Coverage ----------------------------------------------------------------
 @nox.session(python="3.12")
 def coverage(session: Session) -> None:
-    _sync_with_uv(session, extras=["dev"])
+    _install_with_uv(session, groups=["dev"])
     Path("reports").mkdir(exist_ok=True)
     session.run(
         "pytest",

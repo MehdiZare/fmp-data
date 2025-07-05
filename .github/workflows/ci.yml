@@ -9,9 +9,6 @@ on:
 permissions:
   contents: read
 
-env:
-  DEFAULT_EXTRAS: "langchain mcp-server dev"
-
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -47,13 +44,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-py${{ matrix.python-version }}-uv-
 
-      # Install deps (runtime + extras) -----------------------------------------
-      - name: Install dependencies (uv)
-        run: |
-          uv --version
-          uv sync $(for g in $DEFAULT_EXTRAS; do printf ' --group %s' "$g"; done)
-
-      # nox orchestration --------------------------------------------------------
+      # Install nox with uv ------------------------------------------------------
       - name: Install nox
         run: uv tool install nox
 
@@ -61,11 +52,12 @@ jobs:
       - name: Run sessions
         env:
           NOX_USE_UV: "1"
+          NOX_PYTHON_VERSIONS: ${{ matrix.python-version }}
         run: |
           if [[ "${{ matrix.python-version }}" == "3.13" ]]; then
-            nox -p 3.13 -s smoke          # import-only test
+            nox -s smoke          # import-only test
           else
-            nox -p ${{ matrix.python-version }} -s tests
+            nox -s tests
             if [[ "${{ matrix.python-version }}" == "3.12" ]]; then
               nox -s lint typecheck security
             fi
@@ -115,8 +107,10 @@ jobs:
             build-uv-
 
       # Install build tooling ----------------------------------------------------
-      - name: Install project (uv)
-        run: uv sync --group dev
+      - name: Install project and build deps (uv)
+        run: |
+          uv sync --group dev
+          uv add build twine
 
       # Build distribution -------------------------------------------------------
       - name: Build wheel & sdist
