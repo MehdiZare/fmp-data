@@ -57,10 +57,22 @@ def tests(session: Session, feature_group: str | None) -> None:
 
     _install_groups(session, groups)
 
-    if feature_group == "mcp-server":
-        session.run("pytest", "-q", "tests/unit/test_mcp.py", "-m", "not integration")
+    # Generate coverage for core tests only
+    if feature_group is None:
+        session.log("Running core tests with coverage...")
+        session.run(
+            "pytest", "-v",
+            "--cov=fmp_data",
+            "--cov-report=xml:coverage.xml",  # Explicit path
+            "--cov-report=html:htmlcov",      # Explicit path
+            "--cov-report=term"
+        )
+    elif feature_group == "mcp-server":
+        session.log("Running MCP server tests...")
+        session.run("pytest", "-v", "tests/unit/test_mcp.py", "-m", "not integration")
     else:
-        session.run("pytest", "-q")
+        session.log(f"Running {feature_group} tests...")
+        session.run("pytest", "-v")
 
 
 @nox.session(python="3.13")

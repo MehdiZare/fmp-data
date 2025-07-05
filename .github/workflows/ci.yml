@@ -63,6 +63,24 @@ jobs:
             fi
           fi
 
+      # Debug: Check what files were created
+      - name: Debug - List files after tests
+        if: matrix.python-version != '3.13'
+        run: |
+          echo "=== Current working directory ==="
+          pwd
+          echo "=== Working directory contents ==="
+          ls -la
+          echo "=== Looking for coverage files in current dir ==="
+          ls -la coverage.xml htmlcov/ 2>/dev/null || echo "No coverage files found in project root"
+          echo "=== Looking for coverage files anywhere ==="
+          find . -name "coverage.xml" -o -name "htmlcov" -type d 2>/dev/null || echo "No coverage files found anywhere"
+          echo "=== Check nox directories ==="
+          find .nox -name "coverage.xml" -o -name "htmlcov" -type d 2>/dev/null || echo "No coverage files in .nox"
+          echo "=== Test directory structure ==="
+          ls -la tests/unit/ 2>/dev/null || echo "No tests/unit directory"
+          ls -la tests/integration/ 2>/dev/null || echo "No tests/integration directory"
+
       # Upload coverage (only where pytest ran) ---------------------------------
       - name: Check for test files
         if: matrix.python-version != '3.13'
