@@ -341,7 +341,13 @@ source = [
     "*/site-packages/fmp_data/",
     "*/.venv/lib/python*/site-packages/fmp_data/",
     "*/.venv/lib/*/site-packages/fmp_data/",
+    "*/.nox/*/lib/python*/site-packages/fmp_data/",
+    "*/.nox/*/site-packages/fmp_data/",
 ]
+
+[tool.coverage.combine]
+# Don't fail if some files are missing - useful for optional feature groups
+skip_empty = true
 
 [tool.coverage.report]
 exclude_lines = [
