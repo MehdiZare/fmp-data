@@ -75,9 +75,16 @@ def tests(session: Session, feature_group: str | None) -> None:
         session.run("pytest", "-v")
 
 
-@nox.session(python="3.13")
+@nox.session()
 def smoke(session: Session) -> None:
     """Lightweight import test for bleeding-edge interpreter."""
+    _install_groups(session, ["dev"])
+    session.run("python", "-c", "import fmp_data; print('✓ Import successful')")
+
+
+@nox.session(python=["3.10", "3.11", "3.12", "3.13"])
+def smoke_any(session: Session) -> None:
+    """Lightweight import test for any Python version."""
     _install_groups(session, ["dev"])
     session.run("python", "-c", "import fmp_data; print('✓ Import successful')")
 

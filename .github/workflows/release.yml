@@ -42,11 +42,14 @@ jobs:
         with:
           enable-cache: true
 
+      - name: Install nox
+        run: uv tool install nox
+
       - name: Install deps & smoke-tests
         run: |
           uvx poetry self add poetry-dynamic-versioning[plugin]
           uv sync --group langchain --group mcp-server --group dev
-          NOX_USE_UV=1 uv run nox -s smoke
+          uv tool run nox -s smoke_any -p ${{ env.PYTHON_VERSION }}
 
       - name: Build wheel + sdist
         run: uvx poetry build
@@ -102,6 +105,8 @@ jobs:
 
       - name: Derive semver bump from PR labels
         id: bump
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           pr=$(gh api "repos/${{ github.repository }}/commits/${GITHUB_SHA}/pulls" \
