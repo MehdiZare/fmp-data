@@ -10,6 +10,7 @@ from logging.handlers import RotatingFileHandler
 import os
 from pathlib import Path
 import re
+import sys
 from typing import Any, ClassVar, Optional, TypeVar
 
 from fmp_data.config import LoggingConfig, LogHandlerConfig
@@ -116,26 +117,44 @@ class SensitiveDataFilter(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         """Filter log record to mask sensitive data"""
-        # Mask message content
-        if hasattr(record, "msg"):
+        # First, process the message template for patterns
+        if hasattr(record, "msg") and record.msg:
             record.msg = self._mask_patterns_in_string(str(record.msg))
 
-        # Mask extra data
-        if hasattr(record, "extra"):
-            record.extra = self._mask_dict_recursive(deepcopy(record.extra))
-
-        # Handle args - mask sensitive data while preserving structure for formatting
+        # Then handle args - we need to be very careful here
+        # to preserve formatting compatibility
         if record.args:
-            args = list(record.args)
-            for i, arg in enumerate(args):
-                if isinstance(arg, dict):
-                    # Mask the dict recursively but keep it as a dict
-                    args[i] = self._mask_dict_recursive(deepcopy(arg))
-                elif isinstance(arg, list):
-                    args[i] = self._mask_dict_recursive(deepcopy(arg))
-                elif isinstance(arg, str):
-                    args[i] = self._mask_patterns_in_string(arg)
-            record.args = tuple(args)
+            try:
+                # Create a modified args tuple that preserves Python's string
+                # formatting behavior
+                new_args = []
+                for arg in record.args:
+                    if isinstance(arg, dict):
+                        masked_dict = self._mask_dict_recursive(deepcopy(arg))
+                        new_args.append(masked_dict)
+                    elif isinstance(arg, list):
+                        # For lists, mask recursively
+                        masked_list = self._mask_dict_recursive(deepcopy(arg))
+                        new_args.append(masked_list)
+                    elif isinstance(arg, str):
+                        # For strings, apply pattern masking
+                        masked_str = self._mask_patterns_in_string(arg)
+                        new_args.append(masked_str)
+                    else:
+                        # For other types, keep as-is
+                        new_args.append(arg)
+
+                record.args = tuple(new_args)
+            except Exception as e:
+                # If anything goes wrong with args processing, leave them unchanged
+                # to avoid breaking the logging system. Write to stderr to avoid
+                # recursive logging issues.
+                print(f"Warning: SensitiveDataFilter error processing args: {e!s}",
+                      file=sys.stderr)
+
+        # Mask extra data if present
+        if hasattr(record, "extra") and record.extra:
+            record.extra = self._mask_dict_recursive(deepcopy(record.extra))
 
         return True
 
