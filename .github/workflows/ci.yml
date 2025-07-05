@@ -55,11 +55,11 @@ jobs:
           NOX_PYTHON_VERSIONS: ${{ matrix.python-version }}
         run: |
           if [[ "${{ matrix.python-version }}" == "3.13" ]]; then
-            nox -s smoke          # import-only test
+            uv tool run nox -s smoke
           else
-            nox -s tests
+            uv tool run nox -s tests
             if [[ "${{ matrix.python-version }}" == "3.12" ]]; then
-              nox -s lint typecheck security
+              uv tool run nox -s lint typecheck security
             fi
           fi
 
