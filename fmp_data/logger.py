@@ -10,7 +10,6 @@ from logging.handlers import RotatingFileHandler
 import os
 from pathlib import Path
 import re
-import sys
 from typing import Any, ClassVar, Optional, TypeVar
 
 from fmp_data.config import LoggingConfig, LogHandlerConfig
@@ -44,7 +43,6 @@ class SensitiveDataFilter(logging.Filter):
                 r'([\'"]?\w*secret\w*[\'"]?\s*[=:]\s*[\'"]?)([^\'"\s&]+)([\'"]?)',
                 re.IGNORECASE,
             ),
-            # Add pattern for simple key=value cases
             "key": re.compile(
                 r'([\'"]?key[\'"]?\s*[=:]\s*[\'"]?)([^\'"\s&]+)([\'"]?)',
                 re.IGNORECASE,
@@ -52,17 +50,8 @@ class SensitiveDataFilter(logging.Filter):
         }
 
         self.sensitive_keys: set[str] = {
-            "api_key",
-            "apikey",
-            "api-key",
-            "token",
-            "password",
-            "secret",
-            "access_token",
-            "refresh_token",
-            "auth_token",
-            "bearer_token",
-            "key",  # Add "key" to sensitive keys
+            "api_key", "apikey", "api-key", "token", "password", "secret",
+            "access_token", "refresh_token", "auth_token", "bearer_token", "key",
         }
 
     @staticmethod
@@ -75,7 +64,59 @@ class SensitiveDataFilter(logging.Filter):
         elif len(value) <= 8:
             return mask_char * len(value)
         else:
+            # Show first 2 and last 2 characters, mask the middle
             return f"{value[:2]}{mask_char * (len(value) - 4)}{value[-2:]}"
+
+    def _mask_patterns_in_string(self, text: Any) -> Any:
+        """Mask patterns in a string"""
+        if not isinstance(text, str):
+            return text
+
+        masked_text = text
+        for pattern in self.patterns.values():
+            def mask_replacement(match: Any) -> Any:
+                prefix = match.group(1) if match.group(1) else ""
+                sensitive_value = match.group(2)
+                suffix = match.group(3) if match.group(3) else ""
+                masked_value = self._mask_value(sensitive_value)
+                return f"{prefix}{masked_value}{suffix}"
+
+            masked_text = pattern.sub(mask_replacement, masked_text)
+        return masked_text
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """Filter log record to mask sensitive data"""
+        # Process the message itself
+        if hasattr(record, "msg") and record.msg:
+            record.msg = self._mask_patterns_in_string(str(record.msg))
+
+        # For args processing, we need to be very careful to not break string formatting
+        if record.args:
+            try:
+                # Create a copy of args and process each one
+                new_args = []
+                for arg in record.args:
+                    if isinstance(arg, str):
+                        # Mask patterns in string arguments
+                        masked_arg = self._mask_patterns_in_string(arg)
+                        new_args.append(masked_arg)
+                    elif isinstance(arg, dict):
+                        # For dictionaries, create a masked copy
+                        masked_dict = self._mask_dict_recursive(arg.copy())
+                        new_args.append(masked_dict)
+                    elif isinstance(arg, list):
+                        # For lists, create a masked copy
+                        masked_list = self._mask_dict_recursive(arg.copy())
+                        new_args.append(masked_list)
+                    else:
+                        # For other types, keep as-is
+                        new_args.append(arg)
+
+                record.args = tuple(new_args)
+            except Exception: # noqa: S110  # nosec B110
+                pass
+
+        return True
 
     def _mask_dict_recursive(self, d: Any, parent_key: str = "") -> Any:
         """Recursively mask sensitive values in dictionaries and lists"""
@@ -96,67 +137,9 @@ class SensitiveDataFilter(logging.Filter):
                 else:
                     result[k] = v
             return result
-
         elif isinstance(d, list):
             return [self._mask_dict_recursive(item, parent_key) for item in d]
-
         return d
-
-    def _mask_patterns_in_string(self, text: Any) -> Any:
-        """Mask patterns in a string"""
-        if not isinstance(text, str):
-            return text
-
-        masked_text = text
-        for pattern in self.patterns.values():
-            masked_text = pattern.sub(
-                lambda m: f"{m.group(1)}{self._mask_value(m.group(2))}{m.group(3)}",
-                masked_text,
-            )
-        return masked_text
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        """Filter log record to mask sensitive data"""
-        # First, process the message template for patterns
-        if hasattr(record, "msg") and record.msg:
-            record.msg = self._mask_patterns_in_string(str(record.msg))
-
-        # Then handle args - we need to be very careful here
-        # to preserve formatting compatibility
-        if record.args:
-            try:
-                # Create a modified args tuple that preserves Python's string
-                # formatting behavior
-                new_args = []
-                for arg in record.args:
-                    if isinstance(arg, dict):
-                        masked_dict = self._mask_dict_recursive(deepcopy(arg))
-                        new_args.append(masked_dict)
-                    elif isinstance(arg, list):
-                        # For lists, mask recursively
-                        masked_list = self._mask_dict_recursive(deepcopy(arg))
-                        new_args.append(masked_list)
-                    elif isinstance(arg, str):
-                        # For strings, apply pattern masking
-                        masked_str = self._mask_patterns_in_string(arg)
-                        new_args.append(masked_str)
-                    else:
-                        # For other types, keep as-is
-                        new_args.append(arg)
-
-                record.args = tuple(new_args)
-            except Exception as e:
-                # If anything goes wrong with args processing, leave them unchanged
-                # to avoid breaking the logging system. Write to stderr to avoid
-                # recursive logging issues.
-                print(f"Warning: SensitiveDataFilter error processing args: {e!s}",
-                      file=sys.stderr)
-
-        # Mask extra data if present
-        if hasattr(record, "extra") and record.extra:
-            record.extra = self._mask_dict_recursive(deepcopy(record.extra))
-
-        return True
 
 
 class JsonFormatter(logging.Formatter):
