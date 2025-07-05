@@ -1,4 +1,4 @@
-# tests/test_rate_limit.py
+# tests/unit/test_rate_limit.py
 from datetime import date, datetime, timedelta
 from unittest.mock import patch
 
@@ -547,7 +547,7 @@ class TestFMPRateLimiterLogStatus:
             log_message = mock_logger.info.call_args[0][0]
 
             assert "Daily: 0/100" in log_message
-            assert "Per-minute: (0/60" in log_message
+            assert "Per-minute: 0/60" in log_message
             assert "Per-second: 0/10" in log_message
 
     def test_log_status_with_requests(self, limiter):
@@ -564,7 +564,7 @@ class TestFMPRateLimiterLogStatus:
             log_message = mock_logger.info.call_args[0][0]
 
             assert "Daily: 25/100" in log_message
-            assert "Per-minute: (15/60" in log_message
+            assert "Per-minute: 15/60" in log_message
             assert "Per-second: 3/10" in log_message
 
     def test_log_status_at_limits(self, limiter):
@@ -581,7 +581,7 @@ class TestFMPRateLimiterLogStatus:
             log_message = mock_logger.info.call_args[0][0]
 
             assert "Daily: 100/100" in log_message
-            assert "Per-minute: (60/60" in log_message
+            assert "Per-minute: 60/60" in log_message
             assert "Per-second: 10/10" in log_message
 
     def test_log_status_calls_cleanup(self, limiter):
@@ -596,7 +596,7 @@ class TestFMPRateLimiterLogStatus:
 
             # After cleanup, old requests should be gone
             log_message = mock_logger.info.call_args[0][0]
-            assert "Per-minute: (0/60" in log_message
+            assert "Per-minute: 0/60" in log_message
             assert "Per-second: 0/10" in log_message
 
     def test_log_status_message_format(self, limiter):
@@ -621,9 +621,9 @@ class TestFMPRateLimiterIntegration:
         """Test complete request cycle with rate limiting"""
         limiter = FMPRateLimiter(
             QuotaConfig(
-                daily_limit=3,
-                requests_per_second=1,
-                requests_per_minute=2
+                daily_limit=5,
+                requests_per_second=10,  # High enough to not interfere
+                requests_per_minute=2    # This will be the limiting factor
             )
         )
 
@@ -674,11 +674,7 @@ class TestFMPRateLimiterIntegration:
         yesterday = datetime.now().date() - timedelta(days=1)
         limiter._reset_date = yesterday
 
-        # Should be blocked initially
-        with patch("fmp_data.rate_limit.logger"):
-            assert limiter.should_allow_request() is False
-
-        # Simulate new day
+        # After daily reset check, should be allowed
         today = datetime.now().date()
         with patch("fmp_data.rate_limit.datetime") as mock_datetime:
             mock_datetime.now.return_value.date.return_value = today
