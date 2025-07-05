@@ -64,6 +64,13 @@ jobs:
           fi
 
       # Upload coverage (only where pytest ran) ---------------------------------
+      - name: Check for test files
+        if: matrix.python-version != '3.13'
+        run: |
+          echo "Looking for test files..."
+          find . -name "test_*.py" -o -name "*_test.py" | head -10
+          ls -la tests/ || echo "No tests directory found"
+
       - name: Upload coverage
         if: always() && contains('3.10 3.11 3.12', matrix.python-version)
         uses: actions/upload-artifact@v4
@@ -71,7 +78,7 @@ jobs:
           name: coverage-${{ matrix.python-version }}-${{ github.run_id }}
           path: |
             coverage.xml
-            htmlcov
+            htmlcov/
           retention-days: 7
         continue-on-error: true
 
