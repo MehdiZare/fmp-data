@@ -2,8 +2,8 @@
 import json
 import logging
 import time
-import warnings
 from typing import Any, TypeVar
+import warnings
 
 import httpx
 from pydantic import BaseModel
@@ -173,7 +173,7 @@ class BaseClient:
 
         except Exception as e:
             self.logger.error(
-                f"Request failed: {str(e)}",
+                f"Request failed: {e!s}",
                 extra={"endpoint": endpoint.name, "error": str(e)},
                 exc_info=True,
             )
@@ -233,7 +233,7 @@ class BaseClient:
                 ) from e
         except json.JSONDecodeError as e:
             raise FMPError(
-                f"Invalid JSON response from API: {str(e)}",
+                f"Invalid JSON response from API: {e!s}",
                 response={"raw_content": response.content.decode()},
             ) from e
 
@@ -300,7 +300,7 @@ class BaseClient:
                 data = self.handle_response(response)
                 return self._process_response(endpoint, data)
         except Exception as e:
-            self.logger.error(f"Async request failed: {str(e)}")
+            self.logger.error(f"Async request failed: {e!s}")
             raise
 
 

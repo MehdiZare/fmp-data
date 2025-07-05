@@ -4,6 +4,7 @@ Basic tests for MCP server functionality.
 
 Relative path: tests/unit/test_mcp.py
 """
+
 from __future__ import annotations
 
 import os
@@ -163,9 +164,9 @@ class TestToolsManifest:
         ]
 
         for tool in expected_tools:
-            assert (
-                tool in DEFAULT_TOOLS
-            ), f"Expected tool {tool} not found in DEFAULT_TOOLS"
+            assert tool in DEFAULT_TOOLS, (
+                f"Expected tool {tool} not found in DEFAULT_TOOLS"
+            )
 
 
 @pytest.mark.integration

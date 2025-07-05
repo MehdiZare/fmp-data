@@ -1,17 +1,17 @@
 # fmp_data/logger.py
-import inspect
-import json
-import logging
-import os
-import re
-import sys
 from collections.abc import Callable
 from copy import deepcopy
 from datetime import datetime
 from functools import wraps
+import inspect
+import json
+import logging
 from logging.handlers import RotatingFileHandler
+import os
 from pathlib import Path
-from typing import Any, Optional, TypeVar
+import re
+import sys
+from typing import Any, ClassVar, Optional, TypeVar
 
 from fmp_data.config import LoggingConfig, LogHandlerConfig
 
@@ -68,7 +68,6 @@ class SensitiveDataFilter(logging.Filter):
         return f"{value[:2]}{mask_char * (len(value) - 4)}{value[-2:]}"
 
     def _mask_dict_recursive(self, d: Any, parent_key: str = "") -> Any:
-        """Recursively mask sensitive values in dictionaries and lists"""
         """Recursively mask sensitive values in dictionaries and lists"""
         if isinstance(d, dict):
             result: dict[str, Any] = {}
@@ -129,7 +128,7 @@ class SensitiveDataFilter(logging.Filter):
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
-        log_data = {
+        log_data: dict[str, Any] = {
             "timestamp": datetime.fromtimestamp(record.created).isoformat(),
             "name": record.name,
             "level": record.levelname,
@@ -186,26 +185,25 @@ class SecureRotatingFileHandler(RotatingFileHandler):
 
 
 class FMPLogger:
-    _instance: Optional["FMPLogger"] = None
-    _handler_classes: dict[str, type[logging.Handler]] = {
+    _instance: ClassVar[Optional["FMPLogger"]] = None
+    _handler_classes: ClassVar[dict[str, type[logging.Handler]]] = {
         "StreamHandler": logging.StreamHandler,
         "FileHandler": logging.FileHandler,
         "RotatingFileHandler": SecureRotatingFileHandler,
         "JsonRotatingFileHandler": SecureRotatingFileHandler,
     }
-    _initialized: bool = False
 
     def __new__(cls) -> "FMPLogger":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
         return cls._instance
 
     def __init__(self) -> None:
-        if self._initialized:
+        # Check if already initialized using hasattr to avoid type issues
+        if hasattr(self, "_initialized") and self._initialized:
             return
 
-        self._initialized = True
+        self._initialized: bool = True
         self._logger = logging.getLogger("fmp_data")
         self._logger.setLevel(logging.INFO)
         self._handlers: dict[str, logging.Handler] = {}
@@ -343,7 +341,7 @@ def log_api_call(
                 return result
             except Exception as e:
                 logger.error(
-                    f"API error in {module_name}.{func.__name__}: {str(e)}",
+                    f"API error in {module_name}.{func.__name__}: {e!s}",
                     extra={
                         **log_context,
                         "error": str(e),

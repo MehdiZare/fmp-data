@@ -1,7 +1,7 @@
 # fmp_data/institutional/models.py
-import warnings
 from datetime import date, datetime
 from typing import Any
+import warnings
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel

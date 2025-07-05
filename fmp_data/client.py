@@ -58,8 +58,7 @@ class FMPDataClient(BaseClient):
                             class_name="StreamHandler",
                             level="DEBUG" if debug else "INFO",
                             format=(
-                                "%(asctime)s - %(levelname)s -"
-                                " %(name)s - %(message)s"
+                                "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
                             ),
                         )
                     },
@@ -85,7 +84,7 @@ class FMPDataClient(BaseClient):
         except Exception as e:
             if not hasattr(self, "_logger") or self._logger is None:
                 self._logger = FMPLogger().get_logger(__name__)
-            self._logger.error(f"Failed to initialize client: {str(e)}")
+            self._logger.error(f"Failed to initialize client: {e!s}")
             raise
 
     @classmethod
@@ -145,7 +144,7 @@ class FMPDataClient(BaseClient):
             # Log if possible, but don't raise
             logger = getattr(self, "_logger", None)
             if logger is not None:
-                logger.error(f"Error during cleanup: {str(e)}")
+                logger.error(f"Error during cleanup: {e!s}")
 
     def __del__(self) -> None:
         """Destructor that ensures resources are cleaned up"""
@@ -155,7 +154,7 @@ class FMPDataClient(BaseClient):
         except (Exception, BaseException) as e:
             # Suppress any errors during cleanup
             warnings.warn(
-                f"Error during FMPDataClient cleanup: {str(e)}",
+                f"Error during FMPDataClient cleanup: {e!s}",
                 ResourceWarning,
                 stacklevel=2,
             )

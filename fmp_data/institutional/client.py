@@ -58,7 +58,7 @@ class InstitutionalClient(EndpointGroup):
         except Exception as e:
             # Log the error but return empty list instead of raising
             self.client.logger.warning(
-                f"No Form 13F data found for CIK {cik} on {filing_date}: {str(e)}"
+                f"No Form 13F data found for CIK {cik} on {filing_date}: {e!s}"
             )
             return []
 
@@ -79,7 +79,7 @@ class InstitutionalClient(EndpointGroup):
         except Exception as e:
             # Log the error but return empty list instead of raising
             self.client.logger.warning(
-                f"No Form 13F filings found for CIK {cik}: {str(e)}"
+                f"No Form 13F filings found for CIK {cik}: {e!s}"
             )
             return []
 

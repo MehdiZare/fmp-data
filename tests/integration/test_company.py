@@ -1,7 +1,7 @@
 # tests/integration/test_company.py
+from datetime import date, datetime
 import logging
 import time
-from datetime import date, datetime
 
 import pytest
 import vcr
@@ -152,7 +152,7 @@ class TestCompanyEndpoints(BaseTestCase):
                 assert profile.symbol == test_symbol
 
             except Exception as e:
-                logger.error(f"Request failed: {str(e)}")
+                logger.error(f"Request failed: {e!s}")
                 # Print the actual request details
                 if hasattr(e, "request"):
                     logger.error(f"Request URL: {e.request.url}")

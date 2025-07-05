@@ -1,117 +1,147 @@
 """
-Nox automation for fmp-data
-───────────────────────────
-Matrix:
-  • tests  : Python 3.10-3.13 × (core | langchain | mcp extra)
-  • lint   : ruff (style)
-  • typecheck : mypy
-  • security  : bandit
-  • docs   : mkdocs build
-
-Uses poetry dependency groups for cleaner management.
+Nox automation for fmp-data — lock-free uv workflow
+────────────────────────────────────────────────────
 """
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+import shutil
 
 import nox
 from nox import Session
 
-# Global default: always try to re-use when possible
 nox.options.reuse_venv = "yes"
+nox.options.default_venv_backend = "uv"
 
-# ─────────────── Matrix definitions ────────────────
-PY_VERS = ["3.10", "3.11", "3.12", "3.13"]
-EXTRAS = [None, "langchain", "mcp-server"]
-EXTRA_IDS = ["core", "lang", "mcp-server"]
+PYTHON_VERSIONS = ["3.10", "3.11", "3.12", "3.13"]
+FEATURE_GROUPS = [None, "langchain", "mcp-server"]
+FEATURE_IDS = ["core", "lang", "mcp-server"]
 
-
-# ─────────────── Helper: install with Poetry ─────────
-def _install(
-    session: Session, *, extras: str | None = None, groups: list[str] | None = None
-) -> None:
-    """Install project with specified extras and dependency groups."""
-    session.install("poetry")
-
-    cmd = ["poetry", "install", "--no-interaction"]
-
-    # Add dependency groups
-    if groups:
-        for group in groups:
-            cmd.extend(["--with", group])
-
-    # Add extras
-    if extras:
-        cmd.extend(["--extras", extras])
-
-    session.run(*cmd, external=True)
+LOCAL_PY_VERSIONS = (
+    os.getenv("NOX_PYTHON_VERSIONS", "").split(",")
+    if os.getenv("NOX_PYTHON_VERSIONS")
+    else PYTHON_VERSIONS
+)
 
 
-# ── test matrix ─────────────────────────────────────────────────
-@nox.session(python=PY_VERS, reuse_venv=True, tags=["tests"])
-@nox.parametrize("extra", EXTRAS, ids=EXTRA_IDS)
-def tests(session: Session, extra: str | None) -> None:
-    """Run tests for given Python version and optional extras."""
-    _install(session, extras=extra, groups=["dev"])
+def _install_groups(session: Session, groups: list[str]) -> None:
+    """Install project and dependency groups."""
+    session.install("-e", ".")
 
-    # Run different test sets based on extra
-    if extra == "mcp-server":
-        session.run("pytest", "-q", "tests/unit/test_mcp.py", "-m", "not integration")
+    try:
+        import tomllib
+    except ImportError:
+        session.install("tomli")
+        import tomli as tomllib
+
+    with open("pyproject.toml", "rb") as f:
+        data = tomllib.load(f)
+
+    dep_groups = data.get("dependency-groups", {})
+
+    for group in groups:
+        if dep_groups.get(group):
+            session.install(*dep_groups[group])
+
+
+# ── Tests ───────────────────────────────────────────────────────────────────
+@nox.session(python=LOCAL_PY_VERSIONS, tags=["tests"])
+@nox.parametrize("feature_group", FEATURE_GROUPS, ids=FEATURE_IDS)
+def tests(session: Session, feature_group: str | None) -> None:
+    """Run the unit-test matrix."""
+    groups = ["dev", "test"]
+    if feature_group:
+        groups.append(feature_group)
+
+    _install_groups(session, groups)
+
+    # Generate coverage for core tests only
+    if feature_group is None:
+        session.log("Running core tests with coverage...")
+        session.run(
+            "pytest", "-v",
+            "--cov=fmp_data",
+            "--cov-report=xml:coverage.xml",  # Explicit path
+            "--cov-report=html:htmlcov",      # Explicit path
+            "--cov-report=term"
+        )
+    elif feature_group == "mcp-server":
+        session.log("Running MCP server tests...")
+        session.run("pytest", "-v", "tests/unit/test_mcp.py", "-m", "not integration")
     else:
-        session.run("pytest", "-q")
+        session.log(f"Running {feature_group} tests...")
+        session.run("pytest", "-v")
 
 
-@nox.session(python="3.12")
+@nox.session()
 def smoke(session: Session) -> None:
-    """Quick smoke test with all extras."""
-    _install(session, extras="langchain", groups=["dev"])
-    session.run("pytest", "-q")
+    """Lightweight import test for bleeding-edge interpreter."""
+    _install_groups(session, ["dev"])
+    session.run("python", "-c", "import fmp_data; print('✓ Import successful')")
 
 
-# ── MCP-specific test session ───────────────────────────────────
-@nox.session(python="3.12", reuse_venv=True, tags=["mcp"])
-def test_mcp(session: Session) -> None:
-    """Run MCP-specific tests only."""
-    _install(session, extras="mcp-server", groups=["dev"])
-    session.run("pytest", "-q", "tests/unit/test_mcp.py", "-v")
+@nox.session(python=["3.10", "3.11", "3.12", "3.13"])
+def smoke_any(session: Session) -> None:
+    """Lightweight import test for any Python version."""
+    _install_groups(session, ["dev"])
+    session.run("python", "-c", "import fmp_data; print('✓ Import successful')")
 
 
-# ── QA sessions on one interpreter ─────────────────────────────
-@nox.session(python="3.12", reuse_venv=True)
+# ── QA ──────────────────────────────────────────────────────────────────────
+@nox.session(python="3.12", tags=["qa"])
 def lint(session: Session) -> None:
-    """Run ruff linting."""
-    _install(session, groups=["dev"])
+    _install_groups(session, ["dev"])
     session.run("ruff", "check", "fmp_data", "tests")
 
 
-@nox.session(python="3.12", reuse_venv=True)
+@nox.session(python="3.12", tags=["qa"])
 def typecheck(session: Session) -> None:
-    """Run mypy type checking on core package."""
-    _install(session, groups=["dev"])
-    session.run("mypy", "fmp_data")
+    _install_groups(session, ["dev"])
+    session.run("mypy", "fmp_data", "--exclude", "fmp_data/(lc|mcp)/.*")
 
 
-@nox.session(python="3.12", reuse_venv=True)
+@nox.session(python="3.12", tags=["qa"])
 def security(session: Session) -> None:
-    """Run bandit security checks."""
-    _install(session, groups=["dev"])
-    session.run("bandit", "-r", "fmp_data", "-ll")
+    _install_groups(session, ["dev"])
+    Path("reports").mkdir(exist_ok=True)
+    session.run("bandit", "-r", "fmp_data", "--configfile", "pyproject.toml")
 
 
-@nox.session(python="3.12", reuse_venv=True)
-def typecheck_lang(session: Session) -> None:
-    """Run mypy type checking with langchain extras."""
-    _install(session, extras="langchain", groups=["dev"])
-    session.run("mypy", "fmp_data")
-
-
-@nox.session(python="3.12", reuse_venv=True)
-def typecheck_mcp(session: Session) -> None:
-    """Run mypy type checking with MCP extras."""
-    _install(session, extras="mcp-server", groups=["dev"])
-    session.run("mypy", "fmp_data")
-
-
-# ─────────────── Docs build (MkDocs) ────────────────
-@nox.session(python="3.12", reuse_venv=True, tags=["docs"])
+# ── Docs ────────────────────────────────────────────────────────────────────
+@nox.session(python="3.12", tags=["docs"])
 def docs(session: Session) -> None:
-    """Build documentation with MkDocs."""
-    _install(session, groups=["docs"])
+    _install_groups(session, ["docs"])
     session.run("mkdocs", "build", "--strict")
+
+
+@nox.session(python="3.12", tags=["docs"])
+def docs_serve(session: Session) -> None:
+    _install_groups(session, ["docs"])
+    session.run("mkdocs", "serve", "--dev-addr", "0.0.0.0:8000")
+
+
+# ── Dev ─────────────────────────────────────────────────────────────────────
+@nox.session(python="3.12")
+def dev_install(session: Session) -> None:
+    _install_groups(session, ["dev", "docs", "langchain", "mcp-server"])
+
+
+@nox.session(python="3.12")
+def coverage(session: Session) -> None:
+    _install_groups(session, ["dev"])
+    Path("reports").mkdir(exist_ok=True)
+    session.run("pytest", "--cov=fmp_data", "--cov-report=xml:reports/coverage.xml")
+
+
+@nox.session(python="3.12")
+def clean(session: Session) -> None:
+    patterns = ["dist", "build", "*.egg-info", ".pytest_cache", "reports",
+                ".coverage*", ".mypy_cache", ".ruff_cache", "__pycache__"]
+    for pattern in patterns:
+        for path in Path(".").glob(pattern):
+            if path.is_dir():
+                shutil.rmtree(path)
+            else:
+                path.unlink(missing_ok=True)

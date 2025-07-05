@@ -3,11 +3,12 @@
 Endpoint registry for LangChain integration with
 lazy imports to avoid circular dependencies.
 """
+
 from __future__ import annotations
 
-import re
 from abc import ABC, abstractmethod
 from logging import Logger
+import re
 from typing import TYPE_CHECKING, Any, TypedDict
 
 from fmp_data.lc.models import EndpointInfo, EndpointSemantics, SemanticCategory
@@ -412,11 +413,15 @@ class EndpointRegistry:
 
     @property
     def validation(self) -> ValidationRuleRegistry:
-        """Get validation registry with lazy initialization."""
-        self._ensure_validation_initialized()
+        """Return the lazily-initialised validation registry.
 
-        # After initialization, _validation is guaranteed to be not None
-        assert self._validation is not None, "Validation registry should be initialized"
+        Example:
+            >>> registry = EndpointRegistry()
+            >>> validation = registry.validation
+        """
+        self._ensure_validation_initialized()
+        if self._validation is None:  # should never happen
+            raise RuntimeError("Validation registry failed to initialise")
         return self._validation
 
     @staticmethod
@@ -507,7 +512,7 @@ class EndpointRegistry:
             self.logger.debug(f"Successfully registered endpoint: {name}")
         except Exception as e:
             self.logger.error(
-                f"Failed to register endpoint {name}: {str(e)}", exc_info=True
+                f"Failed to register endpoint {name}: {e!s}", exc_info=True
             )
             raise
 
@@ -528,7 +533,7 @@ class EndpointRegistry:
             try:
                 self.register(name, endpoint, semantics)
             except ValueError as e:
-                self.logger.error(f"Failed to register endpoint {name}: {str(e)}")
+                self.logger.error(f"Failed to register endpoint {name}: {e!s}")
                 raise
 
     def get_endpoint(self, name: str) -> EndpointInfo | None:

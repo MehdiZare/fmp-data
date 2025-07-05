@@ -13,9 +13,9 @@ ImportError with guidance if the extra is not installed.
 
 from __future__ import annotations
 
+import importlib
 import importlib.util as _importlib_util
 import types as _types
-import warnings as _warnings
 from typing import Any
 
 from fmp_data.client import FMPDataClient
@@ -34,25 +34,31 @@ from fmp_data.exceptions import (
 )
 from fmp_data.logger import FMPLogger
 
-__version__ = "0.0.0"
+# Version handling - let poetry-dynamic-versioning handle this
+try:
+    from fmp_data._version import __version__
+except ImportError:
+    # Fallback for development/local builds where _version.py might not exist
+    __version__ = "0.0.0"
 
 # --------------------------------------------------------------------------- #
 #  Public re-exports guaranteed to work without optional dependencies
 # --------------------------------------------------------------------------- #
 __all__ = [
-    "FMPDataClient",
+    "AuthenticationError",
     "ClientConfig",
-    "LoggingConfig",
-    "LogHandlerConfig",
-    "RateLimitConfig",
+    "ConfigError",
+    "FMPDataClient",
     "FMPError",
     "FMPLogger",
+    "LogHandlerConfig",
+    "LoggingConfig",
+    "RateLimitConfig",
     "RateLimitError",
-    "AuthenticationError",
     "ValidationError",
-    "ConfigError",
-    "logger",
+    "__version__",
     "is_langchain_available",
+    "logger",
 ]
 
 logger = FMPLogger()
@@ -66,7 +72,7 @@ def is_langchain_available() -> bool:
     Return ``True`` if the optional *langchain* extra is installed.
 
     We check for ``langchain_core`` because it is imported by every
-    sub-module that fmp-data’s LC helpers rely on.
+    sub-module that fmp-data's LC helpers rely on.
     """
     return _importlib_util.find_spec("langchain_core") is not None
 
@@ -86,7 +92,7 @@ def _lazy_import_vector_store() -> _types.ModuleType:
         ) from None
 
     # Import inside the function to keep top-level import cheap.
-    from fmp_data import lc as _lc  # noqa: WPS433 (allow internal import)
+    _lc = importlib.import_module("fmp_data.lc")
 
     # Check FAISS at runtime to give a clearer error than module not found.
     if _importlib_util.find_spec("faiss") is None:
@@ -98,41 +104,59 @@ def _lazy_import_vector_store() -> _types.ModuleType:
     return _lc
 
 
+def _lazy_import_langchain() -> _types.ModuleType:
+    """
+    Import fmp_data.langchain only when accessed.
+    Raises ImportError with installation hint if LangChain is missing.
+    """
+    if not is_langchain_available():
+        raise ImportError(
+            "Optional LangChain features are not installed. "
+            "Run:  pip install 'fmp-data[langchain]'"
+        ) from None
+
+    try:
+        _langchain = importlib.import_module("fmp_data.langchain")
+        return _langchain
+    except ImportError as e:
+        raise ImportError(
+            "LangChain integration module could not be imported. "
+            "Run:  pip install 'fmp-data[langchain]'"
+        ) from e
+
+
+def _lazy_import_mcp() -> _types.ModuleType:
+    """
+    Import fmp_data.mcp only when accessed.
+    Raises ImportError with installation hint if MCP is missing.
+    """
+    try:
+        _mcp = importlib.import_module("fmp_data.mcp")
+        return _mcp
+    except ImportError as e:
+        raise ImportError(
+            "MCP integration module could not be imported. "
+            "Run:  pip install 'fmp-data[mcp-server]'"
+        ) from e
+
+
 # Map attribute names to callables that will supply them on demand.
-# Keys must match what you later append to __all__.
-_lazy_attrs = {
-    "EndpointVectorStore": lambda: _lazy_import_vector_store().EndpointVectorStore,
-    "EndpointSemantics": lambda: _lazy_import_vector_store().EndpointSemantics,
-    "SemanticCategory": lambda: _lazy_import_vector_store().SemanticCategory,
+_LAZY_IMPORTS = {
+    "lc": _lazy_import_vector_store,
+    "langchain": _lazy_import_langchain,
+    "mcp": _lazy_import_mcp,
     "create_vector_store": lambda: _lazy_import_vector_store().create_vector_store,
+    "FMPVectorStore": lambda: _lazy_import_vector_store().FMPVectorStore,
 }
 
-# extend __all__ so IDEs still see the names when LC is installed
-__all__.extend(_lazy_attrs.keys())
 
-
-def __getattr__(name: str) -> Any:  # pragma: no cover
+def __getattr__(name: str) -> Any:
     """
-    PEP 562 hook: resolve optional symbols at first access.
+    Lazy import handler for optional dependencies.
 
-    If *name* is one of the LC helpers, call the associated factory,
-    cache the result in the module dict, and return it.
+    This allows importing optional modules only when they're actually used.
     """
-    if name in _lazy_attrs:
-        value = _lazy_attrs[name]()
-        globals()[name] = value  # cache so subsequent access is fast
-        return value
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    if name in _LAZY_IMPORTS:
+        return _LAZY_IMPORTS[name]()
 
-
-# --------------------------------------------------------------------------- #
-#  Warn immediately if user tried to import LC helpers without extras
-# --------------------------------------------------------------------------- #
-if not is_langchain_available():
-    _warnings.filterwarnings("once", category=ImportWarning)
-    _warnings.warn(
-        "LangChain extras not installed; vector-store helpers will be unavailable "
-        "until you run:  pip install 'fmp-data[langchain]'",
-        ImportWarning,
-        stacklevel=2,
-    )
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

@@ -1,9 +1,9 @@
 # fmp_data/alternative/models.py
 
 import datetime
-import warnings
 from datetime import date
 from typing import Any
+import warnings
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator

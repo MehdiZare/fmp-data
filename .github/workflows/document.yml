@@ -1,0 +1,120 @@
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'fmp_data/**'
+      - 'README.md'
+      - 'pyproject.toml'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'fmp_data/**'
+      - 'README.md'
+      - 'pyproject.toml'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+env:
+  PYTHON_VERSION: "3.12"
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            ~/.local/share/uv
+          key: ${{ runner.os }}-docs-${{ hashFiles('**/pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-docs-
+
+      - name: Install dependencies
+        run: |
+          echo "🚀 Installing with uv"
+          uv --version
+
+          # Install project with docs dependencies
+          uv sync --group docs
+
+      - name: Build documentation
+        run: |
+          echo "📚 Building documentation"
+          uv run mkdocs build --strict
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Generate docs summary
+        run: |
+          echo "## 📚 Documentation Build" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Tool** | uv |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Event** | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
+
+          if [ -d "site" ]; then
+            site_size=$(du -sh site | cut -f1)
+            echo "| **Site Size** | $site_size |" >> $GITHUB_STEP_SUMMARY
+            echo "| **Status** | ✅ Built successfully |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| **Status** | ❌ Build failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  deploy-docs:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build-docs
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Generate deployment summary
+        run: |
+          echo "## 🚀 Documentation Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "Documentation has been successfully deployed to GitHub Pages." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 **[View Documentation](${{ steps.deployment.outputs.page_url }})**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Quick Links" >> $GITHUB_STEP_SUMMARY
+          echo "- [API Reference](${{ steps.deployment.outputs.page_url }}api/)" >> $GITHUB_STEP_SUMMARY
+          echo "- [Installation Guide](${{ steps.deployment.outputs.page_url }}installation/)" >> $GITHUB_STEP_SUMMARY
+          echo "- [Examples](${{ steps.deployment.outputs.page_url }}examples/)" >> $GITHUB_STEP_SUMMARY

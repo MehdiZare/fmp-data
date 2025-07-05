@@ -1,10 +1,10 @@
 # tests/integration/conftest.py
+from collections.abc import Generator
 import logging
 import os
+from pathlib import Path
 import re
 import time
-from collections.abc import Generator
-from pathlib import Path
 
 import pytest
 import vcr

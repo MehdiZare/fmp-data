@@ -8,9 +8,9 @@ from fmp_data.economics.models import (
 )
 
 __all__ = [
-    "EconomicsClient",
-    "TreasuryRate",
-    "EconomicIndicator",
     "EconomicEvent",
+    "EconomicIndicator",
+    "EconomicsClient",
     "MarketRiskPremium",
+    "TreasuryRate",
 ]

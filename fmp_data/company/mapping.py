@@ -716,7 +716,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         client_name="market",
         method_name="get_intraday_prices",
         natural_description=(
-            "Get intraday price data with " "minute-by-minute or hourly intervals"
+            "Get intraday price data with minute-by-minute or hourly intervals"
         ),
         example_queries=[
             "Get AAPL intraday prices",

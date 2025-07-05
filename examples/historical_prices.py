@@ -63,7 +63,7 @@ def main():
             print(f"Current RSI (14): {rsi[0].rsi:.2f}")
 
     except Exception as e:
-        print(f"Error: {str(e)}")
+        print(f"Error: {e!s}")
 
     finally:
         # Clean up resources
