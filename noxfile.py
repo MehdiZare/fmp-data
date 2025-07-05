@@ -58,18 +58,25 @@ def _sync_with_uv(session: Session, extras: Iterable[str] = ()) -> None:
     """
     Synchronize the session's virtualenv with *uv*.
 
-    Each extra becomes "--group <extra>".
+    Uses dependency groups from pyproject.toml without duplication.
     """
     if os.getenv("NOX_USE_UV", "1") != "1":
-        session.install("-e", ".", *extras)
+        # Fallback to pip with extras
+        extras_str = f"[{','.join(extras)}]" if extras else ""
+        session.install(f"-e.{extras_str}")
         return
 
-    # build argument list:  ["uv", "sync", "--group", "dev", "--group", "mcp-server"]
-    args: list[str] = ["uv", "sync"]
-    for grp in extras:
-        args.extend(["--group", grp])
+    # Install uv in the session if not available
+    session.install("uv")
 
-    session.run(*args, external=True)
+    # Install the package with dependency groups using uv pip
+    if extras:
+        # Use the extras syntax: -e.[dev,langchain,mcp-server]
+        extras_str = f"[{','.join(extras)}]"
+        session.run("uv", "pip", "install", f"-e.{extras_str}")
+    else:
+        # Just install the base package
+        session.run("uv", "pip", "install", "-e", ".")
 
 
 # --------------------------------------------------------------------------- #
