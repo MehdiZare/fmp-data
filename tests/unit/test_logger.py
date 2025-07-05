@@ -1,8 +1,10 @@
+# tests/test_logger.py
+import asyncio
 import json
 import logging
 import os
 import sys
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -16,423 +18,198 @@ from fmp_data.logger import (
 )
 
 
-@pytest.fixture
-def temp_log_dir(tmp_path):
-    """Create temporary directory for log files"""
-    log_dir = tmp_path / "logs"
-    log_dir.mkdir()
-    return log_dir
-
-
-@pytest.fixture
-def basic_config(temp_log_dir):
-    """Create basic logging configuration"""
-    return LoggingConfig(
-        level="DEBUG",
-        handlers={
-            "console": LogHandlerConfig(
-                class_name="StreamHandler",
-                level="DEBUG",
-                format="%(levelname)s: %(message)s",
-            ),
-            "file": LogHandlerConfig(
-                class_name="RotatingFileHandler",
-                level="DEBUG",
-                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-                handler_kwargs={  # Changed from kwargs to handler_kwargs
-                    "filename": str(temp_log_dir / "test.log"),
-                    "maxBytes": 1024,
-                    "backupCount": 3,
-                },
-            ),
-        },
-        log_path=temp_log_dir,
-    )
-
-
-class MockLogRecord:
-    def __init__(self, msg):
-        self.msg = msg
-        self.args = ()
-
-
-def test_json_formatter():
-    """Test JSON log formatter"""
-    formatter = JsonFormatter()
-    record = logging.LogRecord(
-        "test_logger",
-        logging.INFO,
-        "test.py",
-        10,
-        "Test message",
-        args=(),
-        exc_info=None,
-    )
-
-    formatted = formatter.format(record)
-    log_data = json.loads(formatted)
-
-    assert log_data["name"] == "test_logger"
-    assert log_data["level"] == "INFO"
-    assert log_data["message"] == "Test message"
-
-
-def test_secure_rotating_file_handler(temp_log_dir):
-    """Test secure file handler creation and permissions"""
-    log_file = temp_log_dir / "secure.log"
-    handler = SecureRotatingFileHandler(
-        filename=str(log_file), maxBytes=1024, backupCount=3
-    )
-
-    # Write test log
-    logger = logging.getLogger("test")
-    logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
-    logger.info("Test message")
-
-    # Check file exists and has correct permissions
-    assert log_file.exists()
-    if os.name != "nt":  # Skip permission check on Windows
-        assert (log_file.stat().st_mode & 0o777) == 0o600
-
-
-@patch("logging.getLogger")
-def test_fmp_logger_singleton(mock_get_logger):
-    """Test FMPLogger singleton pattern"""
-    logger1 = FMPLogger()
-    logger2 = FMPLogger()
-    assert logger1 is logger2
-
-
-@pytest.mark.asyncio
-async def test_log_api_call_decorator():
-    """Test API call logging decorator"""
-    mock_logger = MagicMock()
-
-    @log_api_call(logger=mock_logger)
-    async def test_func(arg1, arg2=None):
-        return f"{arg1}-{arg2}"
-
-    result = await test_func("test", arg2="value")
-    assert result == "test-value"
-
-    # Verify logging calls
-    mock_logger.debug.assert_called()
-    assert "API call" in mock_logger.debug.call_args_list[0][0][0]
-
-
-def test_logger_configuration(basic_config):
-    """Test logger configuration with different handlers"""
-    logger = FMPLogger()
-    logger.configure(basic_config)
-
-    root_logger = logger.get_logger()
-    assert root_logger.level == logging.DEBUG
-
-    # Verify handler types and count
-    handlers = root_logger.handlers
-    handler_types = {handler.__class__.__name__ for handler in handlers}
-
-    assert len(handlers) == 2  # Should have exactly two handlers
-    assert "StreamHandler" in handler_types
-    assert "SecureRotatingFileHandler" in handler_types
-
-    # Verify handler levels
-    for handler in handlers:
-        assert handler.level == logging.DEBUG
-
-
-def test_logger_message_filtering():
-    """Test message filtering for sensitive data"""
-
-    class TestFilter(SensitiveDataFilter):
-        def _mask_patterns_in_string(self, text):
-            # Override to ensure masking happens
-            return text.replace("secret123", "*****")
-
-    filter = TestFilter()
-
-    # Create a record with sensitive data
-    record = logging.LogRecord(
-        name="test",
-        level=logging.INFO,
-        pathname="test.py",
-        lineno=1,
-        msg="API key: secret123",
-        args=(),
-        exc_info=None,
-    )
-
-    # Apply the filter
-    filter.filter(record)
-
-    # Verify the message was modified
-    assert record.msg == "API key: *****"
-
-
-def test_log_rotation(temp_log_dir):
-    """Test log file rotation"""
-    config = LoggingConfig(
-        level="DEBUG",
-        handlers={
-            "file": LogHandlerConfig(
-                class_name="RotatingFileHandler",
-                level="DEBUG",
-                handler_kwargs={  # Changed from kwargs to handler_kwargs
-                    "filename": str(temp_log_dir / "rotating.log"),
-                    "maxBytes": 100,  # Small size to trigger rotation
-                    "backupCount": 2,
-                },
-            ),
-        },
-        log_path=temp_log_dir,
-    )
-
-    logger = FMPLogger()
-    logger.configure(config)
-    test_logger = logger.get_logger("test")
-
-    # Write enough data to trigger rotation
-    long_message = "x" * 50
-    for _ in range(5):
-        test_logger.info(long_message)
-
-    log_files = list(temp_log_dir.glob("rotating.log*"))
-    assert len(log_files) > 1  # Main log file plus at least one backup
-
-
-def test_sensitive_data_filter():
-    """Test sensitive data masking"""
-    filter = SensitiveDataFilter()
-
-    # Test API key masking
-    original = "api_key=secret123"
-    masked = filter._mask_patterns_in_string(original)
-    assert "secret123" not in masked
-    assert "api_key=" in masked
-    assert len(masked) > len("api_key=")  # Ensure masking occurred
-
-    # Test with actual API key pattern
-    api_key_str = 'api_key="ACTUAL-KEY-12345"'
-    masked_api = filter._mask_patterns_in_string(api_key_str)
-    assert "ACTUAL-KEY-12345" not in masked_api
-    assert 'api_key="' in masked_api
-
-
-def test_error_handling(basic_config):
-    """Test error handling in logger configuration"""
-    logger = FMPLogger()
-
-    # Test invalid handler class
-    invalid_config = LoggingConfig(
-        level="DEBUG",
-        handlers={
-            "invalid": LogHandlerConfig(
-                class_name="NonexistentHandler",
-                level="DEBUG",
-            ),
-        },
-    )
-
-    with pytest.raises(ValueError):
-        logger.configure(invalid_config)
-
-
-def test_mask_value():
-    """Test the mask_value function directly"""
-    filter = SensitiveDataFilter()
-
-    # Test short value
-    assert filter._mask_value("123") == "***"
-
-    # Test longer value
-    masked = filter._mask_value("abcdef")
-    assert len(masked) == len("abcdef")
-    assert all(c == "*" for c in masked)
-
-
-@pytest.mark.asyncio
-async def test_async_logging():
-    """Test logging in async context"""
-    mock_logger = MagicMock()
-
-    @log_api_call(logger=mock_logger)
-    async def async_operation():
-        return "success"
-
-    result = await async_operation()
-    assert result == "success"
-    mock_logger.debug.assert_called()
-
-
-# Corrected tests to replace the failing ones in your test_logger.py
-
-class TestFMPLoggerInitializationCorrected:
-    """Test FMPLogger initialization and singleton behavior - corrected"""
-
-    def test_fmp_logger_singleton_behavior(self):
-        """Test FMPLogger singleton pattern"""
-        logger1 = FMPLogger()
-        logger2 = FMPLogger()
-        assert logger1 is logger2
-
-    def test_get_logger_with_name_prefixed(self):
-        """Test getting logger with specific name - handles fmp_data prefix"""
-        logger = FMPLogger()
-        named_logger = logger.get_logger("test.module")
-
-        # Logger name includes fmp_data prefix
-        assert "test.module" in named_logger.name
-        assert named_logger.name == "fmp_data.test.module"
-
-    def test_get_logger_without_name_returns_root(self):
-        """Test getting logger without name returns root logger"""
-        logger = FMPLogger()
-        root_logger = logger.get_logger()
-
-        assert "fmp_data" in root_logger.name
-
-
-class TestSensitiveDataFilterCorrected:
-    """Test SensitiveDataFilter - corrected for actual implementation"""
-
-    def test_mask_nested_dict_returns_json_string(self):
-        """Test masking nested dictionaries - returns JSON strings"""
-        filter = SensitiveDataFilter()
-
-        data = {
+class TestSensitiveDataFilter:
+    """Test SensitiveDataFilter functionality"""
+
+    def test_filter_basic_functionality(self):
+        """Test basic filter functionality"""
+        filter_instance = SensitiveDataFilter()
+
+        # Create a log record
+        record = logging.LogRecord(
+            name="test_logger",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="Test message with api_key=secret123",
+            args=(),
+            exc_info=None
+        )
+
+        # Filter should return True (allow record)
+        assert filter_instance.filter(record) is True
+
+        # Message should be modified to mask sensitive data
+        assert "secret123" not in record.getMessage()
+        assert "api_key=" in record.getMessage()
+
+    def test_mask_patterns_in_string(self):
+        """Test pattern masking in strings"""
+        filter_instance = SensitiveDataFilter()
+
+        test_cases = [
+            ("api_key=secret123", "secret123"),
+            ("password=mypassword", "mypassword"),
+            ('apikey="test-key-12345"', "test-key-12345"),
+            ("token=bearer-token-xyz", "bearer-token-xyz"),
+            ("key=somekey", "somekey"),
+        ]
+
+        for original, sensitive_part in test_cases:
+            masked = filter_instance._mask_patterns_in_string(original)
+            assert sensitive_part not in masked
+            assert "=" in masked  # The key part should remain
+
+    def test_mask_value(self):
+        """Test value masking function"""
+        filter_instance = SensitiveDataFilter()
+
+        # Short values
+        assert filter_instance._mask_value("123") == "***"
+        assert filter_instance._mask_value("ab") == "**"
+
+        # Longer values
+        assert filter_instance._mask_value("longvalue") == "*" * len("longvalue")
+        assert len(filter_instance._mask_value("test")) == 4
+
+    def test_filter_with_dict_args(self):
+        """Test filter with dictionary arguments"""
+        filter_instance = SensitiveDataFilter()
+
+        record = logging.LogRecord(
+            name="test_logger",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="Request with data: %s",
+            args=({"api_key": "secret123", "symbol": "AAPL"},),
+            exc_info=None
+        )
+
+        assert filter_instance.filter(record) is True
+        message = record.getMessage()
+        assert "secret123" not in message
+        assert "symbol" in message  # Non-sensitive data should remain
+
+    def test_filter_with_nested_dict(self):
+        """Test filter with nested dictionary structures"""
+        filter_instance = SensitiveDataFilter()
+
+        nested_data = {
             "config": {
-                "auth": {
-                    "api_key": "secret123",
-                    "token": "abc456"
-                },
+                "api_key": "nested_secret",
                 "timeout": 30
             },
-            "metadata": {"version": "1.0"}
+            "symbol": "AAPL"
         }
 
-        masked = filter._mask_dict_recursive(data)
+        record = logging.LogRecord(
+            name="test_logger",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="Nested data: %s",
+            args=(nested_data,),
+            exc_info=None
+        )
 
-        # Nested dicts become JSON strings
-        assert isinstance(masked["config"], str)
-        _ = json.loads(masked["config"])
+        assert filter_instance.filter(record) is True
+        message = record.getMessage()
+        assert "nested_secret" not in message
+        assert "timeout" in message
 
-        # Should mask sensitive values in the JSON
-        assert "secret123" not in masked["config"]
-        assert "abc456" not in masked["config"]
+    def test_filter_with_list_args(self):
+        """Test filter with list arguments containing sensitive data"""
+        filter_instance = SensitiveDataFilter()
 
-    def test_mask_patterns_with_correct_groups(self):
-        """Test masking different sensitive data patterns - handle varying groups"""
-        filter = SensitiveDataFilter()
+        list_data = ["AAPL", {"api_key": "list_secret"}, "MSFT"]
 
-        # Test patterns that work with the actual regex groups (3-group patterns)
-        test_cases = [
-            'api_key="test123"',  # 3 groups
-            "password=secret789",  # 3 groups
-            'token: "abc123"',  # 3 groups
-            "secret=def456",  # 3 groups
-        ]
+        record = logging.LogRecord(
+            name="test_logger",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="List data: %s",
+            args=(list_data,),
+            exc_info=None
+        )
 
-        for test_str in test_cases:
-            masked = filter._mask_patterns_in_string(test_str)
-            # Should mask the actual sensitive values
-            assert "test123" not in masked or test_str != test_cases[0]
-            assert "secret789" not in masked or test_str != test_cases[1]
-            assert "abc123" not in masked or test_str != test_cases[2]
-            assert "def456" not in masked or test_str != test_cases[3]
+        assert filter_instance.filter(record) is True
+        message = record.getMessage()
+        assert "list_secret" not in message
+        assert "AAPL" in message
 
-    def test_authorization_pattern_behavior(self):
-        """Test Authorization pattern behavior - may have implementation quirks"""
-        filter = SensitiveDataFilter()
+    def test_no_sensitive_data(self):
+        """Test filter with no sensitive data"""
+        filter_instance = SensitiveDataFilter()
 
-        # Authorization pattern may behave differently due to regex structure
-        auth_str = "Authorization: Bearer token456"
+        record = logging.LogRecord(
+            name="test_logger",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="Normal log message with symbol=AAPL",
+            args=(),
+            exc_info=None
+        )
 
-        # Test that it doesn't crash the system, but may not mask perfectly
-        try:
-            masked = filter._mask_patterns_in_string(auth_str)
-            # If it works, the token should be masked
-            if "token456" not in masked:
-                assert "Authorization:" in masked
-        except IndexError:
-            # If there's a regex group issue, that's a known limitation
-            # The important thing is it doesn't crash the logging system
-            pass
-
-    def test_working_sensitive_patterns_only(self):
-        """Test only patterns that work correctly with 3 groups"""
-        filter = SensitiveDataFilter()
-
-        # Focus on patterns that definitely work
-        working_patterns = [
-            ('api_key="secret123"', "secret123"),
-            ("password=mypass", "mypass"),
-            ('token: "abc123"', "abc123"),
-            ("client_secret=xyz789", "xyz789"),
-        ]
-
-        for test_str, sensitive_value in working_patterns:
-            masked = filter._mask_patterns_in_string(test_str)
-            assert sensitive_value not in masked
-            # Should still contain the key part
-            key_part = test_str.split('=')[0].split(':')[0].strip('"')
-            assert key_part in masked
+        original_message = record.getMessage()
+        assert filter_instance.filter(record) is True
+        assert record.getMessage() == original_message  # Should be unchanged
 
 
-class TestJsonFormatterCorrected:
-    """Test JsonFormatter functionality - corrected for actual implementation"""
+class TestJsonFormatter:
+    """Test JsonFormatter functionality"""
 
-    def test_json_formatter_basic_fields(self):
-        """Test JSON formatting with actual fields included"""
+    def test_format_basic_record(self):
+        """Test basic JSON formatting"""
         formatter = JsonFormatter()
 
         record = logging.LogRecord(
-            name="test.module",
+            name="test_logger",
+            level=logging.INFO,
+            pathname="/path/to/file.py",
+            lineno=42,
+            msg="Test message",
+            args=(),
+            exc_info=None
+        )
+
+        formatted = formatter.format(record)
+        json_data = json.loads(formatted)
+
+        assert json_data["level"] == "INFO"
+        assert json_data["message"] == "Test message"
+        assert json_data["module"] == "test_logger"
+        assert json_data["line"] == 42
+        assert "timestamp" in json_data
+
+    def test_format_with_extra_fields(self):
+        """Test JSON formatting with extra fields"""
+        formatter = JsonFormatter()
+
+        record = logging.LogRecord(
+            name="test_logger",
             level=logging.ERROR,
             pathname="/path/to/file.py",
             lineno=42,
-            msg="Test error message",
+            msg="Error occurred",
             args=(),
             exc_info=None
         )
 
-        formatted = formatter.format(record)
-        data = json.loads(formatted)
-
-        # Test fields that are actually included
-        assert data["name"] == "test.module"
-        assert data["level"] == "ERROR"
-        assert data["message"] == "Test error message"
-        assert "timestamp" in data
-        # Note: pathname might not be included in your JsonFormatter
-
-    def test_json_formatter_with_custom_attributes(self):
-        """Test JSON formatting with custom record attributes"""
-        formatter = JsonFormatter()
-
-        record = logging.LogRecord(
-            name="test",
-            level=logging.INFO,
-            pathname="test.py",
-            lineno=10,
-            msg="API call",
-            args=(),
-            exc_info=None
-        )
-
-        # Add custom attributes to record
-        record.custom_field = "custom_value"
+        # Add extra fields
         record.request_id = "12345"
+        record.user_id = "user_abc"
 
         formatted = formatter.format(record)
-        data = json.loads(formatted)
+        json_data = json.loads(formatted)
 
-        # Check if custom fields are included (depends on implementation)
-        assert data["name"] == "test"
-        assert data["message"] == "API call"
+        assert json_data["request_id"] == "12345"
+        assert json_data["user_id"] == "user_abc"
 
-    def test_json_formatter_with_exception_structure(self):
-        """Test JSON formatting with exception - check actual structure"""
+    def test_format_with_exception(self):
+        """Test JSON formatting with exception information"""
         formatter = JsonFormatter()
 
         try:
@@ -441,70 +218,50 @@ class TestJsonFormatterCorrected:
             exc_info = sys.exc_info()
 
         record = logging.LogRecord(
-            name="test",
+            name="test_logger",
             level=logging.ERROR,
-            pathname="test.py",
-            lineno=10,
-            msg="Error occurred",
+            pathname="/path/to/file.py",
+            lineno=42,
+            msg="Exception occurred",
             args=(),
             exc_info=exc_info
         )
 
         formatted = formatter.format(record)
-        data = json.loads(formatted)
+        json_data = json.loads(formatted)
 
-        # Check the actual exception structure
-        assert "exception" in data
-        exception_data = data["exception"]
+        assert "exception" in json_data
+        assert "ValueError" in json_data["exception"]
 
-        if isinstance(exception_data, dict):
-            # Exception is a dict with type, message, traceback
-            assert "type" in exception_data
-            assert exception_data["type"] == "ValueError"
-        else:
-            # Exception might be a simple string
-            assert "ValueError" in str(exception_data)
+    def test_format_excludes_private_attributes(self):
+        """Test that private attributes are excluded from JSON"""
+        formatter = JsonFormatter()
 
+        record = logging.LogRecord(
+            name="test_logger",
+            level=logging.INFO,
+            pathname="/path/to/file.py",
+            lineno=42,
+            msg="Test message",
+            args=(),
+            exc_info=None
+        )
 
-class TestLogApiCallDecoratorCorrected:
-    """Test log_api_call decorator - corrected"""
+        # Add private attribute
+        record._private_attr = "should_not_appear"
 
-    @pytest.mark.asyncio
-    async def test_log_api_call_async_with_exception_corrected(self):
-        """Test async decorator with exception - check actual behavior"""
-        mock_logger = Mock()
+        formatted = formatter.format(record)
+        json_data = json.loads(formatted)
 
-        @log_api_call(logger=mock_logger)
-        async def failing_async_function():
-            raise RuntimeError("Async error")
-
-        with pytest.raises(RuntimeError):
-            await failing_async_function()
-
-        # Check if any logging occurred (debug, error, etc.)
-        assert mock_logger.debug.called or mock_logger.error.called
-
-    def test_log_api_call_with_complex_args(self):
-        """Test decorator with complex arguments"""
-        mock_logger = Mock()
-
-        @log_api_call(logger=mock_logger)
-        def complex_function(data_dict, *args, **kwargs):
-            return "processed"
-
-        test_data = {"key": "value", "api_key": "secret"}
-        result = complex_function(test_data, "arg1", "arg2", param="value")
-
-        assert result == "processed"
-        assert mock_logger.debug.called
+        assert "_private_attr" not in json_data
 
 
-class TestSecureRotatingFileHandlerCorrected:
-    """Test SecureRotatingFileHandler - corrected"""
+class TestSecureRotatingFileHandler:
+    """Test SecureRotatingFileHandler functionality"""
 
-    def test_secure_handler_creation(self, temp_log_dir):
-        """Test basic secure handler creation"""
-        log_file = temp_log_dir / "secure.log"
+    def test_file_creation_with_permissions(self, tmp_path):
+        """Test file creation with secure permissions"""
+        log_file = tmp_path / "secure.log"
 
         handler = SecureRotatingFileHandler(
             filename=str(log_file),
@@ -512,136 +269,536 @@ class TestSecureRotatingFileHandlerCorrected:
             backupCount=3
         )
 
-        assert handler is not None
-        assert hasattr(handler, 'baseFilename')
-
-    def test_secure_handler_logging(self, temp_log_dir):
-        """Test that secure handler can actually log messages"""
-        log_file = temp_log_dir / "secure.log"
-
-        handler = SecureRotatingFileHandler(
-            filename=str(log_file),
-            maxBytes=1024,
-            backupCount=3
+        # Write a test message
+        record = logging.LogRecord(
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="Test message",
+            args=(),
+            exc_info=None
         )
 
-        # Create a logger and add the handler
-        logger = logging.getLogger("test_secure")
-        logger.addHandler(handler)
-        logger.setLevel(logging.INFO)
+        handler.emit(record)
 
-        # Log a message
-        logger.info("Test secure logging")
-
-        # Ensure handler is flushed
-        handler.flush()
-
-        # File should exist and contain the message
+        # Check file exists
         assert log_file.exists()
 
+        # Check permissions on Unix-like systems
+        if os.name != "nt":
+            stat_info = log_file.stat()
+            permissions = stat_info.st_mode & 0o777
+            assert permissions == 0o600
 
-class TestFMPLoggerConfigurationEdgeCases:
-    """Test FMPLogger configuration edge cases"""
+    def test_permission_error_handling(self, tmp_path):
+        """Test handling of permission errors"""
+        log_file = tmp_path / "test.log"
 
-    def test_configure_replaces_existing_handlers(self):
-        """Test that configure replaces existing handlers"""
+        with patch("os.chmod", side_effect=OSError("Permission denied")):
+            with patch("logging.getLogger") as mock_get_logger:
+                mock_logger = Mock()
+                mock_get_logger.return_value = mock_logger
+
+                _ = SecureRotatingFileHandler(filename=str(log_file))
+
+                # Should have logged a warning
+                mock_logger.warning.assert_called_once()
+                assert (
+                        "Could not set secure permissions" in
+                        mock_logger.warning.call_args[0][0]
+                )
+
+    def test_windows_skip_permissions(self, tmp_path):
+        """Test that permission setting is skipped on Windows"""
+        log_file = tmp_path / "test.log"
+
+        with patch("os.name", "nt"):
+            with patch("os.chmod") as mock_chmod:
+                handler = SecureRotatingFileHandler(filename=str(log_file))
+
+                # Write a record to trigger file creation
+                record = logging.LogRecord(
+                    name="test",
+                    level=logging.INFO,
+                    pathname="",
+                    lineno=0,
+                    msg="Test",
+                    args=(),
+                    exc_info=None
+                )
+                handler.emit(record)
+
+                # chmod should not be called on Windows
+                mock_chmod.assert_not_called()
+
+
+class TestFMPLogger:
+    """Test FMPLogger functionality"""
+
+    def test_singleton_pattern(self):
+        """Test that FMPLogger implements singleton pattern"""
+        logger1 = FMPLogger()
+        logger2 = FMPLogger()
+
+        assert logger1 is logger2
+
+    def test_initialization_idempotent(self):
+        """Test that multiple initializations don't cause issues"""
         logger = FMPLogger()
-        _ = len(logger._logger.handlers)
+        original_initialized = logger._initialized
+
+        # Initialize again
+        logger.__init__()
+
+        # Should still be initialized
+        assert logger._initialized == original_initialized
+
+    def test_get_logger_with_name(self):
+        """Test getting logger with specific name"""
+        fmp_logger = FMPLogger()
+
+        named_logger = fmp_logger.get_logger("test.module")
+        assert named_logger.name == "fmp_data.test.module"
+
+    def test_get_logger_without_name(self):
+        """Test getting logger without name"""
+        fmp_logger = FMPLogger()
+
+        default_logger = fmp_logger.get_logger()
+        assert default_logger.name == "fmp_data"
+
+    def test_get_logger_none_name(self):
+        """Test getting logger with None name"""
+        fmp_logger = FMPLogger()
+
+        logger = fmp_logger.get_logger(None)
+        assert logger.name == "fmp_data"
+
+    def test_default_console_handler_added(self):
+        """Test that default console handler is added"""
+        with patch("logging.getLogger") as mock_get_logger:
+            mock_logger = Mock()
+            mock_logger.handlers = []
+            mock_get_logger.return_value = mock_logger
+
+            _ = FMPLogger()
+
+            # Should have added console handler
+            mock_logger.addHandler.assert_called()
+
+    def test_sensitive_data_filter_added(self):
+        """Test that sensitive data filter is added to logger"""
+        with patch("logging.getLogger") as mock_get_logger:
+            mock_logger = Mock()
+            mock_logger.handlers = []
+            mock_get_logger.return_value = mock_logger
+
+            _ = FMPLogger()
+
+            # Should have added filter
+            mock_logger.addFilter.assert_called_once()
+            filter_arg = mock_logger.addFilter.call_args[0][0]
+            assert isinstance(filter_arg, SensitiveDataFilter)
+
+    def test_configure_removes_existing_handlers(self):
+        """Test that configure removes existing handlers"""
+        fmp_logger = FMPLogger()
+
+        # Add a mock handler
+        mock_handler = Mock()
+        fmp_logger._handlers["test"] = mock_handler
+        fmp_logger._logger.addHandler(mock_handler)
 
         config = LoggingConfig(
             level="DEBUG",
             handlers={
-                "test_console": LogHandlerConfig(
-                    class_name="StreamHandler",
-                    level="DEBUG"
+                "console": LogHandlerConfig(class_name="StreamHandler")
+            }
+        )
+
+        fmp_logger.configure(config)
+
+        # Old handler should be removed and closed
+        mock_handler.close.assert_called_once()
+        assert "test" not in fmp_logger._handlers
+
+    def test_configure_sets_log_level(self):
+        """Test that configure sets the correct log level"""
+        fmp_logger = FMPLogger()
+
+        config = LoggingConfig(level="WARNING")
+        fmp_logger.configure(config)
+
+        assert fmp_logger._logger.level == logging.WARNING
+
+    def test_configure_creates_log_directory(self, tmp_path):
+        """Test that configure creates log directory when specified"""
+        log_path = tmp_path / "logs" / "nested"
+
+        config = LoggingConfig(
+            level="INFO",
+            log_path=log_path,
+            handlers={
+                "file": LogHandlerConfig(
+                    class_name="FileHandler",
+                    handler_kwargs={"filename": "test.log"}
                 )
             }
         )
 
-        logger.configure(config)
+        fmp_logger = FMPLogger()
+        fmp_logger.configure(config)
 
-        # Should have at least one handler
-        assert len(logger._logger.handlers) >= 1
+        assert log_path.exists()
+        assert log_path.is_dir()
 
-    def test_configure_with_different_levels(self):
-        """Test configuring with different log levels"""
-        logger = FMPLogger()
+    def test_configure_sets_directory_permissions(self, tmp_path):
+        """Test that configure sets secure directory permissions"""
+        log_path = tmp_path / "secure_logs"
 
-        # Test with CRITICAL level
         config = LoggingConfig(
-            level="CRITICAL",
+            level="INFO",
+            log_path=log_path,
             handlers={}
         )
 
-        logger.configure(config)
-        assert logger._logger.level == logging.CRITICAL
+        with patch("os.chmod") as mock_chmod:
+            with patch("sys.platform", "linux"):
+                fmp_logger = FMPLogger()
+                fmp_logger.configure(config)
 
-    def test_handler_kwargs_modification(self, temp_log_dir):
-        """Test that handler kwargs are properly modified for paths"""
-        logger = FMPLogger()
+                if os.name != "nt":
+                    mock_chmod.assert_called_with(log_path, 0o700)
 
-        original_kwargs = {"filename": "test.log", "maxBytes": 1024}
+    def test_configure_handles_permission_error(self, tmp_path):
+        """Test configure handles directory permission errors"""
+        log_path = tmp_path / "logs"
+
+        config = LoggingConfig(
+            level="INFO",
+            log_path=log_path,
+            handlers={}
+        )
+
+        with patch("os.chmod", side_effect=OSError("Permission denied")):
+            with patch.object(FMPLogger()._logger, "warning") as mock_warning:
+                fmp_logger = FMPLogger()
+                fmp_logger.configure(config)
+
+                mock_warning.assert_called_once()
+
+    def test_add_handler_stream_handler(self):
+        """Test adding StreamHandler"""
+        fmp_logger = FMPLogger()
+        config = LogHandlerConfig(class_name="StreamHandler", level="INFO")
+
+        fmp_logger._add_handler("console", config)
+
+        assert "console" in fmp_logger._handlers
+        handler = fmp_logger._handlers["console"]
+        assert isinstance(handler, logging.StreamHandler)
+        assert handler.level == logging.INFO
+
+    def test_add_handler_file_handler(self, tmp_path):
+        """Test adding FileHandler"""
+        log_file = tmp_path / "test.log"
+        fmp_logger = FMPLogger()
+
+        config = LogHandlerConfig(
+            class_name="FileHandler",
+            level="DEBUG",
+            handler_kwargs={"filename": str(log_file)}
+        )
+
+        fmp_logger._add_handler("file", config, tmp_path)
+
+        assert "file" in fmp_logger._handlers
+        handler = fmp_logger._handlers["file"]
+        assert isinstance(handler, logging.FileHandler)
+
+    def test_add_handler_rotating_file_handler(self, tmp_path):
+        """Test adding RotatingFileHandler"""
+        fmp_logger = FMPLogger()
+
+        config = LogHandlerConfig(
+            class_name="RotatingFileHandler",
+            level="INFO",
+            handler_kwargs={
+                "filename": "rotating.log",
+                "maxBytes": 1024,
+                "backupCount": 3
+            }
+        )
+
+        fmp_logger._add_handler("rotating", config, tmp_path)
+
+        assert "rotating" in fmp_logger._handlers
+        handler = fmp_logger._handlers["rotating"]
+        assert isinstance(handler, SecureRotatingFileHandler)
+
+    def test_add_handler_json_handler(self, tmp_path):
+        """Test adding JSON handler with JsonFormatter"""
+        fmp_logger = FMPLogger()
+
+        config = LogHandlerConfig(
+            class_name="JsonRotatingFileHandler",
+            level="DEBUG",
+            handler_kwargs={
+                "filename": "json.log",
+                "maxBytes": 2048
+            }
+        )
+
+        fmp_logger._add_handler("json", config, tmp_path)
+
+        assert "json" in fmp_logger._handlers
+        handler = fmp_logger._handlers["json"]
+        assert isinstance(handler.formatter, JsonFormatter)
+
+    def test_add_handler_unknown_class(self):
+        """Test adding handler with unknown class raises error"""
+        fmp_logger = FMPLogger()
+
+        config = LogHandlerConfig(class_name="UnknownHandler")
+
+        with pytest.raises(ValueError, match="Unknown handler class"):
+            fmp_logger._add_handler("unknown", config)
+
+    def test_add_handler_with_log_path(self, tmp_path):
+        """Test adding handler with log path modifies filename"""
+        fmp_logger = FMPLogger()
+
+        config = LogHandlerConfig(
+            class_name="FileHandler",
+            handler_kwargs={"filename": "test.log"}
+        )
+
+        fmp_logger._add_handler("file", config, tmp_path)
+
+        handler = fmp_logger._handlers["file"]
+        # Should have combined log_path with filename
+        assert str(tmp_path) in handler.baseFilename
+
+
+class TestLogApiCallDecorator:
+    """Test log_api_call decorator functionality"""
+
+    def test_decorator_basic_usage(self):
+        """Test basic decorator usage"""
+        mock_logger = Mock()
+
+        @log_api_call(logger=mock_logger)
+        def test_function(arg1, arg2="default"):
+            return f"{arg1}-{arg2}"
+
+        result = test_function("test", arg2="value")
+
+        assert result == "test-value"
+        assert mock_logger.debug.call_count >= 1
+
+    def test_decorator_with_default_logger(self):
+        """Test decorator with default logger"""
+        with patch.object(FMPLogger(), "get_logger") as mock_get_logger:
+            mock_logger = Mock()
+            mock_get_logger.return_value = mock_logger
+
+            @log_api_call()
+            def test_function():
+                return "success"
+
+            result = test_function()
+
+            assert result == "success"
+            mock_logger.debug.assert_called()
+
+    def test_decorator_exclude_args(self):
+        """Test decorator with exclude_args=True"""
+        mock_logger = Mock()
+
+        @log_api_call(logger=mock_logger, exclude_args=True)
+        def test_function(sensitive_arg):
+            return "result"
+
+        result = test_function("secret_data")
+
+        assert result == "result"
+        # Should still log function call but without args
+        mock_logger.debug.assert_called()
+
+    def test_decorator_logs_success(self):
+        """Test decorator logs successful execution"""
+        mock_logger = Mock()
+
+        @log_api_call(logger=mock_logger)
+        def successful_function():
+            return "success"
+
+        result = successful_function()
+
+        assert result == "success"
+        # Should have logged both start and success
+        assert mock_logger.debug.call_count >= 2
+
+    def test_decorator_logs_error(self):
+        """Test decorator logs errors"""
+        mock_logger = Mock()
+
+        @log_api_call(logger=mock_logger)
+        def failing_function():
+            raise ValueError("Test error")
+
+        with pytest.raises(ValueError):
+            failing_function()
+
+        # Should have logged error
+        mock_logger.error.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_decorator_async_function(self):
+        """Test decorator with async function"""
+        mock_logger = Mock()
+
+        @log_api_call(logger=mock_logger)
+        async def async_function(value):
+            await asyncio.sleep(0.01)
+            return f"async-{value}"
+
+        result = await async_function("test")
+
+        assert result == "async-test"
+        mock_logger.debug.assert_called()
+
+    def test_decorator_preserves_function_metadata(self):
+        """Test that decorator preserves function metadata"""
+        mock_logger = Mock()
+
+        @log_api_call(logger=mock_logger)
+        def documented_function():
+            """This is a test function."""
+            return "result"
+
+        assert documented_function.__name__ == "documented_function"
+        assert documented_function.__doc__ == "This is a test function."
+
+    def test_decorator_with_frame_inspection(self):
+        """Test decorator with frame inspection for module name"""
+        mock_logger = Mock()
+
+        @log_api_call(logger=mock_logger)
+        def test_function():
+            return "result"
+
+        test_function()
+
+        # Check that module information was logged
+        debug_calls = mock_logger.debug.call_args_list
+        assert len(debug_calls) >= 1
+
+        # The call should include module information
+        call_args = debug_calls[0]
+        assert "API call:" in call_args[0][0]
+
+    def test_decorator_no_frame_available(self):
+        """Test decorator when frame inspection fails"""
+        mock_logger = Mock()
+
+        with patch("inspect.currentframe", return_value=None):
+            @log_api_call(logger=mock_logger)
+            def test_function():
+                return "result"
+
+            result = test_function()
+            assert result == "result"
+            mock_logger.debug.assert_called()
+
+
+class TestLoggerIntegration:
+    """Test logger integration scenarios"""
+
+    def test_complete_logging_setup(self, tmp_path):
+        """Test complete logging setup with multiple handlers"""
+        log_path = tmp_path / "logs"
+
         config = LoggingConfig(
             level="DEBUG",
+            log_path=log_path,
             handlers={
+                "console": LogHandlerConfig(
+                    class_name="StreamHandler",
+                    level="INFO"
+                ),
                 "file": LogHandlerConfig(
                     class_name="RotatingFileHandler",
                     level="DEBUG",
-                    handler_kwargs=original_kwargs.copy()
+                    handler_kwargs={
+                        "filename": "app.log",
+                        "maxBytes": 1024,
+                        "backupCount": 2
+                    }
+                ),
+                "json": LogHandlerConfig(
+                    class_name="JsonRotatingFileHandler",
+                    level="WARNING",
+                    handler_kwargs={"filename": "app.json"}
                 )
-            },
-            log_path=temp_log_dir
+            }
         )
 
-        logger.configure(config)
+        fmp_logger = FMPLogger()
+        fmp_logger.configure(config)
 
-        # Original kwargs should not be modified
-        assert original_kwargs["filename"] == "test.log"
+        # Test that all handlers were created
+        assert len(fmp_logger._handlers) == 3
+        assert "console" in fmp_logger._handlers
+        assert "file" in fmp_logger._handlers
+        assert "json" in fmp_logger._handlers
 
+        # Test that log directory was created
+        assert log_path.exists()
 
-# Additional utility tests for better coverage
-class TestSensitiveDataFilterUtilities:
-    """Test utility methods in SensitiveDataFilter"""
+    def test_reconfiguration(self):
+        """Test that logger can be reconfigured"""
+        fmp_logger = FMPLogger()
 
-    def test_mask_value_various_lengths(self):
-        """Test _mask_value with various string lengths"""
-        filter = SensitiveDataFilter()
+        # Initial configuration
+        config1 = LoggingConfig(
+            level="INFO",
+            handlers={"console": LogHandlerConfig(class_name="StreamHandler")}
+        )
+        fmp_logger.configure(config1)
 
-        # Test various lengths
-        assert filter._mask_value("") == ""
-        assert filter._mask_value("a") == "*"
-        assert filter._mask_value("ab") == "**"
-        assert filter._mask_value("abc") == "***"
-        assert filter._mask_value("abcd") == "****"
-        assert filter._mask_value("abcdefgh") == "********"  # 8 chars
+        # Reconfigure
+        config2 = LoggingConfig(
+            level="DEBUG",
+            handlers={
+                "console": LogHandlerConfig(class_name="StreamHandler"),
+                "new_handler": LogHandlerConfig(class_name="StreamHandler")
+            }
+        )
+        fmp_logger.configure(config2)
 
-        # Longer than 8 chars
-        result = filter._mask_value("abcdefghij")  # 10 chars
-        assert result.startswith("ab")
-        assert result.endswith("ij")
-        assert len(result) == 10
+        # Should have new handlers
+        assert len(fmp_logger._handlers) == 2
+        assert "new_handler" in fmp_logger._handlers
 
-    def test_sensitive_keys_detection(self):
-        """Test detection of sensitive keys"""
-        filter = SensitiveDataFilter()
+    def test_filter_integration(self):
+        """Test sensitive data filter integration"""
+        fmp_logger = FMPLogger()
+        logger = fmp_logger.get_logger("test")
 
-        sensitive_data = {
-            "api_key": "secret1",
-            "API_KEY": "secret2",
-            "apikey": "secret3",
-            "token": "secret4",
-            "password": "secret5",
-            "normal_field": "not_secret"
-        }
+        # Create a test handler to capture output
+        import io
+        test_stream = io.StringIO()
+        test_handler = logging.StreamHandler(test_stream)
+        test_handler.setFormatter(logging.Formatter("%(message)s"))
+        logger.addHandler(test_handler)
+        logger.setLevel(logging.INFO)
 
-        masked = filter._mask_dict_recursive(sensitive_data)
+        # Log sensitive data
+        logger.info("Request with api_key=secret123")
 
-        # Sensitive fields should be masked
-        assert "secret1" not in str(masked)
-        assert "secret2" not in str(masked)
-        assert "secret3" not in str(masked)
-        assert "secret4" not in str(masked)
-        assert "secret5" not in str(masked)
-
-        # Non-sensitive should remain
-        assert masked["normal_field"] == "not_secret"
+        # Check that data was masked
+        output = test_stream.getvalue()
+        assert "secret123" not in output
+        assert "api_key=" in output
