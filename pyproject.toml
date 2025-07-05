@@ -211,7 +211,9 @@ warn_no_return = true
 warn_unreachable = true
 strict_optional = true
 show_error_codes = true
-disable_error_code = ["type-arg"]
+disable_error_code = [
+    "type-arg",
+]
 exclude = [
     "tests/",
     "examples/",
@@ -252,7 +254,6 @@ module = [
     "fmp_data._version",
 ]
 ignore_missing_imports = true
-
 
 [[tool.mypy.overrides]]
 module = "fmp_data.__init__"
