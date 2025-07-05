@@ -1,10 +1,10 @@
-import os
 from collections.abc import Generator
 from datetime import datetime
+import os
 
-import pytest
 from langchain_openai import OpenAIEmbeddings
 from pydantic import SecretStr
+import pytest
 
 from fmp_data import FMPDataClient
 from fmp_data.lc import EndpointVectorStore, LangChainConfig, create_vector_store

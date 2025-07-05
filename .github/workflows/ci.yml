@@ -1,0 +1,71 @@
+name: Test-Matrix
+
+on:
+  pull_request:                # run on every PR (open & update)
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python:
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"            # ← now treated as fully stable
+
+    steps:
+      # ① Checkout
+      - name: 🛎️  Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ② CPython toolchain
+      - name: 🐍  Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      # ③ uv installer + cache
+      - name: ⚡  Install uv (with cache)
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: 🗄️  Cache uv wheels
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            ~/.local/share/uv
+          key: ${{ runner.os }}-py${{ matrix.python }}-uv-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-py${{ matrix.python }}-uv-
+
+      # ④ Run Nox sessions
+      - name: ▶️  Run Nox sessions
+        env:
+          NOX_USE_UV: "1"
+          NOX_PYTHON_VERSIONS: ${{ matrix.python }}
+        run: |
+          # Full test suite for every stable version
+          uv tool run nox -s tests
+
+          # Quality gates (lint, type-check, security) once on latest LTS (3.13)
+          if [[ "${{ matrix.python }}" == "3.13" ]]; then
+            uv tool run nox -s lint typecheck security
+          fi
+
+      - name: � coverage upload
+        if: matrix.python == '3.13'                       # upload once
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          flags: unittests
+          fail_ci_if_error: false

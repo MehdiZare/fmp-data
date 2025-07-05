@@ -1,0 +1,54 @@
+name: Publish-to-PyPI
+
+on:
+  workflow_run:
+    workflows:
+      - Test-Matrix
+    branches:
+      - main                   # fire only for merges to main
+    types:
+      - completed
+
+permissions:
+  id-token: write
+  contents: write              # allow creating GitHub releases
+
+jobs:
+  build-and-publish:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    env:
+      PYTHON_VERSION: "3.12"
+
+    steps:
+      - name: 🛎️  Checkout tested commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: 🐍  Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: ⚡  Install uv (with cache)
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: 📦  Build wheel & sdist
+        run: |
+          uv pip install build
+          uv run python -m build --wheel --sdist
+
+      - name: 🚀  Upload to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.12.4
+        with:
+          packages-dir: dist
+          skip-existing: false
+
+      - name: 📝  Create GitHub release (optional)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.event.workflow_run.head_sha }}
+          generate_release_notes: true

@@ -4,8 +4,17 @@ from enum import Enum
 from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
 
 T = TypeVar("T")
+
+default_model_config = ConfigDict(
+    populate_by_name=True,
+    validate_assignment=True,
+    str_strip_whitespace=True,
+    extra="allow",
+    alias_generator=to_camel,
+)
 
 
 class HTTPMethod(str, Enum):
@@ -70,7 +79,7 @@ class ParamType(str, Enum):
             raise ValueError(f"Unsupported type: {self}")
         except (ValueError, TypeError) as e:
             raise ValueError(
-                f"Failed to convert value '{value}' to type {self.value}: {str(e)}"
+                f"Failed to convert value '{value}' to type {self.value}: {e!s}"
             ) from e
 
     def _convert_to_string(self, value: Any) -> str:
@@ -126,8 +135,7 @@ class EndpointParam:
         # Validate against allowed values if specified
         if self.valid_values and converted_value not in self.valid_values:
             raise ValueError(
-                f"Invalid value for {self.name}. "
-                f"Must be one of: {self.valid_values}"
+                f"Invalid value for {self.name}. Must be one of: {self.valid_values}"
             )
 
         return converted_value
@@ -203,6 +211,8 @@ class Endpoint(BaseModel, Generic[T]):
 class BaseSymbolArg(BaseModel):
     """Base model for any endpoint requiring just a symbol"""
 
+    model_config = default_model_config
+
     symbol: str = Field(
         description="Stock symbol/ticker of the company (e.g., AAPL, MSFT)",
         pattern=r"^[A-Z]{1,5}$",
@@ -212,37 +222,37 @@ class BaseSymbolArg(BaseModel):
 class ShareFloat(BaseModel):
     """Share float information"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     date: datetime | None = Field(
         None, description="Data date"
     )  # Example: "2024-12-09 12:10:05"
     free_float: float | None = Field(
-        alias="freeFloat", description="Free float percentage"
+        None, description="Free float percentage"
     )  # Example: 55.73835
     float_shares: float | None = Field(
-        alias="floatShares", description="Number of floating shares"
+        None, description="Number of floating shares"
     )  # Example: 36025816
     outstanding_shares: float | None = Field(
-        alias="outstandingShares", description="Total outstanding shares"
+        None, description="Total outstanding shares"
     )
 
 
 class MarketCapitalization(BaseModel):
     """Market capitalization data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol")
-    date: datetime = Field(description="Date")
-    market_cap: float = Field(alias="marketCap", description="Market capitalization")
+    date: datetime | None = Field(None, description="Date")
+    market_cap: float | None = Field(None, description="Market capitalization")
 
 
 class CompanySymbol(BaseModel):
     """Company symbol information"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol")
     name: str | None = Field(None, description="Company name")

@@ -1,4 +1,4 @@
-from .models import ParameterHint
+from fmp_data.lc.models import ParameterHint
 
 LIMIT_HINT = ParameterHint(
     natural_names=["limit", "max results", "number of results"],

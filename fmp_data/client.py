@@ -1,4 +1,4 @@
-# client.py
+# fmp_data/client.py
 import logging
 import types
 import warnings
@@ -58,8 +58,7 @@ class FMPDataClient(BaseClient):
                             class_name="StreamHandler",
                             level="DEBUG" if debug else "INFO",
                             format=(
-                                "%(asctime)s - %(levelname)s -"
-                                " %(name)s - %(message)s"
+                                "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
                             ),
                         )
                     },
@@ -85,7 +84,7 @@ class FMPDataClient(BaseClient):
         except Exception as e:
             if not hasattr(self, "_logger") or self._logger is None:
                 self._logger = FMPLogger().get_logger(__name__)
-            self._logger.error(f"Failed to initialize client: {str(e)}")
+            self._logger.error(f"Failed to initialize client: {e!s}")
             raise
 
     @classmethod
@@ -107,7 +106,7 @@ class FMPDataClient(BaseClient):
     def __enter__(self) -> "FMPDataClient":
         """Context manager enter"""
         if not self._initialized:
-            self._setup_http_client()
+            raise RuntimeError("Client not properly initialized")
         return self
 
     def __exit__(
@@ -145,7 +144,7 @@ class FMPDataClient(BaseClient):
             # Log if possible, but don't raise
             logger = getattr(self, "_logger", None)
             if logger is not None:
-                logger.error(f"Error during cleanup: {str(e)}")
+                logger.error(f"Error during cleanup: {e!s}")
 
     def __del__(self) -> None:
         """Destructor that ensures resources are cleaned up"""
@@ -155,10 +154,27 @@ class FMPDataClient(BaseClient):
         except (Exception, BaseException) as e:
             # Suppress any errors during cleanup
             warnings.warn(
-                f"Error during FMPDataClient cleanup: {str(e)}",
+                f"Error during FMPDataClient cleanup: {e!s}",
                 ResourceWarning,
                 stacklevel=2,
             )
+
+    @property
+    def logger(self) -> logging.Logger:
+        """Get the logger instance, creating one if needed"""
+        if self._logger is None:
+            self._logger = FMPLogger().get_logger(self.__class__.__module__)
+        return self._logger
+
+    @logger.setter
+    def logger(self, value: logging.Logger) -> None:
+        """Set the logger instance"""
+        self._logger = value
+
+    @logger.deleter
+    def logger(self) -> None:
+        """Delete the logger instance"""
+        self._logger = None
 
     @property
     def company(self) -> CompanyClient:

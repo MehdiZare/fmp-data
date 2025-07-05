@@ -14,15 +14,15 @@ from fmp_data.technical.models import (
 )
 
 __all__ = [
+    "ADXIndicator",
+    "DEMAIndicator",
+    "EMAIndicator",
+    "RSIIndicator",
+    "SMAIndicator",
+    "StandardDeviationIndicator",
+    "TEMAIndicator",
     "TechnicalClient",
     "TechnicalIndicator",
-    "SMAIndicator",
-    "EMAIndicator",
     "WMAIndicator",
-    "DEMAIndicator",
-    "TEMAIndicator",
     "WilliamsIndicator",
-    "RSIIndicator",
-    "ADXIndicator",
-    "StandardDeviationIndicator",
 ]

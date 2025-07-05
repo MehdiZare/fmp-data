@@ -13,14 +13,14 @@ from fmp_data.institutional.models import (  # 13F Models; Insider Trading Model
 )
 
 __all__ = [
-    "InstitutionalClient",
+    "AssetAllocation",
     "Form13F",
     "Form13FDate",
-    "AssetAllocation",
-    "InstitutionalHolder",
-    "InstitutionalHolding",
-    "InsiderTrade",
-    "InsiderTransactionType",
     "InsiderRoster",
     "InsiderStatistic",
+    "InsiderTrade",
+    "InsiderTransactionType",
+    "InstitutionalClient",
+    "InstitutionalHolder",
+    "InstitutionalHolding",
 ]

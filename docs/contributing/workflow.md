@@ -1,226 +1,301 @@
-# docs/contributing/workflow.md
-# Development Workflow
+# Workflow Guide
 
-## Git Branch Strategy
+## Development Workflow
 
-We use a simplified Git flow with these main branches:
-- `main`: Production-ready code
-- `develop`: Integration branch for features
-- Feature branches: For new features and changes
+This guide explains our development workflow, branching strategy, and collaboration processes.
 
-### Creating a New Feature Branch
+## Branching Strategy
 
-1. Always create your feature branch from `develop`:
+We use a simplified Git Flow workflow:
+
+### Main Branches
+
+- **`main`**: Production-ready code, always stable
+- **`develop`**: Integration branch for features (if needed for complex releases)
+
+### Feature Branches
+
+- **`feature/feature-name`**: New features
+- **`fix/issue-description`**: Bug fixes
+- **`docs/documentation-update`**: Documentation changes
+- **`chore/maintenance-task`**: Maintenance tasks
+
+### Branch Naming Conventions
+
 ```bash
-# Update your local develop branch
-git checkout develop
-git pull origin develop
+# Features
+feature/add-market-indicators
+feature/improve-error-handling
 
-# Create and switch to a new feature branch
-git checkout -b feature/your-feature-name
+# Bug fixes
+fix/rate-limit-calculation
+fix/async-client-memory-leak
+
+# Documentation
+docs/api-reference-update
+docs/getting-started-guide
+
+# Maintenance
+chore/update-dependencies
+chore/refactor-logging
 ```
 
-Branch naming conventions:
-- `feature/`: New features or enhancements
-- `fix/`: Bug fixes
-- `docs/`: Documentation changes
-- `refactor/`: Code refactoring
-- `test/`: Adding or modifying tests
+## Development Process
 
-Example:
-```bash
-git checkout -b feature/add-balance-sheet-endpoint
-git checkout -b fix/rate-limit-bug
-git checkout -b docs/add-examples
-```
+### 1. Planning and Issue Creation
 
-## Development Cycle
+1. **Check Existing Issues**: Search for similar requests or bugs
+2. **Create Detailed Issues**: Include requirements, expected behavior, and acceptance criteria
+3. **Get Alignment**: Discuss approach for significant changes
 
-1. **Make Changes**:
+### 2. Feature Development
+
+1. **Create Feature Branch**
    ```bash
-   # Make your changes
-   git add .
-   git commit -m "feat: add balance sheet endpoint"
-   ```
-
-   Commit message format:
-   - `feat`: New feature
-   - `fix`: Bug fix
-   - `docs`: Documentation
-   - `style`: Formatting
-   - `refactor`: Code restructuring
-   - `test`: Adding tests
-   - `chore`: Maintenance
-
-2. **Run Tests & Checks**:
-   ```bash
-   # Run test suite
-   poetry run pytest
-
-   # Run linting
-   poetry run pre-commit run --all-files
-   ```
-
-3. **Push Changes**:
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-
-## Creating Pull Requests
-
-1. Go to GitHub repository
-2. Click "New Pull Request"
-3. Set base branch to `develop`
-4. Add description following the template
-5. Link related issues
-6. Request reviews
-
-## Release Process
-
-We use semantic versioning (MAJOR.MINOR.PATCH):
-
-### 1. Development Releases
-
-For testing during development:
-```bash
-# Create development release tag
-git tag -a v0.1.0-dev.1 -m "Development release v0.1.0-dev.1"
-git push origin v0.1.0-dev.1
-```
-
-### 2. Alpha/Beta Releases
-
-For early testing:
-```bash
-# Alpha release
-git tag -a v0.1.0-alpha.1 -m "Alpha release v0.1.0-alpha.1"
-git push origin v0.1.0-alpha.1
-
-# Beta release
-git tag -a v0.1.0-beta.1 -m "Beta release v0.1.0-beta.1"
-git push origin v0.1.0-beta.1
-```
-
-### 3. Release Candidates
-
-When feature-complete:
-```bash
-git tag -a v0.1.0-rc.1 -m "Release candidate v0.1.0-rc.1"
-git push origin v0.1.0-rc.1
-```
-
-### 4. Stable Release
-
-1. Update CHANGELOG.md
-2. Create release:
-   ```bash
-   # Ensure you're on main branch
    git checkout main
    git pull origin main
-
-   # Create stable release tag
-   git tag -a v0.1.0 -m "Release v0.1.0"
-   git push origin v0.1.0
+   git checkout -b feature/your-feature
    ```
 
-### Release Automation
+2. **Implement Changes**
+   - Follow coding standards
+   - Add comprehensive tests
+   - Update documentation
+   - Commit frequently with clear messages
 
-When you push a tag:
-1. GitHub Actions builds package
-2. Runs test suite
-3. Creates GitHub release
-4. Publishes to PyPI:
-   - Pre-releases go to TestPyPI
-   - Stable releases go to PyPI
-
-## Version Numbers
-
-Version format: MAJOR.MINOR.PATCH[-PRERELEASE]
-
-Examples:
-- `0.1.0-dev.1`: Development version
-- `0.1.0-alpha.1`: Alpha release
-- `0.1.0-beta.1`: Beta release
-- `0.1.0-rc.1`: Release candidate
-- `0.1.0`: Stable release
-
-When to increment:
-- MAJOR: Incompatible API changes
-- MINOR: New features (backwards-compatible)
-- PATCH: Bug fixes (backwards-compatible)
-
-## Hotfix Process
-
-For urgent fixes to production:
-
-1. Create hotfix branch from `main`:
+3. **Keep Branch Updated**
    ```bash
-   git checkout main
-   git checkout -b hotfix/critical-bug
+   git fetch origin
+   git rebase origin/main
    ```
 
-2. Make fixes and test:
+### 3. Code Quality Checks
+
+Run all checks before pushing:
+
+```bash
+# Formatting
+poetry run black .
+poetry run isort .
+
+# Linting
+poetry run ruff check .
+
+# Type checking
+poetry run mypy fmp_data
+
+# Tests
+poetry run pytest --cov=fmp_data
+
+# Documentation
+poetry run mkdocs build --strict
+```
+
+### 4. Pull Request Process
+
+1. **Push Feature Branch**
    ```bash
-   # Make changes
-   git commit -m "fix: critical bug description"
-
-   # Run tests
-   poetry run pytest
+   git push origin feature/your-feature
    ```
 
-3. Create release:
-   ```bash
-   # Example: if current version is 1.1.0
-   git tag -a v1.1.1 -m "Hotfix: critical bug"
-   git push origin v1.1.1
-   ```
+2. **Create Pull Request**
+   - Use descriptive title with conventional commit format
+   - Fill out PR template completely
+   - Add appropriate labels for semantic versioning
+   - Request reviews from maintainers
 
-4. Merge back to both `main` and `develop`:
-   ```bash
-   git checkout main
-   git merge hotfix/critical-bug
-   git push origin main
+3. **Address Review Feedback**
+   - Make requested changes
+   - Respond to comments
+   - Keep discussion focused and constructive
 
-   git checkout develop
-   git merge hotfix/critical-bug
-   git push origin develop
-   ```
+4. **Merge Process**
+   - Squash and merge for clean history
+   - Delete feature branch after merge
 
-## Managing Dependencies
+## Commit Message Guidelines
 
-1. Adding dependencies:
-   ```bash
-   # Main dependencies
-   poetry add package-name
+### Conventional Commits Format
 
-   # Development dependencies
-   poetry add --group dev package-name
+```
+<type>[optional scope]: <description>
 
-   # Documentation dependencies
-   poetry add --group docs package-name
-   ```
+[optional body]
 
-2. Updating dependencies:
-   ```bash
-   # Update all dependencies
-   poetry update
+[optional footer(s)]
+```
 
-   # Update specific package
-   poetry update package-name
-   ```
+### Types
 
-## Documentation Updates
+- **feat**: New feature
+- **fix**: Bug fix
+- **docs**: Documentation changes
+- **style**: Code style changes (formatting, etc.)
+- **refactor**: Code refactoring
+- **test**: Test additions or modifications
+- **chore**: Maintenance tasks
 
-1. Update docs:
-   ```bash
-   # Serve docs locally
-   poetry run mkdocs serve
+### Examples
 
-   # Build docs
-   poetry run mkdocs build
-   ```
+```bash
+feat(client): add async support for all endpoints
 
-2. API documentation:
-   - Add docstrings to all public functions/classes
-   - Include examples in docstrings
-   - Update reference documentation
+fix(market): resolve rate limiting calculation bug
+
+docs(api): update company client documentation
+
+test(fundamental): add integration tests for financial statements
+
+chore(deps): update httpx to latest version
+```
+
+## Code Review Standards
+
+### Review Checklist
+
+**Functionality**
+- [ ] Code works as intended
+- [ ] Edge cases are handled
+- [ ] Error handling is appropriate
+- [ ] Performance considerations addressed
+
+**Code Quality**
+- [ ] Follows project coding standards
+- [ ] Type hints are complete and accurate
+- [ ] Documentation is clear and helpful
+- [ ] No code duplication or over-engineering
+
+**Testing**
+- [ ] Adequate test coverage
+- [ ] Tests are meaningful and well-structured
+- [ ] Integration tests for API changes
+- [ ] Mock usage is appropriate
+
+**Documentation**
+- [ ] Docstrings updated
+- [ ] API documentation reflects changes
+- [ ] Examples are provided where helpful
+- [ ] CHANGELOG updated if needed
+
+### Review Process
+
+1. **Automated Checks**: GitHub Actions must pass
+2. **Peer Review**: At least one maintainer approval required
+3. **Discussion**: Address feedback constructively
+4. **Final Review**: Ensure all concerns are resolved
+
+## Release Workflow
+
+### Semantic Versioning
+
+We use automated semantic versioning based on PR labels:
+
+- **major**: Breaking changes (v1.0.0 → v2.0.0)
+- **minor**: New features (v1.0.0 → v1.1.0)
+- **patch**: Bug fixes (v1.0.0 → v1.0.1)
+
+### Release Process
+
+1. **PR Labeling**: Add appropriate version labels to PRs
+2. **Automated Release**: GitHub Actions handles versioning and publishing
+3. **Release Notes**: Generated automatically from PR descriptions
+4. **Distribution**: Published to PyPI automatically
+
+## Collaboration Guidelines
+
+### Communication
+
+- **Be Clear**: Use precise language in issues and PRs
+- **Be Respectful**: Maintain professional and welcoming tone
+- **Be Helpful**: Assist newcomers and share knowledge
+- **Be Patient**: Allow time for review and discussion
+
+### Issue Management
+
+- **Triage**: Label issues appropriately
+- **Prioritization**: Focus on critical bugs and high-impact features
+- **Assignment**: Assign issues to appropriate contributors
+- **Tracking**: Update progress and status regularly
+
+### Documentation Maintenance
+
+- **Keep Current**: Update docs with code changes
+- **Examples**: Provide practical usage examples
+- **Clarity**: Write for users at different experience levels
+- **Organization**: Maintain logical structure and navigation
+
+## Tools and Automation
+
+### GitHub Actions
+
+- **CI/CD**: Automated testing, linting, and type checking
+- **Release**: Automated versioning and PyPI publishing
+- **Documentation**: Automated docs building and deployment
+
+### Pre-commit Hooks
+
+- **Code Formatting**: Black and isort
+- **Linting**: Ruff
+- **Type Checking**: mypy
+- **Security**: Safety checks
+
+### Development Dependencies
+
+```bash
+# Install all development dependencies
+poetry install --with dev,docs,test
+
+# Update dependencies
+poetry update
+
+# Add new dependency
+poetry add package-name
+poetry add --group dev package-name  # Development only
+```
+
+## Troubleshooting Common Issues
+
+### Environment Setup
+
+```bash
+# Reset environment
+poetry env remove python
+poetry install
+
+# Clear cache
+poetry cache clear --all .
+```
+
+### Git Issues
+
+```bash
+# Sync with main
+git fetch origin
+git rebase origin/main
+
+# Fix merge conflicts
+git rebase --continue
+
+# Reset branch
+git reset --hard origin/main
+```
+
+### Testing Issues
+
+```bash
+# Run specific tests
+poetry run pytest tests/test_client.py -v
+
+# Debug failing tests
+poetry run pytest tests/test_client.py::test_function_name -s
+
+# Update test snapshots
+poetry run pytest --snapshot-update
+```
+
+## Getting Help
+
+- **GitHub Discussions**: Ask questions and share ideas
+- **Discord/Slack**: Real-time chat (if available)
+- **Documentation**: Check existing guides and API docs
+- **Issues**: Report bugs or request clarification

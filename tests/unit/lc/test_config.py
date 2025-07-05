@@ -2,8 +2,8 @@
 import os
 from unittest.mock import patch
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from fmp_data.lc.config import EmbeddingProvider, LangChainConfig
 
@@ -43,7 +43,8 @@ def test_langchain_config_validation():
     # Test invalid similarity threshold
     with pytest.raises(ValidationError):
         LangChainConfig(
-            api_key="test-key", similarity_threshold=1.5  # Should be between 0 and 1
+            api_key="test-key",
+            similarity_threshold=1.5,  # Should be between 0 and 1
         )
 
     # Test invalid max_tools

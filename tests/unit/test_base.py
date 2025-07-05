@@ -2,8 +2,8 @@ import json
 from unittest.mock import MagicMock, Mock, patch
 
 import httpx
-import pytest
 from pydantic import BaseModel
+import pytest
 from tenacity import RetryError
 
 from fmp_data.base import BaseClient, EndpointGroup

@@ -1,6 +1,6 @@
 # tests/lc/test_models.py
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from fmp_data.lc.models import (
     EndpointSemantics,

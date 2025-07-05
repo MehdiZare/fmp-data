@@ -40,8 +40,8 @@ def api_key():
 
 @pytest.fixture
 def client(api_key):
-    from fmp_data import FMPClient
-    return FMPClient(api_key=api_key)
+    from fmp_data import FMPDataClient
+    return FMPDataClient(api_key=api_key)
 ```
 
 2. **Test Files**: Create test files with descriptive names:

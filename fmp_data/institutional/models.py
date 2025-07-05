@@ -1,15 +1,24 @@
 # fmp_data/institutional/models.py
-import warnings
 from datetime import date, datetime
 from typing import Any
+import warnings
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic.alias_generators import to_camel
+
+default_model_config = ConfigDict(
+    populate_by_name=True,
+    validate_assignment=True,
+    str_strip_whitespace=True,
+    extra="allow",
+    alias_generator=to_camel,
+)
 
 
 class Form13F(BaseModel):
     """Individual holding in a 13F report"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     form_date: date = Field(description="Date of form", alias="date")
     filing_date: date = Field(alias="fillingDate", description="Filing date")
@@ -29,6 +38,8 @@ class Form13F(BaseModel):
 
 class Form13FDate(BaseModel):
     """Form 13F filing dates"""
+
+    model_config = default_model_config
 
     form_date: date = Field(description="Date of form 13F filing", alias="date")
 
@@ -72,7 +83,7 @@ class Form13FDate(BaseModel):
 class AssetAllocation(BaseModel):
     """13F asset allocation data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     allocation_date: date = Field(description="Allocation date", alias="date")
     cik: str = Field(description="Institution CIK")
@@ -87,7 +98,7 @@ class AssetAllocation(BaseModel):
 class InstitutionalHolder(BaseModel):
     """Institutional holder information"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     cik: str = Field(description="CIK number")
     name: str = Field(description="Institution name")
@@ -96,7 +107,7 @@ class InstitutionalHolder(BaseModel):
 class InstitutionalHolding(BaseModel):
     """Institutional holding information"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol")
     cik: str = Field(description="CIK number")
@@ -142,7 +153,7 @@ class InstitutionalHolding(BaseModel):
 class InsiderTransactionType(BaseModel):
     """Insider transaction type"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     code: str = Field(description="Transaction code")
     description: str = Field(description="Transaction description")
@@ -154,7 +165,7 @@ class InsiderTransactionType(BaseModel):
 class InsiderRoster(BaseModel):
     """Insider roster information"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     owner: str = Field(description="Insider name")
     transaction_date: date = Field(
@@ -168,7 +179,7 @@ class InsiderRoster(BaseModel):
 class InsiderStatistic(BaseModel):
     """Insider trading statistics"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol")
     cik: str = Field(description="CIK number")
@@ -190,7 +201,7 @@ class InsiderStatistic(BaseModel):
 class InsiderTrade(BaseModel):
     """Insider trade information"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol")
     filing_date: datetime = Field(alias="filingDate", description="SEC filing date")
@@ -222,7 +233,7 @@ class InsiderTrade(BaseModel):
 class CIKMapping(BaseModel):
     """CIK to name mapping information"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     reporting_cik: str = Field(alias="reportingCik", description="CIK number")
     reporting_name: str = Field(
@@ -233,7 +244,8 @@ class CIKMapping(BaseModel):
 class CIKCompanyMap(BaseModel):
     """CIK to company mapping information"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
+
     symbol: str = Field(description="Stock symbol")
     cik: str = Field(description="CIK number", alias="companyCik")
 
@@ -241,7 +253,7 @@ class CIKCompanyMap(BaseModel):
 class BeneficialOwnership(BaseModel):
     """Beneficial ownership information"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     filing_date: datetime = Field(alias="filingDate", description="Filing date")
@@ -279,7 +291,7 @@ class BeneficialOwnership(BaseModel):
 class FailToDeliver(BaseModel):
     """Fail to deliver information"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     fail_date: date = Field(description="Date of fail to deliver", alias="date")

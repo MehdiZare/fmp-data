@@ -1,8 +1,8 @@
 # tests/lc/test_vector_store.py
 from unittest.mock import Mock, patch
 
-import pytest
 from langchain_core.embeddings import Embeddings
+import pytest
 
 from fmp_data.lc.models import EndpointInfo
 from fmp_data.lc.registry import EndpointRegistry

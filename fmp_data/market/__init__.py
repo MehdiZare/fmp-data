@@ -9,10 +9,10 @@ from fmp_data.market.models import (
 )
 
 __all__ = [
-    "MarketClient",
     "CompanySearchResult",
+    "MarketClient",
     "MarketHours",
     "MarketMover",
-    "SectorPerformance",
     "PrePostMarketQuote",
+    "SectorPerformance",
 ]

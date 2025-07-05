@@ -1,13 +1,23 @@
 # fmp_data/alternative/models.py
 
-import warnings
-from datetime import date, datetime
+import datetime
+from datetime import date
 from typing import Any
+import warnings
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic.alias_generators import to_camel
 
 UTC = ZoneInfo("UTC")
+
+default_model_config = ConfigDict(
+    populate_by_name=True,
+    validate_assignment=True,
+    str_strip_whitespace=True,
+    extra="allow",
+    alias_generator=to_camel,
+)
 
 
 # Base Models
@@ -20,7 +30,7 @@ class PriceQuote(BaseModel):
     symbol: str = Field(description="Trading symbol")
     price: float | None = Field(None, description="Current price")
     change: float | None = Field(None, description="Price change")
-    change_percent: float = Field(
+    change_percent: float | None = Field(
         alias="changesPercentage", description="Percent change"
     )
 
@@ -64,19 +74,19 @@ class PriceQuote(BaseModel):
     shares_outstanding: float | None = Field(
         None, alias="sharesOutstanding", description="Shares outstanding"
     )
-    earnings_announcement: datetime | None = Field(
+    earnings_announcement: datetime.datetime | None = Field(
         None, alias="earningsAnnouncement", description="Next earnings date"
     )
     exchange: str | None = Field(None, description="Exchange name")
 
-    timestamp: datetime | None = Field(
+    timestamp: datetime.datetime | None = Field(
         None,
         description="Quote timestamp",
         json_schema_extra={"format": "unix-timestamp"},
     )
 
     @field_validator("timestamp", mode="before")
-    def parse_timestamp(cls, value: Any) -> datetime | None:
+    def parse_timestamp(cls, value: Any) -> datetime.datetime | None:
         if value is None:
             return None
 
@@ -86,7 +96,7 @@ class PriceQuote(BaseModel):
             else:
                 raise ValueError(f"Unexpected type for timestamp: {type(value)}")
 
-            return datetime.fromtimestamp(timestamp, tz=ZoneInfo("UTC"))
+            return datetime.datetime.fromtimestamp(timestamp, tz=UTC)
         except Exception as e:
             warnings.warn(f"Failed to parse timestamp {value}: {e}", stacklevel=2)
             return None
@@ -123,7 +133,7 @@ class IntradayPrice(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    date: datetime = Field(description="Price date and time")
+    date: datetime.datetime = Field(description="Price date and time")
     open: float = Field(description="Opening price")
     high: float = Field(description="High price")
     low: float = Field(description="Low price")
@@ -151,22 +161,27 @@ class CryptoPair(BaseModel):
 class CryptoQuote(PriceQuote):
     """Cryptocurrency price quote"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(
+        populate_by_name=True,
+        validate_assignment=True,
+        extra="ignore",  # Allow extra fields from API
+    )
+
+    # Override the base class field to make it optional
+    change_percent: float | None = Field(
+        None, alias="changesPercentage", description="Percent change"
+    )
 
     @field_validator("timestamp", mode="before")
-    def parse_timestamp(cls, value: Any) -> datetime | None:
+    def parse_timestamp(cls, value: Any) -> datetime.datetime | None:
+        """Parse Unix timestamp (int, float, str) into a TZ-aware UTC datetime."""
         if value is None:
             return None
-
         try:
-            if isinstance(value, str | int | float):
-                timestamp = float(value)
-            else:
-                raise ValueError(f"Unexpected type for timestamp: {type(value)}")
-
-            return datetime.fromtimestamp(timestamp, tz=ZoneInfo("UTC"))
-        except Exception as e:
-            warnings.warn(f"Failed to parse timestamp {value}: {e}", stacklevel=2)
+            ts_float = float(value)  # handles int, float, str transparently
+            return datetime.datetime.fromtimestamp(ts_float, tz=UTC)
+        except (ValueError, TypeError) as exc:
+            warnings.warn(f"Failed to parse timestamp {value!r}: {exc}", stacklevel=2)
             return None
 
 

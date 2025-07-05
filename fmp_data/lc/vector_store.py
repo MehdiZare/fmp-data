@@ -1,19 +1,27 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Sequence
 from datetime import date, datetime
+import json
 from logging import Logger
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
-import faiss  # type: ignore # Acknowledge missing stubs
 from langchain.embeddings.base import Embeddings
 from langchain.tools import StructuredTool
 from langchain_community.docstore.in_memory import InMemoryDocstore
-from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
+from langchain_core.utils.function_calling import convert_to_openai_function
 from pydantic import BaseModel, ConfigDict, Field, create_model
+
+try:
+    import faiss
+    from langchain_community.vectorstores import FAISS
+except ModuleNotFoundError:  # pragma: no cover
+    raise ImportError(
+        "FAISS is required for vector-store support. "
+        "Install with:  pip install 'fmp-data[langchain]'"
+    ) from None
 
 from fmp_data.base import BaseClient
 from fmp_data.exceptions import ConfigError
@@ -25,7 +33,7 @@ from fmp_data.models import ParamType
 class ToolFactory:
     """Helper class to modularize create_tool behavior"""
 
-    PARAM_TYPE_MAPPING = {
+    PARAM_TYPE_MAPPING: ClassVar[dict[ParamType, type]] = {
         ParamType.STRING: str,
         ParamType.INTEGER: int,
         ParamType.FLOAT: float,
@@ -55,7 +63,7 @@ class ToolFactory:
         """Generate the description string for a parameter."""
         if hint:
             return (
-                f"{str(param.description)}\n"
+                f"{param.description!s}\n"
                 f"Examples: {', '.join(str(ex) for ex in hint.examples)}\n"
                 f"Context clues: {', '.join(str(c) for c in hint.context_clues)}"
             )
@@ -172,7 +180,7 @@ class EndpointVectorStore:
                     dimension=dimension,
                 )
         except Exception as e:
-            raise RuntimeError(f"Failed to initialize vector store: {str(e)}") from e
+            raise RuntimeError(f"Failed to initialize vector store: {e!s}") from e
 
     def _get_embedding_dimension(self) -> int:
         """Get embedding dimension by testing with a sample text"""
@@ -198,26 +206,51 @@ class EndpointVectorStore:
                 allow_dangerous_deserialization=True,
             )
         except Exception as e:
-            raise ConfigError(f"Failed to load vector store: {str(e)}") from e
+            raise ConfigError(f"Failed to load vector store: {e!s}") from e
+
+    from typing import Any
+
+    from pydantic import BaseModel
 
     @staticmethod
     def _format_tool_for_provider(
-        tool: StructuredTool, provider: str = "openai"
+        tool: StructuredTool,
+        provider: str = "openai",
     ) -> dict[str, Any] | StructuredTool:
-        """Format tool based on provider requirements."""
+        """
+        Convert a LangChain ``StructuredTool`` into the JSON/function spec required
+        by a specific provider.
+
+        Args:
+            tool:      The LangChain tool to transform.
+            provider:  Target provider (“openai”, “anthropic”, …).
+
+        Returns
+        -------
+        dict | StructuredTool
+            * OpenAI → OpenAI-function spec (dict).
+            * Anthropic → Claude JSON-tool spec (dict).
+            * default → original ``StructuredTool`` unchanged.
+        """
         match provider.lower():
             case "openai":
-                from langchain_core.utils.function_calling import (
-                    convert_to_openai_function,
-                )
-
                 return convert_to_openai_function(tool)
+
             case "anthropic":
+                if isinstance(tool.args_schema, type) and issubclass(
+                    tool.args_schema, BaseModel
+                ):
+                    model_schema: dict[str, Any] = tool.args_schema.model_json_schema()
+                else:
+                    # just assign, no new annotation
+                    model_schema = tool.args_schema or {}
+
                 return {
                     "name": tool.name,
                     "description": tool.description,
-                    "parameters": tool.args_schema.schema() if tool.args_schema else {},
+                    "parameters": model_schema,
                 }
+
             case _:
                 return tool
 
@@ -255,13 +288,13 @@ class EndpointVectorStore:
                 # Try a simple embedding operation
                 self.embeddings.embed_query("test")
             except Exception as e:
-                self.logger.warning(f"Embedding check failed: {str(e)}")
+                self.logger.warning(f"Embedding check failed: {e!s}")
                 return False
 
             return True
 
         except Exception as e:
-            self.logger.warning(f"Store validation failed: {str(e)}")
+            self.logger.warning(f"Store validation failed: {e!s}")
             return False
 
     def save(self) -> None:
@@ -281,7 +314,7 @@ class EndpointVectorStore:
                 f"Saved vector store with {self.metadata.num_vectors} vectors"
             )
         except Exception as e:
-            raise ConfigError(f"Failed to save vector store: {str(e)}") from e
+            raise ConfigError(f"Failed to save vector store: {e!s}") from e
 
     def add_endpoint(self, name: str) -> None:
         """Add endpoint to vector store"""
@@ -325,7 +358,7 @@ class EndpointVectorStore:
                 doc = Document(page_content=text, metadata={"endpoint": name})
                 documents.append(doc)
             except Exception as e:
-                self.logger.error(f"Error processing endpoint {name}: {str(e)}")
+                self.logger.error(f"Error processing endpoint {name}: {e!s}")
                 skipped_endpoints.add(name)
 
         if invalid_endpoints:
@@ -344,9 +377,7 @@ class EndpointVectorStore:
                 f"(skipped {len(skipped_endpoints)})"
             )
         except Exception as e:
-            raise RuntimeError(
-                f"Failed to add documents to vector store: {str(e)}"
-            ) from e
+            raise RuntimeError(f"Failed to add documents to vector store: {e!s}") from e
 
     def search(
         self, query: str, k: int = 3, threshold: float = 0.3
@@ -388,7 +419,7 @@ class EndpointVectorStore:
 
             return sorted(results, key=lambda x: x.score, reverse=True)
         except Exception as e:
-            self.logger.error(f"Search failed: {str(e)}")
+            self.logger.error(f"Search failed: {e!s}")
             raise
 
     def create_tool(self, info: EndpointInfo) -> StructuredTool:
@@ -510,8 +541,8 @@ class EndpointVectorStore:
             )
 
         except Exception as e:
-            self.logger.error(f"Failed to create tool: {str(e)}", exc_info=True)
-            raise RuntimeError(f"Tool creation failed: {str(e)}") from e
+            self.logger.error(f"Failed to create tool: {e!s}", exc_info=True)
+            raise RuntimeError(f"Tool creation failed: {e!s}") from e
 
     def get_tools(
         self,
@@ -553,5 +584,5 @@ class EndpointVectorStore:
             return tools
 
         except Exception as e:
-            self.logger.error(f"Failed to get tools: {str(e)}")
+            self.logger.error(f"Failed to get tools: {e!s}")
             raise

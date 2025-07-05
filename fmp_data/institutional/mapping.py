@@ -229,7 +229,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
     "asset_allocation": EndpointSemantics(
         client_name="institutional",
         method_name="get_asset_allocation",
-        natural_description=("Analyze asset allocation data from " "13F filings"),
+        natural_description=("Analyze asset allocation data from 13F filings"),
         example_queries=[
             "Show asset allocation for major institutions",
             "Get portfolio distribution by asset type",
@@ -266,7 +266,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
         client_name="institutional",
         method_name="get_institutional_holdings",
         natural_description=(
-            "Analyze institutional ownership for " "a specific security."
+            "Analyze institutional ownership for a specific security."
         ),
         example_queries=[
             "Show institutional ownership for AAPL",
@@ -325,9 +325,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
     "insider_trades": EndpointSemantics(
         client_name="institutional",
         method_name="get_insider_trades",
-        natural_description=(
-            "Track insider trading activity for " "a specific security."
-        ),
+        natural_description=("Track insider trading activity for a specific security."),
         example_queries=[
             "Show insider trades for AAPL",
             "Get recent insider activity for Tesla",
@@ -368,8 +366,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
         client_name="institutional",
         method_name="get_transaction_types",
         natural_description=(
-            "Get a reference list of insider "
-            "transaction types and their descriptions."
+            "Get a reference list of insider transaction types and their descriptions."
         ),
         example_queries=[
             "List all insider transaction types",
@@ -449,7 +446,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
         client_name="institutional",
         method_name="get_insider_statistics",
         natural_description=(
-            "Get aggregated statistics about " "insider trading activity."
+            "Get aggregated statistics about insider trading activity."
         ),
         example_queries=[
             "Get insider trading stats for AAPL",

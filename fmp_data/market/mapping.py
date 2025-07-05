@@ -172,7 +172,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         client_name="market",
         method_name="search",
         natural_description=(
-            "Search for companies by name, ticker, " "or other identifiers."
+            "Search for companies by name, ticker, or other identifiers."
         ),
         example_queries=[
             "Search for companies with 'tech' in their name",
@@ -271,7 +271,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         client_name="market",
         method_name="search_by_cik",  # Match exact method name
         natural_description=(
-            "Search for companies by their SEC " "Central Index Key (CIK) number"
+            "Search for companies by their SEC Central Index Key (CIK) number"
         ),
         example_queries=[
             "Find company with CIK number 320193",

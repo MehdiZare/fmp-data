@@ -3,6 +3,15 @@ from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
+
+default_model_config = ConfigDict(
+    populate_by_name=True,
+    validate_assignment=True,
+    str_strip_whitespace=True,
+    extra="allow",
+    alias_generator=to_camel,
+)
 
 IndicatorType = Literal[
     "sma", "ema", "wma", "dema", "tema", "williams", "rsi", "adx", "standardDeviation"
@@ -12,7 +21,7 @@ IndicatorType = Literal[
 class TechnicalIndicator(BaseModel):
     """Base class for technical indicators"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     date: datetime = Field(description="Data point date")
     open: float = Field(description="Opening price")
