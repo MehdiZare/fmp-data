@@ -42,12 +42,12 @@ repos:
   # ───────── Local nox-powered helpers ────────────────────────────────────
   - repo: local
     hooks:
-      - id: sync-groups
-        name: Sync optional-deps → dependency-groups
-        entry: python scripts/sync_groups.py
-        language: system
-        files: ^pyproject\.toml$
-        pass_filenames: false
+#      - id: sync-groups
+#        name: Sync optional-deps → dependency-groups
+#        entry: python scripts/sync_groups.py
+#        language: system
+#        files: ^pyproject\.toml$
+#        pass_filenames: false
 
       - id: mypy-core
         name: "mypy: core package"
