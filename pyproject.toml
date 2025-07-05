@@ -295,6 +295,14 @@ omit     = [
   "setup.py",
   "noxfile.py",
   "scripts/*",
+  # Auto-generated or data-only files
+  "*/mapping.py",
+  "*/schema.py",
+  "*/hints.py",
+  "*/endpoints.py",
+  # Optional integrations
+  "fmp_data/lc/*",
+  "fmp_data/mcp/*",
 ]
 
 [tool.coverage.paths]
