@@ -97,12 +97,19 @@ def tests(session: Session, feature_group: str | None) -> None:
 
     _sync_with_uv(session, extras)
 
+    # Use unique coverage file names to avoid conflicts in parallel runs
+    coverage_file = f".coverage.{session.python}.{feature_group or 'core'}"
+
     pytest_args = [
         "-q",
         "--cov", PACKAGE_NAME,
-        "--cov-report=xml",
+        "--cov-append",  # Append to existing coverage
+        "--cov-config=pyproject.toml",
         "--cov-report=term-missing",
     ]
+
+    # Set environment variable for coverage file
+    env = {"COVERAGE_FILE": coverage_file}
 
     if feature_group == "mcp-server":
         session.run(
@@ -111,16 +118,34 @@ def tests(session: Session, feature_group: str | None) -> None:
             "tests/unit/test_mcp.py",
             "-m",
             "not integration",
+            env=env,
         )
     else:
-        session.run("pytest", *pytest_args)
+        session.run("pytest", *pytest_args, env=env)
 
-    # Save artefacts so GitHub-Actions can upload them if desired
-    if session.python == DEFAULT_PYTHON:
+    # Only generate final report for the default Python version
+    if session.python == DEFAULT_PYTHON and feature_group is None:
+        # Combine all coverage files
+        session.run("coverage", "combine")
+        session.run("coverage", "xml")
+        session.run("coverage", "report")
+
         session.log(f"Copying coverage.xml for CI artifact (Python {DEFAULT_PYTHON})")
         session.run(
             "cp", "coverage.xml", str(REPO_ROOT / f"coverage.{session.python}.xml")
         )
+
+
+@nox.session(python=DEFAULT_PYTHON, tags=["coverage"])
+def coverage_report(session: Session) -> None:
+    """Generate combined coverage report from all test runs."""
+    _sync_with_uv(session, extras=["dev"])
+
+    # Combine all coverage files
+    session.run("coverage", "combine")
+    session.run("coverage", "xml")
+    session.run("coverage", "html")
+    session.run("coverage", "report")
 
 
 @nox.session(python=DEFAULT_PYTHON, tags=["lint"])
