@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# /scripts/sync_groups.py
 """Sync [dependency-groups] with [project.optional-dependencies]."""
 from __future__ import annotations
 
