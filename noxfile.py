@@ -89,7 +89,8 @@ def tests(session: Session, feature_group: str | None) -> None:
     """
     Run *pytest* with coverage.
 
-    Coverage XML is emitted for Codecov upload when ``python == DEFAULT_PYTHON``.
+    Individual coverage files are generated for each session.
+    Use the 'coverage_report' session to combine and check thresholds.
     """
     extras: list[str] = ["dev"]  # dev extra contains pytest + pytest-cov
     if feature_group:
@@ -125,31 +126,84 @@ def tests(session: Session, feature_group: str | None) -> None:
     else:
         session.run("pytest", *pytest_args, env=env)
 
-    # Only generate final combined report for the default Python version + core session
-    if session.python == DEFAULT_PYTHON and feature_group is None:
-        # Combine all coverage files from all sessions
-        session.run("coverage", "combine")
-
-        # Now apply the 80% threshold to combined coverage
-        session.run("coverage", "report", "--fail-under=80")
-        session.run("coverage", "xml")
-
-        session.log(f"Copying coverage.xml for CI artifact (Python {DEFAULT_PYTHON})")
-        session.run(
-            "cp", "coverage.xml", str(REPO_ROOT / f"coverage.{session.python}.xml")
-        )
+    session.log(f"Coverage data saved to {coverage_file}")
 
 
 @nox.session(python=DEFAULT_PYTHON, tags=["coverage"])
 def coverage_report(session: Session) -> None:
-    """Generate combined coverage report from all test runs."""
+    """Generate combined coverage report from all test runs and apply threshold."""
     _sync_with_uv(session, extras=["dev"])
+
+    # List available coverage files for debugging
+    coverage_files = list(Path(".").glob(".coverage.*"))
+    session.log(f"Found coverage files: {[str(f) for f in coverage_files]}")
+
+    if not coverage_files:
+        session.error("No coverage files found. Run tests first.")
 
     # Combine all coverage files
     session.run("coverage", "combine")
+
+    # Generate reports
     session.run("coverage", "xml")
     session.run("coverage", "html")
-    session.run("coverage", "report")
+
+    # Apply the 80% threshold to combined coverage
+    session.run("coverage", "report", "--fail-under=80")
+
+    session.log("Coverage reports generated: coverage.xml and htmlcov/")
+
+
+@nox.session(python=DEFAULT_PYTHON, tags=["coverage-local"])
+def coverage_local(session: Session) -> None:
+    """
+    Run all tests and generate combined coverage report (for local development).
+
+    This is equivalent to running all test sessions followed by coverage_report.
+    """
+    _sync_with_uv(session, extras=["dev"])
+
+    # Clean up any existing coverage files
+    for coverage_file in Path(".").glob(".coverage*"):
+        coverage_file.unlink(missing_ok=True)
+
+    # Run all test combinations
+    for python_version in PY_VERSIONS:
+        for feature_group, feature_id in zip(FEATURE_GROUPS, FEATURE_IDS, strict=False):
+            session.log(f"Running tests for Python {python_version} with {feature_id}")
+
+            # Use unique coverage file names
+            coverage_file = f".coverage.{python_version}.{feature_id}"
+
+            # Base pytest args
+            pytest_args = [
+                "-q",
+                "--cov", PACKAGE_NAME,
+                "--cov-append",
+                "--cov-config=pyproject.toml",
+                "--cov-report=term-missing",
+                "--cov-fail-under=0",
+            ]
+
+            env = {"COVERAGE_FILE": coverage_file}
+
+            if feature_group == "mcp-server":
+                session.run(
+                    "pytest",
+                    *pytest_args,
+                    "tests/unit/test_mcp.py",
+                    "-m",
+                    "not integration",
+                    env=env,
+                )
+            else:
+                session.run("pytest", *pytest_args, env=env)
+
+    # Now combine and report
+    session.run("coverage", "combine")
+    session.run("coverage", "xml")
+    session.run("coverage", "html")
+    session.run("coverage", "report", "--fail-under=80")
 
 
 @nox.session(python=DEFAULT_PYTHON, tags=["lint"])

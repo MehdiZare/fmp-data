@@ -316,6 +316,7 @@ source = [
 ]
 branch = true
 parallel = true
+data_file = ".coverage"
 omit = [
     "fmp_data/endpoints/definitions.py",
     "fmp_data/example.py",
@@ -338,6 +339,8 @@ omit = [
 source = [
     "fmp_data/",
     "*/site-packages/fmp_data/",
+    "*/.venv/lib/python*/site-packages/fmp_data/",
+    "*/.venv/lib/*/site-packages/fmp_data/",
 ]
 
 [tool.coverage.report]
@@ -360,6 +363,7 @@ fail_under = 80
 precision = 2
 skip_covered = false
 skip_empty = false
+sort = "Cover"
 
 [tool.coverage.html]
 directory = "htmlcov"

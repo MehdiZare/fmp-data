@@ -16,7 +16,7 @@ jobs:
           - "3.10"
           - "3.11"
           - "3.12"
-          - "3.13"            # ← now treated as fully stable
+          - "3.13"
 
     steps:
       # ① Checkout
@@ -47,22 +47,61 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-py${{ matrix.python }}-uv-
 
-      # ④ Run Nox sessions
-      - name: ▶️  Run Nox sessions
+      # ④ Run Nox sessions with individual coverage
+      - name: ▶️  Run Tests
         env:
           NOX_USE_UV: "1"
-          NOX_PYTHON_VERSIONS: ${{ matrix.python }}
+          CI: "true"  # Ensure CI environment is detected
         run: |
-          # Full test suite for every stable version
-          uv tool run nox -s tests
+          # Run tests for this Python version only, but all feature groups
+          uv tool run nox -s "tests-${{ matrix.python }}"
 
-          # Quality gates (lint, type-check, security) once on latest LTS (3.13)
-          if [[ "${{ matrix.python }}" == "3.13" ]]; then
-            uv tool run nox -s lint typecheck security
-          fi
+      # ⑤ Upload coverage artifacts for combination later
+      - name: 📤 Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.python }}
+          path: .coverage.*
+          retention-days: 1
 
-      - name: � coverage upload
-        if: matrix.python == '3.13'                       # upload once
+      # ⑥ Quality gates (lint, type-check, security) once on latest LTS
+      - name: 🔍 Quality Gates
+        if: matrix.python == '3.13'
+        env:
+          NOX_USE_UV: "1"
+        run: |
+          uv tool run nox -s lint typecheck security
+
+  # New job to combine coverage from all matrix jobs
+  coverage:
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🛎️  Checkout
+        uses: actions/checkout@v4
+
+      - name: 🐍  Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: ⚡  Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: 📥 Download all coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          merge-multiple: true
+
+      - name: 📊 Combine coverage and generate report
+        env:
+          NOX_USE_UV: "1"
+        run: |
+          # Install dependencies needed for coverage
+          uv tool run nox -s coverage_report
+
+      - name: 📈 Coverage upload
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
