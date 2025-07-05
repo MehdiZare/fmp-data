@@ -112,15 +112,22 @@ def tests(session: Session, feature_group: str | None) -> None:
     env = {"COVERAGE_FILE": coverage_file}
 
     if feature_group == "mcp-server":
+        # MCP tests - collect coverage but no threshold (specialized subset)
         session.run(
             "pytest",
-            *pytest_args,
+            "-q",
+            "--cov", PACKAGE_NAME,
+            "--cov-append",
+            "--cov-config=pyproject.toml",
+            "--cov-report=term-missing",
+            "--cov-fail-under=0",  # No coverage threshold for MCP
             "tests/unit/test_mcp.py",
             "-m",
             "not integration",
             env=env,
         )
     else:
+        # Core and langchain tests with coverage threshold
         session.run("pytest", *pytest_args, env=env)
 
     # Only generate final report for the default Python version
