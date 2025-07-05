@@ -64,7 +64,7 @@ class SensitiveDataFilter(logging.Filter):
         elif len(value) <= 8:
             return mask_char * len(value)
         else:
-            # Show first 2 and last 2 characters, mask the middle
+            # For longer values, show first 2 and last 2 characters, mask the middle
             return f"{value[:2]}{mask_char * (len(value) - 4)}{value[-2:]}"
 
     def _mask_patterns_in_string(self, text: Any) -> Any:
@@ -93,28 +93,39 @@ class SensitiveDataFilter(logging.Filter):
         # For args processing, we need to be very careful to not break string formatting
         if record.args:
             try:
-                # Create a copy of args and process each one
-                new_args = []
-                for arg in record.args:
-                    if isinstance(arg, str):
-                        # Mask patterns in string arguments
-                        masked_arg = self._mask_patterns_in_string(arg)
-                        new_args.append(masked_arg)
-                    elif isinstance(arg, dict):
-                        # For dictionaries, create a masked copy
-                        masked_dict = self._mask_dict_recursive(arg.copy())
-                        new_args.append(masked_dict)
-                    elif isinstance(arg, list):
-                        # For lists, create a masked copy
-                        masked_list = self._mask_dict_recursive(arg.copy())
-                        new_args.append(masked_list)
-                    else:
-                        # For other types, keep as-is
-                        new_args.append(arg)
+                # Get the original formatted message first
+                original_msg = record.msg
+                original_args = record.args
+                if original_args:
+                    formatted_msg = str(original_msg) % original_args
+                else:
+                    str(original_msg)
+                masked_msg = self._mask_patterns_in_string(formatted_msg)
 
-                record.args = tuple(new_args)
-            except Exception: # noqa: S110  # nosec B110
-                pass
+                # Replace with masked message and no args to avoid formatting issues
+                record.msg = masked_msg
+                record.args = ()
+
+            except Exception:  # nosec B110
+                # If formatting fails, try processing args individually
+                try:
+                    new_args = []
+                    for arg in record.args:
+                        if isinstance(arg, str):
+                            masked_arg = self._mask_patterns_in_string(arg)
+                            new_args.append(masked_arg)
+                        elif isinstance(arg, dict):
+                            masked_dict = self._mask_dict_recursive(deepcopy(arg))
+                            new_args.append(masked_dict)
+                        elif isinstance(arg, list):
+                            masked_list = self._mask_dict_recursive(deepcopy(arg))
+                            new_args.append(masked_list)
+                        else:
+                            new_args.append(arg)
+                    record.args = tuple(new_args)
+                except Exception:  # noqa: S110  # nosec B110
+                    # If everything fails, leave record unchanged
+                    pass
 
         return True
 
@@ -193,6 +204,9 @@ class SecureRotatingFileHandler(RotatingFileHandler):
             encoding: str | None = None,
             delay: bool = False,
     ) -> None:
+        # Initialize _permissions_set before calling parent constructor
+        # because parent constructor may call _open() which uses this attribute
+        self._permissions_set = False
         super().__init__(filename, mode, maxBytes, backupCount, encoding, delay)
         if not delay:
             self._set_secure_permissions()
@@ -200,14 +214,19 @@ class SecureRotatingFileHandler(RotatingFileHandler):
     def _open(self) -> Any:
         """Override to set permissions when file is opened"""
         stream = super()._open()
-        self._set_secure_permissions()
+        if not self._permissions_set:
+            self._set_secure_permissions()
         return stream
 
     def _set_secure_permissions(self) -> None:
         """Set secure permissions on log file"""
+        if self._permissions_set:
+            return
+
         if os.name != "nt":  # Not Windows
             try:
                 os.chmod(self.baseFilename, 0o600)
+                self._permissions_set = True
             except OSError as e:
                 logging.getLogger(__name__).warning(
                     f"Could not set secure permissions on log file: {e}"
