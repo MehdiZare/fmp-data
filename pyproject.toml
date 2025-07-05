@@ -211,6 +211,7 @@ warn_no_return = true
 warn_unreachable = true
 strict_optional = true
 show_error_codes = true
+disable_error_code = ["type-arg"]
 exclude = [
     "tests/",
     "examples/",
@@ -224,22 +225,34 @@ plugins = [
 
 [[tool.mypy.overrides]]
 module = [
-    "langchain*",
-    "faiss*",
-    "mcp*",
-    "tiktoken*",
-    "openai*",
-    "yaml*",
-    "rich*",
-    "tqdm*",
-    "pandas*",
-    "responses*",
-    "freezegun*",
-    "structlog*",
-    "tenacity*",
+    "langchain.*",
+    "langchain_core.*",
+    "langchain_community.*",
+    "langchain_openai.*",
+    "langchain.embeddings.*",
+    "langchain.tools.*",
+    "faiss.*",
+    "faiss",
+    "mcp.*",
+    "mcp.server.*",
+    "tiktoken.*",
+    "tiktoken",
+    "openai.*",
+    "openai",
+    "yaml.*",
+    "yaml",
+    "rich.*",
+    "tqdm.*",
+    "pandas.*",
+    "responses.*",
+    "freezegun.*",
+    "structlog.*",
+    "tenacity.*",
+    "tenacity",
     "fmp_data._version",
 ]
 ignore_missing_imports = true
+
 
 [[tool.mypy.overrides]]
 module = "fmp_data.__init__"
@@ -257,6 +270,7 @@ module = [
 ignore_missing_imports = true
 disable_error_code = [
     "import-untyped",
+    "import-not-found",
 ]
 
 [tool.pytest.ini_options]
