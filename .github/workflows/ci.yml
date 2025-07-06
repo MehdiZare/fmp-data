@@ -58,10 +58,10 @@ jobs:
           # Run tests for each feature group with correct nox syntax
           echo "Running tests for Python ${{ matrix.python }}"
 
-          # Use the correct parametrized session syntax
-          uv tool run nox -s "tests-${{ matrix.python }}-core"
-          uv tool run nox -s "tests-${{ matrix.python }}-langchain"
-          uv tool run nox -s "tests-${{ matrix.python }}-mcp-server"
+          # Use the correct parametrized session syntax with parentheses
+          uv tool run nox -s "tests-${{ matrix.python }}(core)"
+          uv tool run nox -s "tests-${{ matrix.python }}(langchain)"
+          uv tool run nox -s "tests-${{ matrix.python }}(mcp-server)"
 
           # Verify coverage files were created
           echo "Coverage files generated:"
