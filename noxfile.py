@@ -36,8 +36,8 @@ else:
 
 # Feature-flag groups that map to [project.optional-dependencies]
 FEATURE_GROUPS: Sequence[str | None] = (
-    None,                # base             → install just the core package
-    "langchain",         # extras = dev+langchain
+    None,  # base             → install just the core package
+    "langchain",  # extras = dev+langchain
     "mcp-server",
 )
 FEATURE_IDS: Sequence[str] = (
@@ -83,6 +83,7 @@ def _sync_with_uv(session: Session, extras: Iterable[str] = ()) -> None:
 #  Sessions                                                                   #
 # --------------------------------------------------------------------------- #
 
+
 @nox.session(python=PY_VERSIONS, tags=["tests"])
 @nox.parametrize("feature_group", FEATURE_GROUPS, ids=FEATURE_IDS)
 def tests(session: Session, feature_group: str | None) -> None:
@@ -104,7 +105,8 @@ def tests(session: Session, feature_group: str | None) -> None:
     # Base pytest args - no coverage threshold during individual runs
     pytest_args = [
         "-q",
-        "--cov", PACKAGE_NAME,
+        "--cov",
+        PACKAGE_NAME,
         "--cov-append",
         "--cov-config=pyproject.toml",
         "--cov-report=term-missing",
@@ -178,7 +180,8 @@ def coverage_local(session: Session) -> None:
             # Base pytest args
             pytest_args = [
                 "-q",
-                "--cov", PACKAGE_NAME,
+                "--cov",
+                PACKAGE_NAME,
                 "--cov-append",
                 "--cov-config=pyproject.toml",
                 "--cov-report=term-missing",

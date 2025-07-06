@@ -50,8 +50,17 @@ class SensitiveDataFilter(logging.Filter):
         }
 
         self.sensitive_keys: set[str] = {
-            "api_key", "apikey", "api-key", "token", "password", "secret",
-            "access_token", "refresh_token", "auth_token", "bearer_token", "key",
+            "api_key",
+            "apikey",
+            "api-key",
+            "token",
+            "password",
+            "secret",
+            "access_token",
+            "refresh_token",
+            "auth_token",
+            "bearer_token",
+            "key",
         }
 
     @staticmethod
@@ -74,6 +83,7 @@ class SensitiveDataFilter(logging.Filter):
 
         masked_text = text
         for pattern in self.patterns.values():
+
             def mask_replacement(match: Any) -> Any:
                 prefix = match.group(1) if match.group(1) else ""
                 sensitive_value = match.group(2)
@@ -159,7 +169,7 @@ class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         """Format log record as JSON"""
         # Get the module name from the logger name, not pathname
-        module_name = record.name.split('.')[-1] if '.' in record.name else record.name
+        module_name = record.name.split(".")[-1] if "." in record.name else record.name
 
         log_data: dict[str, Any] = {
             "timestamp": datetime.fromtimestamp(record.created).isoformat(),
@@ -182,11 +192,29 @@ class JsonFormatter(logging.Formatter):
         # Add any extra fields from the record
         for key, value in record.__dict__.items():
             if key not in {
-                'name', 'msg', 'args', 'levelname', 'levelno', 'pathname', 'filename',
-                'module', 'lineno', 'funcName', 'created', 'msecs', 'relativeCreated',
-                'thread', 'threadName', 'processName', 'process', 'getMessage',
-                'exc_info', 'exc_text', 'stack_info', 'message'
-            } and not key.startswith('_'):
+                "name",
+                "msg",
+                "args",
+                "levelname",
+                "levelno",
+                "pathname",
+                "filename",
+                "module",
+                "lineno",
+                "funcName",
+                "created",
+                "msecs",
+                "relativeCreated",
+                "thread",
+                "threadName",
+                "processName",
+                "process",
+                "getMessage",
+                "exc_info",
+                "exc_text",
+                "stack_info",
+                "message",
+            } and not key.startswith("_"):
                 log_data[key] = value
 
         return json.dumps(log_data, default=str)
@@ -196,13 +224,13 @@ class SecureRotatingFileHandler(RotatingFileHandler):
     """Rotating file handler with secure permissions"""
 
     def __init__(
-            self,
-            filename: str,
-            mode: str = "a",
-            maxBytes: int = 0,
-            backupCount: int = 0,
-            encoding: str | None = None,
-            delay: bool = False,
+        self,
+        filename: str,
+        mode: str = "a",
+        maxBytes: int = 0,
+        backupCount: int = 0,
+        encoding: str | None = None,
+        delay: bool = False,
     ) -> None:
         # Initialize _permissions_set before calling parent constructor
         # because parent constructor may call _open() which uses this attribute
@@ -317,7 +345,7 @@ class FMPLogger:
             self._add_handler(name, handler_config, config.log_path)
 
     def _add_handler(
-            self, name: str, config: LogHandlerConfig, log_path: Path | None = None
+        self, name: str, config: LogHandlerConfig, log_path: Path | None = None
     ) -> None:
         """
         Add a handler based on configuration.
@@ -355,8 +383,8 @@ class FMPLogger:
 
 
 def log_api_call(
-        logger: logging.Logger | None = None,
-        exclude_args: bool = False,
+    logger: logging.Logger | None = None,
+    exclude_args: bool = False,
 ) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """
     Decorator to log API calls with sensitive data filtering

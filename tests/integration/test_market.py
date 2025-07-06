@@ -57,13 +57,13 @@ class TestMarketClientEndpoints(BaseTestCase):
                 assert isinstance(gainer.change, float), "gainer change is not float"
                 assert isinstance(gainer.price, float), "gainer price is not float"
                 if gainer.change_percentage:
-                    assert isinstance(gainer.change_percentage, float), (
-                        "gainer change_percentage is not float"
-                    )
+                    assert isinstance(
+                        gainer.change_percentage, float
+                    ), "gainer change_percentage is not float"
                 if gainer.change_percentage:
-                    assert gainer.change_percentage > 0, (
-                        "gainer change_percentage is not positive"
-                    )
+                    assert (
+                        gainer.change_percentage > 0
+                    ), "gainer change_percentage is not positive"
 
     def test_get_losers(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting market losers"""
@@ -104,9 +104,9 @@ class TestMarketClientEndpoints(BaseTestCase):
                 assert active.symbol
                 assert active.name
                 if active.change:
-                    assert isinstance(active.change, float), (
-                        "active change is not float"
-                    )
+                    assert isinstance(
+                        active.change, float
+                    ), "active change is not float"
                 if active.price:
                     assert isinstance(active.price, float), "active price is not float"
                 if active.change_percentage:

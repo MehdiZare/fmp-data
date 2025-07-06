@@ -333,25 +333,18 @@ class ESGBenchmark(BaseModel):
     sector: str
 
     # raw scores (always present in “sector benchmark” endpoint)
-    environmental_score: float | None = Field(
-        None, alias="environmentalScore")
-    social_score: float | None = Field(
-        None, alias="socialScore")
-    governance_score: float | None = Field(
-        None, alias="governanceScore")
-    esg_score: float | None = Field(
-        None, alias="ESGScore")
+    environmental_score: float | None = Field(None, alias="environmentalScore")
+    social_score: float | None = Field(None, alias="socialScore")
+    governance_score: float | None = Field(None, alias="governanceScore")
+    esg_score: float | None = Field(None, alias="ESGScore")
 
     # averages (present in “global benchmark” endpoint)
     average_environmental_score: float | None = Field(
-        None, alias="averageEnvironmentalScore")
-    average_social_score: float | None = Field(
-        None, alias="averageSocialScore")
-    average_governance_score: float | None = Field(
-        None, alias="averageGovernanceScore")
-    average_esg_score: float | None = Field(
-        None, alias="averageESGScore")
-
+        None, alias="averageEnvironmentalScore"
+    )
+    average_social_score: float | None = Field(None, alias="averageSocialScore")
+    average_governance_score: float | None = Field(None, alias="averageGovernanceScore")
+    average_esg_score: float | None = Field(None, alias="averageESGScore")
 
 
 # Government Trading Models

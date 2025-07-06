@@ -32,9 +32,7 @@ class TestLogHandlerConfig:
     def test_basic_initialization(self):
         """Test basic log handler configuration"""
         config = LogHandlerConfig(
-            class_name="StreamHandler",
-            level="INFO",
-            format="%(message)s"
+            class_name="StreamHandler", level="INFO", format="%(message)s"
         )
         assert config.class_name == "StreamHandler"
         assert config.level == "INFO"
@@ -45,9 +43,7 @@ class TestLogHandlerConfig:
         """Test log handler with additional kwargs"""
         kwargs = {"filename": "test.log", "maxBytes": 1024}
         config = LogHandlerConfig(
-            class_name="RotatingFileHandler",
-            level="DEBUG",
-            handler_kwargs=kwargs
+            class_name="RotatingFileHandler", level="DEBUG", handler_kwargs=kwargs
         )
         assert config.handler_kwargs == kwargs
         assert config.handler_kwargs["filename"] == "test.log"
@@ -103,9 +99,7 @@ class TestRateLimitConfig:
     def test_custom_values(self):
         """Test custom rate limit configuration"""
         config = RateLimitConfig(
-            daily_limit=1000,
-            requests_per_second=10,
-            requests_per_minute=600
+            daily_limit=1000, requests_per_second=10, requests_per_minute=600
         )
         assert config.daily_limit == 1000
         assert config.requests_per_second == 10
@@ -114,11 +108,13 @@ class TestRateLimitConfig:
     def test_from_env_with_values(self):
         """Test creating rate limit config from environment variables"""
         with temp_environ() as env:
-            env.update({
-                "FMP_DAILY_LIMIT": "1500",
-                "FMP_REQUESTS_PER_SECOND": "8",
-                "FMP_REQUESTS_PER_MINUTE": "480"
-            })
+            env.update(
+                {
+                    "FMP_DAILY_LIMIT": "1500",
+                    "FMP_REQUESTS_PER_SECOND": "8",
+                    "FMP_REQUESTS_PER_MINUTE": "480",
+                }
+            )
 
             config = RateLimitConfig.from_env()
             assert config.daily_limit == 1500
@@ -132,7 +128,7 @@ class TestRateLimitConfig:
             for key in [
                 "FMP_DAILY_LIMIT",
                 "FMP_REQUESTS_PER_SECOND",
-                "FMP_REQUESTS_PER_MINUTE"
+                "FMP_REQUESTS_PER_MINUTE",
             ]:
                 env.pop(key, None)
 
@@ -193,7 +189,7 @@ class TestLoggingConfig:
             tmp_path (Path): pytest fixture - unique tmp dir per test run
         """
         # Arrange
-        log_dir = tmp_path / "logs"          # /tmp/pytest-of-.../logs
+        log_dir = tmp_path / "logs"  # /tmp/pytest-of-.../logs
         custom_handlers = {
             "file": LogHandlerConfig(
                 class_name="FileHandler",
@@ -214,15 +210,16 @@ class TestLoggingConfig:
         assert config.handlers == custom_handlers
         assert config.log_path == log_dir
 
-
     def test_from_env_console_only(self):
         """Test logging config from env with console handler only"""
         with temp_environ() as env:
-            env.update({
-                "FMP_LOG_LEVEL": "DEBUG",
-                "FMP_LOG_CONSOLE": "true",
-                "FMP_LOG_CONSOLE_LEVEL": "WARNING"
-            })
+            env.update(
+                {
+                    "FMP_LOG_LEVEL": "DEBUG",
+                    "FMP_LOG_CONSOLE": "true",
+                    "FMP_LOG_CONSOLE_LEVEL": "WARNING",
+                }
+            )
             env.pop("FMP_LOG_PATH", None)  # No file logging
 
             config = LoggingConfig.from_env()
@@ -236,10 +233,7 @@ class TestLoggingConfig:
     def test_from_env_console_disabled(self):
         """Test logging config from env with console disabled"""
         with temp_environ() as env:
-            env.update({
-                "FMP_LOG_CONSOLE": "false",
-                "FMP_LOG_LEVEL": "INFO"
-            })
+            env.update({"FMP_LOG_CONSOLE": "false", "FMP_LOG_LEVEL": "INFO"})
             env.pop("FMP_LOG_PATH", None)
 
             config = LoggingConfig.from_env()
@@ -251,13 +245,15 @@ class TestLoggingConfig:
         log_path = tmp_path / "logs"
 
         with temp_environ() as env:
-            env.update({
-                "FMP_LOG_LEVEL": "INFO",
-                "FMP_LOG_PATH": str(log_path),
-                "FMP_LOG_FILE_LEVEL": "DEBUG",
-                "FMP_LOG_MAX_BYTES": "2048",
-                "FMP_LOG_BACKUP_COUNT": "3"
-            })
+            env.update(
+                {
+                    "FMP_LOG_LEVEL": "INFO",
+                    "FMP_LOG_PATH": str(log_path),
+                    "FMP_LOG_FILE_LEVEL": "DEBUG",
+                    "FMP_LOG_MAX_BYTES": "2048",
+                    "FMP_LOG_BACKUP_COUNT": "3",
+                }
+            )
 
             config = LoggingConfig.from_env()
             assert config.log_path == log_path
@@ -275,11 +271,13 @@ class TestLoggingConfig:
         log_path = tmp_path / "logs"
 
         with temp_environ() as env:
-            env.update({
-                "FMP_LOG_PATH": str(log_path),
-                "FMP_LOG_JSON": "true",
-                "FMP_LOG_JSON_LEVEL": "ERROR"
-            })
+            env.update(
+                {
+                    "FMP_LOG_PATH": str(log_path),
+                    "FMP_LOG_JSON": "true",
+                    "FMP_LOG_JSON_LEVEL": "ERROR",
+                }
+            )
 
             config = LoggingConfig.from_env()
             assert "json" in config.handlers
@@ -294,10 +292,7 @@ class TestLoggingConfig:
         log_path = tmp_path / "logs"
 
         with temp_environ() as env:
-            env.update({
-                "FMP_LOG_PATH": str(log_path),
-                "FMP_LOG_JSON": "false"
-            })
+            env.update({"FMP_LOG_PATH": str(log_path), "FMP_LOG_JSON": "false"})
 
             config = LoggingConfig.from_env()
             assert "json" not in config.handlers
@@ -339,9 +334,7 @@ class TestClientConfig:
     def test_basic_initialization(self):
         """Test basic client configuration"""
         config = ClientConfig(
-            api_key="test_key",
-            base_url="https://api.test.com",
-            timeout=60
+            api_key="test_key", base_url="https://api.test.com", timeout=60
         )
         assert config.api_key == "test_key"
         assert config.base_url == "https://api.test.com"
@@ -362,9 +355,7 @@ class TestClientConfig:
         logging_config = LoggingConfig(level="DEBUG")
 
         config = ClientConfig(
-            api_key="test_key",
-            rate_limit=rate_limit,
-            logging=logging_config
+            api_key="test_key", rate_limit=rate_limit, logging=logging_config
         )
 
         assert config.rate_limit is rate_limit
@@ -378,7 +369,7 @@ class TestClientConfig:
             "https://api.test.com",
             "http://localhost:8000",
             "https://financialmodelingprep.com/api/v3",
-            "https://sub.domain.com/path"
+            "https://sub.domain.com/path",
         ]
 
         for url in valid_urls:
@@ -392,7 +383,7 @@ class TestClientConfig:
             "ftp://invalid.scheme.com",
             "https://",
             "",
-            "just_text"
+            "just_text",
         ]
 
         for url in invalid_urls:
@@ -445,16 +436,18 @@ class TestClientConfig:
         log_path = tmp_path / "logs"
 
         with temp_environ() as env:
-            env.update({
-                "FMP_API_KEY": "env_test_key",
-                "FMP_BASE_URL": "https://env.api.com",
-                "FMP_TIMEOUT": "45",
-                "FMP_MAX_RETRIES": "4",
-                "FMP_DAILY_LIMIT": "500",
-                "FMP_REQUESTS_PER_SECOND": "3",
-                "FMP_LOG_LEVEL": "WARNING",
-                "FMP_LOG_PATH": str(log_path)
-            })
+            env.update(
+                {
+                    "FMP_API_KEY": "env_test_key",
+                    "FMP_BASE_URL": "https://env.api.com",
+                    "FMP_TIMEOUT": "45",
+                    "FMP_MAX_RETRIES": "4",
+                    "FMP_DAILY_LIMIT": "500",
+                    "FMP_REQUESTS_PER_SECOND": "3",
+                    "FMP_LOG_LEVEL": "WARNING",
+                    "FMP_LOG_PATH": str(log_path),
+                }
+            )
 
             config = ClientConfig.from_env()
             assert config.api_key == "env_test_key"
@@ -492,11 +485,13 @@ class TestClientConfig:
     def test_from_env_invalid_numeric_values(self):
         """Test from_env handles invalid numeric environment variables"""
         with temp_environ() as env:
-            env.update({
-                "FMP_API_KEY": "test_key",
-                "FMP_TIMEOUT": "invalid",
-                "FMP_MAX_RETRIES": "not_a_number"
-            })
+            env.update(
+                {
+                    "FMP_API_KEY": "test_key",
+                    "FMP_TIMEOUT": "invalid",
+                    "FMP_MAX_RETRIES": "not_a_number",
+                }
+            )
 
             config = ClientConfig.from_env()
             # Should use defaults when conversion fails
@@ -510,7 +505,7 @@ class TestClientConfig:
             timeout=45,
             base_url="https://test.api.com",
             rate_limit=RateLimitConfig(daily_limit=1000),
-            logging=LoggingConfig(level="DEBUG")
+            logging=LoggingConfig(level="DEBUG"),
         )
 
         # Serialize to dict
@@ -523,8 +518,8 @@ class TestClientConfig:
         assert reconstructed_config.timeout == original_config.timeout
         assert reconstructed_config.base_url == original_config.base_url
         assert (
-                reconstructed_config.rate_limit.daily_limit
-                == original_config.rate_limit.daily_limit
+            reconstructed_config.rate_limit.daily_limit
+            == original_config.rate_limit.daily_limit
         )
         assert reconstructed_config.logging.level == original_config.logging.level
 
@@ -542,7 +537,7 @@ class TestClientConfig:
             ClientConfig(
                 api_key="test_key",
                 timeout=-1,  # Invalid value
-                base_url="invalid_url"  # Invalid URL
+                base_url="invalid_url",  # Invalid URL
             )
 
         errors = exc_info.value.errors()
@@ -578,11 +573,13 @@ class TestConfigEdgeCases:
     def test_environment_with_extra_variables(self):
         """Test from_env ignores unrelated environment variables"""
         with temp_environ() as env:
-            env.update({
-                "FMP_API_KEY": "test_key",
-                "UNRELATED_VAR": "should_be_ignored",
-                "FMP_UNKNOWN_VAR": "also_ignored"
-            })
+            env.update(
+                {
+                    "FMP_API_KEY": "test_key",
+                    "UNRELATED_VAR": "should_be_ignored",
+                    "FMP_UNKNOWN_VAR": "also_ignored",
+                }
+            )
 
             config = ClientConfig.from_env()
             assert config.api_key == "test_key"
@@ -610,10 +607,8 @@ class TestConfigEdgeCases:
             timeout=3600,  # 1 hour
             max_retries=100,
             rate_limit=RateLimitConfig(
-                daily_limit=1000000,
-                requests_per_second=1000,
-                requests_per_minute=60000
-            )
+                daily_limit=1000000, requests_per_second=1000, requests_per_minute=60000
+            ),
         )
 
         assert config.timeout == 3600
@@ -624,7 +619,7 @@ class TestConfigEdgeCases:
         """Test configuration with unicode and special characters"""
         config = ClientConfig(
             api_key="test_key_with_特殊字符",
-            base_url="https://api-test.example.com"  # Using simple ASCII URL
+            base_url="https://api-test.example.com",  # Using simple ASCII URL
         )
 
         assert config.api_key == "test_key_with_特殊字符"

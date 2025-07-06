@@ -13,9 +13,7 @@ class TestQuotaConfig:
     def test_basic_initialization(self):
         """Test basic quota config initialization"""
         config = QuotaConfig(
-            daily_limit=1000,
-            requests_per_second=10,
-            requests_per_minute=300
+            daily_limit=1000, requests_per_second=10, requests_per_minute=300
         )
 
         assert config.daily_limit == 1000
@@ -33,9 +31,7 @@ class TestQuotaConfig:
     def test_custom_values(self):
         """Test custom quota config values"""
         config = QuotaConfig(
-            daily_limit=2000,
-            requests_per_second=20,
-            requests_per_minute=1200
+            daily_limit=2000, requests_per_second=20, requests_per_minute=1200
         )
 
         assert config.daily_limit == 2000
@@ -45,9 +41,7 @@ class TestQuotaConfig:
     def test_zero_values(self):
         """Test quota config with zero values"""
         config = QuotaConfig(
-            daily_limit=0,
-            requests_per_second=0,
-            requests_per_minute=0
+            daily_limit=0, requests_per_second=0, requests_per_minute=0
         )
 
         assert config.daily_limit == 0
@@ -61,9 +55,7 @@ class TestFMPRateLimiterInitialization:
     def test_basic_initialization(self):
         """Test basic rate limiter initialization"""
         config = QuotaConfig(
-            daily_limit=100,
-            requests_per_second=5,
-            requests_per_minute=60
+            daily_limit=100, requests_per_second=5, requests_per_minute=60
         )
 
         limiter = FMPRateLimiter(config)
@@ -99,12 +91,10 @@ class TestFMPRateLimiterInitialization:
             limiter = FMPRateLimiter(config)
             assert limiter.quota_config.daily_limit == config.daily_limit
             assert (
-                    limiter.quota_config.requests_per_second ==
-                    config.requests_per_second
+                limiter.quota_config.requests_per_second == config.requests_per_second
             )
             assert (
-                    limiter.quota_config.requests_per_minute ==
-                    config.requests_per_minute
+                limiter.quota_config.requests_per_minute == config.requests_per_minute
             )
 
 
@@ -173,11 +163,7 @@ class TestFMPRateLimiterShouldAllowRequest:
     @pytest.fixture
     def limiter(self):
         return FMPRateLimiter(
-            QuotaConfig(
-                daily_limit=10,
-                requests_per_second=2,
-                requests_per_minute=5
-            )
+            QuotaConfig(daily_limit=10, requests_per_second=2, requests_per_minute=5)
         )
 
     def test_should_allow_request_initial_state(self, limiter):
@@ -369,9 +355,7 @@ class TestFMPRateLimiterHandleResponse:
         with patch("fmp_data.rate_limit.logger") as mock_logger:
             limiter.handle_response(429, None)
 
-            mock_logger.error.assert_called_once_with(
-                "Rate limit exceeded: "
-            )
+            mock_logger.error.assert_called_once_with("Rate limit exceeded: ")
 
     def test_handle_response_rate_limit_with_empty_message(self, limiter):
         """Test handle_response with 429 and empty message"""
@@ -380,9 +364,7 @@ class TestFMPRateLimiterHandleResponse:
         with patch("fmp_data.rate_limit.logger") as mock_logger:
             limiter.handle_response(429, response_body)
 
-            mock_logger.error.assert_called_once_with(
-                "Rate limit exceeded: "
-            )
+            mock_logger.error.assert_called_once_with("Rate limit exceeded: ")
 
     def test_handle_response_rate_limit_with_nested_message(self, limiter):
         """Test handle_response with 429 and nested JSON structure"""
@@ -392,9 +374,7 @@ class TestFMPRateLimiterHandleResponse:
             limiter.handle_response(429, response_body)
 
             # Should only look for top-level message
-            mock_logger.error.assert_called_once_with(
-                "Rate limit exceeded: "
-            )
+            mock_logger.error.assert_called_once_with("Rate limit exceeded: ")
 
     def test_handle_response_rate_limit_with_different_structures(self, limiter):
         """Test handle_response with various JSON structures"""
@@ -421,11 +401,7 @@ class TestFMPRateLimiterGetWaitTime:
     @pytest.fixture
     def limiter(self):
         return FMPRateLimiter(
-            QuotaConfig(
-                daily_limit=10,
-                requests_per_second=2,
-                requests_per_minute=5
-            )
+            QuotaConfig(daily_limit=10, requests_per_second=2, requests_per_minute=5)
         )
 
     def test_get_wait_time_no_limits_exceeded(self, limiter):
@@ -478,10 +454,13 @@ class TestFMPRateLimiterGetWaitTime:
 
         # Set up multiple limit violations
         limiter._daily_requests = 10  # Daily limit
-        limiter._second_requests = \
-            [now - timedelta(milliseconds=100), now]  # Second limit
-        limiter._minute_requests = (
-                [now - timedelta(seconds=30)] + [now for _ in range(4)])  # Minute limit
+        limiter._second_requests = [
+            now - timedelta(milliseconds=100),
+            now,
+        ]  # Second limit
+        limiter._minute_requests = [now - timedelta(seconds=30)] + [
+            now for _ in range(4)
+        ]  # Minute limit
 
         wait_time = limiter.get_wait_time()
 
@@ -492,8 +471,8 @@ class TestFMPRateLimiterGetWaitTime:
         expected_daily_wait = (tomorrow - now).total_seconds()
 
         assert (
-                wait_time >= expected_daily_wait - 1.0
-        )# Should be close to daily wait time
+            wait_time >= expected_daily_wait - 1.0
+        )  # Should be close to daily wait time
 
     def test_get_wait_time_edge_cases(self, limiter):
         """Test wait time calculation edge cases"""
@@ -531,11 +510,7 @@ class TestFMPRateLimiterLogStatus:
     @pytest.fixture
     def limiter(self):
         return FMPRateLimiter(
-            QuotaConfig(
-                daily_limit=100,
-                requests_per_second=10,
-                requests_per_minute=60
-            )
+            QuotaConfig(daily_limit=100, requests_per_second=10, requests_per_minute=60)
         )
 
     def test_log_status_empty_state(self, limiter):
@@ -623,7 +598,7 @@ class TestFMPRateLimiterIntegration:
             QuotaConfig(
                 daily_limit=5,
                 requests_per_second=10,  # High enough to not interfere
-                requests_per_minute=2    # This will be the limiting factor
+                requests_per_minute=2,  # This will be the limiting factor
             )
         )
 
@@ -642,11 +617,7 @@ class TestFMPRateLimiterIntegration:
     def test_time_based_recovery(self):
         """Test that rate limits recover over time"""
         limiter = FMPRateLimiter(
-            QuotaConfig(
-                daily_limit=10,
-                requests_per_second=1,
-                requests_per_minute=2
-            )
+            QuotaConfig(daily_limit=10, requests_per_second=1, requests_per_minute=2)
         )
 
         # Fill up per-second limit
@@ -687,11 +658,7 @@ class TestFMPRateLimiterIntegration:
     def test_realistic_usage_pattern(self):
         """Test realistic API usage pattern"""
         limiter = FMPRateLimiter(
-            QuotaConfig(
-                daily_limit=250,
-                requests_per_second=5,
-                requests_per_minute=300
-            )
+            QuotaConfig(daily_limit=250, requests_per_second=5, requests_per_minute=300)
         )
 
         # Simulate burst of requests

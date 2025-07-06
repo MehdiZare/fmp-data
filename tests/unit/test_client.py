@@ -34,7 +34,7 @@ class TestFMPDataClientInitialization:
             timeout=60,
             max_retries=5,
             base_url="https://custom.api.com",
-            debug=True
+            debug=True,
         )
         assert client.config.api_key == "test_key"
         assert client.config.timeout == 60
@@ -79,7 +79,7 @@ class TestFMPDataClientInitialization:
         """Test client initialization handles pydantic validation errors"""
         mock_config.side_effect = PydanticValidationError.from_exception_data(
             "Invalid config",
-            [{"type": "missing", "loc": ("api_key",), "msg": "Field required"}]
+            [{"type": "missing", "loc": ("api_key",), "msg": "Field required"}],
         )
 
         with pytest.raises(ConfigError, match="Invalid client configuration"):
@@ -90,7 +90,7 @@ class TestFMPDataClientInitialization:
         """Test client initialization handles logger errors gracefully"""
         mock_logger.side_effect = Exception("Logger error")
 
-        with pytest.raises(Exception): # noqa: B017
+        with pytest.raises(Exception):  # noqa: B017
             FMPDataClient(api_key="test_key")
 
     def test_client_initialization_sets_all_attributes(self):
@@ -98,17 +98,17 @@ class TestFMPDataClientInitialization:
         client = FMPDataClient(api_key="test_key")
 
         # Check all private attributes are initialized
-        assert hasattr(client, '_initialized')
-        assert hasattr(client, '_logger')
-        assert hasattr(client, '_company')
-        assert hasattr(client, '_market')
-        assert hasattr(client, '_fundamental')
-        assert hasattr(client, '_technical')
-        assert hasattr(client, '_intelligence')
-        assert hasattr(client, '_institutional')
-        assert hasattr(client, '_investment')
-        assert hasattr(client, '_alternative')
-        assert hasattr(client, '_economics')
+        assert hasattr(client, "_initialized")
+        assert hasattr(client, "_logger")
+        assert hasattr(client, "_company")
+        assert hasattr(client, "_market")
+        assert hasattr(client, "_fundamental")
+        assert hasattr(client, "_technical")
+        assert hasattr(client, "_intelligence")
+        assert hasattr(client, "_institutional")
+        assert hasattr(client, "_investment")
+        assert hasattr(client, "_alternative")
+        assert hasattr(client, "_economics")
 
         # Check initial state
         assert client._initialized is True
@@ -162,8 +162,9 @@ class TestFMPDataClientFromEnv:
         mock_console_handler = Mock()
         mock_console_handler.level = "INFO"
         mock_console_handler.class_name = "StreamHandler"  # Real string, not Mock
-        mock_console_handler.format = \
+        mock_console_handler.format = (
             "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+        )
         mock_console_handler.handler_kwargs = {}
         mock_logging.handlers = {"console": mock_console_handler}
 
@@ -331,9 +332,15 @@ class TestFMPDataClientProperties:
         client._initialized = False
 
         properties = [
-            'company', 'market', 'fundamental', 'technical',
-            'intelligence', 'institutional', 'investment',
-            'alternative', 'economics'
+            "company",
+            "market",
+            "fundamental",
+            "technical",
+            "intelligence",
+            "institutional",
+            "investment",
+            "alternative",
+            "economics",
         ]
 
         for prop_name in properties:
@@ -347,7 +354,7 @@ class TestFMPDataClientProperties:
     @patch("fmp_data.client.CompanyClient")
     def test_property_with_debug_logging(self, mock_company_client, client):
         """Test property access logs debug message when logger available"""
-        with patch.object(client, 'logger') as mock_logger:
+        with patch.object(client, "logger") as mock_logger:
             mock_logger.debug = Mock()
 
             # Access property
@@ -366,9 +373,9 @@ class TestFMPDataClientLogger:
         logger = client.logger
 
         assert logger is not None
-        assert hasattr(logger, 'debug')
-        assert hasattr(logger, 'info')
-        assert hasattr(logger, 'error')
+        assert hasattr(logger, "debug")
+        assert hasattr(logger, "info")
+        assert hasattr(logger, "error")
 
         client.close()
 
@@ -499,9 +506,17 @@ class TestFMPDataClientEdgeCases:
         client = FMPDataClient(api_key="test_key")
 
         required_attrs = [
-            '_initialized', '_logger', '_company', '_market',
-            '_fundamental', '_technical', '_intelligence',
-            '_institutional', '_investment', '_alternative', '_economics'
+            "_initialized",
+            "_logger",
+            "_company",
+            "_market",
+            "_fundamental",
+            "_technical",
+            "_intelligence",
+            "_institutional",
+            "_investment",
+            "_alternative",
+            "_economics",
         ]
 
         for attr in required_attrs:
@@ -514,9 +529,9 @@ class TestFMPDataClientEdgeCases:
         client = FMPDataClient(api_key="test_key")
 
         # Should inherit BaseClient functionality
-        assert hasattr(client, 'config')
-        assert hasattr(client, 'client')  # httpx client
-        assert hasattr(client, 'close')
+        assert hasattr(client, "config")
+        assert hasattr(client, "client")  # httpx client
+        assert hasattr(client, "close")
 
         client.close()
 
@@ -525,7 +540,7 @@ class TestFMPDataClientEdgeCases:
         test_urls = [
             "https://financialmodelingprep.com/api",
             "https://custom.api.com/v1",
-            "http://localhost:8000"
+            "http://localhost:8000",
         ]
 
         for url in test_urls:
@@ -555,7 +570,7 @@ class TestFMPDataClientEdgeCases:
 # Integration tests with actual HTTP calls (existing tests from original file)
 @patch("httpx.Client.request")
 def test_get_profile_success(
-        mock_request, fmp_client, mock_response, mock_company_profile
+    mock_request, fmp_client, mock_response, mock_company_profile
 ):
     """Test successful company profile retrieval"""
     mock_request.return_value = mock_response(
@@ -571,7 +586,7 @@ def test_get_profile_success(
 
 @patch("httpx.Client.request")
 def test_retry_on_timeout(
-        mock_request, fmp_client, mock_response, mock_company_profile
+    mock_request, fmp_client, mock_response, mock_company_profile
 ):
     """Test retry behavior on timeout"""
     mock_request.side_effect = [
@@ -586,7 +601,7 @@ def test_retry_on_timeout(
 
 @patch("httpx.Client.request")
 def test_rate_limit_handling(
-        mock_request, fmp_client, mock_response, mock_error_response
+    mock_request, fmp_client, mock_response, mock_error_response
 ):
     """Test rate limit handling"""
     error = mock_error_response("Rate limit exceeded", 429)
@@ -605,7 +620,7 @@ def test_rate_limit_handling(
 
 @patch("httpx.Client.request")
 def test_authentication_error(
-        mock_request, fmp_client, mock_response, mock_error_response
+    mock_request, fmp_client, mock_response, mock_error_response
 ):
     """Test authentication error handling"""
     error = mock_error_response("Invalid API key", 401)

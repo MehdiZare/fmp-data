@@ -33,7 +33,7 @@ class TestSensitiveDataFilter:
             lineno=0,
             msg="Test message with api_key=secret123",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         # Filter should return True (allow record)
@@ -87,7 +87,7 @@ class TestSensitiveDataFilter:
             lineno=0,
             msg="Request with data: %s",
             args=({"api_key": "secret123", "symbol": "AAPL"},),
-            exc_info=None
+            exc_info=None,
         )
 
         assert filter_instance.filter(record) is True
@@ -100,11 +100,8 @@ class TestSensitiveDataFilter:
         filter_instance = SensitiveDataFilter()
 
         nested_data = {
-            "config": {
-                "api_key": "nested_secret",
-                "timeout": 30
-            },
-            "symbol": "AAPL"
+            "config": {"api_key": "nested_secret", "timeout": 30},
+            "symbol": "AAPL",
         }
 
         record = logging.LogRecord(
@@ -114,7 +111,7 @@ class TestSensitiveDataFilter:
             lineno=0,
             msg="Nested data: %s",
             args=(nested_data,),
-            exc_info=None
+            exc_info=None,
         )
 
         assert filter_instance.filter(record) is True
@@ -135,7 +132,7 @@ class TestSensitiveDataFilter:
             lineno=0,
             msg="List data: %s",
             args=(list_data,),
-            exc_info=None
+            exc_info=None,
         )
 
         assert filter_instance.filter(record) is True
@@ -154,7 +151,7 @@ class TestSensitiveDataFilter:
             lineno=0,
             msg="Normal log message with symbol=AAPL",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         original_message = record.getMessage()
@@ -176,7 +173,7 @@ class TestJsonFormatter:
             lineno=42,
             msg="Test message",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         formatted = formatter.format(record)
@@ -199,7 +196,7 @@ class TestJsonFormatter:
             lineno=42,
             msg="Error occurred",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         # Add extra fields
@@ -228,7 +225,7 @@ class TestJsonFormatter:
             lineno=42,
             msg="Exception occurred",
             args=(),
-            exc_info=exc_info
+            exc_info=exc_info,
         )
 
         formatted = formatter.format(record)
@@ -248,7 +245,7 @@ class TestJsonFormatter:
             lineno=42,
             msg="Test message",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         # Add private attribute
@@ -268,9 +265,7 @@ class TestSecureRotatingFileHandler:
         log_file = tmp_path / "secure.log"
 
         handler = SecureRotatingFileHandler(
-            filename=str(log_file),
-            maxBytes=1024,
-            backupCount=3
+            filename=str(log_file), maxBytes=1024, backupCount=3
         )
 
         # Write a test message
@@ -281,7 +276,7 @@ class TestSecureRotatingFileHandler:
             lineno=0,
             msg="Test message",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         handler.emit(record)
@@ -308,9 +303,8 @@ class TestSecureRotatingFileHandler:
 
                 # Should have logged a warning (possibly called once during init)
                 assert mock_logger.warning.called
-                assert (
-                        "Could not set secure permissions" in
-                        str(mock_logger.warning.call_args_list)
+                assert "Could not set secure permissions" in str(
+                    mock_logger.warning.call_args_list
                 )
 
     def test_windows_skip_permissions(self, tmp_path):
@@ -329,7 +323,7 @@ class TestSecureRotatingFileHandler:
                     lineno=0,
                     msg="Test",
                     args=(),
-                    exc_info=None
+                    exc_info=None,
                 )
                 handler.emit(record)
 
@@ -420,9 +414,7 @@ class TestFMPLogger:
 
         config = LoggingConfig(
             level="DEBUG",
-            handlers={
-                "console": LogHandlerConfig(class_name="StreamHandler")
-            }
+            handlers={"console": LogHandlerConfig(class_name="StreamHandler")},
         )
 
         fmp_logger.configure(config)
@@ -449,10 +441,9 @@ class TestFMPLogger:
             log_path=log_path,
             handlers={
                 "file": LogHandlerConfig(
-                    class_name="FileHandler",
-                    handler_kwargs={"filename": "test.log"}
+                    class_name="FileHandler", handler_kwargs={"filename": "test.log"}
                 )
-            }
+            },
         )
 
         fmp_logger = FMPLogger()
@@ -465,11 +456,7 @@ class TestFMPLogger:
         """Test that configure sets secure directory permissions"""
         log_path = tmp_path / "secure_logs"
 
-        config = LoggingConfig(
-            level="INFO",
-            log_path=log_path,
-            handlers={}
-        )
+        config = LoggingConfig(level="INFO", log_path=log_path, handlers={})
 
         with patch("os.chmod") as mock_chmod:
             with patch("sys.platform", "linux"):
@@ -483,11 +470,7 @@ class TestFMPLogger:
         """Test configure handles directory permission errors"""
         log_path = tmp_path / "logs"
 
-        config = LoggingConfig(
-            level="INFO",
-            log_path=log_path,
-            handlers={}
-        )
+        config = LoggingConfig(level="INFO", log_path=log_path, handlers={})
 
         with patch("os.chmod", side_effect=OSError("Permission denied")):
             with patch.object(FMPLogger()._logger, "warning") as mock_warning:
@@ -516,7 +499,7 @@ class TestFMPLogger:
         config = LogHandlerConfig(
             class_name="FileHandler",
             level="DEBUG",
-            handler_kwargs={"filename": str(log_file)}
+            handler_kwargs={"filename": str(log_file)},
         )
 
         fmp_logger._add_handler("file", config, tmp_path)
@@ -535,8 +518,8 @@ class TestFMPLogger:
             handler_kwargs={
                 "filename": "rotating.log",
                 "maxBytes": 1024,
-                "backupCount": 3
-            }
+                "backupCount": 3,
+            },
         )
 
         fmp_logger._add_handler("rotating", config, tmp_path)
@@ -552,10 +535,7 @@ class TestFMPLogger:
         config = LogHandlerConfig(
             class_name="JsonRotatingFileHandler",
             level="DEBUG",
-            handler_kwargs={
-                "filename": "json.log",
-                "maxBytes": 2048
-            }
+            handler_kwargs={"filename": "json.log", "maxBytes": 2048},
         )
 
         fmp_logger._add_handler("json", config, tmp_path)
@@ -578,8 +558,7 @@ class TestFMPLogger:
         fmp_logger = FMPLogger()
 
         config = LogHandlerConfig(
-            class_name="FileHandler",
-            handler_kwargs={"filename": "test.log"}
+            class_name="FileHandler", handler_kwargs={"filename": "test.log"}
         )
 
         fmp_logger._add_handler("file", config, tmp_path)
@@ -712,6 +691,7 @@ class TestLogApiCallDecorator:
         mock_logger = Mock()
 
         with patch("inspect.currentframe", return_value=None):
+
             @log_api_call(logger=mock_logger)
             def test_function():
                 return "result"
@@ -736,25 +716,22 @@ class TestLoggerIntegration:
             level="DEBUG",
             log_path=log_path,
             handlers={
-                "console": LogHandlerConfig(
-                    class_name="StreamHandler",
-                    level="INFO"
-                ),
+                "console": LogHandlerConfig(class_name="StreamHandler", level="INFO"),
                 "file": LogHandlerConfig(
                     class_name="RotatingFileHandler",
                     level="DEBUG",
                     handler_kwargs={
                         "filename": "app.log",
                         "maxBytes": 1024,
-                        "backupCount": 2
-                    }
+                        "backupCount": 2,
+                    },
                 ),
                 "json": LogHandlerConfig(
                     class_name="JsonRotatingFileHandler",
                     level="WARNING",
-                    handler_kwargs={"filename": "app.json"}
-                )
-            }
+                    handler_kwargs={"filename": "app.json"},
+                ),
+            },
         )
 
         fmp_logger = FMPLogger()
@@ -776,7 +753,7 @@ class TestLoggerIntegration:
         # Initial configuration
         config1 = LoggingConfig(
             level="INFO",
-            handlers={"console": LogHandlerConfig(class_name="StreamHandler")}
+            handlers={"console": LogHandlerConfig(class_name="StreamHandler")},
         )
         fmp_logger.configure(config1)
 
@@ -785,8 +762,8 @@ class TestLoggerIntegration:
             level="DEBUG",
             handlers={
                 "console": LogHandlerConfig(class_name="StreamHandler"),
-                "new_handler": LogHandlerConfig(class_name="StreamHandler")
-            }
+                "new_handler": LogHandlerConfig(class_name="StreamHandler"),
+            },
         )
         fmp_logger.configure(config2)
 
@@ -805,6 +782,7 @@ class TestLoggerIntegration:
 
         # Create a test handler to capture output
         import io
+
         test_stream = io.StringIO()
         test_handler = logging.StreamHandler(test_stream)
         test_handler.setFormatter(logging.Formatter("%(message)s"))

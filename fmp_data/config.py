@@ -152,6 +152,7 @@ class RateLimitConfig(BaseModel):
     @classmethod
     def from_env(cls) -> "RateLimitConfig":
         """Create rate limit config from environment variables"""
+
         def safe_int(env_var: str, default: str) -> int:
             """Safely convert environment variable to int, falling back to default"""
             try:
@@ -186,8 +187,7 @@ class ClientConfig(BaseModel):
         default=3, ge=0, description="Maximum number of rate limit retries"
     )
     base_url: str = Field(
-        default="https://financialmodelingprep.com/api",
-        description="Base API URL"
+        default="https://financialmodelingprep.com/api", description="Base API URL"
     )
     rate_limit: RateLimitConfig = Field(
         default_factory=RateLimitConfig,

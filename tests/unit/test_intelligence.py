@@ -174,7 +174,7 @@ class TestMarketIntelligenceClientCalendar:
     """Test calendar functionality"""
 
     def test_get_earnings_calendar_no_dates(
-            self, fmp_client, mock_client, earnings_calendar_data
+        self, fmp_client, mock_client, earnings_calendar_data
     ):
         """Test get_earnings_calendar without date filters"""
         mock_client.request.return_value = [EarningEvent(**earnings_calendar_data)]
@@ -189,7 +189,7 @@ class TestMarketIntelligenceClientCalendar:
         assert result[0].symbol == "AAPL"
 
     def test_get_earnings_calendar_with_dates(
-            self, fmp_client, mock_client, earnings_calendar_data
+        self, fmp_client, mock_client, earnings_calendar_data
     ):
         """Test get_earnings_calendar with date filters"""
         mock_client.request.return_value = [EarningEvent(**earnings_calendar_data)]
@@ -207,7 +207,7 @@ class TestMarketIntelligenceClientCalendar:
         assert isinstance(result, list)
 
     def test_get_historical_earnings(
-            self, fmp_client, mock_client, earnings_calendar_data
+        self, fmp_client, mock_client, earnings_calendar_data
     ):
         """Test get_historical_earnings"""
         mock_client.request.return_value = [EarningEvent(**earnings_calendar_data)]
@@ -220,7 +220,7 @@ class TestMarketIntelligenceClientCalendar:
         assert isinstance(result, list)
 
     def test_get_earnings_confirmed(
-            self, fmp_client, mock_client, earnings_confirmed_data
+        self, fmp_client, mock_client, earnings_confirmed_data
     ):
         """Test get_earnings_confirmed"""
         mock_client.request.return_value = [EarningConfirmed(**earnings_confirmed_data)]
@@ -253,7 +253,7 @@ class TestMarketIntelligenceClientCalendar:
         assert isinstance(result, list)
 
     def test_get_dividends_calendar(
-            self, fmp_client, mock_client, dividends_calendar_data
+        self, fmp_client, mock_client, dividends_calendar_data
     ):
         """Test get_dividends_calendar"""
         mock_client.request.return_value = [DividendEvent(**dividends_calendar_data)]
@@ -417,7 +417,7 @@ class TestMarketIntelligenceClientNews:
         assert kwargs["to"] is None
 
     def test_get_stock_news_sentiments(
-            self, fmp_client, mock_client, stock_news_sentiment_data
+        self, fmp_client, mock_client, stock_news_sentiment_data
     ):
         """Test get_stock_news_sentiments"""
         mock_client.request.return_value = [
@@ -473,9 +473,7 @@ class TestMarketIntelligenceClientNews:
         mock_client.request.return_value = [CryptoNewsArticle(**mock_data)]
 
         _ = fmp_client.intelligence.get_crypto_news(
-            symbol="BTC",
-            from_date=date(2024, 1, 1),
-            to_date=date(2024, 1, 31)
+            symbol="BTC", from_date=date(2024, 1, 1), to_date=date(2024, 1, 31)
         )
 
         mock_client.request.assert_called_once()
@@ -761,18 +759,15 @@ class TestMarketIntelligenceClientFundraising:
             "formType": "C",
             "formSignification": "Offering Statement",
             "fillingDate": "2024-01-15T00:00:00.000Z",
-
             # Additional required offering fields
             "offeringAmount": 1000000,  # Added missing required field
             "offeringPrice": 10.0,  # Added missing required field
-
             # Required offering fields
             "securityOfferedOtherDescription": "Common Stock",
             "numberOfSecurityOffered": 100000,
             "overSubscriptionAccepted": "No",  # String value, not boolean
             "maximumOfferingAmount": 1000000,
             "currentNumberOfEmployees": 10,
-
             # Required fiscal year financial data (most recent)
             "totalAssetMostRecentFiscalYear": 500000,
             "cashAndCashEquiValentMostRecentFiscalYear": 100000,
@@ -783,7 +778,6 @@ class TestMarketIntelligenceClientFundraising:
             "costGoodsSoldMostRecentFiscalYear": 400000,
             "taxesPaidMostRecentFiscalYear": 50000,
             "netIncomeMostRecentFiscalYear": 150000,
-
             # Required fiscal year financial data (prior)
             "totalAssetPriorFiscalYear": 400000,
             "cashAndCashEquiValentPriorFiscalYear": 80000,
@@ -838,12 +832,10 @@ class TestMarketIntelligenceClientFundraising:
             "entityType": "Corporation",
             "jurisdictionOfIncorporation": "Delaware",
             "yearOfIncorporation": "2020",
-
             # Required financial amounts
             "totalOfferingAmount": 10000000,
             "totalAmountSold": 5000000,
             "totalAmountRemaining": 5000000,
-
             # Required issuer information
             "industryGroupType": "Technology",
             "revenueRange": "$1M - $5M",
@@ -853,7 +845,6 @@ class TestMarketIntelligenceClientFundraising:
             "issuerStateOrCountryDescription": "Delaware",
             "issuerZipCode": "19801",
             "issuerPhoneNumber": "555-0123",
-
             # Required related person information
             "relatedPersonFirstName": "John",
             "relatedPersonLastName": "Doe",
@@ -863,7 +854,6 @@ class TestMarketIntelligenceClientFundraising:
             "relatedPersonStateOrCountryDescription": "Delaware",
             "relatedPersonZipCode": "19801",
             "relatedPersonRelationship": "Director",
-
             # Required offering details
             "federalExemptionsExclusions": "3(c)(7)",
             "dateOfFirstSale": "2024-01-01",
@@ -950,8 +940,7 @@ class TestMarketIntelligenceClientEdgeCases:
 
         # Test edge dates
         fmp_client.intelligence.get_earnings_calendar(
-            start_date=date(2024, 12, 31),
-            end_date=date(2024, 1, 1)
+            start_date=date(2024, 12, 31), end_date=date(2024, 1, 1)
         )
 
         mock_client.request.assert_called_once()
@@ -977,11 +966,7 @@ class TestMarketIntelligenceClientEdgeCases:
 
         # Test forex news with all optional parameters
         fmp_client.intelligence.get_forex_news(
-            page=None,
-            symbol=None,
-            from_date=None,
-            to_date=None,
-            limit=None
+            page=None, symbol=None, from_date=None, to_date=None, limit=None
         )
 
         mock_client.request.assert_called_once()
