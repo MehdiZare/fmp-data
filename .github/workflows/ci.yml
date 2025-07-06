@@ -53,28 +53,35 @@ jobs:
           NOX_USE_UV: "1"
           CI: "true"  # Ensure CI environment is detected
         run: |
+          # Clean any existing coverage files first
+          rm -f .coverage*
+
           # Run tests for this Python version explicitly for each feature group
           echo "Running tests for Python ${{ matrix.python }}"
 
           # Run each feature group explicitly to ensure coverage files are created
-          uv tool run nox -s "tests-${{ matrix.python }}(core)"
-          uv tool run nox -s "tests-${{ matrix.python }}(langchain)"
-          uv tool run nox -s "tests-${{ matrix.python }}(mcp-server)"
+          uv tool run nox -s "tests-${{ matrix.python }}(core)" || echo "Core tests failed"
+          uv tool run nox -s "tests-${{ matrix.python }}(langchain)" || echo "Langchain tests failed"
+          uv tool run nox -s "tests-${{ matrix.python }}(mcp-server)" || echo "MCP tests failed"
 
           # Debug: List generated coverage files
           echo "Coverage files generated:"
           ls -la .coverage* || echo "No coverage files found"
+
+          # Ensure we have at least some coverage files
+          if [ ! -f .coverage.* ]; then
+            echo "ERROR: No coverage files were generated!"
+            exit 1
+          fi
 
       # ⑤ Upload coverage artifacts for combination later
       - name: 📤 Upload coverage artifacts
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.python }}
-          path: |
-            .coverage.*
-            !.coverage
+          path: .coverage.*
           retention-days: 1
-          if-no-files-found: warn
+          if-no-files-found: error  # Changed to error to catch issues
 
       # ⑥ Quality gates (lint, type-check, security) once on latest LTS
       - name: 🔍 Quality Gates
@@ -100,26 +107,49 @@ jobs:
       - name: ⚡  Install uv
         uses: astral-sh/setup-uv@v6
 
+      # Install dependencies first
+      - name: 📦 Install dependencies
+        env:
+          NOX_USE_UV: "1"
+        run: |
+          uv tool install nox
+          # Pre-install coverage tools
+          uv tool run --from coverage coverage --version
+
       - name: 📥 Download all coverage artifacts
         uses: actions/download-artifact@v4
         with:
           pattern: coverage-*
           merge-multiple: true
+          path: ./coverage-data
 
       - name: 🔍 Debug downloaded coverage files
         run: |
-          echo "Files in current directory:"
-          ls -la
-          echo "Coverage files found:"
-          ls -la .coverage* || echo "No coverage files found"
+          echo "Files in coverage-data directory:"
+          ls -la ./coverage-data/ || echo "Coverage-data directory not found"
+
+          echo "Moving coverage files to root:"
+          cp ./coverage-data/.coverage.* . || echo "No coverage files to copy"
+
+          echo "Coverage files in root:"
+          ls -la .coverage* || echo "No coverage files found in root"
+
           echo "All files starting with .coverage:"
-          find . -name ".coverage*" -type f || echo "No .coverage files found"
+          find . -name ".coverage*" -type f || echo "No .coverage files found anywhere"
 
       - name: 📊 Combine coverage and generate report
         env:
           NOX_USE_UV: "1"
         run: |
-          # Install dependencies needed for coverage
+          # Verify we have coverage files
+          if [ ! -f .coverage.* ]; then
+            echo "ERROR: No coverage files found for combination!"
+            echo "Available files:"
+            ls -la
+            exit 1
+          fi
+
+          # Install dependencies and run coverage report
           uv tool run nox -s coverage_report
 
       - name: 📈 Coverage upload

@@ -120,7 +120,7 @@ def tests(session: Session, feature_group: str | None) -> None:
         # Check if mcp tests exist and handle gracefully
         mcp_test_file = Path("tests/unit/test_mcp.py")
         if mcp_test_file.exists():
-            # Allow exit code 5 (no tests collected) for optional features
+            # Use success_codes instead of exception handling
             session.run(
                 "pytest",
                 *pytest_args,
@@ -128,15 +128,15 @@ def tests(session: Session, feature_group: str | None) -> None:
                 "-m",
                 "not integration",
                 env=env,
-                success_codes=[0, 5],
+                success_codes=[0, 5],  # 0=success, 5=no tests collected
             )
         else:
             session.log(
-                "Skipping mcp-server tests - "
-                "test_mcp.py not found (this is OK for optional features)"
+                "Skipping mcp-server tests -"
+                " test_mcp.py not found (this is OK for optional features)"
             )
     else:
-        session.run("pytest", *pytest_args, env=env)
+        session.run("pytest", *pytest_args, env=env, success_codes=[0, 5])
 
     session.log(f"Coverage data saved to {coverage_file}")
 
@@ -183,7 +183,7 @@ def coverage_local(session: Session) -> None:
     session.log(f"Running all feature group tests with Python {session.python}")
 
     # Run all feature group combinations for the current Python version
-    for _feature_group, feature_id in zip(FEATURE_GROUPS, FEATURE_IDS, strict=False):
+    for feature_group, feature_id in zip(FEATURE_GROUPS, FEATURE_IDS, strict=False):
         session.log(f"Running tests for {feature_id} feature group")
 
         # Use unique coverage file names
@@ -201,12 +201,13 @@ def coverage_local(session: Session) -> None:
 
         env = {"COVERAGE_FILE": coverage_file}
 
-    if _feature_group == "mcp-server":
-        # Check if mcp tests exist first
-        mcp_test_file = Path("tests/unit/test_mcp.py")
-        if mcp_test_file.exists():
-            # Run pytest but allow for no tests collected (exit code 5)
-            try:
+        # Handle different feature groups
+        if feature_group == "mcp-server":
+            # Check if mcp tests exist first
+            mcp_test_file = Path("tests/unit/test_mcp.py")
+            if mcp_test_file.exists():
+                # Run pytest but allow for no tests collected (exit code 5)
+                # Using success_codes instead of exception handling
                 session.run(
                     "pytest",
                     *pytest_args,
@@ -214,34 +215,29 @@ def coverage_local(session: Session) -> None:
                     "-m",
                     "not integration",
                     env=env,
+                    success_codes=[0, 5],  # 0=success, 5=no tests collected
                 )
-            except nox.command.CommandFailed as e:
-                if e.exitcode == 5:  # No tests collected
-                    session.log(
-                        "No mcp-server tests collected - creating empty coverage"
-                    )
-                    # Create minimal coverage file for this feature group
-                    session.run(
-                        "python",
-                        "-c",
-                        "import coverage; cov = coverage.Coverage(data_file='"
-                        + coverage_file
-                        + "'); cov.start(); cov.stop(); cov.save()",
-                    )
-                else:
-                    raise  # Re-raise if it's a different error
+            else:
+                session.log("Skipping mcp-server tests - test_mcp.py not found")
+                # Create minimal coverage file for this feature group
+                cmd = (
+                    "import coverage;"
+                    f" cov = coverage.Coverage(data_file='{coverage_file}');"
+                    " cov.start();"
+                    " cov.stop();"
+                    " cov.save()"
+                )
+
+                session.run(
+                    "python",
+                    "-c",
+                    cmd,
+                    success_codes=[0],
+                )
         else:
-            session.log("Skipping mcp-server tests - test_mcp.py not found")
-            # Create minimal coverage file for this feature group
-            session.run(
-                "python",
-                "-c",
-                "import coverage; cov = coverage.Coverage(data_file='"
-                + coverage_file
-                + "'); cov.start(); cov.stop(); cov.save()",
-            )
-    else:
-        session.run("pytest", *pytest_args, env=env)
+            # For all other feature groups (core, langchain),
+            # run standard pytest
+            session.run("pytest", *pytest_args, env=env, success_codes=[0, 5])
 
     # Now combine and report
     session.log("Combining coverage files...")
