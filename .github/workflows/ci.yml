@@ -53,16 +53,28 @@ jobs:
           NOX_USE_UV: "1"
           CI: "true"  # Ensure CI environment is detected
         run: |
-          # Run tests for this Python version only, but all feature groups
-          uv tool run nox -s "tests-${{ matrix.python }}"
+          # Run tests for this Python version explicitly for each feature group
+          echo "Running tests for Python ${{ matrix.python }}"
+
+          # Run each feature group explicitly to ensure coverage files are created
+          uv tool run nox -s "tests-${{ matrix.python }}(core)"
+          uv tool run nox -s "tests-${{ matrix.python }}(langchain)"
+          uv tool run nox -s "tests-${{ matrix.python }}(mcp-server)"
+
+          # Debug: List generated coverage files
+          echo "Coverage files generated:"
+          ls -la .coverage* || echo "No coverage files found"
 
       # ⑤ Upload coverage artifacts for combination later
       - name: 📤 Upload coverage artifacts
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.python }}
-          path: .coverage.*
+          path: |
+            .coverage.*
+            !.coverage
           retention-days: 1
+          if-no-files-found: warn
 
       # ⑥ Quality gates (lint, type-check, security) once on latest LTS
       - name: 🔍 Quality Gates
@@ -93,6 +105,15 @@ jobs:
         with:
           pattern: coverage-*
           merge-multiple: true
+
+      - name: 🔍 Debug downloaded coverage files
+        run: |
+          echo "Files in current directory:"
+          ls -la
+          echo "Coverage files found:"
+          ls -la .coverage* || echo "No coverage files found"
+          echo "All files starting with .coverage:"
+          find . -name ".coverage*" -type f || echo "No .coverage files found"
 
       - name: 📊 Combine coverage and generate report
         env:
