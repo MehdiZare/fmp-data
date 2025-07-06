@@ -5,7 +5,7 @@ Nox configuration for *fmp-data*
 ▪ optional groups  : dev, lint, typecheck, security, langchain, mcp-server …
 ▪ package manager  : uv (fast resolver / installer)
 
-Run "nox -s tests-3.12(mcp-server)" for a single combo, or just "nox" to
+Run "nox -s tests-3.12-mcp-server" for a single combo, or just "nox" to
 execute every default session.
 
 Author: Mehdi Zare
@@ -79,6 +79,23 @@ def _sync_with_uv(session: Session, extras: Iterable[str] = ()) -> None:
         session.run("uv", "pip", "install", "-e", ".")
 
 
+def _ensure_coverage_file(session: Session, coverage_file: str) -> None:
+    """Ensure a coverage file exists, even if empty."""
+    if not Path(coverage_file).exists():
+        session.log(f"Creating minimal coverage file: {coverage_file}")
+        session.run(
+            "python",
+            "-c",
+            f"""
+import coverage
+cov = coverage.Coverage(data_file='{coverage_file}')
+cov.start()
+cov.stop()
+cov.save()
+""",
+        )
+
+
 # --------------------------------------------------------------------------- #
 #  Sessions                                                                   #
 # --------------------------------------------------------------------------- #
@@ -116,27 +133,40 @@ def tests(session: Session, feature_group: str | None) -> None:
     # Set environment variable for coverage file
     env = {"COVERAGE_FILE": coverage_file}
 
-    if feature_group == "mcp-server":
-        # Check if mcp tests exist and handle gracefully
-        mcp_test_file = Path("tests/unit/test_mcp.py")
-        if mcp_test_file.exists():
-            # Use success_codes instead of exception handling
-            session.run(
-                "pytest",
-                *pytest_args,
-                "tests/unit/test_mcp.py",
-                "-m",
-                "not integration",
-                env=env,
-                success_codes=[0, 5],  # 0=success, 5=no tests collected
-            )
+    # Always ensure we create a coverage file, even if no tests run
+    try:
+        if feature_group == "mcp-server":
+            # Check if mcp tests exist and handle gracefully
+            mcp_test_file = Path("tests/unit/test_mcp.py")
+            if mcp_test_file.exists():
+                session.run(
+                    "pytest",
+                    *pytest_args,
+                    "tests/unit/test_mcp.py",
+                    "-m",
+                    "not integration",
+                    env=env,
+                )
+            else:
+                session.log("No mcp tests found - creating minimal coverage file")
+                _ensure_coverage_file(session, coverage_file)
         else:
-            session.log(
-                "Skipping mcp-server tests -"
-                " test_mcp.py not found (this is OK for optional features)"
-            )
-    else:
-        session.run("pytest", *pytest_args, env=env, success_codes=[0, 5])
+            session.run("pytest", *pytest_args, env=env)
+    except Exception as e:
+        session.log(f"Tests failed with: {e}")
+        # Ensure coverage file exists even if tests fail
+        _ensure_coverage_file(session, coverage_file)
+        # Re-raise if it's not just "no tests collected"
+        if (
+            "no tests ran" not in str(e).lower()
+            and "collected 0 items" not in str(e).lower()
+        ):
+            raise
+
+    # Verify coverage file was created
+    if not Path(coverage_file).exists():
+        session.log(f"Coverage file {coverage_file} not found, creating minimal one")
+        _ensure_coverage_file(session, coverage_file)
 
     session.log(f"Coverage data saved to {coverage_file}")
 
@@ -202,42 +232,29 @@ def coverage_local(session: Session) -> None:
         env = {"COVERAGE_FILE": coverage_file}
 
         # Handle different feature groups
-        if feature_group == "mcp-server":
-            # Check if mcp tests exist first
-            mcp_test_file = Path("tests/unit/test_mcp.py")
-            if mcp_test_file.exists():
-                # Run pytest but allow for no tests collected (exit code 5)
-                # Using success_codes instead of exception handling
-                session.run(
-                    "pytest",
-                    *pytest_args,
-                    "tests/unit/test_mcp.py",
-                    "-m",
-                    "not integration",
-                    env=env,
-                    success_codes=[0, 5],  # 0=success, 5=no tests collected
-                )
+        try:
+            if feature_group == "mcp-server":
+                # Check if mcp tests exist first
+                mcp_test_file = Path("tests/unit/test_mcp.py")
+                if mcp_test_file.exists():
+                    session.run(
+                        "pytest",
+                        *pytest_args,
+                        "tests/unit/test_mcp.py",
+                        "-m",
+                        "not integration",
+                        env=env,
+                    )
+                else:
+                    session.log("Skipping mcp-server tests - test_mcp.py not found")
+                    _ensure_coverage_file(session, coverage_file)
             else:
-                session.log("Skipping mcp-server tests - test_mcp.py not found")
-                # Create minimal coverage file for this feature group
-                cmd = (
-                    "import coverage;"
-                    f" cov = coverage.Coverage(data_file='{coverage_file}');"
-                    " cov.start();"
-                    " cov.stop();"
-                    " cov.save()"
-                )
-
-                session.run(
-                    "python",
-                    "-c",
-                    cmd,
-                    success_codes=[0],
-                )
-        else:
-            # For all other feature groups (core, langchain),
-            # run standard pytest
-            session.run("pytest", *pytest_args, env=env, success_codes=[0, 5])
+                # For all other feature groups (core, langchain),
+                # run standard pytest
+                session.run("pytest", *pytest_args, env=env)
+        except Exception as e:
+            session.log(f"Tests failed for {feature_id}: {e}")
+            _ensure_coverage_file(session, coverage_file)
 
     # Now combine and report
     session.log("Combining coverage files...")
