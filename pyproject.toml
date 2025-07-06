@@ -80,6 +80,7 @@ dev = [
     "mypy>=1.13.0,<2.0.0",
     "types-cachetools>=6.0.0.20250525,<7.0.0",
     "bandit[toml]>=1.7.10,<2.0.0",
+    "pip-audit>=2.7.0,<3.0.0",
     "pytest>=8.3.3,<9.0.0",
     "pytest-asyncio>=0.24.0,<0.25.0",
     "pytest-cov>=6.0.0,<7.0.0",
@@ -346,7 +347,6 @@ source = [
 ]
 
 [tool.coverage.combine]
-# Don't fail if some files are missing - useful for optional feature groups
 skip_empty = true
 
 [tool.coverage.report]
@@ -422,6 +422,7 @@ dev = [
     "mypy>=1.13.0,<2.0.0",
     "types-cachetools>=6.0.0.20250525,<7.0.0",
     "bandit[toml]>=1.7.10,<2.0.0",
+    "pip-audit>=2.7.0,<3.0.0",
     "pytest>=8.3.3,<9.0.0",
     "pytest-asyncio>=0.24.0,<0.25.0",
     "pytest-cov>=6.0.0,<7.0.0",

@@ -15,6 +15,13 @@ repos:
       - id: check-merge-conflict
       - id: check-docstring-first
 
+  # ───────── Black code formatter ─────────────────────────────────────────
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        language_version: python3
+
   # ───────── Ruff (lint / fix) ─────────────────────────────────────────────
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.12.2
@@ -42,12 +49,12 @@ repos:
   # ───────── Local nox-powered helpers ────────────────────────────────────
   - repo: local
     hooks:
-#      - id: sync-groups
-#        name: Sync optional-deps → dependency-groups
-#        entry: python scripts/sync_groups.py
-#        language: system
-#        files: ^pyproject\.toml$
-#        pass_filenames: false
+      - id: sync-groups
+        name: Sync optional-deps → dependency-groups
+        entry: python scripts/sync_groups.py
+        language: system
+        files: ^pyproject\.toml$
+        pass_filenames: false
 
       - id: mypy-core
         name: "mypy: core package"
