@@ -100,7 +100,8 @@ def tests(session: Session, feature_group: str | None) -> None:
     _sync_with_uv(session, extras)
 
     # Use unique coverage file names to avoid conflicts in parallel runs
-    coverage_file = f".coverage.{session.python}.{feature_group or 'core'}"
+    # Ensure coverage files are created in the repo root
+    coverage_file = REPO_ROOT / f".coverage.{session.python}.{feature_group or 'core'}"
 
     # Base pytest args - no coverage threshold during individual runs
     pytest_args = [
@@ -113,8 +114,8 @@ def tests(session: Session, feature_group: str | None) -> None:
         "--cov-fail-under=0",  # No threshold during individual sessions
     ]
 
-    # Set environment variable for coverage file
-    env = {"COVERAGE_FILE": coverage_file}
+    # Set environment variable for coverage file with absolute path
+    env = {"COVERAGE_FILE": str(coverage_file)}
 
     if feature_group == "mcp-server":
         # Check if mcp tests exist and handle gracefully
@@ -149,7 +150,7 @@ cov.save()
         session.run("pytest", *pytest_args, env=env, success_codes=[0, 5])
 
     # Verify coverage file was created
-    if not Path(coverage_file).exists():
+    if not coverage_file.exists():
         session.log(f"Creating fallback coverage file: {coverage_file}")
         session.run(
             "python",
@@ -211,8 +212,8 @@ def coverage_local(session: Session) -> None:
     for feature_group, feature_id in zip(FEATURE_GROUPS, FEATURE_IDS, strict=False):
         session.log(f"Running tests for {feature_id} feature group")
 
-        # Use unique coverage file names
-        coverage_file = f".coverage.{session.python}.{feature_id}"
+        # Use unique coverage file names with absolute paths
+        coverage_file = REPO_ROOT / f".coverage.{session.python}.{feature_id}"
 
         # Base pytest args
         pytest_args = [
@@ -224,7 +225,7 @@ def coverage_local(session: Session) -> None:
             "--cov-fail-under=0",
         ]
 
-        env = {"COVERAGE_FILE": coverage_file}
+        env = {"COVERAGE_FILE": str(coverage_file)}
 
         # Handle different feature groups
         if feature_group == "mcp-server":
@@ -260,7 +261,7 @@ cov.save()
             session.run("pytest", *pytest_args, env=env, success_codes=[0, 5])
 
         # Ensure coverage file exists
-        if not Path(coverage_file).exists():
+        if not coverage_file.exists():
             session.run(
                 "python",
                 "-c",
