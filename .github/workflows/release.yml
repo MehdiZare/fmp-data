@@ -1,0 +1,171 @@
+# .github/workflows/release.yml
+name: Build-and-Release
+
+on:
+  pull_request: # PR → build + Test PyPI
+    branches: [ main ]
+  push: # main → bump tag + build + PyPI
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.12"
+
+permissions:
+  contents: write     # create tags / releases
+  id-token: write     # OIDC token for Trusted Publishing
+
+##############################################################################
+# 1. Build & smoke-test  (always)
+##############################################################################
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      dist: ${{ steps.meta.outputs.dist }}
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Fetch tags from origin (fork PRs only)
+        if: github.event.pull_request.head.repo.full_name != github.repository
+        run: git fetch origin --tags
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install nox
+        run: uv tool install nox
+
+      - name: Install deps & smoke-tests
+        run: |
+          uvx poetry self add poetry-dynamic-versioning[plugin]
+          uv sync --group langchain --group mcp-server --group dev
+          uv tool run nox -s smoke_any -p ${{ env.PYTHON_VERSION }}
+
+      - name: Build wheel + sdist
+        run: uvx poetry build
+
+      - name: Capture metadata
+        id: meta
+        run: |
+          DIST_DIR="$(pwd)/dist"
+          echo "dist=$DIST_DIR"           >>"$GITHUB_OUTPUT"
+          echo "version=$(uvx poetry version --short)" >>"$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: ${{ steps.meta.outputs.dist }}
+
+  ##############################################################################
+  # 2. Publish to **Test PyPI** on internal PRs (Trusted Publishing, no token)
+  ##############################################################################
+  publish-testpypi:
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Publish to Test PyPI
+        uses: pypa/gh-action-pypi-publish@v1.12.4
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist
+          skip-existing: true
+          attestations: true        # ← OIDC / Trusted Publishing
+
+  ##############################################################################
+  # 3. Derive & push new tag on **main** merges
+  ##############################################################################
+  tag-version:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.bump.outputs.tag }}
+      version: ${{ steps.bump.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Derive semver bump from PR labels
+        id: bump
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          pr=$(gh api "repos/${{ github.repository }}/commits/${GITHUB_SHA}/pulls" \
+                --jq '.[0].number')
+          labels=$(gh pr view "$pr" --json labels --jq '.labels[].name')
+
+          bump=""
+          [[ "$labels" == *"release:patch"* ]] && bump=patch
+          [[ "$labels" == *"release:minor"* ]] && bump=minor
+          [[ "$labels" == *"release:major"* ]] && bump=major
+          [[ -n "$bump" ]] || { echo "::error::No release:* label"; exit 1; }
+
+          cur=$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)
+          IFS='.' read -r M m p <<<"${cur#v}"
+          case $bump in
+            patch) p=$((p+1));;
+            minor) m=$((m+1)); p=0;;
+            major) M=$((M+1)); m=0; p=0;;
+          esac
+          tag="v${M}.${m}.${p}"
+          echo "tag=$tag"       >>"$GITHUB_OUTPUT"
+          echo "version=${M}.${m}.${p}" >>"$GITHUB_OUTPUT"
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "$tag"
+          git push origin "$tag"
+
+  ##############################################################################
+  # 4. Publish to **PyPI** after tagging (Trusted Publishing, no token)
+  ##############################################################################
+  publish-pypi:
+    if: github.event_name == 'push'
+    needs: [ build, tag-version ]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.12.4
+        with:
+          packages-dir: dist
+          skip-existing: true
+          attestations: true         # ← OIDC / Trusted Publishing
+
+  ##############################################################################
+  # 5. GitHub Release notes
+  ##############################################################################
+  github-release:
+    if: github.event_name == 'push'
+    needs: [ publish-pypi, tag-version ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.tag-version.outputs.tag }}
+          name: Release ${{ needs.tag-version.outputs.tag }}
+          generate_release_notes: true
