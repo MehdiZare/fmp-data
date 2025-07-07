@@ -341,13 +341,3 @@ def smoke(session: Session) -> None:
     session.run(
         "python", "-c", f"import {PACKAGE_NAME}; print({PACKAGE_NAME}.__version__)"
     )
-
-
-@nox.session(python=DEFAULT_PYTHON, tags=["smoke"])
-def smoke_any(session: Session) -> None:
-    """
-    Temporary session to fix legacy workflow - remove after cleanup.
-    This is a compatibility shim for old workflows that reference smoke_any.
-    """
-    session.log("Running smoke_any (compatibility session)")
-    smoke(session)

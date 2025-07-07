@@ -1,74 +1,47 @@
-# .github/workflows/publish-to-testpypi.yml
-# ──────────────────────────────────────────────────────────────────────────────
-# Build the package on pushes to the dev branch and upload it to Test PyPI.
-# Uses post-release versioning (e.g., 1.0.0.post1, 1.0.0.post2, etc.)
-# ──────────────────────────────────────────────────────────────────────────────
-
 name: Publish-to-TestPyPI
 
 on:
-  push:
-    branches: [dev]
+  workflow_run:
+    workflows:
+      - Test-Matrix            # must match the name in ci.yml
+    branches:
+      - dev                    # fire only for merges to dev
+    types:
+      - completed
 
 permissions:
-  id-token: write          # OIDC token for trusted publishing
+  id-token: write              # OIDC → Trusted Publishing
   contents: read
 
 jobs:
-  test-and-publish:
+  build-and-publish:
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     env:
-      PYTHON_VERSION: "3.12"       # one place to change Python version
+      PYTHON_VERSION: "3.12"
 
     steps:
-      # 1️⃣  Checkout the code with full history for version detection --------
-      - name: 🛎️ Checkout
+      - name: 🛎️  Checkout tested commit
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0          # fetch full history for Dunamai
-          fetch-tags: true        # fetch all tags
+          ref: ${{ github.event.workflow_run.head_sha }}
 
-      # 2️⃣  Install the requested Python -------------------------------------
-      - name: 🐍 Set up Python
+      - name: 🐍  Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      # 3️⃣  Install uv --------------------------------------------------------
-      - name: ⚡ Install uv
+      - name: ⚡  Install uv (with cache)
         uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
 
-      # 4️⃣  Set up post-release versioning for TestPyPI --------------------
-      - name: 🏷️ Configure version for TestPyPI
+      - name: 📦  Build wheel & sdist
         run: |
-          # Install dunamai to check current version
-          uv pip install --system dunamai
+          uv pip install build
+          uv run python -m build --wheel --sdist
 
-          # Get the base version and add post-release suffix
-          base_version=$(dunamai from git --style pep440 --no-metadata)
-          post_version="${base_version}.post$(date +%Y%m%d%H%M)"
-
-          echo "📦 Base version: $base_version"
-          echo "📦 TestPyPI version: $post_version"
-          echo "PACKAGE_VERSION=$post_version" >> $GITHUB_ENV
-
-      # 5️⃣  Build the wheel & sdist ------------------------------------------
-      - name: 📦 Build wheel & sdist
-        run: |
-          set -euo pipefail
-
-          echo "📦 Building distributions with uv…"
-          echo "📦 Using version: $PACKAGE_VERSION"
-
-          # Override version for this build
-          export DUNAMAI_OVERRIDE_VERSION="$PACKAGE_VERSION"
-          uv build --wheel --sdist
-
-          echo "📦 Artifacts:"
-          ls -la dist/
-
-      # 6️⃣  Upload the artifacts to Test PyPI ---------------------------------
-      - name: 🚀 Upload to Test PyPI
+      - name: 🚀  Upload to Test PyPI
         uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
           repository-url: https://test.pypi.org/legacy/
