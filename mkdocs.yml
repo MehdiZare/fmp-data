@@ -13,13 +13,13 @@ theme:
 
 nav:
   - Home: index.md
-  - Contributing:
-    - Development Setup: contributing/development.md
-    - Workflow Guide: contributing/workflow.md
+  - Contributing: contributing/index.md
+  - Development:
+    - Setup: contributing/development.md
     - Testing: contributing/testing.md
+    - Workflow: contributing/workflow.md
     - Releasing: contributing/releasing.md
-  - API Reference:
-    - Client: api/reference.md
+  - API Reference: api/reference.md
 
 markdown_extensions:
   - pymdownx.highlight:
@@ -36,7 +36,7 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
-          paths: [fmp_data]
+          paths: [.]
           options:
             show_source: false
             show_root_heading: true

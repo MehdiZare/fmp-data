@@ -1,8 +1,8 @@
 from datetime import datetime
 from unittest.mock import Mock, patch
 
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from fmp_data.company import CompanyClient
 from fmp_data.company.models import (

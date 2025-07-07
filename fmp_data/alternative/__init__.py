@@ -1,4 +1,6 @@
 # fmp_data/alternative/__init__.py
+from __future__ import annotations
+
 from fmp_data.alternative.client import AlternativeMarketsClient
 from fmp_data.alternative.models import (
     Commodity,
@@ -17,16 +19,16 @@ from fmp_data.alternative.models import (
 
 __all__ = [
     "AlternativeMarketsClient",
-    "CryptoPair",
-    "CryptoQuote",
-    "CryptoHistoricalPrice",
-    "CryptoIntradayPrice",
-    "ForexPair",
-    "ForexQuote",
-    "ForexHistoricalPrice",
-    "ForexIntradayPrice",
     "Commodity",
-    "CommodityQuote",
     "CommodityHistoricalPrice",
     "CommodityIntradayPrice",
+    "CommodityQuote",
+    "CryptoHistoricalPrice",
+    "CryptoIntradayPrice",
+    "CryptoPair",
+    "CryptoQuote",
+    "ForexHistoricalPrice",
+    "ForexIntradayPrice",
+    "ForexPair",
+    "ForexQuote",
 ]

@@ -360,8 +360,7 @@ TECHNICAL_ENDPOINTS_SEMANTICS = {
         client_name="technical",
         method_name="get_standard_deviation",
         natural_description=(
-            "Calculate price Standard Deviation to measure volatility and "
-            "dispersion."
+            "Calculate price Standard Deviation to measure volatility and dispersion."
         ),
         example_queries=[
             "Calculate price volatility for AAPL",
@@ -408,9 +407,9 @@ TECHNICAL_ENDPOINT_MAP = {
 }
 
 # Aggregate technical endpoints for global mapping
-ALL_TECHNICAL_ENDPOINTS = {
-    name: TECHNICAL_INDICATOR
-    for name in [
+# Replace lines around 411-424:
+ALL_TECHNICAL_ENDPOINTS = dict.fromkeys(
+    [
         "get_sma",
         "get_ema",
         "get_wma",
@@ -420,8 +419,9 @@ ALL_TECHNICAL_ENDPOINTS = {
         "get_rsi",
         "get_adx",
         "get_standard_deviation",
-    ]
-}
+    ],
+    TECHNICAL_INDICATOR,
+)
 
 # Common subcategories for technical analysis
 TECHNICAL_CATEGORIES = {

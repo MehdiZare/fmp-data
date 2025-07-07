@@ -1,8 +1,8 @@
-# rate_limit.py
-import json
-import logging
+# fmp_data/rate_limit.py
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+import json
+import logging
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +41,11 @@ class FMPRateLimiter:
         """Remove old requests from tracking"""
         now = datetime.now()
 
-        # Clean minute tracking
+        # Clean minute tracking (keep requests from last minute)
         minute_ago = now - timedelta(minutes=1)
         self._minute_requests = [ts for ts in self._minute_requests if ts > minute_ago]
 
-        # Clean second tracking
+        # Clean second tracking (keep requests from last second)
         second_ago = now - timedelta(seconds=1)
         self._second_requests = [ts for ts in self._second_requests if ts > second_ago]
 
@@ -61,7 +61,7 @@ class FMPRateLimiter:
         # Clean up old request timestamps
         self._cleanup_old_requests()
 
-        # Check all limits
+        # Check all limits - return False if ANY limit is exceeded
         if self._daily_requests >= self.quota_config.daily_limit:
             logger.warning("Daily quota exceeded")
             return False
@@ -88,12 +88,15 @@ class FMPRateLimiter:
     def handle_response(self, response_status: int, response_body: str | None) -> None:
         """Handle API response for rate limit information"""
         if response_status == 429:
-            try:
-                error_data = json.loads(response_body) if response_body else {}
-                error_message = error_data.get("message", "")
-                logger.error(f"Rate limit exceeded: {error_message}")
-            except json.JSONDecodeError:
-                logger.error("Rate limit exceeded (no details available)")
+            if response_body:
+                try:
+                    error_data = json.loads(response_body)
+                    error_message = error_data.get("message", "") or ""
+                    logger.error(f"Rate limit exceeded: {error_message}")
+                except json.JSONDecodeError:
+                    logger.error("Rate limit exceeded (no details available)")
+            else:
+                logger.error("Rate limit exceeded: ")
 
     def get_wait_time(self) -> float:
         """Get seconds to wait before next request"""
@@ -121,7 +124,7 @@ class FMPRateLimiter:
             )
             wait_time = max(wait_time, (tomorrow - now).total_seconds())
 
-        return wait_time
+        return max(0.0, wait_time)  # Ensure non-negative wait time
 
     def log_status(self) -> None:
         """Log current rate limit status"""
@@ -130,7 +133,7 @@ class FMPRateLimiter:
             f"Rate Limits: "
             f"Daily: {self._daily_requests}/{self.quota_config.daily_limit}, "
             f"Per-minute: "
-            f"({len(self._minute_requests)}/{self.quota_config.requests_per_minute}, "
+            f"{len(self._minute_requests)}/{self.quota_config.requests_per_minute}, "
             f"Per-second: "
             f"{len(self._second_requests)}/{self.quota_config.requests_per_second}"
         )

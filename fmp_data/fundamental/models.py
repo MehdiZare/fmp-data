@@ -2,12 +2,21 @@
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
+
+default_model_config = ConfigDict(
+    populate_by_name=True,
+    validate_assignment=True,
+    str_strip_whitespace=True,
+    extra="allow",
+    alias_generator=to_camel,
+)
 
 
 class FinancialStatementBase(BaseModel):
     """Base model for financial statements"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     date: datetime = Field(description="Statement date")
     symbol: str = Field(description="Company symbol")
@@ -27,6 +36,8 @@ class FinancialStatementBase(BaseModel):
 
 class IncomeStatement(FinancialStatementBase):
     """Income statement data"""
+
+    model_config = default_model_config
 
     revenue: float | None = Field(None, description="Total revenue")
     cost_of_revenue: float | None = Field(
@@ -91,6 +102,8 @@ class IncomeStatement(FinancialStatementBase):
 class BalanceSheet(FinancialStatementBase):
     """Balance sheet data"""
 
+    model_config = default_model_config
+
     # Cash and Investments
     cash_and_short_term_investments: float = Field(
         alias="cashAndShortTermInvestments",
@@ -147,6 +160,8 @@ class BalanceSheet(FinancialStatementBase):
 
 class CashFlowStatement(FinancialStatementBase):
     """Cash flow statement data"""
+
+    model_config = default_model_config
 
     # Operating activities
     net_income: float | None = Field(alias="netIncome", description="Net income")
@@ -212,7 +227,7 @@ class CashFlowStatement(FinancialStatementBase):
 class KeyMetrics(BaseModel):
     """Key financial metrics"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     date: datetime = Field(description="Metrics date")
     revenue_per_share: float = Field(
@@ -238,7 +253,7 @@ class KeyMetricsTTM(KeyMetrics):
 class FinancialRatios(BaseModel):
     """Financial ratios"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     date: datetime = Field(description="Ratios date")
     current_ratio: float = Field(alias="currentRatio", description="Current ratio")
@@ -261,7 +276,7 @@ class FinancialRatiosTTM(FinancialRatios):
 class FinancialGrowth(BaseModel):
     """Financial growth metrics"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     date: datetime = Field(description="Growth metrics date")
     revenue_growth: float = Field(alias="revenueGrowth", description="Revenue growth")
@@ -275,7 +290,7 @@ class FinancialGrowth(BaseModel):
 class FinancialScore(BaseModel):
     """Company financial score"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     altman_z_score: float = Field(alias="altmanZScore", description="Altman Z-Score")
     piotroski_score: float = Field(
@@ -287,7 +302,7 @@ class FinancialScore(BaseModel):
 class DCF(BaseModel):
     """Discounted cash flow valuation"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     date: datetime = Field(description="Valuation date")
@@ -305,7 +320,7 @@ class AdvancedDCF(DCF):
 class CompanyRating(BaseModel):
     """Company rating data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     date: datetime = Field(description="Rating date")
@@ -317,7 +332,7 @@ class CompanyRating(BaseModel):
 class EnterpriseValue(BaseModel):
     """Enterprise value metrics"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     date: datetime = Field(description="Valuation date")
@@ -331,6 +346,8 @@ class EnterpriseValue(BaseModel):
 
 class FinancialStatementFull(BaseModel):
     """Full financial statements as reported"""
+
+    model_config = default_model_config
 
     date: datetime | None = Field(None, description="Statement date")
     symbol: str | None = Field(None, description="Company symbol")
@@ -485,7 +502,7 @@ class FinancialStatementFull(BaseModel):
 class FinancialReport(BaseModel):
     """Financial report summary"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     cik: str = Field(description="CIK number")
@@ -498,7 +515,7 @@ class FinancialReport(BaseModel):
 class OwnerEarnings(BaseModel):
     """Owner earnings data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     date: datetime = Field(description="Date")
     symbol: str = Field(description="Company symbol")
@@ -513,7 +530,7 @@ class OwnerEarnings(BaseModel):
 class HistoricalRating(BaseModel):
     """Historical company rating data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     date: datetime = Field(description="Rating date")
     rating: str = Field(description="Overall rating grade")
@@ -529,7 +546,7 @@ class HistoricalRating(BaseModel):
 class LeveredDCF(BaseModel):
     """Levered discounted cash flow valuation"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
     date: datetime = Field(description="Valuation date")
@@ -544,7 +561,7 @@ class LeveredDCF(BaseModel):
 class AsReportedFinancialStatementBase(BaseModel):
     """Base model for as-reported financial statements"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     date: datetime = Field(description="Statement date")
     symbol: str = Field(description="Company symbol")
@@ -570,6 +587,8 @@ class AsReportedFinancialStatementBase(BaseModel):
 
 class AsReportedIncomeStatement(AsReportedFinancialStatementBase):
     """As-reported income statement data directly from SEC filings"""
+
+    model_config = default_model_config
 
     revenues: float | None = Field(default=None, description="Total revenues")
     cost_of_revenue: float | None = Field(
@@ -646,6 +665,8 @@ class AsReportedIncomeStatement(AsReportedFinancialStatementBase):
 
 class AsReportedBalanceSheet(AsReportedFinancialStatementBase):
     """As-reported balance sheet data directly from SEC filings"""
+
+    model_config = default_model_config
 
     # Assets
     cash_and_equivalents: float | None = Field(
@@ -752,6 +773,8 @@ class AsReportedBalanceSheet(AsReportedFinancialStatementBase):
 
 class AsReportedCashFlowStatement(AsReportedFinancialStatementBase):
     """As-reported cash flow statement data directly from SEC filings"""
+
+    model_config = default_model_config
 
     # Operating Activities
     net_income: float | None = Field(
@@ -873,6 +896,8 @@ class AsReportedCashFlowStatement(AsReportedFinancialStatementBase):
 class FinancialReportDate(BaseModel):
     """Financial report date"""
 
+    model_config = default_model_config
+
     symbol: str = Field(description="Stock symbol")
     report_date: str = Field(description="Report date", alias="date")
     period: str = Field(description="Reporting period")
@@ -882,5 +907,7 @@ class FinancialReportDate(BaseModel):
 
 class FinancialReportDates(BaseModel):
     """Financial report date"""
+
+    model_config = default_model_config
 
     financial_reports_dates: list[FinancialReportDate]

@@ -1,6 +1,6 @@
 # fmp_data/investment/client.py
-import warnings
 from datetime import date
+import warnings
 
 from fmp_data.base import EndpointGroup
 from fmp_data.investment.endpoints import (
@@ -63,7 +63,7 @@ class InvestmentClient(EndpointGroup):
             )
             return None
         except Exception as e:
-            warnings.warn(f"Error in get_etf_info: {str(e)}", stacklevel=2)
+            warnings.warn(f"Error in get_etf_info: {e!s}", stacklevel=2)
             return None
 
     def get_etf_sector_weightings(self, symbol: str) -> list[ETFSectorWeighting]:

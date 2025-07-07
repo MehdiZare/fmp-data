@@ -1,6 +1,5 @@
+from fmp_data.company.schema import IntradayTimeInterval
 from fmp_data.lc.models import ParameterHint, ResponseFieldInfo
-
-from .schema import IntradayTimeInterval
 
 STRUCTURE_HINT = ParameterHint(
     natural_names=["structure", "format", "data format"],

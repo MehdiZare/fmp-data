@@ -1,8 +1,8 @@
 # tests/integration/base.py
-import time
-import warnings
 from collections.abc import Callable
+import time
 from typing import Any, TypeVar
+import warnings
 
 from fmp_data.exceptions import RateLimitError
 

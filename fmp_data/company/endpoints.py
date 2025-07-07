@@ -1,4 +1,6 @@
 # company/endpoints.py
+from __future__ import annotations
+
 from fmp_data.company.models import (
     AnalystEstimate,
     AnalystRecommendation,

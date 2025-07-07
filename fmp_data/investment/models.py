@@ -3,16 +3,25 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic.alias_generators import to_camel
+
+default_model_config = ConfigDict(
+    populate_by_name=True,
+    validate_assignment=True,
+    str_strip_whitespace=True,
+    extra="allow",
+    alias_generator=to_camel,
+)
 
 
 class ETFHolding(BaseModel):
     """ETF holding information"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     cik: str = Field(description="Central Index Key (CIK)")
-    acceptance_time: datetime = Field(
-        alias="acceptanceTime", description="Acceptance time of the filing"
+    acceptance_time: datetime | None = Field(
+        None, description="Acceptance time of the filing"
     )
     holding_date: date | None = Field(None, description="Holding date")
     symbol: str = Field(description="Ticker symbol")
@@ -50,6 +59,8 @@ class ETFHolding(BaseModel):
 class ETFSectorExposure(BaseModel):
     """Sector exposure within the ETF"""
 
+    model_config = default_model_config
+
     industry: str = Field(description="Sector or industry name")
     exposure: float = Field(description="Exposure percentage to the sector")
 
@@ -57,13 +68,13 @@ class ETFSectorExposure(BaseModel):
 class ETFInfo(BaseModel):
     """ETF information"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="ETF symbol")
     name: str = Field(description="ETF name")
     expense_ratio: float = Field(alias="expenseRatio", description="Expense ratio")
-    assets_under_management: float = Field(
-        alias="aum", description="Assets under management"
+    assets_under_management: float | None = Field(
+        None, alias="aum", description="Assets under management"
     )
     avg_volume: int = Field(alias="avgVolume", description="Average volume")
     cusip: str = Field(description="CUSIP identifier for the ETF")
@@ -74,8 +85,8 @@ class ETFInfo(BaseModel):
     inception_date: date = Field(alias="inceptionDate", description="Inception date")
     nav: Decimal = Field(description="Net Asset Value (NAV)")
     nav_currency: str = Field(alias="navCurrency", description="Currency of NAV")
-    sectors_list: list[ETFSectorExposure] = Field(
-        alias="sectorsList", description="List of sector exposures"
+    sectors_list: list[ETFSectorExposure] | None = Field(
+        None, alias="sectorsList", description="List of sector exposures"
     )
     website: str = Field(description="ETF website")
     holdings_count: int = Field(alias="holdingsCount", description="Number of holdings")
@@ -84,7 +95,7 @@ class ETFInfo(BaseModel):
 class ETFSectorWeighting(BaseModel):
     """ETF sector weighting"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     sector: str = Field(description="Sector name")
     weight_percentage: float = Field(
@@ -102,7 +113,7 @@ class ETFSectorWeighting(BaseModel):
 class ETFCountryWeighting(BaseModel):
     """ETF country weighting"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     country: str = Field(description="Country name")
     weight_percentage: float = Field(
@@ -120,7 +131,7 @@ class ETFCountryWeighting(BaseModel):
 class ETFExposure(BaseModel):
     """ETF stock exposure"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     etf_symbol: str = Field(alias="etfSymbol", description="ETF symbol")
     asset_exposure: str = Field(
@@ -140,7 +151,7 @@ class ETFExposure(BaseModel):
 class ETFHolder(BaseModel):
     """ETF holder information"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     asset: str = Field(description="Asset symbol")
     name: str = Field(description="Full name of the asset")
@@ -163,7 +174,7 @@ class ETFHolder(BaseModel):
 class MutualFundHolding(BaseModel):
     """Mutual fund holding information"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     symbol: str = Field(description="Fund symbol")
     cik: str = Field(description="Fund CIK")
@@ -182,7 +193,7 @@ class MutualFundHolding(BaseModel):
 class MutualFundHolder(BaseModel):
     """Mutual fund holder information"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     holder: str = Field(description="Fund name")
     shares: float = Field(description="Number of shares")
@@ -196,10 +207,14 @@ class MutualFundHolder(BaseModel):
 class ETFPortfolioDate(BaseModel):
     """ETF portfolio date model"""
 
+    model_config = default_model_config
+
     portfolio_date: date = Field(description="Portfolio date", alias="date")
 
 
 class PortfolioDate(BaseModel):
     """Portfolio date model for ETFs and Mutual Funds"""
+
+    model_config = default_model_config
 
     portfolio_date: date = Field(description="Portfolio date", alias="date")

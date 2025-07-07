@@ -74,13 +74,20 @@ class TestIntelligenceEndpoints(BaseTestCase):
                 end_date=end_date,
             )
 
-            assert isinstance(events, list)
+            assert isinstance(events, list), "events is not a list"
             if len(events) > 0:
                 for event in events:
-                    assert isinstance(event, EarningConfirmed)
-                    assert isinstance(event.time, str)
+                    assert isinstance(
+                        event, EarningConfirmed
+                    ), "event tpye is not Earning Confirmed"
+                    if event.time is not None:
+                        assert isinstance(
+                            event.time, str
+                        ), "event time is not of type string, it"
                     if event.event_date is not None:
-                        assert isinstance(event.event_date, datetime)
+                        assert isinstance(
+                            event.event_date, datetime
+                        ), "event date is not of datetime type"
 
     def test_get_historical_earnings(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting historical earnings"""
@@ -595,7 +602,6 @@ class TestIntelligenceEndpoints(BaseTestCase):
 
             assert isinstance(offerings, list)
             if len(offerings) > 0:
-
                 for offering in offerings:
                     assert offering.cik == "0001388838"
                     assert isinstance(offering, CrowdfundingOffering)

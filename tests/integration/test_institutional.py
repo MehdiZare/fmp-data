@@ -1,5 +1,5 @@
-import logging
 from datetime import date, datetime
+import logging
 
 import pytest
 

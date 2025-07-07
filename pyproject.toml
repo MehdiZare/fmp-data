@@ -1,200 +1,157 @@
-[tool.poetry]
+[build-system]
+requires = [
+    "poetry-core>=1.8.0",
+    "poetry-dynamic-versioning>=1.4.1,<2.0.0",
+]
+build-backend = "poetry_dynamic_versioning.backend"
+
+[project]
 name = "fmp-data"
-version = "0.3.0"
-description = "Python client for Financial Modeling Prep API"
-authors = ["mehdizare <mehdizare@users.noreply.github.com>"]
+description = "Python client for the Financial Modeling Prep API"
 readme = "README.md"
-packages = [{ include = "fmp_data" }]
-license = "MIT"
-homepage = "https://github.com/MehdiZare/fmp-data"
-repository = "https://github.com/MehdiZare/fmp-data"
-documentation = "https://github.com/MehdiZare/fmp-data#readme"
-keywords = ["fmp", "financial", "api", "stocks", "market-data", "stock market", "financial data"]
+dynamic = [
+    "version",
+]
+requires-python = ">=3.10,<3.14"
+authors = [
+    { name = "Mehdi Zare", email = "mehdizare@users.noreply.github.com" },
+]
+maintainers = [
+    { name = "Mehdi Zare", email = "mehdizare@users.noreply.github.com" },
+]
+keywords = [
+    "fmp",
+    "financial",
+    "api",
+    "stocks",
+    "market-data",
+    "stock market",
+    "financial data",
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
     "License :: OSI Approved :: MIT License",
-    "License :: OSI Approved :: Apache Software License", # Added for tenacity
-    "License :: OSI Approved :: BSD License", # Added for httpx
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Topic :: Software Development :: Libraries :: Python Modules",
-    "Topic :: Office/Business :: Financial :: Investment",
     "Framework :: AsyncIO",
-    "Intended Audience :: Financial and Insurance Industry",
+    "Topic :: Office/Business :: Financial",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "httpx>=0.28.1,<0.29.0",
+    "pydantic>=2.11.7,<3.0.0",
+    "pydantic-settings>=2.6.0,<3.0.0",
+    "python-dotenv>=1.1.1,<2.0.0",
+    "tenacity>=9.0.0,<10.0.0",
+    "tqdm>=4.66.5,<5.0.0",
+    "cachetools>=6.1.0,<7.0.0",
+    "structlog>=25.4.0,<26.0.0",
+    "pandas>=2.3.0,<3.0.0",
 ]
 
+[project.license]
+text = "MIT"
+
+[project.optional-dependencies]
+langchain = [
+    "faiss-cpu>=1.11.0,<2.0.0",
+    "langchain-core>=0.3.66,<0.4.0",
+    "langchain-community>=0.3.26,<0.4.0",
+    "langchain-openai>=0.3.25,<0.4.0",
+    "langgraph>=0.4.10,<0.5.0",
+    "openai>=1.92.0,<2.0.0",
+    "tiktoken>=0.9.0,<0.10.0",
+]
+mcp-server = [
+    "mcp[cli]>=1.0.0,<2.0.0",
+    "pyyaml>=6.0.1,<7.0.0",
+]
+dev = [
+    "poetry-dynamic-versioning>=1.4.1,<2.0.0",
+    "ruff>=0.12.2,<0.13.0",
+    "black>=24.10.0,<25.0.0",
+    "mypy>=1.13.0,<2.0.0",
+    "types-cachetools>=6.0.0.20250525,<7.0.0",
+    "bandit[toml]>=1.7.10,<2.0.0",
+    "pip-audit>=2.7.0,<3.0.0",
+    "pytest>=8.3.3,<9.0.0",
+    "pytest-asyncio>=0.24.0,<0.25.0",
+    "pytest-cov>=6.0.0,<7.0.0",
+    "pytest-mock>=3.14.0,<4.0.0",
+    "freezegun>=1.5.1,<2.0.0",
+    "responses>=0.25.3,<1.0.0",
+    "vcrpy>=6.0.2,<7.0.0",
+    "coverage>=7.6.4,<8.0.0",
+    "pre-commit>=4.0.1,<5.0.0",
+    "rich>=13.9.3,<14.0.0",
+    "twine>=5.1.1,<6.0.0",
+    "nox>=2024.4.15,<2025.0.0",
+    "mkdocs>=1.6.1,<2.0.0",
+    "mkdocs-material>=9.6.14,<10.0.0",
+    "mkdocstrings-python>=1.16.12,<2.0.0",
+]
+test = [
+    "pytest>=8.2",
+    "pytest-mock>=3.12",
+    "pytest-cov>=5.0",
+]
+docs = [
+    "mkdocs>=1.6.1,<2.0.0",
+    "mkdocs-material>=9.6.14,<10.0.0",
+    "mkdocstrings-python>=1.16.12,<2.0.0",
+]
+
+[tool.poetry]
+packages = [
+    { include = "fmp_data" },
+]
 include = [
-    { path = "fmp_data/py.typed" }
+    "fmp_data/py.typed",
 ]
-
-[tool.poetry.urls]
-"Homepage" = "https://github.com/MehdiZare/fmp-data"
-"Bug Tracker" = "https://github.com/MehdiZare/fmp-data/issues"
-
-[tool.poetry.dependencies]
-python = ">=3.10,<4.0"
-httpx = "^0.28.1"
-pydantic = "^2.9.2"
-python-dotenv = "^1.0.1"
-tenacity = "^9.0.0"
-tqdm = "^4.66.5"
-cachetools = "^5.5.0"
-structlog = "^24.4.0"
-types-cachetools = "^5.5.0.20240820"
-pydantic-settings = "^2.6.0"
-pandas = "^2.2.3"
-
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.3.3"
-pytest-cov = "^5.0.0"
-black = "^24.10.0"
-mypy = "^1.13.0"
-isort = "^5.13.2"
-ruff = "^0.7.1"
-pytest-asyncio = "^0.24.0"
-responses = "^0.25.3"
-freezegun = "^1.5.1"
-bandit = "^1.7.10"
-rich = "^13.9.3"
-pytest-mock = "^3.14.0"
-pre-commit = "^4.0.1"
-coverage = "^7.6.4"
-vcrpy = "^6.0.2"
-twine = "^5.1.1"
-poetry-dynamic-versioning = "^1.4.1"
-langchain = "^0.3.13"
-openai = "^1.58.1"
-tiktoken = "^0.8.0"
-langchain-community = "^0.3.13"
-langchain-openai = "^0.2.14"
-faiss-cpu = "^1.9.0.post1"
-
-[tool.poetry.group.langchain]
-optional = true
-
-[tool.poetry.group.langchain.dependencies]
-langchain = "^0.3.13"
-openai = "^1.58.1"
-tiktoken = "^0.8.0"
-langchain-community = "^0.3.13"
-langchain-openai = "^0.2.14"
-faiss-cpu = "^1.9.0.post1"
-langgraph = "^0.2.60"
-
-[tool.poetry.group.docs.dependencies]
-mkdocs = "^1.6.1"
-mkdocs-material = "^9.5.42"
-mkdocstrings-python = "^1.12.2"
-
-
-[tool.poetry.scripts]
-format = "scripts:format_code"
-lint = "scripts:lint"
-typecheck = "scripts:typecheck"
-test = "scripts:test"
-security = "scripts:security_check"
-fmp = "fmp_data.scripts.dev:main"
-mkdocstrings-python = "mkdocstrings.cli:main"
+version = "0.0.0"
 
 [tool.poetry-dynamic-versioning]
 enable = true
-write_to = "fmp_data/__init__.py"
 vcs = "git"
 style = "pep440"
-pattern = "v(?P<base>\\d+\\.\\d+)(?:-(?P<stage>beta|alpha))?(?:\\.(?P<rev>\\d+))?"
-strict = true
-
-format-jinja = """
-{%- if env.get("TEST_PYPI_TOKEN") -%}
-    {%- if stage -%}
-        {{base}}{{stage[0]}}{{rev if rev else "1"}}.dev{{distance}}
-    {%- else -%}
-        {{base}}.0.dev{{distance}}
-    {%- endif -%}
-{%- else -%}
-    {%- if stage -%}
-        {{base}}{{stage[0]}}{{rev if rev else "1"}}
-    {%- else -%}
-        {{base}}.0
-    {%- endif -%}
-{%- endif -%}
-"""
-
-
+format-jinja = "{%- if distance == 0 -%}\n{{ base }}\n{%- else -%}\n{{ base }}.post{{ distance }}\n{%- endif -%}\n"
 
 [tool.poetry-dynamic-versioning.substitution]
-folders = [
-    { path = "fmp_data" }
+files = [
+    "fmp_data/__init__.py",
 ]
 
-# Tool configurations
 [tool.black]
 line-length = 88
-target-version = ["py310", "py311", "py312", "py313"]
-include = '\.pyi?$'
-
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
-line_length = 88
-
-[tool.mypy]
-python_version = "3.13"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-disallow_untyped_decorators = false
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-warn_unreachable = true
-strict_optional = true
-exclude = ["tests/", "examples/"]
-
-# Plugin configs
-plugins = ["pydantic.mypy"]
-
-[[tool.mypy.overrides]]
-module = "vcr.*"
-ignore_missing_imports = true
-
-[tool.pydocstyle]
-convention = "google"
-add-select = [
-    "D100",
-    "D101",
-    "D102",
-    "D103",
-    "D104",
+target-version = [
+    "py310",
+    "py311",
+    "py312",
+    "py313",
 ]
-add-ignore = [
-    "D105",
-    "D107",
-    "D200",
-    "D203",
-    "D213",
-    "D406",
-    "D407",
-]
-ignore-decorators = "overrides"
-
+include = "\\.pyi?$"
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py310"
 line-length = 88
+extend-exclude = [
+    ".git",
+    ".mypy_cache",
+    ".nox",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+]
 
 [tool.ruff.lint]
 select = [
@@ -206,65 +163,289 @@ select = [
     "B",
     "S",
     "UP",
+    "RUF",
 ]
-ignore = ["S101"]
-per-file-ignores = { "tests/*" = ["S101"], "scripts/*" = ["S603", "S607"], "**/conftest.py" = ["S101"], "__init__.py" = ["F401"] }
+ignore = [
+    "S101",
+    "S603",
+    "S607",
+]
 
-
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "S101",
+    "S106",
+    "S107",
+]
+"scripts/*" = [
+    "S603",
+    "S607",
+]
+"**/conftest.py" = [
+    "S101",
+]
+"__init__.py" = [
+    "F401",
+]
+"noxfile.py" = [
+    "S603",
+    "S607",
+]
 
 [tool.ruff.lint.isort]
-known-first-party = ["fmp_data"]
+known-first-party = [
+    "fmp_data",
+]
+force-sort-within-sections = true
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_optional = true
+show_error_codes = true
+disable_error_code = [
+    "type-arg",
+]
+exclude = [
+    "tests/",
+    "examples/",
+    "scripts/",
+    "build/",
+    "dist/",
+]
+plugins = [
+    "pydantic.mypy",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "langchain.*",
+    "langchain_core.*",
+    "langchain_community.*",
+    "langchain_openai.*",
+    "langchain.embeddings.*",
+    "langchain.tools.*",
+    "faiss.*",
+    "faiss",
+    "mcp.*",
+    "mcp.server.*",
+    "tiktoken.*",
+    "tiktoken",
+    "openai.*",
+    "openai",
+    "yaml.*",
+    "yaml",
+    "rich.*",
+    "tqdm.*",
+    "pandas.*",
+    "responses.*",
+    "freezegun.*",
+    "structlog.*",
+    "tenacity.*",
+    "tenacity",
+    "fmp_data._version",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "fmp_data.__init__"
+disable_error_code = [
+    "import-untyped",
+    "no-any-return",
+    "attr-defined",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "fmp_data.lc.*",
+    "fmp_data.mcp.*",
+]
+ignore_missing_imports = true
+disable_error_code = [
+    "import-untyped",
+    "import-not-found",
+]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "--quiet --no-header --tb=short -v --disable-warnings"
-testpaths = ["tests"]
-python_files = "test_*.py"
-python_functions = "test_*"
+addopts = [
+    "--quiet",
+    "--no-header",
+    "--tb=short",
+    "-v",
+    "--disable-warnings",
+    "--strict-markers",
+    "--strict-config",
+]
+testpaths = [
+    "tests",
+]
+python_files = [
+    "test_*.py",
+    "*_test.py",
+]
+python_functions = [
+    "test_*",
+]
+python_classes = [
+    "Test*",
+]
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::UserWarning",
+    "ignore::PendingDeprecationWarning",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "asyncio: marks tests as asyncio tests",
 ]
 
 [tool.coverage.run]
-source = ["fmp_data"]
+source = [
+    "fmp_data",
+]
 branch = true
+parallel = true
+data_file = ".coverage"
 omit = [
     "fmp_data/endpoints/definitions.py",
     "fmp_data/example.py",
+    "fmp_data/_version.py",
     "*/__init__.py",
     "tests/*",
     "*/tests/*",
     "setup.py",
+    "noxfile.py",
+    "scripts/*",
+    "*/mapping.py",
+    "*/schema.py",
+    "*/hints.py",
+    "*/endpoints.py",
+    "fmp_data/lc/*",
+    "fmp_data/mcp/*",
 ]
+
+[tool.coverage.paths]
+source = [
+    "fmp_data/",
+    "*/site-packages/fmp_data/",
+    "*/.venv/lib/python*/site-packages/fmp_data/",
+    "*/.venv/lib/*/site-packages/fmp_data/",
+    "*/.nox/*/lib/python*/site-packages/fmp_data/",
+    "*/.nox/*/site-packages/fmp_data/",
+]
+
+[tool.coverage.combine]
+skip_empty = true
 
 [tool.coverage.report]
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
+    "def __str__",
     "raise NotImplementedError",
-    "if __name__ == '__main__':",
+    "if __name__ == ['\"]__main__['\"]:",
+    "if TYPE_CHECKING:",
     "pass",
     "raise ImportError",
     "except ImportError",
-    "def main()",
-    "if TYPE_CHECKING:"
+    "def main():",
+    "class .*\\(Protocol\\):",
+    "@abstractmethod",
 ]
 show_missing = true
 fail_under = 80
+precision = 2
+skip_covered = false
+skip_empty = false
+sort = "Cover"
 
 [tool.coverage.html]
-directory = "coverage_html"
+directory = "htmlcov"
+show_contexts = true
 
 [tool.coverage.xml]
 output = "coverage.xml"
 
 [tool.bandit]
-exclude_dirs = ["tests", "scripts"]
-skips = ["B101", "B404", "B603", "B607"]
+exclude_dirs = [
+    "tests",
+    "scripts",
+    ".nox",
+    ".venv",
+    "build",
+    "dist",
+]
+skips = [
+    "B101",
+    "B404",
+    "B603",
+    "B607",
+    "B608",
+]
 
+[tool.bandit.assert_used]
+skips = [
+    "*/test_*.py",
+    "*/tests/*",
+]
 
-
-[build-system]
-requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0"]
-build-backend = "poetry-dynamic-versioning.backend"
+[dependency-groups]
+langchain = [
+    "faiss-cpu>=1.11.0,<2.0.0",
+    "langchain-core>=0.3.66,<0.4.0",
+    "langchain-community>=0.3.26,<0.4.0",
+    "langchain-openai>=0.3.25,<0.4.0",
+    "langgraph>=0.4.10,<0.5.0",
+    "openai>=1.92.0,<2.0.0",
+    "tiktoken>=0.9.0,<0.10.0",
+]
+mcp-server = [
+    "mcp[cli]>=1.0.0,<2.0.0",
+    "pyyaml>=6.0.1,<7.0.0",
+]
+dev = [
+    "poetry-dynamic-versioning>=1.4.1,<2.0.0",
+    "ruff>=0.12.2,<0.13.0",
+    "black>=24.10.0,<25.0.0",
+    "mypy>=1.13.0,<2.0.0",
+    "types-cachetools>=6.0.0.20250525,<7.0.0",
+    "bandit[toml]>=1.7.10,<2.0.0",
+    "pip-audit>=2.7.0,<3.0.0",
+    "pytest>=8.3.3,<9.0.0",
+    "pytest-asyncio>=0.24.0,<0.25.0",
+    "pytest-cov>=6.0.0,<7.0.0",
+    "pytest-mock>=3.14.0,<4.0.0",
+    "freezegun>=1.5.1,<2.0.0",
+    "responses>=0.25.3,<1.0.0",
+    "vcrpy>=6.0.2,<7.0.0",
+    "coverage>=7.6.4,<8.0.0",
+    "pre-commit>=4.0.1,<5.0.0",
+    "rich>=13.9.3,<14.0.0",
+    "twine>=5.1.1,<6.0.0",
+    "nox>=2024.4.15,<2025.0.0",
+    "mkdocs>=1.6.1,<2.0.0",
+    "mkdocs-material>=9.6.14,<10.0.0",
+    "mkdocstrings-python>=1.16.12,<2.0.0",
+]
+test = [
+    "pytest>=8.2",
+    "pytest-mock>=3.12",
+    "pytest-cov>=5.0",
+]
+docs = [
+    "mkdocs>=1.6.1,<2.0.0",
+    "mkdocs-material>=9.6.14,<10.0.0",
+    "mkdocstrings-python>=1.16.12,<2.0.0",
+]

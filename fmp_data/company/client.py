@@ -1,4 +1,5 @@
 # fmp_data/company/client.py
+from __future__ import annotations
 
 from typing import cast
 
@@ -39,7 +40,7 @@ from fmp_data.company.models import (
     EmployeeCount,
     ExecutiveCompensation,
     GeographicRevenueSegment,
-    HistoricalPrice,
+    HistoricalData,
     HistoricalShareFloat,
     IntradayPrice,
     PriceTarget,
@@ -120,11 +121,12 @@ class CompanyClient(EndpointGroup):
         symbol: str,
         from_date: str | None = None,
         to_date: str | None = None,
-    ) -> list[HistoricalPrice]:
+    ) -> HistoricalData:
         """Get historical daily price data"""
-        return self.client.request(
+        result = self.client.request(
             HISTORICAL_PRICE, symbol=symbol, from_=from_date, to=to_date
         )
+        return cast(HistoricalData, result)
 
     def get_intraday_prices(
         self, symbol: str, interval: str = "1min"

@@ -1,0 +1,18 @@
+# .github/workflows/guard-main-origin.yml
+name: Guard-Main-Origin
+
+on:
+  pull_request:
+    branches: [main]            # PRs whose *target* is main only
+
+jobs:
+  ensure-origin-dev:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if PR head is not dev
+        run: |
+          if [[ "${{ github.head_ref }}" != "dev" ]]; then
+            echo "::error::Main only accepts PRs opened from the dev branch."
+            exit 1
+          fi
+          echo "Origin branch is dev – OK"

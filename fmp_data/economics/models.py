@@ -2,12 +2,21 @@
 from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
+
+default_model_config = ConfigDict(
+    populate_by_name=True,
+    validate_assignment=True,
+    str_strip_whitespace=True,
+    extra="allow",
+    alias_generator=to_camel,
+)
 
 
 class TreasuryRate(BaseModel):
     """Treasury rate data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     rate_date: date = Field(..., alias="date")
     month_1: float | None = Field(None, alias="month1")
@@ -27,7 +36,7 @@ class TreasuryRate(BaseModel):
 class EconomicIndicator(BaseModel):
     """Economic indicator data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     indicator_date: date = Field(..., alias="date")
     value: float
@@ -37,7 +46,7 @@ class EconomicIndicator(BaseModel):
 class EconomicEvent(BaseModel):
     """Economic calendar event data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     event: str = Field(..., description="Event name")
     country: str = Field(default="", description="Country code")  # Can be empty string
@@ -48,13 +57,13 @@ class EconomicEvent(BaseModel):
     actual: float | None = Field(None, description="Actual value")
     change: float | None = Field(None, description="Change value")
     impact: str | None = Field(None, description="Impact level")
-    change_percent: float = Field(0, alias="changePercentage")
+    change_percent: float | None = Field(0, alias="changePercentage")
 
 
 class MarketRiskPremium(BaseModel):
     """Market risk premium data"""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = default_model_config
 
     country: str = Field(..., description="Country name")
     continent: str | None = Field(None, description="Continent name")
