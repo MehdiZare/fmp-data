@@ -123,14 +123,23 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: coverage-*
-          merge-multiple: true
+          path: ./artifacts
 
-      - name: 🔍 Debug coverage files
+      - name: 🔍 Debug downloaded artifacts
         run: |
           echo "All files in current directory:"
           ls -la
-          echo "Looking for coverage files:"
-          find . -name ".coverage*" -type f
+          echo "Files in artifacts directory:"
+          ls -la ./artifacts/ || echo "No artifacts directory"
+          echo "Looking for coverage files in artifacts:"
+          find ./artifacts -name ".coverage*" -type f 2>/dev/null || echo "No coverage files found in artifacts"
+
+          # Move coverage files to root directory
+          echo "Moving coverage files to root:"
+          find ./artifacts -name ".coverage*" -type f -exec mv {} . \; 2>/dev/null || echo "No coverage files to move"
+
+          echo "Coverage files now in root:"
+          ls -la .coverage* 2>/dev/null || echo "No coverage files in root"
 
       - name: 📊 Combine coverage and generate report
         env:
@@ -138,9 +147,15 @@ jobs:
         run: |
           # Verify we have coverage files
           if ! ls .coverage.* 1> /dev/null 2>&1; then
-            echo "ERROR: No coverage files found!"
+            echo "ERROR: No coverage files found after download!"
+            echo "Let's check what we have:"
+            ls -la
+            find . -name "*coverage*" -type f 2>/dev/null || echo "No files with 'coverage' in name"
             exit 1
           fi
+
+          echo "Found coverage files:"
+          ls -la .coverage*
 
           uv tool run nox -s coverage_report
 
