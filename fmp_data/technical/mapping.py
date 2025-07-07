@@ -4,17 +4,7 @@ from fmp_data.lc.models import (
     ResponseFieldInfo,
     SemanticCategory,
 )
-from fmp_data.technical.endpoints import (
-    ADX,
-    DEMA,
-    EMA,
-    RSI,
-    SMA,
-    STANDARD_DEVIATION,
-    TEMA,
-    WILLIAMS,
-    WMA,
-)
+from fmp_data.technical.endpoints import TECHNICAL_INDICATOR
 
 # Common parameter hints
 SYMBOL_HINT = ParameterHint(
@@ -28,23 +18,32 @@ SYMBOL_HINT = ParameterHint(
     context_clues=["stock", "symbol", "ticker", "company"],
 )
 
+TYPE_HINT = ParameterHint(
+    natural_names=["type", "indicator", "calculation"],
+    extraction_patterns=[
+        r"(sma|ema|wma|dema|tema|williams|rsi|adx|standardDeviation)",
+    ],
+    examples=["sma", "ema", "rsi"],
+    context_clues=["type", "indicator", "method"],
+)
+
 PERIOD_HINT = ParameterHint(
-    natural_names=["period", "period length", "lookback"],
+    natural_names=["period", "timeframe", "lookback"],
     extraction_patterns=[
         r"(\d+)[-\s]?(?:day|period)",
-        r"(?:period|lookback)\s+of\s+(\d+)",
+        r"(?:period|timeframe)\s+of\s+(\d+)",
     ],
     examples=["14", "20", "50", "200"],
     context_clues=["period", "days", "lookback", "window"],
 )
 
-TIMEFRAME_HINT = ParameterHint(
-    natural_names=["timeframe", "interval", "frequency"],
+INTERVAL_HINT = ParameterHint(
+    natural_names=["interval", "timeframe", "frequency"],
     extraction_patterns=[
-        r"(1min|5min|15min|30min|1hour|4hour|1day)",
+        r"(1min|5min|15min|30min|1hour|4hour|daily)",
         r"(\d+)[\s-]?(?:minute|min|hour|day)",
     ],
-    examples=["1min", "5min", "15min", "30min", "1hour", "4hour", "1day"],
+    examples=["1min", "5min", "15min", "30min", "1hour", "4hour", "daily"],
     context_clues=["interval", "frequency", "period", "timeframe"],
 )
 
@@ -71,10 +70,11 @@ TO_DATE_HINT = ParameterHint(
 # Common parameter hints dictionary
 COMMON_PARAMS = {
     "symbol": SYMBOL_HINT,
-    "periodLength": PERIOD_HINT,
-    "timeframe": TIMEFRAME_HINT,
-    "from": FROM_DATE_HINT,
-    "to": TO_DATE_HINT,
+    "type": TYPE_HINT,
+    "period": PERIOD_HINT,
+    "interval": INTERVAL_HINT,
+    "start_date": FROM_DATE_HINT,
+    "end_date": TO_DATE_HINT,
 }
 
 # Define each technical indicator explicitly
@@ -378,7 +378,7 @@ TECHNICAL_ENDPOINTS_SEMANTICS = {
         sub_category="Volatility Indicators",
         parameter_hints=COMMON_PARAMS,
         response_hints={
-            "standardDeviation": ResponseFieldInfo(
+            "standard_deviation": ResponseFieldInfo(
                 description="Standard Deviation value",
                 examples=["2.5", "5.8"],
                 related_terms=["volatility", "dispersion", "variance", "risk"],
@@ -395,29 +395,33 @@ TECHNICAL_ENDPOINTS_SEMANTICS = {
 
 # Endpoint mappings
 TECHNICAL_ENDPOINT_MAP = {
-    "get_sma": SMA,
-    "get_ema": EMA,
-    "get_wma": WMA,
-    "get_dema": DEMA,
-    "get_tema": TEMA,
-    "get_williams": WILLIAMS,
-    "get_rsi": RSI,
-    "get_adx": ADX,
-    "get_standard_deviation": STANDARD_DEVIATION,
+    "get_sma": TECHNICAL_INDICATOR,
+    "get_ema": TECHNICAL_INDICATOR,
+    "get_wma": TECHNICAL_INDICATOR,
+    "get_dema": TECHNICAL_INDICATOR,
+    "get_tema": TECHNICAL_INDICATOR,
+    "get_williams": TECHNICAL_INDICATOR,
+    "get_rsi": TECHNICAL_INDICATOR,
+    "get_adx": TECHNICAL_INDICATOR,
+    "get_standard_deviation": TECHNICAL_INDICATOR,
 }
 
 # Aggregate technical endpoints for global mapping
-ALL_TECHNICAL_ENDPOINTS = {
-    "get_sma": SMA,
-    "get_ema": EMA,
-    "get_wma": WMA,
-    "get_dema": DEMA,
-    "get_tema": TEMA,
-    "get_williams": WILLIAMS,
-    "get_rsi": RSI,
-    "get_adx": ADX,
-    "get_standard_deviation": STANDARD_DEVIATION,
-}
+# Replace lines around 411-424:
+ALL_TECHNICAL_ENDPOINTS = dict.fromkeys(
+    [
+        "get_sma",
+        "get_ema",
+        "get_wma",
+        "get_dema",
+        "get_tema",
+        "get_williams",
+        "get_rsi",
+        "get_adx",
+        "get_standard_deviation",
+    ],
+    TECHNICAL_INDICATOR,
+)
 
 # Common subcategories for technical analysis
 TECHNICAL_CATEGORIES = {

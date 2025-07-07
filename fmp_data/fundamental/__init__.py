@@ -2,14 +2,13 @@
 from fmp_data.fundamental.client import FundamentalClient
 from fmp_data.fundamental.models import (
     DCF,
+    AdvancedDCF,
     AsReportedBalanceSheet,
     AsReportedCashFlowStatement,
     AsReportedIncomeStatement,
     BalanceSheet,
     CashFlowStatement,
     CompanyRating,
-    CustomDCF,
-    CustomLeveredDCF,
     EnterpriseValue,
     FinancialGrowth,
     FinancialRatios,
@@ -22,14 +21,13 @@ from fmp_data.fundamental.models import (
 
 __all__ = [
     "DCF",
+    "AdvancedDCF",
     "AsReportedBalanceSheet",
     "AsReportedCashFlowStatement",
     "AsReportedIncomeStatement",
     "BalanceSheet",
     "CashFlowStatement",
     "CompanyRating",
-    "CustomDCF",
-    "CustomLeveredDCF",
     "EnterpriseValue",
     "FinancialGrowth",
     "FinancialRatios",
