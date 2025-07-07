@@ -70,27 +70,6 @@ jobs:
           echo "Coverage files generated:"
           ls -la .coverage* || echo "No coverage files found"
 
-      - name: 🔍 Debug coverage files before upload
-        run: |
-          echo "Current working directory:"
-          pwd
-          echo "Environment GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
-          cd $GITHUB_WORKSPACE
-          echo "Now in: $(pwd)"
-          echo "All files in current directory:"
-          ls -la
-          echo "Looking for coverage files:"
-          find . -name ".coverage*" -type f 2>/dev/null || echo "No .coverage files found with find"
-          ls .coverage* 2>/dev/null || echo "No .coverage files found with ls"
-
-      - name: 📤 Upload coverage artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-${{ matrix.python }}
-          path: .coverage*
-          retention-days: 1
-          if-no-files-found: warn
-
       - name: 🔍 Quality Gates
         if: matrix.python == '3.13'
         env:
@@ -98,8 +77,8 @@ jobs:
         run: |
           uv tool run nox -s lint typecheck security
 
+  # Coverage job - run all tests in one job for simplicity
   coverage:
-    needs: tests
     runs-on: ubuntu-latest
     steps:
       - name: 🛎️  Checkout
@@ -113,51 +92,12 @@ jobs:
       - name: ⚡  Install uv
         uses: astral-sh/setup-uv@v6
 
-      - name: 📦 Install dependencies
+      - name: 📊 Run all tests with coverage
         env:
           NOX_USE_UV: "1"
         run: |
           uv tool install nox
-
-      - name: 📥 Download all coverage artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: coverage-*
-          path: ./artifacts
-
-      - name: 🔍 Debug downloaded artifacts
-        run: |
-          echo "All files in current directory:"
-          ls -la
-          echo "Files in artifacts directory:"
-          ls -la ./artifacts/ || echo "No artifacts directory"
-          echo "Looking for coverage files in artifacts:"
-          find ./artifacts -name ".coverage*" -type f 2>/dev/null || echo "No coverage files found in artifacts"
-
-          # Move coverage files to root directory
-          echo "Moving coverage files to root:"
-          find ./artifacts -name ".coverage*" -type f -exec mv {} . \; 2>/dev/null || echo "No coverage files to move"
-
-          echo "Coverage files now in root:"
-          ls -la .coverage* 2>/dev/null || echo "No coverage files in root"
-
-      - name: 📊 Combine coverage and generate report
-        env:
-          NOX_USE_UV: "1"
-        run: |
-          # Verify we have coverage files
-          if ! ls .coverage.* 1> /dev/null 2>&1; then
-            echo "ERROR: No coverage files found after download!"
-            echo "Let's check what we have:"
-            ls -la
-            find . -name "*coverage*" -type f 2>/dev/null || echo "No files with 'coverage' in name"
-            exit 1
-          fi
-
-          echo "Found coverage files:"
-          ls -la .coverage*
-
-          uv tool run nox -s coverage_report
+          uv tool run nox -s coverage_local
 
       - name: 📈 Coverage upload
         uses: codecov/codecov-action@v5
