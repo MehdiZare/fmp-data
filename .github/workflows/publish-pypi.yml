@@ -36,6 +36,15 @@ jobs:
         with:
           enable-cache: true
 
+      - name: 🏷️  Get package version
+        id: get_version
+        run: |
+          # Install package to get version
+          uv pip install -e .
+          version=$(uv run python -c "import fmp_data; print(fmp_data.__version__)")
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "📦 Package version: $version"
+
       - name: 📦  Build wheel & sdist
         run: |
           uv pip install build
@@ -47,8 +56,10 @@ jobs:
           packages-dir: dist
           skip-existing: false
 
-      - name: 📝  Create GitHub release (optional)
+      - name: 📝  Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ github.event.workflow_run.head_sha }}
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: Release v${{ steps.get_version.outputs.version }}
           generate_release_notes: true
+          make_latest: true

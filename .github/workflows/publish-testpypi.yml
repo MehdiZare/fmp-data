@@ -3,9 +3,9 @@ name: Publish-to-TestPyPI
 on:
   workflow_run:
     workflows:
-      - Test-Matrix            # must match the name in ci.yml
+      - Test-Matrix            # must match the name in test-matrix.yml
     branches:
-      - dev                    # fire only for merges to dev
+      - dev                    # fire only for pushes to dev
     types:
       - completed
 
