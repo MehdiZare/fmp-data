@@ -3,10 +3,11 @@ name: Test-Matrix
 on:
   pull_request:
     branches:
-      - main
+      - main        # Run tests on PRs to main
   push:
     branches:
-      - dev
+      - dev         # Run tests on pushes to dev (triggers TestPyPI)
+      - main        # Run tests on pushes to main (triggers PyPI)
 
 permissions:
   contents: read
@@ -111,3 +112,25 @@ jobs:
           files: coverage.xml
           flags: unittests
           fail_ci_if_error: false
+
+  # Summary job - this creates the "Test-Matrix" check that GitHub expects
+  test-summary:
+    name: Test-Matrix
+    runs-on: ubuntu-latest
+    needs: [tests, coverage]
+    if: always()
+    steps:
+      - name: Check test results
+        run: |
+          echo "Tests result: ${{ needs.tests.result }}"
+          echo "Coverage result: ${{ needs.coverage.result }}"
+
+          if [[ "${{ needs.tests.result }}" == "failure" || "${{ needs.coverage.result }}" == "failure" ]]; then
+            echo "❌ Tests or coverage failed"
+            exit 1
+          elif [[ "${{ needs.tests.result }}" == "cancelled" || "${{ needs.coverage.result }}" == "cancelled" ]]; then
+            echo "⏸️ Tests or coverage were cancelled"
+            exit 1
+          else
+            echo "✅ All tests and coverage passed!"
+          fi
