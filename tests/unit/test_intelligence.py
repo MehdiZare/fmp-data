@@ -1,17 +1,23 @@
+# tests/unit/test_intelligence_client.py (Enhanced version)
 from datetime import date, datetime
 from unittest.mock import Mock
 
 import pytest
 
+from fmp_data.intelligence.client import MarketIntelligenceClient
 from fmp_data.intelligence.models import (
+    CrowdfundingOffering,
     CryptoNewsArticle,
     DividendEvent,
     EarningConfirmed,
     EarningEvent,
     EarningSurprise,
+    EquityOffering,
+    ESGBenchmark,
     ESGData,
     ESGRating,
     FMPArticle,
+    FMPArticlesResponse,
     ForexNewsArticle,
     GeneralNewsArticle,
     HistoricalSocialSentiment,
@@ -20,6 +26,7 @@ from fmp_data.intelligence.models import (
     PressRelease,
     PressReleaseBySymbol,
     SenateTrade,
+    SocialSentimentChanges,
     StockNewsArticle,
     StockNewsSentiment,
     StockSplitEvent,
@@ -39,11 +46,14 @@ def fmp_client(mock_client):
     from fmp_data import ClientConfig, FMPDataClient
 
     client = FMPDataClient(config=ClientConfig(api_key="dummy"))
-    client._intelligence = mock_client  # Use private attribute
+    # Replace the intelligence client with our properly mocked one
+    mock_base_client = Mock()
+    client._intelligence = MarketIntelligenceClient(mock_base_client)
+    client._intelligence.client.request = mock_client.request
     return client
 
 
-# Calendar Event Test Fixtures
+# Test Data Fixtures
 @pytest.fixture
 def earnings_calendar_data():
     return {
@@ -101,7 +111,6 @@ def ipo_calendar_data():
     }
 
 
-# ESG Test Fixtures
 @pytest.fixture
 def esg_data():
     return {
@@ -133,7 +142,6 @@ def esg_rating_data():
     }
 
 
-# News Test Fixtures
 @pytest.fixture
 def stock_news_data():
     return {
@@ -162,514 +170,809 @@ def stock_news_sentiment_data():
     }
 
 
-@pytest.fixture
-def earnings_surprises_data():
-    return {
-        "symbol": "AAPL",
-        "date": "2024-01-15",
-        "actualEarningResult": 1.25,
-        "estimatedEarning": 1.20,
-    }
+class TestMarketIntelligenceClientCalendar:
+    """Test calendar functionality"""
+
+    def test_get_earnings_calendar_no_dates(
+        self, fmp_client, mock_client, earnings_calendar_data
+    ):
+        """Test get_earnings_calendar without date filters"""
+        mock_client.request.return_value = [EarningEvent(**earnings_calendar_data)]
+
+        result = fmp_client.intelligence.get_earnings_calendar()
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert len(kwargs) == 0  # No date parameters when None
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0].symbol == "AAPL"
+
+    def test_get_earnings_calendar_with_dates(
+        self, fmp_client, mock_client, earnings_calendar_data
+    ):
+        """Test get_earnings_calendar with date filters"""
+        mock_client.request.return_value = [EarningEvent(**earnings_calendar_data)]
+
+        start_date = date(2024, 1, 1)
+        end_date = date(2024, 1, 31)
+        result = fmp_client.intelligence.get_earnings_calendar(
+            start_date=start_date, end_date=end_date
+        )
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["from"] == "2024-01-01"
+        assert kwargs["to"] == "2024-01-31"
+        assert isinstance(result, list)
+
+    def test_get_historical_earnings(
+        self, fmp_client, mock_client, earnings_calendar_data
+    ):
+        """Test get_historical_earnings"""
+        mock_client.request.return_value = [EarningEvent(**earnings_calendar_data)]
+
+        result = fmp_client.intelligence.get_historical_earnings("AAPL")
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["symbol"] == "AAPL"
+        assert isinstance(result, list)
+
+    def test_get_earnings_confirmed(
+        self, fmp_client, mock_client, earnings_confirmed_data
+    ):
+        """Test get_earnings_confirmed"""
+        mock_client.request.return_value = [EarningConfirmed(**earnings_confirmed_data)]
+
+        result = fmp_client.intelligence.get_earnings_confirmed(
+            start_date=date(2024, 1, 1), end_date=date(2024, 1, 31)
+        )
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["from"] == "2024-01-01"
+        assert kwargs["to"] == "2024-01-31"
+        assert isinstance(result, list)
+
+    def test_get_earnings_surprises(self, fmp_client, mock_client):
+        """Test get_earnings_surprises"""
+        mock_data = {
+            "symbol": "AAPL",
+            "date": "2024-01-15",
+            "actualEarningResult": 1.25,
+            "estimatedEarning": 1.20,
+        }
+        mock_client.request.return_value = [EarningSurprise(**mock_data)]
+
+        result = fmp_client.intelligence.get_earnings_surprises("AAPL")
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["symbol"] == "AAPL"
+        assert isinstance(result, list)
+
+    def test_get_dividends_calendar(
+        self, fmp_client, mock_client, dividends_calendar_data
+    ):
+        """Test get_dividends_calendar"""
+        mock_client.request.return_value = [DividendEvent(**dividends_calendar_data)]
+
+        result = fmp_client.intelligence.get_dividends_calendar(
+            start_date=date(2024, 1, 1), end_date=date(2024, 1, 31)
+        )
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["from"] == "2024-01-01"
+        assert kwargs["to"] == "2024-01-31"
+        assert isinstance(result, list)
+        assert result[0].symbol == "AAPL"
+
+    def test_get_stock_splits_calendar(self, fmp_client, mock_client):
+        """Test get_stock_splits_calendar"""
+        mock_data = {
+            "symbol": "AAPL",
+            "date": "2024-01-15",
+            "label": "Jan 15, 2024",
+            "numerator": 4,
+            "denominator": 1,
+        }
+        mock_client.request.return_value = [StockSplitEvent(**mock_data)]
+
+        result = fmp_client.intelligence.get_stock_splits_calendar(
+            start_date=date(2024, 1, 1), end_date=date(2024, 1, 31)
+        )
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["from"] == "2024-01-01"
+        assert kwargs["to"] == "2024-01-31"
+        assert isinstance(result, list)
+
+    def test_get_ipo_calendar(self, fmp_client, mock_client, ipo_calendar_data):
+        """Test get_ipo_calendar"""
+        mock_client.request.return_value = [IPOEvent(**ipo_calendar_data)]
+
+        result = fmp_client.intelligence.get_ipo_calendar(
+            start_date=date(2024, 1, 1), end_date=date(2024, 1, 31)
+        )
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["from"] == "2024-01-01"
+        assert kwargs["to"] == "2024-01-31"
+        assert isinstance(result, list)
+        assert result[0].symbol == "NEWCO"
 
 
-@pytest.fixture
-def historical_earnings_data():
-    return {
-        "symbol": "AAPL",
-        "date": "2024-01-15",
-        "eps": 1.25,
-        "epsEstimated": 1.20,
-        "time": "amc",
-        "revenue": 1000000000,
-        "revenueEstimated": 950000000,
-        "fiscalDateEnding": "2024-03-31",
-        "updatedFromDate": "2024-01-01",
-    }
+class TestMarketIntelligenceClientNews:
+    """Test news functionality"""
 
-
-@pytest.fixture
-def stock_splits_calendar_data():
-    return {
-        "symbol": "AAPL",
-        "date": "2024-01-15",
-        "label": "Jan 15, 2024",
-        "numerator": 4,
-        "denominator": 1,
-    }
-
-
-@pytest.fixture
-def fmp_articles_data():
-    return {
-        "content": [
-            {
-                "title": "Market Analysis",
-                "date": "2024-01-15T10:00:00",
-                "content": "<p>Article content</p>",
-                "tickers": "AAPL,MSFT",
-                "image": "https://example.com/image.jpg",
-                "link": "https://example.com/article",
-                "author": "John Doe",
-                "site": "FMP",
-            }
+    def test_get_fmp_articles_default(self, fmp_client, mock_client):
+        """Test get_fmp_articles with default parameters"""
+        mock_content = [
+            FMPArticle(
+                title="Market Analysis",
+                date=datetime(2024, 1, 15, 10, 0),
+                content="<p>Article content</p>",
+                tickers="AAPL,MSFT",
+                image="https://example.com/image.jpg",
+                link="https://example.com/article",
+                author="John Doe",
+                site="FMP",
+            )
         ]
-    }
-
-
-@pytest.fixture
-def general_news_data():
-    return {
-        "publishedDate": "2024-01-15T10:00:00",
-        "title": "Market Update",
-        "image": "https://example.com/image.jpg",
-        "site": "Example News",
-        "text": "News content",
-        "url": "https://example.com/news",
-    }
-
-
-@pytest.fixture
-def forex_news_data():
-    return {
-        "publishedDate": "2024-01-15T10:00:00",
-        "title": "Forex Update",
-        "image": "https://example.com/image.jpg",
-        "site": "Forex News",
-        "text": "News content",
-        "url": "https://example.com/forex",
-        "symbol": "EURUSD",
-    }
-
-
-@pytest.fixture
-def crypto_news_data():
-    return {
-        "publishedDate": "2024-01-15T10:00:00",
-        "title": "Crypto Update",
-        "image": "https://example.com/image.jpg",
-        "site": "Crypto News",
-        "text": "News content",
-        "url": "https://example.com/crypto",
-        "symbol": "BTC",
-    }
-
-
-@pytest.fixture
-def press_release_data():
-    return {
-        "symbol": "AAPL",
-        "date": "2024-01-15T10:00:00",
-        "title": "Company Update",
-        "text": "Press release content",
-    }
-
-
-@pytest.fixture
-def historical_social_sentiment_data():
-    return {
-        "date": "2024-01-15T10:00:00",
-        "symbol": "AAPL",
-        "stocktwitsPosts": 1000,
-        "twitterPosts": 2000,
-        "stocktwitsComments": 500,
-        "twitterComments": 1000,
-        "stocktwitsLikes": 1500,
-        "twitterLikes": 3000,
-        "stocktwitsImpressions": 5000,
-        "twitterImpressions": 10000,
-        "stocktwitsSentiment": 0.75,
-        "twitterSentiment": 0.80,
-    }
-
-
-@pytest.fixture
-def trending_social_sentiment_data():
-    return {
-        "symbol": "AAPL",
-        "name": "Apple Inc",
-        "rank": 1,
-        "sentiment": 0.85,
-        "lastSentiment": 0.80,
-    }
-
-
-@pytest.fixture
-def senate_trade_data():
-    return {
-        "firstName": "John",
-        "lastName": "Doe",
-        "office": "Senate Office",
-        "link": "https://example.com/filing",
-        "dateRecieved": "2024-01-15T10:00:00",
-        "transactionDate": "2024-01-10T10:00:00",
-        "owner": "Self",
-        "assetDescription": "Apple Inc Common Stock",
-        "assetType": "Stock",
-        "type": "Purchase",
-        "amount": "$15,001-$50,000",
-        "comment": "",
-        "symbol": "AAPL",
-    }
-
-
-@pytest.fixture
-def house_disclosure_data():
-    return {
-        "disclosureYear": "2024",
-        "disclosureDate": "2024-01-15T10:00:00",
-        "transactionDate": "2024-01-10T10:00:00",
-        "owner": "Self",
-        "ticker": "AAPL",
-        "assetDescription": "Apple Inc Common Stock",
-        "type": "Purchase",
-        "amount": "$15,001-$50,000",
-        "representative": "Jane Doe",
-        "district": "NY-1",
-        "link": "https://example.com/filing",
-        "capitalGainsOver200USD": False,
-    }
-
-
-@pytest.fixture
-def crowdfunding_data():
-    return {
-        "cik": "0001234567",
-        "companyName": "Startup Inc",
-        "acceptanceTime": "2024-01-15T10:00:00",
-        "formType": "C",
-        "formSignification": "Offering Statement",
-        "fillingDate": "2024-01-15T00:00:00.000Z",
-        "nameOfIssuer": "Startup Inc",
-        "offeringAmount": 1000000,
-        "offeringPrice": 10,
-    }
-
-
-@pytest.fixture
-def equity_offering_data():
-    return {
-        "formType": "D",
-        "formSignification": "Notice of Exempt Offering",
-        "acceptanceTime": "2024-01-15T10:00:00",
-        "cik": "0001234567",
-        "entityName": "Company Inc",
-        "entityType": "Corporation",
-        "jurisdictionOfIncorporation": "Delaware",
-        "yearOfIncorporation": "2020",
-        "totalOfferingAmount": 10000000,
-        "totalAmountSold": 5000000,
-        "totalAmountRemaining": 5000000,
-    }
-
-
-# Calendar Event Tests
-def test_get_earnings_calendar(fmp_client, mock_client, earnings_calendar_data):
-    mock_client.get_earnings_calendar.return_value = [
-        EarningEvent(**earnings_calendar_data)
-    ]
-
-    result = fmp_client.intelligence.get_earnings_calendar(
-        start_date=date(2024, 1, 1), end_date=date(2024, 1, 31)
-    )
-
-    assert isinstance(result, list)
-    assert isinstance(result[0], EarningEvent)
-    assert result[0].symbol == "AAPL"
-    assert result[0].eps == 1.25
-
-
-def test_get_earnings_confirmed(fmp_client, mock_client, earnings_confirmed_data):
-    mock_client.get_earnings_confirmed.return_value = [
-        EarningConfirmed(**earnings_confirmed_data)
-    ]
-
-    result = fmp_client.intelligence.get_earnings_confirmed(
-        start_date=date(2024, 1, 1), end_date=date(2024, 1, 31)
-    )
-
-    assert isinstance(result, list)
-    assert isinstance(result[0], EarningConfirmed)
-    assert result[0].symbol == "AAPL"
-    assert result[0].exchange == "NASDAQ"
-
-
-def test_get_dividends_calendar(fmp_client, mock_client, dividends_calendar_data):
-    mock_client.get_dividends_calendar.return_value = [
-        DividendEvent(**dividends_calendar_data)
-    ]
-
-    result = fmp_client.intelligence.get_dividends_calendar(
-        start_date=date(2024, 1, 1), end_date=date(2024, 1, 31)
-    )
-
-    assert isinstance(result, list)
-    assert isinstance(result[0], DividendEvent)
-    assert result[0].symbol == "AAPL"
-    assert result[0].dividend == 0.20
-
-
-def test_get_ipo_calendar(fmp_client, mock_client, ipo_calendar_data):
-    mock_client.get_ipo_calendar.return_value = [IPOEvent(**ipo_calendar_data)]
-
-    result = fmp_client.intelligence.get_ipo_calendar(
-        start_date=date(2024, 1, 1), end_date=date(2024, 1, 31)
-    )
-
-    assert isinstance(result, list)
-    assert isinstance(result[0], IPOEvent)
-    assert result[0].symbol == "NEWCO"
-    assert result[0].company == "New Company"
-
-
-# ESG Tests
-def test_get_esg_data(fmp_client, mock_client, esg_data):
-    mock_client.get_esg_data.return_value = ESGData(**esg_data)
-
-    result = fmp_client.intelligence.get_esg_data(symbol="AAPL")
-
-    assert isinstance(result, ESGData)
-    assert result.symbol == "AAPL"
-    assert result.environmental_score == 68.47
-    assert result.social_score == 47.02
-    assert result.governance_score == 60.8
-
-
-def test_get_esg_ratings(fmp_client, mock_client, esg_rating_data):
-    mock_client.get_esg_ratings.return_value = ESGRating(**esg_rating_data)
-
-    result = fmp_client.intelligence.get_esg_ratings(symbol="AAPL")
-
-    assert isinstance(result, ESGRating)
-    assert result.symbol == "AAPL"
-    assert result.esg_risk_rating == "Low Risk"
-    assert result.industry_rank == "1 of 50"
-
-
-# News Tests
-def test_get_stock_news(fmp_client, mock_client, stock_news_data):
-    mock_client.get_stock_news.return_value = [StockNewsArticle(**stock_news_data)]
-
-    result = fmp_client.intelligence.get_stock_news(
-        tickers="AAPL", page=0, from_date=date(2024, 1, 1), to_date=date(2024, 1, 31)
-    )
-
-    assert isinstance(result, list)
-    assert isinstance(result[0], StockNewsArticle)
-    assert result[0].symbol == "AAPL"
-    assert result[0].title == "Apple Announces New Product"
-
-
-def test_get_stock_news_sentiments(fmp_client, mock_client, stock_news_sentiment_data):
-    mock_client.get_stock_news_sentiments.return_value = [
-        StockNewsSentiment(**stock_news_sentiment_data)
-    ]
-
-    result = fmp_client.intelligence.get_stock_news_sentiments(page=0)
-
-    assert isinstance(result, list)
-    assert isinstance(result[0], StockNewsSentiment)
-    assert result[0].symbol == "AAPL"
-    assert result[0].sentiment == "Positive"
-    assert result[0].sentimentScore == 0.85
-
-
-# Error Cases
-def test_get_earnings_calendar_empty(fmp_client, mock_client):
-    mock_client.get_earnings_calendar.return_value = []
-
-    result = fmp_client.intelligence.get_earnings_calendar(
-        start_date=date(2024, 1, 1), end_date=date(2024, 1, 31)
-    )
-
-    assert isinstance(result, list)
-    assert len(result) == 0
-
-
-def test_get_esg_data_none_response(fmp_client, mock_client):
-    mock_client.get_esg_data.return_value = None
-
-    result = fmp_client.intelligence.get_esg_data(symbol="INVALID")
-
-    assert result is None
-
-
-def test_get_earnings_surprises(fmp_client, mock_client, earnings_surprises_data):
-    mock_client.get_earnings_surprises.return_value = [
-        EarningSurprise(**earnings_surprises_data)
-    ]
-
-    result = fmp_client.intelligence.get_earnings_surprises(symbol="AAPL")
-
-    assert isinstance(result, list)
-    assert isinstance(result[0], EarningSurprise)
-    assert result[0].symbol == "AAPL"
-    assert result[0].actual_earning_result == 1.25
-
-
-def test_get_historical_earnings(fmp_client, mock_client, historical_earnings_data):
-    mock_client.get_historical_earnings.return_value = [
-        EarningEvent(**historical_earnings_data)
-    ]
-
-    result = fmp_client.intelligence.get_historical_earnings(symbol="AAPL")
-
-    assert isinstance(result, list)
-    assert isinstance(result[0], EarningEvent)
-    assert result[0].symbol == "AAPL"
-    assert result[0].eps == 1.25
-
-
-def test_get_stock_splits_calendar(fmp_client, mock_client, stock_splits_calendar_data):
-    mock_client.get_stock_splits_calendar.return_value = [
-        StockSplitEvent(**stock_splits_calendar_data)
-    ]
-
-    result = fmp_client.intelligence.get_stock_splits_calendar(
-        start_date=date(2024, 1, 1), end_date=date(2024, 1, 31)
-    )
-
-    assert isinstance(result, list)
-    assert isinstance(result[0], StockSplitEvent)
-    assert result[0].symbol == "AAPL"
-    assert result[0].numerator == 4
-
-
-def test_get_fmp_articles(fmp_client, mock_client, fmp_articles_data):
-    mock_client.get_fmp_articles.return_value = [
-        FMPArticle(**fmp_articles_data["content"][0])
-    ]
-
-    result = fmp_client.intelligence.get_fmp_articles(page=0, size=5)
-
-    assert isinstance(result, list)
-    assert isinstance(result[0], FMPArticle)
-    assert result[0].title == "Market Analysis"
-    assert result[0].author == "John Doe"
-
-
-def test_get_general_news(fmp_client, mock_client, general_news_data):
-    mock_client.get_general_news.return_value = [
-        GeneralNewsArticle(**general_news_data)
-    ]
-
-    result = fmp_client.intelligence.get_general_news(page=0)
-
-    assert isinstance(result, list)
-    assert isinstance(result[0], GeneralNewsArticle)
-    assert result[0].title == "Market Update"
-    assert isinstance(result[0].publishedDate, datetime)
-
-
-def test_get_forex_news(fmp_client, mock_client, forex_news_data):
-    mock_client.get_forex_news.return_value = [ForexNewsArticle(**forex_news_data)]
-
-    result = fmp_client.intelligence.get_forex_news(symbol="EURUSD", page=0)
-
-    assert isinstance(result, list)
-    assert isinstance(result[0], ForexNewsArticle)
-    assert result[0].symbol == "EURUSD"
-    assert isinstance(result[0].publishedDate, datetime)
-
-
-def test_get_crypto_news(fmp_client, mock_client, crypto_news_data):
-    mock_client.get_crypto_news.return_value = [CryptoNewsArticle(**crypto_news_data)]
-
-    result = fmp_client.intelligence.get_crypto_news(symbol="BTC", page=0)
-
-    assert isinstance(result, list)
-    assert isinstance(result[0], CryptoNewsArticle)
-    assert result[0].symbol == "BTC"
-    assert isinstance(result[0].publishedDate, datetime)
-
-
-def test_get_press_releases(fmp_client, mock_client, press_release_data):
-    mock_client.get_press_releases.return_value = [PressRelease(**press_release_data)]
-
-    result = fmp_client.intelligence.get_press_releases(page=0)
-
-    assert isinstance(result, list)
-    assert isinstance(result[0], PressRelease)
-    assert result[0].symbol == "AAPL"
-    assert isinstance(result[0].date, datetime)
-
-
-def test_get_press_releases_by_symbol(fmp_client, mock_client, press_release_data):
-    mock_client.get_press_releases_by_symbol.return_value = [
-        PressReleaseBySymbol(**press_release_data)
-    ]
-
-    result = fmp_client.intelligence.get_press_releases_by_symbol(symbol="AAPL", page=0)
-
-    assert isinstance(result, list)
-    assert isinstance(result[0], PressReleaseBySymbol)
-    assert result[0].symbol == "AAPL"
-    assert isinstance(result[0].date, datetime)
-
-
-def test_get_historical_social_sentiment(
-    fmp_client, mock_client, historical_social_sentiment_data
-):
-    mock_client.get_historical_social_sentiment.return_value = [
-        HistoricalSocialSentiment(**historical_social_sentiment_data)
-    ]
-
-    result = fmp_client.intelligence.get_historical_social_sentiment(
-        symbol="AAPL", page=0
-    )
-
-    assert isinstance(result, list)
-    assert isinstance(result[0], HistoricalSocialSentiment)
-    assert result[0].symbol == "AAPL"
-    assert result[0].stocktwitsSentiment == 0.75
-
-
-def test_get_trending_social_sentiment(
-    fmp_client, mock_client, trending_social_sentiment_data
-):
-    mock_client.get_trending_social_sentiment.return_value = [
-        TrendingSocialSentiment(**trending_social_sentiment_data)
-    ]
-
-    result = fmp_client.intelligence.get_trending_social_sentiment(
-        type="bullish", source="stocktwits"
-    )
-
-    assert isinstance(result, list)
-    assert isinstance(result[0], TrendingSocialSentiment)
-    assert result[0].symbol == "AAPL"
-    assert result[0].sentiment == 0.85
-
-
-def test_get_senate_trading(fmp_client, mock_client, senate_trade_data):
-    mock_client.get_senate_trading.return_value = [SenateTrade(**senate_trade_data)]
-
-    result = fmp_client.intelligence.get_senate_trading(symbol="AAPL")
-
-    assert isinstance(result, list)
-    assert isinstance(result[0], SenateTrade)
-    assert result[0].symbol == "AAPL"
-    assert result[0].asset_type == "Stock"
-
-
-def test_get_senate_trading_rss(fmp_client, mock_client, senate_trade_data):
-    mock_client.get_senate_trading_rss.return_value = [SenateTrade(**senate_trade_data)]
-
-    result = fmp_client.intelligence.get_senate_trading_rss(page=0)
-
-    assert isinstance(result, list)
-    assert isinstance(result[0], SenateTrade)
-    assert result[0].symbol == "AAPL"
-    assert result[0].asset_type == "Stock"
-
-
-def test_get_house_disclosure(fmp_client, mock_client, house_disclosure_data):
-    mock_client.get_house_disclosure.return_value = [
-        HouseDisclosure(**house_disclosure_data)
-    ]
-
-    result = fmp_client.intelligence.get_house_disclosure(symbol="AAPL")
-
-    assert isinstance(result, list)
-    assert isinstance(result[0], HouseDisclosure)
-    assert result[0].ticker == "AAPL"
-    assert result[0].representative == "Jane Doe"
+        mock_response = FMPArticlesResponse(content=mock_content)
+        mock_client.request.return_value = mock_response
+
+        result = fmp_client.intelligence.get_fmp_articles()
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["page"] == 0
+        assert kwargs["size"] == 5
+        assert isinstance(result, list)
+        assert len(result) == 1
+
+    def test_get_fmp_articles_custom_params(self, fmp_client, mock_client):
+        """Test get_fmp_articles with custom parameters"""
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_fmp_articles(page=1, size=10)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["page"] == 1
+        assert kwargs["size"] == 10
+
+    def test_get_fmp_articles_direct_list(self, fmp_client, mock_client):
+        """Test get_fmp_articles when API returns direct list"""
+        mock_articles = [
+            FMPArticle(
+                title="Direct Article",
+                date=datetime(2024, 1, 15, 10, 0),
+                content="<p>Content</p>",
+                tickers="AAPL",
+                image="https://example.com/image.jpg",
+                link="https://example.com/article",
+                author="Jane Doe",
+                site="FMP",
+            )
+        ]
+        mock_client.request.return_value = mock_articles
+
+        result = fmp_client.intelligence.get_fmp_articles()
+
+        assert result == mock_articles
+
+    def test_get_general_news(self, fmp_client, mock_client):
+        """Test get_general_news"""
+        mock_data = {
+            "publishedDate": "2024-01-15T10:00:00",
+            "title": "Market Update",
+            "image": "https://example.com/image.jpg",
+            "site": "Example News",
+            "text": "News content",
+            "url": "https://example.com/news",
+        }
+        mock_client.request.return_value = [GeneralNewsArticle(**mock_data)]
+
+        result = fmp_client.intelligence.get_general_news(page=0)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["page"] == 0
+        assert isinstance(result, list)
+
+    def test_get_stock_news(self, fmp_client, mock_client, stock_news_data):
+        """Test get_stock_news with all parameters"""
+        mock_client.request.return_value = [StockNewsArticle(**stock_news_data)]
+
+        _ = fmp_client.intelligence.get_stock_news(
+            tickers="AAPL,MSFT",
+            page=1,
+            from_date=date(2024, 1, 1),
+            to_date=date(2024, 1, 31),
+            limit=100,
+        )
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["tickers"] == "AAPL,MSFT"
+        assert kwargs["page"] == 1
+        assert kwargs["from"] == "2024-01-01"
+        assert kwargs["to"] == "2024-01-31"
+        assert kwargs["limit"] == 100
+
+    def test_get_stock_news_no_dates(self, fmp_client, mock_client, stock_news_data):
+        """Test get_stock_news without date parameters"""
+        mock_client.request.return_value = [StockNewsArticle(**stock_news_data)]
+
+        _ = fmp_client.intelligence.get_stock_news("AAPL")
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["from"] is None
+        assert kwargs["to"] is None
+
+    def test_get_stock_news_sentiments(
+        self, fmp_client, mock_client, stock_news_sentiment_data
+    ):
+        """Test get_stock_news_sentiments"""
+        mock_client.request.return_value = [
+            StockNewsSentiment(**stock_news_sentiment_data)
+        ]
+
+        result = fmp_client.intelligence.get_stock_news_sentiments(page=0)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["page"] == 0
+        assert isinstance(result, list)
+        assert result[0].sentiment == "Positive"
+
+    def test_get_forex_news(self, fmp_client, mock_client):
+        """Test get_forex_news"""
+        mock_data = {
+            "publishedDate": "2024-01-15T10:00:00",
+            "title": "Forex Update",
+            "image": "https://example.com/image.jpg",
+            "site": "Forex News",
+            "text": "News content",
+            "url": "https://example.com/forex",
+            "symbol": "EURUSD",
+        }
+        mock_client.request.return_value = [ForexNewsArticle(**mock_data)]
+
+        _ = fmp_client.intelligence.get_forex_news(
+            page=1,
+            symbol="EURUSD",
+            from_date=date(2024, 1, 1),
+            to_date=date(2024, 1, 31),
+            limit=25,
+        )
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["symbol"] == "EURUSD"
+        assert kwargs["from"] == "2024-01-01"
+        assert kwargs["to"] == "2024-01-31"
+
+    def test_get_crypto_news(self, fmp_client, mock_client):
+        """Test get_crypto_news"""
+        mock_data = {
+            "publishedDate": "2024-01-15T10:00:00",
+            "title": "Crypto Update",
+            "image": "https://example.com/image.jpg",
+            "site": "Crypto News",
+            "text": "News content",
+            "url": "https://example.com/crypto",
+            "symbol": "BTC",
+        }
+        mock_client.request.return_value = [CryptoNewsArticle(**mock_data)]
+
+        _ = fmp_client.intelligence.get_crypto_news(
+            symbol="BTC", from_date=date(2024, 1, 1), to_date=date(2024, 1, 31)
+        )
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["symbol"] == "BTC"
+        assert kwargs["from"] == "2024-01-01"
+        assert kwargs["to"] == "2024-01-31"
+
+
+class TestMarketIntelligenceClientPressReleases:
+    """Test press release functionality"""
+
+    def test_get_press_releases(self, fmp_client, mock_client):
+        """Test get_press_releases"""
+        mock_data = {
+            "symbol": "AAPL",
+            "date": "2024-01-15T10:00:00",
+            "title": "Company Update",
+            "text": "Press release content",
+        }
+        mock_client.request.return_value = [PressRelease(**mock_data)]
+
+        _ = fmp_client.intelligence.get_press_releases(page=0)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["page"] == 0
+
+    def test_get_press_releases_by_symbol(self, fmp_client, mock_client):
+        """Test get_press_releases_by_symbol"""
+        mock_data = {
+            "symbol": "AAPL",
+            "date": "2024-01-15T10:00:00",
+            "title": "Company Update",
+            "text": "Press release content",
+        }
+        mock_client.request.return_value = [PressReleaseBySymbol(**mock_data)]
+
+        _ = fmp_client.intelligence.get_press_releases_by_symbol("AAPL", page=1)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["symbol"] == "AAPL"
+        assert kwargs["page"] == 1
+
+
+class TestMarketIntelligenceClientSocialSentiment:
+    """Test social sentiment functionality"""
+
+    def test_get_historical_social_sentiment(self, fmp_client, mock_client):
+        """Test get_historical_social_sentiment"""
+        mock_data = {
+            "date": "2024-01-15T10:00:00",
+            "symbol": "AAPL",
+            "stocktwitsPosts": 1000,
+            "twitterPosts": 2000,
+            "stocktwitsComments": 500,
+            "twitterComments": 1000,
+            "stocktwitsLikes": 1500,
+            "twitterLikes": 3000,
+            "stocktwitsImpressions": 5000,
+            "twitterImpressions": 10000,
+            "stocktwitsSentiment": 0.75,
+            "twitterSentiment": 0.80,
+        }
+        mock_client.request.return_value = [HistoricalSocialSentiment(**mock_data)]
+
+        _ = fmp_client.intelligence.get_historical_social_sentiment("AAPL", page=0)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["symbol"] == "AAPL"
+        assert kwargs["page"] == 0
+
+    def test_get_trending_social_sentiment(self, fmp_client, mock_client):
+        """Test get_trending_social_sentiment"""
+        mock_data = {
+            "symbol": "AAPL",
+            "name": "Apple Inc",
+            "rank": 1,
+            "sentiment": 0.85,
+            "lastSentiment": 0.80,
+        }
+        mock_client.request.return_value = [TrendingSocialSentiment(**mock_data)]
+
+        _ = fmp_client.intelligence.get_trending_social_sentiment(
+            "bullish", "stocktwits"
+        )
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["type"] == "bullish"
+        assert kwargs["source"] == "stocktwits"
+
+    def test_get_social_sentiment_changes(self, fmp_client, mock_client):
+        """Test get_social_sentiment_changes"""
+        mock_data = {
+            "symbol": "AAPL",
+            "name": "Apple Inc",
+            "rank": 1,
+            "sentiment": 0.85,
+            "lastSentiment": 0.80,
+            "sentimentChange": 0.05,  # Added missing required field
+        }
+        mock_client.request.return_value = [SocialSentimentChanges(**mock_data)]
+
+        result = fmp_client.intelligence.get_social_sentiment_changes(
+            "bearish", "twitter"
+        )
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["type"] == "bearish"
+        assert kwargs["source"] == "twitter"
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0].sentimentChange == 0.05
+
+    def test_get_esg_benchmark(self, fmp_client, mock_client):
+        """Test get_esg_benchmark"""
+        mock_data = {
+            "year": 2024,
+            "sector": "Technology",
+            "environmentalScore": 70.0,  # NOT "averageEnvironmentalScore"
+            "socialScore": 60.0,  # NOT "averageSocialScore"
+            "governanceScore": 66.5,  # NOT "averageGovernanceScore"
+            "ESGScore": 65.5,  # NOT "averageESGScore"
+        }
+        mock_client.request.return_value = [ESGBenchmark(**mock_data)]
+
+        result = fmp_client.intelligence.get_esg_benchmark(2024)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["year"] == 2024
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0].sector == "Technology"
+        assert result[0].esg_score == 65.5
+
+
+class TestMarketIntelligenceClientESG:
+    """Test ESG functionality"""
+
+    def test_get_esg_data_single_item(self, fmp_client, mock_client, esg_data):
+        """Test get_esg_data when API returns single item"""
+        mock_response = ESGData(**esg_data)
+        mock_client.request.return_value = mock_response
+
+        result = fmp_client.intelligence.get_esg_data("AAPL")
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["symbol"] == "AAPL"
+        assert isinstance(result, ESGData)
+        assert result.symbol == "AAPL"
+
+    def test_get_esg_data_list_response(self, fmp_client, mock_client, esg_data):
+        """Test get_esg_data when API returns list"""
+        mock_response = [ESGData(**esg_data)]
+        mock_client.request.return_value = mock_response
+
+        result = fmp_client.intelligence.get_esg_data("AAPL")
+
+        assert isinstance(result, ESGData)
+        assert result.symbol == "AAPL"
+
+    def test_get_esg_ratings(self, fmp_client, mock_client, esg_rating_data):
+        """Test get_esg_ratings"""
+        mock_response = [ESGRating(**esg_rating_data)]
+        mock_client.request.return_value = mock_response
+
+        result = fmp_client.intelligence.get_esg_ratings("AAPL")
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["symbol"] == "AAPL"
+        assert isinstance(result, ESGRating)
+
+    def test_get_esg_benchmark(self, fmp_client, mock_client):
+        """Test get_esg_benchmark"""
+        mock_data = {
+            "year": 2024,
+            "sector": "Technology",
+            "ESGScore": 65.5,
+            "numberOfCompanies": 100,
+            "averageESGScore": 65.5,
+            "averageEnvironmentalScore": 70.0,
+            "averageSocialScore": 60.0,
+            "averageGovernanceScore": 66.5,
+        }
+        mock_client.request.return_value = [ESGBenchmark(**mock_data)]
+
+        _ = fmp_client.intelligence.get_esg_benchmark(2024)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["year"] == 2024
+
+
+class TestMarketIntelligenceClientGovernment:
+    """Test government trading functionality"""
+
+    def test_get_senate_trading(self, fmp_client, mock_client):
+        """Test get_senate_trading"""
+        mock_data = {
+            "firstName": "John",
+            "lastName": "Doe",
+            "office": "Senate Office",
+            "link": "https://example.com/filing",
+            "dateRecieved": "2024-01-15T10:00:00",
+            "transactionDate": "2024-01-10T10:00:00",
+            "owner": "Self",
+            "assetDescription": "Apple Inc Common Stock",
+            "assetType": "Stock",
+            "type": "Purchase",
+            "amount": "$15,001-$50,000",
+            "comment": "",
+            "symbol": "AAPL",
+        }
+        mock_client.request.return_value = [SenateTrade(**mock_data)]
+
+        _ = fmp_client.intelligence.get_senate_trading("AAPL")
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["symbol"] == "AAPL"
+
+    def test_get_senate_trading_rss(self, fmp_client, mock_client):
+        """Test get_senate_trading_rss"""
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_trading_rss(page=0)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["page"] == 0
+
+    def test_get_house_disclosure(self, fmp_client, mock_client):
+        """Test get_house_disclosure"""
+        mock_data = {
+            "disclosureYear": "2024",
+            "disclosureDate": "2024-01-15T10:00:00",
+            "transactionDate": "2024-01-10T10:00:00",
+            "owner": "Self",
+            "ticker": "AAPL",
+            "assetDescription": "Apple Inc Common Stock",
+            "type": "Purchase",
+            "amount": "$15,001-$50,000",
+            "representative": "Jane Doe",
+            "district": "NY-1",
+            "link": "https://example.com/filing",
+            "capitalGainsOver200USD": False,
+        }
+        mock_client.request.return_value = [HouseDisclosure(**mock_data)]
+
+        _ = fmp_client.intelligence.get_house_disclosure("AAPL")
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["symbol"] == "AAPL"
+
+    def test_get_house_disclosure_rss(self, fmp_client, mock_client):
+        """Test get_house_disclosure_rss"""
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_house_disclosure_rss(page=1)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["page"] == 1
+
+
+class TestMarketIntelligenceClientFundraising:
+    """Test fundraising functionality"""
+
+    def test_get_crowdfunding_rss(self, fmp_client, mock_client):
+        """Test get_crowdfunding_rss"""
+        mock_data = {
+            # Basic required fields
+            "cik": "0001234567",
+            "acceptanceTime": "2024-01-15T10:00:00",
+            "formType": "C",
+            "formSignification": "Offering Statement",
+            "fillingDate": "2024-01-15T00:00:00.000Z",
+            # Additional required offering fields
+            "offeringAmount": 1000000,  # Added missing required field
+            "offeringPrice": 10.0,  # Added missing required field
+            # Required offering fields
+            "securityOfferedOtherDescription": "Common Stock",
+            "numberOfSecurityOffered": 100000,
+            "overSubscriptionAccepted": "No",  # String value, not boolean
+            "maximumOfferingAmount": 1000000,
+            "currentNumberOfEmployees": 10,
+            # Required fiscal year financial data (most recent)
+            "totalAssetMostRecentFiscalYear": 500000,
+            "cashAndCashEquiValentMostRecentFiscalYear": 100000,
+            "accountsReceivableMostRecentFiscalYear": 50000,
+            "shortTermDebtMostRecentFiscalYear": 20000,
+            "longTermDebtMostRecentFiscalYear": 100000,
+            "revenueMostRecentFiscalYear": 800000,
+            "costGoodsSoldMostRecentFiscalYear": 400000,
+            "taxesPaidMostRecentFiscalYear": 50000,
+            "netIncomeMostRecentFiscalYear": 150000,
+            # Required fiscal year financial data (prior)
+            "totalAssetPriorFiscalYear": 400000,
+            "cashAndCashEquiValentPriorFiscalYear": 80000,
+            "accountsReceivablePriorFiscalYear": 40000,
+            "shortTermDebtPriorFiscalYear": 15000,
+            "longTermDebtPriorFiscalYear": 80000,
+            "revenuePriorFiscalYear": 600000,
+            "costGoodsSoldPriorFiscalYear": 300000,
+            "taxesPaidPriorFiscalYear": 40000,
+            "netIncomePriorFiscalYear": 100000,
+        }
+        mock_client.request.return_value = [CrowdfundingOffering(**mock_data)]
+
+        result = fmp_client.intelligence.get_crowdfunding_rss(page=0)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["page"] == 0
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0].cik == "0001234567"
+
+    def test_search_crowdfunding(self, fmp_client, mock_client):
+        """Test search_crowdfunding"""
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.search_crowdfunding("startup")
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["name"] == "startup"
+
+    def test_get_crowdfunding_by_cik(self, fmp_client, mock_client):
+        """Test get_crowdfunding_by_cik"""
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_crowdfunding_by_cik("0001234567")
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["cik"] == "0001234567"
+
+    def test_get_equity_offering_rss(self, fmp_client, mock_client):
+        """Test get_equity_offering_rss"""
+        mock_data = {
+            # Basic required fields
+            "formType": "D",
+            "formSignification": "Notice of Exempt Offering",
+            "acceptanceTime": "2024-01-15T10:00:00",
+            "cik": "0001234567",
+            "entityName": "Company Inc",
+            "entityType": "Corporation",
+            "jurisdictionOfIncorporation": "Delaware",
+            "yearOfIncorporation": "2020",
+            # Required financial amounts
+            "totalOfferingAmount": 10000000,
+            "totalAmountSold": 5000000,
+            "totalAmountRemaining": 5000000,
+            # Required issuer information
+            "industryGroupType": "Technology",
+            "revenueRange": "$1M - $5M",
+            "issuerStreet": "123 Main St",
+            "issuerCity": "Wilmington",
+            "issuerStateOrCountry": "DE",
+            "issuerStateOrCountryDescription": "Delaware",
+            "issuerZipCode": "19801",
+            "issuerPhoneNumber": "555-0123",
+            # Required related person information
+            "relatedPersonFirstName": "John",
+            "relatedPersonLastName": "Doe",
+            "relatedPersonStreet": "456 Executive Ave",
+            "relatedPersonCity": "Wilmington",
+            "relatedPersonStateOrCountry": "DE",
+            "relatedPersonStateOrCountryDescription": "Delaware",
+            "relatedPersonZipCode": "19801",
+            "relatedPersonRelationship": "Director",
+            # Required offering details
+            "federalExemptionsExclusions": "3(c)(7)",
+            "dateOfFirstSale": "2024-01-01",
+            "minimumInvestmentAccepted": 250000,
+            "totalNumberAlreadyInvested": 25,
+            "salesCommissions": 500000,
+            "findersFees": 100000,
+            "grossProceedsUsed": 8000000,
+        }
+        mock_client.request.return_value = [EquityOffering(**mock_data)]
+
+        result = fmp_client.intelligence.get_equity_offering_rss(page=0)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["page"] == 0
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0].cik == "0001234567"
+        assert result[0].entity_name == "Company Inc"
+
+    def test_search_equity_offering(self, fmp_client, mock_client):
+        """Test search_equity_offering"""
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.search_equity_offering("company")
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["name"] == "company"
+
+    def test_get_equity_offering_by_cik(self, fmp_client, mock_client):
+        """Test get_equity_offering_by_cik"""
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_equity_offering_by_cik("0001234567")
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["cik"] == "0001234567"
+
+
+class TestMarketIntelligenceClientEdgeCases:
+    """Test edge cases and error scenarios"""
+
+    def test_empty_responses(self, fmp_client, mock_client):
+        """Test handling of empty responses"""
+        mock_client.request.return_value = []
+
+        result = fmp_client.intelligence.get_earnings_calendar()
+        assert result == []
+
+        result = fmp_client.intelligence.get_general_news()
+        assert result == []
+
+    def test_none_dates_handling(self, fmp_client, mock_client):
+        """Test handling of None date parameters"""
+        mock_client.request.return_value = []
+
+        # Test that None dates don't add parameters
+        fmp_client.intelligence.get_stock_news("AAPL", from_date=None, to_date=None)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["from"] is None
+        assert kwargs["to"] is None
+
+    def test_calendar_methods_no_dates(self, fmp_client, mock_client):
+        """Test calendar methods without date parameters"""
+        mock_client.request.return_value = []
+
+        # Test various calendar methods without dates
+        fmp_client.intelligence.get_earnings_calendar()
+        fmp_client.intelligence.get_dividends_calendar()
+        fmp_client.intelligence.get_stock_splits_calendar()
+        fmp_client.intelligence.get_ipo_calendar()
+
+        # Should have been called 4 times
+        assert mock_client.request.call_count == 4
+
+    def test_date_formatting_edge_cases(self, fmp_client, mock_client):
+        """Test date formatting with various dates"""
+        mock_client.request.return_value = []
+
+        # Test edge dates
+        fmp_client.intelligence.get_earnings_calendar(
+            start_date=date(2024, 12, 31), end_date=date(2024, 1, 1)
+        )
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["from"] == "2024-12-31"
+        assert kwargs["to"] == "2024-01-01"
+
+    def test_fmp_articles_various_responses(self, fmp_client, mock_client):
+        """Test FMP articles with various response types"""
+        # Test empty response
+        mock_client.request.return_value = FMPArticlesResponse(content=[])
+        result = fmp_client.intelligence.get_fmp_articles()
+        assert result == []
+
+        # Test direct list response
+        mock_client.request.return_value = []
+        result = fmp_client.intelligence.get_fmp_articles()
+        assert result == []
+
+    def test_parameter_combinations(self, fmp_client, mock_client):
+        """Test methods with various parameter combinations"""
+        mock_client.request.return_value = []
+
+        # Test forex news with all optional parameters
+        fmp_client.intelligence.get_forex_news(
+            page=None, symbol=None, from_date=None, to_date=None, limit=None
+        )
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["page"] is None
+        assert kwargs["symbol"] is None
+        assert kwargs["from"] is None
+        assert kwargs["to"] is None
+        assert kwargs["limit"] is None

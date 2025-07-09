@@ -1,4 +1,4 @@
-# client.py
+# fmp_data/client.py
 import logging
 import types
 import warnings
@@ -106,7 +106,7 @@ class FMPDataClient(BaseClient):
     def __enter__(self) -> "FMPDataClient":
         """Context manager enter"""
         if not self._initialized:
-            self._setup_http_client()
+            raise RuntimeError("Client not properly initialized")
         return self
 
     def __exit__(
@@ -158,6 +158,23 @@ class FMPDataClient(BaseClient):
                 ResourceWarning,
                 stacklevel=2,
             )
+
+    @property
+    def logger(self) -> logging.Logger:
+        """Get the logger instance, creating one if needed"""
+        if self._logger is None:
+            self._logger = FMPLogger().get_logger(self.__class__.__module__)
+        return self._logger
+
+    @logger.setter
+    def logger(self, value: logging.Logger) -> None:
+        """Set the logger instance"""
+        self._logger = value
+
+    @logger.deleter
+    def logger(self) -> None:
+        """Delete the logger instance"""
+        self._logger = None
 
     @property
     def company(self) -> CompanyClient:

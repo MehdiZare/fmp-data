@@ -15,6 +15,13 @@ repos:
       - id: check-merge-conflict
       - id: check-docstring-first
 
+  # ───────── Black code formatter ─────────────────────────────────────────
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        language_version: python3
+
   # ───────── Ruff (lint / fix) ─────────────────────────────────────────────
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.12.2

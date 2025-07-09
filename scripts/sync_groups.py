@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# /scripts/sync_groups.py
 """Sync [dependency-groups] with [project.optional-dependencies]."""
 from __future__ import annotations
 
@@ -16,10 +17,12 @@ try:
 except ImportError:
     print("Installing tomli-w...")
     import subprocess
+
     subprocess.check_call([sys.executable, "-m", "pip", "install", "tomli-w"])
     import tomli_w
 
 PYPROJECT = pathlib.Path("pyproject.toml")
+
 
 def main() -> None:
     with open(PYPROJECT, "rb") as f:
@@ -41,6 +44,7 @@ def main() -> None:
         print(f"✅ dependency-groups synced → {PYPROJECT}")
     else:
         print("✅ dependency-groups already up to date.")
+
 
 if __name__ == "__main__":
     main()
