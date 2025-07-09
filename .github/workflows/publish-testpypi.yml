@@ -40,10 +40,10 @@ jobs:
           echo "UV version: $(uv --version)"
 
           echo "📦 Installing build..."
-          uv pip install build
+          uv pip install --system build
 
           echo "📦 Building packages..."
-          uv run python -m build --wheel --sdist --verbose
+          python -m build --wheel --sdist --verbose
 
           echo "📦 Listing built packages..."
           ls -la dist/
