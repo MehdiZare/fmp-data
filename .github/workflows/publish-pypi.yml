@@ -8,6 +8,12 @@ on:
       - main                   # fire only for merges to main
     types:
       - completed
+  workflow_dispatch:            # allow manual triggering
+    inputs:
+      confirm:
+        description: 'Type "publish" to confirm you want to publish to PyPI'
+        required: true
+        default: ''
 
 permissions:
   id-token: write
@@ -15,16 +21,42 @@ permissions:
 
 jobs:
   build-and-publish:
-    if: github.event.workflow_run.conclusion == 'success'
+    # Auto-trigger: only if tests passed
+    # Manual trigger: only if user confirmed with "publish"
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'publish')
     runs-on: ubuntu-latest
     env:
       PYTHON_VERSION: "3.12"
 
     steps:
-      - name: 🛎️  Checkout tested commit
+      - name: 🛎️  Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          # Use the tested commit for auto-trigger, current HEAD for manual
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - name: 📋  Show trigger info
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "🤖 Auto-triggered after successful tests on main branch"
+            echo "📍 Using tested commit: ${{ github.event.workflow_run.head_sha }}"
+          else
+            echo "👤 Manually triggered"
+            echo "📍 Using commit: ${{ github.sha }}"
+            echo "⚠️  Make sure you're on the main branch with the correct version!"
+          fi
+
+      - name: 🔒  Safety check for manual runs
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ "${{ github.ref_name }}" != "main" ]; then
+            echo "❌ Manual publishing is only allowed from the main branch"
+            echo "Current branch: ${{ github.ref_name }}"
+            exit 1
+          fi
+          echo "✅ Running on main branch"
 
       - name: 🐍  Set up Python
         uses: actions/setup-python@v5
@@ -39,16 +71,22 @@ jobs:
       - name: 🏷️  Get package version
         id: get_version
         run: |
-          # Install package to get version
-          uv pip install -e .
-          version=$(uv run python -c "import fmp_data; print(fmp_data.__version__)")
+          # Install package to get version (system interpreter)
+          uv pip install --system -e .
+          version=$(python -c "import fmp_data; print(fmp_data.__version__)")
           echo "version=$version" >> $GITHUB_OUTPUT
           echo "📦 Package version: $version"
 
       - name: 📦  Build wheel & sdist
         run: |
-          uv pip install build
-          uv run python -m build --wheel --sdist
+          echo "📦 Installing build with uv (system interpreter)…"
+          uv pip install --system build
+
+          echo "📦 Building distributions…"
+          python -m build --wheel --sdist --verbose
+
+          echo "📦 Artifacts:"
+          ls -la dist/
 
       - name: 🚀  Upload to PyPI
         uses: pypa/gh-action-pypi-publish@v1.12.4
