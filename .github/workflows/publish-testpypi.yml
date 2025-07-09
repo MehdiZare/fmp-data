@@ -1,5 +1,5 @@
 # .github/workflows/publish-to-testpypi.yml
-# Build inside a uv virtual-env and upload to Test PyPI on pushes to dev.
+# Build with uv directly on the runner’s Python and upload to Test PyPI.
 
 name: Publish-to-TestPyPI
 
@@ -8,17 +8,17 @@ on:
     branches: [dev]
 
 permissions:
-  id-token: write    # OIDC token for trusted PyPI publishing
+  id-token: write         # for PyPI trusted publishing
   contents: read
 
 jobs:
-  test-and-publish:
+  build-and-publish:
     runs-on: ubuntu-latest
     env:
       PYTHON_VERSION: "3.12"
 
     steps:
-      # 1️⃣  Core toolchain ----------------------------------------------------
+      # -----------------------------------------------------------------------
       - name: 🛎️ Checkout
         uses: actions/checkout@v4
 
@@ -30,24 +30,24 @@ jobs:
       - name: ⚡ Install uv
         uses: astral-sh/setup-uv@v6
 
-      # 2️⃣  Build inside venv -------------------------------------------------
+      # -----------------------------------------------------------------------
+      # Key change ⬇️ : UV_SYSTEM_PYTHON=1 lets uv install into the system env.
       - name: 📦 Build wheel & sdist
-        shell: bash -euo pipefail {0}   # keep the same shell for the whole script
+        env:
+          UV_SYSTEM_PYTHON: "1"          # <- opts-in to system installs for *all* uv commands
         run: |
-          echo "📦 Creating virtual environment…"
-          uv venv --python "${PYTHON_VERSION}"
-          source .venv/bin/activate
+          set -euo pipefail
 
-          echo "📦 Installing build into venv…"
-          uv pip install build
+          echo "📦 Installing build with uv (system-wide)…"
+          uv pip install build           # --system implicit
 
           echo "📦 Building distributions…"
-          python -m build --wheel --sdist --verbose
+          python -m build --wheel --sdist --verbose   # no uv run needed
 
           echo "📦 Artifacts:"
           ls -la dist/
 
-      # 3️⃣  Publish -----------------------------------------------------------
+      # -----------------------------------------------------------------------
       - name: 🚀 Upload to Test PyPI
         uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
