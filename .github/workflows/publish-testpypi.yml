@@ -1,3 +1,7 @@
+# .github/workflows/publish-to-testpypi.yml
+# Build the project in an isolated uv virtual-environment and upload the
+# artifacts to Test PyPI whenever commits land on the dev branch.
+
 name: Publish-to-TestPyPI
 
 on:
@@ -6,7 +10,7 @@ on:
       - dev
 
 permissions:
-  id-token: write
+  id-token: write     # required for trusted publishing
   contents: read
 
 jobs:
@@ -16,6 +20,7 @@ jobs:
       PYTHON_VERSION: "3.12"
 
     steps:
+      # ---------------- Core toolchain ----------------
       - name: 🛎️ Checkout
         uses: actions/checkout@v4
 
@@ -27,20 +32,25 @@ jobs:
       - name: ⚡ Install uv
         uses: astral-sh/setup-uv@v6
 
+      # ---------------- Build inside venv -------------
       - name: 📦 Build wheel & sdist
         run: |
-          echo "📦 Creating virtual environment..."
-          uv venv
+          set -euo pipefail
 
-          echo "📦 Installing build..."
-          uv pip install build
+          echo "📦 Creating and activating virtual environment..."
+          uv venv --python "${PYTHON_VERSION}"      # creates .venv/
+          source .venv/bin/activate                 # export VIRTUAL_ENV & update PATH
+
+          echo "📦 Installing build tool into venv..."
+          uv pip install build                     # safe because $VIRTUAL_ENV is set
 
           echo "📦 Building packages..."
-          uv run python -m build --wheel --sdist --verbose
+          python -m build --wheel --sdist --verbose
 
           echo "📦 Listing built packages..."
           ls -la dist/
 
+      # ---------------- Publish -----------------------
       - name: 🚀 Upload to Test PyPI
         uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
