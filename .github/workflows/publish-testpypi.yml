@@ -1,5 +1,8 @@
 # .github/workflows/publish-to-testpypi.yml
-# Build with uv directly on the runner’s Python and upload to Test PyPI.
+# ──────────────────────────────────────────────────────────────────────────────
+# Build the package on pushes to the dev branch and upload it to Test PyPI.
+# All installs happen in the runner’s system interpreter; no virtual-env needed.
+# ──────────────────────────────────────────────────────────────────────────────
 
 name: Publish-to-TestPyPI
 
@@ -8,46 +11,45 @@ on:
     branches: [dev]
 
 permissions:
-  id-token: write         # for PyPI trusted publishing
+  id-token: write          # OIDC token for trusted publishing
   contents: read
 
 jobs:
-  build-and-publish:
+  test-and-publish:
     runs-on: ubuntu-latest
     env:
-      PYTHON_VERSION: "3.12"
+      PYTHON_VERSION: "3.12"       # one place to change Python version
 
     steps:
-      # -----------------------------------------------------------------------
+      # 1️⃣  Checkout the code -------------------------------------------------
       - name: 🛎️ Checkout
         uses: actions/checkout@v4
 
+      # 2️⃣  Install the requested Python -------------------------------------
       - name: 🐍 Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
+      # 3️⃣  Install uv --------------------------------------------------------
       - name: ⚡ Install uv
         uses: astral-sh/setup-uv@v6
 
-      # -----------------------------------------------------------------------
-      # Key change ⬇️ : UV_SYSTEM_PYTHON=1 lets uv install into the system env.
+      # 4️⃣  Build the wheel & sdist ------------------------------------------
       - name: 📦 Build wheel & sdist
-        env:
-          UV_SYSTEM_PYTHON: "1"          # <- opts-in to system installs for *all* uv commands
         run: |
           set -euo pipefail
 
-          echo "📦 Installing build with uv (system-wide)…"
-          uv pip install build           # --system implicit
+          echo "📦 Installing build with uv (system interpreter)…"
+          uv pip install --system build
 
           echo "📦 Building distributions…"
-          python -m build --wheel --sdist --verbose   # no uv run needed
+          uv run --system python -m build --wheel --sdist --verbose
 
           echo "📦 Artifacts:"
           ls -la dist/
 
-      # -----------------------------------------------------------------------
+      # 5️⃣  Upload the artifacts to Test PyPI ---------------------------------
       - name: 🚀 Upload to Test PyPI
         uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
