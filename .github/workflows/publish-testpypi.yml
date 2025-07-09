@@ -1,7 +1,7 @@
 # .github/workflows/publish-to-testpypi.yml
 # ──────────────────────────────────────────────────────────────────────────────
 # Build the package on pushes to the dev branch and upload it to Test PyPI.
-# All installs happen in the runner’s system interpreter; no virtual-env needed.
+# All installs happen in the runner's system interpreter; no virtual-env needed.
 # ──────────────────────────────────────────────────────────────────────────────
 
 name: Publish-to-TestPyPI
@@ -40,11 +40,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          echo "📦 Installing build with uv (system interpreter)…"
-          uv pip install --system build
-
-          echo "📦 Building distributions…"
-          uv run --system python -m build --wheel --sdist --verbose
+          echo "📦 Building distributions with uv…"
+          uv build --wheel --sdist
 
           echo "📦 Artifacts:"
           ls -la dist/
