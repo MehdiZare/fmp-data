@@ -202,8 +202,8 @@ class TestMarketIntelligenceClientCalendar:
 
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
-        assert kwargs["from"] == "2024-01-01"
-        assert kwargs["to"] == "2024-01-31"
+        assert kwargs["start_date"] == "2024-01-01"
+        assert kwargs["end_data"] == "2024-01-31"
         assert isinstance(result, list)
 
     def test_get_historical_earnings(
@@ -264,8 +264,8 @@ class TestMarketIntelligenceClientCalendar:
 
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
-        assert kwargs["from"] == "2024-01-01"
-        assert kwargs["to"] == "2024-01-31"
+        assert kwargs["start_date"] == "2024-01-01"
+        assert kwargs["end_date"] == "2024-01-31"
         assert isinstance(result, list)
         assert result[0].symbol == "AAPL"
 
@@ -286,8 +286,8 @@ class TestMarketIntelligenceClientCalendar:
 
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
-        assert kwargs["from"] == "2024-01-01"
-        assert kwargs["to"] == "2024-01-31"
+        assert kwargs["start_date"] == "2024-01-01"
+        assert kwargs["end_date"] == "2024-01-31"
         assert isinstance(result, list)
 
     def test_get_ipo_calendar(self, fmp_client, mock_client, ipo_calendar_data):
@@ -300,8 +300,8 @@ class TestMarketIntelligenceClientCalendar:
 
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
-        assert kwargs["from"] == "2024-01-01"
-        assert kwargs["to"] == "2024-01-31"
+        assert kwargs["start_date"] == "2024-01-01"
+        assert kwargs["end_date"] == "2024-01-31"
         assert isinstance(result, list)
         assert result[0].symbol == "NEWCO"
 
@@ -401,8 +401,8 @@ class TestMarketIntelligenceClientNews:
         args, kwargs = mock_client.request.call_args
         assert kwargs["tickers"] == "AAPL,MSFT"
         assert kwargs["page"] == 1
-        assert kwargs["from"] == "2024-01-01"
-        assert kwargs["to"] == "2024-01-31"
+        assert kwargs["start_date"] == "2024-01-01"
+        assert kwargs["end_date"] == "2024-01-31"
         assert kwargs["limit"] == 100
 
     def test_get_stock_news_no_dates(self, fmp_client, mock_client, stock_news_data):
@@ -413,8 +413,8 @@ class TestMarketIntelligenceClientNews:
 
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
-        assert kwargs["from"] is None
-        assert kwargs["to"] is None
+        assert kwargs["start_date"] is None
+        assert kwargs["end_date"] is None
 
     def test_get_stock_news_sentiments(
         self, fmp_client, mock_client, stock_news_sentiment_data
@@ -456,8 +456,8 @@ class TestMarketIntelligenceClientNews:
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "EURUSD"
-        assert kwargs["from"] == "2024-01-01"
-        assert kwargs["to"] == "2024-01-31"
+        assert kwargs["start_date"] == "2024-01-01"
+        assert kwargs["end_date"] == "2024-01-31"
 
     def test_get_crypto_news(self, fmp_client, mock_client):
         """Test get_crypto_news"""
@@ -479,8 +479,8 @@ class TestMarketIntelligenceClientNews:
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "BTC"
-        assert kwargs["from"] == "2024-01-01"
-        assert kwargs["to"] == "2024-01-31"
+        assert kwargs["start_date"] == "2024-01-01"
+        assert kwargs["end_date"] == "2024-01-31"
 
 
 class TestMarketIntelligenceClientPressReleases:
@@ -918,8 +918,8 @@ class TestMarketIntelligenceClientEdgeCases:
 
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
-        assert kwargs["from"] is None
-        assert kwargs["to"] is None
+        assert kwargs["start_date"] is None
+        assert kwargs["end_date"] is None
 
     def test_calendar_methods_no_dates(self, fmp_client, mock_client):
         """Test calendar methods without date parameters"""
@@ -945,8 +945,8 @@ class TestMarketIntelligenceClientEdgeCases:
 
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
-        assert kwargs["from"] == "2024-12-31"
-        assert kwargs["to"] == "2024-01-01"
+        assert kwargs["start_date"] == "2024-12-31"
+        assert kwargs["end_date"] == "2024-01-01"
 
     def test_fmp_articles_various_responses(self, fmp_client, mock_client):
         """Test FMP articles with various response types"""
@@ -973,6 +973,6 @@ class TestMarketIntelligenceClientEdgeCases:
         args, kwargs = mock_client.request.call_args
         assert kwargs["page"] is None
         assert kwargs["symbol"] is None
-        assert kwargs["from"] is None
-        assert kwargs["to"] is None
+        assert kwargs["start_date"] is None
+        assert kwargs["end_date"] is None
         assert kwargs["limit"] is None
