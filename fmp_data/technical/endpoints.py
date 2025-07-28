@@ -36,7 +36,7 @@ INDICATOR_MODEL_MAP: dict[str, type[TechnicalIndicator]] = {
 TECHNICAL_INDICATOR: Endpoint = Endpoint(
     name="technical_indicator",
     path="technical_indicator/{interval}/{symbol}",
-    version=APIVersion.V3,
+    version=APIVersion.STABLE,
     description="Get technical indicator values",
     mandatory_params=[
         EndpointParam(

@@ -231,8 +231,8 @@ class TestMarketIntelligenceClientCalendar:
 
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
-        assert kwargs["from"] == "2024-01-01"
-        assert kwargs["to"] == "2024-01-31"
+        assert kwargs["start_date"] == "2024-01-01"
+        assert kwargs["end_date"] == "2024-01-31"
         assert isinstance(result, list)
 
     def test_get_earnings_surprises(self, fmp_client, mock_client):

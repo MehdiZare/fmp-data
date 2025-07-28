@@ -74,9 +74,9 @@ class MarketIntelligenceClient(EndpointGroup):
         """Get earnings calendar"""
         params = {}
         if start_date:
-            params["from"] = start_date.strftime("%Y-%m-%d")
+            params["start_date"] = start_date.strftime("%Y-%m-%d")
         if end_date:
-            params["to"] = end_date.strftime("%Y-%m-%d")
+            params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         return self.client.request(EARNINGS_CALENDAR, **params)
 
@@ -92,9 +92,9 @@ class MarketIntelligenceClient(EndpointGroup):
         """Get confirmed earnings dates"""
         params = {}
         if start_date:
-            params["from"] = start_date.strftime("%Y-%m-%d")
+            params["start_date"] = start_date.strftime("%Y-%m-%d")
         if end_date:
-            params["to"] = end_date.strftime("%Y-%m-%d")
+            params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         return self.client.request(EARNINGS_CONFIRMED, **params)
 
@@ -108,9 +108,9 @@ class MarketIntelligenceClient(EndpointGroup):
         """Get dividends calendar"""
         params = {}
         if start_date:
-            params["from"] = start_date.strftime("%Y-%m-%d")
+            params["start_date"] = start_date.strftime("%Y-%m-%d")
         if end_date:
-            params["to"] = end_date.strftime("%Y-%m-%d")
+            params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         return self.client.request(DIVIDENDS_CALENDAR, **params)
 
@@ -120,9 +120,9 @@ class MarketIntelligenceClient(EndpointGroup):
         """Get stock splits calendar"""
         params = {}
         if start_date:
-            params["from"] = start_date.strftime("%Y-%m-%d")
+            params["start_date"] = start_date.strftime("%Y-%m-%d")
         if end_date:
-            params["to"] = end_date.strftime("%Y-%m-%d")
+            params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         return self.client.request(STOCK_SPLITS_CALENDAR, **params)
 
@@ -132,9 +132,9 @@ class MarketIntelligenceClient(EndpointGroup):
         """Get IPO calendar"""
         params = {}
         if start_date:
-            params["from"] = start_date.strftime("%Y-%m-%d")
+            params["start_date"] = start_date.strftime("%Y-%m-%d")
         if end_date:
-            params["to"] = end_date.strftime("%Y-%m-%d")
+            params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         return self.client.request(IPO_CALENDAR, **params)
 
@@ -177,8 +177,8 @@ class MarketIntelligenceClient(EndpointGroup):
         params = {
             "tickers": tickers,
             "page": page,
-            "from": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "to": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
+            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
             "limit": limit,
         }
         return self.client.request(STOCK_NEWS_ENDPOINT, **params)
@@ -202,8 +202,8 @@ class MarketIntelligenceClient(EndpointGroup):
         params = {
             "page": page,
             "symbol": symbol,
-            "from": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "to": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
+            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
             "limit": limit,
         }
         return self.client.request(FOREX_NEWS_ENDPOINT, **params)
@@ -220,8 +220,8 @@ class MarketIntelligenceClient(EndpointGroup):
         params = {
             "page": page,
             "symbol": symbol,
-            "from": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "to": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
+            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
             "limit": limit,
         }
         return self.client.request(CRYPTO_NEWS_ENDPOINT, **params)

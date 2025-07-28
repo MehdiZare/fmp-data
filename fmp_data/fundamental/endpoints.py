@@ -30,7 +30,7 @@ from fmp_data.models import (
 INCOME_STATEMENT: Endpoint = Endpoint(
     name="income_statement",
     path="income-statement/{symbol}",
-    version=APIVersion.V3,
+    version=APIVersion.STABLE,
     description=(
         "Retrieve detailed income statements showing revenue, costs, expenses and "
         "profitability metrics for a company "
@@ -78,7 +78,7 @@ INCOME_STATEMENT: Endpoint = Endpoint(
 BALANCE_SHEET: Endpoint = Endpoint(
     name="balance_sheet",
     path="balance-sheet-statement/{symbol}",
-    version=APIVersion.V3,
+    version=APIVersion.STABLE,
     description=(
         "Obtain detailed balance sheet statements showing assets, liabilities and "
         "shareholders' equity for a company at specific points in time"
@@ -125,7 +125,7 @@ BALANCE_SHEET: Endpoint = Endpoint(
 CASH_FLOW: Endpoint = Endpoint(
     name="cash_flow",
     path="cash-flow-statement/{symbol}",
-    version=APIVersion.V3,
+    version=APIVersion.STABLE,
     description=(
         "Access cash flow statements showing operating, investing, and financing "
         "activities along with key cash flow metrics and changes in cash position"
@@ -172,7 +172,7 @@ CASH_FLOW: Endpoint = Endpoint(
 KEY_METRICS: Endpoint = Endpoint(
     name="key_metrics",
     path="key-metrics/{symbol}",
-    version=APIVersion.V3,
+    version=APIVersion.STABLE,
     description=(
         "Access essential financial metrics and KPIs including profitability, "
         "efficiency, and valuation measures for company analysis"
@@ -219,7 +219,7 @@ KEY_METRICS: Endpoint = Endpoint(
 FINANCIAL_RATIOS: Endpoint = Endpoint(
     name="financial_ratios",
     path="ratios/{symbol}",
-    version=APIVersion.V3,
+    version=APIVersion.STABLE,
     description=(
         "Retrieve comprehensive financial ratios including profitability, "
         "liquidity, solvency, and efficiency metrics for analysis"
@@ -265,7 +265,7 @@ FINANCIAL_RATIOS: Endpoint = Endpoint(
 FULL_FINANCIAL_STATEMENT: Endpoint = Endpoint(
     name="full_financial_statement",
     path="financial-statement-full-as-reported/{symbol}",
-    version=APIVersion.V3,
+    version=APIVersion.STABLE,
     description="Get full financial statements as reported",
     mandatory_params=[
         EndpointParam(
@@ -301,7 +301,7 @@ FULL_FINANCIAL_STATEMENT: Endpoint = Endpoint(
 FINANCIAL_REPORTS_DATES: Endpoint = Endpoint(
     name="financial_reports_dates",
     path="financial-reports-dates",
-    version=APIVersion.V4,
+    version=APIVersion.STABLE,
     description="Get list of financial report dates",
     mandatory_params=[
         EndpointParam(
@@ -319,7 +319,7 @@ FINANCIAL_REPORTS_DATES: Endpoint = Endpoint(
 OWNER_EARNINGS: Endpoint = Endpoint(
     name="owner_earnings",
     path="owner_earnings",
-    version=APIVersion.V4,
+    version=APIVersion.STABLE,
     description=(
         "Calculate owner earnings metrics using Warren Buffett's methodology "
         "for evaluating true business profitability"
@@ -347,7 +347,7 @@ OWNER_EARNINGS: Endpoint = Endpoint(
 LEVERED_DCF: Endpoint = Endpoint(
     name="levered_dcf",
     path="advanced_levered_discounted_cash_flow",
-    version=APIVersion.V4,
+    version=APIVersion.STABLE,
     description=(
         "Perform levered discounted cash flow valuation including detailed "
         "assumptions and growth projections"
@@ -376,7 +376,7 @@ LEVERED_DCF: Endpoint = Endpoint(
 HISTORICAL_RATING: Endpoint = Endpoint(
     name="historical_rating",
     path="historical-rating/{symbol}",
-    version=APIVersion.V3,
+    version=APIVersion.STABLE,
     description=(
         "Retrieve historical company ratings and scoring metrics over time "
         "based on fundamental analysis"

@@ -127,7 +127,7 @@ def mock_endpoint():
     """Create a mock endpoint with proper response model"""
     endpoint = create_autospec(Endpoint)
     endpoint.name = "test_endpoint"
-    endpoint.version = APIVersion.V3
+    endpoint.version = APIVersion.STABLE
     endpoint.path = "test/path"
     endpoint.validate_params.return_value = {}
     endpoint.build_url.return_value = "https://test.url"

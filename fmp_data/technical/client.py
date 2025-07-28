@@ -41,9 +41,9 @@ class TechnicalClient(EndpointGroup):
         }
 
         if start_date:
-            params["from"] = start_date.strftime("%Y-%m-%d")
+            params["start_date"] = start_date.strftime("%Y-%m-%d")
         if end_date:
-            params["to"] = end_date.strftime("%Y-%m-%d")
+            params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         # Create endpoint copy with specific indicator model
         endpoint = TECHNICAL_INDICATOR.model_copy()
