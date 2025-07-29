@@ -179,14 +179,12 @@ class HistoricalPrice(BaseModel):
     high: float = Field(description="High price")
     low: float = Field(description="Low price")
     close: float = Field(description="Closing price")
-    adj_close: float = Field(alias="adjClose", description="Adjusted closing price")
     volume: int = Field(description="Trading volume")
-    unadjusted_volume: int = Field(description="Unadjusted volume")
     change: float = Field(description="Price change")
-    change_percent: float = Field(description="Price change percentage")
+    change_percent: float = Field(
+        description="Price change percentage", alias="changePercent"
+    )
     vwap: float = Field(description="Volume weighted average price")
-    label: str = Field(description="Date label")
-    change_over_time: float = Field(description="Change over time")
 
 
 class HistoricalData(BaseModel):

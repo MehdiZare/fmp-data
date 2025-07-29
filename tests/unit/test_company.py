@@ -330,14 +330,10 @@ class TestCompanySymbol:
                     high=151.00,
                     low=148.50,
                     close=150.25,
-                    adj_close=150.25,
                     volume=82034567,
-                    unadjusted_volume=82034567,
                     change=2.25,
-                    change_percent=1.5,
+                    changePercent=-0.47467415,
                     vwap=149.92,
-                    label="January 05",
-                    change_over_time=0.015,
                 )
             ],
         )
