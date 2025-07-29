@@ -1,7 +1,6 @@
 # company/endpoints.py
 from __future__ import annotations
 
-from fmp_data.company import HistoricalPrice
 from fmp_data.company.models import (
     AnalystEstimate,
     AnalystRecommendation,
@@ -13,6 +12,7 @@ from fmp_data.company.models import (
     EmployeeCount,
     ExecutiveCompensation,
     GeographicRevenueSegment,
+    HistoricalPrice,
     HistoricalShareFloat,
     IntradayPrice,
     PriceTarget,
