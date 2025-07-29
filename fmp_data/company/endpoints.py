@@ -82,7 +82,7 @@ SIMPLE_QUOTE: Endpoint = Endpoint(
 
 HISTORICAL_PRICE: Endpoint = Endpoint(
     name="historical_price",
-    path="historical-price-eod",
+    path="historical-price-eod/light/light",
     version=APIVersion.STABLE,
     description="Get historical daily price data",
     mandatory_params=[
