@@ -77,7 +77,7 @@ INCOME_STATEMENT: Endpoint = Endpoint(
 
 BALANCE_SHEET: Endpoint = Endpoint(
     name="balance_sheet",
-    path="balance-sheet-statement/{symbol}",
+    path="balance-sheet-statement",
     version=APIVersion.STABLE,
     description=(
         "Obtain detailed balance sheet statements showing assets, liabilities and "
@@ -86,7 +86,7 @@ BALANCE_SHEET: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
