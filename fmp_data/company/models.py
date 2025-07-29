@@ -546,8 +546,8 @@ class UpgradeDowngradeConsensus(BaseModel):
 class CompanyPeer(BaseModel):
     symbol: str = Field(alias="symbol")
     name: str = Field(alias="companyName")
-    price: float = Field(alias="price")
-    market_cap: int = Field(alias="marketCap")
+    price: float | None = Field(None, alias="price")
+    market_cap: int | None = Field(None, alias="marketCap")
 
 
 class CompanyPeers(BaseModel):
