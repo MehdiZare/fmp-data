@@ -2,10 +2,10 @@
 
 from fmp_data.alternative.models import (
     Commodity,
+    CommodityHistoricalPrice,
     CommodityIntradayPrice,
-    CommodityPriceHistory,
     CommodityQuote,
-    CryptoHistoricalData,
+    CryptoHistoricalPrice,
     CryptoIntradayPrice,
     CryptoPair,
     CryptoQuote,
@@ -121,7 +121,7 @@ CRYPTO_QUOTE: Endpoint = Endpoint(
 
 CRYPTO_HISTORICAL: Endpoint = Endpoint(
     name="crypto_historical",
-    path="historical-price-eod/full/{symbol}",
+    path="historical-price-eod/full",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -133,7 +133,7 @@ CRYPTO_HISTORICAL: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Crypto pair symbol",
@@ -157,7 +157,7 @@ CRYPTO_HISTORICAL: Endpoint = Endpoint(
             alias="to",
         ),
     ],
-    response_model=CryptoHistoricalData,
+    response_model=CryptoHistoricalPrice,
     arg_model=CryptoHistoricalArgs,
     example_queries=[
         "Get Bitcoin historical prices",
@@ -282,7 +282,7 @@ FOREX_QUOTE: Endpoint = Endpoint(
 
 FOREX_HISTORICAL: Endpoint = Endpoint(
     name="forex_historical",
-    path="historical-price-eod/full/{symbol}",
+    path="historical-price-eod/full",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -293,7 +293,7 @@ FOREX_HISTORICAL: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Forex pair symbol",
@@ -444,7 +444,7 @@ COMMODITY_QUOTE: Endpoint = Endpoint(
 
 COMMODITY_HISTORICAL: Endpoint = Endpoint(
     name="commodity_historical",
-    path="historical-price-eod/full/{symbol}",
+    path="historical-price-eod/full",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -457,7 +457,7 @@ COMMODITY_HISTORICAL: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Commodity symbol (e.g., GC, CL, SI)",
@@ -479,7 +479,7 @@ COMMODITY_HISTORICAL: Endpoint = Endpoint(
             description="End date for historical data",
         ),
     ],
-    response_model=CommodityPriceHistory,
+    response_model=CommodityHistoricalPrice,
     arg_model=CommodityHistoricalArgs,
     example_queries=[
         "Get gold price history",

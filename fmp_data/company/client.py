@@ -124,11 +124,35 @@ class CompanyClient(EndpointGroup):
         from_date: str | None = None,
         to_date: str | None = None,
     ) -> HistoricalData:
-        """Get historical daily price data"""
-        result = self.client.request(
-            HISTORICAL_PRICE, symbol=symbol, from_=from_date, to=to_date
-        )
-        return cast(HistoricalData, result)
+        """Get historical daily price data
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            from_date: Start date in YYYY-MM-DD format (optional)
+            to_date: End date in YYYY-MM-DD format (optional)
+
+        Returns:
+            HistoricalData object containing the price history
+        """
+        # Build request parameters
+        params = {"symbol": symbol}
+        if from_date:
+            params["from_"] = from_date
+        if to_date:
+            params["to"] = to_date
+
+        # Make request
+        # this returns list[HistoricalPrice] due to response_model=HistoricalPrice
+        result = self.client.request(HISTORICAL_PRICE, **params)
+
+        # Convert to HistoricalData
+        if isinstance(result, list):
+            # Multiple price points -
+            # use them directly since HistoricalPrice now includes symbol
+            return HistoricalData(symbol=symbol, historical=result)
+        else:
+            # Single price point
+            return HistoricalData(symbol=symbol, historical=[result])
 
     def get_intraday_prices(
         self, symbol: str, interval: str = "1min"

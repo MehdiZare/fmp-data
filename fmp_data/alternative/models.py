@@ -126,6 +126,9 @@ class HistoricalPrice(BaseModel):
     change_over_time: float | None = Field(
         None, alias="changeOverTime", description="Change over time as a percentage"
     )
+    symbol: str | None = Field(
+        None, description="Trading symbol (for API compatibility)"
+    )  # ADD THIS
 
 
 class IntradayPrice(BaseModel):
