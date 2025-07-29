@@ -35,8 +35,8 @@
 - OTC Quote `/v3/otc/real-time-price/{symbol}`
 - Exchange Prices `/v3/quotes/{exchange}`
 - Stock Price Change `/v3/stock-price-change/{symbol}`
-- Historical Price (Daily) `/v3/historical-price-eod/{symbol}`
-- Intraday Price `/v3/historical-chart/{interval}/{symbol}`
+- Historical Price (Daily) `/stable/historical-price-eod`
+- Intraday Price `/stable/historical-chart/{interval}`
 
 ### Pre/Post Market
 - Aftermarket Trade `/v4/pre-post-market-trade/{symbol}`

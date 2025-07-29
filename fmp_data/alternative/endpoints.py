@@ -329,7 +329,7 @@ FOREX_HISTORICAL: Endpoint = Endpoint(
 
 FOREX_INTRADAY: Endpoint = Endpoint(
     name="forex_intraday",
-    path="historical-chart/{interval}/{symbol}",
+    path="historical-chart/{interval}",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -349,7 +349,7 @@ FOREX_INTRADAY: Endpoint = Endpoint(
         ),
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Forex pair symbol",

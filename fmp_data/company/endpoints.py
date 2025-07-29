@@ -117,7 +117,7 @@ HISTORICAL_PRICE: Endpoint = Endpoint(
 
 INTRADAY_PRICE: Endpoint = Endpoint(
     name="intraday_price",
-    path="historical-chart/{interval}/{symbol}",
+    path="historical-chart/{interval}",
     version=APIVersion.STABLE,
     description="Get intraday price data",
     mandatory_params=[
@@ -130,7 +130,7 @@ INTRADAY_PRICE: Endpoint = Endpoint(
         ),
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
