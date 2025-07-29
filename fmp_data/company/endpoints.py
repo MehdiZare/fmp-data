@@ -7,6 +7,7 @@ from fmp_data.company.models import (
     CompanyCoreInformation,
     CompanyExecutive,
     CompanyNote,
+    CompanyPeer,
     CompanyProfile,
     EmployeeCount,
     ExecutiveCompensation,
@@ -708,4 +709,23 @@ UPGRADES_DOWNGRADES_CONSENSUS: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=UpgradeDowngradeConsensus,
+)
+
+COMPANY_PEERS: Endpoint = Endpoint(
+    name="stock_peers/{symbol}",
+    path="stock-peers",
+    version=APIVersion.STABLE,
+    method=HTTPMethod.GET,
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=CompanyPeer,
+    description="Retrieves a list of peers of a company.",
 )

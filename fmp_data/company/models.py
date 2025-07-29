@@ -541,3 +541,16 @@ class UpgradeDowngradeConsensus(BaseModel):
     hold: int = Field(description="Hold ratings")
     sell: int = Field(description="Sell ratings")
     strong_sell: int = Field(alias="strongSell", description="Strong sell ratings")
+
+
+class CompanyPeer(BaseModel):
+    symbol: str = Field(alias="symbol")
+    name: str = Field(alias="companyName")
+    price: float = Field(alias="price")
+    market_cap: int = Field(alias="marketCap")
+
+
+class CompanyPeers(BaseModel):
+    model_config = default_model_config
+
+    peers: list[CompanyPeer] = Field(alias="peersList")

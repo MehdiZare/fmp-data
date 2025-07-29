@@ -8,6 +8,7 @@ from fmp_data.company.endpoints import (
     ANALYST_ESTIMATES,
     ANALYST_RECOMMENDATIONS,
     COMPANY_NOTES,
+    COMPANY_PEERS,
     CORE_INFORMATION,
     EMPLOYEE_COUNT,
     EXECUTIVE_COMPENSATION,
@@ -36,6 +37,7 @@ from fmp_data.company.models import (
     CompanyCoreInformation,
     CompanyExecutive,
     CompanyNote,
+    CompanyPeer,
     CompanyProfile,
     EmployeeCount,
     ExecutiveCompensation,
@@ -236,3 +238,7 @@ class CompanyClient(EndpointGroup):
         return cast(
             UpgradeDowngradeConsensus, result[0] if isinstance(result, list) else result
         )
+
+    def get_company_peers(self, symbol: str) -> list[CompanyPeer]:
+        """Get company peers"""
+        return self.client.request(COMPANY_PEERS, symbol=symbol)
