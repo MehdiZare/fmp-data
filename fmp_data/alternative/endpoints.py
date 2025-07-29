@@ -121,7 +121,7 @@ CRYPTO_QUOTE: Endpoint = Endpoint(
 
 CRYPTO_HISTORICAL: Endpoint = Endpoint(
     name="crypto_historical",
-    path="historical-price-eod/light/{symbol}",
+    path="historical-price-eod/full/{symbol}",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -282,7 +282,7 @@ FOREX_QUOTE: Endpoint = Endpoint(
 
 FOREX_HISTORICAL: Endpoint = Endpoint(
     name="forex_historical",
-    path="historical-price-eod/light/{symbol}",
+    path="historical-price-eod/full/{symbol}",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -444,7 +444,7 @@ COMMODITY_QUOTE: Endpoint = Endpoint(
 
 COMMODITY_HISTORICAL: Endpoint = Endpoint(
     name="commodity_historical",
-    path="historical-price-eod/light/{symbol}",
+    path="historical-price-eod/full/{symbol}",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
