@@ -29,7 +29,7 @@ from fmp_data.models import (
 
 INCOME_STATEMENT: Endpoint = Endpoint(
     name="income_statement",
-    path="income-statement/{symbol}",
+    path="income-statement",
     version=APIVersion.STABLE,
     description=(
         "Retrieve detailed income statements showing revenue, costs, expenses and "
@@ -38,7 +38,7 @@ INCOME_STATEMENT: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
