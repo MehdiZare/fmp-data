@@ -124,7 +124,7 @@ BALANCE_SHEET: Endpoint = Endpoint(
 
 CASH_FLOW: Endpoint = Endpoint(
     name="cash_flow",
-    path="cash-flow-statement/{symbol}",
+    path="cash-flow-statement",
     version=APIVersion.STABLE,
     description=(
         "Access cash flow statements showing operating, investing, and financing "
@@ -133,7 +133,7 @@ CASH_FLOW: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
