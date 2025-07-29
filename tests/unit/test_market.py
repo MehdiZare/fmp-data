@@ -97,7 +97,7 @@ class TestCompanySearch:
             status_code=200, json_data=[search_result_data]
         )
 
-        results = fmp_client.market.search("Apple", limit=1)
+        results = fmp_client.market.search_company("Apple", limit=1)
         assert len(results) == 1
         result = results[0]
         assert isinstance(result, CompanySearchResult)
