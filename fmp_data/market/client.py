@@ -15,7 +15,7 @@ from fmp_data.market.endpoints import (
     MARKET_HOURS,
     MOST_ACTIVE,
     PRE_POST_MARKET,
-    SEARCH,
+    SEARCH_COMPANY,
     SECTOR_PERFORMANCE,
     STOCK_LIST,
 )
@@ -37,7 +37,7 @@ from fmp_data.models import CompanySymbol, ShareFloat
 class MarketClient(EndpointGroup):
     """Client for market data endpoints"""
 
-    def search(
+    def search_company(
         self, query: str, limit: int | None = None, exchange: str | None = None
     ) -> list[CompanySearchResult]:
         """Search for companies"""
@@ -46,7 +46,7 @@ class MarketClient(EndpointGroup):
             params["limit"] = str(limit)
         if exchange is not None:
             params["exchange"] = exchange
-        return self.client.request(SEARCH, **params)
+        return self.client.request(SEARCH_COMPANY, **params)
 
     def get_stock_list(self) -> list[CompanySymbol]:
         """Get list of all available stocks"""

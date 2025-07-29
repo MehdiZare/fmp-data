@@ -101,9 +101,9 @@ AVAILABLE_INDEXES: Endpoint = Endpoint(
         "Show all benchmark indexes",
     ],
 )
-SEARCH: Endpoint = Endpoint(
-    name="search",
-    path="search",
+SEARCH_COMPANY: Endpoint = Endpoint(
+    name="search-name",
+    path="search-name",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,

@@ -15,7 +15,7 @@ from fmp_data.market.endpoints import (
     MARKET_HOURS,
     MOST_ACTIVE,
     PRE_POST_MARKET,
-    SEARCH,
+    SEARCH_COMPANY,
     SECTOR_PERFORMANCE,
     STOCK_LIST,
 )
@@ -23,7 +23,7 @@ from fmp_data.market.endpoints import (
 from .hints import COMPANY_SEARCH_HINT, IDENTIFIER_HINT
 
 MARKET_ENDPOINT_MAP = {
-    "search": SEARCH,
+    "search_company": SEARCH_COMPANY,
     "get_all_shares_float": ALL_SHARES_FLOAT,
     "get_market_hours": MARKET_HOURS,
     "get_gainers": GAINERS,
