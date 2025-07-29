@@ -547,7 +547,7 @@ class CompanyPeer(BaseModel):
     symbol: str = Field(alias="symbol")
     name: str = Field(alias="companyName")
     price: float | None = Field(None, alias="price")
-    market_cap: int | None = Field(None, alias="marketCap")
+    market_cap: int | None = Field(None, alias="mktCap")
 
 
 class CompanyPeers(BaseModel):
