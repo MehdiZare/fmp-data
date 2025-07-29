@@ -320,23 +320,20 @@ class TestCompanySymbol:
 
     def test_get_historical_prices(self, mock_client, fmp_client, mock_historical_data):
         """Test getting historical prices"""
-        # Set up mock to return properly structured historical data
-        mock_client.request.return_value = HistoricalData(
-            symbol="AAPL",
-            historical=[
-                HistoricalPrice(
-                    date=datetime(2024, 1, 5, 16, 0),
-                    open=149.00,
-                    high=151.00,
-                    low=148.50,
-                    close=150.25,
-                    volume=82034567,
-                    change=2.25,
-                    changePercent=-0.47467415,
-                    vwap=149.92,
-                )
-            ],
-        )
+        # Set up mock to return list of HistoricalPrice objects (not HistoricalData)
+        mock_client.request.return_value = [
+            HistoricalPrice(
+                date=datetime(2024, 1, 5, 16, 0),
+                open=149.00,
+                high=151.00,
+                low=148.50,
+                close=150.25,
+                volume=82034567,
+                change=2.25,
+                changePercent=-0.47467415,
+                vwap=149.92,
+            )
+        ]
 
         data = fmp_client.get_historical_prices(
             "AAPL", from_date="2024-01-01", to_date="2024-01-05"
