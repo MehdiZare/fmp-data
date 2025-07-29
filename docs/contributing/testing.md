@@ -64,7 +64,7 @@ def test_api_call(client):
     # Mock API response
     responses.add(
         responses.GET,
-        "https://financialmodelingprep.com/api/v3/profile/AAPL",
+        "https://financialmodelingprep.com/stable/profile/AAPL",
         json=[{"symbol": "AAPL"}],
         status=200,
     )
