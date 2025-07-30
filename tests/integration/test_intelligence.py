@@ -242,7 +242,7 @@ class TestIntelligenceEndpoints(BaseTestCase):
         with vcr_instance.use_cassette("intelligence/stock_news.yaml"):
             articles = self._handle_rate_limit(
                 fmp_client.intelligence.get_stock_news,
-                tickers="AAPL,MSFT",
+                symbol="AAPL",
                 page=0,
                 from_date=date(2024, 1, 1),
                 to_date=date(2024, 1, 31),

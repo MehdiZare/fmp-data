@@ -167,15 +167,15 @@ class MarketIntelligenceClient(EndpointGroup):
 
     def get_stock_news(
         self,
-        tickers: str,
-        page: int | None | None = 0,
-        from_date: date | None | None = None,
-        to_date: date | None | None = None,
+        symbol: str,
+        page: int | None = 0,
+        from_date: date | None = None,
+        to_date: date | None = None,
         limit: int = 50,
     ) -> list[StockNewsArticle]:
         """Get a list of the latest stock news articles"""
         params = {
-            "tickers": tickers,
+            "symbols": symbol,
             "page": page,
             "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
             "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,

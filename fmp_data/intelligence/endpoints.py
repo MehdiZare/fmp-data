@@ -264,17 +264,18 @@ GENERAL_NEWS_ENDPOINT: Endpoint = Endpoint(
 )
 
 STOCK_NEWS_ENDPOINT: Endpoint = Endpoint(
-    name="stock_news",
-    path="stock_news",
+    name="stock-news",
+    path="news/stock",
     version=APIVersion.STABLE,
     description="Get a list of the latest stock news articles",
     optional_params=[
         EndpointParam(
-            name="tickers",
+            name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Comma-separated list of stock tickers",
+            alias="symbols",
         ),
         EndpointParam(
             name="page",
