@@ -535,7 +535,13 @@ MARKET_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.MARKET_DATA,
         sub_category="Market Status",
-        parameter_hints={"exchange": "Exchange code like NYSE, NASDAQ, etc."},
+        parameter_hints={
+            "exchange": {
+                "description": "Exchange code like NYSE, NASDAQ, etc.",
+                "examples": ["NYSE", "NASDAQ", "LSE", "TSX"],
+                "required": True,
+            }
+        },  # Fixed: Use proper dictionary structure instead of string
         response_hints={
             "exchange": ResponseFieldInfo(
                 description="Exchange code",
