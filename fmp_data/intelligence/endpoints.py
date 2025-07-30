@@ -446,7 +446,7 @@ PRESS_RELEASES_ENDPOINT: Endpoint = Endpoint(
 
 PRESS_RELEASES_BY_SYMBOL_ENDPOINT: Endpoint = Endpoint(
     name="press_releases_by_symbol",
-    path="press-releases/{symbol}",
+    path="news/press-releases",
     version=APIVersion.STABLE,
     description="Get a list of the latest press releases for a specific company",
     optional_params=[
@@ -462,7 +462,7 @@ PRESS_RELEASES_BY_SYMBOL_ENDPOINT: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Company symbol",

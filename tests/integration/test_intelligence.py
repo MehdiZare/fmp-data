@@ -19,17 +19,14 @@ from fmp_data.intelligence.models import (
     FMPArticle,
     ForexNewsArticle,
     GeneralNewsArticle,
-    HistoricalSocialSentiment,
     HouseDisclosure,
     IPOEvent,
     PressRelease,
     PressReleaseBySymbol,
     SenateTrade,
-    SocialSentimentChanges,
     StockNewsArticle,
     StockNewsSentiment,
     StockSplitEvent,
-    TrendingSocialSentiment,
 )
 
 from .base import BaseTestCase
@@ -365,73 +362,6 @@ class TestIntelligenceEndpoints(BaseTestCase):
                 assert isinstance(release.date, datetime)
                 assert isinstance(release.title, str)
                 assert isinstance(release.text, str)
-
-    def test_get_historical_social_sentiment(
-        self, fmp_client: FMPDataClient, vcr_instance
-    ):
-        """Test getting historical social sentiment"""
-        with vcr_instance.use_cassette("intelligence/historical_social_sentiment.yaml"):
-            sentiments = self._handle_rate_limit(
-                fmp_client.intelligence.get_historical_social_sentiment,
-                symbol="AAPL",
-                page=0,
-            )
-
-            assert isinstance(sentiments, list)
-            assert len(sentiments) > 0
-
-            for sentiment in sentiments:
-                assert isinstance(sentiment, HistoricalSocialSentiment)
-                assert isinstance(sentiment.date, datetime)
-                assert sentiment.symbol == "AAPL"
-                assert isinstance(sentiment.stocktwitsPosts, int)
-                assert isinstance(sentiment.twitterPosts, int)
-                assert isinstance(sentiment.stocktwitsSentiment, float)
-                assert isinstance(sentiment.twitterSentiment, float)
-
-    def test_get_trending_social_sentiment(
-        self, fmp_client: FMPDataClient, vcr_instance
-    ):
-        """Test getting trending social sentiment"""
-        with vcr_instance.use_cassette("intelligence/trending_social_sentiment.yaml"):
-            sentiments = self._handle_rate_limit(
-                fmp_client.intelligence.get_trending_social_sentiment,
-                type="bullish",
-                source="stocktwits",
-            )
-
-            assert isinstance(sentiments, list)
-            assert len(sentiments) > 0
-
-            for sentiment in sentiments:
-                assert isinstance(sentiment, TrendingSocialSentiment)
-                assert isinstance(sentiment.symbol, str)
-                assert isinstance(sentiment.name, str)
-                assert isinstance(sentiment.rank, int)
-                assert isinstance(sentiment.sentiment, float)
-                assert isinstance(sentiment.lastSentiment, float)
-
-    def test_get_social_sentiment_changes(
-        self, fmp_client: FMPDataClient, vcr_instance
-    ):
-        """Test getting social sentiment changes"""
-        with vcr_instance.use_cassette("intelligence/social_sentiment_changes.yaml"):
-            changes = self._handle_rate_limit(
-                fmp_client.intelligence.get_social_sentiment_changes,
-                type="bullish",
-                source="stocktwits",
-            )
-
-            assert isinstance(changes, list)
-            assert len(changes) > 0
-
-            for change in changes:
-                assert isinstance(change, SocialSentimentChanges)
-                assert isinstance(change.symbol, str)
-                assert isinstance(change.name, str)
-                assert isinstance(change.rank, int)
-                assert isinstance(change.sentiment, float)
-                assert isinstance(change.sentimentChange, float)
 
     def test_get_esg_data(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting ESG data"""

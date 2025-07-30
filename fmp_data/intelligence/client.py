@@ -3,6 +3,7 @@ from datetime import date
 from typing import cast
 
 from fmp_data.base import EndpointGroup
+from fmp_data.helpers import deprecated
 from fmp_data.intelligence.endpoints import (
     CROWDFUNDING_BY_CIK,
     CROWDFUNDING_RSS,
@@ -22,7 +23,7 @@ from fmp_data.intelligence.endpoints import (
     FOREX_NEWS_ENDPOINT,
     GENERAL_NEWS_ENDPOINT,
     HISTORICAL_EARNINGS,
-    HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT,
+    HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT,  # deprecated
     HOUSE_DISCLOSURE,
     HOUSE_DISCLOSURE_RSS,
     IPO_CALENDAR,
@@ -30,11 +31,11 @@ from fmp_data.intelligence.endpoints import (
     PRESS_RELEASES_ENDPOINT,
     SENATE_TRADING,
     SENATE_TRADING_RSS,
-    SOCIAL_SENTIMENT_CHANGES_ENDPOINT,
+    SOCIAL_SENTIMENT_CHANGES_ENDPOINT,  # deprecated
     STOCK_NEWS_ENDPOINT,
     STOCK_NEWS_SENTIMENTS_ENDPOINT,
     STOCK_SPLITS_CALENDAR,
-    TRENDING_SOCIAL_SENTIMENT_ENDPOINT,
+    TRENDING_SOCIAL_SENTIMENT_ENDPOINT,  # deprecated
     IPOEvent,
 )
 from fmp_data.intelligence.models import (
@@ -243,6 +244,7 @@ class MarketIntelligenceClient(EndpointGroup):
         }
         return self.client.request(PRESS_RELEASES_BY_SYMBOL_ENDPOINT, **params)
 
+    @deprecated("This method is deprecated by FMP")
     def get_historical_social_sentiment(
         self, symbol: str, page: int = 0
     ) -> list[HistoricalSocialSentiment]:
@@ -253,6 +255,7 @@ class MarketIntelligenceClient(EndpointGroup):
         }
         return self.client.request(HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT, **params)
 
+    @deprecated("This method is deprecated by FMP")
     def get_trending_social_sentiment(
         self, type: str, source: str
     ) -> list[TrendingSocialSentiment]:
@@ -263,6 +266,7 @@ class MarketIntelligenceClient(EndpointGroup):
         }
         return self.client.request(TRENDING_SOCIAL_SENTIMENT_ENDPOINT, **params)
 
+    @deprecated("This method is deprecated by FMP")
     def get_social_sentiment_changes(
         self, type: str, source: str
     ) -> list[SocialSentimentChanges]:
