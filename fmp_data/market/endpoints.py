@@ -317,11 +317,19 @@ MOST_ACTIVE: Endpoint = Endpoint(
 
 SECTOR_PERFORMANCE: Endpoint = Endpoint(
     name="sector_performance",
-    path="sectors-performance",
+    path="sector-performance-snapshot",
     version=APIVersion.STABLE,
     description="Get sector performance data",
     mandatory_params=[],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="sector",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Sector code (e.g., 'Technology')",
+        )
+    ],
     response_model=SectorPerformance,
 )
 
