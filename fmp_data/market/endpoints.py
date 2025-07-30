@@ -277,10 +277,19 @@ ISIN_SEARCH: Endpoint = Endpoint(
 
 MARKET_HOURS: Endpoint = Endpoint(
     name="market_hours",
-    path="is-the-market-open",
+    path="exchange-market-hours",
     version=APIVersion.STABLE,
     description="Get market trading hours information",
-    mandatory_params=[],
+    mandatory_params=[
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Exchange code (e.g., NYSE, NASDAQ)",
+            valid_values=None,
+        )
+    ],
     optional_params=[],
     response_model=MarketHours,
 )
