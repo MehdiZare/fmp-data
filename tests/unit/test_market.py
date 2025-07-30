@@ -6,51 +6,80 @@ from fmp_data.market.models import (
     CompanySearchResult,
     ExchangeSymbol,
     MarketHours,
-    StockMarketHours,
 )
 
 
 @pytest.fixture
 def mock_market_hours_data():
-    """Mock market hours data"""
-    return {
-        "stockExchangeName": "NYSE",
-        "stockMarketHours": {"openingHour": "09:30AM", "closingHour": "04:00PM"},
-        "stockMarketHolidays": [
-            {"year": 2024, "holidays": [{"name": "New Year", "date": "2024-01-01"}]}
-        ],
-        "isTheStockMarketOpen": True,
-        "isTheEuronextMarketOpen": False,
-        "isTheForexMarketOpen": True,
-        "isTheCryptoMarketOpen": True,
-    }
+    """Mock market hours data (new API format)"""
+    return [
+        {
+            "exchange": "NYSE",
+            "name": "New York Stock Exchange",
+            "openingHour": "09:30 AM -04:00",
+            "closingHour": "04:00 PM -04:00",
+            "timezone": "America/New_York",
+            "isMarketOpen": False,
+        }
+    ]
 
 
-@patch("httpx.Client.request")
-def test_get_market_hours(
-    mock_request, fmp_client, mock_response, mock_market_hours_data
-):
-    """Test getting market hours"""
-    mock_request.return_value = mock_response(
-        status_code=200, json_data=mock_market_hours_data
-    )
+def test_get_market_hours_default_exchange(fmp_client, mock_market_hours_data):
+    """Test getting market hours with default exchange (NYSE)"""
+    # Create MarketHours object from mock data
+    market_hours_obj = MarketHours(**mock_market_hours_data[0])
 
-    hours = fmp_client.market.get_market_hours()
+    # Mock the client.request method to return list of MarketHours objects
+    with patch.object(
+        fmp_client.market.client, "request", return_value=[market_hours_obj]
+    ):
+        hours = fmp_client.market.get_market_hours()
 
     # Ensure the response is of the correct type
     assert isinstance(hours, MarketHours)
 
-    # Validate fields in the response
-    assert hours.stockExchangeName == "NYSE"
-    assert hours.isTheStockMarketOpen is True
-    assert isinstance(hours.stockMarketHours, StockMarketHours)
-    assert hours.stockMarketHours.openingHour == "09:30AM"
-    assert hours.stockMarketHours.closingHour == "04:00PM"
-    assert isinstance(hours.stockMarketHolidays, list)
-    assert len(hours.stockMarketHolidays) > 0
-    holiday = hours.stockMarketHolidays[0]
-    assert holiday.year == 2024
-    assert holiday.holidays == {"New Year": "2024-01-01"}
+    # Validate fields in the response (new structure)
+    assert hours.exchange == "NYSE"
+    assert hours.name == "New York Stock Exchange"
+    assert hours.opening_hour == "09:30 AM -04:00"
+    assert hours.closing_hour == "04:00 PM -04:00"
+    assert hours.timezone == "America/New_York"
+    assert hours.is_market_open is False
+
+
+def test_get_market_hours_specific_exchange(fmp_client):
+    """Test getting market hours for a specific exchange"""
+    nasdaq_data = {
+        "exchange": "NASDAQ",
+        "name": "NASDAQ",
+        "openingHour": "09:30 AM -04:00",
+        "closingHour": "04:00 PM -04:00",
+        "timezone": "America/New_York",
+        "isMarketOpen": True,
+    }
+
+    # Create MarketHours object
+    nasdaq_hours_obj = MarketHours(**nasdaq_data)
+
+    # Mock the client.request method
+    with patch.object(
+        fmp_client.market.client, "request", return_value=[nasdaq_hours_obj]
+    ):
+        hours = fmp_client.market.get_market_hours("NASDAQ")
+
+    # Ensure the response is of the correct type
+    assert isinstance(hours, MarketHours)
+    assert hours.exchange == "NASDAQ"
+    assert hours.name == "NASDAQ"
+    assert hours.is_market_open is True
+
+
+def test_get_market_hours_empty_response(fmp_client):
+    """Test getting market hours with empty response"""
+    # Mock the client.request to return empty list directly
+    with patch.object(fmp_client.market.client, "request", return_value=[]):
+        with pytest.raises(ValueError, match="No market hours data returned from API"):
+            fmp_client.market.get_market_hours()
 
 
 class TestCompanySearch:

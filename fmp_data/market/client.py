@@ -76,10 +76,26 @@ class MarketClient(EndpointGroup):
         """Search companies by ISIN"""
         return self.client.request(ISIN_SEARCH, query=query)
 
-    def get_market_hours(self) -> MarketHours:
-        """Get market trading hours information"""
-        result = self.client.request(MARKET_HOURS)
-        return cast(MarketHours, result)
+    def get_market_hours(self, exchange: str = "NYSE") -> MarketHours:
+        """Get market trading hours information for a specific exchange
+
+        Args:
+            exchange: Exchange code (e.g., "NYSE", "NASDAQ"). Defaults to "NYSE".
+
+        Returns:
+            MarketHours: Exchange trading hours object
+
+        Raises:
+            ValueError: If no market hours data returned from API
+        """
+        result = self.client.request(MARKET_HOURS, exchange=exchange)
+
+        # result is already a list[MarketHours] from base client processing
+        if not isinstance(result, list) or not result:
+            raise ValueError("No market hours data returned from API")
+
+        # Cast to help mypy understand the type
+        return cast(MarketHours, result[0])
 
     def get_gainers(self) -> list[MarketMover]:
         """Get market gainers"""

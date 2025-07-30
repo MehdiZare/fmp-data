@@ -517,15 +517,14 @@ MARKET_ENDPOINTS_SEMANTICS = {
         client_name="market",
         method_name="get_market_hours",
         natural_description=(
-            "Check current market status and trading hours including regular session "
-            "times and holiday schedules for major markets"
+            "Check current market status and trading hours for a specific exchange"
         ),
         example_queries=[
-            "Is the market open?",
-            "Show trading hours",
+            "Is the NYSE market open?",
+            "Show trading hours for NASDAQ",
             "When does the market close?",
-            "Get market schedule",
-            "Check holiday schedule",
+            "Get NYSE market schedule",
+            "Check NASDAQ trading hours",
         ],
         related_terms=[
             "trading hours",
@@ -533,27 +532,45 @@ MARKET_ENDPOINTS_SEMANTICS = {
             "trading schedule",
             "market status",
             "exchange hours",
-            "holiday calendar",
         ],
         category=SemanticCategory.MARKET_DATA,
         sub_category="Market Status",
-        parameter_hints={},  # No parameters needed
+        parameter_hints={"exchange": "Exchange code like NYSE, NASDAQ, etc."},
         response_hints={
-            "isTheStockMarketOpen": ResponseFieldInfo(
-                description="Whether the stock market is currently open",
+            "exchange": ResponseFieldInfo(
+                description="Exchange code",
+                examples=["NYSE", "NASDAQ"],
+                related_terms=["exchange code", "market identifier"],
+            ),
+            "name": ResponseFieldInfo(
+                description="Full exchange name",
+                examples=["New York Stock Exchange", "NASDAQ"],
+                related_terms=["exchange name", "market name"],
+            ),
+            "is_market_open": ResponseFieldInfo(
+                description="Whether the market is currently open",
                 examples=["true", "false"],
                 related_terms=["market status", "trading status"],
             ),
-            "stockMarketHours": ResponseFieldInfo(
-                description="Regular trading hours",
-                examples=["9:30-16:00", "8:00-17:00"],
-                related_terms=["trading hours", "session hours"],
+            "opening_hour": ResponseFieldInfo(
+                description="Market opening time with timezone",
+                examples=["09:30 AM -04:00", "08:00 AM -05:00"],
+                related_terms=["opening time", "market open"],
+            ),
+            "closing_hour": ResponseFieldInfo(
+                description="Market closing time with timezone",
+                examples=["04:00 PM -04:00", "03:00 PM -05:00"],
+                related_terms=["closing time", "market close"],
+            ),
+            "timezone": ResponseFieldInfo(
+                description="Exchange timezone",
+                examples=["America/New_York", "America/Chicago"],
+                related_terms=["time zone", "market timezone"],
             ),
         },
         use_cases=[
             "Trading schedule planning",
             "Market status monitoring",
-            "Holiday planning",
             "Trading automation",
             "Order timing",
         ],

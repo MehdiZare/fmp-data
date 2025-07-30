@@ -97,100 +97,26 @@ class ExchangeSymbol(BaseModel):
         return cleaned_data
 
 
-class StockMarketHours(BaseModel):
-    """Opening and closing hours of the stock market"""
-
-    model_config = default_model_config
-    openingHour: str = Field(description="Opening hour of the market")
-    closingHour: str = Field(description="Closing hour of the market")
-
-
-class StockMarketHoliday(BaseModel):
-    """Stock market holiday for a specific year"""
-
-    model_config = default_model_config
-
-    year: int = Field(description="Year of the holiday schedule")
-    holidays: dict[str, str] = Field(description="Mapping of holiday names to dates")
-
-    @classmethod
-    def from_api_data(cls, data: dict[str, Any]) -> "StockMarketHoliday":
-        """
-        Create a StockMarketHoliday instance from API response data.
-
-        Args:
-            data: Dictionary containing year and holidays data from the API
-
-        Returns:
-            StockMarketHoliday: Initialized instance with parsed holiday data
-
-        Raises:
-            ValueError: If data is malformed or missing required fields
-        """
-        if not isinstance(data, dict):
-            raise ValueError(
-                f"Expected a dictionary but got {type(data).__name__}: {data}"
-            )
-
-        # Extract the year
-        year = data.get("year")
-        if year is None:
-            raise ValueError("Missing 'year' field in data")
-
-        # Aggregate holidays into a dictionary
-        holidays: dict[str, str] = {}
-        for holiday in data.get("holidays", []):
-            if not isinstance(holiday, dict):
-                raise ValueError(
-                    f"Expected a dictionary for "
-                    f"holiday but got {type(holiday).__name__}: {holiday}"
-                )
-
-            name = holiday.get("name")
-            date = holiday.get("date")
-            if not name or not date:
-                raise ValueError(
-                    f"Holiday entry must have 'name' and 'date': {holiday}"
-                )
-
-            holidays[name] = date
-
-        return cls(year=year, holidays=holidays)
-
-
 class MarketHours(BaseModel):
-    """Market trading hours information"""
+    """Market trading hours for a single exchange
+
+    Relative path: fmp_data/market/models.py
+    """
 
     model_config = default_model_config
 
-    stockExchangeName: str = Field(description="Stock exchange name")
-    stockMarketHours: StockMarketHours = Field(description="Market hours")
-    stockMarketHolidays: list[StockMarketHoliday] = Field(
-        description="List of market holidays"
+    exchange: str = Field(description="Exchange code (e.g., NYSE, NASDAQ)")
+    name: str = Field(description="Full exchange name")
+    opening_hour: str = Field(
+        alias="openingHour", description="Market opening time with timezone offset"
     )
-    isTheStockMarketOpen: bool = Field(
-        description="Whether the stock market is currently open"
+    closing_hour: str = Field(
+        alias="closingHour", description="Market closing time with timezone offset"
     )
-    isTheEuronextMarketOpen: bool = Field(description="Whether Euronext market is open")
-    isTheForexMarketOpen: bool = Field(description="Whether Forex market is open")
-    isTheCryptoMarketOpen: bool = Field(description="Whether Crypto market is open")
-
-    def __init__(self, **data: Any) -> None:
-        """
-        Override the default initialization to preprocess API data.
-
-        Args:
-            **data: Keyword arguments containing model data
-        """
-        # Process stockMarketHolidays
-        holidays = data.get("stockMarketHolidays", [])
-        if holidays:
-            data["stockMarketHolidays"] = [
-                StockMarketHoliday.from_api_data(h) for h in holidays
-            ]
-
-        # Initialize the base model with processed data
-        super().__init__(**data)
+    timezone: str = Field(description="Exchange timezone")
+    is_market_open: bool = Field(
+        alias="isMarketOpen", description="Whether the market is currently open"
+    )
 
 
 class MarketMover(BaseModel):
