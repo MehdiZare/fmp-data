@@ -29,8 +29,8 @@ class PriceQuote(BaseModel):
     symbol: str = Field(description="Trading symbol")
     price: float = Field(description="Current price")
     change: float = Field(description="Price change")
-    change_percent: float = Field(
-        alias="changesPercentage", description="Price change percentage"
+    change_percent: float | None = Field(
+        None, alias="changesPercentage", description="Price change percentage"
     )
     timestamp: datetime = Field(description="Quote timestamp")
 
@@ -158,7 +158,7 @@ class CryptoQuote(PriceQuote):
         extra="ignore",  # Allow extra fields from API
     )
 
-    # Make these fields required for crypto
+    # Override fields to make them required for crypto where available
     name: str = Field(description="Cryptocurrency name and pair")
     volume: float = Field(description="24h trading volume")
     market_cap: float = Field(alias="marketCap", description="Market capitalization")
@@ -170,6 +170,11 @@ class CryptoQuote(PriceQuote):
     open_price: float = Field(alias="open", description="Opening price")
     previous_close: float = Field(
         alias="previousClose", description="Previous close price"
+    )
+
+    # Keep change_percent optional since API might not always provide it
+    change_percent: float | None = Field(
+        None, alias="changesPercentage", description="Price change percentage"
     )
 
     # Additional crypto-specific fields
