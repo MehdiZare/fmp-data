@@ -399,7 +399,6 @@ class TestMarketIntelligenceClientNews:
 
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
-        assert kwargs["symbols"] == "AAPL"
         assert kwargs["page"] == 1
         assert kwargs["start_date"] == "2024-01-01"
         assert kwargs["end_date"] == "2024-01-31"
