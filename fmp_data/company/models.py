@@ -132,7 +132,11 @@ class EmployeeCount(BaseModel):
 
 
 class Quote(BaseModel):
-    """Real-time stock quote data"""
+    """
+    Real-time stock quote data
+
+    Relative path: models/quote.py
+    """
 
     model_config = default_model_config
 
@@ -140,23 +144,30 @@ class Quote(BaseModel):
     name: str = Field(description="Company name")
     price: float = Field(description="Current price")
     change_percentage: float = Field(
-        alias="changesPercentage", description="Price change percentage"
+        alias="changePercentage", description="Price change percentage"
     )
     change: float = Field(description="Price change")
-    day_low: float = Field(description="Day low price")
-    day_high: float = Field(description="Day high price")
-    year_high: float = Field(description="52-week high")
-    year_low: float = Field(description="52-week low")
-    market_cap: float | None = Field(None, description="Market capitalization")
-    price_avg_50: float | None = Field(None, description="50-day average price")
-    price_avg_200: float | None = Field(None, description="200-day average price")
+    day_low: float = Field(alias="dayLow", description="Day low price")
+    day_high: float = Field(alias="dayHigh", description="Day high price")
+    year_high: float = Field(alias="yearHigh", description="52-week high")
+    year_low: float = Field(alias="yearLow", description="52-week low")
+    market_cap: int = Field(alias="marketCap", description="Market capitalization")
+    price_avg_50: float = Field(alias="priceAvg50", description="50-day average price")
+    price_avg_200: float = Field(
+        alias="priceAvg200", description="200-day average price"
+    )
     volume: int = Field(description="Trading volume")
-    avg_volume: int | None = Field(None, description="Average volume")
-    open: float = Field(description="Opening price")
-    previous_close: float | None = Field(None, description="Previous close price")
-    eps: float = Field(description="Earnings per share")
-    pe: float = Field(description="Price to earnings ratio")
-    timestamp: datetime = Field(description="Quote timestamp")
+    exchange: str = Field(description="Stock exchange")
+    open_price: float = Field(alias="open", description="Opening price")
+    previous_close: float = Field(
+        alias="previousClose", description="Previous close price"
+    )
+    timestamp: int = Field(description="Quote timestamp (Unix timestamp)")
+
+    @property
+    def quote_datetime(self) -> datetime:
+        """Convert Unix timestamp to datetime object"""
+        return datetime.fromtimestamp(self.timestamp)
 
 
 class SimpleQuote(BaseModel):

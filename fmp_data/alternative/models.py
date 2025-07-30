@@ -1,7 +1,6 @@
 # fmp_data/alternative/models.py
 
-import datetime
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 import warnings
 from zoneinfo import ZoneInfo
@@ -26,69 +25,49 @@ class PriceQuote(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    # Required fields
-    symbol: str = Field(description="Trading symbol")
-    price: float | None = Field(None, description="Current price")
-    change: float | None = Field(None, description="Price change")
-    change_percent: float | None = Field(
-        alias="changesPercentage", description="Percent change"
+    # Core fields
+    symbol: str = Field(description="Crypto trading pair symbol")
+    name: str = Field(description="Cryptocurrency name and pair")
+    price: float = Field(description="Current price")
+    change_percentage: float = Field(
+        alias="changePercentage", description="Price change percentage"
     )
+    change: float = Field(description="Price change")
 
-    # Optional fields
-    name: str | None = Field(None, description="Symbol name or pair name")
+    # Volume and market data
+    volume: float = Field(description="24h trading volume")
+    market_cap: float = Field(alias="marketCap", description="Market capitalization")
 
     # Day range
-    day_low: float | None = Field(None, alias="dayLow", description="Day low price")
-    day_high: float | None = Field(None, alias="dayHigh", description="Day high price")
+    day_low: float = Field(alias="dayLow", description="24h low price")
+    day_high: float = Field(alias="dayHigh", description="24h high price")
 
     # Year range
-    year_high: float | None = Field(None, alias="yearHigh", description="52-week high")
-    year_low: float | None = Field(None, alias="yearLow", description="52-week low")
+    year_high: float = Field(alias="yearHigh", description="52-week high")
+    year_low: float = Field(alias="yearLow", description="52-week low")
 
     # Moving averages
-    price_avg_50: float | None = Field(
-        None, alias="priceAvg50", description="50-day average"
-    )
-    price_avg_200: float | None = Field(
-        None, alias="priceAvg200", description="200-day average"
+    price_avg_50: float = Field(alias="priceAvg50", description="50-day average price")
+    price_avg_200: float = Field(
+        alias="priceAvg200", description="200-day average price"
     )
 
-    # Volume
-    volume: float | None = Field(None, description="Trading volume")
-    avg_volume: float | None = Field(
-        None, alias="avgVolume", description="Average volume"
+    # Exchange and price points
+    exchange: str = Field(description="Exchange identifier")
+    open_price: float = Field(alias="open", description="Opening price")
+    previous_close: float = Field(
+        alias="previousClose", description="Previous close price"
     )
 
-    # Other price points
-    open: float | None = Field(None, description="Opening price")
-    previous_close: float | None = Field(
-        None, alias="previousClose", description="Previous close"
-    )
+    # Timestamp
+    timestamp: datetime = Field(description="Quote timestamp")
 
-    # Market data
-    market_cap: float | None = Field(
-        None, alias="marketCap", description="Market capitalization"
-    )
-    eps: float | None = Field(None, description="Earnings per share")
-    pe: float | None = Field(None, description="Price to earnings ratio")
-    shares_outstanding: float | None = Field(
-        None, alias="sharesOutstanding", description="Shares outstanding"
-    )
-    earnings_announcement: datetime.datetime | None = Field(
-        None, alias="earningsAnnouncement", description="Next earnings date"
-    )
-    exchange: str | None = Field(None, description="Exchange name")
-
-    timestamp: datetime.datetime | None = Field(
-        None,
-        description="Quote timestamp",
-        json_schema_extra={"format": "unix-timestamp"},
-    )
-
+    @classmethod
     @field_validator("timestamp", mode="before")
-    def parse_timestamp(cls, value: Any) -> datetime.datetime | None:
+    def parse_timestamp(cls, value: Any) -> datetime:
+        """Parse Unix timestamp to datetime with UTC timezone"""
         if value is None:
-            return None
+            raise ValueError("Timestamp cannot be None")
 
         try:
             if isinstance(value, str | int | float):
@@ -96,10 +75,10 @@ class PriceQuote(BaseModel):
             else:
                 raise ValueError(f"Unexpected type for timestamp: {type(value)}")
 
-            return datetime.datetime.fromtimestamp(timestamp, tz=UTC)
+            return datetime.fromtimestamp(timestamp, tz=UTC)
         except Exception as e:
             warnings.warn(f"Failed to parse timestamp {value}: {e}", stacklevel=2)
-            return None
+            raise ValueError(f"Invalid timestamp format: {value}") from e
 
 
 class HistoricalPrice(BaseModel):
@@ -136,7 +115,7 @@ class IntradayPrice(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    date: datetime.datetime = Field(description="Price date and time")
+    date: datetime = Field(description="Price date and time")
     open: float = Field(description="Opening price")
     high: float = Field(description="High price")
     low: float = Field(description="Low price")
@@ -174,18 +153,6 @@ class CryptoQuote(PriceQuote):
     change_percent: float | None = Field(
         None, alias="changesPercentage", description="Percent change"
     )
-
-    @field_validator("timestamp", mode="before")
-    def parse_timestamp(cls, value: Any) -> datetime.datetime | None:
-        """Parse Unix timestamp (int, float, str) into a TZ-aware UTC datetime."""
-        if value is None:
-            return None
-        try:
-            ts_float = float(value)  # handles int, float, str transparently
-            return datetime.datetime.fromtimestamp(ts_float, tz=UTC)
-        except (ValueError, TypeError) as exc:
-            warnings.warn(f"Failed to parse timestamp {value!r}: {exc}", stacklevel=2)
-            return None
 
 
 class CryptoHistoricalPrice(HistoricalPrice):
