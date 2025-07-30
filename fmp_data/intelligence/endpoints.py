@@ -265,16 +265,57 @@ GENERAL_NEWS_ENDPOINT: Endpoint = Endpoint(
 
 STOCK_NEWS_ENDPOINT: Endpoint = Endpoint(
     name="stock-news",
-    path="news/stock",
+    path="news/stock-latest",
     version=APIVersion.STABLE,
     description="Get a list of the latest stock news articles",
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Page number",
+        ),
+        EndpointParam(
+            name="start_date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=True,
+            description="Start date",
+            alias="from",
+        ),
+        EndpointParam(
+            name="end_date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=True,
+            description="End date",
+            alias="to",
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Maximum number of articles to return",
+        ),
+    ],
+    mandatory_params=[],
+    response_model=StockNewsArticle,
+)
+
+STOCK_SYMBOL_NEWS_ENDPOINT: Endpoint = Endpoint(
+    name="stock-news-symbol",
+    path="news/stock",
+    version=APIVersion.STABLE,
+    description="Get a list of the latest news for a specific stock",
     optional_params=[
         EndpointParam(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
-            description="Comma-separated list of stock tickers",
+            description="Symbol of the stock to get news for.",
             alias="symbols",
         ),
         EndpointParam(

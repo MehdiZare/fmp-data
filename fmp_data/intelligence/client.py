@@ -35,6 +35,7 @@ from fmp_data.intelligence.endpoints import (
     STOCK_NEWS_ENDPOINT,
     STOCK_NEWS_SENTIMENTS_ENDPOINT,
     STOCK_SPLITS_CALENDAR,
+    STOCK_SYMBOL_NEWS_ENDPOINT,
     TRENDING_SOCIAL_SENTIMENT_ENDPOINT,  # deprecated
     IPOEvent,
 )
@@ -166,7 +167,7 @@ class MarketIntelligenceClient(EndpointGroup):
         }
         return self.client.request(GENERAL_NEWS_ENDPOINT, **params)
 
-    def get_stock_news(
+    def get_stock_symbol_news(
         self,
         symbol: str,
         page: int | None = 0,
@@ -177,6 +178,22 @@ class MarketIntelligenceClient(EndpointGroup):
         """Get a list of the latest stock news articles"""
         params = {
             "symbols": symbol,
+            "page": page,
+            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
+            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "limit": limit,
+        }
+        return self.client.request(STOCK_SYMBOL_NEWS_ENDPOINT, **params)
+
+    def get_stock_news(
+        self,
+        page: int | None = 0,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        limit: int = 50,
+    ) -> list[StockNewsArticle]:
+        """Get a list of the latest stock news articles"""
+        params = {
             "page": page,
             "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
             "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
