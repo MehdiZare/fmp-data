@@ -391,7 +391,7 @@ class TestMarketIntelligenceClientNews:
         mock_client.request.return_value = [StockNewsArticle(**stock_news_data)]
 
         _ = fmp_client.intelligence.get_stock_news(
-            tickers="AAPL,MSFT",
+            symbol="AAPL",
             page=1,
             from_date=date(2024, 1, 1),
             to_date=date(2024, 1, 31),
