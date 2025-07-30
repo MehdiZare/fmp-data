@@ -90,7 +90,7 @@ CRYPTO_QUOTES: Endpoint = Endpoint(
 
 CRYPTO_QUOTE: Endpoint = Endpoint(
     name="crypto_quote",
-    path="quote/{symbol}",
+    path="quote",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -102,7 +102,7 @@ CRYPTO_QUOTE: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Crypto pair symbol (e.g., BTCUSD)",

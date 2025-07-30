@@ -25,45 +25,52 @@ class PriceQuote(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    # Core fields
-    symbol: str = Field(description="Crypto trading pair symbol")
-    name: str = Field(description="Cryptocurrency name and pair")
+    # Core required fields
+    symbol: str = Field(description="Trading symbol")
     price: float = Field(description="Current price")
-    change_percentage: float = Field(
-        alias="changePercentage", description="Price change percentage"
-    )
     change: float = Field(description="Price change")
-
-    # Volume and market data
-    volume: float = Field(description="24h trading volume")
-    market_cap: float = Field(alias="marketCap", description="Market capitalization")
-
-    # Day range
-    day_low: float = Field(alias="dayLow", description="24h low price")
-    day_high: float = Field(alias="dayHigh", description="24h high price")
-
-    # Year range
-    year_high: float = Field(alias="yearHigh", description="52-week high")
-    year_low: float = Field(alias="yearLow", description="52-week low")
-
-    # Moving averages
-    price_avg_50: float = Field(alias="priceAvg50", description="50-day average price")
-    price_avg_200: float = Field(
-        alias="priceAvg200", description="200-day average price"
+    change_percent: float = Field(
+        alias="changesPercentage", description="Price change percentage"
     )
-
-    # Exchange and price points
-    exchange: str = Field(description="Exchange identifier")
-    open_price: float = Field(alias="open", description="Opening price")
-    previous_close: float = Field(
-        alias="previousClose", description="Previous close price"
-    )
-
-    # Timestamp
     timestamp: datetime = Field(description="Quote timestamp")
 
-    @classmethod
+    # Optional common fields
+    name: str | None = Field(None, description="Name or pair name")
+    volume: float | None = Field(None, description="Trading volume")
+    market_cap: float | None = Field(
+        None, alias="marketCap", description="Market capitalization"
+    )
+
+    # Day range (optional)
+    day_low: float | None = Field(None, alias="dayLow", description="Day low price")
+    day_high: float | None = Field(None, alias="dayHigh", description="Day high price")
+
+    # Year range (optional)
+    year_high: float | None = Field(None, alias="yearHigh", description="52-week high")
+    year_low: float | None = Field(None, alias="yearLow", description="52-week low")
+
+    # Moving averages (optional)
+    price_avg_50: float | None = Field(
+        None, alias="priceAvg50", description="50-day average price"
+    )
+    price_avg_200: float | None = Field(
+        None, alias="priceAvg200", description="200-day average price"
+    )
+
+    # Volume metrics (optional)
+    avg_volume: float | None = Field(
+        None, alias="avgVolume", description="Average trading volume"
+    )
+
+    # Exchange and price points (optional)
+    exchange: str | None = Field(None, description="Exchange identifier")
+    open_price: float | None = Field(None, alias="open", description="Opening price")
+    previous_close: float | None = Field(
+        None, alias="previousClose", description="Previous close price"
+    )
+
     @field_validator("timestamp", mode="before")
+    @classmethod
     def parse_timestamp(cls, value: Any) -> datetime:
         """Parse Unix timestamp to datetime with UTC timezone"""
         if value is None:
@@ -83,6 +90,8 @@ class PriceQuote(BaseModel):
 
 class HistoricalPrice(BaseModel):
     """Base model for historical price data"""
+
+    model_config = ConfigDict(populate_by_name=True)
 
     price_date: date = Field(
         description="The date of the historical record", alias="date"
@@ -107,7 +116,7 @@ class HistoricalPrice(BaseModel):
     )
     symbol: str | None = Field(
         None, description="Trading symbol (for API compatibility)"
-    )  # ADD THIS
+    )
 
 
 class IntradayPrice(BaseModel):
@@ -120,7 +129,7 @@ class IntradayPrice(BaseModel):
     high: float = Field(description="High price")
     low: float = Field(description="Low price")
     close: float = Field(description="Closing price")
-    volume: float | None = Field(None, description="Trading volume")  # Changed to float
+    volume: float | None = Field(None, description="Trading volume")
 
 
 # Cryptocurrency Models
@@ -149,9 +158,23 @@ class CryptoQuote(PriceQuote):
         extra="ignore",  # Allow extra fields from API
     )
 
-    # Override the base class field to make it optional
-    change_percent: float | None = Field(
-        None, alias="changesPercentage", description="Percent change"
+    # Make these fields required for crypto
+    name: str = Field(description="Cryptocurrency name and pair")
+    volume: float = Field(description="24h trading volume")
+    market_cap: float = Field(alias="marketCap", description="Market capitalization")
+    day_low: float = Field(alias="dayLow", description="24h low price")
+    day_high: float = Field(alias="dayHigh", description="24h high price")
+    year_high: float = Field(alias="yearHigh", description="52-week high")
+    year_low: float = Field(alias="yearLow", description="52-week low")
+    exchange: str = Field(description="Exchange identifier")
+    open_price: float = Field(alias="open", description="Opening price")
+    previous_close: float = Field(
+        alias="previousClose", description="Previous close price"
+    )
+
+    # Additional crypto-specific fields
+    shares_outstanding: float | None = Field(
+        None, alias="sharesOutstanding", description="Circulating supply"
     )
 
 
@@ -198,7 +221,23 @@ class ForexPair(BaseModel):
 class ForexQuote(PriceQuote):
     """Forex price quote"""
 
-    pass
+    model_config = ConfigDict(
+        populate_by_name=True,
+        validate_assignment=True,
+        extra="ignore",
+    )
+
+    # Make these fields required for forex
+    volume: float = Field(description="Trading volume")
+    day_low: float = Field(alias="dayLow", description="Day low rate")
+    day_high: float = Field(alias="dayHigh", description="Day high rate")
+    year_high: float = Field(alias="yearHigh", description="52-week high")
+    year_low: float = Field(alias="yearLow", description="52-week low")
+    exchange: str = Field(description="Exchange identifier")
+    open_price: float = Field(alias="open", description="Opening rate")
+    previous_close: float = Field(
+        alias="previousClose", description="Previous close rate"
+    )
 
 
 class ForexHistoricalPrice(HistoricalPrice):
@@ -209,6 +248,8 @@ class ForexHistoricalPrice(HistoricalPrice):
 
 class ForexPriceHistory(BaseModel):
     """Full forex price history"""
+
+    model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Symbol for the currency pair")
     historical: list[ForexHistoricalPrice] = Field(
@@ -242,7 +283,17 @@ class Commodity(BaseModel):
 class CommodityQuote(PriceQuote):
     """Commodity price quote"""
 
-    pass
+    model_config = ConfigDict(
+        populate_by_name=True,
+        validate_assignment=True,
+        extra="ignore",
+    )
+
+    # Make these fields required for commodities
+    name: str = Field(description="Commodity name")
+    volume: float = Field(description="Trading volume")
+    year_high: float = Field(alias="yearHigh", description="52-week high")
+    year_low: float = Field(alias="yearLow", description="52-week low")
 
 
 class CommodityHistoricalPrice(HistoricalPrice):
@@ -253,6 +304,8 @@ class CommodityHistoricalPrice(HistoricalPrice):
 
 class CommodityPriceHistory(BaseModel):
     """Full commodity price history"""
+
+    model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Symbol for the commodity")
     historical: list[CommodityHistoricalPrice] = Field(
