@@ -46,13 +46,13 @@ from fmp_data.models import (
 
 QUOTE: Endpoint = Endpoint(
     name="quote",
-    path="quote/{symbol}",
+    path="quote",
     version=APIVersion.STABLE,
     description="Get real-time stock quote",
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
