@@ -9,8 +9,10 @@ from fmp_data.company.models import (
     AnalystEstimate,
     CompanyExecutive,
     CompanyProfile,
+    ExecutiveCompensationBenchmark,
     HistoricalData,
     HistoricalPrice,
+    MergerAcquisition,
     PriceTarget,
     PriceTargetSummary,
 )
@@ -378,3 +380,238 @@ def test_get_analyst_estimates(fmp_client, mock_client, analyst_estimates_data):
     assert isinstance(result[0], AnalystEstimate)
     assert result[0].symbol == "AAPL"
     assert result[0].estimated_revenue_avg == 52500000.0
+
+
+class TestMergersAcquisitions:
+    """Tests for Mergers & Acquisitions endpoints"""
+
+    @pytest.fixture
+    def merger_data(self):
+        """Mock merger acquisition data"""
+        return {
+            "companyName": "Apple Inc.",
+            "targetedCompanyName": "Beats Electronics",
+            "dealDate": "2014-05-28",
+            "acceptanceTime": "2014-05-28T09:00:00",
+            "url": "https://sec.gov/filing/example",
+        }
+
+    def test_model_validation(self, merger_data):
+        """Test MergerAcquisition model validation"""
+        merger = MergerAcquisition.model_validate(merger_data)
+        assert merger.companyName == "Apple Inc."
+        assert merger.targetedCompanyName == "Beats Electronics"
+        assert merger.dealDate == "2014-05-28"
+        assert merger.acceptanceTime == "2014-05-28T09:00:00"
+        assert merger.url == "https://sec.gov/filing/example"
+
+    def test_model_validation_minimal(self):
+        """Test MergerAcquisition model with minimal data"""
+        data = {}
+        merger = MergerAcquisition.model_validate(data)
+        assert merger.companyName is None
+        assert merger.targetedCompanyName is None
+        assert merger.dealDate is None
+
+    def test_get_mergers_acquisitions_latest(
+        self, fmp_client, mock_client, merger_data
+    ):
+        """Test fetching latest M&A transactions"""
+        mock_client.request.return_value = [MergerAcquisition(**merger_data)]
+        result = fmp_client.get_mergers_acquisitions_latest(page=0, limit=10)
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert isinstance(result[0], MergerAcquisition)
+        assert result[0].companyName == "Apple Inc."
+
+        # Verify the request was made with correct parameters
+        mock_client.request.assert_called_once()
+        call_args = mock_client.request.call_args
+        assert call_args[1]["page"] == 0
+        assert call_args[1]["limit"] == 10
+
+    def test_get_mergers_acquisitions_search(
+        self, fmp_client, mock_client, merger_data
+    ):
+        """Test searching M&A transactions by company name"""
+        mock_client.request.return_value = [MergerAcquisition(**merger_data)]
+        result = fmp_client.get_mergers_acquisitions_search(
+            name="Apple", page=0, limit=20
+        )
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert isinstance(result[0], MergerAcquisition)
+        assert result[0].targetedCompanyName == "Beats Electronics"
+
+        # Verify the request was made with correct parameters
+        mock_client.request.assert_called_once()
+        call_args = mock_client.request.call_args
+        assert call_args[1]["name"] == "Apple"
+        assert call_args[1]["page"] == 0
+        assert call_args[1]["limit"] == 20
+
+
+class TestExecutiveCompensationBenchmark:
+    """Tests for Executive Compensation Benchmark endpoint"""
+
+    @pytest.fixture
+    def benchmark_data(self):
+        """Mock executive compensation benchmark data"""
+        return {
+            "year": 2023,
+            "industryTitle": "Technology",
+            "marketCapitalization": "Large Cap (>10B)",
+            "averageTotalCompensation": 15000000.0,
+            "averageCashCompensation": 3000000.0,
+            "averageEquityCompensation": 10000000.0,
+            "averageOtherCompensation": 2000000.0,
+        }
+
+    def test_model_validation(self, benchmark_data):
+        """Test ExecutiveCompensationBenchmark model validation"""
+        benchmark = ExecutiveCompensationBenchmark.model_validate(benchmark_data)
+        assert benchmark.year == 2023
+        assert benchmark.industryTitle == "Technology"
+        assert benchmark.marketCapitalization == "Large Cap (>10B)"
+        assert benchmark.averageTotalCompensation == 15000000.0
+        assert benchmark.averageCashCompensation == 3000000.0
+        assert benchmark.averageEquityCompensation == 10000000.0
+        assert benchmark.averageOtherCompensation == 2000000.0
+
+    def test_get_executive_compensation_benchmark(
+        self, fmp_client, mock_client, benchmark_data
+    ):
+        """Test fetching executive compensation benchmark data"""
+        mock_client.request.return_value = [
+            ExecutiveCompensationBenchmark(**benchmark_data)
+        ]
+        result = fmp_client.get_executive_compensation_benchmark(year=2023)
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert isinstance(result[0], ExecutiveCompensationBenchmark)
+        assert result[0].year == 2023
+        assert result[0].industryTitle == "Technology"
+
+        # Verify the request was made with correct parameters
+        mock_client.request.assert_called_once()
+        call_args = mock_client.request.call_args
+        assert call_args[1]["year"] == 2023
+
+
+class TestHistoricalPriceVariants:
+    """Tests for different historical price endpoint variants"""
+
+    @pytest.fixture
+    def historical_price_data(self):
+        """Mock historical price data"""
+        return {
+            "date": "2024-01-05T00:00:00",
+            "open": 149.00,
+            "high": 151.00,
+            "low": 148.50,
+            "close": 150.25,
+            "volume": 82034567,
+            "change": 2.25,
+            "changePercent": -0.47467415,
+            "vwap": 149.92,
+        }
+
+    def test_get_historical_prices_light(
+        self, fmp_client, mock_client, historical_price_data
+    ):
+        """Test fetching lightweight historical price data"""
+        mock_client.request.return_value = [HistoricalPrice(**historical_price_data)]
+
+        result = fmp_client.get_historical_prices_light(
+            symbol="AAPL", from_date="2024-01-01", to_date="2024-01-05"
+        )
+
+        assert isinstance(result, HistoricalData)
+        assert result.symbol == "AAPL"
+        assert len(result.historical) == 1
+        assert result.historical[0].open == 149.00
+        assert result.historical[0].close == 150.25
+
+        # Verify the request was made with correct parameters
+        mock_client.request.assert_called_once()
+        call_args = mock_client.request.call_args
+        assert call_args[1]["symbol"] == "AAPL"
+        assert call_args[1]["start_date"] == "2024-01-01"
+        assert call_args[1]["end_date"] == "2024-01-05"
+
+    def test_get_historical_prices_non_split_adjusted(
+        self, fmp_client, mock_client, historical_price_data
+    ):
+        """Test fetching non-split-adjusted historical price data"""
+        mock_client.request.return_value = [HistoricalPrice(**historical_price_data)]
+
+        result = fmp_client.get_historical_prices_non_split_adjusted(
+            symbol="AAPL", from_date="2024-01-01", to_date="2024-01-05"
+        )
+
+        assert isinstance(result, HistoricalData)
+        assert result.symbol == "AAPL"
+        assert len(result.historical) == 1
+        assert result.historical[0].open == 149.00
+        assert result.historical[0].volume == 82034567
+
+        # Verify the request was made with correct parameters
+        mock_client.request.assert_called_once()
+        call_args = mock_client.request.call_args
+        assert call_args[1]["symbol"] == "AAPL"
+        assert call_args[1]["start_date"] == "2024-01-01"
+        assert call_args[1]["end_date"] == "2024-01-05"
+
+    def test_get_historical_prices_dividend_adjusted(
+        self, fmp_client, mock_client, historical_price_data
+    ):
+        """Test fetching dividend-adjusted historical price data"""
+        mock_client.request.return_value = [HistoricalPrice(**historical_price_data)]
+
+        result = fmp_client.get_historical_prices_dividend_adjusted(
+            symbol="AAPL", from_date="2024-01-01", to_date="2024-01-05"
+        )
+
+        assert isinstance(result, HistoricalData)
+        assert result.symbol == "AAPL"
+        assert len(result.historical) == 1
+        assert result.historical[0].high == 151.00
+        assert result.historical[0].low == 148.50
+
+        # Verify the request was made with correct parameters
+        mock_client.request.assert_called_once()
+        call_args = mock_client.request.call_args
+        assert call_args[1]["symbol"] == "AAPL"
+        assert call_args[1]["start_date"] == "2024-01-01"
+        assert call_args[1]["end_date"] == "2024-01-05"
+
+    def test_historical_price_variants_without_dates(
+        self, fmp_client, mock_client, historical_price_data
+    ):
+        """Test historical price variants without date parameters"""
+        mock_client.request.return_value = [HistoricalPrice(**historical_price_data)]
+
+        # Test light variant without dates
+        result = fmp_client.get_historical_prices_light(symbol="AAPL")
+        assert isinstance(result, HistoricalData)
+        assert result.symbol == "AAPL"
+
+        # Verify no date parameters were passed
+        call_args = mock_client.request.call_args
+        assert call_args[1]["symbol"] == "AAPL"
+        assert "start_date" not in call_args[1]
+        assert "end_date" not in call_args[1]
+
+    def test_historical_price_single_result(
+        self, fmp_client, mock_client, historical_price_data
+    ):
+        """Test handling single price result (not a list)"""
+        # Return single object instead of list
+        mock_client.request.return_value = HistoricalPrice(**historical_price_data)
+
+        result = fmp_client.get_historical_prices_light(symbol="AAPL")
+
+        assert isinstance(result, HistoricalData)
+        assert result.symbol == "AAPL"
+        assert len(result.historical) == 1
+        assert result.historical[0].close == 150.25

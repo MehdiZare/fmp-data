@@ -238,7 +238,7 @@ class BaseClient:
             ) from e
 
     @staticmethod
-    def _process_response(endpoint: Endpoint[T], data: Any) -> T | list[T]:
+    def _process_response(endpoint: Endpoint[T], data: Any) -> T | list[T]:  # noqa: C901
         """
         Process the response data with warnings, returning T or list[T].
         """
@@ -259,17 +259,21 @@ class BaseClient:
                     if isinstance(item, dict):
                         processed_item = endpoint.response_model.model_validate(item)
                     else:
-                        # If it's not a dict, try to feed it into the first field
-                        model = endpoint.response_model
-                        try:
-                            first_field = next(iter(model.__annotations__))
-                            field_info = model.model_fields[first_field]
-                            field_name = field_info.alias or first_field
-                            processed_item = model.model_validate({field_name: item})
-                        except (StopIteration, KeyError, AttributeError) as exc:
-                            raise ValueError(
-                                f"Invalid model structure for {model.__name__}"
-                            ) from exc
+                        # If response_model is a primitive type (str, int, float, etc.)
+                        if endpoint.response_model in (str, int, float, bool):
+                            processed_item = endpoint.response_model(item)
+                        else:
+                            # If it's not a dict, try to feed it into the first field
+                            model = endpoint.response_model
+                            try:
+                                first_field = next(iter(model.__annotations__))
+                                field_info = model.model_fields[first_field]
+                                field_name = field_info.alias or first_field
+                                processed_item = model({field_name: item})
+                            except (StopIteration, KeyError, AttributeError) as exc:
+                                raise ValueError(
+                                    f"Invalid model structure for {model.__name__}"
+                                ) from exc
                     for warning in w:
                         logger.warning(f"Validation warning: {warning.message}")
                     processed_items.append(processed_item)

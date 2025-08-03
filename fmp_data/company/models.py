@@ -563,3 +563,29 @@ class CompanyPeers(BaseModel):
     model_config = default_model_config
 
     peers: list[CompanyPeer] = Field(alias="peersList")
+
+
+class MergerAcquisition(BaseModel):
+    """Merger and acquisition transaction data"""
+
+    model_config = default_model_config
+
+    companyName: str | None = Field(None, description="Company name")
+    targetedCompanyName: str | None = Field(None, description="Targeted company name")
+    dealDate: str | None = Field(None, description="Deal date")
+    acceptanceTime: str | None = Field(None, description="Acceptance time")
+    url: str | None = Field(None, description="URL to filing")
+
+
+class ExecutiveCompensationBenchmark(BaseModel):
+    """Executive compensation benchmark data by industry"""
+
+    model_config = default_model_config
+
+    year: int = Field(description="Year of compensation data")
+    industryTitle: str = Field(description="Industry title")
+    marketCapitalization: str = Field(description="Market capitalization range")
+    averageTotalCompensation: float = Field(description="Average total compensation")
+    averageCashCompensation: float = Field(description="Average cash compensation")
+    averageEquityCompensation: float = Field(description="Average equity compensation")
+    averageOtherCompensation: float = Field(description="Average other compensation")

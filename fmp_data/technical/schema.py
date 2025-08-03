@@ -1,6 +1,6 @@
 # fmp_data/technical/schema.py
 
-from datetime import date
+from datetime import date as dt_date
 from enum import Enum
 from typing import Literal
 
@@ -153,7 +153,7 @@ class VolatilityIndicatorArgs(TechnicalIndicatorArgs):
 class BaseIndicatorResponse(BaseModel):
     """Base response fields for all indicators"""
 
-    date: date = Field(..., description="Date of the indicator value")
+    date: dt_date = Field(..., description="Date of the indicator value")
     value: float = Field(..., description="Calculated indicator value")
     symbol: str = Field(..., description="Stock symbol")
 

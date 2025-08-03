@@ -220,3 +220,92 @@ class TestExchangeSymbol:
                 "pe",
             ]
         )
+
+
+class TestDirectoryEndpoints:
+    """Tests for directory endpoints"""
+
+    @patch("httpx.Client.request")
+    def test_get_available_exchanges(self, mock_request, fmp_client, mock_response):
+        """Test getting available exchanges"""
+        exchange_data = [
+            {
+                "symbol": "NYSE",
+                "name": "New York Stock Exchange",
+                "price": None,
+                "changesPercentage": None,
+                "change": None,
+                "dayLow": None,
+                "dayHigh": None,
+                "yearHigh": None,
+                "yearLow": None,
+                "marketCap": None,
+                "priceAvg50": None,
+                "priceAvg200": None,
+                "exchange": "NYSE",
+                "volume": None,
+                "avgVolume": None,
+                "open": None,
+                "previousClose": None,
+                "eps": None,
+                "pe": None,
+                "sharesOutstanding": None,
+            }
+        ]
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=exchange_data
+        )
+
+        exchanges = fmp_client.market.get_available_exchanges()
+        assert len(exchanges) == 1
+        assert isinstance(exchanges[0], ExchangeSymbol)
+        assert exchanges[0].symbol == "NYSE"
+        assert exchanges[0].name == "New York Stock Exchange"
+
+    @patch("httpx.Client.request")
+    def test_get_available_sectors(self, mock_request, fmp_client, mock_response):
+        """Test getting available sectors"""
+        sectors_data = ["Technology", "Healthcare", "Financial Services", "Energy"]
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=sectors_data
+        )
+
+        sectors = fmp_client.market.get_available_sectors()
+        assert len(sectors) == 4
+        assert all(isinstance(sector, str) for sector in sectors)
+        assert "Technology" in sectors
+        assert "Healthcare" in sectors
+
+    @patch("httpx.Client.request")
+    def test_get_available_industries(self, mock_request, fmp_client, mock_response):
+        """Test getting available industries"""
+        industries_data = [
+            "Software",
+            "Biotechnology",
+            "Banks",
+            "Oil & Gas E&P",
+            "Semiconductors",
+        ]
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=industries_data
+        )
+
+        industries = fmp_client.market.get_available_industries()
+        assert len(industries) == 5
+        assert all(isinstance(industry, str) for industry in industries)
+        assert "Software" in industries
+        assert "Biotechnology" in industries
+
+    @patch("httpx.Client.request")
+    def test_get_available_countries(self, mock_request, fmp_client, mock_response):
+        """Test getting available countries"""
+        countries_data = ["US", "CA", "GB", "DE", "JP", "CN"]
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=countries_data
+        )
+
+        countries = fmp_client.market.get_available_countries()
+        assert len(countries) == 6
+        assert all(isinstance(country, str) for country in countries)
+        assert "US" in countries
+        assert "JP" in countries

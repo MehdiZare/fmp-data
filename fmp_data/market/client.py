@@ -4,11 +4,14 @@ from typing import cast
 from fmp_data.base import EndpointGroup
 from fmp_data.market.endpoints import (
     ALL_SHARES_FLOAT,
+    AVAILABLE_COUNTRIES,
+    AVAILABLE_EXCHANGES,
     AVAILABLE_INDEXES,
+    AVAILABLE_INDUSTRIES,
+    AVAILABLE_SECTORS,
     CIK_SEARCH,
     CUSIP_SEARCH,
     ETF_LIST,
-    EXCHANGE_SYMBOLS,
     GAINERS,
     ISIN_SEARCH,
     LOSERS,
@@ -59,10 +62,6 @@ class MarketClient(EndpointGroup):
     def get_available_indexes(self) -> list[AvailableIndex]:
         """Get list of all available indexes"""
         return self.client.request(AVAILABLE_INDEXES)
-
-    def get_exchange_symbols(self, exchange: str) -> list[ExchangeSymbol]:
-        """Get all symbols for a specific exchange"""
-        return self.client.request(EXCHANGE_SYMBOLS, exchange=exchange)
 
     def search_by_cik(self, query: str) -> list[CIKResult]:
         """Search companies by CIK number"""
@@ -120,3 +119,19 @@ class MarketClient(EndpointGroup):
     def get_all_shares_float(self) -> list[ShareFloat]:
         """Get share float data for all companies"""
         return self.client.request(ALL_SHARES_FLOAT)
+
+    def get_available_exchanges(self) -> list[ExchangeSymbol]:
+        """Get a complete list of supported stock exchanges"""
+        return self.client.request(AVAILABLE_EXCHANGES)
+
+    def get_available_sectors(self) -> list[str]:
+        """Get a complete list of industry sectors"""
+        return self.client.request(AVAILABLE_SECTORS)
+
+    def get_available_industries(self) -> list[str]:
+        """Get a comprehensive list of industries where stock symbols are available"""
+        return self.client.request(AVAILABLE_INDUSTRIES)
+
+    def get_available_countries(self) -> list[str]:
+        """Get a comprehensive list of countries where stock symbols are available"""
+        return self.client.request(AVAILABLE_COUNTRIES)

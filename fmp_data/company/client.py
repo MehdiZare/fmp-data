@@ -12,13 +12,19 @@ from fmp_data.company.endpoints import (
     CORE_INFORMATION,
     EMPLOYEE_COUNT,
     EXECUTIVE_COMPENSATION,
+    EXECUTIVE_COMPENSATION_BENCHMARK,
     GEOGRAPHIC_REVENUE_SEGMENTATION,
     HISTORICAL_MARKET_CAP,
     HISTORICAL_PRICE,
+    HISTORICAL_PRICE_DIVIDEND_ADJUSTED,
+    HISTORICAL_PRICE_LIGHT,
+    HISTORICAL_PRICE_NON_SPLIT_ADJUSTED,
     HISTORICAL_SHARE_FLOAT,
     INTRADAY_PRICE,
     KEY_EXECUTIVES,
     MARKET_CAP,
+    MERGERS_ACQUISITIONS_LATEST,
+    MERGERS_ACQUISITIONS_SEARCH,
     PRICE_TARGET,
     PRICE_TARGET_CONSENSUS,
     PRICE_TARGET_SUMMARY,
@@ -41,10 +47,12 @@ from fmp_data.company.models import (
     CompanyProfile,
     EmployeeCount,
     ExecutiveCompensation,
+    ExecutiveCompensationBenchmark,
     GeographicRevenueSegment,
     HistoricalData,
     HistoricalShareFloat,
     IntradayPrice,
+    MergerAcquisition,
     PriceTarget,
     PriceTargetConsensus,
     PriceTargetSummary,
@@ -87,26 +95,6 @@ class CompanyClient(EndpointGroup):
     def get_company_notes(self, symbol: str) -> list[CompanyNote]:
         """Get company financial notes"""
         return self.client.request(COMPANY_NOTES, symbol=symbol)
-
-    def get_company_logo_url(self, symbol: str) -> str:
-        """
-        Get company logo URL
-
-        Args:
-            symbol: Stock symbol (e.g., AAPL)
-
-        Returns:
-            str: URL to company logo
-        """
-        if not symbol:
-            raise ValueError("Symbol is required")
-
-        # Strip any leading/trailing whitespace and convert to uppercase
-        symbol = symbol.strip().upper()
-
-        # Remove /api from base URL and construct logo URL
-        base_url = self.client.config.base_url.replace("/api", "").replace("site.", "")
-        return f"{base_url}/image-stock/{symbol}.png"
 
     def get_quote(self, symbol: str) -> Quote:
         """Get real-time stock quote"""
@@ -266,3 +254,134 @@ class CompanyClient(EndpointGroup):
     def get_company_peers(self, symbol: str) -> list[CompanyPeer]:
         """Get company peers"""
         return self.client.request(COMPANY_PEERS, symbol=symbol)
+
+    def get_mergers_acquisitions_latest(
+        self, page: int = 0, limit: int = 100
+    ) -> list[MergerAcquisition]:
+        """Get latest mergers and acquisitions transactions
+
+        Args:
+            page: Page number for pagination (default 0)
+            limit: Number of results per page (default 100)
+
+        Returns:
+            List of recent M&A transactions
+        """
+        return self.client.request(MERGERS_ACQUISITIONS_LATEST, page=page, limit=limit)
+
+    def get_mergers_acquisitions_search(
+        self, name: str, page: int = 0, limit: int = 100
+    ) -> list[MergerAcquisition]:
+        """Search mergers and acquisitions transactions by company name
+
+        Args:
+            name: Company name to search for
+            page: Page number for pagination (default 0)
+            limit: Number of results per page (default 100)
+
+        Returns:
+            List of M&A transactions matching the search
+        """
+        return self.client.request(
+            MERGERS_ACQUISITIONS_SEARCH, name=name, page=page, limit=limit
+        )
+
+    def get_executive_compensation_benchmark(
+        self, year: int
+    ) -> list[ExecutiveCompensationBenchmark]:
+        """Get executive compensation benchmark data by industry and year
+
+        Args:
+            year: Year for compensation data
+
+        Returns:
+            List of executive compensation benchmarks by industry
+        """
+        return self.client.request(EXECUTIVE_COMPENSATION_BENCHMARK, year=year)
+
+    def get_historical_prices_light(
+        self,
+        symbol: str,
+        from_date: str | None = None,
+        to_date: str | None = None,
+    ) -> HistoricalData:
+        """Get lightweight historical daily price data (open, high, low, close only)
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            from_date: Start date in YYYY-MM-DD format (optional)
+            to_date: End date in YYYY-MM-DD format (optional)
+
+        Returns:
+            HistoricalData object containing the price history
+        """
+        params = {"symbol": symbol}
+        if from_date:
+            params["start_date"] = from_date
+        if to_date:
+            params["end_date"] = to_date
+
+        result = self.client.request(HISTORICAL_PRICE_LIGHT, **params)
+
+        if isinstance(result, list):
+            return HistoricalData(symbol=symbol, historical=result)
+        else:
+            return HistoricalData(symbol=symbol, historical=[result])
+
+    def get_historical_prices_non_split_adjusted(
+        self,
+        symbol: str,
+        from_date: str | None = None,
+        to_date: str | None = None,
+    ) -> HistoricalData:
+        """Get historical daily price data without split adjustments
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            from_date: Start date in YYYY-MM-DD format (optional)
+            to_date: End date in YYYY-MM-DD format (optional)
+
+        Returns:
+            HistoricalData object containing the price history without split adjustments
+        """
+        params = {"symbol": symbol}
+        if from_date:
+            params["start_date"] = from_date
+        if to_date:
+            params["end_date"] = to_date
+
+        result = self.client.request(HISTORICAL_PRICE_NON_SPLIT_ADJUSTED, **params)
+
+        if isinstance(result, list):
+            return HistoricalData(symbol=symbol, historical=result)
+        else:
+            return HistoricalData(symbol=symbol, historical=[result])
+
+    def get_historical_prices_dividend_adjusted(
+        self,
+        symbol: str,
+        from_date: str | None = None,
+        to_date: str | None = None,
+    ) -> HistoricalData:
+        """Get historical daily price data adjusted for dividends
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            from_date: Start date in YYYY-MM-DD format (optional)
+            to_date: End date in YYYY-MM-DD format (optional)
+
+        Returns:
+            HistoricalData object containing the dividend-adjusted price history
+        """
+        params = {"symbol": symbol}
+        if from_date:
+            params["start_date"] = from_date
+        if to_date:
+            params["end_date"] = to_date
+
+        result = self.client.request(HISTORICAL_PRICE_DIVIDEND_ADJUSTED, **params)
+
+        if isinstance(result, list):
+            return HistoricalData(symbol=symbol, historical=result)
+        else:
+            return HistoricalData(symbol=symbol, historical=[result])
