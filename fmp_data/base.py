@@ -269,7 +269,7 @@ class BaseClient:
                                 first_field = next(iter(model.__annotations__))
                                 field_info = model.model_fields[first_field]
                                 field_name = field_info.alias or first_field
-                                processed_item = model({field_name: item})
+                                processed_item = model.model_validate({field_name: item})
                             except (StopIteration, KeyError, AttributeError) as exc:
                                 raise ValueError(
                                     f"Invalid model structure for {model.__name__}"

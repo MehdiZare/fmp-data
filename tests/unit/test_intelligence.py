@@ -20,13 +20,20 @@ from fmp_data.intelligence.models import (
     FMPArticlesResponse,
     ForexNewsArticle,
     GeneralNewsArticle,
+    HistoricalRating,
     HistoricalSocialSentiment,
+    HistoricalStockGrade,
     HouseDisclosure,
     IPOEvent,
     PressRelease,
     PressReleaseBySymbol,
+    PriceTargetNews,
+    RatingsSnapshot,
     SenateTrade,
     SocialSentimentChanges,
+    StockGrade,
+    StockGradeNews,
+    StockGradesConsensus,
     StockNewsArticle,
     StockNewsSentiment,
     StockSplitEvent,
@@ -975,3 +982,295 @@ class TestMarketIntelligenceClientEdgeCases:
         assert kwargs["start_date"] is None
         assert kwargs["end_date"] is None
         assert kwargs["limit"] is None
+
+
+class TestMarketIntelligenceClientAnalyst:
+    """Test analyst ratings and grades functionality"""
+
+    def test_get_ratings_snapshot(self, fmp_client, mock_client):
+        """Test get_ratings_snapshot"""
+        mock_data = {
+            "symbol": "AAPL",
+            "date": "2024-01-15T10:00:00",
+            "rating": "Buy",
+            "ratingScore": 4,
+            "ratingRecommendation": "Strong Buy",
+            "ratingDetailsDCFScore": 4,
+            "ratingDetailsDCFRecommendation": "Buy",
+            "ratingDetailsROEScore": 5,
+            "ratingDetailsROERecommendation": "Strong Buy",
+            "ratingDetailsROAScore": 4,
+            "ratingDetailsROARecommendation": "Buy",
+            "ratingDetailsDEScore": 3,
+            "ratingDetailsDERecommendation": "Hold",
+            "ratingDetailsPEScore": 3,
+            "ratingDetailsPERecommendation": "Hold",
+            "ratingDetailsPBScore": 4,
+            "ratingDetailsPBRecommendation": "Buy",
+        }
+        mock_response = RatingsSnapshot(**mock_data)
+        mock_client.request.return_value = mock_response
+
+        result = fmp_client.intelligence.get_ratings_snapshot("AAPL")
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["symbol"] == "AAPL"
+        assert isinstance(result, RatingsSnapshot)
+        assert result.symbol == "AAPL"
+        assert result.rating == "Buy"
+
+    def test_get_ratings_snapshot_list_response(self, fmp_client, mock_client):
+        """Test get_ratings_snapshot when API returns list"""
+        mock_data = {
+            "symbol": "AAPL",
+            "date": "2024-01-15T10:00:00",
+            "rating": "Buy",
+            "ratingScore": 4,
+            "ratingRecommendation": "Strong Buy",
+            "ratingDetailsDCFScore": 4,
+            "ratingDetailsDCFRecommendation": "Buy",
+            "ratingDetailsROEScore": 5,
+            "ratingDetailsROERecommendation": "Strong Buy",
+            "ratingDetailsROAScore": 4,
+            "ratingDetailsROARecommendation": "Buy",
+            "ratingDetailsDEScore": 3,
+            "ratingDetailsDERecommendation": "Hold",
+            "ratingDetailsPEScore": 3,
+            "ratingDetailsPERecommendation": "Hold",
+            "ratingDetailsPBScore": 4,
+            "ratingDetailsPBRecommendation": "Buy",
+        }
+        mock_response = [RatingsSnapshot(**mock_data)]
+        mock_client.request.return_value = mock_response
+
+        result = fmp_client.intelligence.get_ratings_snapshot("AAPL")
+
+        assert isinstance(result, RatingsSnapshot)
+        assert result.symbol == "AAPL"
+
+    def test_get_ratings_historical(self, fmp_client, mock_client):
+        """Test get_ratings_historical"""
+        mock_data = {
+            "symbol": "AAPL",
+            "date": "2024-01-15T10:00:00",
+            "rating": "Buy",
+            "ratingScore": 4,
+            "ratingRecommendation": "Strong Buy",
+            "ratingDetailsDCFScore": 4,
+            "ratingDetailsDCFRecommendation": "Buy",
+            "ratingDetailsROEScore": 5,
+            "ratingDetailsROERecommendation": "Strong Buy",
+            "ratingDetailsROAScore": 4,
+            "ratingDetailsROARecommendation": "Buy",
+            "ratingDetailsDEScore": 3,
+            "ratingDetailsDERecommendation": "Hold",
+            "ratingDetailsPEScore": 3,
+            "ratingDetailsPERecommendation": "Hold",
+            "ratingDetailsPBScore": 4,
+            "ratingDetailsPBRecommendation": "Buy",
+        }
+        mock_client.request.return_value = [HistoricalRating(**mock_data)]
+
+        result = fmp_client.intelligence.get_ratings_historical("AAPL", limit=50)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["symbol"] == "AAPL"
+        assert kwargs["limit"] == 50
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0].symbol == "AAPL"
+
+    def test_get_price_target_news(self, fmp_client, mock_client):
+        """Test get_price_target_news"""
+        mock_data = {
+            "symbol": "AAPL",
+            "publishedDate": "2024-01-15T10:00:00",
+            "newsURL": "https://example.com/news",
+            "newsTitle": "Analyst Raises Price Target for AAPL",
+            "analystName": "John Doe",
+            "priceTarget": 200.0,
+            "adjPriceTarget": 200.0,
+            "priceWhenPosted": 180.0,
+            "newsPublisher": "Financial Times",
+            "newsBaseURL": "https://example.com",
+            "analystCompany": "Morgan Stanley",
+        }
+        mock_client.request.return_value = [PriceTargetNews(**mock_data)]
+
+        result = fmp_client.intelligence.get_price_target_news("AAPL", page=1)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["symbol"] == "AAPL"
+        assert kwargs["page"] == 1
+        assert isinstance(result, list)
+        assert result[0].price_target == 200.0
+
+    def test_get_price_target_latest_news(self, fmp_client, mock_client):
+        """Test get_price_target_latest_news"""
+        mock_data = {
+            "symbol": "AAPL",
+            "publishedDate": "2024-01-15T10:00:00",
+            "newsURL": "https://example.com/news",
+            "newsTitle": "Latest Price Target Updates",
+            "analystName": "Jane Smith",
+            "priceTarget": 210.0,
+            "adjPriceTarget": 210.0,
+            "priceWhenPosted": 185.0,
+            "newsPublisher": "Reuters",
+            "newsBaseURL": "https://reuters.com",
+            "analystCompany": "Goldman Sachs",
+        }
+        mock_client.request.return_value = [PriceTargetNews(**mock_data)]
+
+        result = fmp_client.intelligence.get_price_target_latest_news(page=0)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["page"] == 0
+        assert isinstance(result, list)
+
+    def test_get_grades(self, fmp_client, mock_client):
+        """Test get_grades"""
+        mock_data = {
+            "symbol": "AAPL",
+            "publishedDate": "2024-01-15T10:00:00",
+            "newsURL": "https://example.com/news",
+            "newsTitle": "AAPL Upgraded to Buy",
+            "newsBaseURL": "https://example.com",
+            "newsPublisher": "MarketWatch",
+            "newGrade": "Buy",
+            "previousGrade": "Hold",
+            "gradingCompany": "JP Morgan",
+            "action": "upgrade",
+            "priceWhenPosted": 180.50,
+        }
+        mock_client.request.return_value = [StockGrade(**mock_data)]
+
+        result = fmp_client.intelligence.get_grades("AAPL", page=2)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["symbol"] == "AAPL"
+        assert kwargs["page"] == 2
+        assert isinstance(result, list)
+        assert result[0].new_grade == "Buy"
+
+    def test_get_grades_historical(self, fmp_client, mock_client):
+        """Test get_grades_historical"""
+        mock_data = {
+            "symbol": "AAPL",
+            "publishedDate": "2024-01-15T10:00:00",
+            "newsURL": "https://example.com/news",
+            "newsTitle": "Historical Grade Change",
+            "newsBaseURL": "https://example.com",
+            "newsPublisher": "Bloomberg",
+            "newGrade": "Strong Buy",
+            "previousGrade": "Buy",
+            "gradingCompany": "Bank of America",
+            "action": "upgrade",
+            "priceWhenPosted": 175.25,
+        }
+        mock_client.request.return_value = [HistoricalStockGrade(**mock_data)]
+
+        result = fmp_client.intelligence.get_grades_historical("AAPL", limit=200)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["symbol"] == "AAPL"
+        assert kwargs["limit"] == 200
+        assert isinstance(result, list)
+
+    def test_get_grades_consensus(self, fmp_client, mock_client):
+        """Test get_grades_consensus"""
+        mock_data = {
+            "symbol": "AAPL",
+            "consensus": "Buy",
+            "strongBuy": 15,
+            "buy": 20,
+            "hold": 5,
+            "sell": 2,
+            "strongSell": 1,
+        }
+        mock_response = StockGradesConsensus(**mock_data)
+        mock_client.request.return_value = mock_response
+
+        result = fmp_client.intelligence.get_grades_consensus("AAPL")
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["symbol"] == "AAPL"
+        assert isinstance(result, StockGradesConsensus)
+        assert result.consensus == "Buy"
+
+    def test_get_grades_consensus_list_response(self, fmp_client, mock_client):
+        """Test get_grades_consensus when API returns list"""
+        mock_data = {
+            "symbol": "AAPL",
+            "consensus": "Hold",
+            "strongBuy": 10,
+            "buy": 15,
+            "hold": 10,
+            "sell": 3,
+            "strongSell": 2,
+        }
+        mock_response = [StockGradesConsensus(**mock_data)]
+        mock_client.request.return_value = mock_response
+
+        result = fmp_client.intelligence.get_grades_consensus("AAPL")
+
+        assert isinstance(result, StockGradesConsensus)
+        assert result.consensus == "Hold"
+
+    def test_get_grades_news(self, fmp_client, mock_client):
+        """Test get_grades_news"""
+        mock_data = {
+            "symbol": "AAPL",
+            "publishedDate": "2024-01-15T10:00:00",
+            "newsURL": "https://example.com/news",
+            "newsTitle": "Grade News for AAPL",
+            "newsBaseURL": "https://example.com",
+            "newsPublisher": "CNBC",
+            "newGrade": "Neutral",
+            "previousGrade": "Buy",
+            "gradingCompany": "Citigroup",
+            "action": "downgrade",
+            "priceWhenPosted": 182.75,
+        }
+        mock_client.request.return_value = [StockGradeNews(**mock_data)]
+
+        result = fmp_client.intelligence.get_grades_news("AAPL", page=1)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["symbol"] == "AAPL"
+        assert kwargs["page"] == 1
+        assert isinstance(result, list)
+        assert result[0].action == "downgrade"
+
+    def test_get_grades_latest_news(self, fmp_client, mock_client):
+        """Test get_grades_latest_news"""
+        mock_data = {
+            "symbol": "MSFT",
+            "publishedDate": "2024-01-15T12:00:00",
+            "newsURL": "https://example.com/latest",
+            "newsTitle": "Latest Grade Updates",
+            "newsBaseURL": "https://example.com",
+            "newsPublisher": "WSJ",
+            "newGrade": "Strong Buy",
+            "previousGrade": "Buy",
+            "gradingCompany": "Wells Fargo",
+            "action": "upgrade",
+            "priceWhenPosted": 395.50,
+        }
+        mock_client.request.return_value = [StockGradeNews(**mock_data)]
+
+        result = fmp_client.intelligence.get_grades_latest_news(page=0)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["page"] == 0
+        assert isinstance(result, list)
+        assert result[0].symbol == "MSFT"

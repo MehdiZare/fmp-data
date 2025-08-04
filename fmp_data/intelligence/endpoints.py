@@ -13,13 +13,20 @@ from fmp_data.intelligence.models import (
     FMPArticlesResponse,
     ForexNewsArticle,
     GeneralNewsArticle,
+    HistoricalRating,
     HistoricalSocialSentiment,
+    HistoricalStockGrade,
     HouseDisclosure,
     IPOEvent,
     PressRelease,
     PressReleaseBySymbol,
+    PriceTargetNews,
+    RatingsSnapshot,
     SenateTrade,
     SocialSentimentChanges,
+    StockGrade,
+    StockGradeNews,
+    StockGradesConsensus,
     StockNewsArticle,
     StockNewsSentiment,
     StockSplitEvent,
@@ -37,7 +44,7 @@ from fmp_data.models import (
 
 EARNINGS_CALENDAR: Endpoint = Endpoint(
     name="earnings_calendar",
-    path="earning_calendar",
+    path="earnings-calendar",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -95,7 +102,7 @@ EARNINGS_CONFIRMED: Endpoint = Endpoint(
 
 EARNINGS_SURPRISES: Endpoint = Endpoint(
     name="earnings_surprises",
-    path="earnings-surprises/{symbol}",
+    path="earnings-surprises",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -103,7 +110,7 @@ EARNINGS_SURPRISES: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol",
@@ -115,7 +122,7 @@ EARNINGS_SURPRISES: Endpoint = Endpoint(
 
 HISTORICAL_EARNINGS: Endpoint = Endpoint(
     name="historical_earnings",
-    path="historical/earning_calendar/{symbol}",
+    path="historical/earning-calendar",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -123,7 +130,7 @@ HISTORICAL_EARNINGS: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol",
@@ -135,7 +142,7 @@ HISTORICAL_EARNINGS: Endpoint = Endpoint(
 
 DIVIDENDS_CALENDAR: Endpoint = Endpoint(
     name="dividends_calendar",
-    path="stock_dividend_calendar",
+    path="dividends-calendar",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -164,7 +171,7 @@ DIVIDENDS_CALENDAR: Endpoint = Endpoint(
 
 STOCK_SPLITS_CALENDAR: Endpoint = Endpoint(
     name="stock_splits_calendar",
-    path="stock_split_calendar",
+    path="splits-calendar",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -193,7 +200,7 @@ STOCK_SPLITS_CALENDAR: Endpoint = Endpoint(
 
 IPO_CALENDAR: Endpoint = Endpoint(
     name="ipo_calendar",
-    path="ipo_calendar",
+    path="ipos-calendar",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -247,7 +254,7 @@ FMP_ARTICLES_ENDPOINT: Endpoint = Endpoint(
 
 GENERAL_NEWS_ENDPOINT: Endpoint = Endpoint(
     name="general_news",
-    path="general_news",
+    path="news/general-latest",
     version=APIVersion.STABLE,
     description="Get a list of the latest general news articles",
     optional_params=[
@@ -373,7 +380,7 @@ STOCK_NEWS_SENTIMENTS_ENDPOINT: Endpoint = Endpoint(
 
 FOREX_NEWS_ENDPOINT: Endpoint = Endpoint(
     name="forex_news",
-    path="forex_news",
+    path="news/forex-latest",
     version=APIVersion.STABLE,
     description="Get a list of the latest forex news articles",
     optional_params=[
@@ -421,7 +428,7 @@ FOREX_NEWS_ENDPOINT: Endpoint = Endpoint(
 
 CRYPTO_NEWS_ENDPOINT: Endpoint = Endpoint(
     name="crypto_news",
-    path="crypto_news",
+    path="news/crypto-latest",
     version=APIVersion.STABLE,
     description="Get a list of the latest crypto news articles",
     optional_params=[
@@ -469,7 +476,7 @@ CRYPTO_NEWS_ENDPOINT: Endpoint = Endpoint(
 
 PRESS_RELEASES_ENDPOINT: Endpoint = Endpoint(
     name="press_releases",
-    path="press-releases",
+    path="news/press-releases-latest",
     version=APIVersion.STABLE,
     description="Get a list of the latest press releases",
     optional_params=[
@@ -827,4 +834,214 @@ EQUITY_OFFERING_BY_CIK: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=EquityOffering,
+)
+
+# Analyst Ratings and Grades Endpoints
+RATINGS_SNAPSHOT: Endpoint = Endpoint(
+    name="ratings_snapshot",
+    path="ratings-snapshot",
+    version=APIVersion.STABLE,
+    description="Get current analyst ratings snapshot",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=RatingsSnapshot,
+)
+
+RATINGS_HISTORICAL: Endpoint = Endpoint(
+    name="ratings_historical",
+    path="ratings-historical",
+    version=APIVersion.STABLE,
+    description="Get historical analyst ratings",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results",
+            default=100,
+        )
+    ],
+    response_model=HistoricalRating,
+)
+
+PRICE_TARGET_NEWS: Endpoint = Endpoint(
+    name="price_target_news",
+    path="price-target-news",
+    version=APIVersion.STABLE,
+    description="Get price target news",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Page number",
+            default=0,
+        )
+    ],
+    response_model=PriceTargetNews,
+)
+
+PRICE_TARGET_LATEST_NEWS: Endpoint = Endpoint(
+    name="price_target_latest_news",
+    path="price-target-latest-news",
+    version=APIVersion.STABLE,
+    description="Get latest price target news",
+    mandatory_params=[],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Page number",
+            default=0,
+        )
+    ],
+    response_model=PriceTargetNews,
+)
+
+GRADES: Endpoint = Endpoint(
+    name="grades",
+    path="grades",
+    version=APIVersion.STABLE,
+    description="Get stock grades from analysts",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Page number",
+            default=0,
+        )
+    ],
+    response_model=StockGrade,
+)
+
+GRADES_HISTORICAL: Endpoint = Endpoint(
+    name="grades_historical",
+    path="grades-historical",
+    version=APIVersion.STABLE,
+    description="Get historical stock grades",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results",
+            default=100,
+        )
+    ],
+    response_model=HistoricalStockGrade,
+)
+
+GRADES_CONSENSUS: Endpoint = Endpoint(
+    name="grades_consensus",
+    path="grades-consensus",
+    version=APIVersion.STABLE,
+    description="Get stock grades consensus summary",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=StockGradesConsensus,
+)
+
+GRADES_NEWS: Endpoint = Endpoint(
+    name="grades_news",
+    path="grades-news",
+    version=APIVersion.STABLE,
+    description="Get stock grade news",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Page number",
+            default=0,
+        )
+    ],
+    response_model=StockGradeNews,
+)
+
+GRADES_LATEST_NEWS: Endpoint = Endpoint(
+    name="grades_latest_news",
+    path="grades-latest-news",
+    version=APIVersion.STABLE,
+    description="Get latest stock grade news",
+    mandatory_params=[],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Page number",
+            default=0,
+        )
+    ],
+    response_model=StockGradeNews,
 )

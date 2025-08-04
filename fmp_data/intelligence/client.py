@@ -22,6 +22,11 @@ from fmp_data.intelligence.endpoints import (
     FMP_ARTICLES_ENDPOINT,
     FOREX_NEWS_ENDPOINT,
     GENERAL_NEWS_ENDPOINT,
+    GRADES,
+    GRADES_CONSENSUS,
+    GRADES_HISTORICAL,
+    GRADES_LATEST_NEWS,
+    GRADES_NEWS,
     HISTORICAL_EARNINGS,
     HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT,  # deprecated
     HOUSE_DISCLOSURE,
@@ -29,6 +34,10 @@ from fmp_data.intelligence.endpoints import (
     IPO_CALENDAR,
     PRESS_RELEASES_BY_SYMBOL_ENDPOINT,
     PRESS_RELEASES_ENDPOINT,
+    PRICE_TARGET_LATEST_NEWS,
+    PRICE_TARGET_NEWS,
+    RATINGS_HISTORICAL,
+    RATINGS_SNAPSHOT,
     SENATE_TRADING,
     SENATE_TRADING_RSS,
     SOCIAL_SENTIMENT_CHANGES_ENDPOINT,  # deprecated
@@ -54,12 +63,19 @@ from fmp_data.intelligence.models import (
     FMPArticlesResponse,
     ForexNewsArticle,
     GeneralNewsArticle,
+    HistoricalRating,
     HistoricalSocialSentiment,
+    HistoricalStockGrade,
     HouseDisclosure,
     PressRelease,
     PressReleaseBySymbol,
+    PriceTargetNews,
+    RatingsSnapshot,
     SenateTrade,
     SocialSentimentChanges,
+    StockGrade,
+    StockGradeNews,
+    StockGradesConsensus,
     StockNewsArticle,
     StockNewsSentiment,
     StockSplitEvent,
@@ -350,3 +366,42 @@ class MarketIntelligenceClient(EndpointGroup):
     def get_equity_offering_by_cik(self, cik: str) -> list[EquityOffering]:
         """Get equity offerings by CIK"""
         return self.client.request(EQUITY_OFFERING_BY_CIK, cik=cik)
+
+    # Analyst Ratings and Grades methods
+    def get_ratings_snapshot(self, symbol: str) -> RatingsSnapshot:
+        """Get current analyst ratings snapshot"""
+        result = self.client.request(RATINGS_SNAPSHOT, symbol=symbol)
+        return cast(RatingsSnapshot, result[0] if isinstance(result, list) else result)
+
+    def get_ratings_historical(self, symbol: str, limit: int = 100) -> list[HistoricalRating]:
+        """Get historical analyst ratings"""
+        return self.client.request(RATINGS_HISTORICAL, symbol=symbol, limit=limit)
+
+    def get_price_target_news(self, symbol: str, page: int = 0) -> list[PriceTargetNews]:
+        """Get price target news"""
+        return self.client.request(PRICE_TARGET_NEWS, symbol=symbol, page=page)
+
+    def get_price_target_latest_news(self, page: int = 0) -> list[PriceTargetNews]:
+        """Get latest price target news"""
+        return self.client.request(PRICE_TARGET_LATEST_NEWS, page=page)
+
+    def get_grades(self, symbol: str, page: int = 0) -> list[StockGrade]:
+        """Get stock grades from analysts"""
+        return self.client.request(GRADES, symbol=symbol, page=page)
+
+    def get_grades_historical(self, symbol: str, limit: int = 100) -> list[HistoricalStockGrade]:
+        """Get historical stock grades"""
+        return self.client.request(GRADES_HISTORICAL, symbol=symbol, limit=limit)
+
+    def get_grades_consensus(self, symbol: str) -> StockGradesConsensus:
+        """Get stock grades consensus summary"""
+        result = self.client.request(GRADES_CONSENSUS, symbol=symbol)
+        return cast(StockGradesConsensus, result[0] if isinstance(result, list) else result)
+
+    def get_grades_news(self, symbol: str, page: int = 0) -> list[StockGradeNews]:
+        """Get stock grade news"""
+        return self.client.request(GRADES_NEWS, symbol=symbol, page=page)
+
+    def get_grades_latest_news(self, page: int = 0) -> list[StockGradeNews]:
+        """Get latest stock grade news"""
+        return self.client.request(GRADES_LATEST_NEWS, page=page)

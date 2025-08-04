@@ -709,3 +709,230 @@ class EquityOfferingSearchItem(BaseModel):
     cik: str = Field(description="Company CIK number")
     name: str = Field(description="Company name")
     date: datetime = Field(description="Date of filing")
+
+
+# Analyst Ratings and Grades Models
+class RatingsSnapshot(BaseModel):
+    """Current analyst ratings snapshot"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Company symbol")
+    date: datetime = Field(description="Rating date")
+    rating: str = Field(description="Overall rating (Buy, Hold, Sell)")
+    rating_score: int = Field(alias="ratingScore", description="Numeric rating score")
+    rating_recommendation: str = Field(
+        alias="ratingRecommendation", description="Rating recommendation"
+    )
+    rating_details_dcf_score: int = Field(
+        alias="ratingDetailsDCFScore", description="DCF model score"
+    )
+    rating_details_dcf_recommendation: str = Field(
+        alias="ratingDetailsDCFRecommendation", description="DCF recommendation"
+    )
+    rating_details_roe_score: int = Field(
+        alias="ratingDetailsROEScore", description="Return on Equity score"
+    )
+    rating_details_roe_recommendation: str = Field(
+        alias="ratingDetailsROERecommendation", description="ROE recommendation"
+    )
+    rating_details_roa_score: int = Field(
+        alias="ratingDetailsROAScore", description="Return on Assets score"
+    )
+    rating_details_roa_recommendation: str = Field(
+        alias="ratingDetailsROARecommendation", description="ROA recommendation"
+    )
+    rating_details_de_score: int = Field(
+        alias="ratingDetailsDEScore", description="Debt to Equity score"
+    )
+    rating_details_de_recommendation: str = Field(
+        alias="ratingDetailsDERecommendation", description="D/E recommendation"
+    )
+    rating_details_pe_score: int = Field(
+        alias="ratingDetailsPEScore", description="Price to Earnings score"
+    )
+    rating_details_pe_recommendation: str = Field(
+        alias="ratingDetailsPERecommendation", description="P/E recommendation"
+    )
+    rating_details_pb_score: int = Field(
+        alias="ratingDetailsPBScore", description="Price to Book score"
+    )
+    rating_details_pb_recommendation: str = Field(
+        alias="ratingDetailsPBRecommendation", description="P/B recommendation"
+    )
+
+
+class HistoricalRating(BaseModel):
+    """Historical analyst rating data"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Company symbol")
+    date: datetime = Field(description="Rating date")
+    rating: str = Field(description="Overall rating")
+    rating_score: int = Field(alias="ratingScore", description="Numeric rating score")
+    rating_recommendation: str = Field(
+        alias="ratingRecommendation", description="Rating recommendation"
+    )
+    rating_details_dcf_score: int = Field(
+        alias="ratingDetailsDCFScore", description="DCF model score"
+    )
+    rating_details_dcf_recommendation: str = Field(
+        alias="ratingDetailsDCFRecommendation", description="DCF recommendation"
+    )
+    rating_details_roe_score: int = Field(
+        alias="ratingDetailsROEScore", description="Return on Equity score"
+    )
+    rating_details_roe_recommendation: str = Field(
+        alias="ratingDetailsROERecommendation", description="ROE recommendation"
+    )
+    rating_details_roa_score: int = Field(
+        alias="ratingDetailsROAScore", description="Return on Assets score"
+    )
+    rating_details_roa_recommendation: str = Field(
+        alias="ratingDetailsROARecommendation", description="ROA recommendation"
+    )
+    rating_details_de_score: int = Field(
+        alias="ratingDetailsDEScore", description="Debt to Equity score"
+    )
+    rating_details_de_recommendation: str = Field(
+        alias="ratingDetailsDERecommendation", description="D/E recommendation"
+    )
+    rating_details_pe_score: int = Field(
+        alias="ratingDetailsPEScore", description="Price to Earnings score"
+    )
+    rating_details_pe_recommendation: str = Field(
+        alias="ratingDetailsPERecommendation", description="P/E recommendation"
+    )
+    rating_details_pb_score: int = Field(
+        alias="ratingDetailsPBScore", description="Price to Book score"
+    )
+    rating_details_pb_recommendation: str = Field(
+        alias="ratingDetailsPBRecommendation", description="P/B recommendation"
+    )
+
+
+class PriceTargetNews(BaseModel):
+    """Price target news article"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Company symbol")
+    published_date: datetime = Field(
+        alias="publishedDate", description="Publication date"
+    )
+    news_url: HttpUrl = Field(alias="newsURL", description="News article URL")
+    news_title: str = Field(alias="newsTitle", description="News article title")
+    analyst_name: str | None = Field(
+        None, alias="analystName", description="Analyst name"
+    )
+    price_target: float = Field(alias="priceTarget", description="Price target")
+    adj_price_target: float = Field(
+        alias="adjPriceTarget", description="Adjusted price target"
+    )
+    price_when_posted: float = Field(
+        alias="priceWhenPosted", description="Stock price when posted"
+    )
+    news_publisher: str = Field(alias="newsPublisher", description="News publisher")
+    news_base_url: str = Field(
+        alias="newsBaseURL", description="Publisher base URL"
+    )
+    analyst_company: str = Field(alias="analystCompany", description="Analyst company")
+
+
+class StockGrade(BaseModel):
+    """Stock grade from analyst"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Company symbol")
+    published_date: datetime = Field(
+        alias="publishedDate", description="Publication date"
+    )
+    news_url: HttpUrl = Field(alias="newsURL", description="News article URL")
+    news_title: str = Field(alias="newsTitle", description="News article title")
+    news_base_url: str = Field(
+        alias="newsBaseURL", description="Publisher base URL"
+    )
+    news_publisher: str = Field(alias="newsPublisher", description="News publisher")
+    new_grade: str = Field(alias="newGrade", description="New grade assigned")
+    previous_grade: str | None = Field(
+        None, alias="previousGrade", description="Previous grade"
+    )
+    grading_company: str = Field(
+        alias="gradingCompany", description="Company issuing the grade"
+    )
+    action: str = Field(description="Action taken (upgrade, downgrade, etc.)")
+    price_when_posted: Decimal = Field(
+        alias="priceWhenPosted", description="Stock price when grade was posted"
+    )
+
+
+class HistoricalStockGrade(BaseModel):
+    """Historical stock grade data"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Company symbol")
+    published_date: datetime = Field(
+        alias="publishedDate", description="Publication date"
+    )
+    news_url: HttpUrl = Field(alias="newsURL", description="News article URL")
+    news_title: str = Field(alias="newsTitle", description="News article title")
+    news_base_url: str = Field(
+        alias="newsBaseURL", description="Publisher base URL"
+    )
+    news_publisher: str = Field(alias="newsPublisher", description="News publisher")
+    new_grade: str = Field(alias="newGrade", description="New grade assigned")
+    previous_grade: str | None = Field(
+        None, alias="previousGrade", description="Previous grade"
+    )
+    grading_company: str = Field(
+        alias="gradingCompany", description="Company issuing the grade"
+    )
+    action: str = Field(description="Action taken")
+    price_when_posted: Decimal = Field(
+        alias="priceWhenPosted", description="Stock price when grade was posted"
+    )
+
+
+class StockGradesConsensus(BaseModel):
+    """Stock grades consensus summary"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Company symbol")
+    consensus: str = Field(description="Overall consensus rating")
+    strong_buy: int = Field(alias="strongBuy", description="Number of strong buy ratings")
+    buy: int = Field(description="Number of buy ratings")
+    hold: int = Field(description="Number of hold ratings")
+    sell: int = Field(description="Number of sell ratings")
+    strong_sell: int = Field(alias="strongSell", description="Number of strong sell ratings")
+
+
+class StockGradeNews(BaseModel):
+    """Stock grade news article"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Company symbol")
+    published_date: datetime = Field(
+        alias="publishedDate", description="Publication date"
+    )
+    news_url: HttpUrl = Field(alias="newsURL", description="News article URL")
+    news_title: str = Field(alias="newsTitle", description="News article title")
+    news_base_url: str = Field(
+        alias="newsBaseURL", description="Publisher base URL"
+    )
+    news_publisher: str = Field(alias="newsPublisher", description="News publisher")
+    new_grade: str = Field(alias="newGrade", description="New grade assigned")
+    previous_grade: str | None = Field(
+        None, alias="previousGrade", description="Previous grade"
+    )
+    grading_company: str = Field(
+        alias="gradingCompany", description="Company issuing the grade"
+    )
+    action: str = Field(description="Action taken")
+    price_when_posted: Decimal = Field(
+        alias="priceWhenPosted", description="Stock price when grade was posted"
+    )
