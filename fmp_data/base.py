@@ -238,7 +238,9 @@ class BaseClient:
             ) from e
 
     @staticmethod
-    def _process_response(endpoint: Endpoint[T], data: Any) -> T | list[T]:  # noqa: C901
+    def _process_response(  # noqa: C901
+        endpoint: Endpoint[T], data: Any
+    ) -> T | list[T]:
         """
         Process the response data with warnings, returning T or list[T].
         """
@@ -261,7 +263,7 @@ class BaseClient:
                     else:
                         # If response_model is a primitive type (str, int, float, etc.)
                         if endpoint.response_model in (str, int, float, bool):
-                            processed_item = endpoint.response_model(item)
+                            processed_item = endpoint.response_model(item)  # type: ignore[call-arg]
                         else:
                             # If it's not a dict, try to feed it into the first field
                             model = endpoint.response_model
@@ -269,7 +271,9 @@ class BaseClient:
                                 first_field = next(iter(model.__annotations__))
                                 field_info = model.model_fields[first_field]
                                 field_name = field_info.alias or first_field
-                                processed_item = model.model_validate({field_name: item})
+                                processed_item = model.model_validate(
+                                    {field_name: item}
+                                )
                             except (StopIteration, KeyError, AttributeError) as exc:
                                 raise ValueError(
                                     f"Invalid model structure for {model.__name__}"

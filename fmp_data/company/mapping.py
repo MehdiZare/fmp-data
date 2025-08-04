@@ -4,7 +4,6 @@ from __future__ import annotations
 from fmp_data.company.endpoints import (
     ANALYST_ESTIMATES,
     ANALYST_RECOMMENDATIONS,
-    COMPANY_LOGO,
     COMPANY_NOTES,
     CORE_INFORMATION,
     EMPLOYEE_COUNT,
@@ -60,7 +59,6 @@ COMPANY_ENDPOINT_MAP = {
     "get_executives": KEY_EXECUTIVES,
     "get_company_notes": COMPANY_NOTES,
     "get_employee_count": EMPLOYEE_COUNT,
-    "get_company_logo_url": COMPANY_LOGO,
     "get_executive_compensation": EXECUTIVE_COMPENSATION,
     "get_historical_share_float": HISTORICAL_SHARE_FLOAT,
     "get_product_revenue_segmentation": PRODUCT_REVENUE_SEGMENTATION,

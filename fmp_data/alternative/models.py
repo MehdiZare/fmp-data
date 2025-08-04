@@ -69,8 +69,8 @@ class PriceQuote(BaseModel):
         None, alias="previousClose", description="Previous close price"
     )
 
-    @field_validator("timestamp", mode="before")
     @classmethod
+    @field_validator("timestamp", mode="before")
     def parse_timestamp(cls, value: Any) -> datetime:
         """Parse Unix timestamp to datetime with UTC timezone"""
         if value is None:

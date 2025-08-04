@@ -8,7 +8,6 @@ from fmp_data.market.endpoints import (
     CIK_SEARCH,
     CUSIP_SEARCH,
     ETF_LIST,
-    EXCHANGE_SYMBOLS,
     GAINERS,
     ISIN_SEARCH,
     LOSERS,
@@ -34,7 +33,6 @@ MARKET_ENDPOINT_MAP = {
     "get_stock_list": STOCK_LIST,
     "get_etf_list": ETF_LIST,
     "get_available_indexes": AVAILABLE_INDEXES,
-    "get_exchange_symbols": EXCHANGE_SYMBOLS,
     "search_by_cik": CIK_SEARCH,
     "search_by_cusip": CUSIP_SEARCH,
     "search_by_isin": ISIN_SEARCH,
@@ -218,51 +216,6 @@ MARKET_ENDPOINTS_SEMANTICS = {
             "Sector research",
             "Competitor analysis",
             "Investment screening",
-            "Market research",
-        ],
-    ),
-    "exchange_symbols": EndpointSemantics(
-        client_name="market",
-        method_name="get_exchange_symbols",
-        natural_description=(
-            "Get all symbols listed on a specific exchange including stocks, ETFs, "
-            "and other traded instruments."
-        ),
-        example_queries=[
-            "List all symbols on NYSE",
-            "Show me NASDAQ listed companies",
-            "What securities trade on LSE?",
-            "Get all stocks listed on TSX",
-            "Show symbols available on ASX",
-        ],
-        related_terms=[
-            "exchange listings",
-            "listed securities",
-            "traded symbols",
-            "exchange symbols",
-            "market listings",
-        ],
-        category=SemanticCategory.MARKET_DATA,
-        sub_category="Lists",
-        parameter_hints={
-            "exchange": EXCHANGE_HINT,
-        },
-        response_hints={
-            "symbol": ResponseFieldInfo(
-                description="Trading symbol",
-                examples=["AAPL", "MSFT"],
-                related_terms=["ticker", "stock symbol"],
-            ),
-            "name": ResponseFieldInfo(
-                description="Company name",
-                examples=["Apple Inc", "Microsoft Corporation"],
-                related_terms=["company name", "listing name"],
-            ),
-        },
-        use_cases=[
-            "Exchange analysis",
-            "Market coverage",
-            "Trading universe definition",
             "Market research",
         ],
     ),

@@ -46,7 +46,7 @@ VALID_INTERVALS = ["1min", "5min", "15min", "30min", "1hour", "4hour"]
 
 CRYPTO_LIST: Endpoint = Endpoint(
     name="crypto_list",
-    path="symbol/available-cryptocurrencies",
+    path="cryptocurrency-list",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -121,7 +121,7 @@ CRYPTO_QUOTE: Endpoint = Endpoint(
 
 CRYPTO_HISTORICAL: Endpoint = Endpoint(
     name="crypto_historical",
-    path="historical-price-eod/full",
+    path="historical-price-eod",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -252,7 +252,7 @@ FOREX_QUOTES: Endpoint = Endpoint(
 
 FOREX_QUOTE: Endpoint = Endpoint(
     name="forex_quote",
-    path="quote/{symbol}",
+    path="quote",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -263,7 +263,7 @@ FOREX_QUOTE: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Forex pair symbol",
@@ -282,7 +282,7 @@ FOREX_QUOTE: Endpoint = Endpoint(
 
 FOREX_HISTORICAL: Endpoint = Endpoint(
     name="forex_historical",
-    path="historical-price-eod/full",
+    path="historical-price-eod",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -412,7 +412,7 @@ COMMODITIES_QUOTES: Endpoint = Endpoint(
 
 COMMODITY_QUOTE: Endpoint = Endpoint(
     name="commodity_quote",
-    path="quote/{symbol}",
+    path="quote",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -424,7 +424,7 @@ COMMODITY_QUOTE: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Commodity symbol (e.g., GC for Gold, CL for Crude Oil)",
@@ -444,7 +444,7 @@ COMMODITY_QUOTE: Endpoint = Endpoint(
 
 COMMODITY_HISTORICAL: Endpoint = Endpoint(
     name="commodity_historical",
-    path="historical-price-eod/full",
+    path="historical-price-eod",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,

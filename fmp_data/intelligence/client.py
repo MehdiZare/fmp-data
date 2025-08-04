@@ -373,11 +373,15 @@ class MarketIntelligenceClient(EndpointGroup):
         result = self.client.request(RATINGS_SNAPSHOT, symbol=symbol)
         return cast(RatingsSnapshot, result[0] if isinstance(result, list) else result)
 
-    def get_ratings_historical(self, symbol: str, limit: int = 100) -> list[HistoricalRating]:
+    def get_ratings_historical(
+        self, symbol: str, limit: int = 100
+    ) -> list[HistoricalRating]:
         """Get historical analyst ratings"""
         return self.client.request(RATINGS_HISTORICAL, symbol=symbol, limit=limit)
 
-    def get_price_target_news(self, symbol: str, page: int = 0) -> list[PriceTargetNews]:
+    def get_price_target_news(
+        self, symbol: str, page: int = 0
+    ) -> list[PriceTargetNews]:
         """Get price target news"""
         return self.client.request(PRICE_TARGET_NEWS, symbol=symbol, page=page)
 
@@ -389,14 +393,18 @@ class MarketIntelligenceClient(EndpointGroup):
         """Get stock grades from analysts"""
         return self.client.request(GRADES, symbol=symbol, page=page)
 
-    def get_grades_historical(self, symbol: str, limit: int = 100) -> list[HistoricalStockGrade]:
+    def get_grades_historical(
+        self, symbol: str, limit: int = 100
+    ) -> list[HistoricalStockGrade]:
         """Get historical stock grades"""
         return self.client.request(GRADES_HISTORICAL, symbol=symbol, limit=limit)
 
     def get_grades_consensus(self, symbol: str) -> StockGradesConsensus:
         """Get stock grades consensus summary"""
         result = self.client.request(GRADES_CONSENSUS, symbol=symbol)
-        return cast(StockGradesConsensus, result[0] if isinstance(result, list) else result)
+        return cast(
+            StockGradesConsensus, result[0] if isinstance(result, list) else result
+        )
 
     def get_grades_news(self, symbol: str, page: int = 0) -> list[StockGradeNews]:
         """Get stock grade news"""

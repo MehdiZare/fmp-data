@@ -834,9 +834,7 @@ class PriceTargetNews(BaseModel):
         alias="priceWhenPosted", description="Stock price when posted"
     )
     news_publisher: str = Field(alias="newsPublisher", description="News publisher")
-    news_base_url: str = Field(
-        alias="newsBaseURL", description="Publisher base URL"
-    )
+    news_base_url: str = Field(alias="newsBaseURL", description="Publisher base URL")
     analyst_company: str = Field(alias="analystCompany", description="Analyst company")
 
 
@@ -851,9 +849,7 @@ class StockGrade(BaseModel):
     )
     news_url: HttpUrl = Field(alias="newsURL", description="News article URL")
     news_title: str = Field(alias="newsTitle", description="News article title")
-    news_base_url: str = Field(
-        alias="newsBaseURL", description="Publisher base URL"
-    )
+    news_base_url: str = Field(alias="newsBaseURL", description="Publisher base URL")
     news_publisher: str = Field(alias="newsPublisher", description="News publisher")
     new_grade: str = Field(alias="newGrade", description="New grade assigned")
     previous_grade: str | None = Field(
@@ -879,9 +875,7 @@ class HistoricalStockGrade(BaseModel):
     )
     news_url: HttpUrl = Field(alias="newsURL", description="News article URL")
     news_title: str = Field(alias="newsTitle", description="News article title")
-    news_base_url: str = Field(
-        alias="newsBaseURL", description="Publisher base URL"
-    )
+    news_base_url: str = Field(alias="newsBaseURL", description="Publisher base URL")
     news_publisher: str = Field(alias="newsPublisher", description="News publisher")
     new_grade: str = Field(alias="newGrade", description="New grade assigned")
     previous_grade: str | None = Field(
@@ -903,11 +897,15 @@ class StockGradesConsensus(BaseModel):
 
     symbol: str = Field(description="Company symbol")
     consensus: str = Field(description="Overall consensus rating")
-    strong_buy: int = Field(alias="strongBuy", description="Number of strong buy ratings")
+    strong_buy: int = Field(
+        alias="strongBuy", description="Number of strong buy ratings"
+    )
     buy: int = Field(description="Number of buy ratings")
     hold: int = Field(description="Number of hold ratings")
     sell: int = Field(description="Number of sell ratings")
-    strong_sell: int = Field(alias="strongSell", description="Number of strong sell ratings")
+    strong_sell: int = Field(
+        alias="strongSell", description="Number of strong sell ratings"
+    )
 
 
 class StockGradeNews(BaseModel):
@@ -921,9 +919,7 @@ class StockGradeNews(BaseModel):
     )
     news_url: HttpUrl = Field(alias="newsURL", description="News article URL")
     news_title: str = Field(alias="newsTitle", description="News article title")
-    news_base_url: str = Field(
-        alias="newsBaseURL", description="Publisher base URL"
-    )
+    news_base_url: str = Field(alias="newsBaseURL", description="Publisher base URL")
     news_publisher: str = Field(alias="newsPublisher", description="News publisher")
     new_grade: str = Field(alias="newGrade", description="New grade assigned")
     previous_grade: str | None = Field(
