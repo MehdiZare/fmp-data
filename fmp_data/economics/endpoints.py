@@ -22,7 +22,7 @@ from fmp_data.models import (
 
 TREASURY_RATES: Endpoint = Endpoint(
     name="treasury_rates",
-    path="treasury",
+    path="treasury-rates",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -64,7 +64,7 @@ TREASURY_RATES: Endpoint = Endpoint(
 
 ECONOMIC_INDICATORS: Endpoint = Endpoint(
     name="economic_indicators",
-    path="economic",
+    path="economic-indicators",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -98,7 +98,7 @@ ECONOMIC_INDICATORS: Endpoint = Endpoint(
 
 ECONOMIC_CALENDAR: Endpoint = Endpoint(
     name="economic_calendar",
-    path="economic_calendar",
+    path="economic-calendar",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -140,7 +140,7 @@ ECONOMIC_CALENDAR: Endpoint = Endpoint(
 
 MARKET_RISK_PREMIUM: Endpoint = Endpoint(
     name="market_risk_premium",
-    path="market_risk_premium",
+    path="market-risk-premium",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
