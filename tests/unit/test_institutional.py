@@ -394,6 +394,7 @@ class TestInstitutionalClientEnhanced:
         assert len(ownership) == 1
         assert isinstance(ownership[0], InstitutionalOwnershipLatest)
         assert ownership[0].symbol == "AAPL"
+        assert ownership[0].filing_date.strftime("%Y-%m-%d") == "2023-09-30"
 
     @patch("httpx.Client.request")
     def test_get_institutional_ownership_extract(

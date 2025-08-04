@@ -425,7 +425,7 @@ class InstitutionalOwnershipLatest(BaseModel):
     model_config = default_model_config
 
     cik: str = Field(description="Institution CIK")
-    date: date = Field(description="Filing date")
+    filing_date: date = Field(description="Filing date", alias="date")
     symbol: str = Field(description="Stock symbol")
     company_name: str = Field(alias="companyName", description="Company name")
     shares: int = Field(description="Number of shares")
@@ -443,7 +443,7 @@ class InstitutionalOwnershipExtract(BaseModel):
     model_config = default_model_config
 
     cik: str = Field(description="Institution CIK")
-    date: date = Field(description="Filing date")
+    filing_date: date = Field(description="Filing date", alias="date")
     name_of_issuer: str = Field(alias="nameOfIssuer", description="Issuer name")
     title_of_class: str = Field(alias="titleOfClass", description="Class title")
     cusip: str = Field(description="CUSIP number")
@@ -480,7 +480,7 @@ class InstitutionalOwnershipDates(BaseModel):
     model_config = default_model_config
 
     cik: str = Field(description="Institution CIK")
-    date: date = Field(description="Filing date")
+    filing_date: date = Field(description="Filing date", alias="date")
 
 
 class InstitutionalOwnershipAnalytics(BaseModel):
@@ -489,7 +489,7 @@ class InstitutionalOwnershipAnalytics(BaseModel):
     model_config = default_model_config
 
     cik: str = Field(description="Institution CIK")
-    date: date = Field(description="Filing date")
+    filing_date: date = Field(description="Filing date", alias="date")
     symbol: str = Field(description="Stock symbol")
     company_name: str = Field(alias="companyName", description="Company name")
     shares: int = Field(description="Number of shares")
