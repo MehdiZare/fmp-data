@@ -34,6 +34,20 @@ from fmp_data.company.schema import (
     ProductRevenueArgs,
     SymbolChangesArgs,
 )
+from fmp_data.fundamental.models import (
+    AsReportedBalanceSheet,
+    AsReportedCashFlowStatement,
+    AsReportedIncomeStatement,
+    BalanceSheet,
+    CashFlowStatement,
+    EnterpriseValue,
+    FinancialGrowth,
+    FinancialRatiosTTM,
+    FinancialScore,
+    FinancialStatementFull,
+    IncomeStatement,
+    KeyMetricsTTM,
+)
 from fmp_data.intelligence.models import DividendEvent, EarningEvent, StockSplitEvent
 from fmp_data.models import (
     APIVersion,
@@ -1230,4 +1244,564 @@ COMPANY_SPLITS: Endpoint = Endpoint(
         "Get NVIDIA's split history",
         "Show historical splits for Google",
     ],
+)
+
+# Financial Statement Endpoints
+LATEST_FINANCIAL_STATEMENTS: Endpoint = Endpoint(
+    name="latest_financial_statements",
+    path="latest-financial-statements",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get the latest comprehensive financial statements including income statement, "
+        "balance sheet, and cash flow statement in a single response."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[],
+    response_model=FinancialStatementFull,
+)
+
+INCOME_STATEMENT_TTM: Endpoint = Endpoint(
+    name="income_statement_ttm",
+    path="income-statement-ttm",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get trailing twelve months (TTM) income statement data. "
+        "Provides the most recent 12-month financial performance metrics."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[],
+    response_model=IncomeStatement,
+)
+
+BALANCE_SHEET_TTM: Endpoint = Endpoint(
+    name="balance_sheet_ttm",
+    path="balance-sheet-statement-ttm",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get trailing twelve months (TTM) balance sheet data. "
+        "Shows the company's current financial position."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[],
+    response_model=BalanceSheet,
+)
+
+CASH_FLOW_TTM: Endpoint = Endpoint(
+    name="cash_flow_ttm",
+    path="cash-flow-statement-ttm",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get trailing twelve months (TTM) cash flow statement data. "
+        "Shows how cash moves through the company over the past 12 months."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[],
+    response_model=CashFlowStatement,
+)
+
+KEY_METRICS_TTM: Endpoint = Endpoint(
+    name="key_metrics_ttm",
+    path="key-metrics-ttm",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get trailing twelve months (TTM) key financial metrics. "
+        "Includes important ratios and performance indicators."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[],
+    response_model=KeyMetricsTTM,
+)
+
+FINANCIAL_RATIOS_TTM: Endpoint = Endpoint(
+    name="financial_ratios_ttm",
+    path="ratios-ttm",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get trailing twelve months (TTM) financial ratios. "
+        "Includes profitability, liquidity, leverage, and efficiency ratios."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[],
+    response_model=FinancialRatiosTTM,
+)
+
+FINANCIAL_SCORES: Endpoint = Endpoint(
+    name="financial_scores",
+    path="financial-scores",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get comprehensive financial health scores including Altman Z-Score, "
+        "Piotroski Score, and other financial strength indicators."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[],
+    response_model=FinancialScore,
+)
+
+ENTERPRISE_VALUES: Endpoint = Endpoint(
+    name="enterprise_values",
+    path="enterprise-values",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get historical enterprise value data including market cap, debt, "
+        "cash positions, and calculated enterprise value."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="period",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Period type (annual or quarter)",
+            default="annual",
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of periods to return",
+            default=20,
+        ),
+    ],
+    response_model=EnterpriseValue,
+)
+
+INCOME_STATEMENT_GROWTH: Endpoint = Endpoint(
+    name="income_statement_growth",
+    path="income-statement-growth",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get year-over-year growth rates for income statement line items. "
+        "Shows how revenue, expenses, and profits are growing."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="period",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Period type (annual or quarter)",
+            default="annual",
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of periods to return",
+            default=20,
+        ),
+    ],
+    response_model=FinancialGrowth,
+)
+
+BALANCE_SHEET_GROWTH: Endpoint = Endpoint(
+    name="balance_sheet_growth",
+    path="balance-sheet-statement-growth",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get year-over-year growth rates for balance sheet line items. "
+        "Shows how assets, liabilities, and equity are changing."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="period",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Period type (annual or quarter)",
+            default="annual",
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of periods to return",
+            default=20,
+        ),
+    ],
+    response_model=FinancialGrowth,
+)
+
+CASH_FLOW_GROWTH: Endpoint = Endpoint(
+    name="cash_flow_growth",
+    path="cash-flow-statement-growth",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get year-over-year growth rates for cash flow statement line items. "
+        "Shows trends in operating, investing, and financing cash flows."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="period",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Period type (annual or quarter)",
+            default="annual",
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of periods to return",
+            default=20,
+        ),
+    ],
+    response_model=FinancialGrowth,
+)
+
+FINANCIAL_GROWTH: Endpoint = Endpoint(
+    name="financial_growth",
+    path="financial-growth",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get comprehensive financial growth metrics across all statements. "
+        "Combines income, balance sheet, and cash flow growth rates."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="period",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Period type (annual or quarter)",
+            default="annual",
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of periods to return",
+            default=20,
+        ),
+    ],
+    response_model=FinancialGrowth,
+)
+
+FINANCIAL_REPORTS_JSON: Endpoint = Endpoint(
+    name="financial_reports_json",
+    path="financial-reports-json",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get Form 10-K financial reports in JSON format. "
+        "Provides structured access to annual report data."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="year",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Report year",
+        ),
+        EndpointParam(
+            name="period",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Report period (FY or Q1-Q4)",
+            default="FY",
+        ),
+    ],
+    response_model=dict,  # This would need a proper model
+)
+
+FINANCIAL_REPORTS_XLSX: Endpoint = Endpoint(
+    name="financial_reports_xlsx",
+    path="financial-reports-xlsx",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get Form 10-K financial reports in Excel format. "
+        "Returns a downloadable XLSX file with financial data."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="year",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Report year",
+        ),
+        EndpointParam(
+            name="period",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Report period (FY or Q1-Q4)",
+            default="FY",
+        ),
+    ],
+    response_model=bytes,  # Binary data
+)
+
+INCOME_STATEMENT_AS_REPORTED: Endpoint = Endpoint(
+    name="income_statement_as_reported",
+    path="income-statement-as-reported",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get income statement as originally reported without adjustments. "
+        "Shows exact figures from company filings."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="period",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Period type (annual or quarter)",
+            default="annual",
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of periods to return",
+            default=10,
+        ),
+    ],
+    response_model=AsReportedIncomeStatement,
+)
+
+BALANCE_SHEET_AS_REPORTED: Endpoint = Endpoint(
+    name="balance_sheet_as_reported",
+    path="balance-sheet-statement-as-reported",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get balance sheet as originally reported without adjustments. "
+        "Shows exact figures from company filings."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="period",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Period type (annual or quarter)",
+            default="annual",
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of periods to return",
+            default=10,
+        ),
+    ],
+    response_model=AsReportedBalanceSheet,
+)
+
+CASH_FLOW_AS_REPORTED: Endpoint = Endpoint(
+    name="cash_flow_as_reported",
+    path="cash-flow-statement-as-reported",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get cash flow statement as originally reported without adjustments. "
+        "Shows exact figures from company filings."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="period",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Period type (annual or quarter)",
+            default="annual",
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of periods to return",
+            default=10,
+        ),
+    ],
+    response_model=AsReportedCashFlowStatement,
 )

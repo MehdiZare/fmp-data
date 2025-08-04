@@ -7,6 +7,12 @@ from fmp_data.base import EndpointGroup
 from fmp_data.company.endpoints import (
     ANALYST_ESTIMATES,
     ANALYST_RECOMMENDATIONS,
+    BALANCE_SHEET_AS_REPORTED,
+    BALANCE_SHEET_GROWTH,
+    BALANCE_SHEET_TTM,
+    CASH_FLOW_AS_REPORTED,
+    CASH_FLOW_GROWTH,
+    CASH_FLOW_TTM,
     COMPANY_DIVIDENDS,
     COMPANY_EARNINGS,
     COMPANY_NOTES,
@@ -14,8 +20,14 @@ from fmp_data.company.endpoints import (
     COMPANY_SPLITS,
     CORE_INFORMATION,
     EMPLOYEE_COUNT,
+    ENTERPRISE_VALUES,
     EXECUTIVE_COMPENSATION,
     EXECUTIVE_COMPENSATION_BENCHMARK,
+    FINANCIAL_GROWTH,
+    FINANCIAL_RATIOS_TTM,
+    FINANCIAL_REPORTS_JSON,
+    FINANCIAL_REPORTS_XLSX,
+    FINANCIAL_SCORES,
     GEOGRAPHIC_REVENUE_SEGMENTATION,
     HISTORICAL_MARKET_CAP,
     HISTORICAL_PRICE,
@@ -23,8 +35,13 @@ from fmp_data.company.endpoints import (
     HISTORICAL_PRICE_LIGHT,
     HISTORICAL_PRICE_NON_SPLIT_ADJUSTED,
     HISTORICAL_SHARE_FLOAT,
+    INCOME_STATEMENT_AS_REPORTED,
+    INCOME_STATEMENT_GROWTH,
+    INCOME_STATEMENT_TTM,
     INTRADAY_PRICE,
     KEY_EXECUTIVES,
+    KEY_METRICS_TTM,
+    LATEST_FINANCIAL_STATEMENTS,
     MARKET_CAP,
     MERGERS_ACQUISITIONS_LATEST,
     MERGERS_ACQUISITIONS_SEARCH,
@@ -68,6 +85,20 @@ from fmp_data.company.models import (
     UpgradeDowngradeConsensus,
 )
 from fmp_data.exceptions import FMPError
+from fmp_data.fundamental.models import (
+    AsReportedBalanceSheet,
+    AsReportedCashFlowStatement,
+    AsReportedIncomeStatement,
+    BalanceSheet,
+    CashFlowStatement,
+    EnterpriseValue,
+    FinancialGrowth,
+    FinancialRatiosTTM,
+    FinancialScore,
+    FinancialStatementFull,
+    IncomeStatement,
+    KeyMetricsTTM,
+)
 from fmp_data.intelligence.models import DividendEvent, EarningEvent, StockSplitEvent
 from fmp_data.models import MarketCapitalization
 
@@ -441,3 +472,258 @@ class CompanyClient(EndpointGroup):
         if to_date:
             params["to_date"] = to_date
         return self.client.request(COMPANY_SPLITS, **params)
+
+    # Financial Statement Methods
+    def get_latest_financial_statements(self, symbol: str) -> FinancialStatementFull:
+        """Get the latest comprehensive financial statements
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+
+        Returns:
+            FinancialStatementFull object with income, balance sheet, and cash flow
+        """
+        result = self.client.request(LATEST_FINANCIAL_STATEMENTS, symbol=symbol)
+        return cast(
+            FinancialStatementFull, result[0] if isinstance(result, list) else result
+        )
+
+    def get_income_statement_ttm(self, symbol: str) -> list[IncomeStatement]:
+        """Get trailing twelve months (TTM) income statement
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+
+        Returns:
+            List of TTM income statement data
+        """
+        return self.client.request(INCOME_STATEMENT_TTM, symbol=symbol)
+
+    def get_balance_sheet_ttm(self, symbol: str) -> list[BalanceSheet]:
+        """Get trailing twelve months (TTM) balance sheet
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+
+        Returns:
+            List of TTM balance sheet data
+        """
+        return self.client.request(BALANCE_SHEET_TTM, symbol=symbol)
+
+    def get_cash_flow_ttm(self, symbol: str) -> list[CashFlowStatement]:
+        """Get trailing twelve months (TTM) cash flow statement
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+
+        Returns:
+            List of TTM cash flow data
+        """
+        return self.client.request(CASH_FLOW_TTM, symbol=symbol)
+
+    def get_key_metrics_ttm(self, symbol: str) -> list[KeyMetricsTTM]:
+        """Get trailing twelve months (TTM) key financial metrics
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+
+        Returns:
+            List of TTM key metrics
+        """
+        return self.client.request(KEY_METRICS_TTM, symbol=symbol)
+
+    def get_financial_ratios_ttm(self, symbol: str) -> list[FinancialRatiosTTM]:
+        """Get trailing twelve months (TTM) financial ratios
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+
+        Returns:
+            List of TTM financial ratios
+        """
+        return self.client.request(FINANCIAL_RATIOS_TTM, symbol=symbol)
+
+    def get_financial_scores(self, symbol: str) -> list[FinancialScore]:
+        """Get comprehensive financial health scores
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+
+        Returns:
+            List of financial scores including Altman Z-Score and Piotroski Score
+        """
+        return self.client.request(FINANCIAL_SCORES, symbol=symbol)
+
+    def get_enterprise_values(
+        self, symbol: str, period: str = "annual", limit: int = 20
+    ) -> list[EnterpriseValue]:
+        """Get historical enterprise value data
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            period: 'annual' or 'quarter' (default: 'annual')
+            limit: Number of periods to return (default: 20)
+
+        Returns:
+            List of enterprise value data
+        """
+        return self.client.request(
+            ENTERPRISE_VALUES, symbol=symbol, period=period, limit=limit
+        )
+
+    def get_income_statement_growth(
+        self, symbol: str, period: str = "annual", limit: int = 20
+    ) -> list[FinancialGrowth]:
+        """Get year-over-year growth rates for income statement items
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            period: 'annual' or 'quarter' (default: 'annual')
+            limit: Number of periods to return (default: 20)
+
+        Returns:
+            List of income statement growth data
+        """
+        return self.client.request(
+            INCOME_STATEMENT_GROWTH, symbol=symbol, period=period, limit=limit
+        )
+
+    def get_balance_sheet_growth(
+        self, symbol: str, period: str = "annual", limit: int = 20
+    ) -> list[FinancialGrowth]:
+        """Get year-over-year growth rates for balance sheet items
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            period: 'annual' or 'quarter' (default: 'annual')
+            limit: Number of periods to return (default: 20)
+
+        Returns:
+            List of balance sheet growth data
+        """
+        return self.client.request(
+            BALANCE_SHEET_GROWTH, symbol=symbol, period=period, limit=limit
+        )
+
+    def get_cash_flow_growth(
+        self, symbol: str, period: str = "annual", limit: int = 20
+    ) -> list[FinancialGrowth]:
+        """Get year-over-year growth rates for cash flow items
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            period: 'annual' or 'quarter' (default: 'annual')
+            limit: Number of periods to return (default: 20)
+
+        Returns:
+            List of cash flow growth data
+        """
+        return self.client.request(
+            CASH_FLOW_GROWTH, symbol=symbol, period=period, limit=limit
+        )
+
+    def get_financial_growth(
+        self, symbol: str, period: str = "annual", limit: int = 20
+    ) -> list[FinancialGrowth]:
+        """Get comprehensive financial growth metrics
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            period: 'annual' or 'quarter' (default: 'annual')
+            limit: Number of periods to return (default: 20)
+
+        Returns:
+            List of comprehensive financial growth data
+        """
+        return self.client.request(
+            FINANCIAL_GROWTH, symbol=symbol, period=period, limit=limit
+        )
+
+    def get_financial_reports_json(
+        self, symbol: str, year: int | None = None, period: str = "FY"
+    ) -> dict:
+        """Get Form 10-K financial reports in JSON format
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            year: Report year (optional)
+            period: Report period - 'FY' or 'Q1'-'Q4' (default: 'FY')
+
+        Returns:
+            Dictionary containing financial report data
+        """
+        params: dict[str, str | int] = {"symbol": symbol, "period": period}
+        if year:
+            params["year"] = year
+        result = self.client.request(FINANCIAL_REPORTS_JSON, **params)
+        return cast(dict, result)
+
+    def get_financial_reports_xlsx(
+        self, symbol: str, year: int | None = None, period: str = "FY"
+    ) -> bytes:
+        """Get Form 10-K financial reports in Excel format
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            year: Report year (optional)
+            period: Report period - 'FY' or 'Q1'-'Q4' (default: 'FY')
+
+        Returns:
+            Binary data for XLSX file
+        """
+        params: dict[str, str | int] = {"symbol": symbol, "period": period}
+        if year:
+            params["year"] = year
+        result = self.client.request(FINANCIAL_REPORTS_XLSX, **params)
+        return cast(bytes, result)
+
+    def get_income_statement_as_reported(
+        self, symbol: str, period: str = "annual", limit: int = 10
+    ) -> list[AsReportedIncomeStatement]:
+        """Get income statement as originally reported
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            period: 'annual' or 'quarter' (default: 'annual')
+            limit: Number of periods to return (default: 10)
+
+        Returns:
+            List of as-reported income statements
+        """
+        return self.client.request(
+            INCOME_STATEMENT_AS_REPORTED, symbol=symbol, period=period, limit=limit
+        )
+
+    def get_balance_sheet_as_reported(
+        self, symbol: str, period: str = "annual", limit: int = 10
+    ) -> list[AsReportedBalanceSheet]:
+        """Get balance sheet as originally reported
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            period: 'annual' or 'quarter' (default: 'annual')
+            limit: Number of periods to return (default: 10)
+
+        Returns:
+            List of as-reported balance sheets
+        """
+        return self.client.request(
+            BALANCE_SHEET_AS_REPORTED, symbol=symbol, period=period, limit=limit
+        )
+
+    def get_cash_flow_as_reported(
+        self, symbol: str, period: str = "annual", limit: int = 10
+    ) -> list[AsReportedCashFlowStatement]:
+        """Get cash flow statement as originally reported
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            period: 'annual' or 'quarter' (default: 'annual')
+            limit: Number of periods to return (default: 10)
+
+        Returns:
+            List of as-reported cash flow statements
+        """
+        return self.client.request(
+            CASH_FLOW_AS_REPORTED, symbol=symbol, period=period, limit=limit
+        )
