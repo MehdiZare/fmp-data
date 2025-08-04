@@ -83,13 +83,13 @@ ETF_INFO: Endpoint = Endpoint(
 
 ETF_SECTOR_WEIGHTINGS: Endpoint = Endpoint(
     name="etf_sector_weightings",
-    path="etf-sector-weightings/{symbol}",
+    path="etf-sector-weightings",
     version=APIVersion.STABLE,
     description="Get ETF sector weightings",
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="ETF Symbol",
@@ -101,13 +101,13 @@ ETF_SECTOR_WEIGHTINGS: Endpoint = Endpoint(
 
 ETF_COUNTRY_WEIGHTINGS: Endpoint = Endpoint(
     name="etf_country_weightings",
-    path="etf-country-weightings/{symbol}",
+    path="etf-country-weightings",
     version=APIVersion.STABLE,
     description="Get ETF country weightings",
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="ETF Symbol",
@@ -119,13 +119,13 @@ ETF_COUNTRY_WEIGHTINGS: Endpoint = Endpoint(
 
 ETF_EXPOSURE: Endpoint = Endpoint(
     name="etf_exposure",
-    path="etf-stock-exposure/{symbol}",
+    path="etf-stock-exposure",
     version=APIVersion.STABLE,
     description="Get ETF stock exposure",
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="ETF Symbol",
@@ -137,13 +137,13 @@ ETF_EXPOSURE: Endpoint = Endpoint(
 
 ETF_HOLDER: Endpoint = Endpoint(
     name="etf_holder",
-    path="etf-holder/{symbol}",
+    path="etf-holder",
     version=APIVersion.STABLE,
     description="Get ETF holder information",
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
@@ -224,13 +224,13 @@ MUTUAL_FUND_BY_NAME: Endpoint = Endpoint(
 
 MUTUAL_FUND_HOLDER: Endpoint = Endpoint(
     name="mutual_fund_holder",
-    path="mutual-fund-holder/{symbol}",
+    path="mutual-fund-holder",
     version=APIVersion.STABLE,
     description="Get mutual fund holder information",
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
