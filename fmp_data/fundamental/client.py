@@ -4,8 +4,11 @@ from datetime import datetime
 from fmp_data.base import EndpointGroup
 from fmp_data.fundamental import endpoints
 from fmp_data.fundamental.models import (
+    DCF,
     BalanceSheet,
     CashFlowStatement,
+    CustomDCF,
+    CustomLeveredDCF,
     FinancialRatios,
     FinancialStatementFull,
     HistoricalRating,
@@ -85,3 +88,15 @@ class FundamentalClient(EndpointGroup):
     def get_historical_rating(self, symbol: str) -> list[HistoricalRating]:
         """Get historical company ratings"""
         return self.client.request(endpoints.HISTORICAL_RATING, symbol=symbol)
+
+    def get_discounted_cash_flow(self, symbol: str) -> list[DCF]:
+        """Get discounted cash flow valuation"""
+        return self.client.request(endpoints.DISCOUNTED_CASH_FLOW, symbol=symbol)
+
+    def get_custom_discounted_cash_flow(self, symbol: str) -> list[CustomDCF]:
+        """Get advanced DCF analysis with detailed projections"""
+        return self.client.request(endpoints.CUSTOM_DISCOUNTED_CASH_FLOW, symbol=symbol)
+
+    def get_custom_levered_dcf(self, symbol: str) -> list[CustomLeveredDCF]:
+        """Get levered DCF analysis using FCFE"""
+        return self.client.request(endpoints.CUSTOM_LEVERED_DCF, symbol=symbol)

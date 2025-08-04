@@ -9,16 +9,14 @@ from fmp_data.company.models import (
     AnalystEstimate,
     CompanyExecutive,
     CompanyProfile,
-    DividendEvent,
-    EarningEvent,
     ExecutiveCompensationBenchmark,
     HistoricalData,
     HistoricalPrice,
     MergerAcquisition,
     PriceTarget,
     PriceTargetSummary,
-    StockSplitEvent,
 )
+from fmp_data.intelligence.models import DividendEvent, EarningEvent, StockSplitEvent
 from fmp_data.models import CompanySymbol
 
 

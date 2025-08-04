@@ -501,15 +501,97 @@ class DCF(BaseModel):
 
     symbol: str = Field(description="Company symbol")
     date: datetime = Field(description="Valuation date")
-    dcf: float = Field(description="DCF value")
-    stock_price: float = Field(alias="stockPrice", description="Current stock price")
-    # Add more fields as needed
+    dcf: float = Field(description="DCF value per share")
+    stock_price: float = Field(alias="Stock Price", description="Current stock price")
 
 
-class AdvancedDCF(DCF):
-    """Advanced discounted cash flow valuation"""
+class CustomDCF(BaseModel):
+    """Custom discounted cash flow valuation with detailed components"""
 
-    # Add additional fields specific to advanced DCF
+    model_config = default_model_config
+
+    symbol: str = Field(description="Company symbol")
+    date: datetime = Field(description="Valuation date")
+    fcf0: float = Field(description="Current year free cash flow")
+    fcf1: float = Field(description="Year 1 projected free cash flow")
+    fcf2: float = Field(description="Year 2 projected free cash flow")
+    fcf3: float = Field(description="Year 3 projected free cash flow")
+    fcf4: float = Field(description="Year 4 projected free cash flow")
+    fcf5: float = Field(description="Year 5 projected free cash flow")
+    fcf6: float = Field(description="Year 6 projected free cash flow")
+    fcf7: float = Field(description="Year 7 projected free cash flow")
+    fcf8: float = Field(description="Year 8 projected free cash flow")
+    fcf9: float = Field(description="Year 9 projected free cash flow")
+    fcf10: float = Field(description="Year 10 projected free cash flow")
+    terminal_value: float = Field(alias="terminalValue", description="Terminal value")
+    growth_rate: float = Field(alias="growthRate", description="Growth rate used")
+    terminal_growth_rate: float = Field(
+        alias="terminalGrowthRate", description="Terminal growth rate"
+    )
+    wacc: float = Field(description="Weighted average cost of capital")
+    present_value_of_fcf: float = Field(
+        alias="presentValueOfFCF", description="Present value of free cash flows"
+    )
+    present_value_of_terminal_value: float = Field(
+        alias="presentValueOfTerminalValue",
+        description="Present value of terminal value",
+    )
+    enterprise_value: float = Field(
+        alias="enterpriseValue", description="Enterprise value"
+    )
+    net_debt: float = Field(alias="netDebt", description="Net debt")
+    equity_value: float = Field(alias="equityValue", description="Equity value")
+    shares_outstanding: float = Field(
+        alias="sharesOutstanding", description="Shares outstanding"
+    )
+    dcf: float = Field(description="DCF value per share")
+    stock_price: float = Field(alias="Stock Price", description="Current stock price")
+    implied_share_price: float = Field(
+        alias="impliedSharePrice", description="Implied share price from DCF"
+    )
+
+
+class CustomLeveredDCF(BaseModel):
+    """Custom levered discounted cash flow valuation with detailed components"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Company symbol")
+    date: datetime = Field(description="Valuation date")
+    fcfe0: float = Field(description="Current year free cash flow to equity")
+    fcfe1: float = Field(description="Year 1 projected free cash flow to equity")
+    fcfe2: float = Field(description="Year 2 projected free cash flow to equity")
+    fcfe3: float = Field(description="Year 3 projected free cash flow to equity")
+    fcfe4: float = Field(description="Year 4 projected free cash flow to equity")
+    fcfe5: float = Field(description="Year 5 projected free cash flow to equity")
+    fcfe6: float = Field(description="Year 6 projected free cash flow to equity")
+    fcfe7: float = Field(description="Year 7 projected free cash flow to equity")
+    fcfe8: float = Field(description="Year 8 projected free cash flow to equity")
+    fcfe9: float = Field(description="Year 9 projected free cash flow to equity")
+    fcfe10: float = Field(description="Year 10 projected free cash flow to equity")
+    terminal_value: float = Field(alias="terminalValue", description="Terminal value")
+    growth_rate: float = Field(alias="growthRate", description="Growth rate used")
+    terminal_growth_rate: float = Field(
+        alias="terminalGrowthRate", description="Terminal growth rate"
+    )
+    cost_of_equity: float = Field(alias="costOfEquity", description="Cost of equity")
+    present_value_of_fcfe: float = Field(
+        alias="presentValueOfFCFE",
+        description="Present value of free cash flows to equity",
+    )
+    present_value_of_terminal_value: float = Field(
+        alias="presentValueOfTerminalValue",
+        description="Present value of terminal value",
+    )
+    equity_value: float = Field(alias="equityValue", description="Equity value")
+    shares_outstanding: float = Field(
+        alias="sharesOutstanding", description="Shares outstanding"
+    )
+    dcf: float = Field(description="DCF value per share")
+    stock_price: float = Field(alias="Stock Price", description="Current stock price")
+    implied_share_price: float = Field(
+        alias="impliedSharePrice", description="Implied share price from DCF"
+    )
 
 
 class CompanyRating(BaseModel):

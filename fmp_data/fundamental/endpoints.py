@@ -1,7 +1,10 @@
 # fmp_data/fundamental/endpoints.py
 from fmp_data.fundamental.models import (
+    DCF,
     BalanceSheet,
     CashFlowStatement,
+    CustomDCF,
+    CustomLeveredDCF,
     FinancialRatios,
     FinancialReportDate,
     FinancialStatementFull,
@@ -399,5 +402,92 @@ HISTORICAL_RATING: Endpoint = Endpoint(
         "What are Tesla's past ratings?",
         "Get Google's historical scores",
         "Show Amazon's rating changes",
+    ],
+)
+
+DISCOUNTED_CASH_FLOW: Endpoint = Endpoint(
+    name="discounted_cash_flow",
+    path="discounted-cash-flow",
+    version=APIVersion.STABLE,
+    description=(
+        "Calculate discounted cash flow valuation to determine the intrinsic "
+        "value of a company based on projected future cash flows"
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[],
+    response_model=DCF,
+    arg_model=SimpleSymbolArgs,
+    example_queries=[
+        "Calculate AAPL DCF valuation",
+        "Get Microsoft's intrinsic value",
+        "What's Tesla worth using DCF?",
+        "Show Google's DCF analysis",
+        "Get Amazon's fair value estimate",
+    ],
+)
+
+CUSTOM_DISCOUNTED_CASH_FLOW: Endpoint = Endpoint(
+    name="custom_discounted_cash_flow",
+    path="custom-discounted-cash-flow",
+    version=APIVersion.STABLE,
+    description=(
+        "Perform advanced DCF analysis with detailed cash flow projections, "
+        "growth rates, WACC calculations, and terminal value assumptions"
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[],
+    response_model=CustomDCF,
+    arg_model=SimpleSymbolArgs,
+    example_queries=[
+        "Get detailed DCF for AAPL",
+        "Show Microsoft's cash flow projections",
+        "Calculate Tesla's terminal value",
+        "What's Google's WACC and DCF?",
+        "Get Amazon's 10-year cash flow forecast",
+    ],
+)
+
+CUSTOM_LEVERED_DCF: Endpoint = Endpoint(
+    name="custom_levered_dcf",
+    path="custom-levered-discounted-cash-flow",
+    version=APIVersion.STABLE,
+    description=(
+        "Calculate levered DCF valuation using free cash flow to equity (FCFE) "
+        "with detailed projections and cost of equity calculations"
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[],
+    response_model=CustomLeveredDCF,
+    arg_model=SimpleSymbolArgs,
+    example_queries=[
+        "Calculate levered DCF for AAPL",
+        "Get Microsoft's FCFE projections",
+        "What's Tesla's cost of equity?",
+        "Show Google's levered valuation",
+        "Get Amazon's equity value analysis",
     ],
 )
