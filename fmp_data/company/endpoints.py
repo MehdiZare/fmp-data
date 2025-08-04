@@ -34,6 +34,7 @@ from fmp_data.company.schema import (
     ProductRevenueArgs,
     SymbolChangesArgs,
 )
+from fmp_data.intelligence.models import DividendEvent, EarningEvent, StockSplitEvent
 from fmp_data.models import (
     APIVersion,
     Endpoint,
@@ -1097,4 +1098,136 @@ EXECUTIVE_COMPENSATION_BENCHMARK: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=ExecutiveCompensationBenchmark,
+)
+
+COMPANY_DIVIDENDS: Endpoint = Endpoint(
+    name="company_dividends",
+    path="dividends",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get historical dividend payments for a specific company. "
+        "Includes ex-dividend dates, payment dates, and dividend amounts."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="from_date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Start date for dividend history (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="to_date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="End date for dividend history (YYYY-MM-DD)",
+        ),
+    ],
+    response_model=DividendEvent,
+    arg_model=BaseSymbolArg,
+    example_queries=[
+        "Get Apple's dividend history",
+        "Show Microsoft's dividend payments",
+        "What dividends has Coca-Cola paid?",
+        "Get Johnson & Johnson dividend history",
+        "Show dividend payments for Procter & Gamble",
+    ],
+)
+
+COMPANY_EARNINGS: Endpoint = Endpoint(
+    name="company_earnings",
+    path="earnings",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get historical earnings reports for a specific company. "
+        "Includes actual EPS, estimated EPS, revenue, and earnings dates."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of earnings reports to return",
+            default=20,
+        ),
+    ],
+    response_model=EarningEvent,
+    arg_model=BaseSymbolArg,
+    example_queries=[
+        "Get Apple's earnings history",
+        "Show Tesla's earnings reports",
+        "What were Amazon's past earnings?",
+        "Get Microsoft's earnings results",
+        "Show earnings history for Google",
+    ],
+)
+
+COMPANY_SPLITS: Endpoint = Endpoint(
+    name="company_splits",
+    path="splits",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get historical stock split information for a specific company. "
+        "Includes split dates, ratios (numerator/denominator), and split details."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="from_date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Start date for split history (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="to_date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="End date for split history (YYYY-MM-DD)",
+        ),
+    ],
+    response_model=StockSplitEvent,
+    arg_model=BaseSymbolArg,
+    example_queries=[
+        "Get Apple's stock split history",
+        "Show Tesla's stock splits",
+        "What stock splits has Amazon done?",
+        "Get NVIDIA's split history",
+        "Show historical splits for Google",
+    ],
 )

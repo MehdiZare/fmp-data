@@ -1,4 +1,5 @@
 # fmp_data/market/client.py
+from datetime import date
 from typing import cast
 
 from fmp_data.base import EndpointGroup
@@ -13,6 +14,8 @@ from fmp_data.market.endpoints import (
     CUSIP_SEARCH,
     ETF_LIST,
     GAINERS,
+    IPO_DISCLOSURE,
+    IPO_PROSPECTUS,
     ISIN_SEARCH,
     LOSERS,
     MARKET_HOURS,
@@ -28,6 +31,8 @@ from fmp_data.market.models import (
     CompanySearchResult,
     CUSIPResult,
     ExchangeSymbol,
+    IPODisclosure,
+    IPOProspectus,
     ISINResult,
     MarketHours,
     MarketMover,
@@ -135,3 +140,49 @@ class MarketClient(EndpointGroup):
     def get_available_countries(self) -> list[str]:
         """Get a comprehensive list of countries where stock symbols are available"""
         return self.client.request(AVAILABLE_COUNTRIES)
+
+    def get_ipo_disclosure(
+        self,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        limit: int = 100,
+    ) -> list[IPODisclosure]:
+        """Get IPO disclosure documents
+
+        Args:
+            from_date: Start date for IPO search (YYYY-MM-DD)
+            to_date: End date for IPO search (YYYY-MM-DD)
+            limit: Number of results to return (default: 100)
+
+        Returns:
+            List of IPO disclosure information
+        """
+        params: dict[str, str | int] = {"limit": limit}
+        if from_date:
+            params["from"] = from_date.strftime("%Y-%m-%d")
+        if to_date:
+            params["to"] = to_date.strftime("%Y-%m-%d")
+        return self.client.request(IPO_DISCLOSURE, **params)
+
+    def get_ipo_prospectus(
+        self,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        limit: int = 100,
+    ) -> list[IPOProspectus]:
+        """Get IPO prospectus documents
+
+        Args:
+            from_date: Start date for IPO search (YYYY-MM-DD)
+            to_date: End date for IPO search (YYYY-MM-DD)
+            limit: Number of results to return (default: 100)
+
+        Returns:
+            List of IPO prospectus information
+        """
+        params: dict[str, str | int] = {"limit": limit}
+        if from_date:
+            params["from"] = from_date.strftime("%Y-%m-%d")
+        if to_date:
+            params["to"] = to_date.strftime("%Y-%m-%d")
+        return self.client.request(IPO_PROSPECTUS, **params)

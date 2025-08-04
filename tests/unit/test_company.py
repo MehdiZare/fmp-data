@@ -9,12 +9,15 @@ from fmp_data.company.models import (
     AnalystEstimate,
     CompanyExecutive,
     CompanyProfile,
+    DividendEvent,
+    EarningEvent,
     ExecutiveCompensationBenchmark,
     HistoricalData,
     HistoricalPrice,
     MergerAcquisition,
     PriceTarget,
     PriceTargetSummary,
+    StockSplitEvent,
 )
 from fmp_data.models import CompanySymbol
 
@@ -615,3 +618,191 @@ class TestHistoricalPriceVariants:
         assert result.symbol == "AAPL"
         assert len(result.historical) == 1
         assert result.historical[0].close == 150.25
+
+
+class TestCompanyCalendarEndpoints:
+    """Test company calendar endpoints (dividends, earnings, splits)"""
+
+    @pytest.fixture
+    def dividend_data(self):
+        """Mock dividend event data"""
+        return {
+            "symbol": "AAPL",
+            "date": "2024-02-15",
+            "label": "February 15, 24",
+            "adjDividend": 0.24,
+            "dividend": 0.24,
+            "recordDate": "2024-02-12",
+            "paymentDate": "2024-02-15",
+            "declarationDate": "2024-02-01",
+        }
+
+    @pytest.fixture
+    def earnings_data(self):
+        """Mock earnings event data"""
+        return {
+            "date": "2024-01-25",
+            "symbol": "AAPL",
+            "eps": 2.18,
+            "epsEstimated": 2.10,
+            "time": "amc",
+            "revenue": 119575000000,
+            "revenueEstimated": 117970000000,
+            "fiscalDateEnding": "2023-12-30",
+            "updatedFromDate": "2024-01-24",
+        }
+
+    @pytest.fixture
+    def split_data(self):
+        """Mock stock split event data"""
+        return {
+            "symbol": "AAPL",
+            "date": "2020-08-31",
+            "label": "August 31, 20",
+            "numerator": 4.0,
+            "denominator": 1.0,
+        }
+
+    def test_get_dividends(self, fmp_client, mock_client, dividend_data):
+        """Test fetching dividend history"""
+        mock_client.request.return_value = [DividendEvent(**dividend_data)]
+
+        result = fmp_client.get_dividends(
+            symbol="AAPL", from_date="2024-01-01", to_date="2024-12-31"
+        )
+
+        assert len(result) == 1
+        assert isinstance(result[0], DividendEvent)
+        assert result[0].symbol == "AAPL"
+        assert result[0].dividend == 0.24
+        assert result[0].adj_dividend == 0.24
+        assert result[0].ex_dividend_date.strftime("%Y-%m-%d") == "2024-02-15"
+        assert result[0].payment_date.strftime("%Y-%m-%d") == "2024-02-15"
+
+        # Verify request parameters
+        mock_client.request.assert_called_once()
+        call_args = mock_client.request.call_args
+        assert call_args[1]["symbol"] == "AAPL"
+        assert call_args[1]["from_date"] == "2024-01-01"
+        assert call_args[1]["to_date"] == "2024-12-31"
+
+    def test_get_dividends_without_dates(self, fmp_client, mock_client, dividend_data):
+        """Test fetching dividend history without date filters"""
+        mock_client.request.return_value = [DividendEvent(**dividend_data)]
+
+        result = fmp_client.get_dividends(symbol="AAPL")
+
+        assert len(result) == 1
+        assert isinstance(result[0], DividendEvent)
+
+        # Verify no date parameters were passed
+        call_args = mock_client.request.call_args
+        assert call_args[1]["symbol"] == "AAPL"
+        assert "from_date" not in call_args[1]
+        assert "to_date" not in call_args[1]
+
+    def test_get_earnings(self, fmp_client, mock_client, earnings_data):
+        """Test fetching earnings history"""
+        mock_client.request.return_value = [EarningEvent(**earnings_data)]
+
+        result = fmp_client.get_earnings(symbol="AAPL", limit=10)
+
+        assert len(result) == 1
+        assert isinstance(result[0], EarningEvent)
+        assert result[0].symbol == "AAPL"
+        assert result[0].eps == 2.18
+        assert result[0].eps_estimated == 2.10
+        assert result[0].revenue == 119575000000
+        assert result[0].revenue_estimated == 117970000000
+        assert result[0].time == "amc"
+
+        # Verify request parameters
+        mock_client.request.assert_called_once()
+        call_args = mock_client.request.call_args
+        assert call_args[1]["symbol"] == "AAPL"
+        assert call_args[1]["limit"] == 10
+
+    def test_get_earnings_default_limit(self, fmp_client, mock_client, earnings_data):
+        """Test fetching earnings with default limit"""
+        mock_client.request.return_value = [EarningEvent(**earnings_data)]
+
+        result = fmp_client.get_earnings(symbol="AAPL")
+
+        assert len(result) == 1
+
+        # Verify default limit is used
+        call_args = mock_client.request.call_args
+        assert call_args[1]["limit"] == 20
+
+    def test_get_stock_splits(self, fmp_client, mock_client, split_data):
+        """Test fetching stock split history"""
+        mock_client.request.return_value = [StockSplitEvent(**split_data)]
+
+        result = fmp_client.get_stock_splits(
+            symbol="AAPL", from_date="2020-01-01", to_date="2021-12-31"
+        )
+
+        assert len(result) == 1
+        assert isinstance(result[0], StockSplitEvent)
+        assert result[0].symbol == "AAPL"
+        assert result[0].numerator == 4.0
+        assert result[0].denominator == 1.0
+        assert result[0].split_event_date.strftime("%Y-%m-%d") == "2020-08-31"
+        assert result[0].label == "August 31, 20"
+
+        # Verify request parameters
+        mock_client.request.assert_called_once()
+        call_args = mock_client.request.call_args
+        assert call_args[1]["symbol"] == "AAPL"
+        assert call_args[1]["from_date"] == "2020-01-01"
+        assert call_args[1]["to_date"] == "2021-12-31"
+
+    def test_get_stock_splits_without_dates(self, fmp_client, mock_client, split_data):
+        """Test fetching stock splits without date filters"""
+        mock_client.request.return_value = [StockSplitEvent(**split_data)]
+
+        result = fmp_client.get_stock_splits(symbol="AAPL")
+
+        assert len(result) == 1
+        assert isinstance(result[0], StockSplitEvent)
+
+        # Verify no date parameters were passed
+        call_args = mock_client.request.call_args
+        assert call_args[1]["symbol"] == "AAPL"
+        assert "from_date" not in call_args[1]
+        assert "to_date" not in call_args[1]
+
+    def test_multiple_dividends(self, fmp_client, mock_client):
+        """Test handling multiple dividend events"""
+        dividend_data_list = [
+            {
+                "symbol": "AAPL",
+                "date": "2024-05-15",
+                "label": "May 15, 24",
+                "adjDividend": 0.25,
+                "dividend": 0.25,
+                "recordDate": "2024-05-12",
+                "paymentDate": "2024-05-15",
+                "declarationDate": "2024-05-01",
+            },
+            {
+                "symbol": "AAPL",
+                "date": "2024-02-15",
+                "label": "February 15, 24",
+                "adjDividend": 0.24,
+                "dividend": 0.24,
+                "recordDate": "2024-02-12",
+                "paymentDate": "2024-02-15",
+                "declarationDate": "2024-02-01",
+            },
+        ]
+        mock_client.request.return_value = [
+            DividendEvent(**data) for data in dividend_data_list
+        ]
+
+        result = fmp_client.get_dividends(symbol="AAPL")
+
+        assert len(result) == 2
+        assert all(isinstance(div, DividendEvent) for div in result)
+        assert result[0].dividend == 0.25
+        assert result[1].dividend == 0.24

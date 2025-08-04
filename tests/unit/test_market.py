@@ -1,3 +1,4 @@
+from datetime import date, datetime
 from unittest.mock import patch
 
 import pytest
@@ -5,6 +6,8 @@ import pytest
 from fmp_data.market.models import (
     CompanySearchResult,
     ExchangeSymbol,
+    IPODisclosure,
+    IPOProspectus,
     MarketHours,
 )
 
@@ -309,3 +312,111 @@ class TestDirectoryEndpoints:
         assert all(isinstance(country, str) for country in countries)
         assert "US" in countries
         assert "JP" in countries
+
+
+class TestIPOEndpoints:
+    """Tests for IPO disclosure and prospectus endpoints"""
+
+    @pytest.fixture
+    def mock_ipo_disclosure_data(self):
+        """Mock IPO disclosure data"""
+        return {
+            "symbol": "RDDT",
+            "companyName": "Reddit Inc",
+            "ipoDate": "2024-03-21T00:00:00",
+            "exchange": "NYSE",
+            "priceRange": "$31.00 - $34.00",
+            "sharesOffered": 22000000,
+            "disclosureUrl": "https://www.sec.gov/Archives/edgar/data/123456/...",
+            "filingDate": "2024-02-22T00:00:00",
+            "status": "Priced",
+            "underwriters": "Morgan Stanley, Goldman Sachs",
+        }
+
+    @pytest.fixture
+    def mock_ipo_prospectus_data(self):
+        """Mock IPO prospectus data"""
+        return {
+            "symbol": "RDDT",
+            "companyName": "Reddit Inc",
+            "ipoDate": "2024-03-21T00:00:00",
+            "exchange": "NYSE",
+            "prospectusUrl": "https://www.sec.gov/Archives/edgar/data/123456/...",
+            "filingDate": "2024-02-22T00:00:00",
+            "status": "Effective",
+            "sharesOffered": 22000000,
+            "offerPrice": 34.00,
+            "grossProceeds": 748000000.0,
+        }
+
+    def test_ipo_disclosure_model_validation(self, mock_ipo_disclosure_data):
+        """Test IPODisclosure model validation"""
+        disclosure = IPODisclosure.model_validate(mock_ipo_disclosure_data)
+        assert disclosure.symbol == "RDDT"
+        assert disclosure.company_name == "Reddit Inc"
+        assert isinstance(disclosure.ipo_date, datetime)
+        assert disclosure.exchange == "NYSE"
+        assert disclosure.price_range == "$31.00 - $34.00"
+        assert disclosure.shares_offered == 22000000
+        assert disclosure.disclosure_url is not None
+        assert disclosure.status == "Priced"
+        assert disclosure.underwriters == "Morgan Stanley, Goldman Sachs"
+
+    def test_ipo_prospectus_model_validation(self, mock_ipo_prospectus_data):
+        """Test IPOProspectus model validation"""
+        prospectus = IPOProspectus.model_validate(mock_ipo_prospectus_data)
+        assert prospectus.symbol == "RDDT"
+        assert prospectus.company_name == "Reddit Inc"
+        assert isinstance(prospectus.ipo_date, datetime)
+        assert prospectus.exchange == "NYSE"
+        assert prospectus.prospectus_url is not None
+        assert prospectus.shares_offered == 22000000
+        assert prospectus.offer_price == 34.00
+        assert prospectus.gross_proceeds == 748000000.0
+
+    @patch("httpx.Client.request")
+    def test_get_ipo_disclosure(
+        self, mock_request, fmp_client, mock_response, mock_ipo_disclosure_data
+    ):
+        """Test getting IPO disclosure documents"""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[mock_ipo_disclosure_data]
+        )
+
+        disclosures = fmp_client.market.get_ipo_disclosure(
+            from_date=date(2024, 1, 1), to_date=date(2024, 12, 31), limit=10
+        )
+        assert len(disclosures) == 1
+        assert isinstance(disclosures[0], IPODisclosure)
+        assert disclosures[0].symbol == "RDDT"
+        assert disclosures[0].company_name == "Reddit Inc"
+
+        # Verify request parameters
+        mock_request.assert_called_once()
+        call_args = mock_request.call_args
+        assert call_args[1]["from"] == "2024-01-01"
+        assert call_args[1]["to"] == "2024-12-31"
+        assert call_args[1]["limit"] == 10
+
+    @patch("httpx.Client.request")
+    def test_get_ipo_prospectus(
+        self, mock_request, fmp_client, mock_response, mock_ipo_prospectus_data
+    ):
+        """Test getting IPO prospectus documents"""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[mock_ipo_prospectus_data]
+        )
+
+        prospectuses = fmp_client.market.get_ipo_prospectus(limit=5)
+        assert len(prospectuses) == 1
+        assert isinstance(prospectuses[0], IPOProspectus)
+        assert prospectuses[0].symbol == "RDDT"
+        assert prospectuses[0].offer_price == 34.00
+        assert prospectuses[0].gross_proceeds == 748000000.0
+
+        # Verify request was made with only limit parameter
+        mock_request.assert_called_once()
+        call_args = mock_request.call_args
+        assert call_args[1]["limit"] == 5
+        assert "from" not in call_args[1]
+        assert "to" not in call_args[1]

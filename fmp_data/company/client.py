@@ -7,8 +7,11 @@ from fmp_data.base import EndpointGroup
 from fmp_data.company.endpoints import (
     ANALYST_ESTIMATES,
     ANALYST_RECOMMENDATIONS,
+    COMPANY_DIVIDENDS,
+    COMPANY_EARNINGS,
     COMPANY_NOTES,
     COMPANY_PEERS,
+    COMPANY_SPLITS,
     CORE_INFORMATION,
     EMPLOYEE_COUNT,
     EXECUTIVE_COMPENSATION,
@@ -65,6 +68,7 @@ from fmp_data.company.models import (
     UpgradeDowngradeConsensus,
 )
 from fmp_data.exceptions import FMPError
+from fmp_data.intelligence.models import DividendEvent, EarningEvent, StockSplitEvent
 from fmp_data.models import MarketCapitalization
 
 
@@ -385,3 +389,55 @@ class CompanyClient(EndpointGroup):
             return HistoricalData(symbol=symbol, historical=result)
         else:
             return HistoricalData(symbol=symbol, historical=[result])
+
+    def get_dividends(
+        self, symbol: str, from_date: str | None = None, to_date: str | None = None
+    ) -> list[DividendEvent]:
+        """Get historical dividend payments for a specific company
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            from_date: Start date in YYYY-MM-DD format (optional)
+            to_date: End date in YYYY-MM-DD format (optional)
+
+        Returns:
+            List of DividendEvent objects containing dividend history
+        """
+        params = {"symbol": symbol}
+        if from_date:
+            params["from_date"] = from_date
+        if to_date:
+            params["to_date"] = to_date
+        return self.client.request(COMPANY_DIVIDENDS, **params)
+
+    def get_earnings(self, symbol: str, limit: int = 20) -> list[EarningEvent]:
+        """Get historical earnings reports for a specific company
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            limit: Number of earnings reports to return (default: 20)
+
+        Returns:
+            List of EarningEvent objects containing earnings history
+        """
+        return self.client.request(COMPANY_EARNINGS, symbol=symbol, limit=limit)
+
+    def get_stock_splits(
+        self, symbol: str, from_date: str | None = None, to_date: str | None = None
+    ) -> list[StockSplitEvent]:
+        """Get historical stock split information for a specific company
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            from_date: Start date in YYYY-MM-DD format (optional)
+            to_date: End date in YYYY-MM-DD format (optional)
+
+        Returns:
+            List of StockSplitEvent objects containing split history
+        """
+        params = {"symbol": symbol}
+        if from_date:
+            params["from_date"] = from_date
+        if to_date:
+            params["to_date"] = to_date
+        return self.client.request(COMPANY_SPLITS, **params)

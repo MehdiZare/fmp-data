@@ -5,6 +5,8 @@ from fmp_data.market.models import (
     CompanySearchResult,
     CUSIPResult,
     ExchangeSymbol,
+    IPODisclosure,
+    IPOProspectus,
     ISINResult,
     MarketHours,
     MarketMover,
@@ -607,4 +609,92 @@ AVAILABLE_COUNTRIES: Endpoint = Endpoint(
     mandatory_params=[],
     optional_params=[],
     response_model=str,  # Returns list of strings
+)
+
+IPO_DISCLOSURE: Endpoint = Endpoint(
+    name="ipo_disclosure",
+    path="ipos-disclosure",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get IPO disclosure documents and filing information for companies "
+        "going public. Includes disclosure URLs, filing dates, and IPO details."
+    ),
+    mandatory_params=[],
+    optional_params=[
+        EndpointParam(
+            name="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Start date for IPO search (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="End date for IPO search (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results to return",
+            default=100,
+        ),
+    ],
+    response_model=IPODisclosure,
+    example_queries=[
+        "Get recent IPO disclosure documents",
+        "Show IPO filings from last month",
+        "Find disclosure documents for upcoming IPOs",
+        "Get IPO disclosure URLs",
+    ],
+)
+
+IPO_PROSPECTUS: Endpoint = Endpoint(
+    name="ipo_prospectus",
+    path="ipos-prospectus",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get IPO prospectus documents and detailed offering information for companies "
+        "going public. Includes prospectus URLs, offer prices, and proceeds data."
+    ),
+    mandatory_params=[],
+    optional_params=[
+        EndpointParam(
+            name="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Start date for IPO search (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="End date for IPO search (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results to return",
+            default=100,
+        ),
+    ],
+    response_model=IPOProspectus,
+    example_queries=[
+        "Get IPO prospectus documents",
+        "Show prospectus for recent IPOs",
+        "Find offering details for upcoming IPOs",
+        "Get IPO pricing and proceeds information",
+    ],
 )

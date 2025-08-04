@@ -233,3 +233,55 @@ class CompanySearchResult(BaseModel):
     currency: str | None = Field(None, description="Trading currency")
     stock_exchange: str | None = Field(None, description="Stock exchange")
     exchange_short_name: str | None = Field(None, description="Exchange short name")
+
+
+class IPODisclosure(BaseModel):
+    """IPO disclosure information"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Stock symbol")
+    company_name: str = Field(alias="companyName", description="Company name")
+    ipo_date: datetime = Field(alias="ipoDate", description="IPO date")
+    exchange: str = Field(description="Stock exchange")
+    price_range: str | None = Field(
+        None, alias="priceRange", description="IPO price range"
+    )
+    shares_offered: int | None = Field(
+        None, alias="sharesOffered", description="Number of shares offered"
+    )
+    disclosure_url: str | None = Field(
+        None, alias="disclosureUrl", description="Disclosure document URL"
+    )
+    filing_date: datetime | None = Field(
+        None, alias="filingDate", description="Filing date"
+    )
+    status: str | None = Field(None, description="IPO status")
+    underwriters: str | None = Field(None, description="Lead underwriters")
+
+
+class IPOProspectus(BaseModel):
+    """IPO prospectus information"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Stock symbol")
+    company_name: str = Field(alias="companyName", description="Company name")
+    ipo_date: datetime = Field(alias="ipoDate", description="IPO date")
+    exchange: str = Field(description="Stock exchange")
+    prospectus_url: str = Field(
+        alias="prospectusUrl", description="Prospectus document URL"
+    )
+    filing_date: datetime | None = Field(
+        None, alias="filingDate", description="Filing date"
+    )
+    status: str | None = Field(None, description="IPO status")
+    shares_offered: int | None = Field(
+        None, alias="sharesOffered", description="Number of shares offered"
+    )
+    offer_price: float | None = Field(
+        None, alias="offerPrice", description="IPO offer price"
+    )
+    gross_proceeds: float | None = Field(
+        None, alias="grossProceeds", description="Gross proceeds from IPO"
+    )
