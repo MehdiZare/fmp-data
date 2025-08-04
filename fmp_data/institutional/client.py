@@ -8,7 +8,6 @@ from fmp_data.institutional.endpoints import (
     BENEFICIAL_OWNERSHIP,
     CIK_MAPPER,
     CIK_MAPPER_BY_NAME,
-    CIK_MAPPER_BY_SYMBOL,
     FAIL_TO_DELIVER,
     FORM_13F,
     FORM_13F_DATES,
@@ -22,7 +21,6 @@ from fmp_data.institutional.endpoints import (
 from fmp_data.institutional.models import (
     AssetAllocation,
     BeneficialOwnership,
-    CIKCompanyMap,
     CIKMapping,
     FailToDeliver,
     Form13F,
@@ -127,10 +125,6 @@ class InstitutionalClient(EndpointGroup):
     def search_cik_by_name(self, name: str, page: int = 0) -> list[CIKMapping]:
         """Search CIK mappings by name"""
         return self.client.request(CIK_MAPPER_BY_NAME, name=name, page=page)
-
-    def get_cik_by_symbol(self, symbol: str) -> list[CIKCompanyMap]:
-        """Get CIK mapping for symbol"""
-        return self.client.request(CIK_MAPPER_BY_SYMBOL, symbol=symbol)
 
     def get_beneficial_ownership(self, symbol: str) -> list[BeneficialOwnership]:
         """Get beneficial ownership data for a symbol"""

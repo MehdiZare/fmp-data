@@ -1,7 +1,6 @@
 from fmp_data.institutional.models import (
     AssetAllocation,
     BeneficialOwnership,
-    CIKCompanyMap,
     CIKMapping,
     FailToDeliver,
     Form13F,
@@ -255,24 +254,6 @@ CIK_MAPPER_BY_NAME: Endpoint = Endpoint(
         )
     ],
     response_model=CIKMapping,
-)
-
-CIK_MAPPER_BY_SYMBOL: Endpoint = Endpoint(
-    name="cik_mapper_by_symbol",
-    path="mapper-cik-company/{symbol}",
-    version=APIVersion.STABLE,
-    description="Get CIK mapping for symbol",
-    mandatory_params=[
-        EndpointParam(
-            name="symbol",
-            location=ParamLocation.PATH,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Stock symbol",
-        )
-    ],
-    optional_params=[],
-    response_model=CIKCompanyMap,
 )
 
 BENEFICIAL_OWNERSHIP: Endpoint = Endpoint(
