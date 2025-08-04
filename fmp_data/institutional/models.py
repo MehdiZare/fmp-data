@@ -299,3 +299,271 @@ class FailToDeliver(BaseModel):
     quantity: int = Field(description="Number of shares failed to deliver")
     cusip: str = Field(description="CUSIP identifier")
     name: str = Field(description="Company name")
+
+
+class InsiderTradingLatest(BaseModel):
+    """Latest insider trading information"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Stock symbol")
+    filing_date: datetime = Field(alias="filingDate", description="SEC filing date")
+    transaction_date: date = Field(alias="transactionDate", description="Trade date")
+    reporting_cik: str = Field(alias="reportingCik", description="Reporting CIK")
+    transaction_type: str = Field(
+        alias="transactionType", description="Transaction type"
+    )
+    securities_owned: float | None = Field(
+        None, alias="securitiesOwned", description="Securities owned"
+    )
+    company_cik: str = Field(alias="companyCik", description="Company CIK")
+    reporting_name: str = Field(
+        alias="reportingName", description="Reporting person name"
+    )
+    type_of_owner: str = Field(alias="typeOfOwner", description="Type of owner")
+    acquisition_or_disposition: str = Field(
+        alias="acquistionOrDisposition", description="A/D indicator"
+    )
+    form_type: str = Field(alias="formType", description="SEC form type")
+    securities_transacted: float | None = Field(
+        None, alias="securitiesTransacted", description="Securities transacted"
+    )
+    price: float = Field(description="Transaction price")
+    security_name: str = Field(alias="securityName", description="Security name")
+    link: str = Field(description="SEC filing link")
+
+
+class InsiderTradingSearch(BaseModel):
+    """Search results for insider trading"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Stock symbol")
+    filing_date: datetime = Field(alias="filingDate", description="SEC filing date")
+    transaction_date: date = Field(alias="transactionDate", description="Trade date")
+    reporting_cik: str = Field(alias="reportingCik", description="Reporting CIK")
+    transaction_type: str = Field(
+        alias="transactionType", description="Transaction type"
+    )
+    securities_owned: float | None = Field(
+        None, alias="securitiesOwned", description="Securities owned"
+    )
+    company_cik: str = Field(alias="companyCik", description="Company CIK")
+    reporting_name: str = Field(
+        alias="reportingName", description="Reporting person name"
+    )
+    type_of_owner: str = Field(alias="typeOfOwner", description="Type of owner")
+    acquisition_or_disposition: str = Field(
+        alias="acquistionOrDisposition", description="A/D indicator"
+    )
+    form_type: str = Field(alias="formType", description="SEC form type")
+    securities_transacted: float | None = Field(
+        None, alias="securitiesTransacted", description="Securities transacted"
+    )
+    price: float = Field(description="Transaction price")
+    security_name: str = Field(alias="securityName", description="Security name")
+    link: str = Field(description="SEC filing link")
+
+
+class InsiderTradingByName(BaseModel):
+    """Insider trading by reporting name"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Stock symbol")
+    filing_date: datetime = Field(alias="filingDate", description="SEC filing date")
+    transaction_date: date = Field(alias="transactionDate", description="Trade date")
+    reporting_cik: str = Field(alias="reportingCik", description="Reporting CIK")
+    transaction_type: str = Field(
+        alias="transactionType", description="Transaction type"
+    )
+    securities_owned: float | None = Field(
+        None, alias="securitiesOwned", description="Securities owned"
+    )
+    company_cik: str = Field(alias="companyCik", description="Company CIK")
+    reporting_name: str = Field(
+        alias="reportingName", description="Reporting person name"
+    )
+    type_of_owner: str = Field(alias="typeOfOwner", description="Type of owner")
+    acquisition_or_disposition: str = Field(
+        alias="acquistionOrDisposition", description="A/D indicator"
+    )
+    form_type: str = Field(alias="formType", description="SEC form type")
+    securities_transacted: float | None = Field(
+        None, alias="securitiesTransacted", description="Securities transacted"
+    )
+    price: float = Field(description="Transaction price")
+    security_name: str = Field(alias="securityName", description="Security name")
+    link: str = Field(description="SEC filing link")
+
+
+class InsiderTradingStatistics(BaseModel):
+    """Enhanced insider trading statistics"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Stock symbol")
+    cik: str = Field(description="CIK number")
+    year: int = Field(description="Year")
+    quarter: int = Field(description="Quarter")
+    purchases: int = Field(description="Number of purchases")
+    sales: int = Field(description="Number of sales")
+    buy_sell_ratio: float = Field(alias="buySellRatio", description="Buy/sell ratio")
+    total_bought: int = Field(alias="totalBought", description="Total shares bought")
+    total_sold: int = Field(alias="totalSold", description="Total shares sold")
+    average_bought: float = Field(
+        alias="averageBought", description="Average shares bought"
+    )
+    average_sold: float = Field(alias="averageSold", description="Average shares sold")
+    p_purchases: int = Field(alias="pPurchases", description="P purchases")
+    s_sales: int = Field(alias="sSales", description="S sales")
+
+
+class InstitutionalOwnershipLatest(BaseModel):
+    """Latest institutional ownership filings"""
+
+    model_config = default_model_config
+
+    cik: str = Field(description="Institution CIK")
+    date: date = Field(description="Filing date")
+    symbol: str = Field(description="Stock symbol")
+    company_name: str = Field(alias="companyName", description="Company name")
+    shares: int = Field(description="Number of shares")
+    value: float = Field(description="Market value")
+    weight: float = Field(description="Portfolio weight")
+    change: int = Field(description="Change in shares")
+    change_percent: float = Field(
+        alias="changePercent", description="Percentage change"
+    )
+
+
+class InstitutionalOwnershipExtract(BaseModel):
+    """Filings extract information"""
+
+    model_config = default_model_config
+
+    cik: str = Field(description="Institution CIK")
+    date: date = Field(description="Filing date")
+    name_of_issuer: str = Field(alias="nameOfIssuer", description="Issuer name")
+    title_of_class: str = Field(alias="titleOfClass", description="Class title")
+    cusip: str = Field(description="CUSIP number")
+    value: float = Field(description="Market value")
+    shares_prn_amt: int = Field(
+        alias="sharesPrnAmt", description="Shares/principal amount"
+    )
+    shares_prn_type: str = Field(
+        alias="sharesPrnType", description="Shares/principal type"
+    )
+    put_call: str | None = Field(
+        None, alias="putCall", description="Put/call indicator"
+    )
+    investment_discretion: str = Field(
+        alias="investmentDiscretion", description="Investment discretion"
+    )
+    other_manager: str | None = Field(
+        None, alias="otherManager", description="Other manager"
+    )
+    voting_authority_sole: int | None = Field(
+        None, alias="votingAuthoritySole", description="Sole voting authority"
+    )
+    voting_authority_shared: int | None = Field(
+        None, alias="votingAuthorityShared", description="Shared voting authority"
+    )
+    voting_authority_none: int | None = Field(
+        None, alias="votingAuthorityNone", description="No voting authority"
+    )
+
+
+class InstitutionalOwnershipDates(BaseModel):
+    """Form 13F filing dates"""
+
+    model_config = default_model_config
+
+    cik: str = Field(description="Institution CIK")
+    date: date = Field(description="Filing date")
+
+
+class InstitutionalOwnershipAnalytics(BaseModel):
+    """Filings extract with analytics by holder"""
+
+    model_config = default_model_config
+
+    cik: str = Field(description="Institution CIK")
+    date: date = Field(description="Filing date")
+    symbol: str = Field(description="Stock symbol")
+    company_name: str = Field(alias="companyName", description="Company name")
+    shares: int = Field(description="Number of shares")
+    value: float = Field(description="Market value")
+    weight: float = Field(description="Portfolio weight")
+    change: int = Field(description="Change in shares")
+    change_percent: float = Field(
+        alias="changePercent", description="Percentage change"
+    )
+    market_value: float = Field(alias="marketValue", description="Total market value")
+    avg_price_paid: float = Field(
+        alias="avgPricePaid", description="Average price paid"
+    )
+    is_new: bool = Field(alias="isNew", description="Is new position")
+    is_sold_out: bool = Field(alias="isSoldOut", description="Is sold out")
+
+
+class HolderPerformanceSummary(BaseModel):
+    """Holder performance summary"""
+
+    model_config = default_model_config
+
+    cik: str = Field(description="Institution CIK")
+    name: str = Field(description="Institution name")
+    total_value: float = Field(alias="totalValue", description="Total portfolio value")
+    entries: int = Field(description="Number of entries")
+    change: float = Field(description="Total change")
+    change_percent: float = Field(
+        alias="changePercent", description="Percentage change"
+    )
+
+
+class HolderIndustryBreakdown(BaseModel):
+    """Holders industry breakdown"""
+
+    model_config = default_model_config
+
+    cik: str = Field(description="Institution CIK")
+    industry: str = Field(description="Industry sector")
+    value: float = Field(description="Total value in industry")
+    weight: float = Field(description="Industry weight in portfolio")
+    entries: int = Field(description="Number of positions")
+
+
+class SymbolPositionsSummary(BaseModel):
+    """Positions summary by symbol"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Stock symbol")
+    total_positions: int = Field(
+        alias="totalPositions", description="Total institutional positions"
+    )
+    total_shares: int = Field(alias="totalShares", description="Total shares held")
+    total_value: float = Field(alias="totalValue", description="Total market value")
+    avg_weight: float = Field(alias="avgWeight", description="Average portfolio weight")
+    change: int = Field(description="Change in total shares")
+    change_percent: float = Field(
+        alias="changePercent", description="Percentage change"
+    )
+
+
+class IndustryPerformanceSummary(BaseModel):
+    """Industry performance summary"""
+
+    model_config = default_model_config
+
+    industry: str = Field(description="Industry sector")
+    total_value: float = Field(alias="totalValue", description="Total industry value")
+    total_positions: int = Field(
+        alias="totalPositions", description="Total positions in industry"
+    )
+    avg_weight: float = Field(alias="avgWeight", description="Average industry weight")
+    change: float = Field(description="Total change")
+    change_percent: float = Field(
+        alias="changePercent", description="Percentage change"
+    )

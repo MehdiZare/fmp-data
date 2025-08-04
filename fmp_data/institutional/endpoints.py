@@ -5,12 +5,24 @@ from fmp_data.institutional.models import (
     FailToDeliver,
     Form13F,
     Form13FDate,
+    HolderIndustryBreakdown,
+    HolderPerformanceSummary,
+    IndustryPerformanceSummary,
     InsiderRoster,
     InsiderStatistic,
     InsiderTrade,
+    InsiderTradingByName,
+    InsiderTradingLatest,
+    InsiderTradingSearch,
+    InsiderTradingStatistics,
     InsiderTransactionType,
     InstitutionalHolder,
     InstitutionalHolding,
+    InstitutionalOwnershipAnalytics,
+    InstitutionalOwnershipDates,
+    InstitutionalOwnershipExtract,
+    InstitutionalOwnershipLatest,
+    SymbolPositionsSummary,
 )
 from fmp_data.models import (
     APIVersion,
@@ -299,4 +311,326 @@ FAIL_TO_DELIVER: Endpoint = Endpoint(
         )
     ],
     response_model=FailToDeliver,
+)
+
+# Insider Trading Endpoints
+INSIDER_TRADING_LATEST: Endpoint = Endpoint(
+    name="insider_trading_latest",
+    path="insider-trading/latest",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get latest insider trading activity",
+    mandatory_params=[],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Page number",
+            default=0,
+        )
+    ],
+    response_model=InsiderTradingLatest,
+)
+
+INSIDER_TRADING_SEARCH: Endpoint = Endpoint(
+    name="insider_trading_search",
+    path="insider-trading/search",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Search insider trades with filters",
+    mandatory_params=[],
+    optional_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Stock symbol filter",
+        ),
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Page number",
+            default=0,
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results per page",
+            default=100,
+        ),
+    ],
+    response_model=InsiderTradingSearch,
+)
+
+INSIDER_TRADING_BY_NAME: Endpoint = Endpoint(
+    name="insider_trading_by_name",
+    path="insider-trading/reporting-name",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Search insider trades by reporting name",
+    mandatory_params=[
+        EndpointParam(
+            name="reportingName",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Name of the reporting person",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Page number",
+            default=0,
+        )
+    ],
+    response_model=InsiderTradingByName,
+)
+
+INSIDER_TRADING_STATISTICS_ENHANCED: Endpoint = Endpoint(
+    name="insider_trading_statistics_enhanced",
+    path="insider-trading/statistics",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get enhanced insider trading statistics",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=InsiderTradingStatistics,
+)
+
+# Form 13F Endpoints
+INSTITUTIONAL_OWNERSHIP_LATEST: Endpoint = Endpoint(
+    name="institutional_ownership_latest",
+    path="institutional-ownership/latest",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get latest institutional ownership filings",
+    mandatory_params=[],
+    optional_params=[
+        EndpointParam(
+            name="cik",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Institution CIK filter",
+        ),
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Page number",
+            default=0,
+        ),
+    ],
+    response_model=InstitutionalOwnershipLatest,
+)
+
+INSTITUTIONAL_OWNERSHIP_EXTRACT: Endpoint = Endpoint(
+    name="institutional_ownership_extract",
+    path="institutional-ownership/extract",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get filings extract data",
+    mandatory_params=[
+        EndpointParam(
+            name="cik",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Institution CIK",
+        ),
+        EndpointParam(
+            name="date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=True,
+            description="Filing date",
+        ),
+    ],
+    optional_params=[],
+    response_model=InstitutionalOwnershipExtract,
+)
+
+INSTITUTIONAL_OWNERSHIP_DATES: Endpoint = Endpoint(
+    name="institutional_ownership_dates",
+    path="institutional-ownership/dates",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get Form 13F filing dates",
+    mandatory_params=[
+        EndpointParam(
+            name="cik",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Institution CIK",
+        )
+    ],
+    optional_params=[],
+    response_model=InstitutionalOwnershipDates,
+)
+
+INSTITUTIONAL_OWNERSHIP_ANALYTICS: Endpoint = Endpoint(
+    name="institutional_ownership_analytics",
+    path="institutional-ownership/extract-analytics/holder",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get filings extract with analytics by holder",
+    mandatory_params=[
+        EndpointParam(
+            name="cik",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Institution CIK",
+        ),
+        EndpointParam(
+            name="date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=True,
+            description="Filing date",
+        ),
+    ],
+    optional_params=[],
+    response_model=InstitutionalOwnershipAnalytics,
+)
+
+HOLDER_PERFORMANCE_SUMMARY: Endpoint = Endpoint(
+    name="holder_performance_summary",
+    path="institutional-ownership/holder-performance-summary",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get holder performance summary",
+    mandatory_params=[
+        EndpointParam(
+            name="cik",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Institution CIK",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Filing date",
+        )
+    ],
+    response_model=HolderPerformanceSummary,
+)
+
+HOLDER_INDUSTRY_BREAKDOWN: Endpoint = Endpoint(
+    name="holder_industry_breakdown",
+    path="institutional-ownership/holder-industry-breakdown",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get holders industry breakdown",
+    mandatory_params=[
+        EndpointParam(
+            name="cik",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Institution CIK",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Filing date",
+        )
+    ],
+    response_model=HolderIndustryBreakdown,
+)
+
+SYMBOL_POSITIONS_SUMMARY: Endpoint = Endpoint(
+    name="symbol_positions_summary",
+    path="institutional-ownership/symbol-positions-summary",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get positions summary by symbol",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Filing date",
+        )
+    ],
+    response_model=SymbolPositionsSummary,
+)
+
+INDUSTRY_PERFORMANCE_SUMMARY: Endpoint = Endpoint(
+    name="industry_performance_summary",
+    path="institutional-ownership/industry-summary",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get industry performance summary",
+    mandatory_params=[
+        EndpointParam(
+            name="industry",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Industry sector",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Filing date",
+        )
+    ],
+    response_model=IndustryPerformanceSummary,
 )

@@ -4,14 +4,22 @@ from unittest.mock import patch
 import pytest
 
 from fmp_data.institutional.models import (
-    CIKCompanyMap,
     CIKMapping,
     FailToDeliver,
     Form13F,
+    HolderPerformanceSummary,
     InsiderStatistic,
     InsiderTrade,
+    InsiderTradingByName,
+    InsiderTradingLatest,
+    InsiderTradingSearch,
+    InsiderTradingStatistics,
     InstitutionalHolder,
     InstitutionalHolding,
+    InstitutionalOwnershipDates,
+    InstitutionalOwnershipExtract,
+    InstitutionalOwnershipLatest,
+    SymbolPositionsSummary,
 )
 
 
@@ -280,16 +288,207 @@ class TestInstitutionalClient:
 
     @patch("httpx.Client.request")
     def test_get_cik_by_symbol(self, mock_request, fmp_client, mock_response):
-        """Test getting CIK mapping by symbol"""
-        # Updated mock response to match expected structure
-        mock_data = {"symbol": "AAPL", "companyCik": "0000320193"}
+        """Test getting CIK mapping by symbol - method removed"""
+        pytest.skip("Method get_cik_by_symbol was removed from client")
+
+
+class TestInstitutionalClientEnhanced:
+    """Test enhanced institutional client methods"""
+
+    @patch("httpx.Client.request")
+    def test_get_insider_trading_latest(
+        self, mock_request, fmp_client, mock_response, mock_insider_trade
+    ):
+        """Test getting latest insider trading activity"""
         mock_request.return_value = mock_response(
-            status_code=200, json_data=[mock_data]
+            status_code=200, json_data=[mock_insider_trade]
         )
 
-        mappings = fmp_client.institutional.get_cik_by_symbol("AAPL")
-        assert isinstance(mappings, list)
-        assert len(mappings) == 1
-        assert isinstance(mappings[0], CIKCompanyMap)  # Using correct model
-        assert mappings[0].symbol == "AAPL"
-        assert mappings[0].cik == "0000320193"  # Using aliased field name
+        trades = fmp_client.institutional.get_insider_trading_latest()
+        assert isinstance(trades, list)
+        assert len(trades) == 1
+        assert isinstance(trades[0], InsiderTradingLatest)
+        assert trades[0].symbol == "AAPL"
+
+    @patch("httpx.Client.request")
+    def test_search_insider_trading(
+        self, mock_request, fmp_client, mock_response, mock_insider_trade
+    ):
+        """Test searching insider trading with filters"""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[mock_insider_trade]
+        )
+
+        trades = fmp_client.institutional.search_insider_trading(symbol="AAPL")
+        assert isinstance(trades, list)
+        assert len(trades) == 1
+        assert isinstance(trades[0], InsiderTradingSearch)
+        assert trades[0].symbol == "AAPL"
+
+    @patch("httpx.Client.request")
+    def test_get_insider_trading_by_name(
+        self, mock_request, fmp_client, mock_response, mock_insider_trade
+    ):
+        """Test getting insider trading by reporting name"""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[mock_insider_trade]
+        )
+
+        trades = fmp_client.institutional.get_insider_trading_by_name("Cook Timothy")
+        assert isinstance(trades, list)
+        assert len(trades) == 1
+        assert isinstance(trades[0], InsiderTradingByName)
+        assert trades[0].reporting_name == "Cook Timothy"
+
+    @patch("httpx.Client.request")
+    def test_get_insider_trading_statistics_enhanced(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """Test getting enhanced insider trading statistics"""
+        mock_stats = {
+            "symbol": "AAPL",
+            "cik": "0000320193",
+            "year": 2023,
+            "quarter": 4,
+            "purchases": 15,
+            "sales": 25,
+            "buySellRatio": 0.6,
+            "totalBought": 50000,
+            "totalSold": 75000,
+            "averageBought": 3333.33,
+            "averageSold": 3000.0,
+            "pPurchases": 10,
+            "sSales": 20,
+        }
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[mock_stats]
+        )
+
+        stats = fmp_client.institutional.get_insider_trading_statistics_enhanced("AAPL")
+        assert isinstance(stats, InsiderTradingStatistics)
+        assert stats.symbol == "AAPL"
+        assert stats.purchases == 15
+
+    @patch("httpx.Client.request")
+    def test_get_institutional_ownership_latest(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """Test getting latest institutional ownership filings"""
+        mock_ownership = {
+            "cik": "0001067983",
+            "date": "2023-09-30",
+            "symbol": "AAPL",
+            "companyName": "Apple Inc",
+            "shares": 1000000,
+            "value": 175000000.0,
+            "weight": 2.5,
+            "change": 50000,
+            "changePercent": 5.0,
+        }
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[mock_ownership]
+        )
+
+        ownership = fmp_client.institutional.get_institutional_ownership_latest()
+        assert isinstance(ownership, list)
+        assert len(ownership) == 1
+        assert isinstance(ownership[0], InstitutionalOwnershipLatest)
+        assert ownership[0].symbol == "AAPL"
+
+    @patch("httpx.Client.request")
+    def test_get_institutional_ownership_extract(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """Test getting filings extract data"""
+        mock_extract = {
+            "cik": "0001067983",
+            "date": "2023-09-30",
+            "nameOfIssuer": "Apple Inc",
+            "titleOfClass": "COM",
+            "cusip": "037833100",
+            "value": 175000000.0,
+            "sharesPrnAmt": 1000000,
+            "sharesPrnType": "SH",
+            "putCall": None,
+            "investmentDiscretion": "SOLE",
+            "otherManager": None,
+            "votingAuthoritySole": 1000000,
+            "votingAuthorityShared": 0,
+            "votingAuthorityNone": 0,
+        }
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[mock_extract]
+        )
+
+        extract = fmp_client.institutional.get_institutional_ownership_extract(
+            "0001067983", date(2023, 9, 30)
+        )
+        assert isinstance(extract, list)
+        assert len(extract) == 1
+        assert isinstance(extract[0], InstitutionalOwnershipExtract)
+        assert extract[0].cik == "0001067983"
+
+    @patch("httpx.Client.request")
+    def test_get_institutional_ownership_dates(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """Test getting Form 13F filing dates"""
+        mock_dates = {"cik": "0001067983", "date": "2023-09-30"}
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[mock_dates]
+        )
+
+        dates = fmp_client.institutional.get_institutional_ownership_dates("0001067983")
+        assert isinstance(dates, list)
+        assert len(dates) == 1
+        assert isinstance(dates[0], InstitutionalOwnershipDates)
+        assert dates[0].cik == "0001067983"
+
+    @patch("httpx.Client.request")
+    def test_get_holder_performance_summary(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """Test getting holder performance summary"""
+        mock_performance = {
+            "cik": "0001067983",
+            "name": "Berkshire Hathaway Inc",
+            "totalValue": 7500000000.0,
+            "entries": 50,
+            "change": 250000000.0,
+            "changePercent": 3.45,
+        }
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[mock_performance]
+        )
+
+        performance = fmp_client.institutional.get_holder_performance_summary(
+            "0001067983"
+        )
+        assert isinstance(performance, list)
+        assert len(performance) == 1
+        assert isinstance(performance[0], HolderPerformanceSummary)
+        assert performance[0].name == "Berkshire Hathaway Inc"
+
+    @patch("httpx.Client.request")
+    def test_get_symbol_positions_summary(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """Test getting positions summary by symbol"""
+        mock_positions = {
+            "symbol": "AAPL",
+            "totalPositions": 3500,
+            "totalShares": 15000000000,
+            "totalValue": 2625000000000.0,
+            "avgWeight": 4.2,
+            "change": 500000000,
+            "changePercent": 3.45,
+        }
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[mock_positions]
+        )
+
+        positions = fmp_client.institutional.get_symbol_positions_summary("AAPL")
+        assert isinstance(positions, list)
+        assert len(positions) == 1
+        assert isinstance(positions[0], SymbolPositionsSummary)
+        assert positions[0].symbol == "AAPL"
