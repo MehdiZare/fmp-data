@@ -171,7 +171,7 @@ CASH_FLOW: Endpoint = Endpoint(
 
 KEY_METRICS: Endpoint = Endpoint(
     name="key_metrics",
-    path="key-metrics/{symbol}",
+    path="key-metrics",
     version=APIVersion.STABLE,
     description=(
         "Access essential financial metrics and KPIs including profitability, "
@@ -180,7 +180,7 @@ KEY_METRICS: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
@@ -218,7 +218,7 @@ KEY_METRICS: Endpoint = Endpoint(
 
 FINANCIAL_RATIOS: Endpoint = Endpoint(
     name="financial_ratios",
-    path="ratios/{symbol}",
+    path="ratios",
     version=APIVersion.STABLE,
     description=(
         "Retrieve comprehensive financial ratios including profitability, "
@@ -227,7 +227,7 @@ FINANCIAL_RATIOS: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
@@ -264,13 +264,13 @@ FINANCIAL_RATIOS: Endpoint = Endpoint(
 )
 FULL_FINANCIAL_STATEMENT: Endpoint = Endpoint(
     name="full_financial_statement",
-    path="financial-statement-full-as-reported/{symbol}",
+    path="financial-statement-full-as-reported",
     version=APIVersion.STABLE,
     description="Get full financial statements as reported",
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
@@ -318,7 +318,7 @@ FINANCIAL_REPORTS_DATES: Endpoint = Endpoint(
 
 OWNER_EARNINGS: Endpoint = Endpoint(
     name="owner_earnings",
-    path="owner_earnings",
+    path="owner-earnings",
     version=APIVersion.STABLE,
     description=(
         "Calculate owner earnings metrics using Warren Buffett's methodology "
@@ -327,7 +327,7 @@ OWNER_EARNINGS: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
@@ -346,7 +346,7 @@ OWNER_EARNINGS: Endpoint = Endpoint(
 
 LEVERED_DCF: Endpoint = Endpoint(
     name="levered_dcf",
-    path="advanced_levered_discounted_cash_flow",
+    path="levered-discounted-cash-flow",
     version=APIVersion.STABLE,
     description=(
         "Perform levered discounted cash flow valuation including detailed "
@@ -355,7 +355,7 @@ LEVERED_DCF: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
@@ -375,7 +375,7 @@ LEVERED_DCF: Endpoint = Endpoint(
 
 HISTORICAL_RATING: Endpoint = Endpoint(
     name="historical_rating",
-    path="historical-rating/{symbol}",
+    path="historical-rating",
     version=APIVersion.STABLE,
     description=(
         "Retrieve historical company ratings and scoring metrics over time "
@@ -384,7 +384,7 @@ HISTORICAL_RATING: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
