@@ -87,11 +87,7 @@ def create_app(tools: ToolIterable | None = None) -> FastMCP:
     # ------------------------------------------------------------------ #
     # 3) FastMCP skeleton
     # ------------------------------------------------------------------ #
-    app = FastMCP(
-        "fmp-data",
-        description="Financial Modeling Prep data exposed as MCP tools",
-        version="0.3.0",
-    )
+    app = FastMCP("fmp-data")
 
     # ------------------------------------------------------------------ #
     # 4) Register our tools
