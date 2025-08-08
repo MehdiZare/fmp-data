@@ -47,13 +47,13 @@ classifiers = [
 dependencies = [
     "httpx>=0.28.1",
     "pydantic>=2.11.7",
-    "pydantic-settings>=2.6.0",
+    "pydantic-settings>=2.10.1",
     "python-dotenv>=1.1.1",
-    "tenacity>=9.0.0",
-    "tqdm>=4.66.5",
+    "tenacity>=9.1.2",
+    "tqdm>=4.67.1",
     "cachetools>=6.1.0",
     "structlog>=25.4.0",
-    "pandas>=2.3.0",
+    "pandas>=2.3.1",
 ]
 
 [project.license]
@@ -66,57 +66,57 @@ Documentation = "https://mehdizare.github.io/fmp-data/"
 
 [project.optional-dependencies]
 langchain = [
-    "faiss-cpu>=1.11.0",
-    "langchain-core>=0.3.66",
-    "langchain-community>=0.3.26",
-    "langchain-openai>=0.3.25",
-    "langgraph>=0.4.10",
-    "openai>=1.92.0",
-    "tiktoken>=0.9.0",
+    "faiss-cpu>=1.11.0.post1",
+    "langchain-core>=0.3.74",
+    "langchain-community>=0.3.27",
+    "langchain-openai>=0.3.29",
+    "langgraph>=0.6.4",
+    "openai>=1.99.5",
+    "tiktoken>=0.10.0",
 ]
 mcp = [
-    "mcp[cli]>=1.0.0",
-    "pyyaml>=6.0.1",
+    "mcp[cli]>=1.12.4",
+    "pyyaml>=6.0.2",
 ]
 
 [dependency-groups]
 dev = [
-    "ruff>=0.12.2",
-    "black>=24.10.0",
-    "mypy>=1.13.0",
-    "types-cachetools>=6.0.0.20250525",
-    "bandit[toml]>=1.7.10",
-    "pip-audit>=2.7.0",
-    "pytest>=8.3.3",
-    "pytest-asyncio>=0.24.0",
-    "pytest-cov>=6.0.0",
-    "pytest-mock>=3.14.0",
-    "freezegun>=1.5.1",
-    "responses>=0.25.3",
-    "vcrpy>=6.0.2",
-    "coverage>=7.6.4",
-    "pre-commit>=4.0.1",
-    "rich>=13.9.3",
-    "twine>=5.1.1",
-    "nox>=2024.4.15",
+    "ruff>=0.12.8",
+    "black>=25.1.0",
+    "mypy>=1.17.1",
+    "types-cachetools>=6.1.0.20250717",
+    "bandit[toml]>=1.8.6",
+    "pip-audit>=2.9.0",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "pytest-cov>=6.2.1",
+    "pytest-mock>=3.14.1",
+    "freezegun>=1.5.4",
+    "responses>=0.25.8",
+    "vcrpy>=7.0.0",
+    "coverage>=7.10.2",
+    "pre-commit>=4.2.0",
+    "rich>=14.1.0",
+    "twine>=6.1.0",
+    "nox>=2025.5.1",
 ]
 docs = [
     "mkdocs>=1.6.1",
-    "mkdocs-material>=9.6.14",
+    "mkdocs-material>=9.6.16",
     "mkdocstrings-python>=1.16.12",
 ]
 langchain = [
-    "faiss-cpu>=1.11.0",
-    "langchain-core>=0.3.66",
-    "langchain-community>=0.3.26",
-    "langchain-openai>=0.3.25",
-    "langgraph>=0.4.10",
-    "openai>=1.92.0",
-    "tiktoken>=0.9.0",
+    "faiss-cpu>=1.11.0.post1",
+    "langchain-core>=0.3.74",
+    "langchain-community>=0.3.27",
+    "langchain-openai>=0.3.29",
+    "langgraph>=0.6.4",
+    "openai>=1.99.5",
+    "tiktoken>=0.10.0",
 ]
 mcp = [
-    "mcp[cli]>=1.0.0",
-    "pyyaml>=6.0.1",
+    "mcp[cli]>=1.12.4",
+    "pyyaml>=6.0.2",
 ]
 
 [tool.hatch.version]
