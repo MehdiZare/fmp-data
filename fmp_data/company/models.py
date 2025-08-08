@@ -4,6 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 import json
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, HttpUrl
 from pydantic.alias_generators import to_camel
@@ -17,6 +18,8 @@ default_model_config = ConfigDict(
     extra="allow",
     alias_generator=to_camel,
 )
+
+UTC = ZoneInfo("UTC")
 
 
 class CompanyProfile(BaseModel):
@@ -167,7 +170,7 @@ class Quote(BaseModel):
     @property
     def quote_datetime(self) -> datetime:
         """Convert Unix timestamp to datetime object"""
-        return datetime.fromtimestamp(self.timestamp)
+        return datetime.fromtimestamp(self.timestamp, tz=UTC)
 
 
 class SimpleQuote(BaseModel):
