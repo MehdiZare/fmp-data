@@ -16,7 +16,8 @@ on:
 
 permissions:
   id-token: write              # OIDC → Trusted Publishing
-  pull-requests: read
+  pull-requests: write
+  contents: write
 
 jobs:
   test-release-build:
@@ -51,9 +52,9 @@ jobs:
 
       - name: 📦  Install build tools
         run: |
-          uv pip install build hatch bump2version
+          uv pip install --system build hatch
 
-      - name: 🏷️  Calculate test version
+      - name: 🏷️  Calculate and create test version tag
         id: version
         run: |
           # Get the latest tag
@@ -74,17 +75,20 @@ jobs:
 
           # Add dev suffix with PR number for TestPyPI
           TEST_VERSION="${NEW_VERSION}.dev${{ github.event.pull_request.number }}"
+          TEST_TAG="v${TEST_VERSION}"
+
           echo "TEST_VERSION=$TEST_VERSION" >> $GITHUB_OUTPUT
+          echo "TEST_TAG=$TEST_TAG" >> $GITHUB_OUTPUT
           echo "📦 Test version: $TEST_VERSION"
 
-      - name: 🔧  Set test version
-        run: |
-          # Create a temporary version file for the build
-          echo "__version__ = '${{ steps.version.outputs.TEST_VERSION }}'" > fmp_data/_version.py
+          # Create a temporary tag for hatch-vcs to pick up
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git tag -a "$TEST_TAG" -m "Test release $TEST_TAG"
 
       - name: 📦  Build wheel & sdist
         run: |
-          uv run python -m build --wheel --sdist
+          python -m build --wheel --sdist
 
       - name: 🧪  Upload to Test PyPI
         uses: pypa/gh-action-pypi-publish@v1.12.4
@@ -172,8 +176,8 @@ jobs:
 
       - name: 📦  Build wheel & sdist
         run: |
-          uv pip install build hatch
-          uv run python -m build --wheel --sdist
+          uv pip install --system build hatch
+          python -m build --wheel --sdist
 
       - name: 🚀  Upload to Test PyPI
         uses: pypa/gh-action-pypi-publish@v1.12.4
