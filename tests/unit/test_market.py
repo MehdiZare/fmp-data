@@ -394,9 +394,9 @@ class TestIPOEndpoints:
         # Verify request parameters
         mock_request.assert_called_once()
         call_args = mock_request.call_args
-        assert call_args[1]["from"] == "2024-01-01"
-        assert call_args[1]["to"] == "2024-12-31"
-        assert call_args[1]["limit"] == 10
+        assert call_args[1]["params"]["from"] == "2024-01-01"
+        assert call_args[1]["params"]["to"] == "2024-12-31"
+        assert call_args[1]["params"]["limit"] == 10
 
     @patch("httpx.Client.request")
     def test_get_ipo_prospectus(
@@ -417,6 +417,6 @@ class TestIPOEndpoints:
         # Verify request was made with only limit parameter
         mock_request.assert_called_once()
         call_args = mock_request.call_args
-        assert call_args[1]["limit"] == 5
-        assert "from" not in call_args[1]
-        assert "to" not in call_args[1]
+        assert call_args[1]["params"]["limit"] == 5
+        assert "from" not in call_args[1]["params"]
+        assert "to" not in call_args[1]["params"]
