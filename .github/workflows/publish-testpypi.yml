@@ -1,9 +1,12 @@
 name: Publish-to-TestPyPI
 
-# Pre-release publishing workflow for test releases
-# Triggered manually or by pre-release tags
-
 on:
+  # Trigger on PRs from dev to main with release labels
+  pull_request:
+    types: [opened, synchronize, labeled]
+    branches:
+      - main
+  # Also trigger on pre-release tags
   push:
     tags:
       - 'v*.*.*rc*'            # Release candidates (v1.2.3rc1)
@@ -13,9 +16,140 @@ on:
 
 permissions:
   id-token: write              # OIDC → Trusted Publishing
+  pull-requests: read
 
 jobs:
-  build-and-publish:
+  test-release-build:
+    # Only run for PRs from dev with release labels
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.ref == 'dev' &&
+      (contains(github.event.pull_request.labels.*.name, 'release:major') ||
+       contains(github.event.pull_request.labels.*.name, 'release:minor') ||
+       contains(github.event.pull_request.labels.*.name, 'release:patch'))
+
+    runs-on: ubuntu-latest
+    env:
+      PYTHON_VERSION: "3.12"
+
+    steps:
+      - name: 🛎️  Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed for version calculation
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: 🐍  Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: ⚡  Install uv (with cache)
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: 📦  Install build tools
+        run: |
+          uv pip install build hatch bump2version
+
+      - name: 🏷️  Calculate test version
+        id: version
+        run: |
+          # Get the latest tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          CURRENT_VERSION=${LATEST_TAG#v}
+
+          # Parse version components
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+
+          # Determine version bump type from labels
+          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'release:major') }}" == "true" ]]; then
+            NEW_VERSION="$((MAJOR + 1)).0.0"
+          elif [[ "${{ contains(github.event.pull_request.labels.*.name, 'release:minor') }}" == "true" ]]; then
+            NEW_VERSION="${MAJOR}.$((MINOR + 1)).0"
+          else
+            NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+          fi
+
+          # Add dev suffix with PR number for TestPyPI
+          TEST_VERSION="${NEW_VERSION}.dev${{ github.event.pull_request.number }}"
+          echo "TEST_VERSION=$TEST_VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Test version: $TEST_VERSION"
+
+      - name: 🔧  Set test version
+        run: |
+          # Create a temporary version file for the build
+          echo "__version__ = '${{ steps.version.outputs.TEST_VERSION }}'" > fmp_data/_version.py
+
+      - name: 📦  Build wheel & sdist
+        run: |
+          uv run python -m build --wheel --sdist
+
+      - name: 🧪  Upload to Test PyPI
+        uses: pypa/gh-action-pypi-publish@v1.12.4
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist
+          skip-existing: true
+
+      - name: 📝  Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = '${{ steps.version.outputs.TEST_VERSION }}';
+            const comment = `## 🧪 Test Release Published
+
+            A test version has been published to TestPyPI for verification.
+
+            **Version:** \`${version}\`
+
+            ### Installation
+            \`\`\`bash
+            pip install -i https://test.pypi.org/simple/ fmp-data==${version}
+            \`\`\`
+
+            ### Verification Steps
+            1. Install the test package using the command above
+            2. Verify the package imports correctly
+            3. Test key functionality
+            4. Check that all dependencies are resolved
+
+            ✅ Once verified, merge this PR to trigger the actual release to PyPI.`;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('Test Release Published')
+            );
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment,
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment,
+              });
+            }
+
+  # Original job for tag-based releases
+  publish-prerelease:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     env:
       PYTHON_VERSION: "3.12"
