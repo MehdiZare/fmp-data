@@ -5,20 +5,17 @@ requires = [
 ]
 build-backend = "poetry_dynamic_versioning.backend"
 
-[project]
+[tool.poetry]
 name = "fmp-data"
+version = "0.0.0"
 description = "Python client for the Financial Modeling Prep API"
+authors = ["Mehdi Zare <mehdizare@users.noreply.github.com>"]
+maintainers = ["Mehdi Zare <mehdizare@users.noreply.github.com>"]
+license = "MIT"
 readme = "README.md"
-dynamic = [
-    "version",
-]
-requires-python = ">=3.10,<3.14"
-authors = [
-    { name = "Mehdi Zare", email = "mehdizare@users.noreply.github.com" },
-]
-maintainers = [
-    { name = "Mehdi Zare", email = "mehdizare@users.noreply.github.com" },
-]
+homepage = "https://github.com/MehdiZare/fmp-data"
+repository = "https://github.com/MehdiZare/fmp-data"
+documentation = "https://github.com/MehdiZare/fmp-data/tree/main/docs"
 keywords = [
     "fmp",
     "financial",
@@ -44,85 +41,72 @@ classifiers = [
     "Topic :: Office/Business :: Financial",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-dependencies = [
-    "httpx>=0.28.1,<0.29.0",
-    "pydantic>=2.11.7,<3.0.0",
-    "pydantic-settings>=2.6.0,<3.0.0",
-    "python-dotenv>=1.1.1,<2.0.0",
-    "tenacity>=9.0.0,<10.0.0",
-    "tqdm>=4.66.5,<5.0.0",
-    "cachetools>=6.1.0,<7.0.0",
-    "structlog>=25.4.0,<26.0.0",
-    "pandas>=2.3.0,<3.0.0",
-]
-
-[project.license]
-text = "MIT"
-
-[project.optional-dependencies]
-langchain = [
-    "faiss-cpu>=1.11.0,<2.0.0",
-    "langchain-core>=0.3.66,<0.4.0",
-    "langchain-community>=0.3.26,<0.4.0",
-    "langchain-openai>=0.3.25,<0.4.0",
-    "langgraph>=0.4.10,<0.5.0",
-    "openai>=1.92.0,<2.0.0",
-    "tiktoken>=0.9.0,<0.10.0",
-]
-mcp-server = [
-    "mcp[cli]>=1.0.0,<2.0.0",
-    "pyyaml>=6.0.1,<7.0.0",
-]
-dev = [
-    "poetry-dynamic-versioning>=1.4.1,<2.0.0",
-    "ruff>=0.12.2,<0.13.0",
-    "black>=24.10.0,<25.0.0",
-    "mypy>=1.13.0,<2.0.0",
-    "types-cachetools>=6.0.0.20250525,<7.0.0",
-    "bandit[toml]>=1.7.10,<2.0.0",
-    "pip-audit>=2.7.0,<3.0.0",
-    "pytest>=8.3.3,<9.0.0",
-    "pytest-asyncio>=0.24.0,<0.25.0",
-    "pytest-cov>=6.0.0,<7.0.0",
-    "pytest-mock>=3.14.0,<4.0.0",
-    "freezegun>=1.5.1,<2.0.0",
-    "responses>=0.25.3,<1.0.0",
-    "vcrpy>=6.0.2,<7.0.0",
-    "coverage>=7.6.4,<8.0.0",
-    "pre-commit>=4.0.1,<5.0.0",
-    "rich>=13.9.3,<14.0.0",
-    "twine>=5.1.1,<6.0.0",
-    "nox>=2024.4.15,<2025.0.0",
-    "mkdocs>=1.6.1,<2.0.0",
-    "mkdocs-material>=9.6.14,<10.0.0",
-    "mkdocstrings-python>=1.16.12,<2.0.0",
-]
-test = [
-    "pytest>=8.2",
-    "pytest-mock>=3.12",
-    "pytest-cov>=5.0",
-    "faiss-cpu>=1.11.0,<2.0.0",
-    "langchain-core>=0.3.66,<0.4.0",
-    "langchain-community>=0.3.26,<0.4.0",
-    "langchain-openai>=0.3.25,<0.4.0",
-    "langgraph>=0.4.10,<0.5.0",
-    "openai>=1.92.0,<2.0.0",
-    "tiktoken>=0.9.0,<0.10.0",
-]
-docs = [
-    "mkdocs>=1.6.1,<2.0.0",
-    "mkdocs-material>=9.6.14,<10.0.0",
-    "mkdocstrings-python>=1.16.12,<2.0.0",
-]
-
-[tool.poetry]
 packages = [
     { include = "fmp_data" },
 ]
 include = [
     "fmp_data/py.typed",
 ]
-version = "0.0.0"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+httpx = "^0.28.1"
+pydantic = "^2.11.7"
+pydantic-settings = "^2.6.0"
+python-dotenv = "^1.1.1"
+tenacity = "^9.0.0"
+tqdm = "^4.66.5"
+cachetools = "^6.1.0"
+structlog = "^25.4.0"
+pandas = "^2.3.0"
+
+[tool.poetry.group.langchain]
+optional = true
+
+[tool.poetry.group.langchain.dependencies]
+faiss-cpu = "^1.11.0"
+langchain-core = "^0.3.66"
+langchain-community = "^0.3.26"
+langchain-openai = "^0.3.25"
+langgraph = "^0.4.10"
+openai = "^1.92.0"
+tiktoken = "^0.9.0"
+
+[tool.poetry.group.mcp]
+optional = true
+
+[tool.poetry.group.mcp.dependencies]
+mcp = {extras = ["cli"], version = "^1.0.0"}
+pyyaml = "^6.0.1"
+
+[tool.poetry.group.dev.dependencies]
+poetry-dynamic-versioning = "^1.4.1"
+ruff = "^0.12.2"
+black = "^24.10.0"
+mypy = "^1.13.0"
+types-cachetools = "^6.0.0.20250525"
+bandit = {extras = ["toml"], version = "^1.7.10"}
+pip-audit = "^2.7.0"
+pytest = "^8.3.3"
+pytest-asyncio = "^0.24.0"
+pytest-cov = "^6.0.0"
+pytest-mock = "^3.14.0"
+freezegun = "^1.5.1"
+responses = "^0.25.3"
+vcrpy = "^6.0.2"
+coverage = "^7.6.4"
+pre-commit = "^4.0.1"
+rich = "^13.9.3"
+twine = "^5.1.1"
+nox = "^2024.4.15"
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+mkdocs = "^1.6.1"
+mkdocs-material = "^9.6.14"
+mkdocstrings-python = "^1.16.12"
 
 [tool.poetry-dynamic-versioning]
 enable = true
@@ -406,60 +390,4 @@ skips = [
 skips = [
     "*/test_*.py",
     "*/tests/*",
-]
-
-[dependency-groups]
-langchain = [
-    "faiss-cpu>=1.11.0,<2.0.0",
-    "langchain-core>=0.3.66,<0.4.0",
-    "langchain-community>=0.3.26,<0.4.0",
-    "langchain-openai>=0.3.25,<0.4.0",
-    "langgraph>=0.4.10,<0.5.0",
-    "openai>=1.92.0,<2.0.0",
-    "tiktoken>=0.9.0,<0.10.0",
-]
-mcp-server = [
-    "mcp[cli]>=1.0.0,<2.0.0",
-    "pyyaml>=6.0.1,<7.0.0",
-]
-dev = [
-    "poetry-dynamic-versioning>=1.4.1,<2.0.0",
-    "ruff>=0.12.2,<0.13.0",
-    "black>=24.10.0,<25.0.0",
-    "mypy>=1.13.0,<2.0.0",
-    "types-cachetools>=6.0.0.20250525,<7.0.0",
-    "bandit[toml]>=1.7.10,<2.0.0",
-    "pip-audit>=2.7.0,<3.0.0",
-    "pytest>=8.3.3,<9.0.0",
-    "pytest-asyncio>=0.24.0,<0.25.0",
-    "pytest-cov>=6.0.0,<7.0.0",
-    "pytest-mock>=3.14.0,<4.0.0",
-    "freezegun>=1.5.1,<2.0.0",
-    "responses>=0.25.3,<1.0.0",
-    "vcrpy>=6.0.2,<7.0.0",
-    "coverage>=7.6.4,<8.0.0",
-    "pre-commit>=4.0.1,<5.0.0",
-    "rich>=13.9.3,<14.0.0",
-    "twine>=5.1.1,<6.0.0",
-    "nox>=2024.4.15,<2025.0.0",
-    "mkdocs>=1.6.1,<2.0.0",
-    "mkdocs-material>=9.6.14,<10.0.0",
-    "mkdocstrings-python>=1.16.12,<2.0.0",
-]
-test = [
-    "pytest>=8.2",
-    "pytest-mock>=3.12",
-    "pytest-cov>=5.0",
-    "faiss-cpu>=1.11.0,<2.0.0",
-    "langchain-core>=0.3.66,<0.4.0",
-    "langchain-community>=0.3.26,<0.4.0",
-    "langchain-openai>=0.3.25,<0.4.0",
-    "langgraph>=0.4.10,<0.5.0",
-    "openai>=1.92.0,<2.0.0",
-    "tiktoken>=0.9.0,<0.10.0",
-]
-docs = [
-    "mkdocs>=1.6.1,<2.0.0",
-    "mkdocs-material>=9.6.14,<10.0.0",
-    "mkdocstrings-python>=1.16.12,<2.0.0",
 ]
