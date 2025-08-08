@@ -1,7 +1,6 @@
 # FMP Data Client
 
-[![CI](https://github.com/MehdiZare/fmp-data/actions/workflows/ci.yml/badge.svg)](https://github.com/MehdiZare/fmp-data/actions/workflows/ci.yml)
-[![Release](https://github.com/MehdiZare/fmp-data/actions/workflows/release.yml/badge.svg)](https://github.com/MehdiZare/fmp-data/actions/workflows/release.yml)
+[![Test-Matrix](https://github.com/MehdiZare/fmp-data/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MehdiZare/fmp-data/actions/workflows/ci.yml)[![Publish-to-PyPI](https://github.com/MehdiZare/fmp-data/actions/workflows/publish-pypi.yml/badge.svg?branch=main&event=release)](https://github.com/MehdiZare/fmp-data/actions/workflows/publish-pypi.yml)
 [![codecov](https://codecov.io/gh/MehdiZare/fmp-data/branch/main/graph/badge.svg)](https://codecov.io/gh/MehdiZare/fmp-data)
 [![Python](https://img.shields.io/pypi/pyversions/fmp-data.svg)](https://pypi.org/project/fmp-data/)
 [![Poetry](https://img.shields.io/endpoint?url=https://python-poetry.org/badge/v0.json)](https://python-poetry.org/)
