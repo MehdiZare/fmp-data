@@ -88,6 +88,7 @@ def _sync_with_uv(session: Session, extras: Iterable[str] = ()) -> None:
                 "pip",
                 "install",
                 "pytest>=8.3.3",
+                "pytest-asyncio>=0.24.0",
                 "pytest-cov>=6.0.0",
                 "pytest-mock>=3.14.0",
                 "coverage>=7.6.4",
