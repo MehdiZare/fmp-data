@@ -28,6 +28,9 @@ env/
 venv/
 ENV/
 
+# UV lock file (can be regenerated quickly)
+uv.lock
+
 # IDE
 .idea/
 .vscode/
