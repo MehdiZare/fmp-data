@@ -26,13 +26,20 @@ from nox.sessions import Session
 # --------------------------------------------------------------------------- #
 
 # Python interpreters used across sessions
-# Use 3.12 as default for CI compatibility, 3.13 when available locally
-if sys.version_info >= (3, 13) or os.getenv("CI") != "true":
+# Use the current Python version in CI, or 3.13 locally if available
+if os.getenv("CI") == "true":
+    # In CI, use the Python version that's already set up
+    current_version = f"{sys.version_info.major}.{sys.version_info.minor}"
     PY_VERSIONS: Sequence[str] = ("3.10", "3.11", "3.12", "3.13")
-    DEFAULT_PYTHON = "3.13"
+    DEFAULT_PYTHON = current_version
 else:
-    PY_VERSIONS: Sequence[str] = ("3.10", "3.11", "3.12")
-    DEFAULT_PYTHON = "3.12"
+    # Locally, prefer 3.13 if available
+    if sys.version_info >= (3, 13):
+        PY_VERSIONS: Sequence[str] = ("3.10", "3.11", "3.12", "3.13")
+        DEFAULT_PYTHON = "3.13"
+    else:
+        PY_VERSIONS: Sequence[str] = ("3.10", "3.11", "3.12")
+        DEFAULT_PYTHON = "3.12"
 
 # Feature-flag groups that map to [project.optional-dependencies]
 FEATURE_GROUPS: Sequence[str | None] = (
