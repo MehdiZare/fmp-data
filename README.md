@@ -332,7 +332,7 @@ from fmp_data import FMPDataClient
 
 with FMPDataClient.from_env() as client:
     # Get real-time quote
-    quote = client.market.get_quote("TSLA")
+    quote = client.company.get_quote("TSLA")
 
     # Get historical prices
     history = client.market.get_historical_price(
