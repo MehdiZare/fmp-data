@@ -82,7 +82,7 @@ def _sync_with_uv(session: Session, extras: Iterable[str] = ()) -> None:
     # Install dependency groups and extras separately
     for extra in extras:
         if extra == "dev":
-            # Install dev dependencies from dependency-groups
+            # Install all dev dependencies from dependency-groups
             session.run(
                 "uv",
                 "pip",
@@ -95,6 +95,12 @@ def _sync_with_uv(session: Session, extras: Iterable[str] = ()) -> None:
                 "freezegun>=1.5.1",
                 "responses>=0.25.3",
                 "vcrpy>=6.0.2",
+                "ruff>=0.12.2",
+                "black>=24.10.0",
+                "mypy>=1.13.0",
+                "types-cachetools>=6.0.0.20250525",
+                "bandit[toml]>=1.7.10",
+                "pip-audit>=2.7.0",
             )
         elif extra in ["langchain", "mcp", "mcp-server"]:
             # Handle actual extras from [project.optional-dependencies]
