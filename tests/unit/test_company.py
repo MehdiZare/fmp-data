@@ -333,7 +333,7 @@ class TestCompanySymbol:
                 close=150.25,
                 volume=82034567,
                 change=2.25,
-                changePercent=-0.47467415,
+                changePercent=1.5,
                 vwap=149.92,
             )
         ]
@@ -513,7 +513,7 @@ class TestHistoricalPriceVariants:
             "close": 150.25,
             "volume": 82034567,
             "change": 2.25,
-            "changePercent": -0.47467415,
+            "changePercent": 1.5,
             "vwap": 149.92,
         }
 

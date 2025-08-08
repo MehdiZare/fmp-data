@@ -394,8 +394,8 @@ class TestIPOEndpoints:
         # Verify request parameters
         mock_request.assert_called_once()
         call_args = mock_request.call_args
-        assert call_args[1]["params"]["from"] == "2024-01-01"
-        assert call_args[1]["params"]["to"] == "2024-12-31"
+        assert call_args[1]["params"]["from"] == date(2024, 1, 1)
+        assert call_args[1]["params"]["to"] == date(2024, 12, 31)
         assert call_args[1]["params"]["limit"] == 10
 
     @patch("httpx.Client.request")
