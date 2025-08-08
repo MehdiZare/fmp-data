@@ -69,14 +69,33 @@ def _sync_with_uv(session: Session, extras: Iterable[str] = ()) -> None:
     # Install uv in the session if not available
     session.install("uv")
 
-    # Install the package with dependency groups using uv pip
-    if extras:
-        # Use the extras syntax: -e.[dev,langchain,mcp-server]
-        extras_str = f"[{','.join(extras)}]"
-        session.run("uv", "pip", "install", f"-e.{extras_str}")
-    else:
-        # Just install the base package
-        session.run("uv", "pip", "install", "-e", ".")
+    # Install the base package first
+    session.run("uv", "pip", "install", "-e", ".")
+
+    # Install dependency groups and extras separately
+    for extra in extras:
+        if extra == "dev":
+            # Install dev dependencies from dependency-groups
+            session.run(
+                "uv",
+                "pip",
+                "install",
+                "pytest>=8.3.3",
+                "pytest-cov>=6.0.0",
+                "pytest-mock>=3.14.0",
+                "coverage>=7.6.4",
+                "freezegun>=1.5.1",
+                "responses>=0.25.3",
+                "vcrpy>=6.0.2",
+            )
+        elif extra in ["langchain", "mcp", "mcp-server"]:
+            # Handle actual extras from [project.optional-dependencies]
+            # mcp-server maps to mcp in optional-dependencies
+            extra_name = "mcp" if extra == "mcp-server" else extra
+            session.run("uv", "pip", "install", f"-e.[{extra_name}]")
+        else:
+            # Try as an extra
+            session.run("uv", "pip", "install", f"-e.[{extra}]")
 
 
 # --------------------------------------------------------------------------- #

@@ -65,6 +65,12 @@ jobs:
           echo "🚀 Installing with uv"
           uv --version
 
+          # Generate lock file if it doesn't exist (it's gitignored)
+          if [ ! -f "uv.lock" ]; then
+            echo "📦 Generating uv.lock file"
+            uv lock
+          fi
+
           # Install project with docs dependencies
           uv sync --group docs
 
