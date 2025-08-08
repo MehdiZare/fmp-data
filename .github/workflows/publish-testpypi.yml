@@ -89,6 +89,8 @@ jobs:
       - name: 📦  Build wheel & sdist
         run: |
           python -m build --wheel --sdist
+          echo "📦 Build completed. Contents of dist/:"
+          ls -la dist/
 
       - name: 🧪  Upload to Test PyPI
         uses: pypa/gh-action-pypi-publish@v1.12.4
@@ -96,6 +98,8 @@ jobs:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: dist
           skip-existing: true
+          verbose: true
+          print-hash: true
 
       - name: 📝  Comment on PR
         uses: actions/github-script@v7
