@@ -285,3 +285,98 @@ class IPOProspectus(BaseModel):
     gross_proceeds: float | None = Field(
         None, alias="grossProceeds", description="Gross proceeds from IPO"
     )
+
+
+class IndexQuote(BaseModel):
+    """Index quote information"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Index symbol")
+    name: str = Field(description="Index name")
+    price: float = Field(description="Current index value")
+    changes_percentage: float = Field(
+        alias="changesPercentage", description="Price change percentage"
+    )
+    change: float = Field(description="Price change")
+    day_low: float = Field(alias="dayLow", description="Day low")
+    day_high: float = Field(alias="dayHigh", description="Day high")
+    year_high: float = Field(alias="yearHigh", description="52-week high")
+    year_low: float = Field(alias="yearLow", description="52-week low")
+    timestamp: int = Field(description="Quote timestamp")
+
+
+class IndexShortQuote(BaseModel):
+    """Index short quote information"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Index symbol")
+    price: float = Field(description="Current index value")
+    volume: int = Field(description="Trading volume")
+
+
+class IndexHistoricalPrice(BaseModel):
+    """Historical index price data"""
+
+    model_config = default_model_config
+
+    date: datetime = Field(description="Price date")
+    open: float = Field(description="Opening price")
+    high: float = Field(description="High price")
+    low: float = Field(description="Low price")
+    close: float = Field(description="Closing price")
+    adj_close: float = Field(alias="adjClose", description="Adjusted closing price")
+    volume: int = Field(description="Trading volume")
+    unadjusted_volume: int = Field(
+        alias="unadjustedVolume", description="Unadjusted volume"
+    )
+    change: float = Field(description="Price change")
+    change_percent: float = Field(
+        alias="changePercent", description="Price change percentage"
+    )
+    vwap: float = Field(description="Volume weighted average price")
+    label: str = Field(description="Date label")
+    change_over_time: float = Field(
+        alias="changeOverTime", description="Change over time"
+    )
+
+
+class IndexHistoricalLight(BaseModel):
+    """Light historical index price data"""
+
+    model_config = default_model_config
+
+    date: datetime = Field(description="Price date")
+    close: float = Field(description="Closing price")
+    volume: int = Field(description="Trading volume")
+
+
+class IndexIntraday(BaseModel):
+    """Intraday index price data"""
+
+    model_config = default_model_config
+
+    date: datetime = Field(description="Price timestamp")
+    open: float = Field(description="Opening price")
+    high: float = Field(description="High price")
+    low: float = Field(description="Low price")
+    close: float = Field(description="Closing price")
+    volume: int = Field(description="Trading volume")
+
+
+class IndexConstituent(BaseModel):
+    """Index constituent information"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Stock symbol")
+    name: str = Field(description="Company name")
+    sector: str | None = Field(None, description="Company sector")
+    sub_sector: str | None = Field(None, alias="subSector", description="Sub-sector")
+    headquarter: str | None = Field(None, description="Company headquarters")
+    date_first_added: datetime | None = Field(
+        None, alias="dateFirstAdded", description="Date added to index"
+    )
+    cik: str | None = Field(None, description="CIK number")
+    founded: str | None = Field(None, description="Year founded")
