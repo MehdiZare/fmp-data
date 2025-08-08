@@ -125,9 +125,8 @@ class TestFundamentalEndpoints(unittest.TestCase):
         )
 
         # Verify the request was made correctly
-        # Note: The client converts limit=None to limit=12 internally
         self.mock_client.request.assert_called_once_with(
-            INCOME_STATEMENT, symbol=self.symbol, period="annual", limit=12
+            INCOME_STATEMENT, symbol=self.symbol, period="annual", limit=None
         )
 
         # Verify response

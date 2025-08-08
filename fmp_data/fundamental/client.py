@@ -23,7 +23,7 @@ class FundamentalClient(EndpointGroup):
     """Client for fundamental analysis endpoints"""
 
     def get_income_statement(
-        self, symbol: str, period: str = "annual", limit: int = 12
+        self, symbol: str, period: str = "annual", limit: int | None = None
     ) -> list[IncomeStatement]:
         """Get income statements"""
         return self.client.request(

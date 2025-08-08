@@ -556,16 +556,26 @@ class UpgradeDowngradeConsensus(BaseModel):
 
 
 class CompanyPeer(BaseModel):
-    symbol: str = Field(alias="symbol")
-    name: str = Field(alias="companyName")
-    price: float | None = Field(None, alias="price")
-    market_cap: int | None = Field(None, alias="mktCap")
+    """Company peer information."""
+
+    model_config = default_model_config
+
+    symbol: str = Field(alias="symbol", description="Peer company symbol")
+    name: str = Field(alias="companyName", description="Peer company name")
+    price: float | None = Field(None, alias="price", description="Current stock price")
+    market_cap: int | None = Field(
+        None, alias="mktCap", description="Market capitalization"
+    )
 
 
 class CompanyPeers(BaseModel):
+    """Container for company peer information."""
+
     model_config = default_model_config
 
-    peers: list[CompanyPeer] = Field(alias="peersList")
+    peers: list[CompanyPeer] = Field(
+        alias="peersList", description="List of company peers"
+    )
 
 
 class MergerAcquisition(BaseModel):
