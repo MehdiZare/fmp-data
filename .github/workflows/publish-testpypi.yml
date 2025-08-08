@@ -81,16 +81,30 @@ jobs:
           echo "TEST_TAG=$TEST_TAG" >> $GITHUB_OUTPUT
           echo "📦 Test version: $TEST_VERSION"
 
-          # Create a temporary tag for hatch-vcs to pick up
+          # Create a temporary tag for hatch-vcs to pick up and reset HEAD to it
           git config user.name github-actions
           git config user.email github-actions@github.com
           git tag -a "$TEST_TAG" -m "Test release $TEST_TAG"
 
+          # Force hatch-vcs to see this as the current tag by checking it out
+          git checkout "$TEST_TAG"
+
       - name: 📦  Build wheel & sdist
         run: |
+          echo "🏷️ Current git state:"
+          git describe --tags --always
+          echo "📦 Building package..."
+
           python -m build --wheel --sdist
+
           echo "📦 Build completed. Contents of dist/:"
           ls -la dist/
+
+          # Verify the version in the built package
+          echo "📋 Checking built package version:"
+          if ls dist/*.tar.gz 1> /dev/null 2>&1; then
+            tar -tf dist/*.tar.gz | grep -E "(PKG-INFO|METADATA)" | head -1 | xargs tar -xOf dist/*.tar.gz | grep "^Version:" || echo "Version not found in metadata"
+          fi
 
       - name: 🧪  Upload to Test PyPI
         uses: pypa/gh-action-pypi-publish@v1.12.4
