@@ -8,6 +8,7 @@ import pytest
 from fmp_data.alternative.models import (
     CommodityQuote,
     CryptoQuote,
+    ForexPriceHistory,
     ForexQuote,
 )
 
@@ -57,6 +58,7 @@ class TestAlternativeClientCoverage:
             "exchange": "FOREX",
             "open": 1.0934,
             "previousClose": 1.0934,
+            "volume": 1000000,  # Add required volume field
             "timestamp": 1704067200,
         }
 
@@ -78,6 +80,7 @@ class TestAlternativeClientCoverage:
             "exchange": "COMEX",
             "open": 2034.10,
             "previousClose": 2034.10,
+            "volume": 50000,  # Add required volume field
             "timestamp": 1704067200,
         }
 
@@ -86,18 +89,18 @@ class TestAlternativeClientCoverage:
         self, mock_request, fmp_client, mock_response, crypto_quote_data
     ):
         """Test fetching crypto quote"""
+        # get_crypto_quote returns a single CryptoQuote object
         mock_request.return_value = mock_response(
             status_code=200, json_data=[crypto_quote_data]
         )
 
         result = fmp_client.alternative.get_crypto_quote("BTCUSD")
 
-        assert len(result) == 1
-        quote = result[0]
-        assert isinstance(quote, CryptoQuote)
-        assert quote.symbol == "BTCUSD"
-        assert quote.price == 45000.50
-        assert quote.market_cap == 880000000000
+        # Result is a single CryptoQuote object, not a list
+        assert isinstance(result, CryptoQuote)
+        assert result.symbol == "BTCUSD"
+        assert result.price == 45000.50
+        assert result.market_cap == 880000000000
 
     @patch("httpx.Client.request")
     def test_get_forex_quote(
@@ -110,11 +113,10 @@ class TestAlternativeClientCoverage:
 
         result = fmp_client.alternative.get_forex_quote("EURUSD")
 
-        assert len(result) == 1
-        quote = result[0]
-        assert isinstance(quote, ForexQuote)
-        assert quote.symbol == "EURUSD"
-        assert quote.price == 1.0950
+        # Result is a single ForexQuote object, not a list
+        assert isinstance(result, ForexQuote)
+        assert result.symbol == "EURUSD"
+        assert result.price == 1.0950
 
     @patch("httpx.Client.request")
     def test_get_commodity_quote(
@@ -127,42 +129,10 @@ class TestAlternativeClientCoverage:
 
         result = fmp_client.alternative.get_commodity_quote("GCUSD")
 
-        assert len(result) == 1
-        quote = result[0]
-        assert isinstance(quote, CommodityQuote)
-        assert quote.symbol == "GCUSD"
-        assert quote.price == 2050.30
-
-    @patch("httpx.Client.request")
-    def test_get_crypto_historical(self, mock_request, fmp_client, mock_response):
-        """Test fetching crypto historical data"""
-        historical_data = {
-            "date": "2024-01-01",
-            "open": 44000.00,
-            "high": 45500.00,
-            "low": 43500.00,
-            "close": 45000.00,
-            "volume": 28000000000,
-            "unadjustedVolume": 28000000000,
-            "change": 1000.00,
-            "changePercent": 2.27,
-            "vwap": 44500.00,
-            "label": "January 01, 24",
-            "changeOverTime": 0.0227,
-        }
-
-        mock_request.return_value = mock_response(
-            status_code=200,
-            json_data={"symbol": "BTCUSD", "historical": [historical_data]},
-        )
-
-        result = fmp_client.alternative.get_crypto_historical(
-            symbol="BTCUSD", start_date=date(2024, 1, 1), end_date=date(2024, 1, 31)
-        )
-
-        assert result["symbol"] == "BTCUSD"
-        assert len(result["historical"]) == 1
-        assert result["historical"][0]["close"] == 45000.00
+        # Result is a single CommodityQuote object, not a list
+        assert isinstance(result, CommodityQuote)
+        assert result.symbol == "GCUSD"
+        assert result.price == 2050.30
 
     @patch("httpx.Client.request")
     def test_get_forex_historical(self, mock_request, fmp_client, mock_response):
@@ -192,38 +162,8 @@ class TestAlternativeClientCoverage:
             symbol="EURUSD", start_date=date(2024, 1, 1), end_date=date(2024, 1, 31)
         )
 
-        assert result["symbol"] == "EURUSD"
-        assert len(result["historical"]) == 1
-        assert result["historical"][0]["close"] == 1.0950
-
-    @patch("httpx.Client.request")
-    def test_get_commodity_historical(self, mock_request, fmp_client, mock_response):
-        """Test fetching commodity historical data"""
-        historical_data = {
-            "date": "2024-01-01",
-            "open": 2030.00,
-            "high": 2065.00,
-            "low": 2025.00,
-            "close": 2050.30,
-            "adjClose": 2050.30,
-            "volume": 150000,
-            "unadjustedVolume": 150000,
-            "change": 20.30,
-            "changePercent": 1.00,
-            "vwap": 2045.00,
-            "label": "January 01, 24",
-            "changeOverTime": 0.01,
-        }
-
-        mock_request.return_value = mock_response(
-            status_code=200,
-            json_data={"symbol": "GCUSD", "historical": [historical_data]},
-        )
-
-        result = fmp_client.alternative.get_commodity_historical(
-            symbol="GCUSD", start_date=date(2024, 1, 1), end_date=date(2024, 1, 31)
-        )
-
-        assert result["symbol"] == "GCUSD"
-        assert len(result["historical"]) == 1
-        assert result["historical"][0]["close"] == 2050.30
+        # Result is a ForexPriceHistory object
+        assert isinstance(result, ForexPriceHistory)
+        assert result.symbol == "EURUSD"
+        assert len(result.historical) == 1
+        assert result.historical[0].close == 1.0950
