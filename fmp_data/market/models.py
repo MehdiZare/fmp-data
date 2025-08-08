@@ -97,100 +97,26 @@ class ExchangeSymbol(BaseModel):
         return cleaned_data
 
 
-class StockMarketHours(BaseModel):
-    """Opening and closing hours of the stock market"""
-
-    model_config = default_model_config
-    openingHour: str = Field(description="Opening hour of the market")
-    closingHour: str = Field(description="Closing hour of the market")
-
-
-class StockMarketHoliday(BaseModel):
-    """Stock market holiday for a specific year"""
-
-    model_config = default_model_config
-
-    year: int = Field(description="Year of the holiday schedule")
-    holidays: dict[str, str] = Field(description="Mapping of holiday names to dates")
-
-    @classmethod
-    def from_api_data(cls, data: dict[str, Any]) -> "StockMarketHoliday":
-        """
-        Create a StockMarketHoliday instance from API response data.
-
-        Args:
-            data: Dictionary containing year and holidays data from the API
-
-        Returns:
-            StockMarketHoliday: Initialized instance with parsed holiday data
-
-        Raises:
-            ValueError: If data is malformed or missing required fields
-        """
-        if not isinstance(data, dict):
-            raise ValueError(
-                f"Expected a dictionary but got {type(data).__name__}: {data}"
-            )
-
-        # Extract the year
-        year = data.get("year")
-        if year is None:
-            raise ValueError("Missing 'year' field in data")
-
-        # Aggregate holidays into a dictionary
-        holidays: dict[str, str] = {}
-        for holiday in data.get("holidays", []):
-            if not isinstance(holiday, dict):
-                raise ValueError(
-                    f"Expected a dictionary for "
-                    f"holiday but got {type(holiday).__name__}: {holiday}"
-                )
-
-            name = holiday.get("name")
-            date = holiday.get("date")
-            if not name or not date:
-                raise ValueError(
-                    f"Holiday entry must have 'name' and 'date': {holiday}"
-                )
-
-            holidays[name] = date
-
-        return cls(year=year, holidays=holidays)
-
-
 class MarketHours(BaseModel):
-    """Market trading hours information"""
+    """Market trading hours for a single exchange
+
+    Relative path: fmp_data/market/models.py
+    """
 
     model_config = default_model_config
 
-    stockExchangeName: str = Field(description="Stock exchange name")
-    stockMarketHours: StockMarketHours = Field(description="Market hours")
-    stockMarketHolidays: list[StockMarketHoliday] = Field(
-        description="List of market holidays"
+    exchange: str = Field(description="Exchange code (e.g., NYSE, NASDAQ)")
+    name: str = Field(description="Full exchange name")
+    opening_hour: str = Field(
+        alias="openingHour", description="Market opening time with timezone offset"
     )
-    isTheStockMarketOpen: bool = Field(
-        description="Whether the stock market is currently open"
+    closing_hour: str = Field(
+        alias="closingHour", description="Market closing time with timezone offset"
     )
-    isTheEuronextMarketOpen: bool = Field(description="Whether Euronext market is open")
-    isTheForexMarketOpen: bool = Field(description="Whether Forex market is open")
-    isTheCryptoMarketOpen: bool = Field(description="Whether Crypto market is open")
-
-    def __init__(self, **data: Any) -> None:
-        """
-        Override the default initialization to preprocess API data.
-
-        Args:
-            **data: Keyword arguments containing model data
-        """
-        # Process stockMarketHolidays
-        holidays = data.get("stockMarketHolidays", [])
-        if holidays:
-            data["stockMarketHolidays"] = [
-                StockMarketHoliday.from_api_data(h) for h in holidays
-            ]
-
-        # Initialize the base model with processed data
-        super().__init__(**data)
+    timezone: str = Field(description="Exchange timezone")
+    is_market_open: bool = Field(
+        alias="isMarketOpen", description="Whether the market is currently open"
+    )
 
 
 class MarketMover(BaseModel):
@@ -307,3 +233,150 @@ class CompanySearchResult(BaseModel):
     currency: str | None = Field(None, description="Trading currency")
     stock_exchange: str | None = Field(None, description="Stock exchange")
     exchange_short_name: str | None = Field(None, description="Exchange short name")
+
+
+class IPODisclosure(BaseModel):
+    """IPO disclosure information"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Stock symbol")
+    company_name: str = Field(alias="companyName", description="Company name")
+    ipo_date: datetime = Field(alias="ipoDate", description="IPO date")
+    exchange: str = Field(description="Stock exchange")
+    price_range: str | None = Field(
+        None, alias="priceRange", description="IPO price range"
+    )
+    shares_offered: int | None = Field(
+        None, alias="sharesOffered", description="Number of shares offered"
+    )
+    disclosure_url: str | None = Field(
+        None, alias="disclosureUrl", description="Disclosure document URL"
+    )
+    filing_date: datetime | None = Field(
+        None, alias="filingDate", description="Filing date"
+    )
+    status: str | None = Field(None, description="IPO status")
+    underwriters: str | None = Field(None, description="Lead underwriters")
+
+
+class IPOProspectus(BaseModel):
+    """IPO prospectus information"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Stock symbol")
+    company_name: str = Field(alias="companyName", description="Company name")
+    ipo_date: datetime = Field(alias="ipoDate", description="IPO date")
+    exchange: str = Field(description="Stock exchange")
+    prospectus_url: str = Field(
+        alias="prospectusUrl", description="Prospectus document URL"
+    )
+    filing_date: datetime | None = Field(
+        None, alias="filingDate", description="Filing date"
+    )
+    status: str | None = Field(None, description="IPO status")
+    shares_offered: int | None = Field(
+        None, alias="sharesOffered", description="Number of shares offered"
+    )
+    offer_price: float | None = Field(
+        None, alias="offerPrice", description="IPO offer price"
+    )
+    gross_proceeds: float | None = Field(
+        None, alias="grossProceeds", description="Gross proceeds from IPO"
+    )
+
+
+class IndexQuote(BaseModel):
+    """Index quote information"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Index symbol")
+    name: str = Field(description="Index name")
+    price: float = Field(description="Current index value")
+    changes_percentage: float = Field(
+        alias="changesPercentage", description="Price change percentage"
+    )
+    change: float = Field(description="Price change")
+    day_low: float = Field(alias="dayLow", description="Day low")
+    day_high: float = Field(alias="dayHigh", description="Day high")
+    year_high: float = Field(alias="yearHigh", description="52-week high")
+    year_low: float = Field(alias="yearLow", description="52-week low")
+    timestamp: int = Field(description="Quote timestamp")
+
+
+class IndexShortQuote(BaseModel):
+    """Index short quote information"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Index symbol")
+    price: float = Field(description="Current index value")
+    volume: int = Field(description="Trading volume")
+
+
+class IndexHistoricalPrice(BaseModel):
+    """Historical index price data"""
+
+    model_config = default_model_config
+
+    date: datetime = Field(description="Price date")
+    open: float = Field(description="Opening price")
+    high: float = Field(description="High price")
+    low: float = Field(description="Low price")
+    close: float = Field(description="Closing price")
+    adj_close: float = Field(alias="adjClose", description="Adjusted closing price")
+    volume: int = Field(description="Trading volume")
+    unadjusted_volume: int = Field(
+        alias="unadjustedVolume", description="Unadjusted volume"
+    )
+    change: float = Field(description="Price change")
+    change_percent: float = Field(
+        alias="changePercent", description="Price change percentage"
+    )
+    vwap: float = Field(description="Volume weighted average price")
+    label: str = Field(description="Date label")
+    change_over_time: float = Field(
+        alias="changeOverTime", description="Change over time"
+    )
+
+
+class IndexHistoricalLight(BaseModel):
+    """Light historical index price data"""
+
+    model_config = default_model_config
+
+    date: datetime = Field(description="Price date")
+    close: float = Field(description="Closing price")
+    volume: int = Field(description="Trading volume")
+
+
+class IndexIntraday(BaseModel):
+    """Intraday index price data"""
+
+    model_config = default_model_config
+
+    date: datetime = Field(description="Price timestamp")
+    open: float = Field(description="Opening price")
+    high: float = Field(description="High price")
+    low: float = Field(description="Low price")
+    close: float = Field(description="Closing price")
+    volume: int = Field(description="Trading volume")
+
+
+class IndexConstituent(BaseModel):
+    """Index constituent information"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Stock symbol")
+    name: str = Field(description="Company name")
+    sector: str | None = Field(None, description="Company sector")
+    sub_sector: str | None = Field(None, alias="subSector", description="Sub-sector")
+    headquarter: str | None = Field(None, description="Company headquarters")
+    date_first_added: datetime | None = Field(
+        None, alias="dateFirstAdded", description="Date added to index"
+    )
+    cik: str | None = Field(None, description="CIK number")
+    founded: str | None = Field(None, description="Year founded")

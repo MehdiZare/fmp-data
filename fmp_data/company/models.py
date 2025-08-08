@@ -4,6 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 import json
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, HttpUrl
 from pydantic.alias_generators import to_camel
@@ -17,6 +18,8 @@ default_model_config = ConfigDict(
     extra="allow",
     alias_generator=to_camel,
 )
+
+UTC = ZoneInfo("UTC")
 
 
 class CompanyProfile(BaseModel):
@@ -132,7 +135,11 @@ class EmployeeCount(BaseModel):
 
 
 class Quote(BaseModel):
-    """Real-time stock quote data"""
+    """
+    Real-time stock quote data
+
+    Relative path: models/quote.py
+    """
 
     model_config = default_model_config
 
@@ -140,23 +147,30 @@ class Quote(BaseModel):
     name: str = Field(description="Company name")
     price: float = Field(description="Current price")
     change_percentage: float = Field(
-        alias="changesPercentage", description="Price change percentage"
+        alias="changePercentage", description="Price change percentage"
     )
     change: float = Field(description="Price change")
-    day_low: float = Field(description="Day low price")
-    day_high: float = Field(description="Day high price")
-    year_high: float = Field(description="52-week high")
-    year_low: float = Field(description="52-week low")
-    market_cap: float | None = Field(None, description="Market capitalization")
-    price_avg_50: float | None = Field(None, description="50-day average price")
-    price_avg_200: float | None = Field(None, description="200-day average price")
+    day_low: float = Field(alias="dayLow", description="Day low price")
+    day_high: float = Field(alias="dayHigh", description="Day high price")
+    year_high: float = Field(alias="yearHigh", description="52-week high")
+    year_low: float = Field(alias="yearLow", description="52-week low")
+    market_cap: int = Field(alias="marketCap", description="Market capitalization")
+    price_avg_50: float = Field(alias="priceAvg50", description="50-day average price")
+    price_avg_200: float = Field(
+        alias="priceAvg200", description="200-day average price"
+    )
     volume: int = Field(description="Trading volume")
-    avg_volume: int | None = Field(None, description="Average volume")
-    open: float = Field(description="Opening price")
-    previous_close: float | None = Field(None, description="Previous close price")
-    eps: float = Field(description="Earnings per share")
-    pe: float = Field(description="Price to earnings ratio")
-    timestamp: datetime = Field(description="Quote timestamp")
+    exchange: str = Field(description="Stock exchange")
+    open_price: float = Field(alias="open", description="Opening price")
+    previous_close: float = Field(
+        alias="previousClose", description="Previous close price"
+    )
+    timestamp: int = Field(description="Quote timestamp (Unix timestamp)")
+
+    @property
+    def quote_datetime(self) -> datetime:
+        """Convert Unix timestamp to datetime object"""
+        return datetime.fromtimestamp(self.timestamp, tz=UTC)
 
 
 class SimpleQuote(BaseModel):
@@ -179,14 +193,12 @@ class HistoricalPrice(BaseModel):
     high: float = Field(description="High price")
     low: float = Field(description="Low price")
     close: float = Field(description="Closing price")
-    adj_close: float = Field(alias="adjClose", description="Adjusted closing price")
     volume: int = Field(description="Trading volume")
-    unadjusted_volume: int = Field(description="Unadjusted volume")
     change: float = Field(description="Price change")
-    change_percent: float = Field(description="Price change percentage")
+    change_percent: float = Field(
+        description="Price change percentage", alias="changePercent"
+    )
     vwap: float = Field(description="Volume weighted average price")
-    label: str = Field(description="Date label")
-    change_over_time: float = Field(description="Change over time")
 
 
 class HistoricalData(BaseModel):
@@ -541,3 +553,52 @@ class UpgradeDowngradeConsensus(BaseModel):
     hold: int = Field(description="Hold ratings")
     sell: int = Field(description="Sell ratings")
     strong_sell: int = Field(alias="strongSell", description="Strong sell ratings")
+
+
+class CompanyPeer(BaseModel):
+    """Company peer information."""
+
+    model_config = default_model_config
+
+    symbol: str = Field(alias="symbol", description="Peer company symbol")
+    name: str = Field(alias="companyName", description="Peer company name")
+    price: float | None = Field(None, alias="price", description="Current stock price")
+    market_cap: int | None = Field(
+        None, alias="mktCap", description="Market capitalization"
+    )
+
+
+class CompanyPeers(BaseModel):
+    """Container for company peer information."""
+
+    model_config = default_model_config
+
+    peers: list[CompanyPeer] = Field(
+        alias="peersList", description="List of company peers"
+    )
+
+
+class MergerAcquisition(BaseModel):
+    """Merger and acquisition transaction data"""
+
+    model_config = default_model_config
+
+    companyName: str | None = Field(None, description="Company name")
+    targetedCompanyName: str | None = Field(None, description="Targeted company name")
+    dealDate: str | None = Field(None, description="Deal date")
+    acceptanceTime: str | None = Field(None, description="Acceptance time")
+    url: str | None = Field(None, description="URL to filing")
+
+
+class ExecutiveCompensationBenchmark(BaseModel):
+    """Executive compensation benchmark data by industry"""
+
+    model_config = default_model_config
+
+    year: int = Field(description="Year of compensation data")
+    industryTitle: str = Field(description="Industry title")
+    marketCapitalization: str = Field(description="Market capitalization range")
+    averageTotalCompensation: float = Field(description="Average total compensation")
+    averageCashCompensation: float = Field(description="Average cash compensation")
+    averageEquityCompensation: float = Field(description="Average equity compensation")
+    averageOtherCompensation: float = Field(description="Average other compensation")

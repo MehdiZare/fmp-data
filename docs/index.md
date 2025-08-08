@@ -59,7 +59,7 @@ with FMPDataClient.from_env() as client:
     print(f"Revenue: ${income[0].revenue:,.0f}")
 
     # Get market data
-    quote = client.market.get_quote("AAPL")
+    quote = client.company.get_quote("AAPL")
     print(f"Current Price: ${quote.price}")
 ```
 

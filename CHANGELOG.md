@@ -29,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Consolidated integration patterns across different use cases
 - **Emphasized Poetry as the primary package management tool** with detailed setup guides
 
+### Breaking Changes
+- **Breaking:** `get_quote` has moved from `MarketClient` to `CompanyClient`
+  - Update: `client.market.get_quote()` → `client.company.get_quote()`
+
 ## [0.3.0] - 2025-1-5
 
 ### Added

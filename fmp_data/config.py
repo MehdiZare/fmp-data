@@ -187,7 +187,7 @@ class ClientConfig(BaseModel):
         default=3, ge=0, description="Maximum number of rate limit retries"
     )
     base_url: str = Field(
-        default="https://financialmodelingprep.com/api", description="Base API URL"
+        default="https://financialmodelingprep.com", description="Base API URL"
     )
     rate_limit: RateLimitConfig = Field(
         default_factory=RateLimitConfig,
@@ -274,9 +274,7 @@ class ClientConfig(BaseModel):
             "api_key": api_key,
             "timeout": safe_int("FMP_TIMEOUT", "30"),
             "max_retries": safe_int("FMP_MAX_RETRIES", "3"),
-            "base_url": os.getenv(
-                "FMP_BASE_URL", "https://financialmodelingprep.com/api"
-            ),
+            "base_url": os.getenv("FMP_BASE_URL", "https://financialmodelingprep.com"),
             "rate_limit": RateLimitConfig.from_env(),
             "logging": LoggingConfig.from_env(),
         }
