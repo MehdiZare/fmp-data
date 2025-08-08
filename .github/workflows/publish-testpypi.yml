@@ -1,30 +1,30 @@
 name: Publish-to-TestPyPI
 
+# Pre-release publishing workflow for test releases
+# Triggered manually or by pre-release tags
+
 on:
-  workflow_run:
-    workflows:
-      - Test-Matrix            # must match the name in ci.yml
-    branches:
-      - dev                    # fire only for merges to dev
-    types:
-      - completed
+  push:
+    tags:
+      - 'v*.*.*rc*'            # Release candidates (v1.2.3rc1)
+      - 'v*.*.*a*'             # Alpha releases (v1.2.3a1)
+      - 'v*.*.*b*'             # Beta releases (v1.2.3b1)
+      - 'v*.*.*dev*'           # Dev releases (v1.2.3dev1)
 
 permissions:
   id-token: write              # OIDC → Trusted Publishing
-  contents: read
 
 jobs:
   build-and-publish:
-    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     env:
       PYTHON_VERSION: "3.12"
 
     steps:
-      - name: 🛎️  Checkout tested commit
+      - name: 🛎️  Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0  # Needed for hatch-vcs versioning
 
       - name: 🐍  Set up Python
         uses: actions/setup-python@v5
@@ -38,7 +38,7 @@ jobs:
 
       - name: 📦  Build wheel & sdist
         run: |
-          uv pip install build
+          uv pip install build hatch
           uv run python -m build --wheel --sdist
 
       - name: 🚀  Upload to Test PyPI

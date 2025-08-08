@@ -6,13 +6,17 @@ on:
     branches: [main]            # PRs whose *target* is main only
 
 jobs:
-  ensure-origin-dev:
+  ensure-valid-origin:
     runs-on: ubuntu-latest
     steps:
-      - name: Fail if PR head is not dev
+      - name: Check if PR is from allowed branch
         run: |
-          if [[ "${{ github.head_ref }}" != "dev" ]]; then
-            echo "::error::Main only accepts PRs opened from the dev branch."
+          BRANCH="${{ github.head_ref }}"
+
+          # Allow PRs from dev or hotfix branches
+          if [[ "$BRANCH" == "dev" ]] || [[ "$BRANCH" =~ ^hotfix-.* ]]; then
+            echo "✅ Origin branch '$BRANCH' is allowed"
+          else
+            echo "::error::Main only accepts PRs from 'dev' or 'hotfix-*' branches. Current branch: $BRANCH"
             exit 1
           fi
-          echo "Origin branch is dev – OK"
