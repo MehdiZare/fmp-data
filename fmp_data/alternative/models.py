@@ -1,7 +1,6 @@
 # fmp_data/alternative/models.py
 
-import datetime
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 import warnings
 from zoneinfo import ZoneInfo
@@ -26,69 +25,56 @@ class PriceQuote(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    # Required fields
+    # Core required fields
     symbol: str = Field(description="Trading symbol")
-    price: float | None = Field(None, description="Current price")
-    change: float | None = Field(None, description="Price change")
+    price: float = Field(description="Current price")
+    change: float = Field(description="Price change")
     change_percent: float | None = Field(
-        alias="changesPercentage", description="Percent change"
+        None, alias="changesPercentage", description="Price change percentage"
     )
+    timestamp: datetime = Field(description="Quote timestamp")
 
-    # Optional fields
-    name: str | None = Field(None, description="Symbol name or pair name")
-
-    # Day range
-    day_low: float | None = Field(None, alias="dayLow", description="Day low price")
-    day_high: float | None = Field(None, alias="dayHigh", description="Day high price")
-
-    # Year range
-    year_high: float | None = Field(None, alias="yearHigh", description="52-week high")
-    year_low: float | None = Field(None, alias="yearLow", description="52-week low")
-
-    # Moving averages
-    price_avg_50: float | None = Field(
-        None, alias="priceAvg50", description="50-day average"
-    )
-    price_avg_200: float | None = Field(
-        None, alias="priceAvg200", description="200-day average"
-    )
-
-    # Volume
+    # Optional common fields
+    name: str | None = Field(None, description="Name or pair name")
     volume: float | None = Field(None, description="Trading volume")
-    avg_volume: float | None = Field(
-        None, alias="avgVolume", description="Average volume"
-    )
-
-    # Other price points
-    open: float | None = Field(None, description="Opening price")
-    previous_close: float | None = Field(
-        None, alias="previousClose", description="Previous close"
-    )
-
-    # Market data
     market_cap: float | None = Field(
         None, alias="marketCap", description="Market capitalization"
     )
-    eps: float | None = Field(None, description="Earnings per share")
-    pe: float | None = Field(None, description="Price to earnings ratio")
-    shares_outstanding: float | None = Field(
-        None, alias="sharesOutstanding", description="Shares outstanding"
-    )
-    earnings_announcement: datetime.datetime | None = Field(
-        None, alias="earningsAnnouncement", description="Next earnings date"
-    )
-    exchange: str | None = Field(None, description="Exchange name")
 
-    timestamp: datetime.datetime | None = Field(
-        None,
-        description="Quote timestamp",
-        json_schema_extra={"format": "unix-timestamp"},
+    # Day range (optional)
+    day_low: float | None = Field(None, alias="dayLow", description="Day low price")
+    day_high: float | None = Field(None, alias="dayHigh", description="Day high price")
+
+    # Year range (optional)
+    year_high: float | None = Field(None, alias="yearHigh", description="52-week high")
+    year_low: float | None = Field(None, alias="yearLow", description="52-week low")
+
+    # Moving averages (optional)
+    price_avg_50: float | None = Field(
+        None, alias="priceAvg50", description="50-day average price"
+    )
+    price_avg_200: float | None = Field(
+        None, alias="priceAvg200", description="200-day average price"
     )
 
+    # Volume metrics (optional)
+    avg_volume: float | None = Field(
+        None, alias="avgVolume", description="Average trading volume"
+    )
+
+    # Exchange and price points (optional)
+    exchange: str | None = Field(None, description="Exchange identifier")
+    open_price: float | None = Field(None, alias="open", description="Opening price")
+    previous_close: float | None = Field(
+        None, alias="previousClose", description="Previous close price"
+    )
+
+    @classmethod
     @field_validator("timestamp", mode="before")
-    def parse_timestamp(cls, value: Any) -> datetime.datetime | None:
+    def parse_timestamp(cls, value: Any) -> datetime:
+        """Parse Unix timestamp to datetime with UTC timezone"""
         if value is None:
-            return None
+            raise ValueError("Timestamp cannot be None")
 
         try:
             if isinstance(value, str | int | float):
@@ -96,14 +82,16 @@ class PriceQuote(BaseModel):
             else:
                 raise ValueError(f"Unexpected type for timestamp: {type(value)}")
 
-            return datetime.datetime.fromtimestamp(timestamp, tz=UTC)
+            return datetime.fromtimestamp(timestamp, tz=UTC)
         except Exception as e:
             warnings.warn(f"Failed to parse timestamp {value}: {e}", stacklevel=2)
-            return None
+            raise ValueError(f"Invalid timestamp format: {value}") from e
 
 
 class HistoricalPrice(BaseModel):
     """Base model for historical price data"""
+
+    model_config = ConfigDict(populate_by_name=True)
 
     price_date: date = Field(
         description="The date of the historical record", alias="date"
@@ -126,6 +114,9 @@ class HistoricalPrice(BaseModel):
     change_over_time: float | None = Field(
         None, alias="changeOverTime", description="Change over time as a percentage"
     )
+    symbol: str | None = Field(
+        None, description="Trading symbol (for API compatibility)"
+    )
 
 
 class IntradayPrice(BaseModel):
@@ -133,12 +124,12 @@ class IntradayPrice(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    date: datetime.datetime = Field(description="Price date and time")
+    date: datetime = Field(description="Price date and time")
     open: float = Field(description="Opening price")
     high: float = Field(description="High price")
     low: float = Field(description="Low price")
     close: float = Field(description="Closing price")
-    volume: float | None = Field(None, description="Trading volume")  # Changed to float
+    volume: float | None = Field(None, description="Trading volume")
 
 
 # Cryptocurrency Models
@@ -167,22 +158,29 @@ class CryptoQuote(PriceQuote):
         extra="ignore",  # Allow extra fields from API
     )
 
-    # Override the base class field to make it optional
-    change_percent: float | None = Field(
-        None, alias="changesPercentage", description="Percent change"
+    # Override fields to make them required for crypto where available
+    name: str = Field(description="Cryptocurrency name and pair")
+    volume: float = Field(description="24h trading volume")
+    market_cap: float = Field(alias="marketCap", description="Market capitalization")
+    day_low: float = Field(alias="dayLow", description="24h low price")
+    day_high: float = Field(alias="dayHigh", description="24h high price")
+    year_high: float = Field(alias="yearHigh", description="52-week high")
+    year_low: float = Field(alias="yearLow", description="52-week low")
+    exchange: str = Field(description="Exchange identifier")
+    open_price: float = Field(alias="open", description="Opening price")
+    previous_close: float = Field(
+        alias="previousClose", description="Previous close price"
     )
 
-    @field_validator("timestamp", mode="before")
-    def parse_timestamp(cls, value: Any) -> datetime.datetime | None:
-        """Parse Unix timestamp (int, float, str) into a TZ-aware UTC datetime."""
-        if value is None:
-            return None
-        try:
-            ts_float = float(value)  # handles int, float, str transparently
-            return datetime.datetime.fromtimestamp(ts_float, tz=UTC)
-        except (ValueError, TypeError) as exc:
-            warnings.warn(f"Failed to parse timestamp {value!r}: {exc}", stacklevel=2)
-            return None
+    # Keep change_percent optional since API might not always provide it
+    change_percent: float | None = Field(
+        None, alias="changesPercentage", description="Price change percentage"
+    )
+
+    # Additional crypto-specific fields
+    shares_outstanding: float | None = Field(
+        None, alias="sharesOutstanding", description="Circulating supply"
+    )
 
 
 class CryptoHistoricalPrice(HistoricalPrice):
@@ -228,7 +226,23 @@ class ForexPair(BaseModel):
 class ForexQuote(PriceQuote):
     """Forex price quote"""
 
-    pass
+    model_config = ConfigDict(
+        populate_by_name=True,
+        validate_assignment=True,
+        extra="ignore",
+    )
+
+    # Make these fields required for forex
+    volume: float = Field(description="Trading volume")
+    day_low: float = Field(alias="dayLow", description="Day low rate")
+    day_high: float = Field(alias="dayHigh", description="Day high rate")
+    year_high: float = Field(alias="yearHigh", description="52-week high")
+    year_low: float = Field(alias="yearLow", description="52-week low")
+    exchange: str = Field(description="Exchange identifier")
+    open_price: float = Field(alias="open", description="Opening rate")
+    previous_close: float = Field(
+        alias="previousClose", description="Previous close rate"
+    )
 
 
 class ForexHistoricalPrice(HistoricalPrice):
@@ -239,6 +253,8 @@ class ForexHistoricalPrice(HistoricalPrice):
 
 class ForexPriceHistory(BaseModel):
     """Full forex price history"""
+
+    model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Symbol for the currency pair")
     historical: list[ForexHistoricalPrice] = Field(
@@ -272,7 +288,17 @@ class Commodity(BaseModel):
 class CommodityQuote(PriceQuote):
     """Commodity price quote"""
 
-    pass
+    model_config = ConfigDict(
+        populate_by_name=True,
+        validate_assignment=True,
+        extra="ignore",
+    )
+
+    # Make these fields required for commodities
+    name: str = Field(description="Commodity name")
+    volume: float = Field(description="Trading volume")
+    year_high: float = Field(alias="yearHigh", description="52-week high")
+    year_low: float = Field(alias="yearLow", description="52-week low")
 
 
 class CommodityHistoricalPrice(HistoricalPrice):
@@ -283,6 +309,8 @@ class CommodityHistoricalPrice(HistoricalPrice):
 
 class CommodityPriceHistory(BaseModel):
     """Full commodity price history"""
+
+    model_config = ConfigDict(populate_by_name=True)
 
     symbol: str = Field(description="Symbol for the commodity")
     historical: list[CommodityHistoricalPrice] = Field(

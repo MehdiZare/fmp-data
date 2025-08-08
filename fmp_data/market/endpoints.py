@@ -5,6 +5,8 @@ from fmp_data.market.models import (
     CompanySearchResult,
     CUSIPResult,
     ExchangeSymbol,
+    IPODisclosure,
+    IPOProspectus,
     ISINResult,
     MarketHours,
     MarketMover,
@@ -13,7 +15,6 @@ from fmp_data.market.models import (
 )
 from fmp_data.market.schema import (
     AvailableIndexesArgs,
-    BaseExchangeArg,
     BaseSearchArg,
     ETFListArgs,
     SearchArgs,
@@ -33,8 +34,8 @@ from fmp_data.models import (
 
 STOCK_LIST: Endpoint = Endpoint(
     name="stock_list",
-    path="stock/list",
-    version=APIVersion.V3,
+    path="stock-list",
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -57,8 +58,8 @@ STOCK_LIST: Endpoint = Endpoint(
 
 ETF_LIST: Endpoint = Endpoint(
     name="etf_list",
-    path="etf/list",
-    version=APIVersion.V3,
+    path="etf-list",
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -79,8 +80,8 @@ ETF_LIST: Endpoint = Endpoint(
 )
 AVAILABLE_INDEXES: Endpoint = Endpoint(
     name="available_indexes",
-    path="symbol/available-indexes",
-    version=APIVersion.V3,
+    path="index-list",
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -101,10 +102,10 @@ AVAILABLE_INDEXES: Endpoint = Endpoint(
         "Show all benchmark indexes",
     ],
 )
-SEARCH: Endpoint = Endpoint(
-    name="search",
-    path="search",
-    version=APIVersion.V3,
+SEARCH_COMPANY: Endpoint = Endpoint(
+    name="search-name",
+    path="search-name",
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -148,43 +149,10 @@ SEARCH: Endpoint = Endpoint(
         "Find companies matching 'renewable energy'",
     ],
 )
-EXCHANGE_SYMBOLS: Endpoint = Endpoint(
-    name="exchange_symbols",
-    path="symbol/{exchange}",
-    version=APIVersion.V3,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description=(
-        "Get all symbols listed on a specific exchange. Returns detailed information "
-        "about all securities trading on the specified exchange including stocks, "
-        "ETFs, and other instruments."
-    ),
-    mandatory_params=[
-        EndpointParam(
-            name="exchange",
-            location=ParamLocation.PATH,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Exchange code (e.g., NYSE, NASDAQ)",
-            valid_values=None,  # Will be validated by schema pattern
-        )
-    ],
-    optional_params=[],
-    response_model=ExchangeSymbol,
-    arg_model=BaseExchangeArg,  # Updated to use the base class
-    example_queries=[
-        "List all symbols on NYSE",
-        "Show me NASDAQ listed companies",
-        "What securities trade on LSE?",
-        "Get all stocks listed on TSX",
-        "Show symbols available on ASX",
-    ],
-)
-
 CIK_SEARCH: Endpoint = Endpoint(
     name="cik_search",
-    path="cik-search",
-    version=APIVersion.V3,
+    path="search-cik",
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -214,8 +182,8 @@ CIK_SEARCH: Endpoint = Endpoint(
 
 CUSIP_SEARCH: Endpoint = Endpoint(
     name="cusip_search",
-    path="cusip",
-    version=APIVersion.V3,
+    path="search-cusip",
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -246,8 +214,8 @@ CUSIP_SEARCH: Endpoint = Endpoint(
 
 ISIN_SEARCH: Endpoint = Endpoint(
     name="isin_search",
-    path="search/isin",
-    version=APIVersion.V4,
+    path="search-isin",
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -277,18 +245,27 @@ ISIN_SEARCH: Endpoint = Endpoint(
 
 MARKET_HOURS: Endpoint = Endpoint(
     name="market_hours",
-    path="is-the-market-open",
-    version=APIVersion.V3,
+    path="exchange-market-hours",
+    version=APIVersion.STABLE,
     description="Get market trading hours information",
-    mandatory_params=[],
+    mandatory_params=[
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Exchange code (e.g., NYSE, NASDAQ)",
+            valid_values=None,
+        )
+    ],
     optional_params=[],
     response_model=MarketHours,
 )
 
 GAINERS: Endpoint = Endpoint(
     name="gainers",
-    path="stock_market/gainers",
-    version=APIVersion.V3,
+    path="biggest-gainers",
+    version=APIVersion.STABLE,
     description="Get market gainers",
     mandatory_params=[],
     optional_params=[],
@@ -297,8 +274,8 @@ GAINERS: Endpoint = Endpoint(
 
 LOSERS: Endpoint = Endpoint(
     name="losers",
-    path="stock_market/losers",
-    version=APIVersion.V3,
+    path="biggest-losers",
+    version=APIVersion.STABLE,
     description="Get market losers",
     mandatory_params=[],
     optional_params=[],
@@ -307,8 +284,8 @@ LOSERS: Endpoint = Endpoint(
 
 MOST_ACTIVE: Endpoint = Endpoint(
     name="most_active",
-    path="stock_market/actives",
-    version=APIVersion.V3,
+    path="most-actives",
+    version=APIVersion.STABLE,
     description="Get most active stocks",
     mandatory_params=[],
     optional_params=[],
@@ -317,18 +294,26 @@ MOST_ACTIVE: Endpoint = Endpoint(
 
 SECTOR_PERFORMANCE: Endpoint = Endpoint(
     name="sector_performance",
-    path="sectors-performance",
-    version=APIVersion.V3,
+    path="sector-performance-snapshot",
+    version=APIVersion.STABLE,
     description="Get sector performance data",
     mandatory_params=[],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="sector",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Sector code (e.g., 'Technology')",
+        )
+    ],
     response_model=SectorPerformance,
 )
 
 PRE_POST_MARKET: Endpoint = Endpoint(
     name="pre_post_market",
     path="pre-post-market",
-    version=APIVersion.V4,
+    version=APIVersion.STABLE,
     description="Get pre/post market data",
     mandatory_params=[],
     optional_params=[],
@@ -337,8 +322,8 @@ PRE_POST_MARKET: Endpoint = Endpoint(
 
 ALL_SHARES_FLOAT: Endpoint = Endpoint(
     name="all_shares_float",
-    path="shares_float/all",
-    version=APIVersion.V4,
+    path="shares-float-all",
+    version=APIVersion.STABLE,
     description=(
         "Get share float data for all companies at once. Provides a comprehensive "
         "view of market-wide float data, useful for screening and comparing "
@@ -354,5 +339,362 @@ ALL_SHARES_FLOAT: Endpoint = Endpoint(
         "List float data across all stocks",
         "Compare share floats across companies",
         "Get complete market float data",
+    ],
+)
+
+FINANCIAL_STATEMENT_SYMBOL_LIST: Endpoint = Endpoint(
+    name="financial_statement_symbol_list",
+    path="financial-statement-symbol-list",
+    version=APIVersion.STABLE,
+    description="Get list of symbols with financial statements available",
+    mandatory_params=[],
+    optional_params=[],
+    response_model=CompanySymbol,
+)
+
+CIK_LIST: Endpoint = Endpoint(
+    name="cik_list",
+    path="cik-list",
+    version=APIVersion.STABLE,
+    description="Get complete list of all CIK numbers",
+    mandatory_params=[],
+    optional_params=[],
+    response_model=CIKResult,
+)
+
+ACTIVELY_TRADING_LIST: Endpoint = Endpoint(
+    name="actively_trading_list",
+    path="actively-trading-list",
+    version=APIVersion.STABLE,
+    description="Get list of actively trading stocks",
+    mandatory_params=[],
+    optional_params=[],
+    response_model=CompanySymbol,
+)
+
+TRADABLE_SEARCH: Endpoint = Endpoint(
+    name="tradable_search",
+    path="tradable-list",
+    version=APIVersion.STABLE,
+    description="Get list of tradable securities",
+    mandatory_params=[],
+    optional_params=[
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results to return",
+        ),
+        EndpointParam(
+            name="offset",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Offset for pagination",
+        ),
+    ],
+    response_model=CompanySymbol,
+)
+
+SEARCH_SYMBOL: Endpoint = Endpoint(
+    name="search_symbol",
+    path="search-symbol",
+    version=APIVersion.STABLE,
+    description="Search for security symbols across all asset types",
+    mandatory_params=[
+        EndpointParam(
+            name="query",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Search query",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results to return",
+        ),
+    ],
+    response_model=CompanySearchResult,
+)
+
+COMPANY_SCREENER: Endpoint = Endpoint(
+    name="company_screener",
+    path="company-screener",
+    version=APIVersion.STABLE,
+    description="Screen companies based on various criteria",
+    mandatory_params=[],
+    optional_params=[
+        EndpointParam(
+            name="market_cap_more_than",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            required=False,
+            description="Market cap greater than",
+        ),
+        EndpointParam(
+            name="market_cap_less_than",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            required=False,
+            description="Market cap less than",
+        ),
+        EndpointParam(
+            name="price_more_than",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            required=False,
+            description="Price greater than",
+        ),
+        EndpointParam(
+            name="price_less_than",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            required=False,
+            description="Price less than",
+        ),
+        EndpointParam(
+            name="beta_more_than",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            required=False,
+            description="Beta greater than",
+        ),
+        EndpointParam(
+            name="beta_less_than",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            required=False,
+            description="Beta less than",
+        ),
+        EndpointParam(
+            name="volume_more_than",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Volume greater than",
+        ),
+        EndpointParam(
+            name="volume_less_than",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Volume less than",
+        ),
+        EndpointParam(
+            name="dividend_more_than",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            required=False,
+            description="Dividend yield greater than",
+        ),
+        EndpointParam(
+            name="dividend_less_than",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            required=False,
+            description="Dividend yield less than",
+        ),
+        EndpointParam(
+            name="is_etf",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            required=False,
+            description="Filter for ETFs",
+        ),
+        EndpointParam(
+            name="is_fund",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            required=False,
+            description="Filter for funds",
+        ),
+        EndpointParam(
+            name="sector",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Filter by sector",
+        ),
+        EndpointParam(
+            name="industry",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Filter by industry",
+        ),
+        EndpointParam(
+            name="country",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Filter by country",
+        ),
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Filter by exchange",
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results to return",
+        ),
+    ],
+    response_model=CompanySearchResult,
+)
+
+SEARCH_EXCHANGE_VARIANTS: Endpoint = Endpoint(
+    name="search_exchange_variants",
+    path="search-exchange-variants",
+    version=APIVersion.STABLE,
+    description="Search for exchange trading variants of a company",
+    mandatory_params=[
+        EndpointParam(
+            name="query",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Company name or symbol to search",
+        )
+    ],
+    optional_params=[],
+    response_model=CompanySearchResult,
+)
+
+AVAILABLE_EXCHANGES: Endpoint = Endpoint(
+    name="available_exchanges",
+    path="available-exchanges",
+    version=APIVersion.STABLE,
+    description="Get a complete list of supported stock exchanges",
+    mandatory_params=[],
+    optional_params=[],
+    response_model=ExchangeSymbol,
+)
+
+AVAILABLE_SECTORS: Endpoint = Endpoint(
+    name="available_sectors",
+    path="available-sectors",
+    version=APIVersion.STABLE,
+    description="Get a complete list of industry sectors",
+    mandatory_params=[],
+    optional_params=[],
+    response_model=str,  # Returns list of strings
+)
+
+AVAILABLE_INDUSTRIES: Endpoint = Endpoint(
+    name="available_industries",
+    path="available-industries",
+    version=APIVersion.STABLE,
+    description="Get a comprehensive list of available industries",
+    mandatory_params=[],
+    optional_params=[],
+    response_model=str,  # Returns list of strings
+)
+
+AVAILABLE_COUNTRIES: Endpoint = Endpoint(
+    name="available_countries",
+    path="available-countries",
+    version=APIVersion.STABLE,
+    description="Get a comprehensive list of available countries",
+    mandatory_params=[],
+    optional_params=[],
+    response_model=str,  # Returns list of strings
+)
+
+IPO_DISCLOSURE: Endpoint = Endpoint(
+    name="ipo_disclosure",
+    path="ipos-disclosure",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get IPO disclosure documents and filing information for companies "
+        "going public. Includes disclosure URLs, filing dates, and IPO details."
+    ),
+    mandatory_params=[],
+    optional_params=[
+        EndpointParam(
+            name="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Start date for IPO search (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="End date for IPO search (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results to return",
+            default=100,
+        ),
+    ],
+    response_model=IPODisclosure,
+    example_queries=[
+        "Get recent IPO disclosure documents",
+        "Show IPO filings from last month",
+        "Find disclosure documents for upcoming IPOs",
+        "Get IPO disclosure URLs",
+    ],
+)
+
+IPO_PROSPECTUS: Endpoint = Endpoint(
+    name="ipo_prospectus",
+    path="ipos-prospectus",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description=(
+        "Get IPO prospectus documents and detailed offering information for companies "
+        "going public. Includes prospectus URLs, offer prices, and proceeds data."
+    ),
+    mandatory_params=[],
+    optional_params=[
+        EndpointParam(
+            name="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Start date for IPO search (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="End date for IPO search (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results to return",
+            default=100,
+        ),
+    ],
+    response_model=IPOProspectus,
+    example_queries=[
+        "Get IPO prospectus documents",
+        "Show prospectus for recent IPOs",
+        "Find offering details for upcoming IPOs",
+        "Get IPO pricing and proceeds information",
     ],
 )

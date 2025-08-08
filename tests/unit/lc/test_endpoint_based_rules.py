@@ -23,7 +23,7 @@ def sample_endpoints() -> dict[str, Endpoint[Any]]:
         "get_market_price": Endpoint(
             name="get_market_price",
             path="market/price/{symbol}",
-            version=APIVersion.V3,
+            version=APIVersion.STABLE,
             url_type=URLType.API,
             method=HTTPMethod.GET,
             description="Get market price for a symbol",
@@ -51,7 +51,7 @@ def sample_endpoints() -> dict[str, Endpoint[Any]]:
         "get_market_summary": Endpoint(
             name="get_market_summary",
             path="market/summary",
-            version=APIVersion.V3,
+            version=APIVersion.STABLE,
             url_type=URLType.API,
             method=HTTPMethod.GET,
             description="Get market summary",

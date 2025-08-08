@@ -28,7 +28,7 @@ class FMPDataClient(BaseClient):
         api_key: str | None = None,
         timeout: int = 30,
         max_retries: int = 3,
-        base_url: str = "https://financialmodelingprep.com/api",
+        base_url: str = "https://financialmodelingprep.com",
         config: ClientConfig | None = None,
         debug: bool = False,
     ):

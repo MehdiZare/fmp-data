@@ -8,30 +8,52 @@ from fmp_data.institutional.endpoints import (
     BENEFICIAL_OWNERSHIP,
     CIK_MAPPER,
     CIK_MAPPER_BY_NAME,
-    CIK_MAPPER_BY_SYMBOL,
     FAIL_TO_DELIVER,
     FORM_13F,
     FORM_13F_DATES,
+    HOLDER_INDUSTRY_BREAKDOWN,
+    HOLDER_PERFORMANCE_SUMMARY,
+    INDUSTRY_PERFORMANCE_SUMMARY,
     INSIDER_ROSTER,
     INSIDER_STATISTICS,
     INSIDER_TRADES,
+    INSIDER_TRADING_BY_NAME,
+    INSIDER_TRADING_LATEST,
+    INSIDER_TRADING_SEARCH,
+    INSIDER_TRADING_STATISTICS_ENHANCED,
     INSTITUTIONAL_HOLDERS,
     INSTITUTIONAL_HOLDINGS,
+    INSTITUTIONAL_OWNERSHIP_ANALYTICS,
+    INSTITUTIONAL_OWNERSHIP_DATES,
+    INSTITUTIONAL_OWNERSHIP_EXTRACT,
+    INSTITUTIONAL_OWNERSHIP_LATEST,
+    SYMBOL_POSITIONS_SUMMARY,
     TRANSACTION_TYPES,
 )
 from fmp_data.institutional.models import (
     AssetAllocation,
     BeneficialOwnership,
-    CIKCompanyMap,
     CIKMapping,
     FailToDeliver,
     Form13F,
+    HolderIndustryBreakdown,
+    HolderPerformanceSummary,
+    IndustryPerformanceSummary,
     InsiderRoster,
     InsiderStatistic,
     InsiderTrade,
+    InsiderTradingByName,
+    InsiderTradingLatest,
+    InsiderTradingSearch,
+    InsiderTradingStatistics,
     InsiderTransactionType,
     InstitutionalHolder,
     InstitutionalHolding,
+    InstitutionalOwnershipAnalytics,
+    InstitutionalOwnershipDates,
+    InstitutionalOwnershipExtract,
+    InstitutionalOwnershipLatest,
+    SymbolPositionsSummary,
 )
 
 
@@ -128,10 +150,6 @@ class InstitutionalClient(EndpointGroup):
         """Search CIK mappings by name"""
         return self.client.request(CIK_MAPPER_BY_NAME, name=name, page=page)
 
-    def get_cik_by_symbol(self, symbol: str) -> list[CIKCompanyMap]:
-        """Get CIK mapping for symbol"""
-        return self.client.request(CIK_MAPPER_BY_SYMBOL, symbol=symbol)
-
     def get_beneficial_ownership(self, symbol: str) -> list[BeneficialOwnership]:
         """Get beneficial ownership data for a symbol"""
         return self.client.request(BENEFICIAL_OWNERSHIP, symbol=symbol)
@@ -139,3 +157,106 @@ class InstitutionalClient(EndpointGroup):
     def get_fail_to_deliver(self, symbol: str, page: int = 0) -> list[FailToDeliver]:
         """Get fail to deliver data for a symbol"""
         return self.client.request(FAIL_TO_DELIVER, symbol=symbol, page=page)
+
+    # Insider Trading Methods
+    def get_insider_trading_latest(self, page: int = 0) -> list[InsiderTradingLatest]:
+        """Get latest insider trading activity"""
+        return self.client.request(INSIDER_TRADING_LATEST, page=page)
+
+    def search_insider_trading(
+        self, symbol: str | None = None, page: int = 0, limit: int = 100
+    ) -> list[InsiderTradingSearch]:
+        """Search insider trades with optional filters"""
+        params: dict[str, str | int] = {"page": page, "limit": limit}
+        if symbol:
+            params["symbol"] = symbol
+        return self.client.request(INSIDER_TRADING_SEARCH, **params)
+
+    def get_insider_trading_by_name(
+        self, reporting_name: str, page: int = 0
+    ) -> list[InsiderTradingByName]:
+        """Search insider trades by reporting name"""
+        return self.client.request(
+            INSIDER_TRADING_BY_NAME, reportingName=reporting_name, page=page
+        )
+
+    def get_insider_trading_statistics_enhanced(
+        self, symbol: str
+    ) -> InsiderTradingStatistics:
+        """Get enhanced insider trading statistics"""
+        result = self.client.request(INSIDER_TRADING_STATISTICS_ENHANCED, symbol=symbol)
+        return cast(
+            InsiderTradingStatistics, result[0] if isinstance(result, list) else result
+        )
+
+    # Form 13F Methods
+    def get_institutional_ownership_latest(
+        self, cik: str | None = None, page: int = 0
+    ) -> list[InstitutionalOwnershipLatest]:
+        """Get latest institutional ownership filings"""
+        params: dict[str, str | int] = {"page": page}
+        if cik:
+            params["cik"] = cik
+        return self.client.request(INSTITUTIONAL_OWNERSHIP_LATEST, **params)
+
+    def get_institutional_ownership_extract(
+        self, cik: str, filing_date: date
+    ) -> list[InstitutionalOwnershipExtract]:
+        """Get filings extract data"""
+        return self.client.request(
+            INSTITUTIONAL_OWNERSHIP_EXTRACT,
+            cik=cik,
+            date=filing_date.strftime("%Y-%m-%d"),
+        )
+
+    def get_institutional_ownership_dates(
+        self, cik: str
+    ) -> list[InstitutionalOwnershipDates]:
+        """Get Form 13F filing dates"""
+        return self.client.request(INSTITUTIONAL_OWNERSHIP_DATES, cik=cik)
+
+    def get_institutional_ownership_analytics(
+        self, cik: str, filing_date: date
+    ) -> list[InstitutionalOwnershipAnalytics]:
+        """Get filings extract with analytics by holder"""
+        return self.client.request(
+            INSTITUTIONAL_OWNERSHIP_ANALYTICS,
+            cik=cik,
+            date=filing_date.strftime("%Y-%m-%d"),
+        )
+
+    def get_holder_performance_summary(
+        self, cik: str, filing_date: date | None = None
+    ) -> list[HolderPerformanceSummary]:
+        """Get holder performance summary"""
+        params: dict[str, str] = {"cik": cik}
+        if filing_date:
+            params["date"] = filing_date.strftime("%Y-%m-%d")
+        return self.client.request(HOLDER_PERFORMANCE_SUMMARY, **params)
+
+    def get_holder_industry_breakdown(
+        self, cik: str, filing_date: date | None = None
+    ) -> list[HolderIndustryBreakdown]:
+        """Get holders industry breakdown"""
+        params: dict[str, str] = {"cik": cik}
+        if filing_date:
+            params["date"] = filing_date.strftime("%Y-%m-%d")
+        return self.client.request(HOLDER_INDUSTRY_BREAKDOWN, **params)
+
+    def get_symbol_positions_summary(
+        self, symbol: str, filing_date: date | None = None
+    ) -> list[SymbolPositionsSummary]:
+        """Get positions summary by symbol"""
+        params: dict[str, str] = {"symbol": symbol}
+        if filing_date:
+            params["date"] = filing_date.strftime("%Y-%m-%d")
+        return self.client.request(SYMBOL_POSITIONS_SUMMARY, **params)
+
+    def get_industry_performance_summary(
+        self, industry: str, filing_date: date | None = None
+    ) -> list[IndustryPerformanceSummary]:
+        """Get industry performance summary"""
+        params: dict[str, str] = {"industry": industry}
+        if filing_date:
+            params["date"] = filing_date.strftime("%Y-%m-%d")
+        return self.client.request(INDUSTRY_PERFORMANCE_SUMMARY, **params)

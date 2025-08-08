@@ -35,8 +35,8 @@ class URLType(str, Enum):
 class APIVersion(str, Enum):
     """API versions supported by FMP"""
 
-    V3 = "v3"
-    V4 = "v4"
+    V3 = "v3"  # Deprecated
+    V4 = "v4"  # Deprecated
     STABLE = "stable"
 
 
@@ -173,7 +173,9 @@ class Endpoint(BaseModel, Generic[T]):
             return f"{base_url}/{path}"
 
     def validate_params(self, provided_params: dict) -> dict[str, Any]:
-        """Validate provided parameters against endpoint definition"""
+        """
+        Validate provided parameters against endpoint definition
+        """
         validated = {}
 
         # Validate mandatory parameters
@@ -182,15 +184,19 @@ class Endpoint(BaseModel, Generic[T]):
                 raise ValueError(f"Missing mandatory parameter: {param.name}")
 
             value = param.validate_value(provided_params[param.name])
-            validated[param.name] = value
+            # Use alias if available, otherwise use parameter name
+            key = param.alias or param.name
+            validated[key] = value
 
         # Validate optional parameters
         for param in self.optional_params or []:
             if param.name in provided_params:
                 value = param.validate_value(provided_params[param.name])
+                # Use alias if available, otherwise use parameter name
                 key = param.alias or param.name
                 validated[key] = value
             elif param.default is not None:
+                # Use alias if available, otherwise use parameter name
                 key = param.alias or param.name
                 validated[key] = param.default
 

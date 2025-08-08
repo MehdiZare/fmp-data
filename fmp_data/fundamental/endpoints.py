@@ -1,7 +1,10 @@
 # fmp_data/fundamental/endpoints.py
 from fmp_data.fundamental.models import (
+    DCF,
     BalanceSheet,
     CashFlowStatement,
+    CustomDCF,
+    CustomLeveredDCF,
     FinancialRatios,
     FinancialReportDate,
     FinancialStatementFull,
@@ -29,8 +32,8 @@ from fmp_data.models import (
 
 INCOME_STATEMENT: Endpoint = Endpoint(
     name="income_statement",
-    path="income-statement/{symbol}",
-    version=APIVersion.V3,
+    path="income-statement",
+    version=APIVersion.STABLE,
     description=(
         "Retrieve detailed income statements showing revenue, costs, expenses and "
         "profitability metrics for a company "
@@ -38,7 +41,7 @@ INCOME_STATEMENT: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
@@ -77,8 +80,8 @@ INCOME_STATEMENT: Endpoint = Endpoint(
 
 BALANCE_SHEET: Endpoint = Endpoint(
     name="balance_sheet",
-    path="balance-sheet-statement/{symbol}",
-    version=APIVersion.V3,
+    path="balance-sheet-statement",
+    version=APIVersion.STABLE,
     description=(
         "Obtain detailed balance sheet statements showing assets, liabilities and "
         "shareholders' equity for a company at specific points in time"
@@ -86,7 +89,7 @@ BALANCE_SHEET: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
@@ -124,8 +127,8 @@ BALANCE_SHEET: Endpoint = Endpoint(
 
 CASH_FLOW: Endpoint = Endpoint(
     name="cash_flow",
-    path="cash-flow-statement/{symbol}",
-    version=APIVersion.V3,
+    path="cash-flow-statement",
+    version=APIVersion.STABLE,
     description=(
         "Access cash flow statements showing operating, investing, and financing "
         "activities along with key cash flow metrics and changes in cash position"
@@ -133,7 +136,7 @@ CASH_FLOW: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
@@ -171,8 +174,8 @@ CASH_FLOW: Endpoint = Endpoint(
 
 KEY_METRICS: Endpoint = Endpoint(
     name="key_metrics",
-    path="key-metrics/{symbol}",
-    version=APIVersion.V3,
+    path="key-metrics",
+    version=APIVersion.STABLE,
     description=(
         "Access essential financial metrics and KPIs including profitability, "
         "efficiency, and valuation measures for company analysis"
@@ -180,7 +183,7 @@ KEY_METRICS: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
@@ -218,8 +221,8 @@ KEY_METRICS: Endpoint = Endpoint(
 
 FINANCIAL_RATIOS: Endpoint = Endpoint(
     name="financial_ratios",
-    path="ratios/{symbol}",
-    version=APIVersion.V3,
+    path="ratios",
+    version=APIVersion.STABLE,
     description=(
         "Retrieve comprehensive financial ratios including profitability, "
         "liquidity, solvency, and efficiency metrics for analysis"
@@ -227,7 +230,7 @@ FINANCIAL_RATIOS: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
@@ -264,13 +267,13 @@ FINANCIAL_RATIOS: Endpoint = Endpoint(
 )
 FULL_FINANCIAL_STATEMENT: Endpoint = Endpoint(
     name="full_financial_statement",
-    path="financial-statement-full-as-reported/{symbol}",
-    version=APIVersion.V3,
+    path="financial-statement-full-as-reported",
+    version=APIVersion.STABLE,
     description="Get full financial statements as reported",
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
@@ -301,7 +304,7 @@ FULL_FINANCIAL_STATEMENT: Endpoint = Endpoint(
 FINANCIAL_REPORTS_DATES: Endpoint = Endpoint(
     name="financial_reports_dates",
     path="financial-reports-dates",
-    version=APIVersion.V4,
+    version=APIVersion.STABLE,
     description="Get list of financial report dates",
     mandatory_params=[
         EndpointParam(
@@ -318,8 +321,8 @@ FINANCIAL_REPORTS_DATES: Endpoint = Endpoint(
 
 OWNER_EARNINGS: Endpoint = Endpoint(
     name="owner_earnings",
-    path="owner_earnings",
-    version=APIVersion.V4,
+    path="owner-earnings",
+    version=APIVersion.STABLE,
     description=(
         "Calculate owner earnings metrics using Warren Buffett's methodology "
         "for evaluating true business profitability"
@@ -327,7 +330,7 @@ OWNER_EARNINGS: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
@@ -346,8 +349,8 @@ OWNER_EARNINGS: Endpoint = Endpoint(
 
 LEVERED_DCF: Endpoint = Endpoint(
     name="levered_dcf",
-    path="advanced_levered_discounted_cash_flow",
-    version=APIVersion.V4,
+    path="levered-discounted-cash-flow",
+    version=APIVersion.STABLE,
     description=(
         "Perform levered discounted cash flow valuation including detailed "
         "assumptions and growth projections"
@@ -355,7 +358,7 @@ LEVERED_DCF: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
@@ -375,8 +378,8 @@ LEVERED_DCF: Endpoint = Endpoint(
 
 HISTORICAL_RATING: Endpoint = Endpoint(
     name="historical_rating",
-    path="historical-rating/{symbol}",
-    version=APIVersion.V3,
+    path="historical-rating",
+    version=APIVersion.STABLE,
     description=(
         "Retrieve historical company ratings and scoring metrics over time "
         "based on fundamental analysis"
@@ -384,7 +387,7 @@ HISTORICAL_RATING: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
@@ -399,5 +402,92 @@ HISTORICAL_RATING: Endpoint = Endpoint(
         "What are Tesla's past ratings?",
         "Get Google's historical scores",
         "Show Amazon's rating changes",
+    ],
+)
+
+DISCOUNTED_CASH_FLOW: Endpoint = Endpoint(
+    name="discounted_cash_flow",
+    path="discounted-cash-flow",
+    version=APIVersion.STABLE,
+    description=(
+        "Calculate discounted cash flow valuation to determine the intrinsic "
+        "value of a company based on projected future cash flows"
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[],
+    response_model=DCF,
+    arg_model=SimpleSymbolArgs,
+    example_queries=[
+        "Calculate AAPL DCF valuation",
+        "Get Microsoft's intrinsic value",
+        "What's Tesla worth using DCF?",
+        "Show Google's DCF analysis",
+        "Get Amazon's fair value estimate",
+    ],
+)
+
+CUSTOM_DISCOUNTED_CASH_FLOW: Endpoint = Endpoint(
+    name="custom_discounted_cash_flow",
+    path="custom-discounted-cash-flow",
+    version=APIVersion.STABLE,
+    description=(
+        "Perform advanced DCF analysis with detailed cash flow projections, "
+        "growth rates, WACC calculations, and terminal value assumptions"
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[],
+    response_model=CustomDCF,
+    arg_model=SimpleSymbolArgs,
+    example_queries=[
+        "Get detailed DCF for AAPL",
+        "Show Microsoft's cash flow projections",
+        "Calculate Tesla's terminal value",
+        "What's Google's WACC and DCF?",
+        "Get Amazon's 10-year cash flow forecast",
+    ],
+)
+
+CUSTOM_LEVERED_DCF: Endpoint = Endpoint(
+    name="custom_levered_dcf",
+    path="custom-levered-discounted-cash-flow",
+    version=APIVersion.STABLE,
+    description=(
+        "Calculate levered DCF valuation using free cash flow to equity (FCFE) "
+        "with detailed projections and cost of equity calculations"
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[],
+    response_model=CustomLeveredDCF,
+    arg_model=SimpleSymbolArgs,
+    example_queries=[
+        "Calculate levered DCF for AAPL",
+        "Get Microsoft's FCFE projections",
+        "What's Tesla's cost of equity?",
+        "Show Google's levered valuation",
+        "Get Amazon's equity value analysis",
     ],
 )

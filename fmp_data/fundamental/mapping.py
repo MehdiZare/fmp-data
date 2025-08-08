@@ -3,6 +3,9 @@
 from fmp_data.fundamental.endpoints import (
     BALANCE_SHEET,
     CASH_FLOW,
+    CUSTOM_DISCOUNTED_CASH_FLOW,
+    CUSTOM_LEVERED_DCF,
+    DISCOUNTED_CASH_FLOW,
     FINANCIAL_RATIOS,
     FINANCIAL_REPORTS_DATES,
     FULL_FINANCIAL_STATEMENT,
@@ -29,6 +32,9 @@ FUNDAMENTAL_ENDPOINT_MAP = {
     "get_owner_earnings": OWNER_EARNINGS,
     "get_levered_dcf": LEVERED_DCF,
     "get_historical_rating": HISTORICAL_RATING,
+    "get_discounted_cash_flow": DISCOUNTED_CASH_FLOW,
+    "get_custom_discounted_cash_flow": CUSTOM_DISCOUNTED_CASH_FLOW,
+    "get_custom_levered_dcf": CUSTOM_LEVERED_DCF,
     "get_full_financial_statement": FULL_FINANCIAL_STATEMENT,
     "get_financial_reports_dates": FINANCIAL_REPORTS_DATES,
 }
@@ -783,6 +789,196 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
             "Analysis scheduling",
             "Report access planning",
             "Historical statement retrieval",
+        ],
+    ),
+    "discounted_cash_flow": EndpointSemantics(
+        client_name="fundamental",
+        method_name="get_discounted_cash_flow",
+        natural_description=(
+            "Calculate discounted cash flow valuation to determine the intrinsic "
+            "value of a company based on projected future cash flows."
+        ),
+        example_queries=[
+            "Calculate AAPL DCF valuation",
+            "Get Microsoft's intrinsic value",
+            "What's Tesla worth using DCF?",
+            "Show Google's DCF analysis",
+            "Get Amazon's fair value estimate",
+            "What's the DCF value for Netflix?",
+        ],
+        related_terms=[
+            "dcf",
+            "discounted cash flow",
+            "intrinsic value",
+            "fair value",
+            "valuation",
+            "present value",
+            "company value",
+            "stock value",
+            "fundamental value",
+        ],
+        category=SemanticCategory.FUNDAMENTAL_ANALYSIS,
+        sub_category="Valuation",
+        parameter_hints={"symbol": SYMBOL_HINT},
+        response_hints={
+            "dcf": ResponseFieldInfo(
+                description="DCF value per share",
+                examples=["185.50", "2450.75"],
+                related_terms=["fair value", "intrinsic value", "dcf price"],
+            ),
+            "stock_price": ResponseFieldInfo(
+                description="Current stock price for comparison",
+                examples=["175.25", "2800.50"],
+                related_terms=["market price", "current price", "trading price"],
+            ),
+        },
+        use_cases=[
+            "Intrinsic value calculation",
+            "Investment valuation",
+            "Fair value estimation",
+            "Value investing analysis",
+            "Stock screening",
+            "Investment decision making",
+            "Price target setting",
+        ],
+    ),
+    "custom_discounted_cash_flow": EndpointSemantics(
+        client_name="fundamental",
+        method_name="get_custom_discounted_cash_flow",
+        natural_description=(
+            "Perform advanced DCF analysis with detailed cash flow projections, "
+            "growth rates, WACC calculations, and terminal value assumptions."
+        ),
+        example_queries=[
+            "Get detailed DCF for AAPL",
+            "Show Microsoft's cash flow projections",
+            "Calculate Tesla's terminal value",
+            "What's Google's WACC and DCF?",
+            "Get Amazon's 10-year cash flow forecast",
+            "Show detailed DCF components for Netflix",
+        ],
+        related_terms=[
+            "advanced dcf",
+            "custom dcf",
+            "detailed valuation",
+            "cash flow projections",
+            "terminal value",
+            "wacc",
+            "growth rates",
+            "fcf projections",
+            "enterprise value",
+        ],
+        category=SemanticCategory.FUNDAMENTAL_ANALYSIS,
+        sub_category="Valuation",
+        parameter_hints={"symbol": SYMBOL_HINT},
+        response_hints={
+            "fcf0": ResponseFieldInfo(
+                description="Current year free cash flow",
+                examples=["85.2B", "12.4B"],
+                related_terms=["base fcf", "current fcf", "year 0 cash flow"],
+            ),
+            "wacc": ResponseFieldInfo(
+                description="Weighted average cost of capital",
+                examples=["8.5%", "10.2%"],
+                related_terms=["discount rate", "cost of capital", "required return"],
+            ),
+            "terminal_value": ResponseFieldInfo(
+                description="Terminal value of cash flows",
+                examples=["1250.5B", "450.3B"],
+                related_terms=["terminal fcf", "perpetuity value", "final value"],
+            ),
+            "enterprise_value": ResponseFieldInfo(
+                description="Total enterprise value",
+                examples=["850.7B", "320.5B"],
+                related_terms=["ev", "firm value", "business value"],
+            ),
+            "dcf": ResponseFieldInfo(
+                description="DCF value per share",
+                examples=["195.50", "2650.75"],
+                related_terms=["fair value", "intrinsic value", "dcf price"],
+            ),
+        },
+        use_cases=[
+            "Detailed valuation analysis",
+            "Investment modeling",
+            "M&A analysis",
+            "Financial planning",
+            "Sensitivity analysis",
+            "Academic research",
+            "Professional valuation",
+        ],
+    ),
+    "custom_levered_dcf": EndpointSemantics(
+        client_name="fundamental",
+        method_name="get_custom_levered_dcf",
+        natural_description=(
+            "Calculate levered DCF valuation using free cash flow to equity (FCFE) "
+            "with detailed projections and cost of equity calculations."
+        ),
+        example_queries=[
+            "Calculate levered DCF for AAPL",
+            "Get Microsoft's FCFE projections",
+            "What's Tesla's cost of equity?",
+            "Show Google's levered valuation",
+            "Get Amazon's equity value analysis",
+            "Detailed equity DCF for Netflix",
+        ],
+        related_terms=[
+            "levered dcf",
+            "fcfe",
+            "equity value",
+            "cost of equity",
+            "levered valuation",
+            "equity dcf",
+            "free cash flow to equity",
+            "equity valuation",
+        ],
+        category=SemanticCategory.FUNDAMENTAL_ANALYSIS,
+        sub_category="Valuation",
+        parameter_hints={"symbol": SYMBOL_HINT},
+        response_hints={
+            "fcfe0": ResponseFieldInfo(
+                description="Current year free cash flow to equity",
+                examples=["75.2B", "10.4B"],
+                related_terms=["base fcfe", "current fcfe", "year 0 equity cash flow"],
+            ),
+            "cost_of_equity": ResponseFieldInfo(
+                description="Cost of equity capital",
+                examples=["9.5%", "11.2%"],
+                related_terms=["required return", "equity discount rate", "ke"],
+            ),
+            "terminal_value": ResponseFieldInfo(
+                description="Terminal value of equity cash flows",
+                examples=["950.5B", "350.3B"],
+                related_terms=[
+                    "terminal fcfe",
+                    "perpetuity value",
+                    "final equity value",
+                ],
+            ),
+            "equity_value": ResponseFieldInfo(
+                description="Total equity value",
+                examples=["750.7B", "280.5B"],
+                related_terms=["market cap", "shareholder value", "equity worth"],
+            ),
+            "dcf": ResponseFieldInfo(
+                description="DCF value per share",
+                examples=["175.50", "2450.75"],
+                related_terms=[
+                    "fair value per share",
+                    "intrinsic value",
+                    "equity value per share",
+                ],
+            ),
+        },
+        use_cases=[
+            "Equity valuation",
+            "Levered company analysis",
+            "Financial services valuation",
+            "Private equity analysis",
+            "LBO analysis",
+            "Dividend policy analysis",
+            "Capital structure impact",
         ],
     ),
 }

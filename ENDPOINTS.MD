@@ -35,8 +35,8 @@
 - OTC Quote `/v3/otc/real-time-price/{symbol}`
 - Exchange Prices `/v3/quotes/{exchange}`
 - Stock Price Change `/v3/stock-price-change/{symbol}`
-- Historical Price (Daily) `/v3/historical-price-full/{symbol}`
-- Intraday Price `/v3/historical-chart/{interval}/{symbol}`
+- Historical Price (Daily) `/stable/historical-price-eod/full`
+- Intraday Price `/stable/historical-chart/{interval}`
 
 ### Pre/Post Market
 - Aftermarket Trade `/v4/pre-post-market-trade/{symbol}`
@@ -159,21 +159,21 @@
 - Cryptocurrencies List `/v3/symbol/available-cryptocurrencies`
 - Full Quote List `/v3/quotes/crypto`
 - Single Quote `/v3/quote/{cryptoPair}`
-- Historical Price `/v3/historical-price-full/{cryptoPair}`
+- Historical Price `/v3/historical-price-eod/full/{cryptoPair}`
 - Intraday Price `/v3/historical-chart/{interval}/{cryptoPair}`
 
 ### Forex
 - Forex List `/v3/symbol/available-forex-currency-pairs`
 - Full Quote List `/v3/quotes/forex`
 - Single Quote `/v3/quote/{forexPair}`
-- Historical Price `/v3/historical-price-full/{forexPair}`
+- Historical Price `/v3/historical-price-eod/full/{forexPair}`
 - Intraday Price `/v3/historical-chart/{interval}/{forexPair}`
 
 ### Commodities
 - Commodities List `/v3/symbol/available-commodities`
 - Full Quote List `/v3/quotes/commodity`
 - Single Quote `/v3/quote/{commodity}`
-- Historical Price `/v3/historical-price-full/{commodity}`
+- Historical Price `/v3/historical-price-eod/full/{commodity}`
 - Intraday Price `/v3/historical-chart/{interval}/{commodity}`
 
 ## 9. Economic Data

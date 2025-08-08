@@ -84,7 +84,7 @@ class TestTechnicalClient:
         mock_request.return_value = mock_response(status_code=200, json_data=[sma_data])
         result = fmp_client.technical.get_sma(
             symbol="AAPL",
-            period=20,
+            period_length=20,
             start_date=date(2024, 1, 1),
             end_date=date(2024, 1, 31),
         )
@@ -99,7 +99,7 @@ class TestTechnicalClient:
         mock_request.return_value = mock_response(status_code=200, json_data=[rsi_data])
         result = fmp_client.technical.get_rsi(
             symbol="AAPL",
-            period=14,
+            period_length=14,
             start_date=date(2024, 1, 1),
             end_date=date(2024, 1, 31),
         )
@@ -114,7 +114,7 @@ class TestTechnicalClient:
         mock_request.return_value = mock_response(status_code=200, json_data=[ema_data])
         result = fmp_client.technical.get_ema(
             symbol="AAPL",
-            period=20,
+            period_length=20,
             start_date=date(2024, 1, 1),
             end_date=date(2024, 1, 31),
         )
@@ -145,7 +145,7 @@ class TestTechnicalClient:
         with pytest.raises(RetryError):
             fmp_client.technical.get_sma(
                 symbol="AAPL",
-                period=20,
+                period_length=20,
                 start_date=date(2024, 1, 1),
                 end_date=date(2024, 1, 31),
             )

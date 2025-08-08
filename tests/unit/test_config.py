@@ -345,7 +345,7 @@ class TestClientConfig:
         config = ClientConfig(api_key="test_key")
         assert config.timeout == 30
         assert config.max_retries == 3
-        assert config.base_url == "https://financialmodelingprep.com/api"
+        assert config.base_url == "https://financialmodelingprep.com"
         assert isinstance(config.rate_limit, RateLimitConfig)
         assert isinstance(config.logging, LoggingConfig)
 
@@ -368,7 +368,7 @@ class TestClientConfig:
         valid_urls = [
             "https://api.test.com",
             "http://localhost:8000",
-            "https://financialmodelingprep.com/api/v3",
+            "https://financialmodelingprep.com/stable",
             "https://sub.domain.com/path",
         ]
 
@@ -480,7 +480,7 @@ class TestClientConfig:
             # Should use defaults for other values
             assert config.timeout == 30
             assert config.max_retries == 3
-            assert config.base_url == "https://financialmodelingprep.com/api"
+            assert config.base_url == "https://financialmodelingprep.com"
 
     def test_from_env_invalid_numeric_values(self):
         """Test from_env handles invalid numeric environment variables"""

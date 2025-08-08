@@ -24,78 +24,159 @@ class FinancialStatementBase(BaseModel):
         alias="reportedCurrency", description="Currency used"
     )
     cik: str = Field(description="SEC CIK number")
-    filling_date: datetime = Field(alias="fillingDate", description="SEC filing date")
+    filing_date: datetime = Field(alias="filingDate", description="SEC filing date")
     accepted_date: datetime = Field(
         alias="acceptedDate", description="SEC acceptance date"
     )
-    calendar_year: str = Field(alias="calendarYear", description="Calendar year")
+    fiscal_year: str = Field(alias="fiscalYear", description="Fiscal year")
     period: str = Field(description="Reporting period (Q1, Q2, Q3, Q4, FY)")
-    link: str = Field(description="Filing URL")
-    final_link: str = Field(alias="finalLink", description="Final filing URL")
 
 
 class IncomeStatement(FinancialStatementBase):
-    """Income statement data"""
+    """Income statement data from FMP API"""
 
     model_config = default_model_config
 
-    revenue: float | None = Field(None, description="Total revenue")
+    # Revenue and Cost - ALL optional with explicit default=None
+    revenue: float | None = Field(default=None, description="Total revenue")
     cost_of_revenue: float | None = Field(
-        alias="costOfRevenue", description="Cost of revenue"
+        default=None, alias="costOfRevenue", description="Cost of revenue"
     )
-    gross_profit: float | None = Field(alias="grossProfit", description="Gross profit")
+    gross_profit: float | None = Field(
+        default=None, alias="grossProfit", description="Gross profit"
+    )
     gross_profit_ratio: float | None = Field(
-        alias="grossProfitRatio", description="Gross profit ratio"
+        default=None, alias="grossProfitRatio", description="Gross profit ratio"
     )
 
-    # Operating expenses
+    # Operating Expenses - ALL optional with explicit default=None
     research_and_development_expenses: float | None = Field(
-        alias="researchAndDevelopmentExpenses", description="R&D expenses"
+        default=None, alias="researchAndDevelopmentExpenses", description="R&D expenses"
+    )
+    general_and_administrative_expenses: float | None = Field(
+        default=None,
+        alias="generalAndAdministrativeExpenses",
+        description="G&A expenses",
+    )
+    selling_and_marketing_expenses: float | None = Field(
+        default=None,
+        alias="sellingAndMarketingExpenses",
+        description="Sales and marketing expenses",
     )
     selling_general_and_administrative_expenses: float | None = Field(
-        alias="sellingGeneralAndAdministrativeExpenses", description="SG&A expenses"
+        default=None,
+        alias="sellingGeneralAndAdministrativeExpenses",
+        description="SG&A expenses",
+    )
+    other_expenses: float | None = Field(
+        default=None, alias="otherExpenses", description="Other operating expenses"
     )
     operating_expenses: float | None = Field(
-        alias="operatingExpenses", description="Operating expenses"
+        default=None, alias="operatingExpenses", description="Total operating expenses"
     )
     cost_and_expenses: float | None = Field(
-        alias="costAndExpenses", description="Total costs and expenses"
+        default=None, alias="costAndExpenses", description="Total costs and expenses"
     )
 
-    # Profitability metrics
-    operating_income: float = Field(
-        alias="operatingIncome", description="Operating income"
+    # Interest and Income - ALL optional with explicit default=None
+    net_interest_income: float | None = Field(
+        default=None, alias="netInterestIncome", description="Net interest income"
     )
-    operating_income_ratio: float = Field(
-        alias="operatingIncomeRatio", description="Operating income ratio"
+    interest_income: float | None = Field(
+        default=None, alias="interestIncome", description="Interest income"
     )
-
-    ebitda: float = Field(description="EBITDA")
-    ebitda_ratio: float = Field(alias="ebitdaratio", description="EBITDA ratio")
-
-    # Income metrics
-    income_before_tax: float = Field(
-        alias="incomeBeforeTax", description="Income before tax"
-    )
-    income_before_tax_ratio: float = Field(
-        alias="incomeBeforeTaxRatio", description="Income before tax ratio"
-    )
-    income_tax_expense: float = Field(
-        alias="incomeTaxExpense", description="Income tax expense"
-    )
-    net_income: float = Field(alias="netIncome", description="Net income")
-    net_income_ratio: float = Field(
-        alias="netIncomeRatio", description="Net income ratio"
+    interest_expense: float | None = Field(
+        default=None, alias="interestExpense", description="Interest expense"
     )
 
-    # Share data
-    eps: float = Field(description="Earnings per share")
-    eps_diluted: float = Field(alias="epsdiluted", description="Diluted EPS")
-    weighted_average_shares_out: float = Field(
-        alias="weightedAverageShsOut", description="Weighted average shares"
+    # Depreciation and EBITDA/EBIT - ALL optional with explicit default=None
+    depreciation_and_amortization: float | None = Field(
+        default=None,
+        alias="depreciationAndAmortization",
+        description="Depreciation and amortization",
     )
-    weighted_average_shares_out_dil: float = Field(
-        alias="weightedAverageShsOutDil", description="Diluted weighted average shares"
+    ebitda: float | None = Field(default=None, description="EBITDA")
+    ebitda_ratio: float | None = Field(
+        default=None, alias="ebitdaratio", description="EBITDA ratio"
+    )
+    ebit: float | None = Field(default=None, description="EBIT")
+
+    # Operating Income - ALL optional with explicit default=None
+    non_operating_income_excluding_interest: float | None = Field(
+        default=None,
+        alias="nonOperatingIncomeExcludingInterest",
+        description="Non-operating income excluding interest",
+    )
+    operating_income: float | None = Field(
+        default=None, alias="operatingIncome", description="Operating income"
+    )
+    operating_income_ratio: float | None = Field(
+        default=None, alias="operatingIncomeRatio", description="Operating income ratio"
+    )
+
+    # Other Income and Pre-tax - ALL optional with explicit default=None
+    total_other_income_expenses_net: float | None = Field(
+        default=None,
+        alias="totalOtherIncomeExpensesNet",
+        description="Total other income/expenses net",
+    )
+    income_before_tax: float | None = Field(
+        default=None, alias="incomeBeforeTax", description="Income before tax"
+    )
+    income_before_tax_ratio: float | None = Field(
+        default=None,
+        alias="incomeBeforeTaxRatio",
+        description="Income before tax ratio",
+    )
+
+    # Tax and Net Income - ALL optional with explicit default=None
+    income_tax_expense: float | None = Field(
+        default=None, alias="incomeTaxExpense", description="Income tax expense"
+    )
+    net_income_from_continuing_operations: float | None = Field(
+        default=None,
+        alias="netIncomeFromContinuingOperations",
+        description="Net income from continuing operations",
+    )
+    net_income_from_discontinued_operations: float | None = Field(
+        default=None,
+        alias="netIncomeFromDiscontinuedOperations",
+        description="Net income from discontinued operations",
+    )
+    other_adjustments_to_net_income: float | None = Field(
+        default=None,
+        alias="otherAdjustmentsToNetIncome",
+        description="Other adjustments to net income",
+    )
+    net_income: float | None = Field(
+        default=None, alias="netIncome", description="Net income"
+    )
+    net_income_deductions: float | None = Field(
+        default=None, alias="netIncomeDeductions", description="Net income deductions"
+    )
+    bottom_line_net_income: float | None = Field(
+        default=None, alias="bottomLineNetIncome", description="Bottom line net income"
+    )
+    net_income_ratio: float | None = Field(
+        default=None, alias="netIncomeRatio", description="Net income ratio"
+    )
+
+    # Earnings Per Share - ALL optional with explicit default=None
+    eps: float | None = Field(default=None, description="Basic earnings per share")
+    eps_diluted: float | None = Field(
+        default=None, alias="epsDiluted", description="Diluted earnings per share"
+    )
+
+    # Share Counts - ALL optional with explicit default=None
+    weighted_average_shs_out: float | None = Field(
+        default=None,
+        alias="weightedAverageShsOut",
+        description="Weighted average shares outstanding",
+    )
+    weighted_average_shs_out_dil: float | None = Field(
+        default=None,
+        alias="weightedAverageShsOutDil",
+        description="Diluted weighted average shares outstanding",
     )
 
 
@@ -159,68 +240,182 @@ class BalanceSheet(FinancialStatementBase):
 
 
 class CashFlowStatement(FinancialStatementBase):
-    """Cash flow statement data"""
+    """Cash flow statement data from FMP API
+
+    Relative path: fmp_data/fundamental/models.py
+    """
 
     model_config = default_model_config
 
-    # Operating activities
-    net_income: float | None = Field(alias="netIncome", description="Net income")
+    # Operating Activities
+    net_income: float | None = Field(
+        default=None, alias="netIncome", description="Net income"
+    )
     depreciation_and_amortization: float | None = Field(
-        alias="depreciationAndAmortization", description="Depreciation and amortization"
+        default=None,
+        alias="depreciationAndAmortization",
+        description="Depreciation and amortization",
     )
-
-    stock_based_compensation: float = Field(
-        alias="stockBasedCompensation", description="Stock-based compensation"
+    deferred_income_tax: float | None = Field(
+        default=None, alias="deferredIncomeTax", description="Deferred income tax"
     )
-    operating_cash_flow: float | None = Field(
-        alias="operatingCashFlow", description="Operating cash flow"
+    stock_based_compensation: float | None = Field(
+        default=None,
+        alias="stockBasedCompensation",
+        description="Stock-based compensation",
+    )
+    change_in_working_capital: float | None = Field(
+        default=None,
+        alias="changeInWorkingCapital",
+        description="Change in working capital",
+    )
+    accounts_receivables: float | None = Field(
+        default=None,
+        alias="accountsReceivables",
+        description="Change in accounts receivables",
+    )
+    inventory: float | None = Field(
+        default=None, alias="inventory", description="Change in inventory"
+    )
+    accounts_payables: float | None = Field(
+        default=None,
+        alias="accountsPayables",
+        description="Change in accounts payables",
+    )
+    other_working_capital: float | None = Field(
+        default=None,
+        alias="otherWorkingCapital",
+        description="Other working capital changes",
+    )
+    other_non_cash_items: float | None = Field(
+        default=None, alias="otherNonCashItems", description="Other non-cash items"
     )
     net_cash_provided_by_operating_activities: float | None = Field(
+        default=None,
         alias="netCashProvidedByOperatingActivities",
-        description="Net cash from operating activities",
+        description="Net cash provided by operating activities",
+    )
+    operating_cash_flow: float | None = Field(
+        default=None, alias="operatingCashFlow", description="Operating cash flow"
     )
 
-    # Investing activities
+    # Investing Activities
+    investments_in_property_plant_and_equipment: float | None = Field(
+        default=None,
+        alias="investmentsInPropertyPlantAndEquipment",
+        description="Investments in property, plant and equipment",
+    )
     capital_expenditure: float | None = Field(
-        None, alias="capitalExpenditure", description="Capital expenditure"
+        default=None, alias="capitalExpenditure", description="Capital expenditure"
     )
-    investing_cash_flow: float | None = Field(
-        None,
-        alias="netCashUsedForInvestingActivites",
-        description="Net cash used in investing activities",
+    acquisitions_net: float | None = Field(
+        default=None, alias="acquisitionsNet", description="Net acquisitions"
+    )
+    purchases_of_investments: float | None = Field(
+        default=None,
+        alias="purchasesOfInvestments",
+        description="Purchases of investments",
+    )
+    sales_maturities_of_investments: float | None = Field(
+        default=None,
+        alias="salesMaturitiesOfInvestments",
+        description="Sales and maturities of investments",
+    )
+    other_investing_activities: float | None = Field(
+        default=None,
+        alias="otherInvestingActivities",
+        description="Other investing activities",
+    )
+    net_cash_provided_by_investing_activities: float | None = Field(
+        default=None,
+        alias="netCashProvidedByInvestingActivities",
+        description="Net cash provided by investing activities",
     )
 
-    acquisitions_net: float = Field(
-        alias="acquisitionsNet", description="Net acquisitions"
+    # Financing Activities
+    net_debt_issuance: float | None = Field(
+        default=None, alias="netDebtIssuance", description="Net debt issuance"
     )
-    investments_in_property_plant_and_equipment: float = Field(
-        alias="investmentsInPropertyPlantAndEquipment", description="PP&E investments"
+    long_term_net_debt_issuance: float | None = Field(
+        default=None,
+        alias="longTermNetDebtIssuance",
+        description="Long-term net debt issuance",
+    )
+    short_term_net_debt_issuance: float | None = Field(
+        default=None,
+        alias="shortTermNetDebtIssuance",
+        description="Short-term net debt issuance",
+    )
+    net_stock_issuance: float | None = Field(
+        default=None, alias="netStockIssuance", description="Net stock issuance"
+    )
+    net_common_stock_issuance: float | None = Field(
+        default=None,
+        alias="netCommonStockIssuance",
+        description="Net common stock issuance",
+    )
+    common_stock_issuance: float | None = Field(
+        default=None, alias="commonStockIssuance", description="Common stock issuance"
+    )
+    common_stock_repurchased: float | None = Field(
+        default=None,
+        alias="commonStockRepurchased",
+        description="Common stock repurchased",
+    )
+    net_preferred_stock_issuance: float | None = Field(
+        default=None,
+        alias="netPreferredStockIssuance",
+        description="Net preferred stock issuance",
+    )
+    net_dividends_paid: float | None = Field(
+        default=None, alias="netDividendsPaid", description="Net dividends paid"
+    )
+    common_dividends_paid: float | None = Field(
+        default=None, alias="commonDividendsPaid", description="Common dividends paid"
+    )
+    preferred_dividends_paid: float | None = Field(
+        default=None,
+        alias="preferredDividendsPaid",
+        description="Preferred dividends paid",
+    )
+    other_financing_activities: float | None = Field(
+        default=None,
+        alias="otherFinancingActivities",
+        description="Other financing activities",
+    )
+    net_cash_provided_by_financing_activities: float | None = Field(
+        default=None,
+        alias="netCashProvidedByFinancingActivities",
+        description="Net cash provided by financing activities",
     )
 
-    # Financing activities
-    debt_repayment: float = Field(alias="debtRepayment", description="Debt repayment")
-    common_stock_repurchased: float = Field(
-        alias="commonStockRepurchased", description="Stock repurchases"
+    # Net Changes and Cash Position
+    effect_of_forex_changes_on_cash: float | None = Field(
+        default=None,
+        alias="effectOfForexChangesOnCash",
+        description="Effect of forex changes on cash",
     )
-    dividends_paid: float = Field(alias="dividendsPaid", description="Dividends paid")
-    financing_cash_flow: float | None = Field(
-        alias="netCashUsedProvidedByFinancingActivities",
-        description="Net cash used in financing activities",
-    )
-
     net_change_in_cash: float | None = Field(
-        alias="netChangeInCash", description="Net change in cash"
-    )
-
-    # Cash position
-    free_cash_flow: float | None = Field(
-        alias="freeCashFlow", description="Free cash flow"
-    )
-    cash_at_beginning_of_period: float | None = Field(
-        alias="cashAtBeginningOfPeriod", description="Beginning cash balance"
+        default=None, alias="netChangeInCash", description="Net change in cash"
     )
     cash_at_end_of_period: float | None = Field(
-        alias="cashAtEndOfPeriod", description="Ending cash balance"
+        default=None, alias="cashAtEndOfPeriod", description="Cash at end of period"
+    )
+    cash_at_beginning_of_period: float | None = Field(
+        default=None,
+        alias="cashAtBeginningOfPeriod",
+        description="Cash at beginning of period",
+    )
+
+    # Additional Metrics
+    free_cash_flow: float | None = Field(
+        default=None, alias="freeCashFlow", description="Free cash flow"
+    )
+    income_taxes_paid: float | None = Field(
+        default=None, alias="incomeTaxesPaid", description="Income taxes paid"
+    )
+    interest_paid: float | None = Field(
+        default=None, alias="interestPaid", description="Interest paid"
     )
 
 
@@ -306,15 +501,97 @@ class DCF(BaseModel):
 
     symbol: str = Field(description="Company symbol")
     date: datetime = Field(description="Valuation date")
-    dcf: float = Field(description="DCF value")
-    stock_price: float = Field(alias="stockPrice", description="Current stock price")
-    # Add more fields as needed
+    dcf: float = Field(description="DCF value per share")
+    stock_price: float = Field(alias="Stock Price", description="Current stock price")
 
 
-class AdvancedDCF(DCF):
-    """Advanced discounted cash flow valuation"""
+class CustomDCF(BaseModel):
+    """Custom discounted cash flow valuation with detailed components"""
 
-    # Add additional fields specific to advanced DCF
+    model_config = default_model_config
+
+    symbol: str = Field(description="Company symbol")
+    date: datetime = Field(description="Valuation date")
+    fcf0: float = Field(description="Current year free cash flow")
+    fcf1: float = Field(description="Year 1 projected free cash flow")
+    fcf2: float = Field(description="Year 2 projected free cash flow")
+    fcf3: float = Field(description="Year 3 projected free cash flow")
+    fcf4: float = Field(description="Year 4 projected free cash flow")
+    fcf5: float = Field(description="Year 5 projected free cash flow")
+    fcf6: float = Field(description="Year 6 projected free cash flow")
+    fcf7: float = Field(description="Year 7 projected free cash flow")
+    fcf8: float = Field(description="Year 8 projected free cash flow")
+    fcf9: float = Field(description="Year 9 projected free cash flow")
+    fcf10: float = Field(description="Year 10 projected free cash flow")
+    terminal_value: float = Field(alias="terminalValue", description="Terminal value")
+    growth_rate: float = Field(alias="growthRate", description="Growth rate used")
+    terminal_growth_rate: float = Field(
+        alias="terminalGrowthRate", description="Terminal growth rate"
+    )
+    wacc: float = Field(description="Weighted average cost of capital")
+    present_value_of_fcf: float = Field(
+        alias="presentValueOfFCF", description="Present value of free cash flows"
+    )
+    present_value_of_terminal_value: float = Field(
+        alias="presentValueOfTerminalValue",
+        description="Present value of terminal value",
+    )
+    enterprise_value: float = Field(
+        alias="enterpriseValue", description="Enterprise value"
+    )
+    net_debt: float = Field(alias="netDebt", description="Net debt")
+    equity_value: float = Field(alias="equityValue", description="Equity value")
+    shares_outstanding: float = Field(
+        alias="sharesOutstanding", description="Shares outstanding"
+    )
+    dcf: float = Field(description="DCF value per share")
+    stock_price: float = Field(alias="Stock Price", description="Current stock price")
+    implied_share_price: float = Field(
+        alias="impliedSharePrice", description="Implied share price from DCF"
+    )
+
+
+class CustomLeveredDCF(BaseModel):
+    """Custom levered discounted cash flow valuation with detailed components"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Company symbol")
+    date: datetime = Field(description="Valuation date")
+    fcfe0: float = Field(description="Current year free cash flow to equity")
+    fcfe1: float = Field(description="Year 1 projected free cash flow to equity")
+    fcfe2: float = Field(description="Year 2 projected free cash flow to equity")
+    fcfe3: float = Field(description="Year 3 projected free cash flow to equity")
+    fcfe4: float = Field(description="Year 4 projected free cash flow to equity")
+    fcfe5: float = Field(description="Year 5 projected free cash flow to equity")
+    fcfe6: float = Field(description="Year 6 projected free cash flow to equity")
+    fcfe7: float = Field(description="Year 7 projected free cash flow to equity")
+    fcfe8: float = Field(description="Year 8 projected free cash flow to equity")
+    fcfe9: float = Field(description="Year 9 projected free cash flow to equity")
+    fcfe10: float = Field(description="Year 10 projected free cash flow to equity")
+    terminal_value: float = Field(alias="terminalValue", description="Terminal value")
+    growth_rate: float = Field(alias="growthRate", description="Growth rate used")
+    terminal_growth_rate: float = Field(
+        alias="terminalGrowthRate", description="Terminal growth rate"
+    )
+    cost_of_equity: float = Field(alias="costOfEquity", description="Cost of equity")
+    present_value_of_fcfe: float = Field(
+        alias="presentValueOfFCFE",
+        description="Present value of free cash flows to equity",
+    )
+    present_value_of_terminal_value: float = Field(
+        alias="presentValueOfTerminalValue",
+        description="Present value of terminal value",
+    )
+    equity_value: float = Field(alias="equityValue", description="Equity value")
+    shares_outstanding: float = Field(
+        alias="sharesOutstanding", description="Shares outstanding"
+    )
+    dcf: float = Field(description="DCF value per share")
+    stock_price: float = Field(alias="Stock Price", description="Current stock price")
+    implied_share_price: float = Field(
+        alias="impliedSharePrice", description="Implied share price from DCF"
+    )
 
 
 class CompanyRating(BaseModel):
@@ -349,153 +626,167 @@ class FinancialStatementFull(BaseModel):
 
     model_config = default_model_config
 
-    date: datetime | None = Field(None, description="Statement date")
-    symbol: str | None = Field(None, description="Company symbol")
-    period: str | None = Field(None, description="Reporting period")
+    date: datetime | None = Field(default=None, description="Statement date")
+    symbol: str | None = Field(default=None, description="Company symbol")
+    period: str | None = Field(default=None, description="Reporting period")
 
     document_type: str | None = Field(
-        None, alias="documenttype", description="SEC filing type"
+        default=None, alias="documenttype", description="SEC filing type"
     )
     filing_date: datetime | None = Field(
-        None, alias="filingdate", description="SEC filing date"
+        default=None, alias="filingdate", description="SEC filing date"
     )
 
     # Income Statement Items
     revenue: float | None = Field(
-        None,
+        default=None,
         alias="revenuefromcontractwithcustomerexcludingassessedtax",
         description="Total revenue",
     )
     cost_of_revenue: float | None = Field(
-        None, alias="costofgoodsandservicessold", description="Cost of goods sold"
+        default=None,
+        alias="costofgoodsandservicessold",
+        description="Cost of goods sold",
     )
     gross_profit: float | None = Field(
-        None, alias="grossprofit", description="Gross profit"
+        default=None, alias="grossprofit", description="Gross profit"
     )
     operating_expenses: float | None = Field(
-        None, alias="operatingexpenses", description="Operating expenses"
+        default=None, alias="operatingexpenses", description="Operating expenses"
     )
     research_development: float | None = Field(
-        None, alias="researchanddevelopmentexpense", description="R&D expenses"
+        default=None, alias="researchanddevelopmentexpense", description="R&D expenses"
     )
     selling_general_administrative: float | None = Field(
-        None,
+        default=None,
         alias="sellinggeneralandadministrativeexpense",
         description="SG&A expenses",
     )
     operating_income: float | None = Field(
-        None, alias="operatingincomeloss", description="Operating income/loss"
+        default=None, alias="operatingincomeloss", description="Operating income/loss"
     )
     net_income: float | None = Field(
-        None, alias="netincomeloss", description="Net income/loss"
+        default=None, alias="netincomeloss", description="Net income/loss"
     )
     eps_basic: float | None = Field(
-        None, alias="earningspersharebasic", description="Basic EPS"
+        default=None, alias="earningspersharebasic", description="Basic EPS"
     )
     eps_diluted: float | None = Field(
-        None, alias="earningspersharediluted", description="Diluted EPS"
+        default=None, alias="earningspersharediluted", description="Diluted EPS"
     )
 
     # Balance Sheet Items - Assets
     cash_and_equivalents: float | None = Field(
-        None,
+        default=None,
         alias="cashandcashequivalentsatcarryingvalue",
         description="Cash and cash equivalents",
     )
     marketable_securities_current: float | None = Field(
-        None,
+        default=None,
         alias="marketablesecuritiescurrent",
         description="Current marketable securities",
     )
     accounts_receivable_net_current: float | None = Field(
-        None,
+        default=None,
         alias="accountsreceivablenetcurrent",
         description="Net accounts receivable",
     )
     inventory_net: float | None = Field(
-        None, alias="inventorynet", description="Net inventory"
+        default=None, alias="inventorynet", description="Net inventory"
     )
     assets_current: float | None = Field(
-        None, alias="assetscurrent", description="Total current assets"
+        default=None, alias="assetscurrent", description="Total current assets"
     )
     property_plant_equipment_net: float | None = Field(
-        None, alias="propertyplantandequipmentnet", description="Net PP&E"
+        default=None, alias="propertyplantandequipmentnet", description="Net PP&E"
     )
     assets_noncurrent: float | None = Field(
-        None, alias="assetsnoncurrent", description="Total non-current assets"
+        default=None, alias="assetsnoncurrent", description="Total non-current assets"
     )
-    total_assets: float | None = Field(None, alias="assets", description="Total assets")
+    total_assets: float | None = Field(
+        default=None, alias="assets", description="Total assets"
+    )
 
     # Balance Sheet Items - Liabilities
     accounts_payable_current: float | None = Field(
-        None, alias="accountspayablecurrent", description="Current accounts payable"
+        default=None,
+        alias="accountspayablecurrent",
+        description="Current accounts payable",
     )
     liabilities_current: float | None = Field(
-        None, alias="liabilitiescurrent", description="Total current liabilities"
+        default=None,
+        alias="liabilitiescurrent",
+        description="Total current liabilities",
     )
     long_term_debt_noncurrent: float | None = Field(
-        None, alias="longtermdebtnoncurrent", description="Long-term debt"
+        default=None, alias="longtermdebtnoncurrent", description="Long-term debt"
     )
     liabilities_noncurrent: float | None = Field(
-        None, alias="liabilitiesnoncurrent", description="Total non-current liabilities"
+        default=None,
+        alias="liabilitiesnoncurrent",
+        description="Total non-current liabilities",
     )
     total_liabilities: float | None = Field(
-        None, alias="liabilities", description="Total liabilities"
+        default=None, alias="liabilities", description="Total liabilities"
     )
 
     # Balance Sheet Items - Equity
     common_stock_shares_outstanding: float | None = Field(
-        None,
+        default=None,
         alias="commonstocksharesoutstanding",
         description="Common stock shares outstanding",
     )
     common_stock_value: float | None = Field(
-        None,
+        default=None,
         alias="commonstocksincludingadditionalpaidincapital",
         description="Common stock and additional paid-in capital",
     )
     retained_earnings: float | None = Field(
-        None,
+        default=None,
         alias="retainedearningsaccumulateddeficit",
         description="Retained earnings/accumulated deficit",
     )
     accumulated_other_comprehensive_income: float | None = Field(
-        None,
+        default=None,
         alias="accumulatedothercomprehensiveincomelossnetoftax",
         description="Accumulated other comprehensive income",
     )
     stockholders_equity: float | None = Field(
-        None, alias="stockholdersequity", description="Total stockholders' equity"
+        default=None,
+        alias="stockholdersequity",
+        description="Total stockholders' equity",
     )
 
     # Cash Flow Items
     operating_cash_flow: float | None = Field(
-        None,
+        default=None,
         alias="netcashprovidedbyusedinoperatingactivities",
         description="Net cash from operating activities",
     )
     investing_cash_flow: float | None = Field(
-        None,
+        default=None,
         alias="netcashprovidedbyusedininvestingactivities",
         description="Net cash from investing activities",
     )
     financing_cash_flow: float | None = Field(
-        None,
+        default=None,
         alias="netcashprovidedbyusedinfinancingactivities",
         description="Net cash from financing activities",
     )
     depreciation_amortization: float | None = Field(
-        None,
+        default=None,
         alias="depreciationdepletionandamortization",
         description="Depreciation and amortization",
     )
 
     # Additional Metrics
     market_cap: float | None = Field(
-        None, alias="marketcap", description="Market capitalization"
+        default=None, alias="marketcap", description="Market capitalization"
     )
     employees: int | None = Field(
-        None, alias="fullTimeEmployees", description="Number of full-time employees"
+        default=None,
+        alias="fullTimeEmployees",
+        description="Number of full-time employees",
     )
 
 

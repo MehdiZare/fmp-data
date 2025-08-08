@@ -89,9 +89,7 @@ def fmp_client(rate_limit_config: RateLimitConfig) -> Generator[FMPDataClient]:
 
     config = ClientConfig(
         api_key=api_key,
-        base_url=os.getenv(
-            "FMP_TEST_BASE_URL", "https://financialmodelingprep.com/api"
-        ),
+        base_url=os.getenv("FMP_TEST_BASE_URL", "https://financialmodelingprep.com"),
         timeout=10,
         max_retries=2,
         rate_limit=rate_limit_config,

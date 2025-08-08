@@ -22,8 +22,8 @@ from fmp_data.models import (
 
 TREASURY_RATES: Endpoint = Endpoint(
     name="treasury_rates",
-    path="treasury",
-    version=APIVersion.V4,
+    path="treasury-rates",
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -64,8 +64,8 @@ TREASURY_RATES: Endpoint = Endpoint(
 
 ECONOMIC_INDICATORS: Endpoint = Endpoint(
     name="economic_indicators",
-    path="economic",
-    version=APIVersion.V4,
+    path="economic-indicators",
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -98,8 +98,8 @@ ECONOMIC_INDICATORS: Endpoint = Endpoint(
 
 ECONOMIC_CALENDAR: Endpoint = Endpoint(
     name="economic_calendar",
-    path="economic_calendar",
-    version=APIVersion.V3,
+    path="economic-calendar",
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -112,7 +112,7 @@ ECONOMIC_CALENDAR: Endpoint = Endpoint(
             name="start_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=True,
+            required=False,
             description="Start date",
             alias="from",
         ),
@@ -120,7 +120,7 @@ ECONOMIC_CALENDAR: Endpoint = Endpoint(
             name="end_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=True,
+            required=False,
             description="End date",
             alias="to",
         ),
@@ -140,8 +140,8 @@ ECONOMIC_CALENDAR: Endpoint = Endpoint(
 
 MARKET_RISK_PREMIUM: Endpoint = Endpoint(
     name="market_risk_premium",
-    path="market_risk_premium",
-    version=APIVersion.V4,
+    path="market-risk-premium",
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(

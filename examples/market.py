@@ -4,10 +4,10 @@ from fmp_data import FMPDataClient
 client = FMPDataClient.from_env()
 
 # Get real-time quote
-quote = client.market.get_quote("AAPL")
+quote = client.company.get_quote("AAPL")
 
 # Get historical prices
-historical_prices = client.market.get_historical_prices(
+historical_prices = client.company.get_historical_prices(
     symbol="AAPL", from_date="2024-01-01", to_date="2024-03-01"
 )
 

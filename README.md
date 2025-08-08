@@ -255,7 +255,7 @@ config = ClientConfig(
     api_key="your_api_key_here", #pragma: allowlist secret
     timeout=30,
     max_retries=3,
-    base_url="https://financialmodelingprep.com/api",
+    base_url="https://financialmodelingprep.com",
     logging=LoggingConfig(level="INFO")
 )
 client = FMPDataClient(config=config)
@@ -332,7 +332,7 @@ from fmp_data import FMPDataClient
 
 with FMPDataClient.from_env() as client:
     # Get real-time quote
-    quote = client.market.get_quote("TSLA")
+    quote = client.company.get_quote("TSLA")
 
     # Get historical prices
     history = client.market.get_historical_price(
@@ -366,7 +366,7 @@ profiles = asyncio.run(get_multiple_profiles(symbols))
 FMP_API_KEY=your_api_key_here
 
 # Optional
-FMP_BASE_URL=https://financialmodelingprep.com/api
+FMP_BASE_URL=https://financialmodelingprep.com
 FMP_TIMEOUT=30
 FMP_MAX_RETRIES=3
 
@@ -393,7 +393,7 @@ config = ClientConfig(
     api_key="your_api_key_here",  # pragma: allowlist secret
     timeout=30,
     max_retries=3,
-    base_url="https://financialmodelingprep.com/api",
+    base_url="https://financialmodelingprep.com",
     rate_limit=RateLimitConfig(
         daily_limit=250,
         requests_per_second=10,
