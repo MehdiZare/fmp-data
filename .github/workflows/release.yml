@@ -1,0 +1,171 @@
+name: Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+permissions:
+  contents: write
+  id-token: write
+  pull-requests: read
+
+jobs:
+  release:
+    # Only run if PR was merged and has a release label
+    if: |
+      github.event.pull_request.merged == true &&
+      (contains(github.event.pull_request.labels.*.name, 'release:major') ||
+       contains(github.event.pull_request.labels.*.name, 'release:minor') ||
+       contains(github.event.pull_request.labels.*.name, 'release:patch'))
+
+    runs-on: ubuntu-latest
+    env:
+      PYTHON_VERSION: "3.12"
+
+    steps:
+      - name: 🛎️ Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for proper versioning
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: ⚡ Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: 📦 Install dependencies
+        run: |
+          uv pip install build hatch bump2version
+
+      - name: 🏷️ Determine version bump type
+        id: bump_type
+        run: |
+          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'release:major') }}" == "true" ]]; then
+            echo "TYPE=major" >> $GITHUB_OUTPUT
+            echo "Detected major version bump from PR labels"
+          elif [[ "${{ contains(github.event.pull_request.labels.*.name, 'release:minor') }}" == "true" ]]; then
+            echo "TYPE=minor" >> $GITHUB_OUTPUT
+            echo "Detected minor version bump from PR labels"
+          elif [[ "${{ contains(github.event.pull_request.labels.*.name, 'release:patch') }}" == "true" ]]; then
+            echo "TYPE=patch" >> $GITHUB_OUTPUT
+            echo "Detected patch version bump from PR labels"
+          fi
+
+      - name: 🏷️ Get current version and calculate new version
+        id: version
+        run: |
+          # Get the latest tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $LATEST_TAG"
+
+          # Strip 'v' prefix if present
+          CURRENT_VERSION=${LATEST_TAG#v}
+          echo "Current version: $CURRENT_VERSION"
+
+          # Parse version components
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+
+          # Calculate new version based on bump type
+          case "${{ steps.bump_type.outputs.TYPE }}" in
+            major)
+              NEW_MAJOR=$((MAJOR + 1))
+              NEW_VERSION="${NEW_MAJOR}.0.0"
+              ;;
+            minor)
+              NEW_MINOR=$((MINOR + 1))
+              NEW_VERSION="${MAJOR}.${NEW_MINOR}.0"
+              ;;
+            patch)
+              NEW_PATCH=$((PATCH + 1))
+              NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+              ;;
+          esac
+
+          echo "New version: $NEW_VERSION"
+          echo "VERSION=v$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "VERSION_NUMBER=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: 🏷️ Create and push tag
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+
+          # Create annotated tag
+          git tag -a "${{ steps.version.outputs.VERSION }}" -m "Release ${{ steps.version.outputs.VERSION }}"
+
+          # Push tag
+          git push origin "${{ steps.version.outputs.VERSION }}"
+
+      - name: 📦 Build distribution
+        run: |
+          uv run python -m build --wheel --sdist
+
+      - name: 📋 Generate release notes from PR
+        id: release_notes
+        run: |
+          # Get PR body and title
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
+          PR_BRANCH="${{ github.event.pull_request.head.ref }}"
+
+          # Determine release type based on branch
+          if [[ "$PR_BRANCH" =~ ^hotfix-.* ]]; then
+            RELEASE_TYPE="🔥 Hotfix"
+          else
+            RELEASE_TYPE="🚀 Release"
+          fi
+
+          # Get commits since last tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            COMMIT_NOTES="Initial release"
+          else
+            COMMIT_NOTES=$(git log --pretty=format:"- %s" $PREV_TAG..HEAD)
+          fi
+
+          # Combine PR info and commit notes
+          echo "NOTES<<EOF" >> $GITHUB_OUTPUT
+          echo "### $RELEASE_TYPE" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "**$PR_TITLE** (#$PR_NUMBER) by @$PR_AUTHOR" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "### 📝 Commits" >> $GITHUB_OUTPUT
+          echo "$COMMIT_NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: 🚀 Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.VERSION }}
+          name: Release ${{ steps.version.outputs.VERSION }}
+          body: |
+            ## 🎉 Release ${{ steps.version.outputs.VERSION }}
+
+            ${{ steps.release_notes.outputs.NOTES }}
+
+            ### 📦 Installation
+            ```bash
+            pip install fmp-data==${{ steps.version.outputs.VERSION_NUMBER }}
+            ```
+
+            ### 🔗 Links
+            - [PyPI Package](https://pypi.org/project/fmp-data/${{ steps.version.outputs.VERSION_NUMBER }}/)
+            - [Documentation](https://mehdizare.github.io/fmp-data/)
+          files: dist/*
+          prerelease: false
+          generate_release_notes: true
+
+      - name: 🚀 Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.12.4
+        with:
+          packages-dir: dist/
+          skip-existing: false

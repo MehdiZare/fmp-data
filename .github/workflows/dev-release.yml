@@ -1,0 +1,103 @@
+name: Dev Release
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:  # Allow manual triggering
+
+permissions:
+  id-token: write              # OIDC → Trusted Publishing
+  contents: read               # Read repository contents
+
+jobs:
+  dev-release:
+    runs-on: ubuntu-latest
+    env:
+      PYTHON_VERSION: "3.12"
+
+    steps:
+      - name: 🛎️  Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed for version calculation
+
+      - name: 🐍  Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: ⚡  Install uv (with cache)
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: 📦  Install build tools
+        run: |
+          uv pip install --system build hatch
+
+      - name: 🏷️  Calculate dev version
+        id: version
+        run: |
+          # Get the latest tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          CURRENT_VERSION=${LATEST_TAG#v}
+
+          # Parse version components
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+
+          # Create dev version with commit count since last tag
+          COMMIT_COUNT=$(git rev-list --count ${LATEST_TAG}..HEAD 2>/dev/null || echo "1")
+          SHORT_SHA=$(git rev-parse --short HEAD)
+
+          # Next minor version for dev (you can adjust this logic)
+          DEV_VERSION="${MAJOR}.$((MINOR + 1)).0.dev${COMMIT_COUNT}+${SHORT_SHA}"
+          DEV_TAG="v${DEV_VERSION}"
+
+          echo "DEV_VERSION=$DEV_VERSION" >> $GITHUB_OUTPUT
+          echo "DEV_TAG=$DEV_TAG" >> $GITHUB_OUTPUT
+          echo "📦 Dev version: $DEV_VERSION"
+
+          # Create a temporary tag for hatch-vcs
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git tag -a "$DEV_TAG" -m "Dev release $DEV_TAG"
+
+      - name: 📦  Build wheel & sdist
+        run: |
+          echo "🏷️ Current git state:"
+          git describe --tags --always
+          echo "📦 Building package..."
+
+          python -m build --wheel --sdist
+
+          echo "📦 Build completed. Contents of dist/:"
+          ls -la dist/
+
+          # Verify the version in the built package
+          echo "📋 Checking built package version:"
+          if ls dist/*.tar.gz 1> /dev/null 2>&1; then
+            tar -tf dist/*.tar.gz | grep -E "(PKG-INFO|METADATA)" | head -1 | xargs tar -xOf dist/*.tar.gz | grep "^Version:" || echo "Version not found in metadata"
+          fi
+
+      - name: 🧪  Upload to Test PyPI
+        uses: pypa/gh-action-pypi-publish@v1.12.4
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist
+          skip-existing: true
+          verbose: true
+
+      - name: 📝  Create summary
+        run: |
+          echo "## 🧪 Dev Release Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`${{ steps.version.outputs.DEV_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Installation" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "pip install -i https://test.pypi.org/simple/ fmp-data==${{ steps.version.outputs.DEV_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Changes" >> $GITHUB_STEP_SUMMARY
+          echo "Published from commit: \`$(git rev-parse --short HEAD)\`" >> $GITHUB_STEP_SUMMARY
