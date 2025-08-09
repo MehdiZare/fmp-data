@@ -76,9 +76,22 @@ class PriceQuote(BaseModel):
         if value is None:
             raise ValueError("Timestamp cannot be None")
 
+        # Return datetime objects directly
+        if isinstance(value, datetime):
+            return value
+
         try:
             if isinstance(value, str | int | float):
                 timestamp = float(value)
+
+                # Detect milliseconds timestamp and convert to seconds
+                # Timestamps greater than this threshold are likely in milliseconds
+                # (corresponds to year 2001, reasonable cutoff for financial data)
+                if timestamp > 978307200:  # Jan 1, 2001 in seconds
+                    # If timestamp is too large, assume it's in milliseconds
+                    if timestamp > 978307200000:  # Jan 1, 2001 in milliseconds
+                        timestamp = timestamp / 1000
+
             else:
                 raise ValueError(f"Unexpected type for timestamp: {type(value)}")
 
