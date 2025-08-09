@@ -64,9 +64,9 @@ class AlternativeMarketsClient(EndpointGroup):
         """Get cryptocurrency historical prices"""
         params = {"symbol": symbol}
         if start_date:
-            params["from"] = start_date.strftime("%Y-%m-%d")
+            params["start_date"] = start_date.strftime("%Y-%m-%d")
         if end_date:
-            params["to"] = end_date.strftime("%Y-%m-%d")
+            params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         result = self.client.request(CRYPTO_HISTORICAL, **params)
         return cast(CryptoHistoricalData, result)
@@ -100,9 +100,9 @@ class AlternativeMarketsClient(EndpointGroup):
         """Get forex historical prices"""
         params = {"symbol": symbol}
         if start_date:
-            params["from"] = start_date.strftime("%Y-%m-%d")
+            params["start_date"] = start_date.strftime("%Y-%m-%d")
         if end_date:
-            params["to"] = end_date.strftime("%Y-%m-%d")
+            params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         result = self.client.request(FOREX_HISTORICAL, **params)
         return cast(ForexPriceHistory, result)
@@ -136,9 +136,9 @@ class AlternativeMarketsClient(EndpointGroup):
         """Get commodity historical prices"""
         params = {"symbol": symbol}
         if start_date:
-            params["from"] = start_date.strftime("%Y-%m-%d")
+            params["start_date"] = start_date.strftime("%Y-%m-%d")
         if end_date:
-            params["to"] = end_date.strftime("%Y-%m-%d")
+            params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         result = self.client.request(COMMODITY_HISTORICAL, **params)
         return cast(CommodityPriceHistory, result)

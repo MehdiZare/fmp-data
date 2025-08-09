@@ -1,0 +1,108 @@
+name: Test-Matrix
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python:
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
+
+    steps:
+      - name: 🛎️  Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍  Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: ⚡  Install uv (with cache)
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: 🗄️  Cache uv wheels
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            ~/.local/share/uv
+          key: ${{ runner.os }}-py${{ matrix.python }}-uv-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-py${{ matrix.python }}-uv-
+
+      - name: ▶️  Run Tests
+        env:
+          NOX_USE_UV: "1"
+          CI: "true"
+        run: |
+          # Clean any existing coverage files
+          rm -f .coverage*
+
+          # Install nox first
+          uv tool install nox
+
+          # Ensure we're in the repo root
+          cd $GITHUB_WORKSPACE
+
+          # Run tests for each feature group with correct nox syntax
+          echo "Running tests for Python ${{ matrix.python }}"
+
+          # Use the correct parametrized session syntax with parentheses
+          uv tool run nox -s "tests-${{ matrix.python }}(core)"
+          uv tool run nox -s "tests-${{ matrix.python }}(langchain)"
+          uv tool run nox -s "tests-${{ matrix.python }}(mcp-server)"
+
+          # Verify coverage files were created
+          echo "Coverage files generated:"
+          ls -la .coverage* || echo "No coverage files found"
+
+      - name: 🔍 Quality Gates
+        if: matrix.python == '3.13'
+        env:
+          NOX_USE_UV: "1"
+        run: |
+          uv tool run nox -s lint -s typecheck -s security
+
+  # Coverage job - run all tests in one job for simplicity
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🛎️  Checkout
+        uses: actions/checkout@v4
+
+      - name: 🐍  Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: ⚡  Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: 📊 Run all tests with coverage
+        env:
+          NOX_USE_UV: "1"
+        run: |
+          uv tool install nox
+          uv tool run nox -s coverage_local
+
+      - name: 📈 Coverage upload
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          flags: unittests
+          fail_ci_if_error: false

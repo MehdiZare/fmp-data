@@ -84,7 +84,7 @@ class TestTechnicalClient:
         mock_request.return_value = mock_response(status_code=200, json_data=[sma_data])
         result = fmp_client.technical.get_sma(
             symbol="AAPL",
-            period=20,
+            period_length=20,
             start_date=date(2024, 1, 1),
             end_date=date(2024, 1, 31),
         )
@@ -94,27 +94,12 @@ class TestTechnicalClient:
         assert sma.sma == 151.5
 
     @patch("httpx.Client.request")
-    def test_get_rsi_indicator(self, mock_request, fmp_client, mock_response, rsi_data):
-        """Test fetching RSI indicator data"""
-        mock_request.return_value = mock_response(status_code=200, json_data=[rsi_data])
-        result = fmp_client.technical.get_rsi(
-            symbol="AAPL",
-            period=14,
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 1, 31),
-        )
-        assert len(result) == 1
-        rsi = result[0]
-        assert isinstance(rsi, RSIIndicator)
-        assert rsi.rsi == 70.5
-
-    @patch("httpx.Client.request")
     def test_get_ema_indicator(self, mock_request, fmp_client, mock_response, ema_data):
         """Test fetching EMA indicator data"""
         mock_request.return_value = mock_response(status_code=200, json_data=[ema_data])
         result = fmp_client.technical.get_ema(
             symbol="AAPL",
-            period=20,
+            period_length=20,
             start_date=date(2024, 1, 1),
             end_date=date(2024, 1, 31),
         )
@@ -122,6 +107,21 @@ class TestTechnicalClient:
         ema = result[0]
         assert isinstance(ema, EMAIndicator)
         assert ema.ema == 151.2
+
+    @patch("httpx.Client.request")
+    def test_get_rsi_indicator(self, mock_request, fmp_client, mock_response, rsi_data):
+        """Test fetching RSI indicator data"""
+        mock_request.return_value = mock_response(status_code=200, json_data=[rsi_data])
+        result = fmp_client.technical.get_rsi(
+            symbol="AAPL",
+            period_length=14,
+            start_date=date(2024, 1, 1),
+            end_date=date(2024, 1, 31),
+        )
+        assert len(result) == 1
+        rsi = result[0]
+        assert isinstance(rsi, RSIIndicator)
+        assert rsi.rsi == 70.5
 
     def test_invalid_api_response(self):
         """Test invalid API response handling"""
@@ -145,7 +145,7 @@ class TestTechnicalClient:
         with pytest.raises(RetryError):
             fmp_client.technical.get_sma(
                 symbol="AAPL",
-                period=20,
+                period_length=20,
                 start_date=date(2024, 1, 1),
                 end_date=date(2024, 1, 31),
             )

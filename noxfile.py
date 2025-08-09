@@ -26,13 +26,20 @@ from nox.sessions import Session
 # --------------------------------------------------------------------------- #
 
 # Python interpreters used across sessions
-# Use 3.12 as default for CI compatibility, 3.13 when available locally
-if sys.version_info >= (3, 13) or os.getenv("CI") != "true":
+# Use the current Python version in CI, or 3.13 locally if available
+if os.getenv("CI") == "true":
+    # In CI, use the Python version that's already set up
+    current_version = f"{sys.version_info.major}.{sys.version_info.minor}"
     PY_VERSIONS: Sequence[str] = ("3.10", "3.11", "3.12", "3.13")
-    DEFAULT_PYTHON = "3.13"
+    DEFAULT_PYTHON = current_version
 else:
-    PY_VERSIONS: Sequence[str] = ("3.10", "3.11", "3.12")
-    DEFAULT_PYTHON = "3.12"
+    # Locally, prefer 3.13 if available
+    if sys.version_info >= (3, 13):
+        PY_VERSIONS: Sequence[str] = ("3.10", "3.11", "3.12", "3.13")
+        DEFAULT_PYTHON = "3.13"
+    else:
+        PY_VERSIONS: Sequence[str] = ("3.10", "3.11", "3.12")
+        DEFAULT_PYTHON = "3.12"
 
 # Feature-flag groups that map to [project.optional-dependencies]
 FEATURE_GROUPS: Sequence[str | None] = (
@@ -69,14 +76,40 @@ def _sync_with_uv(session: Session, extras: Iterable[str] = ()) -> None:
     # Install uv in the session if not available
     session.install("uv")
 
-    # Install the package with dependency groups using uv pip
-    if extras:
-        # Use the extras syntax: -e.[dev,langchain,mcp-server]
-        extras_str = f"[{','.join(extras)}]"
-        session.run("uv", "pip", "install", f"-e.{extras_str}")
-    else:
-        # Just install the base package
-        session.run("uv", "pip", "install", "-e", ".")
+    # Install the base package first
+    session.run("uv", "pip", "install", "-e", ".")
+
+    # Install dependency groups and extras separately
+    for extra in extras:
+        if extra == "dev":
+            # Install all dev dependencies from dependency-groups
+            session.run(
+                "uv",
+                "pip",
+                "install",
+                "pytest>=8.3.3",
+                "pytest-asyncio>=0.24.0",
+                "pytest-cov>=6.0.0",
+                "pytest-mock>=3.14.0",
+                "coverage>=7.6.4",
+                "freezegun>=1.5.1",
+                "responses>=0.25.3",
+                "vcrpy>=6.0.2",
+                "ruff>=0.12.2",
+                "black>=24.10.0",
+                "mypy>=1.13.0",
+                "types-cachetools>=6.0.0.20250525",
+                "bandit[toml]>=1.7.10",
+                "pip-audit>=2.7.0",
+            )
+        elif extra in ["langchain", "mcp", "mcp-server"]:
+            # Handle actual extras from [project.optional-dependencies]
+            # mcp-server maps to mcp in optional-dependencies
+            extra_name = "mcp" if extra == "mcp-server" else extra
+            session.run("uv", "pip", "install", f"-e.[{extra_name}]")
+        else:
+            # Try as an extra
+            session.run("uv", "pip", "install", f"-e.[{extra}]")
 
 
 # --------------------------------------------------------------------------- #
@@ -341,13 +374,3 @@ def smoke(session: Session) -> None:
     session.run(
         "python", "-c", f"import {PACKAGE_NAME}; print({PACKAGE_NAME}.__version__)"
     )
-
-
-@nox.session(python=DEFAULT_PYTHON, tags=["smoke"])
-def smoke_any(session: Session) -> None:
-    """
-    Temporary session to fix legacy workflow - remove after cleanup.
-    This is a compatibility shim for old workflows that reference smoke_any.
-    """
-    session.log("Running smoke_any (compatibility session)")
-    smoke(session)

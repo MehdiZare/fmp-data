@@ -3,7 +3,6 @@ from fmp_data.institutional.endpoints import (
     BENEFICIAL_OWNERSHIP,
     CIK_MAPPER,
     CIK_MAPPER_BY_NAME,
-    CIK_MAPPER_BY_SYMBOL,
     FAIL_TO_DELIVER,
     FORM_13F,
     FORM_13F_DATES,
@@ -130,7 +129,6 @@ INSTITUTIONAL_ENDPOINT_MAP = {
     "get_insider_statistics": INSIDER_STATISTICS,
     "get_cik_mapper": CIK_MAPPER,
     "get_cik_mapper_by_name": CIK_MAPPER_BY_NAME,
-    "get_cik_mapper_by_symbol": CIK_MAPPER_BY_SYMBOL,
     "get_beneficial_ownership": BENEFICIAL_OWNERSHIP,
     "get_fail_to_deliver": FAIL_TO_DELIVER,
 }
@@ -567,44 +565,6 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
             "Filing research",
             "Company lookup",
             "Data verification",
-        ],
-    ),
-    "cik_mapper_by_symbol": EndpointSemantics(
-        client_name="institutional",
-        method_name="get_cik_mapper_by_symbol",
-        natural_description=("Look up CIK numbers using stock symbols."),
-        example_queries=[
-            "Get CIK for AAPL",
-            "Find Tesla's CIK by symbol",
-            "Look up MSFT CIK number",
-            "What's NVDA's SEC ID?",
-        ],
-        related_terms=[
-            "ticker lookup",
-            "symbol search",
-            "company identifier",
-            "stock lookup",
-        ],
-        category=SemanticCategory.INSTITUTIONAL,
-        sub_category="Reference Data",
-        parameter_hints={"symbol": SYMBOL_HINT},
-        response_hints={
-            "symbol": ResponseFieldInfo(
-                description="Stock symbol",
-                examples=["AAPL", "MSFT", "TSLA"],
-                related_terms=["ticker", "trading symbol"],
-            ),
-            "cik": ResponseFieldInfo(
-                description="CIK number",
-                examples=["0001166559", "0000102909"],
-                related_terms=["SEC ID", "identifier"],
-            ),
-        },
-        use_cases=[
-            "Quick company lookup",
-            "Filing research",
-            "Data integration",
-            "Entity verification",
         ],
     ),
     "beneficial_ownership": EndpointSemantics(

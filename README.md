@@ -1,22 +1,22 @@
 # FMP Data Client
 
-[![CI](https://github.com/MehdiZare/fmp-data/actions/workflows/ci.yml/badge.svg)](https://github.com/MehdiZare/fmp-data/actions/workflows/ci.yml)
-[![Release](https://github.com/MehdiZare/fmp-data/actions/workflows/release.yml/badge.svg)](https://github.com/MehdiZare/fmp-data/actions/workflows/release.yml)
+[![Test-Matrix](https://github.com/MehdiZare/fmp-data/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MehdiZare/fmp-data/actions/workflows/ci.yml)[![Publish-to-PyPI](https://github.com/MehdiZare/fmp-data/actions/workflows/publish-pypi.yml/badge.svg?branch=main&event=release)](https://github.com/MehdiZare/fmp-data/actions/workflows/publish-pypi.yml)
 [![codecov](https://codecov.io/gh/MehdiZare/fmp-data/branch/main/graph/badge.svg)](https://codecov.io/gh/MehdiZare/fmp-data)
 [![Python](https://img.shields.io/pypi/pyversions/fmp-data.svg)](https://pypi.org/project/fmp-data/)
-[![Poetry](https://img.shields.io/endpoint?url=https://python-poetry.org/badge/v0.json)](https://python-poetry.org/)
+[![UV](https://img.shields.io/badge/uv-Package%20Manager-blue)](https://github.com/astral-sh/uv)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A Python client for the Financial Modeling Prep (FMP) API with comprehensive logging, rate limiting, and error handling. Built with Poetry for reliable dependency management and modern Python development practices.
+A Python client for the Financial Modeling Prep (FMP) API with comprehensive logging, rate limiting, and error handling. Built with UV for fast, reliable dependency management and modern Python development practices.
 
-## Why Poetry?
+## Why UV?
 
-This project uses Poetry as the primary package management tool for several key benefits:
+This project uses UV as the primary package management tool for several key benefits:
+- **Lightning-fast performance** - 10-100x faster than pip and pip-tools
 - **Deterministic builds** with lock files ensuring reproducible environments
-- **Dependency resolution** that prevents conflicts before they happen
+- **Drop-in pip replacement** with familiar commands and workflows
 - **Virtual environment management** that's transparent and reliable
-- **Build system** that handles packaging and publishing seamlessly
-- **Development workflow** integration with scripts and task runners
+- **Built in Rust** for maximum performance and reliability
+- **Dependency resolution** that prevents conflicts before they happen
 
 ## Features
 
@@ -26,7 +26,7 @@ This project uses Poetry as the primary package management tool for several key 
 - Async support
 - Type hints and validation with Pydantic
 - Automatic retries with exponential backoff
-- 100% test coverage (excluding predefined endpoints)
+- 85%+ test coverage with comprehensive test suite
 - Secure API key handling
 - Support for all major FMP endpoints
 - Detailed error messages
@@ -42,20 +42,20 @@ To use this library, you'll need an API key from Financial Modeling Prep (FMP). 
 
 ## Installation
 
-### Using Poetry (Recommended)
+### Using UV (Recommended)
 
 ```bash
 # Basic installation
-poetry add fmp-data
+uv pip install fmp-data
 
 # With Langchain integration
-poetry add fmp-data --extras langchain
+uv pip install "fmp-data[langchain]"
 
 # With MCP server support
-poetry add fmp-data --extras mcp
+uv pip install "fmp-data[mcp]"
 
 # With both integrations
-poetry add fmp-data --extras "langchain,mcp"
+uv pip install "fmp-data[langchain,mcp]"
 ```
 
 ### Using pip
@@ -80,11 +80,11 @@ Model Context Protocol (MCP) server provides financial data access through a sta
 # Set your API key
 export FMP_API_KEY=your_api_key_here
 
-# Run the MCP server with Poetry
-poetry run python -m fmp_data.mcp.server
+# Run the MCP server with UV
+uv run python -m fmp_data.mcp.server
 
-# Or if you have the script defined in pyproject.toml
-poetry run fmp-mcp-server
+# Or directly if installed in active environment
+python -m fmp_data.mcp.server
 ```
 
 ### Configuration
@@ -255,7 +255,7 @@ config = ClientConfig(
     api_key="your_api_key_here", #pragma: allowlist secret
     timeout=30,
     max_retries=3,
-    base_url="https://financialmodelingprep.com/api",
+    base_url="https://financialmodelingprep.com",
     logging=LoggingConfig(level="INFO")
 )
 client = FMPDataClient(config=config)
@@ -284,6 +284,20 @@ with FMPDataClient(api_key="your_api_key_here") as client: # pragma: allowlist s
 # Client is automatically closed after the with block
 ```
 
+## Available Client Modules
+
+The FMP Data Client provides access to all FMP API endpoints through specialized client modules:
+
+- **company**: Company profiles, executives, employee counts, peers
+- **market**: Real-time quotes, historical prices, market hours
+- **fundamental**: Financial statements (income, balance sheet, cash flow)
+- **technical**: Technical indicators (SMA, EMA, RSI, MACD, etc.)
+- **intelligence**: Market news, SEC filings, press releases
+- **institutional**: Institutional holdings, insider trading
+- **investment**: ETF and mutual fund data
+- **alternative**: Crypto, forex, and commodity data
+- **economics**: Economic indicators and calendar data
+
 ## Key Components
 
 ### 1. Company Information
@@ -298,10 +312,13 @@ with FMPDataClient.from_env() as client:
     executives = client.company.get_executives("AAPL")
 
     # Search companies
-    results = client.company.search("Tesla", limit=5)
+    results = client.company.search_ticker("apple", limit=5)
 
     # Get employee count history
     employees = client.company.get_employee_count("AAPL")
+
+    # Get company peers
+    peers = client.company.get_company_peers("AAPL")
 ```
 
 ### 2. Financial Statements
@@ -329,34 +346,91 @@ with FMPDataClient.from_env() as client:
 ### 3. Market Data
 ```python
 from fmp_data import FMPDataClient
+from datetime import date
 
 with FMPDataClient.from_env() as client:
     # Get real-time quote
-    quote = client.market.get_quote("TSLA")
+    quote = client.company.get_quote("TSLA")
 
     # Get historical prices
-    history = client.market.get_historical_price(
+    history = client.company.get_historical_price(
         "TSLA",
-        from_date="2023-01-01",
-        to_date="2023-12-31"
+        start_date=date(2023, 1, 1),
+        end_date=date(2023, 12, 31)
+    )
+
+    # Get intraday prices
+    intraday = client.company.get_historical_price_intraday(
+        "TSLA",
+        interval="5min",
+        start_date=date(2024, 1, 1)
     )
 ```
 
-### 4. Async Support
+### 4. Technical Indicators
 ```python
-import asyncio
+from fmp_data import FMPDataClient
+from datetime import date
+
+with FMPDataClient.from_env() as client:
+    # Simple Moving Average
+    sma = client.technical.get_sma(
+        "AAPL",
+        period_length=20,
+        timeframe="1day"
+    )
+
+    # RSI (Relative Strength Index)
+    rsi = client.technical.get_rsi(
+        "AAPL",
+        period_length=14,
+        timeframe="1day"
+    )
+
+    # MACD
+    macd = client.technical.get_macd(
+        "AAPL",
+        fast_period=12,
+        slow_period=26,
+        signal_period=9
+    )
+```
+
+### 5. Alternative Data
+```python
 from fmp_data import FMPDataClient
 
-async def get_multiple_profiles(symbols):
-    async with FMPDataClient.from_env() as client:
-        tasks = [client.company.get_profile_async(symbol)
-                for symbol in symbols]
-        return await asyncio.gather(*tasks)
+with FMPDataClient.from_env() as client:
+    # Crypto quotes
+    btc = client.alternative.get_crypto_quote("BTCUSD")
 
-# Run async function
-symbols = ["AAPL", "MSFT", "GOOGL"]
-profiles = asyncio.run(get_multiple_profiles(symbols))
+    # Forex quotes
+    eurusd = client.alternative.get_forex_quote("EURUSD")
+
+    # Commodity quotes
+    gold = client.alternative.get_commodity_quote("GCUSD")
 ```
+
+### 6. Institutional and Intelligence Data
+```python
+from fmp_data import FMPDataClient
+
+with FMPDataClient.from_env() as client:
+    # Institutional holdings
+    holders = client.institutional.get_institutional_holders("AAPL")
+
+    # Insider trading
+    insider = client.institutional.get_insider_trading("AAPL")
+
+    # Market news
+    news = client.intelligence.get_stock_news("TSLA", limit=10)
+
+    # SEC filings
+    filings = client.intelligence.get_sec_filings("AAPL", type="10-K")
+```
+
+### 7. Async Support (Coming Soon)
+Note: Async support is currently under development and will be available in a future release.
 
 ## Configuration
 
@@ -366,7 +440,7 @@ profiles = asyncio.run(get_multiple_profiles(symbols))
 FMP_API_KEY=your_api_key_here
 
 # Optional
-FMP_BASE_URL=https://financialmodelingprep.com/api
+FMP_BASE_URL=https://financialmodelingprep.com
 FMP_TIMEOUT=30
 FMP_MAX_RETRIES=3
 
@@ -393,7 +467,7 @@ config = ClientConfig(
     api_key="your_api_key_here",  # pragma: allowlist secret
     timeout=30,
     max_retries=3,
-    base_url="https://financialmodelingprep.com/api",
+    base_url="https://financialmodelingprep.com",
     rate_limit=RateLimitConfig(
         daily_limit=250,
         requests_per_second=10,
@@ -462,7 +536,7 @@ except FMPError as e:
 
 ### Prerequisites
 - Python 3.10+
-- Poetry 1.4+
+- UV (install with `curl -LsSf https://astral.sh/uv/install.sh | sh`)
 
 ### Setup
 
@@ -472,23 +546,22 @@ git clone https://github.com/MehdiZare/fmp-data.git
 cd fmp-data
 ```
 
-2. Install dependencies with Poetry:
+2. Install dependencies with UV:
 ```bash
-# Install all dependencies including dev dependencies
-poetry install
+# Create virtual environment and install all dependencies
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Install with specific extras for development
-poetry install --extras "langchain mcp"
+# Install package in editable mode with all extras
+uv pip install -e ".[langchain,mcp]" --all-extras
+
+# Install development dependencies
+uv pip install --group dev -e .
 ```
 
-3. Activate the virtual environment:
+3. Set up pre-commit hooks:
 ```bash
-poetry shell
-```
-
-4. Set up pre-commit hooks:
-```bash
-poetry run pre-commit install
+pre-commit install
 ```
 
 5. Set up environment variables:
@@ -503,70 +576,92 @@ echo "FMP_API_KEY=your_api_key_here" > .env
 
 ```bash
 # Run all tests with coverage
-poetry run pytest --cov=fmp_data
+pytest --cov=fmp_data
 
 # Run tests with coverage report
-poetry run pytest --cov=fmp_data --cov-report=html
+pytest --cov=fmp_data --cov-report=html
 
 # Run specific test file
-poetry run pytest tests/test_client.py
+pytest tests/unit/test_client.py
 
 # Run tests with verbose output
-poetry run pytest -v
+pytest -v
 
 # Run integration tests (requires API key)
-FMP_TEST_API_KEY=your_test_api_key poetry run pytest tests/integration/
+FMP_TEST_API_KEY=your_test_api_key pytest tests/integration/
+
+# Using make commands (if available)
+make test        # Run unit tests
+make test-cov    # Run tests with coverage
+make test-all    # Run all tests for all Python versions
 ```
 
 ### Development Commands
 
 ```bash
-# Format code with black
-poetry run black fmp_data tests
+# Format code with ruff and black
+ruff format fmp_data tests
+black fmp_data tests
 
-# Sort imports with isort
-poetry run isort fmp_data tests
+# Lint with ruff
+ruff check fmp_data tests --fix
 
 # Type checking with mypy
-poetry run mypy fmp_data
-
-# Lint with flake8
-poetry run flake8 fmp_data
+mypy fmp_data
 
 # Run all quality checks
-poetry run pre-commit run --all-files
+pre-commit run --all-files
+
+# Using make commands (recommended)
+make fix         # Auto-fix all issues
+make lint        # Run linting
+make typecheck   # Run type checking
+make check       # Run all checks
+make test        # Run tests
+make test-cov    # Run tests with coverage report
+make ci          # Run full CI checks locally
 ```
 
 ### Building and Publishing
 
 ```bash
 # Build the package
-poetry build
+uv build
+
+# Or using Python build
+python -m build
 
 # Check package before publishing
-poetry check
+twine check dist/*
 
 # Publish to PyPI (maintainers only)
-poetry publish
+twine upload dist/*
+
+# Using make commands
+make build       # Build package
+make build-check # Build and verify
 ```
 
-### Poetry Configuration
+### UV Configuration
 
 ```bash
-# Configure Poetry to create virtual environments in project directory
-poetry config virtualenvs.in-project true
+# Create virtual environment
+uv venv
 
-# Show current configuration
-poetry config --list
+# Activate virtual environment
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Update dependencies
-poetry update
+# Install/upgrade packages
+uv pip install --upgrade package-name
 
-# Add development dependencies
-poetry add --group dev pytest black mypy
+# Sync dependencies from pyproject.toml
+uv pip sync pyproject.toml
 
 # Export requirements.txt (if needed)
-poetry export -f requirements.txt --output requirements.txt
+uv pip freeze > requirements.txt
+
+# Compile requirements (fast dependency resolution)
+uv pip compile pyproject.toml -o requirements.txt
 ```
 
 View the latest test coverage report [here](https://codecov.io/gh/MehdiZare/fmp-data).
@@ -586,14 +681,15 @@ cd fmp-data
 
 3. Set up development environment:
 ```bash
-# Install dependencies with Poetry
-poetry install --extras "langchain mcp"
+# Create and activate virtual environment
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Activate virtual environment
-poetry shell
+# Install dependencies with UV
+uv pip install -e ".[langchain,mcp]" --all-extras
 
 # Install pre-commit hooks
-poetry run pre-commit install
+pre-commit install
 ```
 
 ### Making Changes
@@ -606,16 +702,21 @@ git checkout -b feature/your-feature-name
 2. Make your changes and ensure quality:
 ```bash
 # Format code
-poetry run black fmp_data tests
+ruff format fmp_data tests
+black fmp_data tests
 
-# Sort imports
-poetry run isort fmp_data tests
+# Fix linting issues
+ruff check fmp_data tests --fix
 
 # Run type checking
-poetry run mypy fmp_data
+mypy fmp_data
 
 # Run tests
-poetry run pytest --cov=fmp_data
+pytest --cov=fmp_data
+
+# Or use make commands
+make fix    # Fix all auto-fixable issues
+make check  # Run all checks
 ```
 
 3. Commit your changes:
@@ -629,25 +730,31 @@ git commit -m "feat: add your feature description"
 ### Requirements
 
 Please ensure your contributions meet these requirements:
-- Tests pass: `poetry run pytest`
-- Code is formatted: `poetry run black fmp_data tests`
-- Imports are sorted: `poetry run isort fmp_data tests`
+- Tests pass: `pytest` or `make test`
+- Code is formatted: `ruff format` and `black` or `make fix`
+- Code passes linting: `ruff check` or `make lint`
 - Type hints are included for all functions
 - Documentation is updated for new features
 - Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)
+- Test coverage remains above 80%
 
 ### Running Quality Checks
 
 ```bash
 # Run all quality checks at once
-poetry run pre-commit run --all-files
+pre-commit run --all-files
+
+# Or use make commands (recommended)
+make check      # Run all checks
+make fix        # Fix all auto-fixable issues
+make test       # Run tests
+make test-cov   # Run tests with coverage
 
 # Or run individual checks
-poetry run black --check fmp_data tests
-poetry run isort --check-only fmp_data tests
-poetry run flake8 fmp_data
-poetry run mypy fmp_data
-poetry run pytest --cov=fmp_data
+ruff check fmp_data tests
+black --check fmp_data tests
+mypy fmp_data
+pytest --cov=fmp_data
 ```
 
 ## License

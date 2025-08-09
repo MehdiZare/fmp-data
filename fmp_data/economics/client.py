@@ -25,9 +25,9 @@ class EconomicsClient(EndpointGroup):
         """Get treasury rates"""
         params = {}
         if start_date:
-            params["from"] = start_date.strftime("%Y-%m-%d")
+            params["start_date"] = start_date.strftime("%Y-%m-%d")
         if end_date:
-            params["to"] = end_date.strftime("%Y-%m-%d")
+            params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         return self.client.request(TREASURY_RATES, **params)
 
@@ -41,9 +41,9 @@ class EconomicsClient(EndpointGroup):
         """Get economic calendar events"""
         params = {}
         if start_date:
-            params["from"] = start_date.strftime("%Y-%m-%d")
+            params["start_date"] = start_date.strftime("%Y-%m-%d")
         if end_date:
-            params["to"] = end_date.strftime("%Y-%m-%d")
+            params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         return self.client.request(ECONOMIC_CALENDAR, **params)
 

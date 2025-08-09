@@ -65,13 +65,31 @@ jobs:
           echo "🚀 Installing with uv"
           uv --version
 
+          # Generate lock file if it doesn't exist (it's gitignored)
+          if [ ! -f "uv.lock" ]; then
+            echo "📦 Generating uv.lock file"
+            uv lock
+          fi
+
           # Install project with docs dependencies
           uv sync --group docs
 
+          # Install git for version detection
+          echo "📦 Installing git and hatchling for versioning"
+          uv pip install hatchling hatch-vcs
+
+      - name: Get package version
+        id: version
+        run: |
+          echo "📦 Getting package version"
+          VERSION=$(uv run python -c "import fmp_data; print(fmp_data.__version__)")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Package version: $VERSION"
+
       - name: Build documentation
         run: |
-          echo "📚 Building documentation"
-          uv run mkdocs build --strict
+          echo "📚 Building documentation with version ${{ steps.version.outputs.VERSION }}"
+          PACKAGE_VERSION="${{ steps.version.outputs.VERSION }}" uv run mkdocs build --strict
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

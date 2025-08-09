@@ -1,74 +1,204 @@
-# .github/workflows/publish-to-testpypi.yml
-# ──────────────────────────────────────────────────────────────────────────────
-# Build the package on pushes to the dev branch and upload it to Test PyPI.
-# Uses post-release versioning (e.g., 1.0.0.post1, 1.0.0.post2, etc.)
-# ──────────────────────────────────────────────────────────────────────────────
-
 name: Publish-to-TestPyPI
 
 on:
+  # Trigger on PRs from dev to main with release labels
+  pull_request:
+    types: [opened, synchronize, labeled]
+    branches:
+      - main
+  # Also trigger on pre-release tags
   push:
-    branches: [dev]
+    tags:
+      - 'v*.*.*rc*'            # Release candidates (v1.2.3rc1)
+      - 'v*.*.*a*'             # Alpha releases (v1.2.3a1)
+      - 'v*.*.*b*'             # Beta releases (v1.2.3b1)
+      - 'v*.*.*dev*'           # Dev releases (v1.2.3dev1)
 
 permissions:
-  id-token: write          # OIDC token for trusted publishing
-  contents: read
+  id-token: write              # OIDC → Trusted Publishing
+  pull-requests: write         # Comment on PRs
+  contents: read               # Read repository contents
+  issues: write                # Use Issues API for PR comments
 
 jobs:
-  test-and-publish:
+  test-release-build:
+    # Only run for PRs from dev with release labels
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.ref == 'dev' &&
+      (contains(github.event.pull_request.labels.*.name, 'release:major') ||
+       contains(github.event.pull_request.labels.*.name, 'release:minor') ||
+       contains(github.event.pull_request.labels.*.name, 'release:patch'))
+
     runs-on: ubuntu-latest
     env:
-      PYTHON_VERSION: "3.12"       # one place to change Python version
+      PYTHON_VERSION: "3.12"
 
     steps:
-      # 1️⃣  Checkout the code with full history for version detection --------
-      - name: 🛎️ Checkout
+      - name: 🛎️  Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0          # fetch full history for Dunamai
-          fetch-tags: true        # fetch all tags
+          fetch-depth: 0  # Needed for version calculation
+          ref: ${{ github.event.pull_request.head.sha }}
 
-      # 2️⃣  Install the requested Python -------------------------------------
-      - name: 🐍 Set up Python
+      - name: 🐍  Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      # 3️⃣  Install uv --------------------------------------------------------
-      - name: ⚡ Install uv
+      - name: ⚡  Install uv (with cache)
         uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
 
-      # 4️⃣  Set up post-release versioning for TestPyPI --------------------
-      - name: 🏷️ Configure version for TestPyPI
+      - name: 📦  Install build tools
         run: |
-          # Install dunamai to check current version
-          uv pip install --system dunamai
+          uv pip install --system build hatch
 
-          # Get the base version and add post-release suffix
-          base_version=$(dunamai from git --style pep440 --no-metadata)
-          post_version="${base_version}.post$(date +%Y%m%d%H%M)"
-
-          echo "📦 Base version: $base_version"
-          echo "📦 TestPyPI version: $post_version"
-          echo "PACKAGE_VERSION=$post_version" >> $GITHUB_ENV
-
-      # 5️⃣  Build the wheel & sdist ------------------------------------------
-      - name: 📦 Build wheel & sdist
+      - name: 🏷️  Calculate and create test version tag
+        id: version
         run: |
-          set -euo pipefail
+          # Get the latest tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          CURRENT_VERSION=${LATEST_TAG#v}
 
-          echo "📦 Building distributions with uv…"
-          echo "📦 Using version: $PACKAGE_VERSION"
+          # Parse version components
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
 
-          # Override version for this build
-          export DUNAMAI_OVERRIDE_VERSION="$PACKAGE_VERSION"
-          uv build --wheel --sdist
+          # Determine version bump type from labels
+          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'release:major') }}" == "true" ]]; then
+            NEW_VERSION="$((MAJOR + 1)).0.0"
+          elif [[ "${{ contains(github.event.pull_request.labels.*.name, 'release:minor') }}" == "true" ]]; then
+            NEW_VERSION="${MAJOR}.$((MINOR + 1)).0"
+          else
+            NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+          fi
 
-          echo "📦 Artifacts:"
+          # Add dev suffix with PR number for TestPyPI
+          TEST_VERSION="${NEW_VERSION}.dev${{ github.event.pull_request.number }}"
+          TEST_TAG="v${TEST_VERSION}"
+
+          echo "TEST_VERSION=$TEST_VERSION" >> $GITHUB_OUTPUT
+          echo "TEST_TAG=$TEST_TAG" >> $GITHUB_OUTPUT
+          echo "📦 Test version: $TEST_VERSION"
+
+          # Create a temporary tag for hatch-vcs to pick up and reset HEAD to it
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git tag -a "$TEST_TAG" -m "Test release $TEST_TAG"
+
+          # Force hatch-vcs to see this as the current tag by checking it out
+          git checkout "$TEST_TAG"
+
+      - name: 📦  Build wheel & sdist
+        run: |
+          echo "🏷️ Current git state:"
+          git describe --tags --always
+          echo "📦 Building package..."
+
+          python -m build --wheel --sdist
+
+          echo "📦 Build completed. Contents of dist/:"
           ls -la dist/
 
-      # 6️⃣  Upload the artifacts to Test PyPI ---------------------------------
-      - name: 🚀 Upload to Test PyPI
+          # Verify the version in the built package
+          echo "📋 Checking built package version:"
+          if ls dist/*.tar.gz 1> /dev/null 2>&1; then
+            tar -tf dist/*.tar.gz | grep -E "(PKG-INFO|METADATA)" | head -1 | xargs tar -xOf dist/*.tar.gz | grep "^Version:" || echo "Version not found in metadata"
+          fi
+
+      - name: 🧪  Upload to Test PyPI
+        uses: pypa/gh-action-pypi-publish@v1.12.4
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist
+          skip-existing: true
+          verbose: true
+          print-hash: true
+
+      - name: 📝  Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = '${{ steps.version.outputs.TEST_VERSION }}';
+            const comment = `## 🧪 Test Release Published
+
+            A test version has been published to TestPyPI for verification.
+
+            **Version:** \`${version}\`
+
+            ### Installation
+            \`\`\`bash
+            pip install -i https://test.pypi.org/simple/ fmp-data==${version}
+            \`\`\`
+
+            ### Verification Steps
+            1. Install the test package using the command above
+            2. Verify the package imports correctly
+            3. Test key functionality
+            4. Check that all dependencies are resolved
+
+            ✅ Once verified, merge this PR to trigger the actual release to PyPI.`;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('Test Release Published')
+            );
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment,
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment,
+              });
+            }
+
+  # Original job for tag-based releases
+  publish-prerelease:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    env:
+      PYTHON_VERSION: "3.12"
+
+    steps:
+      - name: 🛎️  Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed for hatch-vcs versioning
+
+      - name: 🐍  Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: ⚡  Install uv (with cache)
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: 📦  Build wheel & sdist
+        run: |
+          uv pip install --system build hatch
+          python -m build --wheel --sdist
+
+      - name: 🚀  Upload to Test PyPI
         uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
           repository-url: https://test.pypi.org/legacy/

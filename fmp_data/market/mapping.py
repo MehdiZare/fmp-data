@@ -8,14 +8,13 @@ from fmp_data.market.endpoints import (
     CIK_SEARCH,
     CUSIP_SEARCH,
     ETF_LIST,
-    EXCHANGE_SYMBOLS,
     GAINERS,
     ISIN_SEARCH,
     LOSERS,
     MARKET_HOURS,
     MOST_ACTIVE,
     PRE_POST_MARKET,
-    SEARCH,
+    SEARCH_COMPANY,
     SECTOR_PERFORMANCE,
     STOCK_LIST,
 )
@@ -23,7 +22,7 @@ from fmp_data.market.endpoints import (
 from .hints import COMPANY_SEARCH_HINT, IDENTIFIER_HINT
 
 MARKET_ENDPOINT_MAP = {
-    "search": SEARCH,
+    "search_company": SEARCH_COMPANY,
     "get_all_shares_float": ALL_SHARES_FLOAT,
     "get_market_hours": MARKET_HOURS,
     "get_gainers": GAINERS,
@@ -34,7 +33,6 @@ MARKET_ENDPOINT_MAP = {
     "get_stock_list": STOCK_LIST,
     "get_etf_list": ETF_LIST,
     "get_available_indexes": AVAILABLE_INDEXES,
-    "get_exchange_symbols": EXCHANGE_SYMBOLS,
     "search_by_cik": CIK_SEARCH,
     "search_by_cusip": CUSIP_SEARCH,
     "search_by_isin": ISIN_SEARCH,
@@ -218,51 +216,6 @@ MARKET_ENDPOINTS_SEMANTICS = {
             "Sector research",
             "Competitor analysis",
             "Investment screening",
-            "Market research",
-        ],
-    ),
-    "exchange_symbols": EndpointSemantics(
-        client_name="market",
-        method_name="get_exchange_symbols",
-        natural_description=(
-            "Get all symbols listed on a specific exchange including stocks, ETFs, "
-            "and other traded instruments."
-        ),
-        example_queries=[
-            "List all symbols on NYSE",
-            "Show me NASDAQ listed companies",
-            "What securities trade on LSE?",
-            "Get all stocks listed on TSX",
-            "Show symbols available on ASX",
-        ],
-        related_terms=[
-            "exchange listings",
-            "listed securities",
-            "traded symbols",
-            "exchange symbols",
-            "market listings",
-        ],
-        category=SemanticCategory.MARKET_DATA,
-        sub_category="Lists",
-        parameter_hints={
-            "exchange": EXCHANGE_HINT,
-        },
-        response_hints={
-            "symbol": ResponseFieldInfo(
-                description="Trading symbol",
-                examples=["AAPL", "MSFT"],
-                related_terms=["ticker", "stock symbol"],
-            ),
-            "name": ResponseFieldInfo(
-                description="Company name",
-                examples=["Apple Inc", "Microsoft Corporation"],
-                related_terms=["company name", "listing name"],
-            ),
-        },
-        use_cases=[
-            "Exchange analysis",
-            "Market coverage",
-            "Trading universe definition",
             "Market research",
         ],
     ),
@@ -517,15 +470,14 @@ MARKET_ENDPOINTS_SEMANTICS = {
         client_name="market",
         method_name="get_market_hours",
         natural_description=(
-            "Check current market status and trading hours including regular session "
-            "times and holiday schedules for major markets"
+            "Check current market status and trading hours for a specific exchange"
         ),
         example_queries=[
-            "Is the market open?",
-            "Show trading hours",
+            "Is the NYSE market open?",
+            "Show trading hours for NASDAQ",
             "When does the market close?",
-            "Get market schedule",
-            "Check holiday schedule",
+            "Get NYSE market schedule",
+            "Check NASDAQ trading hours",
         ],
         related_terms=[
             "trading hours",
@@ -533,27 +485,45 @@ MARKET_ENDPOINTS_SEMANTICS = {
             "trading schedule",
             "market status",
             "exchange hours",
-            "holiday calendar",
         ],
         category=SemanticCategory.MARKET_DATA,
         sub_category="Market Status",
-        parameter_hints={},  # No parameters needed
+        parameter_hints={},  # Use empty dict to avoid complex validation requirements
         response_hints={
-            "isTheStockMarketOpen": ResponseFieldInfo(
-                description="Whether the stock market is currently open",
+            "exchange": ResponseFieldInfo(
+                description="Exchange code",
+                examples=["NYSE", "NASDAQ"],
+                related_terms=["exchange code", "market identifier"],
+            ),
+            "name": ResponseFieldInfo(
+                description="Full exchange name",
+                examples=["New York Stock Exchange", "NASDAQ"],
+                related_terms=["exchange name", "market name"],
+            ),
+            "is_market_open": ResponseFieldInfo(
+                description="Whether the market is currently open",
                 examples=["true", "false"],
                 related_terms=["market status", "trading status"],
             ),
-            "stockMarketHours": ResponseFieldInfo(
-                description="Regular trading hours",
-                examples=["9:30-16:00", "8:00-17:00"],
-                related_terms=["trading hours", "session hours"],
+            "opening_hour": ResponseFieldInfo(
+                description="Market opening time with timezone",
+                examples=["09:30 AM -04:00", "08:00 AM -05:00"],
+                related_terms=["opening time", "market open"],
+            ),
+            "closing_hour": ResponseFieldInfo(
+                description="Market closing time with timezone",
+                examples=["04:00 PM -04:00", "03:00 PM -05:00"],
+                related_terms=["closing time", "market close"],
+            ),
+            "timezone": ResponseFieldInfo(
+                description="Exchange timezone",
+                examples=["America/New_York", "America/Chicago"],
+                related_terms=["time zone", "market timezone"],
             ),
         },
         use_cases=[
             "Trading schedule planning",
             "Market status monitoring",
-            "Holiday planning",
             "Trading automation",
             "Order timing",
         ],

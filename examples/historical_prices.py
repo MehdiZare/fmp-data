@@ -57,7 +57,7 @@ def main():
             )
 
         # Get technical indicators
-        rsi = client.technical.get_rsi(symbol, period=14)
+        rsi = client.technical.get_rsi(symbol, period_length=14)
         if rsi:
             print("\nTechnical Indicators:")
             print(f"Current RSI (14): {rsi[0].rsi:.2f}")

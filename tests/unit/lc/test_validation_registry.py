@@ -14,7 +14,7 @@ def market_endpoints() -> dict[str, Endpoint[Any]]:
         "get_market_data": Endpoint(
             name="get_market_data",
             path="market/data",
-            version=APIVersion.V3,
+            version=APIVersion.STABLE,
             url_type=URLType.API,
             method=HTTPMethod.GET,
             description="Get market data",
@@ -33,7 +33,7 @@ def alternative_endpoints() -> dict[str, Endpoint[Any]]:
         "get_crypto_price": Endpoint(
             name="get_crypto_price",
             path="crypto/price",
-            version=APIVersion.V3,
+            version=APIVersion.STABLE,
             url_type=URLType.API,
             method=HTTPMethod.GET,
             description="Get crypto price",

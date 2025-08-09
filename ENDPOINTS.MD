@@ -35,8 +35,8 @@
 - OTC Quote `/v3/otc/real-time-price/{symbol}`
 - Exchange Prices `/v3/quotes/{exchange}`
 - Stock Price Change `/v3/stock-price-change/{symbol}`
-- Historical Price (Daily) `/v3/historical-price-full/{symbol}`
-- Intraday Price `/v3/historical-chart/{interval}/{symbol}`
+- Historical Price (Daily) `/stable/historical-price-eod/full`
+- Intraday Price `/stable/historical-chart/{interval}`
 
 ### Pre/Post Market
 - Aftermarket Trade `/v4/pre-post-market-trade/{symbol}`
@@ -156,25 +156,25 @@
 
 ## 8. Alternative Markets
 ### Cryptocurrency
-- Cryptocurrencies List `/v3/symbol/available-cryptocurrencies`
-- Full Quote List `/v3/quotes/crypto`
-- Single Quote `/v3/quote/{cryptoPair}`
-- Historical Price `/v3/historical-price-full/{cryptoPair}`
-- Intraday Price `/v3/historical-chart/{interval}/{cryptoPair}`
+- Cryptocurrencies List `/stable/cryptocurrency-list`
+- Full Quote List `/stable/quotes/crypto`
+- Single Quote `/stable/quote?symbol={cryptoPair}`
+- Historical Price `/stable/historical-price-eod?symbol={cryptoPair}`
+- Intraday Price `/stable/historical-chart/{interval}/{cryptoPair}`
 
 ### Forex
-- Forex List `/v3/symbol/available-forex-currency-pairs`
-- Full Quote List `/v3/quotes/forex`
-- Single Quote `/v3/quote/{forexPair}`
-- Historical Price `/v3/historical-price-full/{forexPair}`
-- Intraday Price `/v3/historical-chart/{interval}/{forexPair}`
+- Forex List `/stable/symbol/available-forex-currency-pairs`
+- Full Quote List `/stable/quotes/forex`
+- Single Quote `/stable/quote?symbol={forexPair}`
+- Historical Price `/stable/historical-price-eod?symbol={forexPair}`
+- Intraday Price `/stable/historical-chart/{interval}?symbol={forexPair}`
 
 ### Commodities
-- Commodities List `/v3/symbol/available-commodities`
-- Full Quote List `/v3/quotes/commodity`
-- Single Quote `/v3/quote/{commodity}`
-- Historical Price `/v3/historical-price-full/{commodity}`
-- Intraday Price `/v3/historical-chart/{interval}/{commodity}`
+- Commodities List `/stable/symbol/available-commodities`
+- Full Quote List `/stable/quotes/commodity`
+- Single Quote `/stable/quote?symbol={commodity}`
+- Historical Price `/stable/historical-price-eod?symbol={commodity}`
+- Intraday Price `/stable/historical-chart/{interval}/{commodity}`
 
 ## 9. Economic Data
 - Treasury Rates `/v4/treasury`

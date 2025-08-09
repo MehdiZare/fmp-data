@@ -21,7 +21,10 @@ class TestTechnicalClientEndpoints(BaseTestCase):
         """Test getting Simple Moving Average (SMA)"""
         with vcr_instance.use_cassette("technical/sma.yaml"):
             sma_data = self._handle_rate_limit(
-                fmp_client.technical.get_sma, symbol="AAPL", period=20, interval="daily"
+                fmp_client.technical.get_sma,
+                symbol="AAPL",
+                period_length=20,
+                interval="daily",
             )
 
             assert isinstance(sma_data, list)
@@ -33,7 +36,10 @@ class TestTechnicalClientEndpoints(BaseTestCase):
         """Test getting Exponential Moving Average (EMA)"""
         with vcr_instance.use_cassette("technical/ema.yaml"):
             ema_data = self._handle_rate_limit(
-                fmp_client.technical.get_ema, symbol="AAPL", period=20, interval="daily"
+                fmp_client.technical.get_ema,
+                symbol="AAPL",
+                period_length=20,
+                interval="daily",
             )
 
             assert isinstance(ema_data, list)
@@ -45,7 +51,10 @@ class TestTechnicalClientEndpoints(BaseTestCase):
         """Test getting Weighted Moving Average (WMA)"""
         with vcr_instance.use_cassette("technical/wma.yaml"):
             wma_data = self._handle_rate_limit(
-                fmp_client.technical.get_wma, symbol="AAPL", period=20, interval="daily"
+                fmp_client.technical.get_wma,
+                symbol="AAPL",
+                period_length=20,
+                interval="daily",
             )
 
             assert isinstance(wma_data, list)
@@ -59,7 +68,7 @@ class TestTechnicalClientEndpoints(BaseTestCase):
             dema_data = self._handle_rate_limit(
                 fmp_client.technical.get_dema,
                 symbol="AAPL",
-                period=20,
+                period_length=20,
                 interval="daily",
             )
 
@@ -74,7 +83,7 @@ class TestTechnicalClientEndpoints(BaseTestCase):
             tema_data = self._handle_rate_limit(
                 fmp_client.technical.get_tema,
                 symbol="AAPL",
-                period=20,
+                period_length=20,
                 interval="daily",
             )
 
@@ -89,7 +98,7 @@ class TestTechnicalClientEndpoints(BaseTestCase):
             williams_data = self._handle_rate_limit(
                 fmp_client.technical.get_williams,
                 symbol="AAPL",
-                period=14,
+                period_length=14,
                 interval="daily",
             )
 
@@ -102,7 +111,10 @@ class TestTechnicalClientEndpoints(BaseTestCase):
         """Test getting Relative Strength Index (RSI)"""
         with vcr_instance.use_cassette("technical/rsi.yaml"):
             rsi_data = self._handle_rate_limit(
-                fmp_client.technical.get_rsi, symbol="AAPL", period=14, interval="daily"
+                fmp_client.technical.get_rsi,
+                symbol="AAPL",
+                period_length=14,
+                interval="daily",
             )
 
             assert isinstance(rsi_data, list)
@@ -114,7 +126,10 @@ class TestTechnicalClientEndpoints(BaseTestCase):
         """Test getting Average Directional Index (ADX)"""
         with vcr_instance.use_cassette("technical/adx.yaml"):
             adx_data = self._handle_rate_limit(
-                fmp_client.technical.get_adx, symbol="AAPL", period=14, interval="daily"
+                fmp_client.technical.get_adx,
+                symbol="AAPL",
+                period_length=14,
+                interval="daily",
             )
 
             assert isinstance(adx_data, list)
@@ -128,7 +143,7 @@ class TestTechnicalClientEndpoints(BaseTestCase):
             sd_data = self._handle_rate_limit(
                 fmp_client.technical.get_standard_deviation,
                 symbol="AAPL",
-                period=20,
+                period_length=20,
                 interval="daily",
             )
 

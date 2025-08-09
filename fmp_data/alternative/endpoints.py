@@ -2,10 +2,10 @@
 
 from fmp_data.alternative.models import (
     Commodity,
+    CommodityHistoricalPrice,
     CommodityIntradayPrice,
-    CommodityPriceHistory,
     CommodityQuote,
-    CryptoHistoricalData,
+    CryptoHistoricalPrice,
     CryptoIntradayPrice,
     CryptoPair,
     CryptoQuote,
@@ -46,8 +46,8 @@ VALID_INTERVALS = ["1min", "5min", "15min", "30min", "1hour", "4hour"]
 
 CRYPTO_LIST: Endpoint = Endpoint(
     name="crypto_list",
-    path="symbol/available-cryptocurrencies",
-    version=APIVersion.V3,
+    path="cryptocurrency-list",
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -69,7 +69,7 @@ CRYPTO_LIST: Endpoint = Endpoint(
 CRYPTO_QUOTES: Endpoint = Endpoint(
     name="crypto_quotes",
     path="quotes/crypto",
-    version=APIVersion.V3,
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -90,8 +90,8 @@ CRYPTO_QUOTES: Endpoint = Endpoint(
 
 CRYPTO_QUOTE: Endpoint = Endpoint(
     name="crypto_quote",
-    path="quote/{symbol}",
-    version=APIVersion.V3,
+    path="quote",
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -102,7 +102,7 @@ CRYPTO_QUOTE: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Crypto pair symbol (e.g., BTCUSD)",
@@ -121,8 +121,8 @@ CRYPTO_QUOTE: Endpoint = Endpoint(
 
 CRYPTO_HISTORICAL: Endpoint = Endpoint(
     name="crypto_historical",
-    path="historical-price-full/{symbol}",
-    version=APIVersion.V3,
+    path="historical-price-eod",
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -133,7 +133,7 @@ CRYPTO_HISTORICAL: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Crypto pair symbol",
@@ -157,7 +157,7 @@ CRYPTO_HISTORICAL: Endpoint = Endpoint(
             alias="to",
         ),
     ],
-    response_model=CryptoHistoricalData,
+    response_model=CryptoHistoricalPrice,
     arg_model=CryptoHistoricalArgs,
     example_queries=[
         "Get Bitcoin historical prices",
@@ -170,7 +170,7 @@ CRYPTO_HISTORICAL: Endpoint = Endpoint(
 CRYPTO_INTRADAY: Endpoint = Endpoint(
     name="crypto_intraday",
     path="historical-chart/{interval}/{symbol}",
-    version=APIVersion.V3,
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -209,7 +209,7 @@ CRYPTO_INTRADAY: Endpoint = Endpoint(
 FOREX_LIST: Endpoint = Endpoint(
     name="forex_list",
     path="symbol/available-forex-currency-pairs",
-    version=APIVersion.V3,
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -231,7 +231,7 @@ FOREX_LIST: Endpoint = Endpoint(
 FOREX_QUOTES: Endpoint = Endpoint(
     name="forex_quotes",
     path="quotes/forex",
-    version=APIVersion.V3,
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -252,8 +252,8 @@ FOREX_QUOTES: Endpoint = Endpoint(
 
 FOREX_QUOTE: Endpoint = Endpoint(
     name="forex_quote",
-    path="quote/{symbol}",
-    version=APIVersion.V3,
+    path="quote",
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -263,7 +263,7 @@ FOREX_QUOTE: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Forex pair symbol",
@@ -282,8 +282,8 @@ FOREX_QUOTE: Endpoint = Endpoint(
 
 FOREX_HISTORICAL: Endpoint = Endpoint(
     name="forex_historical",
-    path="historical-price-full/{symbol}",
-    version=APIVersion.V3,
+    path="historical-price-eod",
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -293,7 +293,7 @@ FOREX_HISTORICAL: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Forex pair symbol",
@@ -329,8 +329,8 @@ FOREX_HISTORICAL: Endpoint = Endpoint(
 
 FOREX_INTRADAY: Endpoint = Endpoint(
     name="forex_intraday",
-    path="historical-chart/{interval}/{symbol}",
-    version=APIVersion.V3,
+    path="historical-chart/{interval}",
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -349,7 +349,7 @@ FOREX_INTRADAY: Endpoint = Endpoint(
         ),
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Forex pair symbol",
@@ -369,7 +369,7 @@ FOREX_INTRADAY: Endpoint = Endpoint(
 COMMODITIES_LIST: Endpoint = Endpoint(
     name="commodities_list",
     path="symbol/available-commodities",
-    version=APIVersion.V3,
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -391,7 +391,7 @@ COMMODITIES_LIST: Endpoint = Endpoint(
 COMMODITIES_QUOTES: Endpoint = Endpoint(
     name="commodities_quotes",
     path="quotes/commodity",
-    version=APIVersion.V3,
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -412,8 +412,8 @@ COMMODITIES_QUOTES: Endpoint = Endpoint(
 
 COMMODITY_QUOTE: Endpoint = Endpoint(
     name="commodity_quote",
-    path="quote/{symbol}",
-    version=APIVersion.V3,
+    path="quote",
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -424,7 +424,7 @@ COMMODITY_QUOTE: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Commodity symbol (e.g., GC for Gold, CL for Crude Oil)",
@@ -444,8 +444,8 @@ COMMODITY_QUOTE: Endpoint = Endpoint(
 
 COMMODITY_HISTORICAL: Endpoint = Endpoint(
     name="commodity_historical",
-    path="historical-price-full/{symbol}",
-    version=APIVersion.V3,
+    path="historical-price-eod",
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
@@ -457,7 +457,7 @@ COMMODITY_HISTORICAL: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Commodity symbol (e.g., GC, CL, SI)",
@@ -479,7 +479,7 @@ COMMODITY_HISTORICAL: Endpoint = Endpoint(
             description="End date for historical data",
         ),
     ],
-    response_model=CommodityPriceHistory,
+    response_model=CommodityHistoricalPrice,
     arg_model=CommodityHistoricalArgs,
     example_queries=[
         "Get gold price history",
@@ -494,7 +494,7 @@ COMMODITY_HISTORICAL: Endpoint = Endpoint(
 COMMODITY_INTRADAY: Endpoint = Endpoint(
     name="commodity_intraday",
     path="historical-chart/{interval}/{symbol}",
-    version=APIVersion.V3,
+    version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
