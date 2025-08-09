@@ -502,7 +502,7 @@ class DCF(BaseModel):
     symbol: str = Field(description="Company symbol")
     date: datetime = Field(description="Valuation date")
     dcf: float = Field(description="DCF value per share")
-    stock_price: float = Field(alias="Stock Price", description="Current stock price")
+    stock_price: float = Field(alias="stockPrice", description="Current stock price")
 
 
 class CustomDCF(BaseModel):
@@ -545,7 +545,7 @@ class CustomDCF(BaseModel):
         alias="sharesOutstanding", description="Shares outstanding"
     )
     dcf: float = Field(description="DCF value per share")
-    stock_price: float = Field(alias="Stock Price", description="Current stock price")
+    stock_price: float = Field(alias="stockPrice", description="Current stock price")
     implied_share_price: float = Field(
         alias="impliedSharePrice", description="Implied share price from DCF"
     )
@@ -588,7 +588,7 @@ class CustomLeveredDCF(BaseModel):
         alias="sharesOutstanding", description="Shares outstanding"
     )
     dcf: float = Field(description="DCF value per share")
-    stock_price: float = Field(alias="Stock Price", description="Current stock price")
+    stock_price: float = Field(alias="stockPrice", description="Current stock price")
     implied_share_price: float = Field(
         alias="impliedSharePrice", description="Implied share price from DCF"
     )
