@@ -21,6 +21,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Needed for version calculation
+          fetch-tags: true
 
       - name: 🐍  Set up Python
         uses: actions/setup-python@v5
