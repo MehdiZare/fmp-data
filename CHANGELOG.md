@@ -5,6 +5,32 @@ All notable changes to the package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2025-08-09
+
+### Added
+- Production-ready release with stable API
+- Comprehensive GitHub Actions CI/CD pipeline
+- Automated versioning with semantic release labels
+- TestPyPI deployment for dev branch updates
+- Full test coverage across all modules
+
+### Fixed
+- Corrected field aliases in fundamental models (stockPrice)
+- Fixed primitive type handling in base client
+- Updated Alternative Markets endpoints to use /stable/ prefix
+- Resolved isinstance() syntax for Python 3.10+ compatibility
+- Fixed millisecond timestamp detection in alternative models
+
+### Changed
+- Migrated to UV package manager for faster dependency resolution
+- Updated development status to Production/Stable
+- Streamlined CI/CD workflows for automated releases
+- Enhanced error handling and validation
+
+### Removed
+- Removed deprecated sync_groups.py script
+- Cleaned up duplicate dependency definitions
+
 ## [0.4.0] - 2025-7-1
 
 ### Added
