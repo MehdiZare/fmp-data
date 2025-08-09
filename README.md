@@ -1,8 +1,9 @@
 # FMP Data Client
 
-[![Test-Matrix](https://github.com/MehdiZare/fmp-data/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MehdiZare/fmp-data/actions/workflows/ci.yml)[![Publish-to-PyPI](https://github.com/MehdiZare/fmp-data/actions/workflows/publish-pypi.yml/badge.svg?branch=main&event=release)](https://github.com/MehdiZare/fmp-data/actions/workflows/publish-pypi.yml)
-[![codecov](https://codecov.io/gh/MehdiZare/fmp-data/branch/main/graph/badge.svg)](https://codecov.io/gh/MehdiZare/fmp-data)
+[![Test-Matrix](https://github.com/MehdiZare/fmp-data/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MehdiZare/fmp-data/actions/workflows/ci.yml)
+[![PyPI Version](https://img.shields.io/pypi/v/fmp-data.svg)](https://pypi.org/project/fmp-data/)
 [![Python](https://img.shields.io/pypi/pyversions/fmp-data.svg)](https://pypi.org/project/fmp-data/)
+[![codecov](https://codecov.io/gh/MehdiZare/fmp-data/branch/main/graph/badge.svg)](https://codecov.io/gh/MehdiZare/fmp-data)
 [![UV](https://img.shields.io/badge/uv-Package%20Manager-blue)](https://github.com/astral-sh/uv)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
