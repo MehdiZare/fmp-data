@@ -64,20 +64,6 @@ Homepage = "https://github.com/MehdiZare/fmp-data"
 Repository = "https://github.com/MehdiZare/fmp-data"
 Documentation = "https://mehdizare.github.io/fmp-data/"
 
-[project.optional-dependencies]
-langchain = [
-    "faiss-cpu>=1.11.0.post1",
-    "langchain-core>=0.3.74",
-    "langchain-community>=0.3.27",
-    "langchain-openai>=0.3.29",
-    "langgraph>=0.6.4",
-    "openai>=1.99.5",
-    "tiktoken>=0.10.0",
-]
-mcp = [
-    "mcp[cli]>=1.12.4",
-    "pyyaml>=6.0.2",
-]
 
 [dependency-groups]
 dev = [
