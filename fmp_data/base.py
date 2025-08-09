@@ -282,6 +282,10 @@ class BaseClient:
                         logger.warning(f"Validation warning: {warning.message}")
                     processed_items.append(processed_item)
             return processed_items
+
+        # Check if response_model is a primitive type before validation
+        if endpoint.response_model in (str, int, float, bool):
+            return endpoint.response_model(data)  # type: ignore[call-arg]
         return endpoint.response_model.model_validate(data)
 
     async def request_async(self, endpoint: Endpoint[T], **kwargs: Any) -> T | list[T]:
