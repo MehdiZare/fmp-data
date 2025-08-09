@@ -43,7 +43,7 @@ jobs:
 
       - name: 📦 Install dependencies
         run: |
-          uv pip install build hatch bump2version
+          uv pip install --system build hatch bump2version
 
       - name: 🏷️ Determine version bump type
         id: bump_type
@@ -106,7 +106,7 @@ jobs:
 
       - name: 📦 Build distribution
         run: |
-          uv run python -m build --wheel --sdist
+          python -m build --wheel --sdist
 
       - name: 📋 Generate release notes from PR
         id: release_notes
