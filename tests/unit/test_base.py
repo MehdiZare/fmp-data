@@ -51,7 +51,7 @@ def mock_endpoint():
     endpoint.version = APIVersion.STABLE
     endpoint.path = "test/path"
     endpoint.validate_params.return_value = {}
-    endpoint.build_url.return_value = "https://test.com/api/v3/test"
+    endpoint.build_url.return_value = "https://test.com/stable/test"
     endpoint.get_query_params = Mock(
         return_value={}
     )  # Return empty dict instead of Mock
