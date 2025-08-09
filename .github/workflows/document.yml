@@ -76,7 +76,7 @@ jobs:
 
           # Install git for version detection
           echo "📦 Installing git and hatchling for versioning"
-          uv pip install hatchling hatch-vcs
+          uv pip install --system hatchling hatch-vcs
 
       - name: Get package version
         id: version
