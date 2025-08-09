@@ -75,7 +75,7 @@ jobs:
         env:
           NOX_USE_UV: "1"
         run: |
-          uv tool run nox -s lint,typecheck,security
+          uv tool run nox -s lint -s typecheck -s security
 
   # Coverage job - run all tests in one job for simplicity
   coverage:

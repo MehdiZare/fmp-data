@@ -16,8 +16,9 @@ on:
 
 permissions:
   id-token: write              # OIDC → Trusted Publishing
-  pull-requests: write
-  contents: write
+  pull-requests: write         # Comment on PRs
+  contents: read               # Read repository contents
+  issues: write                # Use Issues API for PR comments
 
 jobs:
   test-release-build:
