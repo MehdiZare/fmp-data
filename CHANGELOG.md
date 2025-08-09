@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [1.0.1] - 2025-08-09
+
+[Compare changes](https://github.com/MehdiZare/fmp-data/compare/v1.0.0...v1.0.1)
+
+### Fixed
+- Fixed CI/CD workflow issues with uv package installation
+- Added --system flag to uv pip install commands in GitHub Actions
+- Removed unnecessary uv run prefix from build commands
+
 ## [1.0.0] - 2025-08-09
 
 [Compare changes](https://github.com/MehdiZare/fmp-data/compare/v0.5.2...v1.0.0)
