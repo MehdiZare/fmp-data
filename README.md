@@ -556,7 +556,7 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 uv pip install -e ".[langchain,mcp]" --all-extras
 
 # Install development dependencies
-uv pip install -r pyproject.toml --extra dev
+uv pip install --group dev -e .
 ```
 
 3. Set up pre-commit hooks:
