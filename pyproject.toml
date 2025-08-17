@@ -64,6 +64,9 @@ Homepage = "https://github.com/MehdiZare/fmp-data"
 Repository = "https://github.com/MehdiZare/fmp-data"
 Documentation = "https://mehdizare.github.io/fmp-data/"
 
+[project.scripts]
+fmp-mcp = "fmp_data.mcp.cli:main"
+
 
 [dependency-groups]
 dev = [
