@@ -1,255 +1,190 @@
-# Development Makefile for fmp-data
-# =====================================
-# Quick commands for common development tasks
+# User Makefile for fmp-data
+# ===========================
+# Simple commands for end users of the fmp-data package
+#
+# For maintainer/developer commands, see Makefile.dev
 
-.PHONY: help install clean test lint format typecheck security docs
-.PHONY: test-all typecheck-all ci pre-commit fix check-all
-.PHONY: build publish-test publish smoke
+.PHONY: help install test lint format fix clean update update-dev
+.PHONY: mcp-setup mcp-test mcp-list mcp-status
 
 # Default target
 .DEFAULT_GOAL := help
 
 # Colors for output
 BOLD := \033[1m
-RED := \033[31m
 GREEN := \033[32m
 YELLOW := \033[33m
 BLUE := \033[34m
-MAGENTA := \033[35m
 CYAN := \033[36m
 RESET := \033[0m
 
 # ══════════════════════════════════════════════════════════════════════════
-# Help and Setup
+# Help
 # ══════════════════════════════════════════════════════════════════════════
 
-help: ## Show this help message
-	@echo "$(BOLD)$(BLUE)fmp-data Development Commands$(RESET)"
-	@echo "$(CYAN)═══════════════════════════════════════$(RESET)"
+help: ## Show available commands
+	@echo "$(BOLD)$(BLUE)fmp-data Commands$(RESET)"
+	@echo "$(CYAN)════════════════════════════════════$(RESET)"
 	@echo ""
-	@echo "$(BOLD)🚀 Quick Commands:$(RESET)"
-	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z_-]+:.*##/ { printf "  $(GREEN)%-15s$(RESET) %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+	@echo "$(BOLD)📦 Installation:$(RESET)"
+	@echo "  $(GREEN)make install$(RESET)         Install package with all features"
+	@echo "  $(GREEN)make install-mcp$(RESET)     Install with MCP server support"
 	@echo ""
-	@echo "$(BOLD)💡 Examples:$(RESET)"
-	@echo "  $(YELLOW)make check$(RESET)           # Run all checks quickly"
-	@echo "  $(YELLOW)make fix$(RESET)             # Fix all auto-fixable issues"
-	@echo "  $(YELLOW)make test$(RESET)            # Run tests"
-	@echo "  $(YELLOW)make typecheck$(RESET)       # Check types (core only)"
-	@echo "  $(YELLOW)make ci$(RESET)              # Run full CI checks"
+	@echo "$(BOLD)🤖 MCP Server (Claude Desktop):$(RESET)"
+	@echo "  $(GREEN)make mcp-setup$(RESET)       Setup MCP server for Claude Desktop"
+	@echo "  $(GREEN)make mcp-test$(RESET)        Test MCP server connection"
+	@echo "  $(GREEN)make mcp-list$(RESET)        List available MCP tools"
+	@echo ""
+	@echo "$(BOLD)🧪 Testing & Quality:$(RESET)"
+	@echo "  $(GREEN)make test$(RESET)            Run tests"
+	@echo "  $(GREEN)make lint$(RESET)            Check code quality"
+	@echo "  $(GREEN)make format$(RESET)          Check code formatting"
+	@echo "  $(GREEN)make fix$(RESET)             Auto-fix code issues"
+	@echo ""
+	@echo "$(BOLD)🧹 Maintenance:$(RESET)"
+	@echo "  $(GREEN)make clean$(RESET)           Clean cache and build files"
+	@echo "  $(GREEN)make update$(RESET)          Update all dependencies"
+	@echo ""
+	@echo "$(YELLOW)💡 Quick Start:$(RESET)"
+	@echo "  1. $(CYAN)make install-mcp$(RESET)   # Install with MCP support"
+	@echo "  2. $(CYAN)make mcp-setup$(RESET)     # Setup Claude Desktop integration"
 
-install: ## Install all dependencies for development
-	@echo "$(BOLD)$(BLUE)🔧 Installing development environment...$(RESET)"
-	uv sync --group dev --group docs --group langchain --group mcp-server
-	pre-commit install
-	pre-commit install --hook-type pre-push
-	@echo "$(GREEN)✅ Development environment ready!$(RESET)"
+# ══════════════════════════════════════════════════════════════════════════
+# Installation
+# ══════════════════════════════════════════════════════════════════════════
 
-clean: ## Clean build artifacts and caches
+install: ## Install package with all features
+	@echo "$(BOLD)$(BLUE)📦 Installing fmp-data with all features...$(RESET)"
+	pip install -e ".[langchain,mcp]"
+	@echo "$(GREEN)✅ Installation complete!$(RESET)"
+
+install-mcp: ## Install package with MCP server support
+	@echo "$(BOLD)$(BLUE)📦 Installing fmp-data with MCP support...$(RESET)"
+	pip install -e ".[mcp]"
+	@echo "$(GREEN)✅ Installation complete!$(RESET)"
+	@echo ""
+	@echo "$(YELLOW)Next step:$(RESET) Run $(CYAN)make mcp-setup$(RESET) to configure Claude Desktop"
+
+install-basic: ## Install package without extras
+	@echo "$(BOLD)$(BLUE)📦 Installing fmp-data (basic)...$(RESET)"
+	pip install -e .
+	@echo "$(GREEN)✅ Installation complete!$(RESET)"
+
+# ══════════════════════════════════════════════════════════════════════════
+# MCP Server Commands
+# ══════════════════════════════════════════════════════════════════════════
+
+mcp-setup: ## Setup MCP server for Claude Desktop (interactive)
+	@echo "$(BOLD)$(CYAN)🤖 Setting up MCP server for Claude Desktop...$(RESET)"
+	@command -v fmp-mcp >/dev/null 2>&1 || (echo "$(YELLOW)Installing MCP support first...$(RESET)" && pip install -e ".[mcp]")
+	@fmp-mcp setup
+
+mcp-test: ## Test MCP server connection
+	@echo "$(BOLD)$(CYAN)🧪 Testing MCP server...$(RESET)"
+	@command -v fmp-mcp >/dev/null 2>&1 || (echo "$(YELLOW)Installing MCP support first...$(RESET)" && pip install -e ".[mcp]")
+	@fmp-mcp test
+
+mcp-list: ## List available MCP tools
+	@echo "$(BOLD)$(CYAN)📋 Available MCP tools:$(RESET)"
+	@command -v fmp-mcp >/dev/null 2>&1 || (echo "$(YELLOW)Installing MCP support first...$(RESET)" && pip install -e ".[mcp]")
+	@fmp-mcp list --format table
+
+mcp-status: ## Check MCP server status
+	@echo "$(BOLD)$(CYAN)📊 MCP server status:$(RESET)"
+	@command -v fmp-mcp >/dev/null 2>&1 || (echo "$(YELLOW)Installing MCP support first...$(RESET)" && pip install -e ".[mcp]")
+	@fmp-mcp status
+
+# ══════════════════════════════════════════════════════════════════════════
+# Testing and Code Quality
+# ══════════════════════════════════════════════════════════════════════════
+
+test: ## Run tests
+	@echo "$(BOLD)$(BLUE)🧪 Running tests...$(RESET)"
+	@if command -v pytest >/dev/null 2>&1; then \
+		pytest -q; \
+	else \
+		echo "$(YELLOW)pytest not installed. Install with: pip install pytest$(RESET)"; \
+		exit 1; \
+	fi
+
+lint: ## Check code quality with ruff
+	@echo "$(BOLD)$(BLUE)🔍 Checking code quality...$(RESET)"
+	@if command -v ruff >/dev/null 2>&1; then \
+		ruff check fmp_data; \
+	else \
+		echo "$(YELLOW)ruff not installed. Install with: pip install ruff$(RESET)"; \
+		exit 1; \
+	fi
+
+format: ## Check code formatting
+	@echo "$(BOLD)$(BLUE)📝 Checking code formatting...$(RESET)"
+	@if command -v ruff >/dev/null 2>&1; then \
+		ruff format --check fmp_data; \
+	else \
+		echo "$(YELLOW)ruff not installed. Install with: pip install ruff$(RESET)"; \
+		exit 1; \
+	fi
+
+fix: ## Auto-fix code issues
+	@echo "$(BOLD)$(CYAN)🔧 Auto-fixing code issues...$(RESET)"
+	@if command -v ruff >/dev/null 2>&1; then \
+		ruff check --fix fmp_data && ruff format fmp_data; \
+		echo "$(GREEN)✅ Auto-fixes applied!$(RESET)"; \
+	else \
+		echo "$(YELLOW)ruff not installed. Install with: pip install ruff$(RESET)"; \
+		exit 1; \
+	fi
+
+# ══════════════════════════════════════════════════════════════════════════
+# Maintenance
+# ══════════════════════════════════════════════════════════════════════════
+
+clean: ## Clean cache and temporary files
 	@echo "$(BOLD)$(YELLOW)🧹 Cleaning up...$(RESET)"
-	uv run nox -s clean
-	@echo "$(GREEN)✅ Cleanup completed!$(RESET)"
+	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
+	@find . -type f -name "*.pyo" -delete 2>/dev/null || true
+	@echo "$(GREEN)✅ Cleanup complete!$(RESET)"
+
+update: ## Update all dependencies using UV
+	@echo "$(BOLD)$(CYAN)🔄 Updating all dependencies...$(RESET)"
+	@if command -v uv >/dev/null 2>&1; then \
+		uv sync --upgrade; \
+		echo "$(GREEN)✅ Dependencies updated successfully!$(RESET)"; \
+	else \
+		echo "$(YELLOW)UV not installed. Install with:$(RESET)"; \
+		echo "  $(CYAN)curl -LsSf https://astral.sh/uv/install.sh | sh$(RESET)"; \
+		echo "  or"; \
+		echo "  $(CYAN)pip install uv$(RESET)"; \
+		exit 1; \
+	fi
+
+update-dev: ## Update development dependencies
+	@echo "$(BOLD)$(CYAN)🔄 Updating development dependencies...$(RESET)"
+	@if command -v uv >/dev/null 2>&1; then \
+		uv sync --upgrade --group dev; \
+		echo "$(GREEN)✅ Development dependencies updated!$(RESET)"; \
+	else \
+		echo "$(YELLOW)UV not installed. See 'make update' for installation instructions.$(RESET)"; \
+		exit 1; \
+	fi
 
 # ══════════════════════════════════════════════════════════════════════════
-# Quick Development Checks (Fast, for frequent use)
+# Quick Start
 # ══════════════════════════════════════════════════════════════════════════
 
-lint: ## Run linting checks (fast)
-	@echo "$(BOLD)$(MAGENTA)🔍 Running linting...$(RESET)"
-	uv run ruff check fmp_data tests
-
-format: ## Check code formatting (fast)
-	@echo "$(BOLD)$(MAGENTA)📝 Checking formatting...$(RESET)"
-	uv run ruff format --check fmp_data tests
-
-typecheck: ## Run type checking on core package (fast)
-	@echo "$(BOLD)$(MAGENTA)🔬 Type checking core package...$(RESET)"
-	uv run mypy fmp_data --exclude "fmp_data/(lc|mcp)/.*"
-
-test: ## Run tests (fast)
-	@echo "$(BOLD)$(MAGENTA)🧪 Running tests...$(RESET)"
-	uv run pytest -q
-
-security: ## Run security checks
-	@echo "$(BOLD)$(MAGENTA)🔒 Running security checks...$(RESET)"
-	uv run nox -s security
+quickstart: install-mcp mcp-setup ## Complete setup for new users
+	@echo "$(GREEN)🎉 Setup complete! Claude Desktop is now configured with FMP Data.$(RESET)"
+	@echo ""
+	@echo "$(YELLOW)Next steps:$(RESET)"
+	@echo "  1. Restart Claude Desktop"
+	@echo "  2. Start a new conversation"
+	@echo "  3. Try asking: 'What's the current price of AAPL?'"
 
 # ══════════════════════════════════════════════════════════════════════════
-# Auto-fix Commands
+# Aliases
 # ══════════════════════════════════════════════════════════════════════════
 
-fix: ## Fix all auto-fixable issues
-	@echo "$(BOLD)$(CYAN)🔧 Auto-fixing issues...$(RESET)"
-	@echo "$(YELLOW)  Fixing imports and formatting...$(RESET)"
-	uv run ruff check --fix fmp_data tests
-	uv run ruff format fmp_data tests
-	@echo "$(GREEN)✅ Auto-fixes completed!$(RESET)"
-
-fix-imports: ## Fix import sorting only
-	@echo "$(BOLD)$(CYAN)📦 Fixing imports...$(RESET)"
-	uv run ruff check --fix --select I fmp_data tests
-
-fix-format: ## Fix code formatting only
-	@echo "$(BOLD)$(CYAN)📝 Fixing formatting...$(RESET)"
-	uv run ruff format fmp_data tests
-
-# ══════════════════════════════════════════════════════════════════════════
-# Comprehensive Checks (Thorough, for CI/pre-commit)
-# ══════════════════════════════════════════════════════════════════════════
-
-check: lint format typecheck test ## Run all quick checks
-	@echo "$(GREEN)✅ All quick checks passed!$(RESET)"
-
-check-all: ## Run comprehensive checks (all features)
-	@echo "$(BOLD)$(BLUE)🔍 Running comprehensive checks...$(RESET)"
-	uv run nox -s ci_check
-
-typecheck-all: ## Run type checking with all features
-	@echo "$(BOLD)$(MAGENTA)🔬 Type checking all features...$(RESET)"
-	uv run nox -s typecheck_all
-
-test-all: ## Run tests for all Python versions and features
-	@echo "$(BOLD)$(MAGENTA)🧪 Running comprehensive tests...$(RESET)"
-	uv run nox -s tests
-
-ci: check-all ## Run full CI checks locally
-	@echo "$(GREEN)🎉 All CI checks completed!$(RESET)"
-
-# ══════════════════════════════════════════════════════════════════════════
-# Feature-specific checks
-# ══════════════════════════════════════════════════════════════════════════
-
-test-lang: ## Test LangChain features only
-	@echo "$(BOLD)$(MAGENTA)🦜 Testing LangChain features...$(RESET)"
-	uv run nox -s test_langchain
-
-test-mcp: ## Test MCP features only
-	@echo "$(BOLD)$(MAGENTA)🔗 Testing MCP features...$(RESET)"
-	uv run nox -s test_mcp
-
-typecheck-lang: ## Type check LangChain features
-	@echo "$(BOLD)$(MAGENTA)🦜 Type checking LangChain...$(RESET)"
-	uv run nox -s typecheck_lang
-
-typecheck-mcp: ## Type check MCP features
-	@echo "$(BOLD)$(MAGENTA)🔗 Type checking MCP...$(RESET)"
-	uv run nox -s typecheck_mcp
-
-# ══════════════════════════════════════════════════════════════════════════
-# Pre-commit and Git
-# ══════════════════════════════════════════════════════════════════════════
-
-pre-commit: ## Run pre-commit hooks on all files
-	@echo "$(BOLD)$(CYAN)🪝 Running pre-commit hooks...$(RESET)"
-	pre-commit run --all-files
-
-pre-commit-update: ## Update pre-commit hooks
-	@echo "$(BOLD)$(CYAN)🔄 Updating pre-commit hooks...$(RESET)"
-	pre-commit autoupdate
-
-pre-commit-manual: ## Run manual-only pre-commit hooks
-	@echo "$(BOLD)$(CYAN)🪝 Running manual pre-commit hooks...$(RESET)"
-	pre-commit run mypy-langchain --hook-stage manual
-	pre-commit run mypy-mcp --hook-stage manual
-	pre-commit run mypy-all --hook-stage manual
-
-# ══════════════════════════════════════════════════════════════════════════
-# Testing and Coverage
-# ══════════════════════════════════════════════════════════════════════════
-
-test-cov: ## Run tests with coverage
-	@echo "$(BOLD)$(MAGENTA)📊 Running tests with coverage...$(RESET)"
-	uv run nox -s coverage
-
-smoke: ## Run smoke tests (quick validation)
-	@echo "$(BOLD)$(MAGENTA)💨 Running smoke tests...$(RESET)"
-	uv run nox -s smoke
-
-test-watch: ## Run tests in watch mode (requires pytest-watch)
-	@echo "$(BOLD)$(MAGENTA)👀 Running tests in watch mode...$(RESET)"
-	uv run pytest --maxfail=1 --tb=short -q --disable-warnings --looponfail
-
-# ══════════════════════════════════════════════════════════════════════════
-# Documentation
-# ══════════════════════════════════════════════════════════════════════════
-
-docs: ## Build documentation
-	@echo "$(BOLD)$(BLUE)📚 Building documentation...$(RESET)"
-	uv run nox -s docs
-
-docs-serve: ## Serve documentation locally
-	@echo "$(BOLD)$(BLUE)🌐 Serving documentation at http://localhost:8000$(RESET)"
-	uv run nox -s docs_serve
-
-# ══════════════════════════════════════════════════════════════════════════
-# Building and Publishing
-# ══════════════════════════════════════════════════════════════════════════
-
-build: ## Build package
-	@echo "$(BOLD)$(BLUE)📦 Building package...$(RESET)"
-	uvx poetry build
-	@echo "$(GREEN)✅ Package built successfully!$(RESET)"
-	@echo "$(CYAN)📁 Files created:$(RESET)"
-	@ls -la dist/
-
-build-check: ## Build and verify package
-	@echo "$(BOLD)$(BLUE)📦 Building and checking package...$(RESET)"
-	uvx poetry build
-	uvx twine check dist/*
-	@echo "$(GREEN)✅ Package built and verified!$(RESET)"
-
-publish-test: build-check ## Publish to Test PyPI
-	@echo "$(BOLD)$(YELLOW)🧪 Publishing to Test PyPI...$(RESET)"
-	@echo "$(RED)⚠️  Make sure TEST_PYPI_TOKEN is set!$(RESET)"
-	uvx twine upload --repository-url https://test.pypi.org/legacy/ dist/*
-
-version: ## Show current version
-	@echo "$(BOLD)$(BLUE)📋 Current version:$(RESET)"
-	@uvx poetry version --short
-
-# ══════════════════════════════════════════════════════════════════════════
-# Development Utilities
-# ══════════════════════════════════════════════════════════════════════════
-
-deps-update: ## Update dependencies
-	@echo "$(BOLD)$(CYAN)🔄 Updating dependencies...$(RESET)"
-	uv sync --upgrade
-
-deps-check: ## Check for dependency updates
-	@echo "$(BOLD)$(CYAN)🔍 Checking for dependency updates...$(RESET)"
-	uv tree --outdated
-
-nox-list: ## List all available nox sessions
-	@echo "$(BOLD)$(BLUE)📋 Available nox sessions:$(RESET)"
-	uv run nox --list
-
-env-info: ## Show environment information
-	@echo "$(BOLD)$(BLUE)🔧 Environment Information:$(RESET)"
-	@echo "$(CYAN)Python version:$(RESET)"
-	@python --version
-	@echo "$(CYAN)uv version:$(RESET)"
-	@uv --version
-	@echo "$(CYAN)Current virtual environment:$(RESET)"
-	@echo "$$VIRTUAL_ENV"
-
-# ══════════════════════════════════════════════════════════════════════════
-# Quick Combinations (Most common workflows)
-# ══════════════════════════════════════════════════════════════════════════
-
-dev: install fix check ## Setup dev environment and run checks
-	@echo "$(GREEN)🎉 Development environment ready and all checks passed!$(RESET)"
-
-quick: fix lint test ## Quick development cycle (fix, lint, test)
-	@echo "$(GREEN)⚡ Quick checks completed!$(RESET)"
-
-full: fix check-all test-cov ## Full validation (everything)
-	@echo "$(GREEN)🏆 Full validation completed!$(RESET)"
-
-# ══════════════════════════════════════════════════════════════════════════
-# Aliases for common typos/variations
-# ══════════════════════════════════════════════════════════════════════════
-
-fmt: format ## Alias for format
-linting: lint ## Alias for lint
-testing: test ## Alias for test
-typing: typecheck ## Alias for typecheck
-coverage: test-cov ## Alias for test-cov
+setup: quickstart ## Alias for quickstart
