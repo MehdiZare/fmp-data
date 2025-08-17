@@ -60,8 +60,10 @@ def create_app(tools: ToolIterable | None = None) -> FastMCP:
 
     Notes
     -----
-    * A *tool spec string* always has the form ``"<client>.<semantics_key>"`` —
-      e.g. ``"company.profile"`` or ``"alternative.crypto_quote"``.
+    * A *tool spec string* can be in two formats:
+      - Full format: ``"<client>.<semantics_key>"`` (e.g., ``"company.profile"``)
+      - Key-only format: ``"<semantics_key>"`` (e.g., ``"profile"``)
+    * Key-only format will auto-discover the correct client module.
     * Full validation (non-existent mapping keys, non-callable methods, …) happens
       inside :func:`register_from_manifest`.
     """
