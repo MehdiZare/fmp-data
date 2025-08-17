@@ -46,16 +46,38 @@ def register_from_manifest(
     tool_specs: list[str],
 ) -> None:
     """
-    Register tools declared in a list of "<client>.<semantics_key>" strings.
+    Register tools declared in a list of tool specifications.
+
+    Tool specs can be in two formats:
+    1. Full format: "<client>.<semantics_key>" (e.g., "company.profile")
+    2. Key-only format: "<semantics_key>" (e.g., "profile")
+
+    For key-only format, the function will auto-discover the correct client.
 
     Raises:
         RuntimeError: on any lookup / validation failure.
     """
+    # Import discovery utilities
+    from fmp_data.mcp.discovery import discover_all_tools
+
+    # Build a map from keys to full specs for auto-discovery
+    all_tools = discover_all_tools()
+    key_to_spec = {tool["key"]: tool["spec"] for tool in all_tools}
+
     for spec in tool_specs:
-        try:
-            client_slug, sem_key = spec.split(".", 1)
-        except ValueError:
-            raise ERR(f"'{spec}' is not in '<client>.<endpoint>' format") from None
+        # Handle both formats
+        if "." in spec:
+            # Full format: "<client>.<semantics_key>"
+            try:
+                client_slug, sem_key = spec.split(".", 1)
+            except ValueError:
+                raise ERR(f"'{spec}' is not in '<client>.<endpoint>' format") from None
+        else:
+            # Key-only format: look up the full spec
+            if spec not in key_to_spec:
+                raise ERR(f"Tool key '{spec}' not found in available tools") from None
+            full_spec = key_to_spec[spec]
+            client_slug, sem_key = full_spec.split(".", 1)
 
         sem = _load_semantics(client_slug, sem_key)
 
