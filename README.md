@@ -71,26 +71,50 @@ pip install fmp-data[mcp]
 pip install fmp-data[langchain,mcp]
 ```
 
-## MCP Server
+## MCP Server (Claude Desktop Integration)
 
-Model Context Protocol (MCP) server provides financial data access through a standardized protocol, enabling AI assistants to query FMP data seamlessly.
+Model Context Protocol (MCP) server provides financial data access through a standardized protocol, enabling Claude Desktop to query FMP data seamlessly.
 
-### Quick Start
+### Quick Setup for Claude Desktop
+
+```bash
+# Install with MCP support
+pip install fmp-data[mcp]
+
+# Run interactive setup wizard
+fmp-mcp setup
+```
+
+The setup wizard will automatically configure Claude Desktop with FMP Data tools. After setup, restart Claude Desktop and try asking: "What's the current price of AAPL?"
+
+### Manual Configuration
 
 ```bash
 # Set your API key
 export FMP_API_KEY=your_api_key_here
 
-# Run the MCP server with UV
-uv run python -m fmp_data.mcp.server
-
-# Or directly if installed in active environment
-python -m fmp_data.mcp.server
+# Run the MCP server
+fmp-mcp
 ```
 
-### Configuration
+For detailed setup instructions, see [MCP Setup Guide](examples/MCP_SETUP_GUIDE.md).
 
-The MCP server can be configured using environment variables or a custom manifest:
+### Available Commands
+
+```bash
+fmp-mcp setup    # Interactive setup wizard
+fmp-mcp status   # Check server status
+fmp-mcp test     # Test connection
+fmp-mcp list     # List available tools
+```
+
+### Configuration Profiles
+
+Choose from pre-configured tool sets:
+- **Default** - Complete toolkit
+- **Minimal** - Essential tools only
+
+### Custom Configuration
 
 ```bash
 # Environment variables

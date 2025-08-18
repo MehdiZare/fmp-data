@@ -1,0 +1,241 @@
+# Maintainer/Developer Makefile for fmp-data
+# ============================================
+# Commands for package maintainers and contributors
+#
+# Usage: make -f Makefile.dev <command>
+#
+# For end-user commands, see the main Makefile
+
+.PHONY: help build publish-test publish version docs docs-serve
+.PHONY: ci check-all test-all typecheck-all pre-commit-update
+.PHONY: deps-update deps-check nox-list env-info
+
+# Default target
+.DEFAULT_GOAL := help
+
+# Colors for output
+BOLD := \033[1m
+RED := \033[31m
+GREEN := \033[32m
+YELLOW := \033[33m
+BLUE := \033[34m
+MAGENTA := \033[35m
+CYAN := \033[36m
+RESET := \033[0m
+
+# ══════════════════════════════════════════════════════════════════════════
+# Help
+# ══════════════════════════════════════════════════════════════════════════
+
+help: ## Show this help message
+	@echo "$(BOLD)$(BLUE)fmp-data Maintainer Commands$(RESET)"
+	@echo "$(CYAN)═══════════════════════════════════════$(RESET)"
+	@echo ""
+	@echo "$(BOLD)📦 Building & Publishing:$(RESET)"
+	@grep -E '^(build|publish|version).*:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*##"} { printf "  $(GREEN)%-18s$(RESET) %s\n", $$1, $$2 }'
+	@echo ""
+	@echo "$(BOLD)🔧 CI/CD & Testing:$(RESET)"
+	@grep -E '^(ci|check-all|test-all|typecheck-all).*:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*##"} { printf "  $(GREEN)%-18s$(RESET) %s\n", $$1, $$2 }'
+	@echo ""
+	@echo "$(BOLD)📚 Documentation:$(RESET)"
+	@grep -E '^(docs).*:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*##"} { printf "  $(GREEN)%-18s$(RESET) %s\n", $$1, $$2 }'
+	@echo ""
+	@echo "$(BOLD)🔄 Maintenance:$(RESET)"
+	@grep -E '^(deps|pre-commit|nox|env).*:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*##"} { printf "  $(GREEN)%-18s$(RESET) %s\n", $$1, $$2 }'
+	@echo ""
+	@echo "$(YELLOW)Note: This is the maintainer Makefile. For end-user commands, use the main Makefile.$(RESET)"
+
+# ══════════════════════════════════════════════════════════════════════════
+# Building and Publishing
+# ══════════════════════════════════════════════════════════════════════════
+
+build: ## Build package for distribution
+	@echo "$(BOLD)$(BLUE)📦 Building package...$(RESET)"
+	uvx poetry build
+	@echo "$(GREEN)✅ Package built successfully!$(RESET)"
+	@echo "$(CYAN)📁 Files created:$(RESET)"
+	@ls -la dist/
+
+build-check: ## Build and verify package with twine
+	@echo "$(BOLD)$(BLUE)📦 Building and checking package...$(RESET)"
+	uvx poetry build
+	uvx twine check dist/*
+	@echo "$(GREEN)✅ Package built and verified!$(RESET)"
+
+publish-test: build-check ## Publish to Test PyPI (requires TEST_PYPI_TOKEN)
+	@echo "$(BOLD)$(YELLOW)🧪 Publishing to Test PyPI...$(RESET)"
+	@echo "$(RED)⚠️  Make sure TEST_PYPI_TOKEN is set!$(RESET)"
+	uvx twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+
+publish: build-check ## Publish to PyPI (requires PYPI_TOKEN)
+	@echo "$(BOLD)$(RED)🚀 Publishing to PyPI...$(RESET)"
+	@echo "$(RED)⚠️  Make sure PYPI_TOKEN is set!$(RESET)"
+	@read -p "Are you sure you want to publish to PyPI? (y/N) " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		uvx twine upload dist/*; \
+	else \
+		echo "$(YELLOW)Publishing cancelled.$(RESET)"; \
+	fi
+
+version: ## Show current version
+	@echo "$(BOLD)$(BLUE)📋 Current version:$(RESET)"
+	@uvx poetry version --short
+
+version-bump-patch: ## Bump patch version (x.y.Z)
+	@echo "$(BOLD)$(CYAN)📈 Bumping patch version...$(RESET)"
+	uvx poetry version patch
+	@echo "$(GREEN)New version: $$(uvx poetry version --short)$(RESET)"
+
+version-bump-minor: ## Bump minor version (x.Y.z)
+	@echo "$(BOLD)$(CYAN)📈 Bumping minor version...$(RESET)"
+	uvx poetry version minor
+	@echo "$(GREEN)New version: $$(uvx poetry version --short)$(RESET)"
+
+version-bump-major: ## Bump major version (X.y.z)
+	@echo "$(BOLD)$(CYAN)📈 Bumping major version...$(RESET)"
+	uvx poetry version major
+	@echo "$(GREEN)New version: $$(uvx poetry version --short)$(RESET)"
+
+# ══════════════════════════════════════════════════════════════════════════
+# CI/CD and Comprehensive Testing
+# ══════════════════════════════════════════════════════════════════════════
+
+ci: ## Run full CI checks locally
+	@echo "$(BOLD)$(BLUE)🔍 Running full CI pipeline...$(RESET)"
+	uv run nox -s ci_check
+	@echo "$(GREEN)🎉 All CI checks completed!$(RESET)"
+
+check-all: ## Run comprehensive checks (all features)
+	@echo "$(BOLD)$(BLUE)🔍 Running comprehensive checks...$(RESET)"
+	uv run nox -s ci_check
+
+test-all: ## Run tests for all Python versions and features
+	@echo "$(BOLD)$(MAGENTA)🧪 Running comprehensive tests...$(RESET)"
+	uv run nox -s tests
+
+typecheck-all: ## Run type checking with all features
+	@echo "$(BOLD)$(MAGENTA)🔬 Type checking all features...$(RESET)"
+	uv run nox -s typecheck_all
+
+test-lang: ## Test LangChain features only
+	@echo "$(BOLD)$(MAGENTA)🦜 Testing LangChain features...$(RESET)"
+	uv run nox -s test_langchain
+
+test-mcp: ## Test MCP features only
+	@echo "$(BOLD)$(MAGENTA)🔗 Testing MCP features...$(RESET)"
+	uv run nox -s test_mcp
+
+smoke: ## Run smoke tests (quick validation)
+	@echo "$(BOLD)$(MAGENTA)💨 Running smoke tests...$(RESET)"
+	uv run nox -s smoke
+
+# ══════════════════════════════════════════════════════════════════════════
+# Documentation
+# ══════════════════════════════════════════════════════════════════════════
+
+docs: ## Build documentation
+	@echo "$(BOLD)$(BLUE)📚 Building documentation...$(RESET)"
+	uv run nox -s docs
+
+docs-serve: ## Serve documentation locally at http://localhost:8000
+	@echo "$(BOLD)$(BLUE)🌐 Serving documentation at http://localhost:8000$(RESET)"
+	uv run nox -s docs_serve
+
+docs-check: ## Check documentation for issues
+	@echo "$(BOLD)$(BLUE)📚 Checking documentation...$(RESET)"
+	uv run nox -s docs_check
+
+# ══════════════════════════════════════════════════════════════════════════
+# Dependency and Environment Management
+# ══════════════════════════════════════════════════════════════════════════
+
+deps-update: ## Update all dependencies
+	@echo "$(BOLD)$(CYAN)🔄 Updating dependencies...$(RESET)"
+	uv sync --upgrade
+
+deps-check: ## Check for dependency updates
+	@echo "$(BOLD)$(CYAN)🔍 Checking for dependency updates...$(RESET)"
+	uv tree --outdated
+
+deps-audit: ## Audit dependencies for security issues
+	@echo "$(BOLD)$(RED)🔒 Auditing dependencies...$(RESET)"
+	uv run pip-audit
+
+pre-commit-update: ## Update pre-commit hooks
+	@echo "$(BOLD)$(CYAN)🔄 Updating pre-commit hooks...$(RESET)"
+	pre-commit autoupdate
+
+pre-commit-manual: ## Run manual-only pre-commit hooks
+	@echo "$(BOLD)$(CYAN)🪝 Running manual pre-commit hooks...$(RESET)"
+	pre-commit run mypy-langchain --hook-stage manual
+	pre-commit run mypy-mcp --hook-stage manual
+	pre-commit run mypy-all --hook-stage manual
+
+# ══════════════════════════════════════════════════════════════════════════
+# Utilities
+# ══════════════════════════════════════════════════════════════════════════
+
+nox-list: ## List all available nox sessions
+	@echo "$(BOLD)$(BLUE)📋 Available nox sessions:$(RESET)"
+	uv run nox --list
+
+env-info: ## Show environment information
+	@echo "$(BOLD)$(BLUE)🔧 Environment Information:$(RESET)"
+	@echo "$(CYAN)Python version:$(RESET)"
+	@python --version
+	@echo "$(CYAN)uv version:$(RESET)"
+	@uv --version
+	@echo "$(CYAN)Poetry version:$(RESET)"
+	@uvx poetry --version
+	@echo "$(CYAN)Current virtual environment:$(RESET)"
+	@echo "$$VIRTUAL_ENV"
+
+clean-dist: ## Clean distribution files
+	@echo "$(BOLD)$(YELLOW)🧹 Cleaning distribution files...$(RESET)"
+	rm -rf dist/ build/ *.egg-info
+	@echo "$(GREEN)✅ Distribution files cleaned!$(RESET)"
+
+clean-all: clean-dist ## Clean all build artifacts and caches
+	@echo "$(BOLD)$(YELLOW)🧹 Cleaning all artifacts...$(RESET)"
+	uv run nox -s clean
+	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
+	@echo "$(GREEN)✅ All artifacts cleaned!$(RESET)"
+
+# ══════════════════════════════════════════════════════════════════════════
+# Release Management
+# ══════════════════════════════════════════════════════════════════════════
+
+changelog: ## Generate/update changelog
+	@echo "$(BOLD)$(BLUE)📝 Generating changelog...$(RESET)"
+	@echo "$(YELLOW)Note: Implement changelog generation based on your workflow$(RESET)"
+
+release-patch: version-bump-patch changelog ## Prepare patch release
+	@echo "$(BOLD)$(GREEN)🎯 Patch release prepared!$(RESET)"
+	@echo "$(YELLOW)Next steps:$(RESET)"
+	@echo "  1. Review CHANGELOG.md"
+	@echo "  2. Commit changes: git commit -am 'Release v$$(uvx poetry version --short)'"
+	@echo "  3. Tag release: git tag v$$(uvx poetry version --short)"
+	@echo "  4. Push: git push && git push --tags"
+	@echo "  5. Run: make -f Makefile.dev publish"
+
+release-minor: version-bump-minor changelog ## Prepare minor release
+	@echo "$(BOLD)$(GREEN)🎯 Minor release prepared!$(RESET)"
+	@echo "$(YELLOW)Next steps:$(RESET)"
+	@echo "  1. Review CHANGELOG.md"
+	@echo "  2. Commit changes: git commit -am 'Release v$$(uvx poetry version --short)'"
+	@echo "  3. Tag release: git tag v$$(uvx poetry version --short)"
+	@echo "  4. Push: git push && git push --tags"
+	@echo "  5. Run: make -f Makefile.dev publish"
+
+release-major: version-bump-major changelog ## Prepare major release
+	@echo "$(BOLD)$(GREEN)🎯 Major release prepared!$(RESET)"
+	@echo "$(YELLOW)Next steps:$(RESET)"
+	@echo "  1. Review CHANGELOG.md"
+	@echo "  2. Commit changes: git commit -am 'Release v$$(uvx poetry version --short)'"
+	@echo "  3. Tag release: git tag v$$(uvx poetry version --short)"
+	@echo "  4. Push: git push && git push --tags"
+	@echo "  5. Run: make -f Makefile.dev publish"

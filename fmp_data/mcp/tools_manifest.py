@@ -2,16 +2,180 @@
 """
 Declarative list of MCP tools to expose.
 
-Each item follows the pattern   "<client>.<semantics_key>"
-• <client> is the sub-client directory (company, market, alternative, …)
-• <semantics_key> is the key in <CLIENT>_ENDPOINTS_SEMANTICS
-                  (e.g. "profile", "crypto_quote", …)
+Each tool is referenced by its semantic key as discovered by the MCP discovery system.
+Tools are organized by client module for clarity.
+
+To customize the available tools, modify the DEFAULT_TOOLS list or set the
+FMP_MCP_MANIFEST environment variable to point to a custom manifest file.
 """
 
 DEFAULT_TOOLS: list[str] = [
-    "company.profile",
-    "company.market_cap",
+    # Alternative (15 tools) - Crypto, Forex, and Commodities
+    "alternative.commodities_list",
+    "alternative.commodities_quotes",
+    "alternative.commodity_historical",
+    "alternative.commodity_intraday",
+    "alternative.commodity_quote",
+    "alternative.crypto_historical",
+    "alternative.crypto_intraday",
+    "alternative.crypto_list",
     "alternative.crypto_quote",
+    "alternative.crypto_quotes",
+    "alternative.forex_historical",
+    "alternative.forex_intraday",
+    "alternative.forex_list",
+    "alternative.forex_quote",
+    "alternative.forex_quotes",
+    # Company (28 tools) - Company Information and Quotes
+    "company.analyst_estimates",
+    "company.analyst_recommendations",
+    "company.company_notes",
+    "company.core_information",
+    "company.employee_count",
+    "company.executive_compensation",
+    "company.executives",
+    "company.geographic_revenue_segmentation",
+    "company.historical_market_cap",
     "company.historical_price",
-    # add/remove freely…
+    "company.historical_prices",
+    "company.historical_share_float",
+    "company.intraday_price",
+    "company.intraday_prices",
+    "company.key_executives",
+    "company.market_cap",
+    "company.price_target",
+    "company.price_target_consensus",
+    "company.price_target_summary",
+    "company.product_revenue_segmentation",
+    "company.profile",
+    "company.quote",
+    "company.share_float",
+    "company.simple_quote",
+    "company.symbol_changes",
+    "company.upgrades_downgrades",
+    "company.upgrades_downgrades_consensus",
+    # Economics (4 tools) - Economic Indicators
+    "economics.economic_calendar",
+    "economics.economic_indicators",
+    "economics.market_risk_premium",
+    "economics.treasury_rates",
+    # Fundamental (13 tools) - Financial Statements and Valuation
+    "fundamental.balance_sheet",
+    "fundamental.cash_flow",
+    "fundamental.custom_discounted_cash_flow",
+    "fundamental.custom_levered_dcf",
+    "fundamental.discounted_cash_flow",
+    "fundamental.financial_ratios",
+    "fundamental.full_financial_statement",
+    "fundamental.historical_rating",
+    "fundamental.income_statement",
+    "fundamental.key_metrics",
+    "fundamental.levered_dcf",
+    "fundamental.owner_earnings",
+    # Institutional (13 tools) - Institutional and Insider Data
+    "institutional.asset_allocation",
+    "institutional.beneficial_ownership",
+    "institutional.fail_to_deliver",
+    "institutional.form_13f",
+    "institutional.form_13f_dates",
+    "institutional.insider_roster",
+    "institutional.insider_statistics",
+    "institutional.insider_trades",
+    "institutional.institutional_holdings",
+    "institutional.transaction_types",
+    # Intelligence (33 tools) - News, Sentiment, and Market Events
+    "intelligence.crowdfunding_by_cik",
+    "intelligence.crowdfunding_rss",
+    "intelligence.crypto_news",
+    "intelligence.dividends_calendar",
+    "intelligence.earnings_calendar",
+    "intelligence.earnings_confirmed",
+    "intelligence.earnings_surprises",
+    "intelligence.equity_offering_by_cik",
+    "intelligence.equity_offering_rss",
+    "intelligence.esg_benchmark",
+    "intelligence.esg_data",
+    "intelligence.esg_ratings",
+    "intelligence.fmp_articles",
+    "intelligence.forex_news",
+    "intelligence.general_news",
+    "intelligence.historical_earnings",
+    "intelligence.historical_social_sentiment",
+    "intelligence.house_disclosure",
+    "intelligence.house_disclosure_rss",
+    "intelligence.ipo_calendar",
+    "intelligence.press_releases",
+    "intelligence.press_releases_by_symbol",
+    "intelligence.senate_trading",
+    "intelligence.senate_trading_rss",
+    "intelligence.social_sentiment_changes",
+    "intelligence.stock_news",
+    "intelligence.stock_news_sentiments",
+    "intelligence.stock_splits_calendar",
+    "intelligence.trending_social_sentiment",
+    # Investment (11 tools) - ETFs and Mutual Funds
+    "investment.etf_country_weightings",
+    "investment.etf_exposure",
+    "investment.etf_holder",
+    "investment.etf_holding_dates",
+    "investment.etf_holdings",
+    "investment.etf_info",
+    "investment.etf_sector_weightings",
+    "investment.mutual_fund_by_name",
+    "investment.mutual_fund_dates",
+    "investment.mutual_fund_holder",
+    "investment.mutual_fund_holdings",
+    # Market (14 tools) - Market Data and Search
+    "market.all_shares_float",
+    "market.available_indexes",
+    "market.etf_list",
+    "market.gainers",
+    "market.losers",
+    "market.market_hours",
+    "market.most_active",
+    "market.pre_post_market",
+    "market.search_by_cik",
+    "market.search_by_cusip",
+    "market.search_by_isin",
+    "market.sector_performance",
+    "market.stock_list",
+    # Technical (9 tools) - Technical Indicators
+    "technical.adx",
+    "technical.dema",
+    "technical.ema",
+    "technical.rsi",
+    "technical.sma",
+    "technical.standard_deviation",
+    "technical.tema",
+    "technical.williams",
+    "technical.wma",
+]
+
+# Minimal set for quick testing
+MINIMAL_TOOLS: list[str] = [
+    "company.profile",
+    "company.quote",
+    "alternative.crypto_quote",
+]
+
+# Extended set for comprehensive coverage
+EXTENDED_TOOLS: list[str] = [
+    *DEFAULT_TOOLS,
+    # Additional company data
+    "company.price_target_summary",
+    "company.share_float",
+    "company.company_notes",
+    # More market data
+    "market.available_indexes",
+    "market.search",
+    # Institutional data
+    "institutional.holders",
+    "institutional.insider_trades",
+    # Investment products
+    "investment.etf_info",
+    "investment.etf_holdings",
+    # More technical indicators
+    "technical.ema",
+    "technical.williams",
+    "technical.adx",
 ]

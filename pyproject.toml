@@ -64,6 +64,48 @@ Homepage = "https://github.com/MehdiZare/fmp-data"
 Repository = "https://github.com/MehdiZare/fmp-data"
 Documentation = "https://mehdizare.github.io/fmp-data/"
 
+[project.scripts]
+fmp-mcp = "fmp_data.mcp.cli:main"
+
+[project.optional-dependencies]
+mcp = [
+    "mcp[cli]>=1.12.4",
+    "pyyaml>=6.0.2",
+]
+langchain = [
+    "faiss-cpu>=1.11.0.post1",
+    "langchain-core>=0.3.74",
+    "langchain-community>=0.3.27",
+    "langchain-openai>=0.3.29",
+    "langgraph>=0.6.4",
+    "openai>=1.99.5",
+    "tiktoken>=0.10.0",
+]
+dev = [
+    "ruff>=0.12.8",
+    "black>=25.1.0",
+    "mypy>=1.17.1",
+    "types-cachetools>=6.1.0.20250717",
+    "bandit[toml]>=1.8.6",
+    "pip-audit>=2.9.0",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "pytest-cov>=6.2.1",
+    "pytest-mock>=3.14.1",
+    "freezegun>=1.5.4",
+    "responses>=0.25.8",
+    "vcrpy>=7.0.0",
+    "coverage>=7.10.2",
+    "pre-commit>=4.2.0",
+    "rich>=14.1.0",
+    "twine>=6.1.0",
+    "nox>=2025.5.1",
+]
+docs = [
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.6.16",
+    "mkdocstrings-python>=1.16.12",
+]
 
 [dependency-groups]
 dev = [

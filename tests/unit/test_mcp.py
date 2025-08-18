@@ -202,3 +202,166 @@ class TestMCPIntegration:
 
             with pytest.raises(ConfigError):  # Should fail without API key
                 create_app()
+
+
+class TestMCPSetupSecurity:
+    """Test security features in MCP setup."""
+
+    def test_api_key_redaction(self):
+        """Test that API keys are properly redacted in setup messages."""
+        from fmp_data.mcp.setup import SetupWizard
+
+        setup = SetupWizard()
+        setup.api_key = "sk-test-12345abcdef"
+
+        # Test that sensitive info is redacted
+        test_message = "Your API key sk-test-12345abcdef is valid"
+        redacted = setup._redact_sensitive(test_message)
+
+        assert "sk-test-12345abcdef" not in redacted
+        assert "[REDACTED]" in redacted
+        assert redacted == "Your API key [REDACTED] is valid"
+
+    def test_api_key_redaction_no_key_set(self):
+        """Test redaction when no API key is set."""
+        from fmp_data.mcp.setup import SetupWizard
+
+        setup = SetupWizard()
+        # No API key set
+
+        test_message = "Some message without api key"
+        redacted = setup._redact_sensitive(test_message)
+
+        # Should return original message unchanged
+        assert redacted == test_message
+
+    def test_pattern_based_api_key_redaction(self):
+        """Test that common API key patterns are redacted."""
+        from fmp_data.mcp.setup import SetupWizard
+
+        setup = SetupWizard()
+
+        test_cases = [
+            # Test various API key patterns
+            ("API key: sk-1234567890abcdef1234567890", "API key: [REDACTED]"),
+            ("Token: pk_test_1234567890abcdef1234567890abcdef", "Token: [REDACTED]"),
+            (
+                "Key: api_key=abcdef1234567890abcdef1234567890abcdef",
+                "Key: api_key=[REDACTED]",
+            ),  # Preserves parameter name
+            (
+                "Long key: 1234567890abcdef1234567890abcdef1234567890abcdef",
+                "Long key: [REDACTED]",
+            ),
+            (
+                "Hex token: abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+                "Hex token: [REDACTED]",
+            ),
+        ]
+
+        for original, expected in test_cases:
+            redacted = setup._redact_sensitive(original)
+            assert redacted == expected, f"Failed for: {original}"
+
+    def test_url_parameter_redaction(self):
+        """Test that API keys in URL parameters are redacted."""
+        from fmp_data.mcp.setup import SetupWizard
+
+        setup = SetupWizard()
+
+        test_cases = [
+            (
+                "URL: https://api.example.com/data?api_key=secret123&symbol=AAPL",
+                "URL: https://api.example.com/data?api_key=[REDACTED]&symbol=AAPL",
+            ),
+            (
+                "Call: https://fmp.com/api?apikey=mysecret&endpoint=profile",
+                "Call: https://fmp.com/api?apikey=[REDACTED]&endpoint=profile",
+            ),
+            (
+                "Auth: https://api.com?token=abc123def456&format=json",
+                "Auth: https://api.com?token=[REDACTED]&format=json",
+            ),
+        ]
+
+        for original, expected in test_cases:
+            redacted = setup._redact_sensitive(original)
+            assert redacted == expected, f"Failed for: {original}"
+
+    def test_empty_and_none_message_handling(self):
+        """Test that empty and None messages are handled safely."""
+        from fmp_data.mcp.setup import SetupWizard
+
+        setup = SetupWizard()
+
+        # Test empty string
+        assert setup._redact_sensitive("") == ""
+
+        # Test None (should not crash)
+        assert setup._redact_sensitive(None) is None
+
+    def test_prompt_redaction(self):
+        """Test that prompt method redacts sensitive information."""
+        from unittest.mock import patch
+
+        from fmp_data.mcp.setup import SetupWizard
+
+        setup = SetupWizard()
+        setup.api_key = "secret123key"
+
+        # Mock input to avoid actual user interaction
+        with patch("builtins.input", return_value="test_response"):
+            # Test that prompt message is redacted
+            with patch.object(
+                setup, "_redact_sensitive", return_value="safe_message"
+            ) as mock_redact:
+                setup.prompt("Enter your secret123key here", "default_value")
+
+                # Verify redaction was called on both message and default
+                assert mock_redact.call_count == 2
+                mock_redact.assert_any_call("Enter your secret123key here")
+                mock_redact.assert_any_call("default_value")
+
+    def test_print_method_always_redacts(self):
+        """Test that all print method calls apply redaction."""
+        import io
+        from unittest.mock import patch
+
+        from fmp_data.mcp.setup import SetupWizard
+
+        setup = SetupWizard(quiet=False)
+        setup.api_key = "secret123"
+
+        # Capture stdout
+        captured_output = io.StringIO()
+
+        with patch("sys.stdout", captured_output):
+            setup.print("Your API key secret123 is valid", "info")
+
+        output = captured_output.getvalue()
+        assert "secret123" not in output
+        assert "[REDACTED]" in output
+
+    def test_exception_handling_security(self):
+        """Test that exception handling doesn't expose sensitive data."""
+        import io
+        from unittest.mock import patch
+
+        from fmp_data.mcp.setup import run_setup
+
+        # Mock an exception that might contain sensitive data
+        sensitive_error = Exception("Error with api_key=secret123: connection failed")
+
+        captured_output = io.StringIO()
+
+        with patch("sys.stdout", captured_output):
+            with patch(
+                "fmp_data.mcp.setup.SetupWizard.run", side_effect=sensitive_error
+            ):
+                result = run_setup(quiet=False)
+
+        output = captured_output.getvalue()
+        # Should not contain the raw API key (pattern-based redaction should catch it)
+        assert "secret123" not in output
+        assert "[REDACTED]" in output or "Setup failed" in output
+        assert result == 1  # Should return error code

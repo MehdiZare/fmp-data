@@ -14,7 +14,8 @@ def analyze_stock(client, symbol):
     print(f"\n=== Stock Analysis: {symbol} ===")
 
     # Get real-time quote
-    quote = client.market.get_quote(symbol)
+    # Note: As of v1.0.0, get_quote has moved from market to company client
+    quote = client.company.get_quote(symbol)
     print(f"\nCurrent Price: ${quote.price:.2f}")
     print(f"Change: {quote.change_percentage:+.2f}%")
     print(f"Volume: {quote.volume:,}")
@@ -31,7 +32,8 @@ def analyze_historical_data(client, symbol):
     end_date = datetime.now().date()
     start_date = end_date - timedelta(days=90)
 
-    prices = client.market.get_historical_prices(
+    # Note: As of v1.0.0, get_historical_prices is on company client
+    prices = client.company.get_historical_prices(
         symbol=symbol,
         from_date=start_date.strftime("%Y-%m-%d"),
         to_date=end_date.strftime("%Y-%m-%d"),
