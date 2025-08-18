@@ -217,7 +217,7 @@ class SetupWizard:
             valid, message = validate_api_key(api_key)
 
             if valid:
-                self.print(message, "success")
+                self.print("API key validated successfully.", "success")
                 self.api_key = api_key
 
                 # Offer to save to environment
