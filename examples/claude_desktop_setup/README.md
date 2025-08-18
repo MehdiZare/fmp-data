@@ -135,7 +135,7 @@ TOOLS = [
       "command": "python",
       "args": ["-m", "fmp_data.mcp"],
       "env": {
-        "FMP_API_KEY": "your_api_key_here"  # pragma: allowlist secret,
+        "FMP_API_KEY": "your_api_key_here",
         "FMP_MCP_MANIFEST": "/path/to/my_tools.py"
       }
     }
