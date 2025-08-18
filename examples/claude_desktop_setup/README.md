@@ -172,7 +172,7 @@ export FMP_API_KEY="your_api_key_here"  # pragma: allowlist secret
 python -m fmp_data.mcp
 ```
 
-If you see "Server is ready for connections", the server is working correctly.
+If you see "Starting FMP Data MCP Server..." without errors, the server is working correctly.
 
 ## Advanced Usage
 
