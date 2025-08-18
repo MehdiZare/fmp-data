@@ -404,11 +404,11 @@ class SetupWizard:
 
         if success:
             self.print(message, "success")
-            return True
         else:
             self.print(message, "error")
             self.print("The server may still work with Claude Desktop", "warning")
-            return True  # Don't fail setup on test failure
+
+        return success
 
     def show_next_steps(self) -> None:
         """Show next steps to complete setup."""
