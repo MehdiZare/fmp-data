@@ -94,7 +94,7 @@ The setup wizard will automatically configure Claude Desktop with FMP Data tools
 export FMP_API_KEY=your_api_key_here
 
 # Run the MCP server
-python -m fmp_data.mcp
+fmp-mcp
 ```
 
 For detailed setup instructions, see [MCP Setup Guide](examples/MCP_SETUP_GUIDE.md).
@@ -111,11 +111,11 @@ fmp-mcp list     # List available tools
 ### Configuration Profiles
 
 Choose from pre-configured tool sets:
-- **Default** (130 tools) - Complete toolkit
-- **Minimal** (8 tools) - Essential tools only
-- **Trading** (25 tools) - Real-time quotes & technical analysis
-- **Research** (38 tools) - Financial statements & fundamental analysis
-- **Crypto** (14 tools) - Cryptocurrency focused
+- **Default** (140 tools) - Complete toolkit
+- **Minimal** (3 tools) - Essential tools only
+- **Trading** (27 tools) - Real-time quotes & technical analysis
+- **Research** (40 tools) - Financial statements & fundamental analysis
+- **Crypto** (16 tools) - Cryptocurrency focused
 
 ### Custom Configuration
 
