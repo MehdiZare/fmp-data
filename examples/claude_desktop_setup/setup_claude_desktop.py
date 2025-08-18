@@ -103,11 +103,11 @@ def get_api_key():
             print(
                 "   To save permanently, run this in Command Prompt as Administrator:"
             )
-            print(f'   setx FMP_API_KEY "{api_key}"')
+            print('   setx FMP_API_KEY "<your_api_key>"')
         else:
             shell_file = "~/.zshrc" if system == "Darwin" else "~/.bashrc"
             print(f"   Add this line to your {shell_file}:")
-            print(f'   export FMP_API_KEY="{api_key}"')
+            print('   export FMP_API_KEY="<your_api_key>"')
 
     return api_key
 
