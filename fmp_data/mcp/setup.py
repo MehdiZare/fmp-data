@@ -43,10 +43,40 @@ class SetupWizard:
         self.config: dict[str, Any] = {}
 
     def _redact_sensitive(self, message: str) -> str:
-        """Redact sensitive information such as API key from message."""
-        if self.api_key and self.api_key in message:
-            return message.replace(self.api_key, "[REDACTED]")
-        return message
+        """Redact sensitive information such as API keys from message."""
+        if not message:
+            return message
+
+        result = message
+
+        # Redact current API key if set
+        if self.api_key and self.api_key in result:
+            result = result.replace(self.api_key, "[REDACTED]")
+
+        import re
+
+        # First redact URLs with tokens/keys in query parameters (more specific)
+        url_patterns = [
+            r"([?&](?:api_?key|token|secret)=)[^&\s]+",
+            r"([?&]apikey=)[^&\s]+",
+        ]
+
+        for pattern in url_patterns:
+            result = re.sub(pattern, r"\1[REDACTED]", result)
+
+        # Then redact remaining API key patterns (more general)
+        api_key_patterns = [
+            r"\b(?:sk-|pk_)[a-zA-Z0-9_-]{8,}\b",  # Keys with sk-/pk- prefixes
+            # Standalone api_key assignments (not URLs)
+            r"\bapi_key=[a-zA-Z0-9_-]{8,}(?=\s|:|;)",
+            r"\b[a-zA-Z0-9]{32,}\b",  # Long alphanumeric strings (32+ chars)
+            r"[a-fA-F0-9]{40,}",  # Hex strings 40+ chars (common for tokens)
+        ]
+
+        for pattern in api_key_patterns:
+            result = re.sub(pattern, "[REDACTED]", result)
+
+        return result
 
     def print(self, message: str, style: str = "") -> None:
         """Print message unless in quiet mode."""
@@ -84,10 +114,14 @@ class SetupWizard:
         str
             User input or default value
         """
-        if default:
-            prompt_text = f"{message} [{default}]: "
+        # Redact sensitive information from prompt message and default
+        safe_message = self._redact_sensitive(message)
+        safe_default = self._redact_sensitive(default) if default else None
+
+        if safe_default:
+            prompt_text = f"{safe_message} [{safe_default}]: "
         else:
-            prompt_text = f"{message}: "
+            prompt_text = f"{safe_message}: "
 
         response = input(prompt_text).strip()
         return response if response else (default or "")
@@ -110,10 +144,10 @@ class SetupWizard:
         int
             Selected choice index
         """
-        print(f"\n{message}")
+        self.print(f"\n{message}")
         for i, choice in enumerate(choices):
             marker = ">" if i == default else " "
-            print(f"  {marker} {i + 1}. {choice}")
+            self.print(f"  {marker} {i + 1}. {choice}")
 
         while True:
             response = input(f"\nSelect (1-{len(choices)}) [{default + 1}]: ").strip()
@@ -126,9 +160,9 @@ class SetupWizard:
                 if 0 <= choice_num < len(choices):
                     return choice_num
                 else:
-                    print(f"Please enter a number between 1 and {len(choices)}")
+                    self.print(f"Please enter a number between 1 and {len(choices)}")
             except ValueError:
-                print("Please enter a valid number")
+                self.print("Please enter a valid number")
 
     def check_prerequisites(self) -> bool:
         """
@@ -201,7 +235,7 @@ class SetupWizard:
                 return True
 
         # Prompt for API key
-        print(
+        self.print(
             "\nGet a free API key at: https://site.financialmodelingprep.com/pricing-plans?couponCode=mehdi"
         )
 
@@ -418,18 +452,18 @@ class SetupWizard:
         """Show next steps to complete setup."""
         self.print("\nSetup Complete!", "header")
 
-        print("\n📋 Next Steps:")
-        print("1. Restart Claude Desktop completely")
-        print("2. Start a new conversation")
-        print("3. Test with: 'What's the current price of AAPL?'")
+        self.print("\n📋 Next Steps:")
+        self.print("1. Restart Claude Desktop completely")
+        self.print("2. Start a new conversation")
+        self.print("3. Test with: 'What's the current price of AAPL?'")
 
-        print("\n💡 Example queries to try:")
-        print("  • 'Show me today's top gainers'")
-        print("  • 'Get Tesla's latest income statement'")
-        print("  • 'What's the RSI for Microsoft?'")
-        print("  • 'Show me Bitcoin's current price'")
+        self.print("\n💡 Example queries to try:")
+        self.print("  • 'Show me today's top gainers'")
+        self.print("  • 'Get Tesla's latest income statement'")
+        self.print("  • 'What's the RSI for Microsoft?'")
+        self.print("  • 'Show me Bitcoin's current price'")
 
-        print("\n" + restart_claude_desktop_instructions())
+        self.print("\n" + restart_claude_desktop_instructions())
 
     def run(self) -> bool:
         """
@@ -497,10 +531,19 @@ def run_setup(quiet: bool = False) -> int:
         else:
             return 1
     except KeyboardInterrupt:
-        print("\n\nSetup cancelled by user")
+        wizard.print("\n\nSetup cancelled by user", "warning")
         return 1
     except Exception as e:
-        print(f"\n❌ Setup failed: {e}")
+        # Use the existing wizard for error output with redaction
+        # If wizard is not available, create a temporary one with enhanced redaction
+        try:
+            wizard.print(f"Setup failed: {e}", "error")
+        except Exception:
+            # Fallback: create temp wizard and copy API key if available
+            temp_wizard = SetupWizard(quiet=False)
+            if hasattr(wizard, "api_key"):
+                temp_wizard.api_key = wizard.api_key
+            temp_wizard.print(f"Setup failed: {e}", "error")
         return 1
 
 
