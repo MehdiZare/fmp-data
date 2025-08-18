@@ -51,8 +51,8 @@ jobs:
           COMMIT_COUNT=$(git rev-list --count ${LATEST_TAG}..HEAD 2>/dev/null || echo "1")
           SHORT_SHA=$(git rev-parse --short HEAD)
 
-          # Next minor version for dev (you can adjust this logic)
-          DEV_VERSION="${MAJOR}.$((MINOR + 1)).0.dev${COMMIT_COUNT}+${SHORT_SHA}"
+          # Next minor version for dev (PyPI-compatible, no local version identifier)
+          DEV_VERSION="${MAJOR}.$((MINOR + 1)).0.dev${COMMIT_COUNT}"
           DEV_TAG="v${DEV_VERSION}"
 
           echo "DEV_VERSION=$DEV_VERSION" >> $GITHUB_OUTPUT
