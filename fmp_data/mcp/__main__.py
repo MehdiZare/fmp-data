@@ -56,7 +56,6 @@ def main() -> None:
         app = create_app()
 
     print("Starting FMP Data MCP Server...")
-    print("Server is ready for connections")
 
     # Run the server
     app.run()
