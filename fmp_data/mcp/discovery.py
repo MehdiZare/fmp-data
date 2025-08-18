@@ -38,7 +38,7 @@ def discover_client_tools(client_name: str) -> list[dict[str, Any]]:
     list[dict[str, Any]]
         List of tool definitions with metadata
     """
-    tools = []
+    tools: list[dict[str, Any]] = []
 
     try:
         # Import the mapping module for this client
@@ -47,32 +47,43 @@ def discover_client_tools(client_name: str) -> list[dict[str, Any]]:
         # Get the semantics table
         semantics_table_name = f"{client_name.upper()}_ENDPOINTS_SEMANTICS"
 
-        if hasattr(mapping_module, semantics_table_name):
-            semantics_table = getattr(mapping_module, semantics_table_name)
+        if not hasattr(mapping_module, semantics_table_name):
+            return tools
 
-            for key, semantics in semantics_table.items():
-                tool_spec = f"{client_name}.{key}"
-
-                # Extract description
-                description = semantics.natural_description or ""
-                if not description and hasattr(semantics, "description"):
-                    description = semantics.description or ""
-
-                tools.append(
-                    {
-                        "spec": tool_spec,
-                        "client": client_name,
-                        "method": semantics.method_name,
-                        "key": key,
-                        "description": description,
-                        "example_queries": getattr(semantics, "example_queries", []),
-                        "related_terms": getattr(semantics, "related_terms", []),
-                    }
-                )
+        semantics_table = getattr(mapping_module, semantics_table_name)
 
     except (ImportError, AttributeError):
         # Module doesn't exist or doesn't have semantics
-        pass
+        return tools
+
+    # Process each item in the semantics table
+    for key, semantics in semantics_table.items():
+        try:
+            tool_spec = f"{client_name}.{key}"
+
+            # Extract description safely
+            description = getattr(semantics, "natural_description", None)
+            if not description:
+                description = getattr(semantics, "description", "")
+
+            # Extract method name safely
+            method_name = getattr(semantics, "method_name", "<unknown>")
+
+            tools.append(
+                {
+                    "spec": tool_spec,
+                    "client": client_name,
+                    "method": method_name,
+                    "key": key,
+                    "description": description,
+                    "example_queries": getattr(semantics, "example_queries", []),
+                    "related_terms": getattr(semantics, "related_terms", []),
+                }
+            )
+
+        except AttributeError:
+            # Skip malformed semantics entries
+            continue
 
     return tools
 
