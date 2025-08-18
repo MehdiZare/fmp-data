@@ -1,0 +1,28 @@
+{
+  "mcpServers": {
+    "fmp-data": {
+      "command": "python",
+      "args": ["-m", "fmp_data.mcp"],
+      "env": {
+        "FMP_API_KEY": "your_api_key_here",
+        "FMP_MCP_MANIFEST": "/path/to/custom/manifest.py"
+      }
+    },
+    "fmp-trading": {
+      "command": "python",
+      "args": ["-m", "fmp_data.mcp"],
+      "env": {
+        "FMP_API_KEY": "your_api_key_here",
+        "FMP_MCP_MANIFEST": "examples/mcp_configurations/trading_manifest.py"
+      }
+    },
+    "fmp-research": {
+      "command": "python",
+      "args": ["-m", "fmp_data.mcp"],
+      "env": {
+        "FMP_API_KEY": "your_api_key_here",
+        "FMP_MCP_MANIFEST": "examples/mcp_configurations/research_manifest.py"
+      }
+    }
+  }
+}
