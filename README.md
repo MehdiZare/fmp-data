@@ -111,11 +111,8 @@ fmp-mcp list     # List available tools
 ### Configuration Profiles
 
 Choose from pre-configured tool sets:
-- **Default** (140 tools) - Complete toolkit
-- **Minimal** (3 tools) - Essential tools only
-- **Trading** (27 tools) - Real-time quotes & technical analysis
-- **Research** (40 tools) - Financial statements & fundamental analysis
-- **Crypto** (16 tools) - Cryptocurrency focused
+- **Default** - Complete toolkit
+- **Minimal** - Essential tools only
 
 ### Custom Configuration
 
