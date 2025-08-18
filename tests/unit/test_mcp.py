@@ -202,3 +202,35 @@ class TestMCPIntegration:
 
             with pytest.raises(ConfigError):  # Should fail without API key
                 create_app()
+
+
+class TestMCPSetupSecurity:
+    """Test security features in MCP setup."""
+
+    def test_api_key_redaction(self):
+        """Test that API keys are properly redacted in setup messages."""
+        from fmp_data.mcp.setup import SetupWizard
+
+        setup = SetupWizard()
+        setup.api_key = "sk-test-12345abcdef"
+
+        # Test that sensitive info is redacted
+        test_message = "Your API key sk-test-12345abcdef is valid"
+        redacted = setup._redact_sensitive(test_message)
+
+        assert "sk-test-12345abcdef" not in redacted
+        assert "[REDACTED]" in redacted
+        assert redacted == "Your API key [REDACTED] is valid"
+
+    def test_api_key_redaction_no_key_set(self):
+        """Test redaction when no API key is set."""
+        from fmp_data.mcp.setup import SetupWizard
+
+        setup = SetupWizard()
+        # No API key set
+
+        test_message = "Some message without api key"
+        redacted = setup._redact_sensitive(test_message)
+
+        # Should return original message unchanged
+        assert redacted == test_message

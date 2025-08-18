@@ -212,13 +212,15 @@ class SetupWizard:
                 self.print("API key is required", "error")
                 continue
 
+            # Set API key for redaction before validation
+            self.api_key = api_key
+
             # Validate API key
             self.print("Validating API key...", "info")
             valid, message = validate_api_key(api_key)
 
             if valid:
                 self.print("API key validated successfully.", "success")
-                self.api_key = api_key
 
                 # Offer to save to environment
                 save_env = self.prompt(
@@ -232,6 +234,8 @@ class SetupWizard:
                 self.print(message, "error")
                 retry = self.prompt("Try another key? (y/n)", "y")
                 if retry.lower() != "y":
+                    # Clear invalid API key
+                    self.api_key = None
                     return False
 
     def _show_env_instructions(self, api_key: str) -> None:
@@ -240,16 +244,16 @@ class SetupWizard:
 
         system = platform.system()
         if system == "Windows":
-            print(
+            self.print(
                 "\nTo save permanently on Windows, run in Command Prompt as "
                 "Administrator:"
             )
-            print(f'  setx FMP_API_KEY "{api_key}"')
+            self.print(f'  setx FMP_API_KEY "{api_key}"')
         else:
             shell_file = "~/.zshrc" if system == "Darwin" else "~/.bashrc"
-            print(f"\nAdd this line to your {shell_file}:")
-            print(f'  export FMP_API_KEY="{api_key}"')
-            print(f"\nThen reload with: source {shell_file}")
+            self.print(f"\nAdd this line to your {shell_file}:")
+            self.print(f'  export FMP_API_KEY="{api_key}"')
+            self.print(f"\nThen reload with: source {shell_file}")
 
     def choose_configuration(self) -> bool:
         """
