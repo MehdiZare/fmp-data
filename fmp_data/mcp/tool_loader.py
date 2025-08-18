@@ -62,7 +62,13 @@ def register_from_manifest(
 
     # Build a map from keys to full specs for auto-discovery
     all_tools = discover_all_tools()
-    key_to_spec = {tool["key"]: tool["spec"] for tool in all_tools}
+    key_to_spec: dict[str, list[str]] = {}
+    for tool in all_tools:
+        key = tool["key"]
+        spec = tool["spec"]
+        if key not in key_to_spec:
+            key_to_spec[key] = []
+        key_to_spec[key].append(spec)
 
     for spec in tool_specs:
         # Handle both formats
@@ -76,7 +82,16 @@ def register_from_manifest(
             # Key-only format: look up the full spec
             if spec not in key_to_spec:
                 raise ERR(f"Tool key '{spec}' not found in available tools") from None
-            full_spec = key_to_spec[spec]
+
+            specs_for_key = key_to_spec[spec]
+            if len(specs_for_key) > 1:
+                specs_list = ", ".join(sorted(specs_for_key))
+                raise ERR(
+                    f"Tool key '{spec}' is ambiguous; "
+                    f"matches multiple tools: {specs_list}"
+                ) from None
+
+            full_spec = specs_for_key[0]
             client_slug, sem_key = full_spec.split(".", 1)
 
         sem = _load_semantics(client_slug, sem_key)
