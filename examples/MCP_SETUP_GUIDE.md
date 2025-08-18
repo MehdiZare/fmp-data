@@ -88,7 +88,9 @@ FMP Data comes with several pre-configured profiles:
 | **Research** | 38 tools | Financial statements, fundamental analysis |
 | **Crypto** | 14 tools | Cryptocurrency focused tools |
 
-To use a specific profile during manual setup, set the `FMP_MCP_MANIFEST` environment variable:
+To use a specific profile during manual setup, set the `FMP_MCP_MANIFEST` environment variable.
+
+**Note:** Replace `your_api_key_here` with your actual FMP API key.
 
 ```json
 {
@@ -97,7 +99,7 @@ To use a specific profile during manual setup, set the `FMP_MCP_MANIFEST` enviro
       "command": "/path/to/python",
       "args": ["-m", "fmp_data.mcp"],
       "env": {
-        "FMP_API_KEY": "your_api_key_here"  # pragma: allowlist secret,
+        "FMP_API_KEY": "your_api_key_here",
         "FMP_MCP_MANIFEST": "/path/to/fmp-data/examples/mcp_configurations/trading_manifest.py"
       }
     }
