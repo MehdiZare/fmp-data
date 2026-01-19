@@ -317,11 +317,15 @@ The FMP Data Client provides access to all FMP API endpoints through specialized
 - **market**: Real-time quotes, historical prices, market hours
 - **fundamental**: Financial statements (income, balance sheet, cash flow)
 - **technical**: Technical indicators (SMA, EMA, RSI, MACD, etc.)
-- **intelligence**: Market news, SEC filings, press releases
+- **intelligence**: Market news, press releases, analyst ratings
 - **institutional**: Institutional holdings, insider trading
 - **investment**: ETF and mutual fund data
 - **alternative**: Crypto, forex, and commodity data
 - **economics**: Economic indicators and calendar data
+- **batch**: Batch quotes for multiple symbols or entire asset classes
+- **transcripts**: Earnings call transcripts
+- **sec**: SEC filings, company profiles, and SIC codes
+- **index**: Market index constituents (S&P 500, NASDAQ, Dow Jones)
 
 ## Key Components
 
@@ -450,11 +454,80 @@ with FMPDataClient.from_env() as client:
     # Market news
     news = client.intelligence.get_stock_news("TSLA", limit=10)
 
-    # SEC filings
-    filings = client.intelligence.get_sec_filings("AAPL", type="10-K")
+    # Analyst grades
+    grades = client.intelligence.get_grades("AAPL")
 ```
 
-### 7. Async Support (Coming Soon)
+### 7. Batch Data
+```python
+from fmp_data import FMPDataClient
+
+with FMPDataClient.from_env() as client:
+    # Get quotes for multiple symbols at once
+    quotes = client.batch.get_quotes(["AAPL", "MSFT", "GOOGL"])
+
+    # Get all ETF quotes
+    etf_quotes = client.batch.get_etf_quotes()
+
+    # Get all crypto quotes
+    crypto_quotes = client.batch.get_crypto_quotes()
+
+    # Get market caps for multiple symbols
+    market_caps = client.batch.get_market_caps(["AAPL", "MSFT"])
+```
+
+### 8. Earnings Transcripts
+```python
+from fmp_data import FMPDataClient
+
+with FMPDataClient.from_env() as client:
+    # Get latest earnings call transcripts
+    latest = client.transcripts.get_latest(limit=10)
+
+    # Get transcript for specific company and quarter
+    transcript = client.transcripts.get_transcript("AAPL", year=2024, quarter=4)
+
+    # Get available transcript dates
+    dates = client.transcripts.get_available_dates("AAPL")
+```
+
+### 9. SEC Filings
+```python
+from fmp_data import FMPDataClient
+
+with FMPDataClient.from_env() as client:
+    # Get latest 8-K filings
+    filings_8k = client.sec.get_latest_8k(limit=10)
+
+    # Search filings by symbol
+    filings = client.sec.search_by_symbol("AAPL")
+
+    # Get SEC company profile
+    profile = client.sec.get_profile("AAPL")
+
+    # Get SIC codes
+    sic_codes = client.sec.get_sic_codes()
+```
+
+### 10. Market Index Constituents
+```python
+from fmp_data import FMPDataClient
+
+with FMPDataClient.from_env() as client:
+    # Get S&P 500 constituents
+    sp500 = client.index.get_sp500_constituents()
+
+    # Get NASDAQ constituents
+    nasdaq = client.index.get_nasdaq_constituents()
+
+    # Get Dow Jones constituents
+    dowjones = client.index.get_dowjones_constituents()
+
+    # Get historical changes
+    changes = client.index.get_historical_sp500()
+```
+
+### 11. Async Support (Coming Soon)
 Note: Async support is currently under development and will be available in a future release.
 
 ## Configuration
@@ -560,7 +633,7 @@ except FMPError as e:
 ## Development Setup
 
 ### Prerequisites
-- Python 3.10+
+- Python 3.10-3.14
 - UV (install with `curl -LsSf https://astral.sh/uv/install.sh | sh`)
 
 ### Setup
@@ -624,9 +697,8 @@ make test-all    # Run all tests for all Python versions
 ### Development Commands
 
 ```bash
-# Format code with ruff and black
+# Format code with ruff
 ruff format fmp_data tests
-black fmp_data tests
 
 # Lint with ruff
 ruff check fmp_data tests --fix
@@ -728,7 +800,6 @@ git checkout -b feature/your-feature-name
 ```bash
 # Format code
 ruff format fmp_data tests
-black fmp_data tests
 
 # Fix linting issues
 ruff check fmp_data tests --fix
@@ -756,7 +827,7 @@ git commit -m "feat: add your feature description"
 
 Please ensure your contributions meet these requirements:
 - Tests pass: `pytest` or `make test`
-- Code is formatted: `ruff format` and `black` or `make fix`
+- Code is formatted: `ruff format` or `make fix`
 - Code passes linting: `ruff check` or `make lint`
 - Type hints are included for all functions
 - Documentation is updated for new features
@@ -777,7 +848,7 @@ make test-cov   # Run tests with coverage
 
 # Or run individual checks
 ruff check fmp_data tests
-black --check fmp_data tests
+ruff format --check fmp_data tests
 mypy fmp_data
 pytest --cov=fmp_data
 ```
