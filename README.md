@@ -502,7 +502,7 @@ with FMPDataClient.from_env() as client:
     # Search filings by symbol
     filings = client.sec.search_by_symbol("AAPL")
 
-    # Get SEC company profile
+    # Get SEC company profile (may return None if not found)
     profile = client.sec.get_profile("AAPL")
 
     # Get SIC codes

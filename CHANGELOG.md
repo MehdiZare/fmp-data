@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+- 429 retry handling now respects `retry_after` wait times to avoid premature retries.
+
 ## [2.0.0] - 2026-01-19
 
 [Compare changes](https://github.com/MehdiZare/fmp-data/compare/v1.0.1...v2.0.0)
