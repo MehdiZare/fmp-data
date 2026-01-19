@@ -239,7 +239,8 @@ def test_request_rate_limit(base_client, test_endpoint):
         base_client._rate_limiter.quota_config.daily_limit + 1
     )
 
-    with pytest.raises(RateLimitError):
+    base_client.config.max_retries = 1
+    with patch("tenacity.nap.sleep", return_value=None), pytest.raises(RateLimitError):
         base_client.request(test_endpoint, symbol="AAPL")
 
 
