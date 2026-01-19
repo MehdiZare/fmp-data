@@ -593,7 +593,7 @@ def test_retry_on_timeout(
     mock_request, fmp_client, mock_response, mock_company_profile
 ):
     """Test retry behavior on timeout"""
-    fmp_client.config.max_retries = 2
+    fmp_client.config = fmp_client.config.model_copy(update={"max_retries": 2})
     mock_request.side_effect = [
         httpx.TimeoutException("Connection timeout"),
         mock_response(status_code=200, json_data=[mock_company_profile]),

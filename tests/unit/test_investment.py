@@ -182,7 +182,7 @@ class TestInvestmentClient:
     @patch("httpx.Client.request")
     def test_rate_limit_handling(self, mock_request, fmp_client):
         """Test handling rate limit errors for investment endpoints"""
-        fmp_client.config.max_retries = 2
+        fmp_client.config = fmp_client.config.model_copy(update={"max_retries": 2})
         mock_request.side_effect = [
             httpx.HTTPStatusError(
                 "429 Too Many Requests",
