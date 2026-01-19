@@ -27,6 +27,10 @@ from nox.sessions import Session
 
 # Python interpreters used across sessions
 # Use the current Python version in CI, or the newest local version if available
+def _runtime_py_version() -> tuple[int, int]:
+    return (sys.version_info.major, sys.version_info.minor)
+
+
 if os.getenv("CI") == "true":
     # In CI, use the versions explicitly installed in the matrix
     current_version = f"{sys.version_info.major}.{sys.version_info.minor}"
@@ -34,10 +38,10 @@ if os.getenv("CI") == "true":
     DEFAULT_PYTHON = current_version
 else:
     # Locally, prefer the newest available interpreter
-    if sys.version_info >= (3, 14):
+    if _runtime_py_version() >= (3, 14):
         PY_VERSIONS = ("3.10", "3.11", "3.12", "3.13", "3.14")
         DEFAULT_PYTHON = "3.14"
-    elif sys.version_info >= (3, 13):
+    elif _runtime_py_version() >= (3, 13):
         PY_VERSIONS = ("3.10", "3.11", "3.12", "3.13")
         DEFAULT_PYTHON = "3.13"
     else:
