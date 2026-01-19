@@ -32,7 +32,9 @@ def mock_response():
     def _create_response(status_code=200, json_data=None):
         mock = Mock()
         mock.status_code = status_code
-        mock.json.return_value = json_data or {}
+        payload = json_data or {}
+        mock.json.return_value = payload
+        mock.text = json.dumps(payload)
         mock.raise_for_status = Mock()
         if status_code >= 400:
             mock.raise_for_status.side_effect = httpx.HTTPStatusError(
@@ -205,7 +207,9 @@ def test_request_with_retry(base_client, mock_endpoint, mock_response):
     mock_endpoint.response_model = SampleResponse
     mock_endpoint.method.value = "GET"
 
-    with patch.object(base_client.client, "request", mock_request):
+    with patch.object(base_client.client, "request", mock_request), patch(
+        "tenacity.nap.sleep", return_value=None
+    ):
         result = base_client.request(mock_endpoint)
 
         # Verify result
