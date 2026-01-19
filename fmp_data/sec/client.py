@@ -1,6 +1,8 @@
 # fmp_data/sec/client.py
 from typing import cast
 
+from pydantic import ValidationError as PydanticValidationError
+
 from fmp_data.base import EndpointGroup
 from fmp_data.sec.endpoints import (
     SEC_COMPANY_SEARCH_CIK,
@@ -169,7 +171,14 @@ class SECClient(EndpointGroup):
         Returns:
             SEC profile for the company, or None if not found
         """
-        result = self.client.request(SEC_PROFILE, symbol=symbol)
+        try:
+            result = self.client.request(SEC_PROFILE, symbol=symbol)
+        except PydanticValidationError as exc:
+            self.client.logger.warning(
+                "SEC profile response failed validation; returning None.",
+                extra={"symbol": symbol, "error": str(exc)},
+            )
+            return None
         if isinstance(result, list):
             if not result:
                 return None
