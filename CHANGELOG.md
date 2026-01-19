@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed retry configuration being ignored - now uses configurable `max_retries`
   - Fixed `_handle_rate_limit` not being called in request flow
   - Fixed vector store security issue - made `allow_dangerous_deserialization` opt-in with warning
+  - Fixed `CompanyProfile` model validation errors by making optional fields nullable (e.g., `dcf`, `cik`, `isin`, etc.)
 
 ### Changed
 - **Code Quality Improvements**:
