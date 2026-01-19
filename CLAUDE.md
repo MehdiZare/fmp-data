@@ -122,8 +122,8 @@ fmp_data/
 ```
 
 ### Client Initialization Pattern
-Each domain client inherits from `BaseClient` and is instantiated lazily by the main `FMPDataClient`. The base client handles:
-- HTTP requests with retry logic via `tenacity` (exponential backoff: 3 attempts, 4-10 second waits)
+Each domain client is an `EndpointGroup` wrapper around a shared `BaseClient` and is instantiated lazily by the main `FMPDataClient`. The base client handles:
+- HTTP requests with retry logic via `tenacity` (exponential backoff: configurable attempts, default=3; 4-10 second waits)
 - Rate limiting based on API tier (configurable daily limit, requests per second/minute)
 - Response validation using Pydantic models
 - Consistent error handling with custom exceptions
@@ -132,7 +132,7 @@ Each domain client inherits from `BaseClient` and is instantiated lazily by the 
 The `BaseClient` uses `tenacity` for automatic retries on transient failures:
 - Retries on `TimeoutException`, `NetworkError`, `HTTPStatusError`
 - Exponential backoff: multiplier=1, min=4s, max=10s
-- Maximum 3 attempts before failing
+- Configurable maximum attempts (default=3)
 
 Rate limiting is handled by `FMPRateLimiter` with configurable quotas per API tier.
 

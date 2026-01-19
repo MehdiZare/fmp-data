@@ -16,7 +16,7 @@
 If you prefer direct commands, use `uv run pytest`, `uv run ruff format`, and `uv run mypy fmp_data`.
 
 ## Coding Style & Naming Conventions
-- Python formatting uses `black` and `ruff format` with line length 88.
+- Python formatting uses `ruff format` with line length 88.
 - Linting and import sorting use `ruff`; type checking uses `mypy`.
 - Follow standard Python naming: `snake_case` for functions/vars, `PascalCase` for classes, `UPPER_SNAKE_CASE` for constants.
 - Run `make pre-commit` to validate with repo hooks.
