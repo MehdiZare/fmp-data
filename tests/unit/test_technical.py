@@ -3,7 +3,6 @@ from unittest.mock import Mock, patch
 
 import httpx
 import pytest
-from tenacity import RetryError
 
 from fmp_data.technical.models import EMAIndicator, RSIIndicator, SMAIndicator
 
@@ -133,6 +132,7 @@ class TestTechnicalClient:
     @patch("httpx.Client.request")
     def test_rate_limit_handling(mock_request, fmp_client):
         """Test handling rate limit errors from the API with retries"""
+        fmp_client.config.max_retries = 3
         # Simulate retries by making the first few calls raise HTTPStatusError
         mock_request.side_effect = [
             httpx.HTTPStatusError(
@@ -142,7 +142,9 @@ class TestTechnicalClient:
             )
         ] * 3  # Simulate 3 retries
 
-        with pytest.raises(RetryError):
+        with patch("tenacity.nap.sleep", return_value=None), pytest.raises(
+            httpx.HTTPStatusError
+        ):
             fmp_client.technical.get_sma(
                 symbol="AAPL",
                 period_length=20,

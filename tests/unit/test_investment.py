@@ -182,6 +182,7 @@ class TestInvestmentClient:
     @patch("httpx.Client.request")
     def test_rate_limit_handling(self, mock_request, fmp_client):
         """Test handling rate limit errors for investment endpoints"""
+        fmp_client.config.max_retries = 2
         mock_request.side_effect = [
             httpx.HTTPStatusError(
                 "429 Too Many Requests",
@@ -220,9 +221,10 @@ class TestInvestmentClient:
             ),
         ]
 
-        result = fmp_client.investment.get_etf_holdings(
-            symbol="SPY", holdings_date=date(2024, 1, 15)
-        )
+        with patch("tenacity.nap.sleep", return_value=None):
+            result = fmp_client.investment.get_etf_holdings(
+                symbol="SPY", holdings_date=date(2024, 1, 15)
+            )
         assert result is not None
         assert len(result) == 1
         assert isinstance(result[0], ETFHolding)
