@@ -1,7 +1,7 @@
 # tests/lc/test_vector_store.py
 from unittest.mock import Mock, patch
 
-from langchain_core.embeddings import Embeddings
+from langchain_core.embeddings import Embeddings  # type: ignore[import-not-found]
 import pytest
 
 from fmp_data.lc.models import EndpointInfo
