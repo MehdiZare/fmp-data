@@ -18,7 +18,7 @@ maintainers = [
     { name = "Mehdi Zare", email = "mehdizare@users.noreply.github.com" },
 ]
 readme = "README.md"
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.10,<3.15"
 keywords = [
     "fmp",
     "financial",
@@ -40,20 +40,17 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Framework :: AsyncIO",
     "Topic :: Office/Business :: Financial",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
     "httpx>=0.28.1",
-    "pydantic>=2.11.7",
+    "pydantic>=2.12.5",
     "pydantic-settings>=2.10.1",
     "python-dotenv>=1.1.1",
     "tenacity>=9.1.2",
-    "tqdm>=4.67.1",
-    "cachetools>=6.1.0",
-    "structlog>=25.4.0",
-    "pandas>=2.3.1",
 ]
 
 [project.license]
@@ -69,23 +66,21 @@ fmp-mcp = "fmp_data.mcp.cli:main"
 
 [project.optional-dependencies]
 mcp = [
-    "mcp[cli]>=1.12.4",
+    "mcp[cli]>=1.25.0",
     "pyyaml>=6.0.2",
 ]
 langchain = [
-    "faiss-cpu>=1.11.0.post1",
-    "langchain-core>=0.3.74",
+    "faiss-cpu>=1.13.2",
+    "langchain-core>=1.2.7",
     "langchain-community>=0.3.27",
-    "langchain-openai>=0.3.29",
+    "langchain-openai>=1.1.7",
     "langgraph>=0.6.4",
     "openai>=1.99.5",
     "tiktoken>=0.10.0",
 ]
 dev = [
     "ruff>=0.12.8",
-    "black>=25.1.0",
     "mypy>=1.17.1",
-    "types-cachetools>=6.1.0.20250717",
     "bandit[toml]>=1.8.6",
     "pip-audit>=2.9.0",
     "pytest>=8.4.1",
@@ -110,9 +105,7 @@ docs = [
 [dependency-groups]
 dev = [
     "ruff>=0.12.8",
-    "black>=25.1.0",
     "mypy>=1.17.1",
-    "types-cachetools>=6.1.0.20250717",
     "bandit[toml]>=1.8.6",
     "pip-audit>=2.9.0",
     "pytest>=8.4.1",
@@ -134,16 +127,16 @@ docs = [
     "mkdocstrings-python>=1.16.12",
 ]
 langchain = [
-    "faiss-cpu>=1.11.0.post1",
-    "langchain-core>=0.3.74",
+    "faiss-cpu>=1.13.2",
+    "langchain-core>=1.2.7",
     "langchain-community>=0.3.27",
-    "langchain-openai>=0.3.29",
+    "langchain-openai>=1.1.7",
     "langgraph>=0.6.4",
     "openai>=1.99.5",
     "tiktoken>=0.10.0",
 ]
 mcp = [
-    "mcp[cli]>=1.12.4",
+    "mcp[cli]>=1.25.0",
     "pyyaml>=6.0.2",
 ]
 
@@ -163,16 +156,6 @@ include = [
     "/LICENSE",
     "/pyproject.toml",
 ]
-
-[tool.black]
-line-length = 88
-target-version = [
-    "py310",
-    "py311",
-    "py312",
-    "py313",
-]
-include = "\\.pyi?$"
 
 [tool.ruff]
 target-version = "py310"
