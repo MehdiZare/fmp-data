@@ -160,17 +160,19 @@ class SECClient(EndpointGroup):
         """
         return self.client.request(SEC_COMPANY_SEARCH_CIK, cik=cik)
 
-    def get_profile(self, symbol: str) -> SECProfile:
+    def get_profile(self, symbol: str) -> SECProfile | None:
         """Get SEC profile for a company
 
         Args:
             symbol: Stock symbol
 
         Returns:
-            SEC profile for the company
+            SEC profile for the company, or None if not found
         """
         result = self.client.request(SEC_PROFILE, symbol=symbol)
-        if isinstance(result, list) and result:
+        if isinstance(result, list):
+            if not result:
+                return None
             return cast(SECProfile, result[0])
         return cast(SECProfile, result)
 

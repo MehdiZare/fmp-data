@@ -243,6 +243,14 @@ class TestSECClient:
         assert result.symbol == "AAPL"
 
     @patch("httpx.Client.request")
+    def test_get_profile_empty(self, mock_request, fmp_client, mock_response):
+        """Test fetching SEC profile with no results"""
+        mock_request.return_value = mock_response(status_code=200, json_data=[])
+
+        result = fmp_client.sec.get_profile("AAPL")
+        assert result is None
+
+    @patch("httpx.Client.request")
     def test_get_sic_codes(self, mock_request, fmp_client, mock_response):
         """Test fetching SIC codes"""
         sic_data = {"sicCode": "3571", "industry": "Electronic Computers"}

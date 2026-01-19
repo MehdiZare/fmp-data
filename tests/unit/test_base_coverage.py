@@ -85,6 +85,27 @@ class TestBaseClientCoverage:
         # Verify the retry count is properly managed
         assert base_client._rate_limit_retry_count == 0
 
+    def test_wait_for_retry_uses_retry_after(self, base_client):
+        """Prefer retry_after when RateLimitError is raised"""
+
+        class FakeOutcome:
+            def __init__(self, exc):
+                self._exc = exc
+                self.failed = True
+
+            def exception(self):
+                return self._exc
+
+        class FakeRetryState:
+            def __init__(self, exc):
+                self.outcome = FakeOutcome(exc)
+
+        retry_after = 7.5
+        exc = RateLimitError("rate limited", retry_after=retry_after)
+        retry_state = FakeRetryState(exc)
+
+        assert base_client._wait_for_retry(retry_state) == retry_after
+
     @patch("fmp_data.base.FMPLogger")
     def test_init_with_custom_max_retries(self, mock_logger):
         """Test initialization with custom max_rate_limit_retries"""

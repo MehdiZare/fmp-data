@@ -9,9 +9,10 @@ import httpx
 from pydantic import BaseModel
 from tenacity import (
     Retrying,
+    RetryCallState,
     after_log,
     before_sleep_log,
-    retry_if_exception_type,
+    retry_if_exception,
     stop_after_attempt,
     wait_exponential,
 )
@@ -102,6 +103,27 @@ class BaseClient:
         )
         time.sleep(wait_time)
 
+    def _wait_for_retry(self, retry_state: RetryCallState) -> float:
+        """
+        Prefer retry_after from RateLimitError, otherwise fall back to exponential backoff.
+        """
+        outcome = retry_state.outcome
+        if outcome is not None and outcome.failed:
+            exc = outcome.exception()
+            if isinstance(exc, RateLimitError) and exc.retry_after is not None:
+                return exc.retry_after
+        return wait_exponential(multiplier=1, min=4, max=10)(retry_state)
+
+    @staticmethod
+    def _is_retryable_error(exc: Exception) -> bool:
+        if isinstance(exc, (httpx.TimeoutException, httpx.NetworkError)):
+            return True
+        if isinstance(exc, RateLimitError):
+            return True
+        if isinstance(exc, httpx.HTTPStatusError):
+            return exc.response.status_code >= 500
+        return False
+
     @log_api_call()
     def request(self, endpoint: Endpoint[T], **kwargs: Any) -> T | list[T]:
         """
@@ -119,15 +141,8 @@ class BaseClient:
         # Create retryer with configurable max_retries
         retryer = Retrying(
             stop=stop_after_attempt(self.config.max_retries),
-            wait=wait_exponential(multiplier=1, min=4, max=10),
-            retry=retry_if_exception_type(
-                (
-                    httpx.TimeoutException,
-                    httpx.NetworkError,
-                    httpx.HTTPStatusError,
-                    RateLimitError,
-                )
-            ),
+            wait=self._wait_for_retry,
+            retry=retry_if_exception(self._is_retryable_error),
             before_sleep=before_sleep_log(logger, logging.WARNING),
             after=after_log(logger, logging.INFO),
             reraise=True,
@@ -182,12 +197,6 @@ class BaseClient:
                 endpoint.method.value, url, params=query_params
             )
 
-            # Handle 429 responses from the API
-            if response.status_code == 429:
-                self._rate_limiter.handle_response(response.status_code, response.text)
-                wait_time = self._rate_limiter.get_wait_time()
-                self._handle_rate_limit(wait_time)
-
             data = self.handle_response(response)
             return self._process_response(endpoint, data)
 
@@ -229,6 +238,9 @@ class BaseClient:
                 error_details["raw_content"] = e.response.content.decode()
 
             if e.response.status_code == 429:
+                self._rate_limiter.handle_response(
+                    e.response.status_code, e.response.text
+                )
                 wait_time = self._rate_limiter.get_wait_time()
                 raise RateLimitError(
                     f"Rate limit exceeded. Please wait {wait_time:.1f} seconds",

@@ -341,3 +341,31 @@ def test_request_non_retryable_error(mock_request, mock_endpoint, base_client):
         base_client.request(mock_endpoint)
 
     assert mock_request.call_count == 1  # Should not retry
+
+
+def test_request_retries_on_http_5xx(base_client):
+    """Test that 5xx HTTPStatusError is retried"""
+    response = Mock()
+    response.status_code = 500
+    http_error = httpx.HTTPStatusError("Server error", request=Mock(), response=response)
+
+    with patch.object(
+        base_client, "_execute_request", side_effect=[http_error, "ok"]
+    ) as mock_execute:
+        result = base_client.request(Mock())
+
+    assert result == "ok"
+    assert mock_execute.call_count == 2
+
+
+def test_request_does_not_retry_on_http_4xx(base_client):
+    """Test that 4xx HTTPStatusError is not retried"""
+    response = Mock()
+    response.status_code = 404
+    http_error = httpx.HTTPStatusError("Not found", request=Mock(), response=response)
+
+    with patch.object(base_client, "_execute_request", side_effect=http_error) as mock_execute:
+        with pytest.raises(httpx.HTTPStatusError):
+            base_client.request(Mock())
+
+    assert mock_execute.call_count == 1

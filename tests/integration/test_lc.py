@@ -166,7 +166,7 @@ class TestLangChainIntegration:
                     assert all(isinstance(tool, dict) for tool in tools)
                     assert all("parameters" in tool for tool in tools)
                 else:
-                    from langchain.tools import StructuredTool
+                    from langchain_core.tools import StructuredTool
 
                     assert all(isinstance(tool, StructuredTool) for tool in tools)
 
