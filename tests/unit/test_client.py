@@ -4,6 +4,7 @@ from unittest.mock import Mock, patch
 
 import httpx
 from pydantic import ValidationError as PydanticValidationError
+from pydantic_core import InitErrorDetails
 import pytest
 
 from fmp_data.client import FMPDataClient
@@ -77,9 +78,12 @@ class TestFMPDataClientInitialization:
     @patch("fmp_data.client.ClientConfig")
     def test_client_initialization_pydantic_validation_error(self, mock_config):
         """Test client initialization handles pydantic validation errors"""
+        errors: list[InitErrorDetails] = [
+            InitErrorDetails(type="missing", loc=("api_key",), input=None)
+        ]
         mock_config.side_effect = PydanticValidationError.from_exception_data(
             "Invalid config",
-            [{"type": "missing", "loc": ("api_key",), "msg": "Field required"}],
+            errors,
         )
 
         with pytest.raises(ConfigError, match="Invalid client configuration"):
