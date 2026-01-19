@@ -5,7 +5,7 @@ from datetime import date, datetime
 import json
 from logging import Logger
 from pathlib import Path
-from typing import Any, ClassVar, cast
+from typing import Any, ClassVar, Protocol, cast
 
 from langchain_core.embeddings import Embeddings  # type: ignore[import-not-found]
 from langchain_core.tools import StructuredTool  # type: ignore[import-not-found]
@@ -83,6 +83,14 @@ class ToolFactory:
             param_fields[param.name] = (field_type, Field(description=description))
 
         return param_fields
+
+
+class ToolLike(Protocol):
+    """Minimal protocol for tool objects returned by this module."""
+
+    name: str
+    description: str
+    args_schema: Any
 
 
 class VectorStoreMetadata(BaseModel):
@@ -255,7 +263,7 @@ class EndpointVectorStore:
     def _format_tool_for_provider(
         tool: StructuredTool,
         provider: str = "openai",
-    ) -> dict[str, Any] | StructuredTool:
+    ) -> dict[str, Any] | ToolLike:
         """
         Convert a LangChain ``StructuredTool`` into the JSON/function spec required
         by a specific provider.
@@ -478,7 +486,7 @@ class EndpointVectorStore:
             self.logger.error(f"Search failed: {e!s}")
             raise
 
-    def create_tool(self, info: EndpointInfo) -> StructuredTool:
+    def create_tool(self, info: EndpointInfo) -> ToolLike:
         """Create a LangChain tool from endpoint info."""
         if not info:
             raise ValueError("EndpointInfo cannot be None")
@@ -606,7 +614,7 @@ class EndpointVectorStore:
         k: int = 3,
         threshold: float = 0.3,
         provider: str | None = None,
-    ) -> Sequence[StructuredTool | dict[str, Any]]:
+    ) -> Sequence[ToolLike | dict[str, Any]]:
         """
         Get LangChain tools for relevant endpoints.
 
@@ -621,7 +629,7 @@ class EndpointVectorStore:
             List of tools (formatted or unformatted based on provider)
         """
         try:
-            tools: list[StructuredTool] = []
+            tools: list[ToolLike] = []
             if query:
                 results = self.search(query, k=k, threshold=threshold)
                 tools = [self.create_tool(r.info) for r in results]
