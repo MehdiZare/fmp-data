@@ -7,17 +7,21 @@ from pydantic import ValidationError as PydanticValidationError
 
 from fmp_data.alternative import AlternativeMarketsClient
 from fmp_data.base import BaseClient
+from fmp_data.batch import BatchClient
 from fmp_data.company.client import CompanyClient
 from fmp_data.config import ClientConfig, LoggingConfig, LogHandlerConfig
 from fmp_data.economics import EconomicsClient
 from fmp_data.exceptions import ConfigError
 from fmp_data.fundamental import FundamentalClient
+from fmp_data.index import IndexClient
 from fmp_data.institutional import InstitutionalClient
 from fmp_data.intelligence import MarketIntelligenceClient
 from fmp_data.investment import InvestmentClient
 from fmp_data.logger import FMPLogger
 from fmp_data.market import MarketClient
+from fmp_data.sec import SECClient
 from fmp_data.technical import TechnicalClient
+from fmp_data.transcripts import TranscriptsClient
 
 
 class FMPDataClient(BaseClient):
@@ -43,6 +47,10 @@ class FMPDataClient(BaseClient):
         self._investment: InvestmentClient | None = None
         self._alternative: AlternativeMarketsClient | None = None
         self._economics: EconomicsClient | None = None
+        self._batch: BatchClient | None = None
+        self._transcripts: TranscriptsClient | None = None
+        self._sec: SECClient | None = None
+        self._index: IndexClient | None = None
 
         if not api_key and (config is None or not config.api_key):
             raise ConfigError("Invalid client configuration: API key is required")
@@ -283,3 +291,51 @@ class FMPDataClient(BaseClient):
                 self.logger.debug("Initializing economics data client")
             self._economics = EconomicsClient(self)
         return self._economics
+
+    @property
+    def batch(self) -> BatchClient:
+        """Get or create the batch data client instance"""
+        if not self._initialized:
+            raise RuntimeError("Client not properly initialized")
+
+        if self._batch is None:
+            if self.logger:
+                self.logger.debug("Initializing batch data client")
+            self._batch = BatchClient(self)
+        return self._batch
+
+    @property
+    def transcripts(self) -> TranscriptsClient:
+        """Get or create the transcripts client instance"""
+        if not self._initialized:
+            raise RuntimeError("Client not properly initialized")
+
+        if self._transcripts is None:
+            if self.logger:
+                self.logger.debug("Initializing transcripts client")
+            self._transcripts = TranscriptsClient(self)
+        return self._transcripts
+
+    @property
+    def sec(self) -> SECClient:
+        """Get or create the SEC filings client instance"""
+        if not self._initialized:
+            raise RuntimeError("Client not properly initialized")
+
+        if self._sec is None:
+            if self.logger:
+                self.logger.debug("Initializing SEC client")
+            self._sec = SECClient(self)
+        return self._sec
+
+    @property
+    def index(self) -> IndexClient:
+        """Get or create the index constituents client instance"""
+        if not self._initialized:
+            raise RuntimeError("Client not properly initialized")
+
+        if self._index is None:
+            if self.logger:
+                self.logger.debug("Initializing index client")
+            self._index = IndexClient(self)
+        return self._index

@@ -47,10 +47,8 @@ def test_get_embeddings_openai(mock_openai):
     )
 
     config.get_embeddings()
-    # Based on the error, the implementation is incorrectly using openai_api_base
-    # This needs to be fixed in the implementation to use openai_api_key instead
     mock_openai.assert_called_once_with(
-        openai_api_base="test-key", model="text-embedding-ada-002"
+        api_key="test-key", model="text-embedding-ada-002"
     )
 
 

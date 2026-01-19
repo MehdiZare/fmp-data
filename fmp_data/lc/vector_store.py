@@ -138,12 +138,26 @@ class EndpointVectorStore:
         cache_dir: str | None = None,
         store_name: str = "default",
         logger: Logger | None = None,
+        allow_dangerous_deserialization: bool = False,
     ):
-        """Initialize vector store"""
+        """Initialize vector store
+
+        Args:
+            client: FMP API client instance
+            registry: Endpoint registry instance
+            embeddings: LangChain embeddings instance
+            cache_dir: Directory for storing vector store cache
+            store_name: Name for this vector store instance
+            logger: Optional logger instance
+            allow_dangerous_deserialization: If True, allows loading pickled data from
+                the cached FAISS index. Only enable this if you trust the source of
+                the cache files. Defaults to False for security.
+        """
         self.client = client
         self.registry = registry
         self.embeddings = embeddings
         self.logger = logger or FMPLogger().get_logger(__name__)
+        self._allow_dangerous_deserialization = allow_dangerous_deserialization
 
         # Setup storage paths
         self.cache_dir = Path(cache_dir) if cache_dir else Path.home() / ".fmp_cache"
@@ -192,7 +206,21 @@ class EndpointVectorStore:
         return self.index_path.exists() and self.metadata_path.exists()
 
     def _load_store(self) -> None:
-        """Load stored vectors and metadata"""
+        """Load stored vectors and metadata
+
+        Raises:
+            ConfigError: If loading fails or if dangerous deserialization is not allowed
+        """
+        if not self._allow_dangerous_deserialization:
+            raise ConfigError(
+                "Cannot load cached vector store: "
+                "allow_dangerous_deserialization=False. "
+                "Loading a cached FAISS index involves deserializing pickled "
+                "data which can execute arbitrary code. Only enable this if "
+                "you trust the cache source. "
+                "Set allow_dangerous_deserialization=True to load cached stores."
+            )
+
         try:
             # Load metadata
             with self.metadata_path.open("r") as f:
@@ -205,6 +233,12 @@ class EndpointVectorStore:
                 self.embeddings,
                 allow_dangerous_deserialization=True,
             )
+        except ConfigError:
+            raise
+        except json.JSONDecodeError as e:
+            raise ConfigError(f"Failed to parse vector store metadata: {e!s}") from e
+        except OSError as e:
+            raise ConfigError(f"Failed to read vector store files: {e!s}") from e
         except Exception as e:
             raise ConfigError(f"Failed to load vector store: {e!s}") from e
 
@@ -298,7 +332,11 @@ class EndpointVectorStore:
             return False
 
     def save(self) -> None:
-        """Save vector store to disk"""
+        """Save vector store to disk
+
+        Raises:
+            ConfigError: If saving fails due to IO or serialization errors
+        """
         try:
             # Update and save metadata
             self.metadata.updated_at = datetime.now()
@@ -313,6 +351,10 @@ class EndpointVectorStore:
             self.logger.info(
                 f"Saved vector store with {self.metadata.num_vectors} vectors"
             )
+        except OSError as e:
+            raise ConfigError(f"Failed to write vector store files: {e!s}") from e
+        except (TypeError, ValueError) as e:
+            raise ConfigError(f"Failed to serialize vector store data: {e!s}") from e
         except Exception as e:
             raise ConfigError(f"Failed to save vector store: {e!s}") from e
 

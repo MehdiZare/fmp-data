@@ -136,7 +136,7 @@ def _lazy_import_mcp() -> _types.ModuleType:
     except ImportError as e:
         raise ImportError(
             "MCP integration module could not be imported. "
-            "Run:  pip install 'fmp-data[mcp-server]'"
+            "Run:  pip install 'fmp-data[mcp]'"
         ) from e
 
 
@@ -146,7 +146,7 @@ _LAZY_IMPORTS = {
     "langchain": _lazy_import_langchain,
     "mcp": _lazy_import_mcp,
     "create_vector_store": lambda: _lazy_import_vector_store().create_vector_store,
-    "FMPVectorStore": lambda: _lazy_import_vector_store().FMPVectorStore,
+    "EndpointVectorStore": lambda: _lazy_import_vector_store().EndpointVectorStore,
 }
 
 

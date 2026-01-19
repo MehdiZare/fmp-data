@@ -64,7 +64,7 @@ class EmbeddingConfig(BaseModel):
                 from langchain_openai import OpenAIEmbeddings
 
                 return OpenAIEmbeddings(
-                    openai_api_base=self.api_key,
+                    api_key=self.api_key,
                     model=self.model_name or "text-embedding-ada-002",
                     **self.additional_kwargs,
                 )

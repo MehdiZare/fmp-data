@@ -8,9 +8,9 @@ import warnings
 import httpx
 from pydantic import BaseModel
 from tenacity import (
+    Retrying,
     after_log,
     before_sleep_log,
-    retry,
     retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
@@ -102,15 +102,6 @@ class BaseClient:
         )
         time.sleep(wait_time)
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=4, max=10),
-        retry=retry_if_exception_type(
-            (httpx.TimeoutException, httpx.NetworkError, httpx.HTTPStatusError)
-        ),
-        before_sleep=before_sleep_log(logger, logging.WARNING),
-        after=after_log(logger, logging.INFO),
-    )
     @log_api_call()
     def request(self, endpoint: Endpoint[T], **kwargs: Any) -> T | list[T]:
         """
@@ -123,15 +114,47 @@ class BaseClient:
         Returns:
             Either a single Pydantic model of type T or a list of T.
         """
-        # First, check if we're already over the rate limit
+        self._rate_limit_retry_count = 0  # Reset counter at start of new request
+
+        # Create retryer with configurable max_retries
+        retryer = Retrying(
+            stop=stop_after_attempt(self.config.max_retries),
+            wait=wait_exponential(multiplier=1, min=4, max=10),
+            retry=retry_if_exception_type(
+                (
+                    httpx.TimeoutException,
+                    httpx.NetworkError,
+                    httpx.HTTPStatusError,
+                    RateLimitError,
+                )
+            ),
+            before_sleep=before_sleep_log(logger, logging.WARNING),
+            after=after_log(logger, logging.INFO),
+            reraise=True,
+        )
+
+        for attempt in retryer:
+            with attempt:
+                return self._execute_request(endpoint, **kwargs)
+
+        # This should never be reached due to reraise=True, but satisfies type checker
+        raise FMPError("Request failed after all retry attempts")
+
+    def _execute_request(self, endpoint: Endpoint[T], **kwargs: Any) -> T | list[T]:
+        """
+        Execute a single request attempt with rate limiting.
+
+        Args:
+            endpoint: The Endpoint object describing the request.
+            **kwargs: Request parameters.
+
+        Returns:
+            Either a single Pydantic model of type T or a list of T.
+        """
+        # Check rate limit before making request
         if not self._rate_limiter.should_allow_request():
             wait_time = self._rate_limiter.get_wait_time()
-            raise RateLimitError(
-                f"Rate limit exceeded. Please wait {wait_time:.1f} seconds",
-                retry_after=wait_time,
-            )
-
-        self._rate_limit_retry_count = 0  # Reset counter at start of new request
+            self._handle_rate_limit(wait_time)
 
         try:
             self._rate_limiter.record_request()
@@ -163,14 +186,14 @@ class BaseClient:
             if response.status_code == 429:
                 self._rate_limiter.handle_response(response.status_code, response.text)
                 wait_time = self._rate_limiter.get_wait_time()
-                raise RateLimitError(
-                    f"Rate limit exceeded. Please wait {wait_time:.1f} seconds",
-                    retry_after=wait_time,
-                )
+                self._handle_rate_limit(wait_time)
 
             data = self.handle_response(response)
             return self._process_response(endpoint, data)
 
+        except RateLimitError:
+            # Re-raise rate limit errors to be handled by retry logic
+            raise
         except Exception as e:
             self.logger.error(
                 f"Request failed: {e!s}",
@@ -238,54 +261,96 @@ class BaseClient:
             ) from e
 
     @staticmethod
-    def _process_response(  # noqa: C901
-        endpoint: Endpoint[T], data: Any
-    ) -> T | list[T]:
-        """
-        Process the response data with warnings, returning T or list[T].
-        """
-        if isinstance(data, dict):
-            # Check for error messages
-            if "Error Message" in data:
-                raise FMPError(data["Error Message"])
-            if "message" in data:
-                raise FMPError(data["message"])
-            if "error" in data:
-                raise FMPError(data["error"])
+    def _check_error_response(data: dict[str, Any]) -> None:
+        """Check for error messages in response data and raise FMPError if found.
 
-        if isinstance(data, list):
-            processed_items: list[T] = []
-            for item in data:
-                with warnings.catch_warnings(record=True) as w:
-                    warnings.simplefilter("always")
-                    if isinstance(item, dict):
-                        processed_item = endpoint.response_model.model_validate(item)
-                    else:
-                        # If response_model is a primitive type (str, int, float, etc.)
-                        if endpoint.response_model in (str, int, float, bool):
-                            processed_item = endpoint.response_model(item)  # type: ignore[call-arg]
-                        else:
-                            # If it's not a dict, try to feed it into the first field
-                            model = endpoint.response_model
-                            try:
-                                first_field = next(iter(model.__annotations__))
-                                field_info = model.model_fields[first_field]
-                                field_name = field_info.alias or first_field
-                                processed_item = model.model_validate(
-                                    {field_name: item}
-                                )
-                            except (StopIteration, KeyError, AttributeError) as exc:
-                                raise ValueError(
-                                    f"Invalid model structure for {model.__name__}"
-                                ) from exc
-                    for warning in w:
-                        logger.warning(f"Validation warning: {warning.message}")
-                    processed_items.append(processed_item)
-            return processed_items
+        Args:
+            data: Dictionary response data to check
 
-        # Check if response_model is a primitive type before validation
+        Raises:
+            FMPError: If an error message is found in the data
+        """
+        if "Error Message" in data:
+            raise FMPError(data["Error Message"])
+        if "message" in data:
+            raise FMPError(data["message"])
+        if "error" in data:
+            raise FMPError(data["error"])
+
+    @staticmethod
+    def _validate_single_item(endpoint: Endpoint[T], item: Any) -> T:
+        """Validate a single item against the endpoint's response model.
+
+        Args:
+            endpoint: The endpoint containing the response model
+            item: The item to validate
+
+        Returns:
+            Validated model instance
+
+        Raises:
+            ValueError: If the model structure is invalid
+        """
+        if isinstance(item, dict):
+            return endpoint.response_model.model_validate(item)
+
+        # Handle primitive types
         if endpoint.response_model in (str, int, float, bool):
-            return endpoint.response_model(data)  # type: ignore[call-arg]
+            return endpoint.response_model(item)  # type: ignore[return-value]
+
+        # Try to feed non-dict value into the first field
+        model = endpoint.response_model
+        try:
+            first_field = next(iter(model.__annotations__))
+            field_info = model.model_fields[first_field]
+            field_name = field_info.alias or first_field
+            return model.model_validate({field_name: item})
+        except (StopIteration, KeyError, AttributeError) as exc:
+            raise ValueError(f"Invalid model structure for {model.__name__}") from exc
+
+    @staticmethod
+    def _process_list_response(endpoint: Endpoint[T], data: list[Any]) -> list[T]:
+        """Process a list response with validation warnings.
+
+        Args:
+            endpoint: The endpoint containing the response model
+            data: List of items to process
+
+        Returns:
+            List of validated model instances
+        """
+        processed_items: list[T] = []
+        for item in data:
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                processed_item = BaseClient._validate_single_item(endpoint, item)
+                for warning in w:
+                    logger.warning(f"Validation warning: {warning.message}")
+                processed_items.append(processed_item)
+        return processed_items
+
+    @staticmethod
+    def _process_response(endpoint: Endpoint[T], data: Any) -> T | list[T]:
+        """Process the response data with warnings, returning T or list[T].
+
+        Args:
+            endpoint: The endpoint containing the response model
+            data: Response data to process
+
+        Returns:
+            Validated model instance or list of instances
+        """
+        # Check for error messages in dict responses
+        if isinstance(data, dict):
+            BaseClient._check_error_response(data)
+
+        # Process list responses
+        if isinstance(data, list):
+            return BaseClient._process_list_response(endpoint, data)
+
+        # Process single item responses
+        if endpoint.response_model in (str, int, float, bool):
+            return endpoint.response_model(data)  # type: ignore[return-value]
         return endpoint.response_model.model_validate(data)
 
     async def request_async(self, endpoint: Endpoint[T], **kwargs: Any) -> T | list[T]:

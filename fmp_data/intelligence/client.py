@@ -86,16 +86,36 @@ from fmp_data.intelligence.models import (
 class MarketIntelligenceClient(EndpointGroup):
     """Client for market intelligence endpoints"""
 
+    @staticmethod
+    def _build_date_params(
+        start_date: date | None = None,
+        end_date: date | None = None,
+        start_key: str = "start_date",
+        end_key: str = "end_date",
+    ) -> dict[str, str]:
+        """Build date parameters dict from optional date values
+
+        Args:
+            start_date: Start date for the date range
+            end_date: End date for the date range
+            start_key: Parameter key for start date (default: 'start_date')
+            end_key: Parameter key for end date (default: 'end_date')
+
+        Returns:
+            Dictionary with formatted date parameters
+        """
+        params: dict[str, str] = {}
+        if start_date:
+            params[start_key] = start_date.strftime("%Y-%m-%d")
+        if end_date:
+            params[end_key] = end_date.strftime("%Y-%m-%d")
+        return params
+
     def get_earnings_calendar(
         self, start_date: date | None = None, end_date: date | None = None
     ) -> list[EarningEvent]:
         """Get earnings calendar"""
-        params = {}
-        if start_date:
-            params["start_date"] = start_date.strftime("%Y-%m-%d")
-        if end_date:
-            params["end_date"] = end_date.strftime("%Y-%m-%d")
-
+        params = self._build_date_params(start_date, end_date)
         return self.client.request(EARNINGS_CALENDAR, **params)
 
     def get_historical_earnings(self, symbol: str) -> list[EarningEvent]:
@@ -108,12 +128,7 @@ class MarketIntelligenceClient(EndpointGroup):
         end_date: date | None = None,
     ) -> list[EarningConfirmed]:
         """Get confirmed earnings dates"""
-        params = {}
-        if start_date:
-            params["start_date"] = start_date.strftime("%Y-%m-%d")
-        if end_date:
-            params["end_date"] = end_date.strftime("%Y-%m-%d")
-
+        params = self._build_date_params(start_date, end_date)
         return self.client.request(EARNINGS_CONFIRMED, **params)
 
     def get_earnings_surprises(self, symbol: str) -> list[EarningSurprise]:
@@ -124,36 +139,21 @@ class MarketIntelligenceClient(EndpointGroup):
         self, start_date: date | None = None, end_date: date | None = None
     ) -> list[DividendEvent]:
         """Get dividends calendar"""
-        params = {}
-        if start_date:
-            params["start_date"] = start_date.strftime("%Y-%m-%d")
-        if end_date:
-            params["end_date"] = end_date.strftime("%Y-%m-%d")
-
+        params = self._build_date_params(start_date, end_date)
         return self.client.request(DIVIDENDS_CALENDAR, **params)
 
     def get_stock_splits_calendar(
         self, start_date: date | None = None, end_date: date | None = None
     ) -> list[StockSplitEvent]:
         """Get stock splits calendar"""
-        params = {}
-        if start_date:
-            params["start_date"] = start_date.strftime("%Y-%m-%d")
-        if end_date:
-            params["end_date"] = end_date.strftime("%Y-%m-%d")
-
+        params = self._build_date_params(start_date, end_date)
         return self.client.request(STOCK_SPLITS_CALENDAR, **params)
 
     def get_ipo_calendar(
         self, start_date: date | None = None, end_date: date | None = None
     ) -> list[IPOEvent]:
         """Get IPO calendar"""
-        params = {}
-        if start_date:
-            params["start_date"] = start_date.strftime("%Y-%m-%d")
-        if end_date:
-            params["end_date"] = end_date.strftime("%Y-%m-%d")
-
+        params = self._build_date_params(start_date, end_date)
         return self.client.request(IPO_CALENDAR, **params)
 
     def get_fmp_articles(self, page: int = 0, size: int = 5) -> list[FMPArticle]:
