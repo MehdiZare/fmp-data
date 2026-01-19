@@ -96,9 +96,7 @@ def _sync_with_uv(session: Session, extras: Iterable[str] = ()) -> None:
                 "responses>=0.25.3",
                 "vcrpy>=6.0.2",
                 "ruff>=0.12.2",
-                "black>=24.10.0",
                 "mypy>=1.13.0",
-                "types-cachetools>=6.0.0.20250525",
                 "bandit[toml]>=1.7.10",
                 "pip-audit>=2.7.0",
             )
@@ -344,10 +342,10 @@ def test_local(session: Session) -> None:
 
 @nox.session(python=DEFAULT_PYTHON, tags=["lint"])
 def lint(session: Session) -> None:
-    """Static style checks (ruff, black - no code execution)."""
+    """Static style checks (ruff check and format - no code execution)."""
     _sync_with_uv(session, extras=["dev"])
     session.run("ruff", "check", ".", "--output-format=concise")
-    session.run("black", "--check", ".")
+    session.run("ruff", "format", "--check", ".")
 
 
 @nox.session(python=DEFAULT_PYTHON, tags=["typecheck"])
