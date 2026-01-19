@@ -4,74 +4,93 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Key Development Commands
 
+This project has two Makefiles:
+- **`Makefile`**: End-user commands (simple, no special tools required)
+- **`Makefile.dev`**: Maintainer/developer commands (requires nox, poetry via uvx)
+
 ### Testing
 ```bash
-# Run tests with coverage (fast, local development)
+# Run tests (basic)
 make test
 
-# Run all tests for all Python versions and features
-make test-all
-
-# Run tests with coverage report
-make test-cov
+# Run tests for all Python versions and features (requires nox)
+make -f Makefile.dev test-all
 
 # Run specific feature tests
-make test-lang    # Test LangChain features
-make test-mcp     # Test MCP features
+make -f Makefile.dev test-lang    # Test LangChain features
+make -f Makefile.dev test-mcp     # Test MCP features
 
 # Run a single test file
 pytest tests/unit/test_client.py
 
 # Run integration tests (requires FMP_TEST_API_KEY)
 FMP_TEST_API_KEY=your_test_key pytest tests/integration/
+
+# Run smoke tests (quick validation)
+make -f Makefile.dev smoke
 ```
 
 ### Code Quality
 ```bash
-# Run all quick checks (lint, format, typecheck, test)
-make check
+# Run linting
+make lint
+
+# Check code formatting
+make format
 
 # Fix all auto-fixable issues
 make fix
 
-# Run linting
-make lint
+# Check types for all features (requires nox)
+make -f Makefile.dev typecheck-all
 
-# Check types (core package only, fast)
-make typecheck
+# Run full CI checks locally (requires nox)
+make -f Makefile.dev ci
 
-# Check types for all features
-make typecheck-all
-
-# Run security checks
-make security
-
-# Run full CI checks locally
-make ci
+# Audit dependencies for security issues
+make -f Makefile.dev deps-audit
 ```
 
 ### Development Workflow
 ```bash
-# Install development environment
+# Install package with all features
 make install
 
-# Quick development cycle (fix, lint, test)
-make quick
+# Install with MCP server support only
+make install-mcp
 
-# Full validation (everything)
-make full
+# Update all dependencies
+make update
 
 # Clean build artifacts and caches
 make clean
 ```
 
-### Building and Publishing
+### Building and Publishing (Maintainers)
 ```bash
 # Build package
-make build
+make -f Makefile.dev build
 
-# Build and verify package
-make build-check
+# Build and verify package with twine
+make -f Makefile.dev build-check
+
+# Publish to Test PyPI
+make -f Makefile.dev publish-test
+
+# Publish to PyPI
+make -f Makefile.dev publish
+
+# List all available nox sessions
+make -f Makefile.dev nox-list
+```
+
+### Documentation
+```bash
+# Build documentation
+make -f Makefile.dev docs
+
+# Serve documentation locally
+make -f Makefile.dev docs-serve
 ```
 
 ## Architecture Overview
@@ -104,10 +123,18 @@ fmp_data/
 
 ### Client Initialization Pattern
 Each domain client inherits from `BaseClient` and is instantiated lazily by the main `FMPDataClient`. The base client handles:
-- HTTP requests with retry logic via `tenacity`
-- Rate limiting based on API tier
+- HTTP requests with retry logic via `tenacity` (exponential backoff: 3 attempts, 4-10 second waits)
+- Rate limiting based on API tier (configurable daily limit, requests per second/minute)
 - Response validation using Pydantic models
-- Consistent error handling
+- Consistent error handling with custom exceptions
+
+### Retry and Rate Limiting
+The `BaseClient` uses `tenacity` for automatic retries on transient failures:
+- Retries on `TimeoutException`, `NetworkError`, `HTTPStatusError`
+- Exponential backoff: multiplier=1, min=4s, max=10s
+- Maximum 3 attempts before failing
+
+Rate limiting is handled by `FMPRateLimiter` with configurable quotas per API tier.
 
 ### Endpoint Definition Pattern
 Each domain module follows this structure:
@@ -124,6 +151,30 @@ The project uses lazy imports for optional dependencies:
 
 These are only imported when accessed, preventing import errors if extras aren't installed.
 
+## Exception Hierarchy
+
+Custom exceptions for error handling (all in `fmp_data/exceptions.py`):
+
+```python
+FMPError                  # Base exception for all FMP API errors
+├── RateLimitError        # 429 - includes retry_after attribute
+├── AuthenticationError   # 401 - invalid or missing API key
+├── ValidationError       # 400 - invalid request parameters
+└── ConfigError           # Configuration errors
+```
+
+All exceptions include `message`, `status_code`, and `response` attributes.
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `FMP_API_KEY` | Yes | Main API key for FMP API access |
+| `FMP_TEST_API_KEY` | For tests | API key for integration tests |
+| `FMP_BASE_URL` | No | Override default API base URL |
+| `FMP_TIMEOUT` | No | Request timeout in seconds (default: 30) |
+| `FMP_MAX_RETRIES` | No | Max retry attempts (default: 3) |
+
 ## Important Development Notes
 
 ### API Key Management
@@ -136,18 +187,21 @@ These are only imported when accessed, preventing import errors if extras aren't
 - Integration tests use VCR.py cassettes to record/replay API calls
 - Coverage target is 80% (excluding predefined endpoints)
 - Run `make test` frequently during development
+- Use `make -f Makefile.dev test-all` for comprehensive cross-version testing via nox
 
 ### Code Style
 - Uses `ruff` for linting and formatting (replaces black/isort/flake8)
 - Type hints are required (enforced by mypy)
 - Follow existing patterns in the codebase
 
-### Poetry & UV
-- This project uses Poetry for dependency management with UV for fast installs
-- Always use `make install` or `uv sync` instead of pip directly
+### Dependency Management
+- This project uses UV for dependency management and fast installs
 - Lock file (`uv.lock`) ensures reproducible builds
+- Use `make install` or `uv sync` instead of pip directly
+- Poetry is used only for publishing (via `uvx poetry`)
 
 ### Pre-commit Hooks
 - Automatically run on commit after `make install`
 - Include ruff, mypy, and security checks
-- Use `make pre-commit` to run manually on all files
+- Use `pre-commit run --all-files` to run manually on all files
+- Use `make -f Makefile.dev pre-commit-update` to update hooks
