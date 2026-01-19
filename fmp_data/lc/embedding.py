@@ -4,7 +4,7 @@ import json
 import os
 from typing import Any
 
-from langchain_core.embeddings import Embeddings
+from langchain_core.embeddings import Embeddings  # type: ignore[import-not-found]
 from pydantic import BaseModel, ConfigDict, Field
 
 from fmp_data.exceptions import ConfigError

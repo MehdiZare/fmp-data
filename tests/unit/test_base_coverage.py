@@ -1,8 +1,10 @@
 """Additional tests for base.py to improve coverage"""
 
 from unittest.mock import Mock, patch
+from typing import cast
 
 import pytest
+from tenacity import RetryCallState
 
 from fmp_data.base import BaseClient
 from fmp_data.config import ClientConfig
@@ -102,7 +104,7 @@ class TestBaseClientCoverage:
 
         retry_after = 7.5
         exc = RateLimitError("rate limited", retry_after=retry_after)
-        retry_state = FakeRetryState(exc)
+        retry_state = cast(RetryCallState, cast(object, FakeRetryState(exc)))
 
         assert base_client._wait_for_retry(retry_state) == retry_after
 

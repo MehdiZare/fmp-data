@@ -1,11 +1,17 @@
 # tests/unit/lc/test_imports.py
-from langchain_core.embeddings import Embeddings as CoreEmbeddings
-from langchain_core.tools import StructuredTool as CoreStructuredTool
+import importlib
+
+import pytest
 
 from fmp_data.lc import vector_store
 
 
 def test_langchain_import_paths():
     """Ensure LangChain core import paths are used."""
-    assert vector_store.Embeddings is CoreEmbeddings
-    assert vector_store.StructuredTool is CoreStructuredTool
+    pytest.importorskip("langchain_core")
+
+    core_embeddings = importlib.import_module("langchain_core.embeddings").Embeddings
+    core_tools = importlib.import_module("langchain_core.tools").StructuredTool
+
+    assert getattr(vector_store, "Embeddings") is core_embeddings
+    assert getattr(vector_store, "StructuredTool") is core_tools

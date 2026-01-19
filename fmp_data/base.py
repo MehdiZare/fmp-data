@@ -115,7 +115,7 @@ class BaseClient:
         return wait_exponential(multiplier=1, min=4, max=10)(retry_state)
 
     @staticmethod
-    def _is_retryable_error(exc: Exception) -> bool:
+    def _is_retryable_error(exc: BaseException) -> bool:
         if isinstance(exc, (httpx.TimeoutException, httpx.NetworkError)):
             return True
         if isinstance(exc, RateLimitError):

@@ -7,16 +7,15 @@ from logging import Logger
 from pathlib import Path
 from typing import Any, ClassVar, cast
 
-from langchain_core.embeddings import Embeddings
-from langchain_core.tools import StructuredTool
-from langchain_community.docstore.in_memory import InMemoryDocstore
-from langchain_core.documents import Document
-from langchain_core.utils.function_calling import convert_to_openai_function
+from langchain_core.embeddings import Embeddings  # type: ignore[import-not-found]
+from langchain_core.tools import StructuredTool  # type: ignore[import-not-found]
+from langchain_core.documents import Document  # type: ignore[import-not-found]
+
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
 try:
     import faiss
-    from langchain_community.vectorstores import FAISS
+    from langchain_community.vectorstores import FAISS  # type: ignore[import-not-found]
 except ModuleNotFoundError:  # pragma: no cover
     raise ImportError(
         "FAISS is required for vector-store support. "
@@ -180,6 +179,16 @@ class EndpointVectorStore:
                 dimension = len(self.embeddings.embed_query("test"))
                 index = faiss.IndexFlatL2(dimension)
 
+                try:
+                    from langchain_community.docstore.in_memory import (  # type: ignore[import-not-found]
+                        InMemoryDocstore,
+                    )
+                except ModuleNotFoundError as exc:  # pragma: no cover
+                    raise ImportError(
+                        "LangChain dependencies not available. "
+                        "Install with: pip install 'fmp-data[langchain]'"
+                    ) from exc
+
                 self.vector_store = FAISS(
                     embedding_function=self.embeddings,
                     index=index,
@@ -242,10 +251,6 @@ class EndpointVectorStore:
         except Exception as e:
             raise ConfigError(f"Failed to load vector store: {e!s}") from e
 
-    from typing import Any
-
-    from pydantic import BaseModel
-
     @staticmethod
     def _format_tool_for_provider(
         tool: StructuredTool,
@@ -268,6 +273,15 @@ class EndpointVectorStore:
         """
         match provider.lower():
             case "openai":
+                try:
+                    from langchain_core.utils.function_calling import (  # type: ignore[import-not-found]
+                        convert_to_openai_function,
+                    )
+                except ModuleNotFoundError as exc:  # pragma: no cover
+                    raise ImportError(
+                        "LangChain dependencies not available. "
+                        "Install with: pip install 'fmp-data[langchain]'"
+                    ) from exc
                 return convert_to_openai_function(tool)
 
             case "anthropic":

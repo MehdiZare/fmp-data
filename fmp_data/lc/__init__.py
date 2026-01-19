@@ -15,7 +15,7 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING, Any
 
-from langchain_core.embeddings import Embeddings
+from langchain_core.embeddings import Embeddings  # type: ignore[import-not-found]
 
 from fmp_data.lc.config import LangChainConfig
 from fmp_data.lc.embedding import EmbeddingProvider
@@ -80,7 +80,7 @@ def setup_registry(client: FMPDataClient) -> EndpointRegistry:
     Returns:
         Configured endpoint registry
     """
-    registry = EndpointRegistry()
+    endpoint_registry = EndpointRegistry()
 
     # Get endpoint groups with lazy loading to avoid circular imports
     from fmp_data.lc.registry import get_endpoint_groups
@@ -112,14 +112,14 @@ def setup_registry(client: FMPDataClient) -> EndpointRegistry:
         # Register the batch for this group
         if endpoints_for_batch:
             try:
-                registry.register_batch(endpoints_for_batch)
+                endpoint_registry.register_batch(endpoints_for_batch)
                 logger.debug(
                     f"Registered {len(endpoints_for_batch)} endpoints from {group_name}"
                 )
             except Exception as e:
                 logger.error(f"Failed to register {group_name} endpoints: {e}")
 
-    return registry
+    return endpoint_registry
 
 
 def create_vector_store(

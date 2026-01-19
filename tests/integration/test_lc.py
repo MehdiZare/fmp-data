@@ -1,8 +1,8 @@
 from collections.abc import Generator
 from datetime import datetime
+import importlib
 import os
 
-from langchain_openai import OpenAIEmbeddings
 from pydantic import SecretStr
 import pytest
 
@@ -20,8 +20,10 @@ def openai_api_key() -> str:
 
 
 @pytest.fixture(scope="session")
-def embeddings(openai_api_key: str) -> OpenAIEmbeddings:
+def embeddings(openai_api_key: str):
     """Create OpenAI embeddings instance"""
+    from langchain_openai import OpenAIEmbeddings  # type: ignore[import-not-found]
+
     return OpenAIEmbeddings(
         openai_api_key=openai_api_key, model="text-embedding-3-small"
     )
@@ -40,7 +42,7 @@ def langchain_config(fmp_client: FMPDataClient, openai_api_key: str) -> LangChai
 @pytest.fixture(scope="session")
 def vector_store(
     fmp_client: FMPDataClient,
-    embeddings: OpenAIEmbeddings,
+    embeddings,
     tmp_path_factory,
 ) -> Generator[EndpointVectorStore, None, None]:
     """Create temporary vector store for testing"""
@@ -83,7 +85,7 @@ class TestLangChainIntegration:
     def test_vector_store_creation(
         self,
         fmp_client: FMPDataClient,
-        embeddings: OpenAIEmbeddings,
+        embeddings,
         tmp_path,
     ):
         """Test vector store creation and basic functionality"""
@@ -166,7 +168,9 @@ class TestLangChainIntegration:
                     assert all(isinstance(tool, dict) for tool in tools)
                     assert all("parameters" in tool for tool in tools)
                 else:
-                    from langchain_core.tools import StructuredTool
+                    StructuredTool = importlib.import_module(
+                        "langchain_core.tools"
+                    ).StructuredTool
 
                     assert all(isinstance(tool, StructuredTool) for tool in tools)
 
