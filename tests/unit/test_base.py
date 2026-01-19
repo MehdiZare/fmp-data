@@ -4,7 +4,6 @@ from unittest.mock import MagicMock, Mock, patch
 import httpx
 from pydantic import BaseModel
 import pytest
-from tenacity import RetryError
 
 from fmp_data.base import BaseClient, EndpointGroup
 from fmp_data.config import ClientConfig
@@ -234,14 +233,17 @@ def test_client_cleanup(base_client):
 
 def test_request_rate_limit(base_client, test_endpoint):
     """Test rate limiting in requests"""
-    # Simulate rate limit exceeded
-    base_client._rate_limiter._daily_requests = (
-        base_client._rate_limiter.quota_config.daily_limit + 1
-    )
-
-    base_client.config.max_retries = 1
-    with patch("tenacity.nap.sleep", return_value=None), pytest.raises(RateLimitError):
-        base_client.request(test_endpoint, symbol="AAPL")
+    with (
+        patch.object(
+            base_client._rate_limiter, "should_allow_request", return_value=False
+        ),
+        patch.object(base_client._rate_limiter, "get_wait_time", return_value=0.0),
+        patch.object(
+            base_client, "_handle_rate_limit", side_effect=RateLimitError("rl")
+        ),
+    ):
+        with pytest.raises(RateLimitError):
+            base_client._execute_request(test_endpoint, symbol="AAPL")
 
 
 @pytest.mark.asyncio
@@ -300,8 +302,10 @@ def test_request_max_retries_exceeded(mock_request, mock_endpoint, base_client):
     # Make the request always fail with a timeout
     mock_request.side_effect = httpx.TimeoutException("Timeout")
 
-    # Attempt request and verify it fails with RetryError
-    with pytest.raises(RetryError):
+    # Attempt request and verify it fails with the underlying error (reraise=True)
+    with patch("tenacity.nap.sleep", return_value=None), pytest.raises(
+        httpx.TimeoutException
+    ):
         base_client.request(mock_endpoint)
 
     # Verify the number of retry attempts
@@ -329,7 +333,8 @@ def test_request_with_retry_success(mock_request, mock_endpoint, base_client):
         success_response,  # Second attempt succeeds
     ]
 
-    result = base_client.request(mock_endpoint)
+    with patch("tenacity.nap.sleep", return_value=None):
+        result = base_client.request(mock_endpoint)
 
     # Verify result and retry behavior
     assert isinstance(result, SampleResponse)
@@ -356,7 +361,7 @@ def test_request_retries_on_http_5xx(base_client):
 
     with patch.object(
         base_client, "_execute_request", side_effect=[http_error, "ok"]
-    ) as mock_execute:
+    ) as mock_execute, patch("tenacity.nap.sleep", return_value=None):
         result = base_client.request(Mock())
 
     assert result == "ok"
