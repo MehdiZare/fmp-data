@@ -1,7 +1,7 @@
 """
 Nox configuration for *fmp-data*
 
-▪ test matrix      : 3.10 ─ 3.12 (3.13 when available)
+▪ test matrix      : 3.10 ─ 3.14
 ▪ optional groups  : dev, lint, typecheck, security, langchain, mcp-server …
 ▪ package manager  : uv (fast resolver / installer)
 
@@ -26,19 +26,22 @@ from nox.sessions import Session
 # --------------------------------------------------------------------------- #
 
 # Python interpreters used across sessions
-# Use the current Python version in CI, or 3.13 locally if available
+# Use the current Python version in CI, or the newest local version if available
 if os.getenv("CI") == "true":
-    # In CI, use the Python version that's already set up
+    # In CI, use the versions explicitly installed in the matrix
     current_version = f"{sys.version_info.major}.{sys.version_info.minor}"
-    PY_VERSIONS: Sequence[str] = ("3.10", "3.11", "3.12", "3.13")
+    PY_VERSIONS: Sequence[str] = ("3.10", "3.11", "3.12", "3.13", "3.14")
     DEFAULT_PYTHON = current_version
 else:
-    # Locally, prefer 3.13 if available
-    if sys.version_info >= (3, 13):
-        PY_VERSIONS: Sequence[str] = ("3.10", "3.11", "3.12", "3.13")
+    # Locally, prefer the newest available interpreter
+    if sys.version_info >= (3, 14):
+        PY_VERSIONS = ("3.10", "3.11", "3.12", "3.13", "3.14")
+        DEFAULT_PYTHON = "3.14"
+    elif sys.version_info >= (3, 13):
+        PY_VERSIONS = ("3.10", "3.11", "3.12", "3.13")
         DEFAULT_PYTHON = "3.13"
     else:
-        PY_VERSIONS: Sequence[str] = ("3.10", "3.11", "3.12")
+        PY_VERSIONS = ("3.10", "3.11", "3.12")
         DEFAULT_PYTHON = "3.12"
 
 # Feature-flag groups that map to [project.optional-dependencies]
