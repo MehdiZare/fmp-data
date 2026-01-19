@@ -2,6 +2,7 @@
 from typing import cast
 
 from pydantic import ValidationError as PydanticValidationError
+from pydantic_core import ValidationError as PydanticCoreValidationError
 
 from fmp_data.base import EndpointGroup
 from fmp_data.sec.endpoints import (
@@ -173,7 +174,7 @@ class SECClient(EndpointGroup):
         """
         try:
             result = self.client.request(SEC_PROFILE, symbol=symbol)
-        except PydanticValidationError as exc:
+        except (PydanticValidationError, PydanticCoreValidationError) as exc:
             self.client.logger.warning(
                 "SEC profile response failed validation; returning None.",
                 extra={"symbol": symbol, "error": str(exc)},

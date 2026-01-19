@@ -126,10 +126,7 @@ def _sync_with_uv(session: Session, extras: Iterable[str] = ()) -> None:
 @nox.parametrize("feature_group", FEATURE_GROUPS, ids=FEATURE_IDS)
 def tests(session: Session, feature_group: str | None) -> None:
     """
-    Run *pytest* with coverage.
-
-    Individual coverage files are generated for each session.
-    Use the 'coverage_report' session to combine and check thresholds.
+    Run *pytest* without coverage.
     """
     extras: list[str] = ["dev"]  # dev extra contains pytest + pytest-cov
     if feature_group:
@@ -137,23 +134,7 @@ def tests(session: Session, feature_group: str | None) -> None:
 
     _sync_with_uv(session, extras)
 
-    # Use unique coverage file names to avoid conflicts in parallel runs
-    # Ensure coverage files are created in the repo root
-    coverage_file = REPO_ROOT / f".coverage.{session.python}.{feature_group or 'core'}"
-
-    # Base pytest args - no coverage threshold during individual runs
-    pytest_args = [
-        "-q",
-        "--cov",
-        PACKAGE_NAME,
-        "--cov-append",
-        "--cov-config=pyproject.toml",
-        "--cov-report=term-missing",
-        "--cov-fail-under=0",  # No threshold during individual sessions
-    ]
-
-    # Set environment variable for coverage file with absolute path
-    env = {"COVERAGE_FILE": str(coverage_file)}
+    pytest_args = ["-q"]
 
     if feature_group == "mcp-server":
         # Check if mcp tests exist and handle gracefully
@@ -166,43 +147,13 @@ def tests(session: Session, feature_group: str | None) -> None:
                 "tests/unit/test_mcp.py",
                 "-m",
                 "not integration",
-                env=env,
                 success_codes=[0, 5],  # 0=success, 5=no tests collected
             )
         else:
             session.log("Skipping mcp-server tests - test_mcp.py not found")
-            # Create minimal coverage file for this feature group
-            session.run(
-                "python",
-                "-c",
-                f"""
-import coverage
-cov = coverage.Coverage(data_file='{coverage_file}')
-cov.start()
-cov.stop()
-cov.save()
-""",
-            )
     else:
         # For core and langchain, run all tests
-        session.run("pytest", *pytest_args, env=env, success_codes=[0, 5])
-
-    # Verify coverage file was created
-    if not coverage_file.exists():
-        session.log(f"Creating fallback coverage file: {coverage_file}")
-        session.run(
-            "python",
-            "-c",
-            f"""
-import coverage
-cov = coverage.Coverage(data_file='{coverage_file}')
-cov.start()
-cov.stop()
-cov.save()
-""",
-        )
-
-    session.log(f"Coverage data saved to {coverage_file}")
+        session.run("pytest", *pytest_args, success_codes=[0, 5])
 
 
 @nox.session(python=DEFAULT_PYTHON, tags=["coverage"])

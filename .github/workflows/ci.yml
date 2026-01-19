@@ -44,9 +44,6 @@ jobs:
           NOX_USE_UV: "1"
           CI: "true"
         run: |
-          # Clean any existing coverage files
-          rm -f .coverage*
-
           # Install nox first
           uv tool install nox
 
@@ -60,10 +57,6 @@ jobs:
           uv tool run nox -s "tests-${{ matrix.python }}(core)"
           uv tool run nox -s "tests-${{ matrix.python }}(langchain)"
           uv tool run nox -s "tests-${{ matrix.python }}(mcp-server)"
-
-          # Verify coverage files were created
-          echo "Coverage files generated:"
-          ls -la .coverage* || echo "No coverage files found"
 
       - name: 🔍 Quality Gates
         if: matrix.python == '3.14'
