@@ -15,10 +15,16 @@ def test_langchain_available():
     """Test langchain availability check"""
     with patch("importlib.util.find_spec") as mock_find_spec:
         # Test when available
-        mock_find_spec.return_value = Mock()
+        def find_spec_available(name):
+            if name in {"langchain_core", "langchain_community"}:
+                return Mock()
+            return None
+
+        mock_find_spec.side_effect = find_spec_available
         assert is_langchain_available() is True
 
         # Test when not available
+        mock_find_spec.side_effect = None
         mock_find_spec.return_value = None
         assert is_langchain_available() is False
 

@@ -7,8 +7,8 @@ from logging import Logger
 from pathlib import Path
 from typing import Any, ClassVar, cast
 
-from langchain.embeddings.base import Embeddings
-from langchain.tools import StructuredTool
+from langchain_core.embeddings import Embeddings
+from langchain_core.tools import StructuredTool
 from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_core.documents import Document
 from langchain_core.utils.function_calling import convert_to_openai_function
