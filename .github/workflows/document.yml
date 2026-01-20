@@ -8,7 +8,8 @@ on:
       - 'fmp_data/**'
       - 'README.md'
       - 'pyproject.toml'
-      - '.github/workflows/docs.yml'
+      - 'mkdocs.yml'
+      - '.github/workflows/document.yml'
   pull_request:
     branches: [main]
     paths:
@@ -16,7 +17,8 @@ on:
       - 'fmp_data/**'
       - 'README.md'
       - 'pyproject.toml'
-      - '.github/workflows/docs.yml'
+      - 'mkdocs.yml'
+      - '.github/workflows/document.yml'
   workflow_dispatch:
 
 permissions:
