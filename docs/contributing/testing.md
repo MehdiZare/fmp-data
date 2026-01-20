@@ -46,30 +46,35 @@ def client(api_key):
 
 2. **Test Files**: Create test files with descriptive names:
 ```python
+from unittest.mock import Mock
+
+from fmp_data.company.models import CompanyProfile
+
 def test_get_company_profile(client):
     """Test retrieving company profile."""
+    client.company.client.request = Mock(
+        return_value=[CompanyProfile(symbol="AAPL")]
+    )
     profile = client.company.get_profile("AAPL")
     assert profile.symbol == "AAPL"
 ```
 
 ## Mocking HTTP Requests
 
-We use `responses` to mock HTTP requests:
+Mock the client's internal request method in unit tests to avoid real HTTP calls:
 
 ```python
-import responses
+from unittest.mock import Mock
 
-@responses.activate
+from fmp_data.company.models import CompanyProfile
+
 def test_api_call(client):
-    # Mock API response
-    responses.add(
-        responses.GET,
-        "https://financialmodelingprep.com/stable/profile/AAPL",
-        json=[{"symbol": "AAPL"}],
-        status=200,
+    # Mock API response at the client request layer
+    client.company.client.request = Mock(
+        return_value=[CompanyProfile(symbol="AAPL")]
     )
 
-    # Make request
+    # Make request through business logic
     result = client.company.get_profile("AAPL")
 
     # Verify result

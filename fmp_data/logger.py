@@ -10,11 +10,12 @@ from logging.handlers import RotatingFileHandler
 import os
 from pathlib import Path
 import re
-from typing import Any, ClassVar, Optional, TypeVar
+from typing import Any, ClassVar, Optional, ParamSpec, TypeVar
 
 from fmp_data.config import LoggingConfig, LogHandlerConfig
 
-T = TypeVar("T")
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
 class SensitiveDataFilter(logging.Filter):
@@ -404,7 +405,7 @@ class FMPLogger:
 def log_api_call(
     logger: logging.Logger | None = None,
     exclude_args: bool = False,
-) -> Callable[[Callable[..., T]], Callable[..., T]]:
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """
     Decorator to log API calls with sensitive data filtering
 
@@ -416,9 +417,9 @@ def log_api_call(
         Decorated function
     """
 
-    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> T:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             nonlocal logger
             if logger is None:
                 logger = FMPLogger().get_logger()

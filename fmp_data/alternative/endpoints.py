@@ -88,7 +88,7 @@ CRYPTO_QUOTES: Endpoint = Endpoint(
     ],
 )
 
-CRYPTO_QUOTE: Endpoint = Endpoint(
+CRYPTO_QUOTE: Endpoint[CryptoQuote] = Endpoint(
     name="crypto_quote",
     path="quote",
     version=APIVersion.STABLE,
@@ -250,7 +250,7 @@ FOREX_QUOTES: Endpoint = Endpoint(
     ],
 )
 
-FOREX_QUOTE: Endpoint = Endpoint(
+FOREX_QUOTE: Endpoint[ForexQuote] = Endpoint(
     name="forex_quote",
     path="quote",
     version=APIVersion.STABLE,
@@ -410,7 +410,7 @@ COMMODITIES_QUOTES: Endpoint = Endpoint(
     ],
 )
 
-COMMODITY_QUOTE: Endpoint = Endpoint(
+COMMODITY_QUOTE: Endpoint[CommodityQuote] = Endpoint(
     name="commodity_quote",
     path="quote",
     version=APIVersion.STABLE,

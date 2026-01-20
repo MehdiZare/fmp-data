@@ -94,7 +94,7 @@ class ExchangeSymbol(BaseModel):
                         cleaned_data[field_name] = None
                 else:
                     cleaned_data[field_name] = field_value
-            except Exception as e:
+            except (AttributeError, TypeError, ValueError) as e:
                 warnings.warn(
                     f"Error processing field {field_name}: {e!s}. Setting to None",
                     stacklevel=2,
@@ -171,7 +171,7 @@ class SectorPerformance(BaseModel):
         if value is None:
             return None
         # Handle float values directly (API may return decimal like 0.054)
-        if isinstance(value, (int, float)):
+        if isinstance(value, int | float):
             return float(value)
         # Handle percentage string like "5.5%"
         if isinstance(value, str) and value.endswith("%"):
@@ -222,9 +222,7 @@ class CUSIPResult(BaseModel):
 
     cusip: str = Field(description="CUSIP number")
     symbol: str = Field(description="Stock symbol")
-    name: str | None = Field(
-        None, alias="companyName", description="Company name"
-    )
+    name: str | None = Field(None, alias="companyName", description="Company name")
     market_cap: float | None = Field(None, alias="marketCap", description="Market cap")
 
 

@@ -25,6 +25,7 @@ from nox.sessions import Session
 #  Globals                                                                    #
 # --------------------------------------------------------------------------- #
 
+
 # Python interpreters used across sessions
 # Use the current Python version in CI, or the newest local version if available
 def _runtime_py_version() -> tuple[int, int]:
@@ -106,6 +107,7 @@ def _sync_with_uv(session: Session, extras: Iterable[str] = ()) -> None:
                 "mypy>=1.13.0",
                 "bandit[toml]>=1.7.10",
                 "pip-audit>=2.7.0",
+                "python-dotenv>=1.2.1",
             )
         elif extra in ["langchain", "mcp", "mcp-server"]:
             # Handle actual extras from [project.optional-dependencies]

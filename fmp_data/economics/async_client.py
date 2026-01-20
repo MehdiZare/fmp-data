@@ -24,7 +24,7 @@ class AsyncEconomicsClient(AsyncEndpointGroup):
         self, start_date: date | None = None, end_date: date | None = None
     ) -> list[TreasuryRate]:
         """Get treasury rates"""
-        params = {}
+        params: dict[str, str] = {}
         if start_date:
             params["start_date"] = start_date.strftime("%Y-%m-%d")
         if end_date:
@@ -42,7 +42,7 @@ class AsyncEconomicsClient(AsyncEndpointGroup):
         self, start_date: date | None = None, end_date: date | None = None
     ) -> list[EconomicEvent]:
         """Get economic calendar events"""
-        params = {}
+        params: dict[str, str] = {}
         if start_date:
             params["start_date"] = start_date.strftime("%Y-%m-%d")
         if end_date:

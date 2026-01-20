@@ -2,7 +2,7 @@
 """Async client for batch data endpoints."""
 import csv
 import io
-from typing import Any
+from typing import Any, cast
 
 from fmp_data.base import AsyncEndpointGroup
 from fmp_data.batch.endpoints import (
@@ -57,7 +57,7 @@ class AsyncBatchClient(AsyncEndpointGroup):
         for row in reader:
             if not row or all(value in (None, "", " ") for value in row.values()):
                 continue
-            normalized = {}
+            normalized: dict[str, str | None] = {}
             for key, value in row.items():
                 if value is None:
                     normalized[key] = None
@@ -201,12 +201,12 @@ class AsyncBatchClient(AsyncEndpointGroup):
 
     async def get_profile_bulk(self, part: str) -> list[CompanyProfile]:
         """Get company profile data in bulk"""
-        raw = await self.client.request_async(PROFILE_BULK, part=part)
+        raw = cast(bytes, await self.client.request_async(PROFILE_BULK, part=part))
         return self._parse_csv_models(raw, CompanyProfile)
 
     async def get_dcf_bulk(self) -> list[DCF]:
         """Get discounted cash flow valuations in bulk"""
-        raw = await self.client.request_async(DCF_BULK)
+        raw = cast(bytes, await self.client.request_async(DCF_BULK))
         rows = self._parse_csv_rows(raw)
         for row in rows:
             if "Stock Price" in row and "stockPrice" not in row:
@@ -215,15 +215,15 @@ class AsyncBatchClient(AsyncEndpointGroup):
 
     async def get_rating_bulk(self) -> list[CompanyRating]:
         """Get stock ratings in bulk"""
-        raw = await self.client.request_async(RATING_BULK)
+        raw = cast(bytes, await self.client.request_async(RATING_BULK))
         return self._parse_csv_models(raw, CompanyRating)
 
     async def get_scores_bulk(self) -> list[FinancialScore]:
         """Get financial scores in bulk"""
-        raw = await self.client.request_async(SCORES_BULK)
+        raw = cast(bytes, await self.client.request_async(SCORES_BULK))
         return self._parse_csv_models(raw, FinancialScore)
 
     async def get_ratios_ttm_bulk(self) -> list[FinancialRatiosTTM]:
         """Get trailing twelve month financial ratios in bulk"""
-        raw = await self.client.request_async(RATIOS_TTM_BULK)
+        raw = cast(bytes, await self.client.request_async(RATIOS_TTM_BULK))
         return self._parse_csv_models(raw, FinancialRatiosTTM)

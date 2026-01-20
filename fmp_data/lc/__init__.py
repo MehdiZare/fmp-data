@@ -15,7 +15,7 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING, Any
 
-from langchain_core.embeddings import Embeddings  # type: ignore[import-not-found]
+from langchain_core.embeddings import Embeddings
 
 from fmp_data.lc.config import LangChainConfig
 from fmp_data.lc.embedding import EmbeddingProvider

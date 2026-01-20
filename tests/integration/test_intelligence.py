@@ -1,8 +1,8 @@
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
-import pytest
 from pydantic import HttpUrl
+import pytest
 
 from fmp_data import FMPDataClient
 from fmp_data.helpers import RemovedEndpointError
@@ -22,23 +22,20 @@ from fmp_data.intelligence.models import (
     ForexNewsArticle,
     GeneralNewsArticle,
     HistoricalRating,
-    HistoricalSocialSentiment,
+    HistoricalStockGrade,
     HouseDisclosure,
     IPOEvent,
-    PriceTargetNews,
     PressRelease,
     PressReleaseBySymbol,
+    PriceTargetNews,
     RatingsSnapshot,
     SenateTrade,
-    SocialSentimentChanges,
     StockGrade,
     StockGradeNews,
     StockGradesConsensus,
-    HistoricalStockGrade,
     StockNewsArticle,
     StockNewsSentiment,
     StockSplitEvent,
-    TrendingSocialSentiment,
 )
 
 from .base import BaseTestCase
@@ -642,7 +639,7 @@ class TestIntelligenceEndpoints(BaseTestCase):
                 assert isinstance(articles[0], StockNewsArticle)
 
     def test_get_historical_social_sentiment(
-        self, fmp_client: FMPDataClient, vcr_instance
+        self, fmp_client: FMPDataClient, _vcr_instance
     ):
         """Test that historical social sentiment raises RemovedEndpointError"""
         with pytest.raises(RemovedEndpointError) as exc_info:
@@ -650,19 +647,23 @@ class TestIntelligenceEndpoints(BaseTestCase):
         assert "get_historical_social_sentiment" in str(exc_info.value)
 
     def test_get_trending_social_sentiment(
-        self, fmp_client: FMPDataClient, vcr_instance
+        self, fmp_client: FMPDataClient, _vcr_instance
     ):
         """Test that trending social sentiment raises RemovedEndpointError"""
         with pytest.raises(RemovedEndpointError) as exc_info:
-            fmp_client.intelligence.get_trending_social_sentiment("bullish", "stocktwits")
+            fmp_client.intelligence.get_trending_social_sentiment(
+                "bullish", "stocktwits"
+            )
         assert "get_trending_social_sentiment" in str(exc_info.value)
 
     def test_get_social_sentiment_changes(
-        self, fmp_client: FMPDataClient, vcr_instance
+        self, fmp_client: FMPDataClient, _vcr_instance
     ):
         """Test that social sentiment changes raises RemovedEndpointError"""
         with pytest.raises(RemovedEndpointError) as exc_info:
-            fmp_client.intelligence.get_social_sentiment_changes("bullish", "stocktwits")
+            fmp_client.intelligence.get_social_sentiment_changes(
+                "bullish", "stocktwits"
+            )
         assert "get_social_sentiment_changes" in str(exc_info.value)
 
     def test_get_ratings_snapshot(self, fmp_client: FMPDataClient, vcr_instance):

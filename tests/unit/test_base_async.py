@@ -7,7 +7,7 @@ import httpx
 import pytest
 
 from fmp_data.config import ClientConfig, LoggingConfig, RateLimitConfig
-from fmp_data.exceptions import FMPError, RateLimitError
+from fmp_data.exceptions import RateLimitError
 from fmp_data.models import (
     APIVersion,
     Endpoint,
@@ -185,7 +185,7 @@ class TestAsyncRetry:
 
         call_count = 0
 
-        async def mock_request(*args, **kwargs):
+        async def mock_request(*_args, **_kwargs):
             nonlocal call_count
             call_count += 1
             if call_count < 3:

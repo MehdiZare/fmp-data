@@ -2,6 +2,8 @@
 from datetime import date
 from typing import TypeVar, cast
 
+from pydantic import BaseModel
+
 from fmp_data.alternative.endpoints import (
     COMMODITIES_LIST,
     COMMODITIES_QUOTES,
@@ -44,8 +46,12 @@ class AlternativeMarketsClient(EndpointGroup):
     @staticmethod
     def _wrap_history(symbol: str, result: object, model: type[T]) -> T:
         if isinstance(result, list):
-            return model(symbol=symbol, historical=result)
-        return model.model_validate(result)
+            model_type = cast(type[BaseModel], model)
+            return cast(
+                T,
+                model_type.model_validate({"symbol": symbol, "historical": result}),
+            )
+        return cast(T, cast(type[BaseModel], model).model_validate(result))
 
     # Cryptocurrency methods
     def get_crypto_list(self) -> list[CryptoPair]:
@@ -75,10 +81,7 @@ class AlternativeMarketsClient(EndpointGroup):
             params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         result = self.client.request(CRYPTO_HISTORICAL, **params)
-        return cast(
-            CryptoHistoricalData,
-            self._wrap_history(symbol, result, CryptoHistoricalData),
-        )
+        return self._wrap_history(symbol, result, CryptoHistoricalData)
 
     def get_crypto_intraday(
         self, symbol: str, interval: str = "5min"
@@ -114,9 +117,7 @@ class AlternativeMarketsClient(EndpointGroup):
             params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         result = self.client.request(FOREX_HISTORICAL, **params)
-        return cast(
-            ForexPriceHistory, self._wrap_history(symbol, result, ForexPriceHistory)
-        )
+        return self._wrap_history(symbol, result, ForexPriceHistory)
 
     def get_forex_intraday(
         self, symbol: str, interval: str = "5min"
@@ -152,10 +153,7 @@ class AlternativeMarketsClient(EndpointGroup):
             params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         result = self.client.request(COMMODITY_HISTORICAL, **params)
-        return cast(
-            CommodityPriceHistory,
-            self._wrap_history(symbol, result, CommodityPriceHistory),
-        )
+        return self._wrap_history(symbol, result, CommodityPriceHistory)
 
     def get_commodity_intraday(
         self, symbol: str, interval: str = "5min"

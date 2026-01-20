@@ -4,7 +4,7 @@ import json
 import os
 from typing import Any
 
-from langchain_core.embeddings import Embeddings  # type: ignore[import-not-found]
+from langchain_core.embeddings import Embeddings
 from pydantic import BaseModel, ConfigDict, Field
 
 from fmp_data.exceptions import ConfigError
@@ -61,12 +61,10 @@ class EmbeddingConfig(BaseModel):
                         "Please provide it in the configuration."
                     )
 
-                from langchain_openai import (  # type: ignore[import-not-found]
-                    OpenAIEmbeddings,
-                )
+                from langchain_openai import OpenAIEmbeddings
 
                 return OpenAIEmbeddings(
-                    api_key=self.api_key,
+                    openai_api_key=self.api_key,
                     model=self.model_name or "text-embedding-ada-002",
                     **self.additional_kwargs,
                 )
@@ -75,9 +73,7 @@ class EmbeddingConfig(BaseModel):
                 check_package_dependency("sentence_transformers", "HuggingFace")
                 check_package_dependency("torch", "HuggingFace")
 
-                from langchain_community.embeddings import (  # type: ignore[import-not-found]
-                    HuggingFaceEmbeddings,
-                )
+                from langchain_community.embeddings import HuggingFaceEmbeddings
 
                 return HuggingFaceEmbeddings(
                     model_name=self.model_name
@@ -94,9 +90,7 @@ class EmbeddingConfig(BaseModel):
                         "Please provide it in the configuration."
                     )
 
-                from langchain_community.embeddings import (  # type: ignore[import-not-found]
-                    CohereEmbeddings,
-                )
+                from langchain_community.embeddings import CohereEmbeddings
 
                 return CohereEmbeddings(
                     cohere_api_key=self.api_key,

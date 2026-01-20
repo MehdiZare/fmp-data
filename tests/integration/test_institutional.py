@@ -14,20 +14,20 @@ from fmp_data.institutional.models import (
     HolderIndustryBreakdown,
     HolderPerformanceSummary,
     IndustryPerformanceSummary,
+    InsiderRoster,
+    InsiderStatistic,
+    InsiderTrade,
     InsiderTradingByName,
     InsiderTradingLatest,
     InsiderTradingSearch,
     InsiderTradingStatistics,
     InsiderTransactionType,
-    InsiderRoster,
-    InsiderStatistic,
-    InsiderTrade,
+    InstitutionalHolder,
+    InstitutionalHolding,
     InstitutionalOwnershipAnalytics,
     InstitutionalOwnershipDates,
     InstitutionalOwnershipExtract,
     InstitutionalOwnershipLatest,
-    InstitutionalHolder,
-    InstitutionalHolding,
     SymbolPositionsSummary,
 )
 
@@ -71,7 +71,7 @@ class Test13FEndpoints(BaseTestCase):
 class TestInstitutionalOwnershipEndpoints(BaseTestCase):
     """Test institutional ownership endpoints"""
 
-    FILING_DATE = date(2023, 9, 30)
+    REPORT_DATE = date(2023, 9, 30)
 
     def test_get_institutional_holders(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting list of institutional holders"""
@@ -95,7 +95,7 @@ class TestInstitutionalOwnershipEndpoints(BaseTestCase):
             holdings = self._handle_rate_limit(
                 fmp_client.institutional.get_institutional_holdings,
                 "AAPL",
-                self.FILING_DATE,
+                self.REPORT_DATE,
             )
 
             assert isinstance(holdings, list)
@@ -351,7 +351,7 @@ class TestInstitutionalAdditionalEndpoints(BaseTestCase):
     """Test additional institutional endpoints"""
 
     CIK = "0001067983"
-    FILING_DATE = date(2023, 9, 30)
+    REPORT_DATE = date(2023, 9, 30)
 
     def test_get_form_13f_dates(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting Form 13F filing dates"""
@@ -367,7 +367,7 @@ class TestInstitutionalAdditionalEndpoints(BaseTestCase):
         """Test getting asset allocation data"""
         with vcr_instance.use_cassette("institutional/asset_allocation.yaml"):
             results = self._handle_rate_limit(
-                fmp_client.institutional.get_asset_allocation, self.FILING_DATE
+                fmp_client.institutional.get_asset_allocation, self.REPORT_DATE
             )
             assert isinstance(results, list)
             if results:
@@ -406,9 +406,7 @@ class TestInstitutionalAdditionalEndpoints(BaseTestCase):
             if results:
                 assert isinstance(results[0], InsiderTradingSearch)
 
-    def test_get_insider_trading_by_name(
-        self, fmp_client: FMPDataClient, vcr_instance
-    ):
+    def test_get_insider_trading_by_name(self, fmp_client: FMPDataClient, vcr_instance):
         """Test searching insider trading by name"""
         with vcr_instance.use_cassette("institutional/insider_trading_by_name.yaml"):
             results = self._handle_rate_limit(
@@ -457,7 +455,7 @@ class TestInstitutionalAdditionalEndpoints(BaseTestCase):
             results = self._handle_rate_limit(
                 fmp_client.institutional.get_institutional_ownership_extract,
                 self.CIK,
-                self.FILING_DATE,
+                self.REPORT_DATE,
             )
             assert isinstance(results, list)
             if results:
@@ -486,7 +484,7 @@ class TestInstitutionalAdditionalEndpoints(BaseTestCase):
             results = self._handle_rate_limit(
                 fmp_client.institutional.get_institutional_ownership_analytics,
                 "AAPL",
-                self.FILING_DATE,
+                self.REPORT_DATE,
             )
             assert isinstance(results, list)
             if results:
@@ -500,7 +498,7 @@ class TestInstitutionalAdditionalEndpoints(BaseTestCase):
             results = self._handle_rate_limit(
                 fmp_client.institutional.get_holder_performance_summary,
                 self.CIK,
-                self.FILING_DATE,
+                self.REPORT_DATE,
             )
             assert isinstance(results, list)
             if results:
@@ -514,7 +512,7 @@ class TestInstitutionalAdditionalEndpoints(BaseTestCase):
             results = self._handle_rate_limit(
                 fmp_client.institutional.get_holder_industry_breakdown,
                 self.CIK,
-                self.FILING_DATE,
+                self.REPORT_DATE,
             )
             assert isinstance(results, list)
             if results:
@@ -528,7 +526,7 @@ class TestInstitutionalAdditionalEndpoints(BaseTestCase):
             results = self._handle_rate_limit(
                 fmp_client.institutional.get_symbol_positions_summary,
                 "AAPL",
-                self.FILING_DATE,
+                self.REPORT_DATE,
             )
             assert isinstance(results, list)
             if results:
@@ -543,7 +541,7 @@ class TestInstitutionalAdditionalEndpoints(BaseTestCase):
         ):
             results = self._handle_rate_limit(
                 fmp_client.institutional.get_industry_performance_summary,
-                self.FILING_DATE,
+                self.REPORT_DATE,
             )
             assert isinstance(results, list)
             if results:

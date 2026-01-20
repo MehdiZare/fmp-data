@@ -60,7 +60,7 @@ from fmp_data.models import (
     URLType,
 )
 
-QUOTE: Endpoint = Endpoint(
+QUOTE: Endpoint[Quote] = Endpoint(
     name="quote",
     path="quote",
     version=APIVersion.STABLE,
@@ -78,7 +78,7 @@ QUOTE: Endpoint = Endpoint(
     response_model=Quote,
 )
 
-SIMPLE_QUOTE: Endpoint = Endpoint(
+SIMPLE_QUOTE: Endpoint[SimpleQuote] = Endpoint(
     name="simple_quote",
     path="quote-short",
     version=APIVersion.STABLE,
@@ -261,7 +261,7 @@ INTRADAY_PRICE: Endpoint = Endpoint(
     response_model=IntradayPrice,
 )
 # Profile Endpoints
-PROFILE: Endpoint = Endpoint(
+PROFILE: Endpoint[CompanyProfile] = Endpoint(
     name="profile",
     path="profile",
     version=APIVersion.STABLE,
@@ -293,7 +293,7 @@ PROFILE: Endpoint = Endpoint(
     ],
 )
 
-CORE_INFORMATION: Endpoint = Endpoint(
+CORE_INFORMATION: Endpoint[CompanyCoreInformation] = Endpoint(
     name="core_information",
     path="company-core-information",
     version=APIVersion.STABLE,
@@ -602,7 +602,7 @@ SYMBOL_CHANGES: Endpoint = Endpoint(
     ],
 )
 
-SHARE_FLOAT: Endpoint = Endpoint(
+SHARE_FLOAT: Endpoint[ShareFloat] = Endpoint(
     name="share_float",
     path="shares-float",
     version=APIVersion.STABLE,
@@ -632,7 +632,7 @@ SHARE_FLOAT: Endpoint = Endpoint(
     ],
 )
 
-MARKET_CAP: Endpoint = Endpoint(
+MARKET_CAP: Endpoint[MarketCapitalization] = Endpoint(
     name="market_cap",
     path="market-capitalization",
     version=APIVersion.STABLE,
@@ -687,7 +687,7 @@ PRICE_TARGET: Endpoint = Endpoint(
     response_model=PriceTarget,
 )
 
-PRICE_TARGET_SUMMARY: Endpoint = Endpoint(
+PRICE_TARGET_SUMMARY: Endpoint[PriceTargetSummary] = Endpoint(
     name="price_target_summary",
     path="price-target-summary",
     version=APIVersion.STABLE,
@@ -707,7 +707,7 @@ PRICE_TARGET_SUMMARY: Endpoint = Endpoint(
     response_model=PriceTargetSummary,
 )
 
-PRICE_TARGET_CONSENSUS: Endpoint = Endpoint(
+PRICE_TARGET_CONSENSUS: Endpoint[PriceTargetConsensus] = Endpoint(
     name="price_target_consensus",
     path="price-target-consensus",
     version=APIVersion.STABLE,
@@ -1264,7 +1264,7 @@ COMPANY_SPLITS: Endpoint = Endpoint(
 )
 
 # Financial Statement Endpoints
-LATEST_FINANCIAL_STATEMENTS: Endpoint = Endpoint(
+LATEST_FINANCIAL_STATEMENTS: Endpoint[FinancialStatementFull] = Endpoint(
     name="latest_financial_statements",
     path="latest-financial-statements",
     version=APIVersion.STABLE,

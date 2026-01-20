@@ -6,10 +6,11 @@ from contextvars import ContextVar
 import json
 import logging
 import time
-from typing import Any, TypeVar, cast
+from typing import Any, Literal, TypeGuard, TypeVar, cast, overload
 import warnings
 
 import httpx
+from pydantic import BaseModel
 from tenacity import (
     AsyncRetrying,
     RetryCallState,
@@ -41,6 +42,10 @@ logger = FMPLogger().get_logger(__name__)
 _rate_limit_retry_count: ContextVar[int] = ContextVar(
     "rate_limit_retry_count", default=0
 )
+
+
+def _is_pydantic_model(model: type[Any]) -> TypeGuard[type[BaseModel]]:
+    return isinstance(model, type) and issubclass(model, BaseModel)
 
 
 class BaseClient:
@@ -167,7 +172,7 @@ class BaseClient:
 
     @staticmethod
     def _is_retryable_error(exc: BaseException) -> bool:
-        if isinstance(exc, (httpx.TimeoutException, httpx.NetworkError)):
+        if isinstance(exc, httpx.TimeoutException | httpx.NetworkError):
             return True
         if isinstance(exc, RateLimitError):
             return True
@@ -254,6 +259,7 @@ class BaseClient:
             status_code = response.status_code
 
             try:
+                data: bytes | dict[str, Any] | list[Any]
                 if endpoint.response_model is bytes:
                     response.raise_for_status()
                     data = response.content
@@ -335,16 +341,19 @@ class BaseClient:
                 f"Unexpected response type: {type(data)}. Expected dict or list.",
                 response={"data": data},
             )
-        return data
+        return cast(dict[str, Any] | list[Any], data)
 
     @staticmethod
     def _get_error_details(
         response: httpx.Response,
     ) -> dict[str, Any] | list[Any]:
         try:
-            return response.json()
+            data = response.json()
         except json.JSONDecodeError:
             return {"raw_content": response.content.decode()}
+        if isinstance(data, dict | list):
+            return data
+        return {"raw_content": str(data)}
 
     def _handle_http_status_error(
         self,
@@ -421,25 +430,36 @@ class BaseClient:
             ValueError: If the model structure is invalid
         """
         # Handle primitive types and raw dict/bytes
-        if endpoint.response_model in (str, int, float, bool):
-            return endpoint.response_model(item)  # type: ignore[return-value]
-        if endpoint.response_model is dict:
-            return dict(item) if not isinstance(item, dict) else item
-        if endpoint.response_model is bytes:
-            return bytes(item)
-
-        if isinstance(item, dict):
-            return endpoint.response_model.model_validate(item)
-
-        # Try to feed non-dict value into the first field
         model = endpoint.response_model
-        try:
-            first_field = next(iter(model.__annotations__))
-            field_info = model.model_fields[first_field]
-            field_name = field_info.alias or first_field
-            return model.model_validate({field_name: item})
-        except (StopIteration, KeyError, AttributeError) as exc:
-            raise ValueError(f"Invalid model structure for {model.__name__}") from exc
+        if model is str:
+            return cast(T, str(item))
+        if model is int:
+            return cast(T, int(item))
+        if model is float:
+            return cast(T, float(item))
+        if model is bool:
+            return cast(T, bool(item))
+        if model is dict:
+            return cast(T, dict(item) if not isinstance(item, dict) else item)
+        if model is bytes:
+            return cast(T, bytes(item))
+
+        if _is_pydantic_model(model):
+            if isinstance(item, dict):
+                return cast(T, model.model_validate(item))
+
+            # Try to feed non-dict value into the first field
+            try:
+                first_field = next(iter(model.__annotations__))
+                field_info = model.model_fields[first_field]
+                field_name = field_info.alias or first_field
+                return cast(T, model.model_validate({field_name: item}))
+            except (StopIteration, KeyError, AttributeError) as exc:
+                raise ValueError(
+                    f"Invalid model structure for {model.__name__}"
+                ) from exc
+
+        raise ValueError(f"Unsupported response model: {model!r}")
 
     @staticmethod
     def _process_list_response(endpoint: Endpoint[T], data: list[Any]) -> list[T]:
@@ -482,13 +502,22 @@ class BaseClient:
             return BaseClient._process_list_response(endpoint, data)
 
         # Process single item responses
-        if endpoint.response_model in (str, int, float, bool):
-            return endpoint.response_model(data)  # type: ignore[return-value]
-        if endpoint.response_model is dict:
-            return dict(data) if not isinstance(data, dict) else data
-        if endpoint.response_model is bytes:
-            return data
-        return endpoint.response_model.model_validate(data)
+        model = endpoint.response_model
+        if model is str:
+            return cast(T, str(data))
+        if model is int:
+            return cast(T, int(data))
+        if model is float:
+            return cast(T, float(data))
+        if model is bool:
+            return cast(T, bool(data))
+        if model is dict:
+            return cast(T, dict(data) if not isinstance(data, dict) else data)
+        if model is bytes:
+            return cast(T, data)
+        if _is_pydantic_model(model):
+            return cast(T, model.model_validate(data))
+        raise ValueError(f"Unsupported response model: {model!r}")
 
     async def request_async(self, endpoint: Endpoint[T], **kwargs: Any) -> T | list[T]:
         """
@@ -577,6 +606,7 @@ class BaseClient:
                 endpoint.method.value, url, params=query_params
             )
             try:
+                data: bytes | dict[str, Any] | list[Any]
                 if endpoint.response_model is bytes:
                     response.raise_for_status()
                     data = response.content
@@ -610,8 +640,40 @@ class EndpointGroup:
         return self._client
 
     @staticmethod
+    @overload
     def _unwrap_single(
         result: T | list[T],
+        model: type[T],
+        allow_none: Literal[False] = False,
+    ) -> T: ...
+
+    @staticmethod
+    @overload
+    def _unwrap_single(
+        result: T | list[T],
+        model: type[T],
+        allow_none: Literal[True],
+    ) -> T | None: ...
+
+    @staticmethod
+    @overload
+    def _unwrap_single(
+        result: Any,
+        model: type[T],
+        allow_none: Literal[False] = False,
+    ) -> T: ...
+
+    @staticmethod
+    @overload
+    def _unwrap_single(
+        result: Any,
+        model: type[T],
+        allow_none: Literal[True],
+    ) -> T | None: ...
+
+    @staticmethod
+    def _unwrap_single(
+        result: Any,
         model: type[T],
         allow_none: bool = False,
     ) -> T | None:
@@ -636,8 +698,8 @@ class EndpointGroup:
                 raise ValueError(
                     f"Expected at least one {model.__name__}, got empty list"
                 )
-            return cast(model, result[0])
-        return cast(model, result)
+            return cast(T, result[0])
+        return cast(T, result)
 
 
 class AsyncEndpointGroup:
@@ -657,8 +719,40 @@ class AsyncEndpointGroup:
         return self._client
 
     @staticmethod
+    @overload
     def _unwrap_single(
         result: T | list[T],
+        model: type[T],
+        allow_none: Literal[False] = False,
+    ) -> T: ...
+
+    @staticmethod
+    @overload
+    def _unwrap_single(
+        result: T | list[T],
+        model: type[T],
+        allow_none: Literal[True],
+    ) -> T | None: ...
+
+    @staticmethod
+    @overload
+    def _unwrap_single(
+        result: Any,
+        model: type[T],
+        allow_none: Literal[False] = False,
+    ) -> T: ...
+
+    @staticmethod
+    @overload
+    def _unwrap_single(
+        result: Any,
+        model: type[T],
+        allow_none: Literal[True],
+    ) -> T | None: ...
+
+    @staticmethod
+    def _unwrap_single(
+        result: Any,
         model: type[T],
         allow_none: bool = False,
     ) -> T | None:
@@ -683,5 +777,5 @@ class AsyncEndpointGroup:
                 raise ValueError(
                     f"Expected at least one {model.__name__}, got empty list"
                 )
-            return cast(model, result[0])
-        return cast(model, result)
+            return cast(T, result[0])
+        return cast(T, result)

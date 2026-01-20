@@ -4,7 +4,7 @@ from datetime import date
 from typing import cast
 
 from fmp_data.base import AsyncEndpointGroup
-from fmp_data.helpers import removed
+from fmp_data.helpers import RemovedEndpointError, removed
 from fmp_data.intelligence.endpoints import (
     CROWDFUNDING_BY_CIK,
     CROWDFUNDING_RSS,
@@ -295,21 +295,30 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         self, symbol: str, page: int = 0
     ) -> list[HistoricalSocialSentiment]:
         """Get historical social sentiment data (REMOVED)"""
-        pass  # pragma: no cover
+        raise RemovedEndpointError(
+            "get_historical_social_sentiment",
+            "Social sentiment endpoints were discontinued by FMP.",
+        )  # pragma: no cover
 
     @removed("Social sentiment endpoints were discontinued by FMP.")
     async def get_trending_social_sentiment(
         self, type: str, source: str
     ) -> list[TrendingSocialSentiment]:
         """Get trending social sentiment data (REMOVED)"""
-        pass  # pragma: no cover
+        raise RemovedEndpointError(
+            "get_trending_social_sentiment",
+            "Social sentiment endpoints were discontinued by FMP.",
+        )  # pragma: no cover
 
     @removed("Social sentiment endpoints were discontinued by FMP.")
     async def get_social_sentiment_changes(
         self, type: str, source: str
     ) -> list[SocialSentimentChanges]:
         """Get changes in social sentiment data (REMOVED)"""
-        pass  # pragma: no cover
+        raise RemovedEndpointError(
+            "get_social_sentiment_changes",
+            "Social sentiment endpoints were discontinued by FMP.",
+        )  # pragma: no cover
 
     # ESG methods
     async def get_esg_data(self, symbol: str) -> ESGData | None:
@@ -348,9 +357,7 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         return await self.client.request_async(HOUSE_DISCLOSURE_RSS, page=page)
 
     # Fundraising methods
-    async def get_crowdfunding_rss(
-        self, page: int = 0
-    ) -> list[CrowdfundingOffering]:
+    async def get_crowdfunding_rss(self, page: int = 0) -> list[CrowdfundingOffering]:
         """Get crowdfunding offerings RSS feed"""
         return await self.client.request_async(CROWDFUNDING_RSS, page=page)
 
@@ -423,9 +430,7 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             return cast(StockGradesConsensus, result[0]) if len(result) > 0 else None
         return cast(StockGradesConsensus, result)
 
-    async def get_grades_news(
-        self, symbol: str, page: int = 0
-    ) -> list[StockGradeNews]:
+    async def get_grades_news(self, symbol: str, page: int = 0) -> list[StockGradeNews]:
         """Get stock grade news"""
         return await self.client.request_async(GRADES_NEWS, symbol=symbol, page=page)
 

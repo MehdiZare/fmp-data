@@ -529,6 +529,11 @@ with FMPDataClient.from_env() as client:
 ```
 
 ### 11. Async Support
+Async support is available via `AsyncFMPDataClient` and the async endpoint
+clients (e.g., `AsyncCompanyClient`, `AsyncMarketClient`, and more). For a full
+walkthrough, see the async usage guide in `docs/index.md#async-usage` and the
+API reference in `docs/api/reference.md#async-client-usage`.
+
 ```python
 from fmp_data import AsyncFMPDataClient
 import asyncio

@@ -8,10 +8,10 @@ import pytest
 from fmp_data.alternative.models import CryptoQuote, ForexQuote
 from fmp_data.batch.models import BatchQuote, BatchQuoteShort
 from fmp_data.company.models import CompanyProfile, Quote
-from fmp_data.economics.models import EconomicIndicator, TreasuryRate
+from fmp_data.economics.models import TreasuryRate
 from fmp_data.fundamental.models import BalanceSheet, IncomeStatement
 from fmp_data.index.models import IndexConstituent
-from fmp_data.institutional.models import Form13F, InsiderTrade
+from fmp_data.institutional.models import InsiderTrade
 from fmp_data.intelligence.models import StockNewsArticle
 from fmp_data.investment.models import ETFInfo
 from fmp_data.market.models import MarketMover
@@ -452,8 +452,8 @@ class TestAsyncSECClient:
             SECFiling8K(
                 symbol="AAPL",
                 cik="0000320193",
-                acceptanceTime="2024-01-01T12:00:00",
-                type="8-K",
+                acceptedDate="2024-01-01T12:00:00",
+                formType="8-K",
                 link="https://www.sec.gov/...",
                 finalLink="https://www.sec.gov/...",
             )

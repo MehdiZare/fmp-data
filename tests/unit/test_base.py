@@ -146,6 +146,7 @@ def test_base_client_query_params(client_config):
     test_params = {"param1": "value1"}
     endpoint = Mock()
     endpoint.get_query_params.return_value = test_params
+    endpoint.response_model = dict
 
     # Mock the request to avoid actual HTTP call
     with patch.object(client.client, "request") as mock_request:
@@ -206,8 +207,9 @@ def test_request_with_retry(base_client, mock_endpoint, mock_response):
     mock_endpoint.response_model = SampleResponse
     mock_endpoint.method.value = "GET"
 
-    with patch.object(base_client.client, "request", mock_request), patch(
-        "tenacity.nap.sleep", return_value=None
+    with (
+        patch.object(base_client.client, "request", mock_request),
+        patch("tenacity.nap.sleep", return_value=None),
     ):
         result = base_client.request(mock_endpoint)
 
@@ -270,7 +272,9 @@ async def test_request_async(base_client, mock_endpoint):
     mock_async_client = AsyncMock()
     mock_async_client.request = AsyncMock(return_value=mock_response)
 
-    with patch.object(base_client, "_setup_async_client", return_value=mock_async_client):
+    with patch.object(
+        base_client, "_setup_async_client", return_value=mock_async_client
+    ):
         result = await base_client.request_async(mock_endpoint)
         assert isinstance(result, SampleResponse)
         assert result.test == "data"
@@ -311,8 +315,9 @@ def test_request_max_retries_exceeded(mock_request, mock_endpoint, base_client):
     mock_request.side_effect = httpx.TimeoutException("Timeout")
 
     # Attempt request and verify it fails with the underlying error (reraise=True)
-    with patch("tenacity.nap.sleep", return_value=None), pytest.raises(
-        httpx.TimeoutException
+    with (
+        patch("tenacity.nap.sleep", return_value=None),
+        pytest.raises(httpx.TimeoutException),
     ):
         base_client.request(mock_endpoint)
 
@@ -365,11 +370,16 @@ def test_request_retries_on_http_5xx(base_client):
     """Test that 5xx HTTPStatusError is retried"""
     response = Mock()
     response.status_code = 500
-    http_error = httpx.HTTPStatusError("Server error", request=Mock(), response=response)
+    http_error = httpx.HTTPStatusError(
+        "Server error", request=Mock(), response=response
+    )
 
-    with patch.object(
-        base_client, "_execute_request", side_effect=[http_error, "ok"]
-    ) as mock_execute, patch("tenacity.nap.sleep", return_value=None):
+    with (
+        patch.object(
+            base_client, "_execute_request", side_effect=[http_error, "ok"]
+        ) as mock_execute,
+        patch("tenacity.nap.sleep", return_value=None),
+    ):
         result = base_client.request(Mock())
 
     assert result == "ok"
@@ -382,7 +392,9 @@ def test_request_does_not_retry_on_http_4xx(base_client):
     response.status_code = 404
     http_error = httpx.HTTPStatusError("Not found", request=Mock(), response=response)
 
-    with patch.object(base_client, "_execute_request", side_effect=http_error) as mock_execute:
+    with patch.object(
+        base_client, "_execute_request", side_effect=http_error
+    ) as mock_execute:
         with pytest.raises(httpx.HTTPStatusError):
             base_client.request(Mock())
 
@@ -490,8 +502,8 @@ class TestMetricsCallback:
     def test_metrics_callback_exception_doesnt_break_request(self, mock_endpoint):
         """Test that a failing metrics callback doesn't break the request."""
 
-        def failing_callback(**kwargs):
-            raise RuntimeError("Callback failed!")
+        def failing_callback(**_kwargs):
+            raise RuntimeError
 
         config = ClientConfig(
             api_key="test_key",
@@ -525,7 +537,9 @@ class TestUnwrapSingle:
 
     def test_unwrap_single_from_list(self):
         """Test unwrapping a single item from a list."""
-        result = EndpointGroup._unwrap_single([SampleResponse(test="data")], SampleResponse)
+        result = EndpointGroup._unwrap_single(
+            [SampleResponse(test="data")], SampleResponse
+        )
         assert isinstance(result, SampleResponse)
         assert result.test == "data"
 

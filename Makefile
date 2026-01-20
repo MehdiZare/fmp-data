@@ -27,7 +27,7 @@ help: ## Show available commands
 	@echo "$(CYAN)════════════════════════════════════$(RESET)"
 	@echo ""
 	@echo "$(BOLD)📦 Installation:$(RESET)"
-	@echo "  $(GREEN)make install$(RESET)         Install package with all features"
+	@echo "  $(GREEN)make install$(RESET)         Install package with all features + dev tools"
 	@echo "  $(GREEN)make install-dev$(RESET)     Install all dependencies (dev + docs + extras)"
 	@echo "  $(GREEN)make install-mcp$(RESET)     Install with MCP server support"
 	@echo ""
@@ -56,7 +56,7 @@ help: ## Show available commands
 
 install: ## Install package with all features
 	@echo "$(BOLD)$(BLUE)📦 Installing fmp-data with all features...$(RESET)"
-	pip install -e ".[langchain,mcp]"
+	pip install -e ".[dev,langchain,mcp]"
 	@echo "$(GREEN)✅ Installation complete!$(RESET)"
 
 install-dev: ## Install all dependencies (dev + docs + extras)

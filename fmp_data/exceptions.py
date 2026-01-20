@@ -1,4 +1,5 @@
 # exceptions.py
+from typing import Any
 
 
 class FMPError(Exception):
@@ -8,7 +9,7 @@ class FMPError(Exception):
         self,
         message: str,
         status_code: int | None = None,
-        response: dict | None = None,
+        response: dict[str, Any] | list[Any] | None = None,
     ):
         self.message = message
         self.status_code = status_code
@@ -23,7 +24,7 @@ class RateLimitError(FMPError):
         self,
         message: str,
         status_code: int | None = None,
-        response: dict | None = None,
+        response: dict[str, Any] | list[Any] | None = None,
         retry_after: float | None = None,
     ):
         super().__init__(message, status_code, response)

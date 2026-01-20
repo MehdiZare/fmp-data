@@ -72,7 +72,7 @@ def removed(reason: str = "") -> Callable[[F], F]:
 
     def decorator(func: F) -> F:
         @functools.wraps(func)
-        def wrapped(*args: Any, **kwargs: Any) -> Any:
+        def wrapped(*_args: Any, **_kwargs: Any) -> Any:
             raise RemovedEndpointError(func.__name__, reason)
 
         return wrapped  # type: ignore[return-value]

@@ -7,14 +7,14 @@ from logging import Logger
 from pathlib import Path
 from typing import Any, ClassVar, Protocol, cast
 
-from langchain_core.documents import Document  # type: ignore[import-not-found]
-from langchain_core.embeddings import Embeddings  # type: ignore[import-not-found]
-from langchain_core.tools import StructuredTool  # type: ignore[import-not-found]
+from langchain_core.documents import Document
+from langchain_core.embeddings import Embeddings
+from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
 try:
     import faiss
-    from langchain_community.vectorstores import FAISS  # type: ignore[import-not-found]
+    from langchain_community.vectorstores import FAISS
 except ModuleNotFoundError:  # pragma: no cover
     raise ImportError(
         "FAISS is required for vector-store support. "
@@ -187,9 +187,7 @@ class EndpointVectorStore:
                 index = faiss.IndexFlatL2(dimension)
 
                 try:
-                    from langchain_community.docstore.in_memory import (  # type: ignore[import-not-found]
-                        InMemoryDocstore,
-                    )
+                    from langchain_community.docstore.in_memory import InMemoryDocstore
                 except ModuleNotFoundError as exc:  # pragma: no cover
                     raise ImportError(
                         "LangChain dependencies not available. "
@@ -260,7 +258,7 @@ class EndpointVectorStore:
 
     @staticmethod
     def _format_tool_for_provider(
-        tool: StructuredTool,
+        tool: ToolLike,
         provider: str = "openai",
     ) -> dict[str, Any] | ToolLike:
         """
@@ -281,7 +279,7 @@ class EndpointVectorStore:
         match provider.lower():
             case "openai":
                 try:
-                    from langchain_core.utils.function_calling import (  # type: ignore[import-not-found]
+                    from langchain_core.utils.function_calling import (
                         convert_to_openai_function,
                     )
                 except ModuleNotFoundError as exc:  # pragma: no cover
@@ -289,16 +287,17 @@ class EndpointVectorStore:
                         "LangChain dependencies not available. "
                         "Install with: pip install 'fmp-data[langchain]'"
                     ) from exc
-                return convert_to_openai_function(tool)
+                result = cast(Any, convert_to_openai_function(cast(Any, tool)))
+                return cast(dict[str, Any], result)
 
             case "anthropic":
+                model_schema: dict[str, Any]
                 if isinstance(tool.args_schema, type) and issubclass(
                     tool.args_schema, BaseModel
                 ):
-                    model_schema: dict[str, Any] = tool.args_schema.model_json_schema()
+                    model_schema = tool.args_schema.model_json_schema()
                 else:
-                    # just assign, no new annotation
-                    model_schema = tool.args_schema or {}
+                    model_schema = cast(dict[str, Any], tool.args_schema or {})
 
                 return {
                     "name": tool.name,
@@ -594,13 +593,16 @@ class EndpointVectorStore:
                 f"Check 'status' field to handle success/error cases appropriately."
             )
 
-            return StructuredTool.from_function(
-                func=endpoint_func,
-                name=semantics.method_name,
-                description=full_description,
-                args_schema=tool_args_model,
-                return_direct=True,
-                infer_schema=False,
+            return cast(
+                ToolLike,
+                StructuredTool.from_function(
+                    func=endpoint_func,
+                    name=semantics.method_name,
+                    description=full_description,
+                    args_schema=tool_args_model,
+                    return_direct=True,
+                    infer_schema=False,
+                ),
             )
 
         except Exception as e:

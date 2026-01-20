@@ -96,7 +96,7 @@ class PriceQuote(BaseModel):
                 raise ValueError(f"Unexpected type for timestamp: {type(value)}")
 
             return datetime.fromtimestamp(timestamp, tz=UTC)
-        except Exception as e:
+        except (TypeError, ValueError) as e:
             warnings.warn(f"Failed to parse timestamp {value}: {e}", stacklevel=2)
             raise ValueError(f"Invalid timestamp format: {value}") from e
 

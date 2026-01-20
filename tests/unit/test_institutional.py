@@ -234,7 +234,7 @@ class TestInstitutionalClient:
         )
 
         filing = fmp_client.institutional.get_form_13f(
-            "0001067983", filing_date=date(2024, 1, 5)
+            "0001067983", report_date=date(2024, 1, 5)
         )
         assert isinstance(filing, list)
         assert isinstance(filing[0], Form13F)
@@ -282,7 +282,7 @@ class TestInstitutionalClient:
         )
 
         holdings = fmp_client.institutional.get_institutional_holdings(
-            "AAPL", filing_date=date(2024, 6, 30)
+            "AAPL", report_date=date(2024, 6, 30)
         )
         assert isinstance(holdings, list)
         assert len(holdings) == 1
@@ -290,6 +290,7 @@ class TestInstitutionalClient:
         assert holdings[0].symbol == "AAPL"
         assert holdings[0].investors_holding == 5181
         assert holdings[0].total_invested == 1988382372981.0
+
 
 class TestInstitutionalClientEnhanced:
     """Test enhanced institutional client methods"""
@@ -534,7 +535,7 @@ class TestInstitutionalClientEnhanced:
         )
 
         positions = fmp_client.institutional.get_symbol_positions_summary(
-            "AAPL", filing_date=date(2024, 6, 30)
+            "AAPL", report_date=date(2024, 6, 30)
         )
         assert isinstance(positions, list)
         assert len(positions) == 1

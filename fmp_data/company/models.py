@@ -14,6 +14,7 @@ from pydantic import (
     Field,
     HttpUrl,
     TypeAdapter,
+    ValidationError,
     field_validator,
 )
 from pydantic.alias_generators import to_camel
@@ -101,7 +102,7 @@ class CompanyProfile(BaseModel):
             adapter = TypeAdapter(AnyHttpUrl)
             try:
                 adapter.validate_python(cleaned)
-            except Exception:
+            except ValidationError:
                 return None
             return cleaned
         return value
