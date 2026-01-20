@@ -59,6 +59,7 @@ tests/integration/vcr_cassettes/**/*.yaml
 *.spec
 pip-log.txt
 pip-delete-this-directory.txt
+site/
 
 # Misc
 .DS_Store
