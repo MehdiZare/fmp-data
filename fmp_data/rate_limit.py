@@ -1,4 +1,7 @@
 # fmp_data/rate_limit.py
+from __future__ import annotations
+
+import asyncio
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 import json
@@ -137,3 +140,62 @@ class FMPRateLimiter:
             f"Per-second: "
             f"{len(self._second_requests)}/{self.quota_config.requests_per_second}"
         )
+
+
+class AsyncFMPRateLimiter:
+    """
+    Async wrapper for FMPRateLimiter that provides thread-safe async operations.
+    Shares state with the underlying sync limiter for consistent rate tracking.
+    """
+
+    def __init__(self, sync_limiter: FMPRateLimiter) -> None:
+        """
+        Initialize async rate limiter wrapping a sync limiter.
+
+        Args:
+            sync_limiter: The synchronous rate limiter to wrap
+        """
+        self._sync_limiter = sync_limiter
+        self._lock = asyncio.Lock()
+
+    async def should_allow_request(self) -> bool:
+        """
+        Async check if request should be allowed based on all limits.
+
+        Returns:
+            True if request is allowed, False if rate limited
+        """
+        async with self._lock:
+            return self._sync_limiter.should_allow_request()
+
+    async def record_request(self) -> None:
+        """Async record a new request."""
+        async with self._lock:
+            self._sync_limiter.record_request()
+
+    async def wait_if_needed(self) -> None:
+        """
+        Wait asynchronously if rate limit would be exceeded.
+        """
+        if not await self.should_allow_request():
+            wait_time = self.get_wait_time()
+            await asyncio.sleep(wait_time)
+
+    def get_wait_time(self) -> float:
+        """
+        Get seconds to wait before next request.
+
+        Returns:
+            Number of seconds to wait (non-negative)
+        """
+        return self._sync_limiter.get_wait_time()
+
+    def handle_response(self, response_status: int, response_body: str | None) -> None:
+        """
+        Handle API response for rate limit information.
+
+        Args:
+            response_status: HTTP status code
+            response_body: Response body text
+        """
+        self._sync_limiter.handle_response(response_status, response_body)

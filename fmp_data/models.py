@@ -1,10 +1,25 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import date, datetime
 from enum import Enum
-from typing import Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
+
+if TYPE_CHECKING:
+    from fmp_data.exceptions import ValidationError as FMPValidationError
+
+
+def _get_validation_error() -> type[Exception]:
+    """
+    Lazily import ValidationError to avoid circular imports.
+    Returns the FMP ValidationError class.
+    """
+    from fmp_data.exceptions import ValidationError
+
+    return ValidationError
 
 T = TypeVar("T")
 
@@ -123,18 +138,27 @@ class EndpointParam:
     valid_values: list[Any] | None = None
 
     def validate_value(self, value: Any) -> Any:
-        """Validate and convert parameter value"""
+        """Validate and convert parameter value.
+
+        Raises:
+            ValidationError: If value is None for required param or not in valid_values
+        """
+        ValidationError = _get_validation_error()
+
         if value is None:
             if self.required:
-                raise ValueError(f"Missing required parameter: {self.name}")
+                raise ValidationError(f"Missing required parameter: {self.name}")
             return None
 
         # Convert to correct type
-        converted_value = self.param_type.convert_value(value)
+        try:
+            converted_value = self.param_type.convert_value(value)
+        except ValueError as e:
+            raise ValidationError(f"Invalid value for {self.name}: {e}") from e
 
         # Validate against allowed values if specified
         if self.valid_values and converted_value not in self.valid_values:
-            raise ValueError(
+            raise ValidationError(
                 f"Invalid value for {self.name}. Must be one of: {self.valid_values}"
             )
 
@@ -172,33 +196,72 @@ class Endpoint(BaseModel, Generic[T]):
         else:
             return f"{base_url}/{path}"
 
-    def validate_params(self, provided_params: dict) -> dict[str, Any]:
-        """
-        Validate provided parameters against endpoint definition
-        """
-        validated = {}
+    def _build_param_lookup(self) -> dict[str, EndpointParam]:
+        """Build a lookup dict mapping both param names and aliases to params."""
+        lookup: dict[str, EndpointParam] = {}
+        for param in self.mandatory_params + (self.optional_params or []):
+            lookup[param.name] = param
+            if param.alias:
+                lookup[param.alias] = param
+        return lookup
 
-        # Validate mandatory parameters
+    def validate_params(
+        self, provided_params: dict, strict: bool = False
+    ) -> dict[str, Any]:
+        """
+        Validate provided parameters against endpoint definition.
+
+        Args:
+            provided_params: Dictionary of parameters provided by the caller
+            strict: If True, raise ValidationError on unknown parameter keys
+
+        Returns:
+            Dictionary of validated parameters with wire keys (aliases where defined)
+
+        Raises:
+            ValidationError: If required parameters are missing or unknown keys in strict mode
+        """
+        ValidationError = _get_validation_error()
+
+        validated: dict[str, Any] = {}
+        param_lookup = self._build_param_lookup()
+        mandatory_names = {p.name for p in self.mandatory_params}
+        seen_params: set[str] = set()
+
+        # Process provided parameters
+        for key, value in provided_params.items():
+            param = param_lookup.get(key)
+            if param is None:
+                if strict:
+                    raise ValidationError(f"Unknown parameter: {key}")
+                continue  # Silently ignore in non-strict mode
+
+            # Skip if we've already processed this param (via name or alias)
+            if param.name in seen_params:
+                continue
+            seen_params.add(param.name)
+
+            # Skip None values for optional params
+            if value is None and param.name not in mandatory_names:
+                continue
+
+            validated_value = param.validate_value(value)
+            if validated_value is not None or param.name in mandatory_names:
+                wire_key = param.alias or param.name
+                validated[wire_key] = validated_value
+
+        # Check mandatory params are present
         for param in self.mandatory_params:
-            if param.name not in provided_params:
-                raise ValueError(f"Missing mandatory parameter: {param.name}")
+            if param.name not in seen_params:
+                raise ValidationError(f"Missing mandatory parameter: {param.name}")
 
-            value = param.validate_value(provided_params[param.name])
-            # Use alias if available, otherwise use parameter name
-            key = param.alias or param.name
-            validated[key] = value
-
-        # Validate optional parameters
+        # Apply validated defaults for optional params not provided
         for param in self.optional_params or []:
-            if param.name in provided_params:
-                value = param.validate_value(provided_params[param.name])
-                # Use alias if available, otherwise use parameter name
-                key = param.alias or param.name
-                validated[key] = value
-            elif param.default is not None:
-                # Use alias if available, otherwise use parameter name
-                key = param.alias or param.name
-                validated[key] = param.default
+            if param.name not in seen_params and param.default is not None:
+                # Validate the default value
+                validated_default = param.validate_value(param.default)
+                wire_key = param.alias or param.name
+                validated[wire_key] = validated_default
 
         return validated
 

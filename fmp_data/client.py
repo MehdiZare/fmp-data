@@ -154,6 +154,27 @@ class FMPDataClient(BaseClient):
             if logger is not None:
                 logger.error(f"Error during cleanup: {e!s}")
 
+    async def __aenter__(self) -> "FMPDataClient":
+        """Async context manager enter"""
+        if not self._initialized:
+            raise RuntimeError("Client not properly initialized")
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
+        """Async context manager exit - closes async client resources"""
+        await self.aclose()
+        if exc_type is not None and exc_val is not None and self.logger:
+            self.logger.error(
+                "Error in async context manager",
+                extra={"error_type": exc_type.__name__, "error": str(exc_val)},
+                exc_info=True,
+            )
+
     def __del__(self) -> None:
         """Destructor that ensures resources are cleaned up"""
         try:

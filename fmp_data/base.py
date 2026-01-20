@@ -1,15 +1,18 @@
 # fmp_data/base.py
+from __future__ import annotations
+
+import asyncio
 import json
 import logging
 import time
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 import warnings
 
 import httpx
-from pydantic import BaseModel
 from tenacity import (
-    Retrying,
+    AsyncRetrying,
     RetryCallState,
+    Retrying,
     after_log,
     before_sleep_log,
     retry_if_exception,
@@ -28,7 +31,7 @@ from fmp_data.logger import FMPLogger, log_api_call
 from fmp_data.models import Endpoint
 from fmp_data.rate_limit import FMPRateLimiter, QuotaConfig
 
-T = TypeVar("T", bound=BaseModel)
+T = TypeVar("T")
 
 logger = FMPLogger().get_logger(__name__)
 
@@ -61,6 +64,9 @@ class BaseClient:
             )
         )
 
+        # Async client (lazily initialized)
+        self._async_client: httpx.AsyncClient | None = None
+
     def _setup_http_client(self) -> None:
         """
         Setup HTTP client with default configuration.
@@ -71,6 +77,7 @@ class BaseClient:
             headers={
                 "User-Agent": "FMP-Python-Client/1.0",
                 "Accept": "application/json",
+                "apikey": self.config.api_key,
             },
         )
 
@@ -80,6 +87,30 @@ class BaseClient:
         """
         if hasattr(self, "client") and self.client is not None:
             self.client.close()
+
+    def _setup_async_client(self) -> httpx.AsyncClient:
+        """
+        Setup or return existing async HTTP client with connection pooling.
+        """
+        if self._async_client is None or self._async_client.is_closed:
+            self._async_client = httpx.AsyncClient(
+                timeout=self.config.timeout,
+                follow_redirects=True,
+                headers={
+                    "User-Agent": "FMP-Python-Client/1.0",
+                    "Accept": "application/json",
+                    "apikey": self.config.api_key,
+                },
+            )
+        return self._async_client
+
+    async def aclose(self) -> None:
+        """
+        Clean up async resources (close the async httpx client).
+        """
+        if self._async_client is not None and not self._async_client.is_closed:
+            await self._async_client.aclose()
+            self._async_client = None
 
     def _handle_rate_limit(self, wait_time: float) -> None:
         """
@@ -105,7 +136,8 @@ class BaseClient:
 
     def _wait_for_retry(self, retry_state: RetryCallState) -> float:
         """
-        Prefer retry_after from RateLimitError, otherwise fall back to exponential backoff.
+        Prefer retry_after from RateLimitError, otherwise fall back to exponential
+        backoff.
         """
         outcome = retry_state.outcome
         if outcome is not None and outcome.failed:
@@ -196,9 +228,15 @@ class BaseClient:
             response = self.client.request(
                 endpoint.method.value, url, params=query_params
             )
-
-            data = self.handle_response(response)
-            return self._process_response(endpoint, data)
+            try:
+                if endpoint.response_model is bytes:
+                    response.raise_for_status()
+                    data = response.content
+                else:
+                    data = self.handle_response(response)
+                return self._process_response(endpoint, data)
+            finally:
+                response.close()
 
         except RateLimitError:
             # Re-raise rate limit errors to be handled by retry logic
@@ -223,54 +261,78 @@ class BaseClient:
         """
         try:
             response.raise_for_status()
-            data = response.json()
-            if not isinstance(data, dict | list):
-                raise FMPError(
-                    f"Unexpected response type: {type(data)}. Expected dict or list.",
-                    response={"data": data},
-                )
-            return data  # Now mypy knows this is dict[str, Any] | list[Any]
-        except httpx.HTTPStatusError as e:
-            error_details: dict[str, Any] = {}
-            try:
-                error_details = e.response.json()
-            except json.JSONDecodeError:
-                error_details["raw_content"] = e.response.content.decode()
-
-            if e.response.status_code == 429:
-                self._rate_limiter.handle_response(
-                    e.response.status_code, e.response.text
-                )
-                wait_time = self._rate_limiter.get_wait_time()
-                raise RateLimitError(
-                    f"Rate limit exceeded. Please wait {wait_time:.1f} seconds",
-                    status_code=429,
-                    response=error_details,
-                    retry_after=wait_time,
-                ) from e
-            elif e.response.status_code == 401:
-                raise AuthenticationError(
-                    "Invalid API key or authentication failed",
-                    status_code=401,
-                    response=error_details,
-                ) from e
-            elif e.response.status_code == 400:
-                raise ValidationError(
-                    f"Invalid request parameters: {error_details}",
-                    status_code=400,
-                    response=error_details,
-                ) from e
-            else:
-                raise FMPError(
-                    f"HTTP {e.response.status_code} error occurred: {error_details}",
-                    status_code=e.response.status_code,
-                    response=error_details,
-                ) from e
-        except json.JSONDecodeError as e:
+            return self._parse_json_response(response)
+        except httpx.HTTPStatusError as exc:
+            return self._handle_http_status_error(exc)
+        except json.JSONDecodeError as exc:
             raise FMPError(
-                f"Invalid JSON response from API: {e!s}",
+                f"Invalid JSON response from API: {exc!s}",
                 response={"raw_content": response.content.decode()},
-            ) from e
+            ) from exc
+
+    @staticmethod
+    def _parse_json_response(
+        response: httpx.Response,
+    ) -> dict[str, Any] | list[Any]:
+        data = response.json()
+        if not isinstance(data, dict | list):
+            raise FMPError(
+                f"Unexpected response type: {type(data)}. Expected dict or list.",
+                response={"data": data},
+            )
+        return data
+
+    @staticmethod
+    def _get_error_details(
+        response: httpx.Response,
+    ) -> dict[str, Any] | list[Any]:
+        try:
+            return response.json()
+        except json.JSONDecodeError:
+            return {"raw_content": response.content.decode()}
+
+    def _handle_http_status_error(
+        self,
+        error: httpx.HTTPStatusError,
+    ) -> dict[str, Any] | list[Any]:
+        error_details = self._get_error_details(error.response)
+        status_code = error.response.status_code
+
+        if status_code == 404:
+            if isinstance(error_details, list) and not error_details:
+                return []
+            if isinstance(error_details, dict) and not error_details:
+                return {}
+
+        if status_code == 429:
+            self._rate_limiter.handle_response(status_code, error.response.text)
+            wait_time = self._rate_limiter.get_wait_time()
+            raise RateLimitError(
+                f"Rate limit exceeded. Please wait {wait_time:.1f} seconds",
+                status_code=429,
+                response=error_details,
+                retry_after=wait_time,
+            ) from error
+
+        if status_code == 401:
+            raise AuthenticationError(
+                "Invalid API key or authentication failed",
+                status_code=401,
+                response=error_details,
+            ) from error
+
+        if status_code == 400:
+            raise ValidationError(
+                f"Invalid request parameters: {error_details}",
+                status_code=400,
+                response=error_details,
+            ) from error
+
+        raise FMPError(
+            f"HTTP {status_code} error occurred: {error_details}",
+            status_code=status_code,
+            response=error_details,
+        ) from error
 
     @staticmethod
     def _check_error_response(data: dict[str, Any]) -> None:
@@ -303,12 +365,16 @@ class BaseClient:
         Raises:
             ValueError: If the model structure is invalid
         """
-        if isinstance(item, dict):
-            return endpoint.response_model.model_validate(item)
-
-        # Handle primitive types
+        # Handle primitive types and raw dict/bytes
         if endpoint.response_model in (str, int, float, bool):
             return endpoint.response_model(item)  # type: ignore[return-value]
+        if endpoint.response_model is dict:
+            return dict(item) if not isinstance(item, dict) else item
+        if endpoint.response_model is bytes:
+            return bytes(item)
+
+        if isinstance(item, dict):
+            return endpoint.response_model.model_validate(item)
 
         # Try to feed non-dict value into the first field
         model = endpoint.response_model
@@ -363,33 +429,116 @@ class BaseClient:
         # Process single item responses
         if endpoint.response_model in (str, int, float, bool):
             return endpoint.response_model(data)  # type: ignore[return-value]
+        if endpoint.response_model is dict:
+            return dict(data) if not isinstance(data, dict) else data
+        if endpoint.response_model is bytes:
+            return data
         return endpoint.response_model.model_validate(data)
 
     async def request_async(self, endpoint: Endpoint[T], **kwargs: Any) -> T | list[T]:
         """
-        Make async request with rate limiting, returning T or list[T].
+        Make async request with rate limiting and retry logic, returning T or list[T].
         """
-        validated_params = endpoint.validate_params(kwargs)
-        url = endpoint.build_url(self.config.base_url, validated_params)
-        query_params = endpoint.get_query_params(validated_params)
-        query_params["apikey"] = self.config.api_key
+        self._rate_limit_retry_count = 0  # Reset counter at start of new request
+
+        # Create async retryer with configurable max_retries
+        retryer = AsyncRetrying(
+            stop=stop_after_attempt(self.config.max_retries),
+            wait=self._wait_for_retry,
+            retry=retry_if_exception(self._is_retryable_error),
+            before_sleep=before_sleep_log(logger, logging.WARNING),
+            after=after_log(logger, logging.INFO),
+            reraise=True,
+        )
+
+        async for attempt in retryer:
+            with attempt:
+                return await self._execute_request_async(endpoint, **kwargs)
+
+        # This should never be reached due to reraise=True
+        raise FMPError("Async request failed after all retry attempts")
+
+    async def _execute_request_async(
+        self, endpoint: Endpoint[T], **kwargs: Any
+    ) -> T | list[T]:
+        """
+        Execute a single async request attempt with rate limiting.
+
+        Args:
+            endpoint: The Endpoint object describing the request.
+            **kwargs: Request parameters.
+
+        Returns:
+            Either a single Pydantic model of type T or a list of T.
+        """
+        # Check rate limit before making request
+        if not self._rate_limiter.should_allow_request():
+            wait_time = self._rate_limiter.get_wait_time()
+            self._rate_limit_retry_count += 1
+
+            if self._rate_limit_retry_count > self.max_rate_limit_retries:
+                self._rate_limit_retry_count = 0
+                raise RateLimitError(
+                    f"Rate limit exceeded after "
+                    f"{self.max_rate_limit_retries} retries. "
+                    f"Please wait {wait_time:.1f} seconds",
+                    retry_after=wait_time,
+                )
+
+            self.logger.warning(
+                f"Rate limit reached "
+                f"(attempt {self._rate_limit_retry_count}/"
+                f"{self.max_rate_limit_retries}), "
+                f"waiting {wait_time:.1f} seconds before retrying"
+            )
+            await asyncio.sleep(wait_time)
 
         try:
-            async with httpx.AsyncClient(
-                timeout=self.config.timeout,
-                follow_redirects=True,
-                headers={
-                    "User-Agent": "FMP-Python-Client/1.0",
-                    "Accept": "application/json",
+            self._rate_limiter.record_request()
+
+            # Validate and process parameters
+            validated_params = endpoint.validate_params(kwargs)
+
+            # Build URL
+            url = endpoint.build_url(self.config.base_url, validated_params)
+
+            # Extract query parameters and add API key
+            query_params = endpoint.get_query_params(validated_params)
+            query_params["apikey"] = self.config.api_key
+
+            self.logger.debug(
+                f"Making async request to {endpoint.name}",
+                extra={
+                    "url": url,
+                    "endpoint": endpoint.name,
+                    "method": endpoint.method.value,
                 },
-            ) as client:
-                response = await client.request(
-                    endpoint.method.value, url, params=query_params
-                )
-                data = self.handle_response(response)
+            )
+
+            # Use persistent async client
+            client = self._setup_async_client()
+            response = await client.request(
+                endpoint.method.value, url, params=query_params
+            )
+            try:
+                if endpoint.response_model is bytes:
+                    response.raise_for_status()
+                    data = response.content
+                else:
+                    data = self.handle_response(response)
                 return self._process_response(endpoint, data)
+            finally:
+                await response.aclose()
+
+        except RateLimitError:
+            # Re-raise rate limit errors to be handled by retry logic
+            raise
         except Exception as e:
-            self.logger.error(f"Async request failed: {e!s}")
+            self.logger.error(
+                f"Async request failed: {e!s}",
+                extra={"endpoint": endpoint.name, "error": str(e)},
+                exc_info=True,
+            )
             raise
 
 
