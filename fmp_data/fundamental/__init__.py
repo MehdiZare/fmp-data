@@ -1,4 +1,5 @@
 # fmp_data/fundamental/__init__.py
+from fmp_data.fundamental.async_client import AsyncFundamentalClient
 from fmp_data.fundamental.client import FundamentalClient
 from fmp_data.fundamental.models import (
     DCF,
@@ -21,6 +22,7 @@ from fmp_data.fundamental.models import (
 )
 
 __all__ = [
+    "AsyncFundamentalClient",
     "DCF",
     "AsReportedBalanceSheet",
     "AsReportedCashFlowStatement",

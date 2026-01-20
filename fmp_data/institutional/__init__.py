@@ -1,4 +1,5 @@
 # fmp_data/institutional/__init__.py
+from fmp_data.institutional.async_client import AsyncInstitutionalClient
 from fmp_data.institutional.client import InstitutionalClient
 from fmp_data.institutional.models import (  # 13F Models; Insider Trading Models
     AssetAllocation,
@@ -14,6 +15,7 @@ from fmp_data.institutional.models import (  # 13F Models; Insider Trading Model
 
 __all__ = [
     "AssetAllocation",
+    "AsyncInstitutionalClient",
     "Form13F",
     "Form13FDate",
     "InsiderRoster",

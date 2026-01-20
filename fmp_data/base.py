@@ -83,7 +83,10 @@ class BaseClient:
 
     def close(self) -> None:
         """
-        Clean up resources (close the httpx client).
+        Clean up all sync resources (close the sync httpx client).
+
+        Note: If you've used async methods, call aclose() instead to properly
+        close both sync and async clients.
         """
         if hasattr(self, "client") and self.client is not None:
             self.client.close()
@@ -106,11 +109,16 @@ class BaseClient:
 
     async def aclose(self) -> None:
         """
-        Clean up async resources (close the async httpx client).
+        Clean up all resources (both async and sync httpx clients).
+
+        This is the recommended cleanup method when using async methods.
         """
+        # Close async client
         if self._async_client is not None and not self._async_client.is_closed:
             await self._async_client.aclose()
             self._async_client = None
+        # Also close sync client
+        self.close()
 
     def _handle_rate_limit(self, wait_time: float) -> None:
         """
@@ -203,6 +211,10 @@ class BaseClient:
             wait_time = self._rate_limiter.get_wait_time()
             self._handle_rate_limit(wait_time)
 
+        request_start = time.perf_counter()
+        status_code = 0
+        success = False
+
         try:
             self._rate_limiter.record_request()
 
@@ -228,13 +240,17 @@ class BaseClient:
             response = self.client.request(
                 endpoint.method.value, url, params=query_params
             )
+            status_code = response.status_code
+
             try:
                 if endpoint.response_model is bytes:
                     response.raise_for_status()
                     data = response.content
                 else:
                     data = self.handle_response(response)
-                return self._process_response(endpoint, data)
+                result = self._process_response(endpoint, data)
+                success = True
+                return result
             finally:
                 response.close()
 
@@ -248,6 +264,34 @@ class BaseClient:
                 exc_info=True,
             )
             raise
+        finally:
+            # Log timing metrics
+            latency_ms = (time.perf_counter() - request_start) * 1000
+            self.logger.debug(
+                f"Request completed: {endpoint.name}",
+                extra={
+                    "endpoint": endpoint.name,
+                    "latency_ms": round(latency_ms, 2),
+                    "status_code": status_code,
+                    "success": success,
+                },
+            )
+
+            # Call metrics callback if configured
+            if self.config.metrics_callback is not None:
+                try:
+                    self.config.metrics_callback(
+                        endpoint_name=endpoint.name,
+                        latency_ms=round(latency_ms, 2),
+                        success=success,
+                        status_code=status_code,
+                        retry_count=self._rate_limit_retry_count,
+                    )
+                except Exception as callback_exc:
+                    self.logger.warning(
+                        f"Metrics callback failed: {callback_exc!s}",
+                        extra={"error": str(callback_exc)},
+                    )
 
     def handle_response(self, response: httpx.Response) -> dict[str, Any] | list[Any]:
         """
@@ -543,7 +587,7 @@ class BaseClient:
 
 
 class EndpointGroup:
-    """Abstract base class for endpoint groups"""
+    """Abstract base class for sync endpoint groups"""
 
     def __init__(self, client: BaseClient) -> None:
         self._client = client
@@ -552,3 +596,80 @@ class EndpointGroup:
     def client(self) -> BaseClient:
         """Get the client instance."""
         return self._client
+
+    @staticmethod
+    def _unwrap_single(
+        result: T | list[T],
+        model: type[T],
+        allow_none: bool = False,
+    ) -> T | None:
+        """
+        Unwrap single item from potentially list response.
+
+        Args:
+            result: The result from client.request(), either a single item or list
+            model: The expected model type (for error messages)
+            allow_none: If True, return None for empty lists instead of raising
+
+        Returns:
+            The single item, or None if allow_none=True and result is empty list
+
+        Raises:
+            ValueError: If result is empty list and allow_none=False
+        """
+        if isinstance(result, list):
+            if not result:
+                if allow_none:
+                    return None
+                raise ValueError(
+                    f"Expected at least one {model.__name__}, got empty list"
+                )
+            return cast(model, result[0])
+        return cast(model, result)
+
+
+class AsyncEndpointGroup:
+    """Abstract base class for async endpoint groups.
+
+    This is the async counterpart to EndpointGroup. All methods in subclasses
+    should be async and use `await self.client.request_async()` instead of
+    `self.client.request()`.
+    """
+
+    def __init__(self, client: BaseClient) -> None:
+        self._client = client
+
+    @property
+    def client(self) -> BaseClient:
+        """Get the client instance."""
+        return self._client
+
+    @staticmethod
+    def _unwrap_single(
+        result: T | list[T],
+        model: type[T],
+        allow_none: bool = False,
+    ) -> T | None:
+        """
+        Unwrap single item from potentially list response.
+
+        Args:
+            result: The result from client.request_async(), either a single item or list
+            model: The expected model type (for error messages)
+            allow_none: If True, return None for empty lists instead of raising
+
+        Returns:
+            The single item, or None if allow_none=True and result is empty list
+
+        Raises:
+            ValueError: If result is empty list and allow_none=False
+        """
+        if isinstance(result, list):
+            if not result:
+                if allow_none:
+                    return None
+                raise ValueError(
+                    f"Expected at least one {model.__name__}, got empty list"
+                )
+            return cast(model, result[0])
+        return cast(model, result)

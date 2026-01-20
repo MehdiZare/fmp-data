@@ -1,4 +1,5 @@
 # fmp_data/sec/__init__.py
+from fmp_data.sec.async_client import AsyncSECClient
 from fmp_data.sec.client import SECClient
 from fmp_data.sec.models import (
     SECCompanySearchResult,
@@ -10,6 +11,7 @@ from fmp_data.sec.models import (
 )
 
 __all__ = [
+    "AsyncSECClient",
     "SECClient",
     "SECCompanySearchResult",
     "SECFiling8K",

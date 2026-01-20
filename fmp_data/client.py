@@ -140,7 +140,11 @@ class FMPDataClient(BaseClient):
             )
 
     def close(self) -> None:
-        """Clean up resources"""
+        """Clean up sync resources.
+
+        Note: If you've used async methods, call aclose() instead to properly
+        close both sync and async clients.
+        """
         try:
             if hasattr(self, "client") and self.client is not None:
                 self.client.close()
@@ -154,6 +158,33 @@ class FMPDataClient(BaseClient):
             if logger is not None:
                 logger.error(f"Error during cleanup: {e!s}")
 
+    async def aclose(self) -> None:
+        """Clean up all resources (both async and sync clients).
+
+        This is the recommended cleanup method when using async methods.
+        """
+        try:
+            # Close async client
+            if (
+                hasattr(self, "_async_client")
+                and self._async_client is not None
+                and not self._async_client.is_closed
+            ):
+                await self._async_client.aclose()
+                self._async_client = None
+            # Close sync client
+            if hasattr(self, "client") and self.client is not None:
+                self.client.close()
+            if hasattr(self, "_initialized") and self._initialized:
+                logger = getattr(self, "_logger", None)
+                if logger is not None:
+                    logger.info("FMP Data client closed")
+        except Exception as e:
+            # Log if possible, but don't raise
+            logger = getattr(self, "_logger", None)
+            if logger is not None:
+                logger.error(f"Error during async cleanup: {e!s}")
+
     async def __aenter__(self) -> "FMPDataClient":
         """Async context manager enter"""
         if not self._initialized:
@@ -166,7 +197,7 @@ class FMPDataClient(BaseClient):
         exc_val: BaseException | None,
         exc_tb: types.TracebackType | None,
     ) -> None:
-        """Async context manager exit - closes async client resources"""
+        """Async context manager exit - closes all client resources"""
         await self.aclose()
         if exc_type is not None and exc_val is not None and self.logger:
             self.logger.error(

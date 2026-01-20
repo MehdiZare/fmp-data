@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 if TYPE_CHECKING:
-    from fmp_data.exceptions import ValidationError as FMPValidationError
+    pass
 
 
 def _get_validation_error() -> type[Exception]:
@@ -205,7 +205,7 @@ class Endpoint(BaseModel, Generic[T]):
                 lookup[param.alias] = param
         return lookup
 
-    def validate_params(
+    def validate_params(  # noqa: C901
         self, provided_params: dict, strict: bool = False
     ) -> dict[str, Any]:
         """
@@ -219,7 +219,7 @@ class Endpoint(BaseModel, Generic[T]):
             Dictionary of validated parameters with wire keys (aliases where defined)
 
         Raises:
-            ValidationError: If required parameters are missing or unknown keys in strict mode
+            ValidationError: If required params missing or unknown keys in strict
         """
         ValidationError = _get_validation_error()
 

@@ -249,6 +249,8 @@ def test_request_rate_limit(base_client, test_endpoint):
 @pytest.mark.asyncio
 async def test_request_async(base_client, mock_endpoint):
     """Test async request handling"""
+    from unittest.mock import AsyncMock
+
     # Configure mock endpoint properly
     mock_endpoint.method = MagicMock()
     mock_endpoint.method.value = "GET"
@@ -263,11 +265,17 @@ async def test_request_async(base_client, mock_endpoint):
     mock_response = Mock()
     mock_response.status_code = 200
     mock_response.json.return_value = {"test": "data"}
+    mock_response.aclose = AsyncMock()
 
-    with patch("httpx.AsyncClient.request", return_value=mock_response):
+    mock_async_client = AsyncMock()
+    mock_async_client.request = AsyncMock(return_value=mock_response)
+
+    with patch.object(base_client, "_setup_async_client", return_value=mock_async_client):
         result = await base_client.request_async(mock_endpoint)
         assert isinstance(result, SampleResponse)
         assert result.test == "data"
+
+    await base_client.aclose()
 
 
 def test_process_response(mock_endpoint):

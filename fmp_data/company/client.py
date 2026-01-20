@@ -104,22 +104,23 @@ from fmp_data.models import MarketCapitalization
 
 
 class CompanyClient(EndpointGroup):
-    """Client for company-related API endpoints"""
+    """Client for company-related API endpoints.
+
+    For async support, use AsyncCompanyClient instead.
+    """
 
     def get_profile(self, symbol: str) -> CompanyProfile:
+        """Get company profile"""
         result = self.client.request(PROFILE, symbol=symbol)
-        if not result:
+        profile = self._unwrap_single(result, CompanyProfile, allow_none=True)
+        if profile is None:
             raise FMPError(f"Symbol {symbol} not found")
-        return cast(CompanyProfile, result[0] if isinstance(result, list) else result)
+        return profile
 
     def get_core_information(self, symbol: str) -> CompanyCoreInformation | None:
         """Get core company information"""
         result = self.client.request(CORE_INFORMATION, symbol=symbol)
-        if isinstance(result, list):
-            if not result:
-                return None
-            return cast(CompanyCoreInformation, result[0])
-        return cast(CompanyCoreInformation, result)
+        return self._unwrap_single(result, CompanyCoreInformation, allow_none=True)
 
     def get_executives(self, symbol: str) -> list[CompanyExecutive]:
         """Get company executives information"""
@@ -143,12 +144,12 @@ class CompanyClient(EndpointGroup):
     def get_quote(self, symbol: str) -> Quote:
         """Get real-time stock quote"""
         result = self.client.request(QUOTE, symbol=symbol)
-        return cast(Quote, result[0] if isinstance(result, list) else result)
+        return self._unwrap_single(result, Quote)
 
     def get_simple_quote(self, symbol: str) -> SimpleQuote:
         """Get simple stock quote"""
         result = self.client.request(SIMPLE_QUOTE, symbol=symbol)
-        return cast(SimpleQuote, result[0] if isinstance(result, list) else result)
+        return self._unwrap_single(result, SimpleQuote)
 
     def get_historical_prices(
         self,
@@ -243,14 +244,12 @@ class CompanyClient(EndpointGroup):
     def get_share_float(self, symbol: str) -> ShareFloat:
         """Get current share float data for a company"""
         result = self.client.request(SHARE_FLOAT, symbol=symbol)
-        return cast(ShareFloat, result[0] if isinstance(result, list) else result)
+        return self._unwrap_single(result, ShareFloat)
 
     def get_market_cap(self, symbol: str) -> MarketCapitalization:
         """Get market capitalization data"""
         result = self.client.request(MARKET_CAP, symbol=symbol)
-        return cast(
-            MarketCapitalization, result[0] if isinstance(result, list) else result
-        )
+        return self._unwrap_single(result, MarketCapitalization)
 
     def get_historical_market_cap(self, symbol: str) -> list[MarketCapitalization]:
         """Get historical market capitalization data"""
@@ -263,16 +262,12 @@ class CompanyClient(EndpointGroup):
     def get_price_target_summary(self, symbol: str) -> PriceTargetSummary:
         """Get price target summary"""
         result = self.client.request(PRICE_TARGET_SUMMARY, symbol=symbol)
-        return cast(
-            PriceTargetSummary, result[0] if isinstance(result, list) else result
-        )
+        return self._unwrap_single(result, PriceTargetSummary)
 
     def get_price_target_consensus(self, symbol: str) -> PriceTargetConsensus:
         """Get price target consensus"""
         result = self.client.request(PRICE_TARGET_CONSENSUS, symbol=symbol)
-        return cast(
-            PriceTargetConsensus, result[0] if isinstance(result, list) else result
-        )
+        return self._unwrap_single(result, PriceTargetConsensus)
 
     def get_analyst_estimates(self, symbol: str) -> list[AnalystEstimate]:
         """Get analyst estimates"""
@@ -500,9 +495,7 @@ class CompanyClient(EndpointGroup):
             FinancialStatementFull object with income, balance sheet, and cash flow
         """
         result = self.client.request(LATEST_FINANCIAL_STATEMENTS, symbol=symbol)
-        return cast(
-            FinancialStatementFull, result[0] if isinstance(result, list) else result
-        )
+        return self._unwrap_single(result, FinancialStatementFull)
 
     def get_income_statement_ttm(self, symbol: str) -> list[IncomeStatement]:
         """Get trailing twelve months (TTM) income statement

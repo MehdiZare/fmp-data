@@ -14,6 +14,7 @@ from fmp_data.company.models import (
     MergerAcquisition,
     PriceTarget,
     PriceTargetSummary,
+    Quote,
 )
 from fmp_data.intelligence.models import DividendEvent, EarningEvent, StockSplitEvent
 from fmp_data.models import CompanySymbol
@@ -497,6 +498,112 @@ class TestExecutiveCompensationBenchmark:
         mock_client.request.assert_called_once()
         call_args = mock_client.request.call_args
         assert call_args[1]["year"] == 2023
+
+
+class TestCompanyClientAsync:
+    """Tests for async methods in CompanyClient"""
+
+    @pytest.fixture
+    def profile_data(self):
+        """Mock company profile data"""
+        return {
+            "symbol": "AAPL",
+            "price": 150.0,
+            "beta": 1.2,
+            "volAvg": 82034567,
+            "mktCap": 2500000000000,
+            "lastDiv": 0.88,
+            "range": "120-180",
+            "changes": 2.5,
+            "companyName": "Apple Inc.",
+            "currency": "USD",
+            "cik": "0000320193",
+            "isin": "US0378331005",
+            "cusip": "037833100",
+            "exchange": "NASDAQ",
+            "exchangeShortName": "NASDAQ",
+            "industry": "Consumer Electronics",
+            "website": "https://apple.com",
+            "description": "Apple Inc. designs, manufactures, and markets smartphones.",
+            "ceo": "Tim Cook",
+            "sector": "Technology",
+            "country": "US",
+            "fullTimeEmployees": "164000",
+            "phone": "408-996-1010",
+            "address": "One Apple Park Way",
+            "city": "Cupertino",
+            "state": "CA",
+            "zip": "95014",
+            "dcfDiff": 10.5,
+            "dcf": 160.5,
+            "image": "https://example.com/AAPL.png",
+            "ipoDate": "1980-12-12",
+            "defaultImage": False,
+            "isEtf": False,
+            "isActivelyTrading": True,
+            "isAdr": False,
+            "isFund": False,
+        }
+
+    @pytest.mark.asyncio
+    async def test_async_company_get_profile(self, mock_client, profile_data):
+        """Test AsyncCompanyClient get_profile method"""
+        from unittest.mock import AsyncMock
+
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        mock_client.request_async = AsyncMock(
+            return_value=[CompanyProfile(**profile_data)]
+        )
+
+        async_client = AsyncCompanyClient(mock_client)
+        result = await async_client.get_profile("AAPL")
+
+        assert isinstance(result, CompanyProfile)
+        assert result.symbol == "AAPL"
+        assert result.company_name == "Apple Inc."
+        mock_client.request_async.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_async_company_get_quote(self, mock_client):
+        """Test AsyncCompanyClient get_quote method"""
+        from unittest.mock import AsyncMock
+
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        quote_data = {
+            "symbol": "AAPL",
+            "name": "Apple Inc.",
+            "price": 150.0,
+            "changePercentage": 1.5,
+            "change": 2.25,
+            "dayLow": 148.0,
+            "dayHigh": 151.0,
+            "yearHigh": 180.0,
+            "yearLow": 120.0,
+            "marketCap": 2500000000000,
+            "priceAvg50": 145.0,
+            "priceAvg200": 140.0,
+            "volume": 82034567,
+            "avgVolume": 80000000,
+            "exchange": "NASDAQ",
+            "open": 149.0,
+            "previousClose": 147.75,
+            "eps": 6.05,
+            "pe": 24.79,
+            "earningsAnnouncement": "2024-01-25T16:30:00.000+0000",
+            "sharesOutstanding": 16700000000,
+            "timestamp": 1706198400,
+        }
+
+        mock_client.request_async = AsyncMock(return_value=[Quote(**quote_data)])
+
+        async_client = AsyncCompanyClient(mock_client)
+        result = await async_client.get_quote("AAPL")
+
+        assert isinstance(result, Quote)
+        assert result.symbol == "AAPL"
+        assert result.price == 150.0
 
 
 class TestHistoricalPriceVariants:

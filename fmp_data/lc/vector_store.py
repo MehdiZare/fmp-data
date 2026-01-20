@@ -7,10 +7,9 @@ from logging import Logger
 from pathlib import Path
 from typing import Any, ClassVar, Protocol, cast
 
+from langchain_core.documents import Document  # type: ignore[import-not-found]
 from langchain_core.embeddings import Embeddings  # type: ignore[import-not-found]
 from langchain_core.tools import StructuredTool  # type: ignore[import-not-found]
-from langchain_core.documents import Document  # type: ignore[import-not-found]
-
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
 try:

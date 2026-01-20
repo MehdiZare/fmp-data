@@ -1,4 +1,5 @@
 # fmp_data/batch/__init__.py
+from fmp_data.batch.async_client import AsyncBatchClient
 from fmp_data.batch.client import BatchClient
 from fmp_data.batch.models import (
     AftermarketQuote,
@@ -11,6 +12,7 @@ from fmp_data.batch.models import (
 __all__ = [
     "AftermarketQuote",
     "AftermarketTrade",
+    "AsyncBatchClient",
     "BatchClient",
     "BatchMarketCap",
     "BatchQuote",

@@ -9,8 +9,8 @@ File: fmp_data/config.py
 
 from __future__ import annotations
 
-import os
 from collections.abc import Callable
+import os
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -83,7 +83,7 @@ class LoggingConfig(BaseModel):
                 raise ValueError(f"Could not create log directory: {e}") from e
 
     @classmethod
-    def from_env(cls) -> "LoggingConfig":
+    def from_env(cls) -> LoggingConfig:
         """Create logging config from environment variables"""
         handlers = {}
         log_path = None
@@ -153,7 +153,7 @@ class RateLimitConfig(BaseModel):
     )
 
     @classmethod
-    def from_env(cls) -> "RateLimitConfig":
+    def from_env(cls) -> RateLimitConfig:
         """Create rate limit config from environment variables"""
 
         def safe_int(env_var: str, default: str) -> int:
@@ -202,7 +202,10 @@ class ClientConfig(BaseModel):
     )
     metrics_callback: Callable[..., None] | None = Field(
         default=None,
-        description="Optional callback(endpoint_name, latency_ms, success, status_code, retry_count)",
+        description=(
+            "Optional callback(endpoint_name, latency_ms, success, "
+            "status_code, retry_count)"
+        ),
         exclude=True,  # Don't include in serialization
     )
 
@@ -262,7 +265,7 @@ class ClientConfig(BaseModel):
         return f"{self.__class__.__name__}({self.__str__()})"
 
     @classmethod
-    def from_env(cls) -> "ClientConfig":
+    def from_env(cls) -> ClientConfig:
         """Create configuration from environment variables"""
         api_key = os.getenv("FMP_API_KEY")
         if not api_key:

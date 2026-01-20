@@ -362,8 +362,11 @@ class FMPLogger:
         # Use handler_kwargs instead of kwargs
         kwargs = config.handler_kwargs.copy()
 
+        # Prepend log_path only if filename is not already absolute
         if "filename" in kwargs and log_path:
-            kwargs["filename"] = log_path / kwargs["filename"]
+            filename = Path(kwargs["filename"])
+            if not filename.is_absolute():
+                kwargs["filename"] = log_path / kwargs["filename"]
 
         # Create handler
         if config.class_name == "StreamHandler":

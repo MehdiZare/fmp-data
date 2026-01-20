@@ -567,6 +567,57 @@ class TestFMPLogger:
         # Should have combined log_path with filename
         assert str(tmp_path) in handler.baseFilename
 
+    def test_add_handler_with_relative_filename(self, tmp_path):
+        """Test adding handler with relative filename prepends log_path."""
+        fmp_logger = FMPLogger()
+
+        config = LogHandlerConfig(
+            class_name="FileHandler", handler_kwargs={"filename": "relative.log"}
+        )
+
+        fmp_logger._add_handler("file", config, tmp_path)
+
+        handler = fmp_logger._handlers["file"]
+        # Should have prepended log_path to relative filename
+        assert handler.baseFilename == str(tmp_path / "relative.log")
+
+    def test_add_handler_with_absolute_filename(self, tmp_path):
+        """Test adding handler with absolute filename does NOT prepend log_path."""
+        fmp_logger = FMPLogger()
+
+        absolute_path = tmp_path / "absolute_logs" / "absolute.log"
+        absolute_path.parent.mkdir(parents=True, exist_ok=True)
+
+        config = LogHandlerConfig(
+            class_name="FileHandler", handler_kwargs={"filename": str(absolute_path)}
+        )
+
+        other_log_path = tmp_path / "other_logs"
+        other_log_path.mkdir(parents=True, exist_ok=True)
+
+        fmp_logger._add_handler("file", config, other_log_path)
+
+        handler = fmp_logger._handlers["file"]
+        # Should NOT have prepended other_log_path - should use the absolute path as-is
+        assert handler.baseFilename == str(absolute_path)
+        assert str(other_log_path) not in handler.baseFilename
+
+    def test_add_handler_no_log_path(self, tmp_path):
+        """Test adding handler without log_path uses filename as-is."""
+        fmp_logger = FMPLogger()
+
+        log_file = tmp_path / "standalone.log"
+
+        config = LogHandlerConfig(
+            class_name="FileHandler", handler_kwargs={"filename": str(log_file)}
+        )
+
+        fmp_logger._add_handler("file", config, log_path=None)
+
+        handler = fmp_logger._handlers["file"]
+        # Should use the filename as provided
+        assert handler.baseFilename == str(log_file)
+
 
 class TestLogApiCallDecorator:
     """Test log_api_call decorator functionality"""
