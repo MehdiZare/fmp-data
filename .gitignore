@@ -52,6 +52,7 @@ coverage.xml
 cover/
 .mypy_cache/
 .ruff_cache/
+tests/integration/vcr_cassettes/**/*.yaml
 
 # Build
 *.manifest
