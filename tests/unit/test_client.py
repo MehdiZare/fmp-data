@@ -593,16 +593,19 @@ def test_retry_on_timeout(
     mock_request, fmp_client, mock_response, mock_company_profile
 ):
     """Test retry behavior on timeout"""
-    fmp_client.config = fmp_client.config.model_copy(update={"max_retries": 2})
+    client = FMPDataClient(
+        config=fmp_client.config.model_copy(update={"max_retries": 2})
+    )
     mock_request.side_effect = [
         httpx.TimeoutException("Connection timeout"),
         mock_response(status_code=200, json_data=[mock_company_profile]),
     ]
 
     with patch("tenacity.nap.sleep", return_value=None):
-        result = fmp_client.company.get_profile("AAPL")
+        result = client.company.get_profile("AAPL")
     assert result.symbol == "AAPL"
     assert mock_request.call_count == 2
+    client.close()
 
 
 @patch("httpx.Client.request")

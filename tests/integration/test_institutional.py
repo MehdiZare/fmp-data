@@ -5,16 +5,30 @@ import pytest
 
 from fmp_data import FMPDataClient
 from fmp_data.institutional.models import (
+    AssetAllocation,
     BeneficialOwnership,
-    CIKCompanyMap,
     CIKMapping,
     FailToDeliver,
     Form13F,
+    Form13FDate,
+    HolderIndustryBreakdown,
+    HolderPerformanceSummary,
+    IndustryPerformanceSummary,
+    InsiderTradingByName,
+    InsiderTradingLatest,
+    InsiderTradingSearch,
+    InsiderTradingStatistics,
+    InsiderTransactionType,
     InsiderRoster,
     InsiderStatistic,
     InsiderTrade,
+    InstitutionalOwnershipAnalytics,
+    InstitutionalOwnershipDates,
+    InstitutionalOwnershipExtract,
+    InstitutionalOwnershipLatest,
     InstitutionalHolder,
     InstitutionalHolding,
+    SymbolPositionsSummary,
 )
 
 from .base import BaseTestCase
@@ -57,6 +71,8 @@ class Test13FEndpoints(BaseTestCase):
 class TestInstitutionalOwnershipEndpoints(BaseTestCase):
     """Test institutional ownership endpoints"""
 
+    FILING_DATE = date(2023, 9, 30)
+
     def test_get_institutional_holders(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting list of institutional holders"""
         with vcr_instance.use_cassette("institutional/holders.yaml"):
@@ -77,7 +93,9 @@ class TestInstitutionalOwnershipEndpoints(BaseTestCase):
         """Test getting institutional holdings by symbol"""
         with vcr_instance.use_cassette("institutional/holdings.yaml"):
             holdings = self._handle_rate_limit(
-                fmp_client.institutional.get_institutional_holdings, "AAPL", False
+                fmp_client.institutional.get_institutional_holdings,
+                "AAPL",
+                self.FILING_DATE,
             )
 
             assert isinstance(holdings, list)
@@ -147,11 +165,11 @@ class TestInsiderTradingEndpoints(BaseTestCase):
             assert stats.symbol == "AAPL"
             assert isinstance(stats.year, int)
             assert isinstance(stats.quarter, int)
-            assert isinstance(stats.purchases, int)
-            assert isinstance(stats.sales, int)
-            assert isinstance(stats.buy_sell_ratio, float)
-            assert isinstance(stats.total_bought, int)
-            assert isinstance(stats.total_sold, int)
+            assert isinstance(stats.acquired_transactions, int)
+            assert isinstance(stats.disposed_transactions, int)
+            assert isinstance(stats.acquired_disposed_ratio, float)
+            assert isinstance(stats.total_acquired, int)
+            assert isinstance(stats.total_disposed, int)
 
     @pytest.mark.parametrize(
         "test_symbol",
@@ -220,24 +238,6 @@ class TestCIKMappingEndpoints(BaseTestCase):
             # Verify search results contain term
             sample_mapping = mappings[0]
             assert "BERKSHIRE" in sample_mapping.reporting_name.upper()
-
-    def test_get_cik_by_symbol(self, fmp_client: FMPDataClient, vcr_instance):
-        """Test getting CIK mapping by symbol"""
-        with vcr_instance.use_cassette("institutional/cik_by_symbol.yaml"):
-            mappings = self._handle_rate_limit(
-                fmp_client.institutional.get_cik_by_symbol,
-                "AAPL",
-            )
-
-            assert isinstance(mappings, list)
-            assert len(mappings) > 0
-            assert all(isinstance(m, CIKCompanyMap) for m in mappings)
-
-            # Verify mapping matches requested symbol
-            sample_mapping = mappings[0]
-            assert isinstance(sample_mapping.cik, str)
-            assert isinstance(sample_mapping.symbol, str)
-            assert "AAPL" in sample_mapping.symbol.upper()
 
 
 class TestBeneficialOwnershipEndpoints(BaseTestCase):
@@ -345,3 +345,206 @@ class TestFailToDeliverEndpoints(BaseTestCase):
                 assert all(f.symbol == test_symbol for f in ftd_data)
                 assert all(f.quantity >= 0 for f in ftd_data)
                 assert all(f.price > 0 for f in ftd_data)
+
+
+class TestInstitutionalAdditionalEndpoints(BaseTestCase):
+    """Test additional institutional endpoints"""
+
+    CIK = "0001067983"
+    FILING_DATE = date(2023, 9, 30)
+
+    def test_get_form_13f_dates(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting Form 13F filing dates"""
+        with vcr_instance.use_cassette("institutional/form_13f_dates.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.institutional.get_form_13f_dates, self.CIK
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], Form13FDate)
+
+    def test_get_asset_allocation(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting asset allocation data"""
+        with vcr_instance.use_cassette("institutional/asset_allocation.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.institutional.get_asset_allocation, self.FILING_DATE
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], AssetAllocation)
+
+    def test_get_transaction_types(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting insider transaction types"""
+        with vcr_instance.use_cassette("institutional/transaction_types.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.institutional.get_transaction_types
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], InsiderTransactionType)
+
+    def test_get_insider_trading_latest(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting latest insider trading activity"""
+        with vcr_instance.use_cassette("institutional/insider_trading_latest.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.institutional.get_insider_trading_latest, page=0
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], InsiderTradingLatest)
+
+    def test_search_insider_trading(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test searching insider trading"""
+        with vcr_instance.use_cassette("institutional/insider_trading_search.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.institutional.search_insider_trading,
+                symbol="AAPL",
+                page=0,
+                limit=5,
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], InsiderTradingSearch)
+
+    def test_get_insider_trading_by_name(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test searching insider trading by name"""
+        with vcr_instance.use_cassette("institutional/insider_trading_by_name.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.institutional.get_insider_trading_by_name,
+                reporting_name="COOK",
+                page=0,
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], InsiderTradingByName)
+                assert results[0].reporting_cik
+                assert results[0].reporting_name
+
+    def test_get_insider_trading_statistics_enhanced(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting enhanced insider trading statistics"""
+        with vcr_instance.use_cassette(
+            "institutional/insider_trading_statistics_enhanced.yaml"
+        ):
+            stats = self._handle_rate_limit(
+                fmp_client.institutional.get_insider_trading_statistics_enhanced,
+                "AAPL",
+            )
+            assert isinstance(stats, InsiderTradingStatistics)
+
+    def test_get_institutional_ownership_latest(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting latest institutional ownership filings"""
+        with vcr_instance.use_cassette("institutional/ownership_latest.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.institutional.get_institutional_ownership_latest,
+                cik=self.CIK,
+                page=0,
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], InstitutionalOwnershipLatest)
+
+    def test_get_institutional_ownership_extract(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting institutional ownership extract"""
+        with vcr_instance.use_cassette("institutional/ownership_extract.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.institutional.get_institutional_ownership_extract,
+                self.CIK,
+                self.FILING_DATE,
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], InstitutionalOwnershipExtract)
+
+    def test_get_institutional_ownership_dates(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting institutional ownership dates"""
+        with vcr_instance.use_cassette("institutional/ownership_dates.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.institutional.get_institutional_ownership_dates, self.CIK
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], InstitutionalOwnershipDates)
+                assert isinstance(results[0].report_date, date)
+                assert isinstance(results[0].year, int)
+                assert isinstance(results[0].quarter, int)
+
+    def test_get_institutional_ownership_analytics(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting institutional ownership analytics"""
+        with vcr_instance.use_cassette("institutional/ownership_analytics.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.institutional.get_institutional_ownership_analytics,
+                "AAPL",
+                self.FILING_DATE,
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], InstitutionalOwnershipAnalytics)
+
+    def test_get_holder_performance_summary(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting holder performance summary"""
+        with vcr_instance.use_cassette("institutional/holder_performance_summary.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.institutional.get_holder_performance_summary,
+                self.CIK,
+                self.FILING_DATE,
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], HolderPerformanceSummary)
+
+    def test_get_holder_industry_breakdown(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting holder industry breakdown"""
+        with vcr_instance.use_cassette("institutional/holder_industry_breakdown.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.institutional.get_holder_industry_breakdown,
+                self.CIK,
+                self.FILING_DATE,
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], HolderIndustryBreakdown)
+
+    def test_get_symbol_positions_summary(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting symbol positions summary"""
+        with vcr_instance.use_cassette("institutional/symbol_positions_summary.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.institutional.get_symbol_positions_summary,
+                "AAPL",
+                self.FILING_DATE,
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], SymbolPositionsSummary)
+
+    def test_get_industry_performance_summary(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting industry performance summary"""
+        with vcr_instance.use_cassette(
+            "institutional/industry_performance_summary.yaml"
+        ):
+            results = self._handle_rate_limit(
+                fmp_client.institutional.get_industry_performance_summary,
+                self.FILING_DATE,
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], IndustryPerformanceSummary)

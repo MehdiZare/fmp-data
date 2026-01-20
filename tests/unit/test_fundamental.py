@@ -98,8 +98,8 @@ class TestFundamentalEndpoints(unittest.TestCase):
                 "symbol": "AAPL",
                 "date": "2024",
                 "period": "Q4",
-                "linkXlsx": "https://fmpcloud.io/api/v4/financial-reports-xlsx?symbol=AAPL&year=2024&period=Q4",
-                "linkJson": "https://fmpcloud.io/api/v4/financial-reports-json?symbol=AAPL&year=2024&period=Q4",
+                "linkXlsx": "https://fmpcloud.io/stable/financial-reports-xlsx?symbol=AAPL&year=2024&period=Q4",
+                "linkJson": "https://fmpcloud.io/stable/financial-reports-json?symbol=AAPL&year=2024&period=Q4",
             }
         ]
 
@@ -325,7 +325,7 @@ class TestFundamentalEndpoints(unittest.TestCase):
             self.mock_client.request.side_effect = ValueError(
                 "Missing required parameter: symbol"
             )
-            self.fundamental_client.get_income_statement(symbol=None)
+            self.fundamental_client.get_income_statement(symbol=None)  # type: ignore[arg-type]
         self.assertIn("Missing required parameter", str(context.exception))
 
     def tearDown(self):

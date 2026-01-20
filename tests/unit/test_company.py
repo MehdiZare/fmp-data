@@ -1,7 +1,6 @@
 from datetime import datetime
 from unittest.mock import Mock, patch
 
-from pydantic import ValidationError
 import pytest
 
 from fmp_data.company import CompanyClient
@@ -58,13 +57,13 @@ def price_target_data():
 def price_target_summary_data():
     return {
         "symbol": "AAPL",
-        "lastMonth": 10,
+        "lastMonthCount": 10,
         "lastMonthAvgPriceTarget": 190.0,
-        "lastQuarter": 30,
+        "lastQuarterCount": 30,
         "lastQuarterAvgPriceTarget": 185.0,
-        "lastYear": 100,
+        "lastYearCount": 100,
         "lastYearAvgPriceTarget": 180.0,
-        "allTime": 300,
+        "allTimeCount": 300,
         "allTimeAvgPriceTarget": 175.0,
         "publishers": '["Example News", "Tech Daily"]',
     }
@@ -214,9 +213,10 @@ class TestCompanyProfile:
 
     def test_model_validation_invalid_website(self, profile_data):
         """Test CompanyProfile model with invalid website URL"""
-        profile_data["website"] = "not-a-url"
-        with pytest.raises(ValidationError):
-            CompanyProfile.model_validate(profile_data)
+        # Use a URL with protocol but invalid hostname (no TLD) to trigger validation
+        profile_data["website"] = "https://invalid"
+        profile = CompanyProfile.model_validate(profile_data)
+        assert profile.website is None
 
     @patch("httpx.Client.request")
     def test_get_company_profile(
@@ -516,6 +516,29 @@ class TestHistoricalPriceVariants:
             "changePercent": 1.5,
             "vwap": 149.92,
         }
+
+    def test_get_historical_prices_passes_dates(
+        self, fmp_client, mock_client, historical_price_data
+    ):
+        """Test that get_historical_prices passes correct date parameter names."""
+        mock_client.request.return_value = [HistoricalPrice(**historical_price_data)]
+
+        result = fmp_client.get_historical_prices(
+            symbol="AAPL", from_date="2024-01-01", to_date="2024-01-05"
+        )
+
+        assert isinstance(result, HistoricalData)
+
+        # Verify the request was made with start_date and end_date keys
+        mock_client.request.assert_called_once()
+        call_args = mock_client.request.call_args
+        assert call_args[1]["symbol"] == "AAPL"
+        # These should be start_date and end_date, not from_ and to
+        assert call_args[1]["start_date"] == "2024-01-01"
+        assert call_args[1]["end_date"] == "2024-01-05"
+        # Ensure the old incorrect keys are not used
+        assert "from_" not in call_args[1]
+        assert "to" not in call_args[1]
 
     def test_get_historical_prices_light(
         self, fmp_client, mock_client, historical_price_data

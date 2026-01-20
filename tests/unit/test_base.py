@@ -379,3 +379,167 @@ def test_request_does_not_retry_on_http_4xx(base_client):
             base_client.request(Mock())
 
     assert mock_execute.call_count == 1
+
+
+class TestRequestLatencyLogging:
+    """Tests for request latency logging."""
+
+    @patch("httpx.Client.request")
+    def test_request_logs_latency(self, mock_request, mock_endpoint, client_config):
+        """Test that request logs latency metrics."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"test": "data"}
+        mock_request.return_value = mock_response
+
+        # Configure mock endpoint
+        mock_endpoint.method = MagicMock()
+        mock_endpoint.method.value = "GET"
+        mock_endpoint.response_model = SampleResponse
+
+        client = BaseClient(client_config)
+
+        with patch.object(client.logger, "debug") as mock_debug:
+            client.request(mock_endpoint)
+
+            # Should have logged latency
+            debug_calls = [str(call) for call in mock_debug.call_args_list]
+            latency_logged = any("latency_ms" in call for call in debug_calls)
+            assert latency_logged
+
+
+class TestMetricsCallback:
+    """Tests for the metrics callback functionality."""
+
+    def test_metrics_callback_called_on_success(self, mock_endpoint):
+        """Test that metrics callback is called on successful request."""
+        callback_calls = []
+
+        def metrics_callback(**kwargs):
+            callback_calls.append(kwargs)
+
+        config = ClientConfig(
+            api_key="test_key",
+            base_url="https://api.test.com",
+            metrics_callback=metrics_callback,
+        )
+        client = BaseClient(config)
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"test": "data"}
+
+        # Configure mock endpoint
+        mock_endpoint.method = MagicMock()
+        mock_endpoint.method.value = "GET"
+        mock_endpoint.response_model = SampleResponse
+
+        with patch.object(client.client, "request", return_value=mock_response):
+            client.request(mock_endpoint)
+
+        # Verify callback was called
+        assert len(callback_calls) == 1
+        call = callback_calls[0]
+        assert "endpoint_name" in call
+        assert "latency_ms" in call
+        assert "success" in call
+        assert call["success"] is True
+        assert call["status_code"] == 200
+
+    def test_metrics_callback_called_on_failure(self, mock_endpoint):
+        """Test that metrics callback is called even on request failure."""
+        callback_calls = []
+
+        def metrics_callback(**kwargs):
+            callback_calls.append(kwargs)
+
+        config = ClientConfig(
+            api_key="test_key",
+            base_url="https://api.test.com",
+            metrics_callback=metrics_callback,
+        )
+        client = BaseClient(config)
+
+        # Configure mock endpoint
+        mock_endpoint.method = MagicMock()
+        mock_endpoint.method.value = "GET"
+        mock_endpoint.response_model = SampleResponse
+
+        # Make the request fail
+        with patch.object(
+            client.client, "request", side_effect=httpx.TimeoutException("Timeout")
+        ):
+            with patch("tenacity.nap.sleep", return_value=None):
+                with pytest.raises(httpx.TimeoutException):
+                    client.request(mock_endpoint)
+
+        # Callback should have been called for each attempt
+        assert len(callback_calls) >= 1
+        # At least the last call should have success=False
+        last_call = callback_calls[-1]
+        assert last_call["success"] is False
+
+    def test_metrics_callback_exception_doesnt_break_request(self, mock_endpoint):
+        """Test that a failing metrics callback doesn't break the request."""
+
+        def failing_callback(**kwargs):
+            raise RuntimeError("Callback failed!")
+
+        config = ClientConfig(
+            api_key="test_key",
+            base_url="https://api.test.com",
+            metrics_callback=failing_callback,
+        )
+        client = BaseClient(config)
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"test": "data"}
+
+        # Configure mock endpoint
+        mock_endpoint.method = MagicMock()
+        mock_endpoint.method.value = "GET"
+        mock_endpoint.response_model = SampleResponse
+
+        with patch.object(client.client, "request", return_value=mock_response):
+            # Request should still succeed even if callback fails
+            result = client.request(mock_endpoint)
+            assert isinstance(result, SampleResponse)
+            assert result.test == "data"
+
+    def test_no_metrics_callback_by_default(self, base_client):
+        """Test that metrics callback is None by default."""
+        assert base_client.config.metrics_callback is None
+
+
+class TestUnwrapSingle:
+    """Tests for the _unwrap_single helper method."""
+
+    def test_unwrap_single_from_list(self):
+        """Test unwrapping a single item from a list."""
+        result = EndpointGroup._unwrap_single([SampleResponse(test="data")], SampleResponse)
+        assert isinstance(result, SampleResponse)
+        assert result.test == "data"
+
+    def test_unwrap_single_not_list(self):
+        """Test unwrapping when result is already a single item."""
+        item = SampleResponse(test="data")
+        result = EndpointGroup._unwrap_single(item, SampleResponse)
+        assert result is item
+        assert result.test == "data"
+
+    def test_unwrap_single_empty_list_allow_none(self):
+        """Test unwrapping empty list with allow_none=True returns None."""
+        result = EndpointGroup._unwrap_single([], SampleResponse, allow_none=True)
+        assert result is None
+
+    def test_unwrap_single_empty_list_raises(self):
+        """Test unwrapping empty list with allow_none=False raises ValueError."""
+        with pytest.raises(ValueError, match="Expected at least one SampleResponse"):
+            EndpointGroup._unwrap_single([], SampleResponse, allow_none=False)
+
+    def test_unwrap_single_multiple_items_returns_first(self):
+        """Test unwrapping list with multiple items returns the first."""
+        items = [SampleResponse(test="first"), SampleResponse(test="second")]
+        result = EndpointGroup._unwrap_single(items, SampleResponse)
+        assert result.test == "first"

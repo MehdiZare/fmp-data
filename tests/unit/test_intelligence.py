@@ -4,6 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from fmp_data.helpers import RemovedEndpointError
 from fmp_data.intelligence.client import MarketIntelligenceClient
 from fmp_data.intelligence.models import (
     CrowdfundingOffering,
@@ -527,76 +528,28 @@ class TestMarketIntelligenceClientPressReleases:
 
 
 class TestMarketIntelligenceClientSocialSentiment:
-    """Test social sentiment functionality"""
+    """Test social sentiment functionality (removed endpoints)"""
 
-    def test_get_historical_social_sentiment(self, fmp_client, mock_client):
-        """Test get_historical_social_sentiment"""
-        mock_data = {
-            "date": "2024-01-15T10:00:00",
-            "symbol": "AAPL",
-            "stocktwitsPosts": 1000,
-            "twitterPosts": 2000,
-            "stocktwitsComments": 500,
-            "twitterComments": 1000,
-            "stocktwitsLikes": 1500,
-            "twitterLikes": 3000,
-            "stocktwitsImpressions": 5000,
-            "twitterImpressions": 10000,
-            "stocktwitsSentiment": 0.75,
-            "twitterSentiment": 0.80,
-        }
-        mock_client.request.return_value = [HistoricalSocialSentiment(**mock_data)]
+    def test_get_historical_social_sentiment_raises_error(self, fmp_client, mock_client):
+        """Test get_historical_social_sentiment raises RemovedEndpointError"""
+        with pytest.raises(RemovedEndpointError) as exc_info:
+            fmp_client.intelligence.get_historical_social_sentiment("AAPL", page=0)
+        assert "get_historical_social_sentiment" in str(exc_info.value)
+        assert "removed" in str(exc_info.value).lower()
 
-        _ = fmp_client.intelligence.get_historical_social_sentiment("AAPL", page=0)
+    def test_get_trending_social_sentiment_raises_error(self, fmp_client, mock_client):
+        """Test get_trending_social_sentiment raises RemovedEndpointError"""
+        with pytest.raises(RemovedEndpointError) as exc_info:
+            fmp_client.intelligence.get_trending_social_sentiment("bullish", "stocktwits")
+        assert "get_trending_social_sentiment" in str(exc_info.value)
+        assert "removed" in str(exc_info.value).lower()
 
-        mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
-        assert kwargs["symbol"] == "AAPL"
-        assert kwargs["page"] == 0
-
-    def test_get_trending_social_sentiment(self, fmp_client, mock_client):
-        """Test get_trending_social_sentiment"""
-        mock_data = {
-            "symbol": "AAPL",
-            "name": "Apple Inc",
-            "rank": 1,
-            "sentiment": 0.85,
-            "lastSentiment": 0.80,
-        }
-        mock_client.request.return_value = [TrendingSocialSentiment(**mock_data)]
-
-        _ = fmp_client.intelligence.get_trending_social_sentiment(
-            "bullish", "stocktwits"
-        )
-
-        mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
-        assert kwargs["type"] == "bullish"
-        assert kwargs["source"] == "stocktwits"
-
-    def test_get_social_sentiment_changes(self, fmp_client, mock_client):
-        """Test get_social_sentiment_changes"""
-        mock_data = {
-            "symbol": "AAPL",
-            "name": "Apple Inc",
-            "rank": 1,
-            "sentiment": 0.85,
-            "lastSentiment": 0.80,
-            "sentimentChange": 0.05,  # Added missing required field
-        }
-        mock_client.request.return_value = [SocialSentimentChanges(**mock_data)]
-
-        result = fmp_client.intelligence.get_social_sentiment_changes(
-            "bearish", "twitter"
-        )
-
-        mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
-        assert kwargs["type"] == "bearish"
-        assert kwargs["source"] == "twitter"
-        assert isinstance(result, list)
-        assert len(result) == 1
-        assert result[0].sentimentChange == 0.05
+    def test_get_social_sentiment_changes_raises_error(self, fmp_client, mock_client):
+        """Test get_social_sentiment_changes raises RemovedEndpointError"""
+        with pytest.raises(RemovedEndpointError) as exc_info:
+            fmp_client.intelligence.get_social_sentiment_changes("bearish", "twitter")
+        assert "get_social_sentiment_changes" in str(exc_info.value)
+        assert "removed" in str(exc_info.value).lower()
 
     def test_get_esg_benchmark(self, fmp_client, mock_client):
         """Test get_esg_benchmark"""

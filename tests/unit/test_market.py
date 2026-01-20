@@ -322,15 +322,12 @@ class TestIPOEndpoints:
         """Mock IPO disclosure data"""
         return {
             "symbol": "RDDT",
-            "companyName": "Reddit Inc",
-            "ipoDate": "2024-03-21T00:00:00",
-            "exchange": "NYSE",
-            "priceRange": "$31.00 - $34.00",
-            "sharesOffered": 22000000,
-            "disclosureUrl": "https://www.sec.gov/Archives/edgar/data/123456/...",
-            "filingDate": "2024-02-22T00:00:00",
-            "status": "Priced",
-            "underwriters": "Morgan Stanley, Goldman Sachs",
+            "filingDate": "2024-02-22",
+            "acceptedDate": "2024-02-22",
+            "effectivenessDate": "2024-03-21",
+            "cik": "0001234567",
+            "form": "S-1",
+            "url": "https://www.sec.gov/Archives/edgar/data/123456/...",
         }
 
     @pytest.fixture
@@ -338,41 +335,40 @@ class TestIPOEndpoints:
         """Mock IPO prospectus data"""
         return {
             "symbol": "RDDT",
-            "companyName": "Reddit Inc",
-            "ipoDate": "2024-03-21T00:00:00",
-            "exchange": "NYSE",
-            "prospectusUrl": "https://www.sec.gov/Archives/edgar/data/123456/...",
-            "filingDate": "2024-02-22T00:00:00",
-            "status": "Effective",
-            "sharesOffered": 22000000,
-            "offerPrice": 34.00,
-            "grossProceeds": 748000000.0,
+            "acceptedDate": "2024-02-22",
+            "filingDate": "2024-02-22",
+            "ipoDate": "2024-03-21",
+            "cik": "0001234567",
+            "pricePublicPerShare": 34.00,
+            "pricePublicTotal": 748000000.0,
+            "discountsAndCommissionsPerShare": 0.50,
+            "discountsAndCommissionsTotal": 11000000.0,
+            "proceedsBeforeExpensesPerShare": 33.50,
+            "proceedsBeforeExpensesTotal": 737000000.0,
+            "form": "424B4",
+            "url": "https://www.sec.gov/Archives/edgar/data/123456/...",
         }
 
     def test_ipo_disclosure_model_validation(self, mock_ipo_disclosure_data):
         """Test IPODisclosure model validation"""
         disclosure = IPODisclosure.model_validate(mock_ipo_disclosure_data)
         assert disclosure.symbol == "RDDT"
-        assert disclosure.company_name == "Reddit Inc"
-        assert isinstance(disclosure.ipo_date, datetime)
-        assert disclosure.exchange == "NYSE"
-        assert disclosure.price_range == "$31.00 - $34.00"
-        assert disclosure.shares_offered == 22000000
-        assert disclosure.disclosure_url is not None
-        assert disclosure.status == "Priced"
-        assert disclosure.underwriters == "Morgan Stanley, Goldman Sachs"
+        assert disclosure.cik == "0001234567"
+        assert disclosure.form == "S-1"
+        assert disclosure.url is not None
+        assert isinstance(disclosure.filing_date, datetime)
 
     def test_ipo_prospectus_model_validation(self, mock_ipo_prospectus_data):
         """Test IPOProspectus model validation"""
         prospectus = IPOProspectus.model_validate(mock_ipo_prospectus_data)
         assert prospectus.symbol == "RDDT"
-        assert prospectus.company_name == "Reddit Inc"
         assert isinstance(prospectus.ipo_date, datetime)
-        assert prospectus.exchange == "NYSE"
-        assert prospectus.prospectus_url is not None
-        assert prospectus.shares_offered == 22000000
-        assert prospectus.offer_price == 34.00
-        assert prospectus.gross_proceeds == 748000000.0
+        assert prospectus.cik == "0001234567"
+        assert prospectus.price_public_per_share == 34.00
+        assert prospectus.price_public_total == 748000000.0
+        assert prospectus.discounts_and_commissions_total == 11000000.0
+        assert prospectus.proceeds_before_expenses_total == 737000000.0
+        assert prospectus.form == "424B4"
 
     @patch("httpx.Client.request")
     def test_get_ipo_disclosure(
@@ -389,13 +385,15 @@ class TestIPOEndpoints:
         assert len(disclosures) == 1
         assert isinstance(disclosures[0], IPODisclosure)
         assert disclosures[0].symbol == "RDDT"
-        assert disclosures[0].company_name == "Reddit Inc"
 
         # Verify request parameters
         mock_request.assert_called_once()
         call_args = mock_request.call_args
-        assert call_args[1]["params"]["from"] == date(2024, 1, 1)
-        assert call_args[1]["params"]["to"] == date(2024, 12, 31)
+        # Dates can be string or date objects depending on client params
+        from_param = call_args[1]["params"]["from"]
+        to_param = call_args[1]["params"]["to"]
+        assert str(from_param) == "2024-01-01"
+        assert str(to_param) == "2024-12-31"
         assert call_args[1]["params"]["limit"] == 10
 
     @patch("httpx.Client.request")
@@ -411,8 +409,8 @@ class TestIPOEndpoints:
         assert len(prospectuses) == 1
         assert isinstance(prospectuses[0], IPOProspectus)
         assert prospectuses[0].symbol == "RDDT"
-        assert prospectuses[0].offer_price == 34.00
-        assert prospectuses[0].gross_proceeds == 748000000.0
+        assert prospectuses[0].price_public_per_share == 34.00
+        assert prospectuses[0].price_public_total == 748000000.0
 
         # Verify request was made with only limit parameter
         mock_request.assert_called_once()
