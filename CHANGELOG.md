@@ -60,16 +60,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Improved LangChain exception handling with specific exception types
 - **Dependencies Updated**:
   - `pydantic` ≥ 2.12.5
+  - `pydantic-settings` ≥ 2.12.0
+  - `python-dotenv` ≥ 1.2.1
   - `langchain-core` ≥ 1.2.7
   - `langchain-openai` ≥ 1.1.7
+  - `langgraph` ≥ 1.0.6
+  - `openai` ≥ 2.15.0
+  - `tiktoken` ≥ 0.12.0
   - `faiss-cpu` ≥ 1.13.2
   - `mcp` ≥ 1.25.0
+  - `pyyaml` ≥ 6.0.3
 
 ### Removed
 - Removed unused dependencies: `cachetools`, `structlog`, `pandas`, `tqdm`
 - Removed `black` dependency (replaced by `ruff format`)
 
 ### Breaking Changes
+- **LangChain v1 Requirement**: LangChain integration now requires LangChain v1 packages (`langchain-core`, `langchain-openai`) and LangGraph v1.
 - **Vector Store Security**: `EndpointVectorStore.load()` now requires `allow_dangerous_deserialization=True` to load cached stores. This is a security improvement to prevent arbitrary code execution from untrusted cache sources.
 
   **Migration steps:**

@@ -59,6 +59,8 @@ uv pip install "fmp-data[mcp]"
 uv pip install "fmp-data[langchain,mcp]"
 ```
 
+LangChain integration requires LangChain v1 (`langchain-core`, `langchain-openai`) and LangGraph v1.
+
 ### Using pip
 
 ```bash
@@ -97,7 +99,7 @@ export FMP_API_KEY=your_api_key_here
 fmp-mcp
 ```
 
-For detailed setup instructions, see [MCP Setup Guide](examples/MCP_SETUP_GUIDE.md).
+For detailed setup instructions, see [docs/mcp/claude_desktop.md](docs/mcp/claude_desktop.md).
 
 ### Available Commands
 
@@ -110,9 +112,8 @@ fmp-mcp list     # List available tools
 
 ### Configuration Profiles
 
-Choose from pre-configured tool sets:
-- **Default** - Complete toolkit
-- **Minimal** - Essential tools only
+Choose from pre-configured tool sets. See [docs/mcp/configurations.md](docs/mcp/configurations.md).
+Full tool list: [docs/mcp/tools.md](docs/mcp/tools.md).
 
 ### Custom Configuration
 

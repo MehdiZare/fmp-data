@@ -5,7 +5,7 @@ Thank you for your interest in contributing to FMP Data! This guide will help yo
 ## Development Setup
 
 ### Prerequisites
-- Python 3.10+
+- Python 3.10-3.14
 - UV (recommended) or pip
 - Git
 
@@ -101,7 +101,7 @@ Pre-commit hooks will automatically run to ensure code quality.
 
 This project uses:
 - **ruff** for linting and import sorting (replaces flake8, isort)
-- **ruff format** and **black** for code formatting
+- **ruff format** for code formatting
 - **mypy** for type checking
 - **pytest** for testing
 - **pre-commit** for git hooks

@@ -5,17 +5,17 @@
 
 1. Run all tests:
 ```bash
-poetry run pytest
+uv run pytest
 ```
 
 2. Run with coverage:
 ```bash
-poetry run pytest --cov=fmp_data
+uv run pytest --cov=fmp_data
 ```
 
 3. Run specific test file:
 ```bash
-poetry run pytest tests/test_client.py
+uv run pytest tests/unit/test_client.py
 ```
 
 ## Test Structure
@@ -24,8 +24,8 @@ poetry run pytest tests/test_client.py
 tests/
 ├── __init__.py
 ├── conftest.py          # Shared fixtures
-├── test_client.py       # API client tests
-└── test_exceptions.py   # Exception handling tests
+├── unit/                # Unit tests
+└── integration/         # Integration tests
 ```
 
 ## Writing Tests
@@ -48,7 +48,7 @@ def client(api_key):
 ```python
 def test_get_company_profile(client):
     """Test retrieving company profile."""
-    profile = client.get_company_profile("AAPL")
+    profile = client.company.get_profile("AAPL")
     assert profile.symbol == "AAPL"
 ```
 
@@ -70,7 +70,7 @@ def test_api_call(client):
     )
 
     # Make request
-    result = client.get_company_profile("AAPL")
+    result = client.company.get_profile("AAPL")
 
     # Verify result
     assert result.symbol == "AAPL"
@@ -81,7 +81,7 @@ def test_api_call(client):
 We maintain high test coverage:
 
 - Minimum coverage: 80%
-- Coverage report: `poetry run pytest --cov=fmp_data --cov-report=html`
+- Coverage report: `uv run pytest --cov=fmp_data --cov-report=html`
 - View report: `open htmlcov/index.html`
 
 ## Continuous Integration
@@ -90,6 +90,7 @@ Tests run automatically on:
 - Every pull request
 - Push to main branch
 - Release creation
+Coverage is collected in a dedicated CI job separate from the test matrix.
 
 ## Best Practices
 
