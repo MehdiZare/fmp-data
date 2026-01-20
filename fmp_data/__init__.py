@@ -108,7 +108,7 @@ def _lazy_import_vector_store() -> _types.ModuleType:
 
 def _lazy_import_langchain() -> _types.ModuleType:
     """
-    Import fmp_data.langchain only when accessed.
+    Import fmp_data.lc only when accessed via the 'langchain' alias.
     Raises ImportError with installation hint if LangChain is missing.
     """
     if not is_langchain_available():
@@ -118,7 +118,7 @@ def _lazy_import_langchain() -> _types.ModuleType:
         ) from None
 
     try:
-        _langchain = importlib.import_module("fmp_data.langchain")
+        _langchain = importlib.import_module("fmp_data.lc")
         return _langchain
     except ImportError as e:
         raise ImportError(

@@ -1,6 +1,6 @@
 # FMP Data
 
-A robust Python client for Financial Modeling Prep API with comprehensive features including rate limiting, caching, retry strategies, and full type safety.
+A robust Python client for Financial Modeling Prep API with comprehensive features including rate limiting, retry strategies, async support, and full type safety.
 
 ## Features
 

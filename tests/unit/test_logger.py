@@ -798,7 +798,7 @@ class TestLoggerIntegration:
         assert log_path.exists()
 
     def test_reconfiguration(self):
-        """Test that logger can be reconfigured"""
+        """Test that logger can be reconfigured with _force flag"""
         fmp_logger = FMPLogger()
 
         # Initial configuration
@@ -806,9 +806,9 @@ class TestLoggerIntegration:
             level="INFO",
             handlers={"console": LogHandlerConfig(class_name="StreamHandler")},
         )
-        fmp_logger.configure(config1)
+        fmp_logger.configure(config1, _force=True)
 
-        # Reconfigure
+        # Reconfigure (with _force flag for testing)
         config2 = LoggingConfig(
             level="DEBUG",
             handlers={
@@ -816,7 +816,7 @@ class TestLoggerIntegration:
                 "new_handler": LogHandlerConfig(class_name="StreamHandler"),
             },
         )
-        fmp_logger.configure(config2)
+        fmp_logger.configure(config2, _force=True)
 
         # Should have new handlers
         assert len(fmp_logger._handlers) == 2

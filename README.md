@@ -528,8 +528,28 @@ with FMPDataClient.from_env() as client:
     changes = client.index.get_historical_sp500()
 ```
 
-### 11. Async Support (Coming Soon)
-Note: Async support is currently under development and will be available in a future release.
+### 11. Async Support
+```python
+from fmp_data import AsyncFMPDataClient
+import asyncio
+
+async def main():
+    async with AsyncFMPDataClient.from_env() as client:
+        # All endpoint methods are async
+        profile = await client.company.get_profile("AAPL")
+        print(f"Company: {profile.company_name}")
+
+        # Concurrent requests
+        profiles = await asyncio.gather(
+            client.company.get_profile("AAPL"),
+            client.company.get_profile("MSFT"),
+            client.company.get_profile("GOOGL"),
+        )
+        for p in profiles:
+            print(f"{p.symbol}: {p.company_name}")
+
+asyncio.run(main())
+```
 
 ## Configuration
 

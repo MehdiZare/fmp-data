@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from fmp_data import FMPDataClient
+from fmp_data import FMPDataClient, ValidationError
 from fmp_data.fundamental.models import (
     BalanceSheet,
     CashFlowStatement,
@@ -201,7 +201,7 @@ class TestFundamentalEndpoints(BaseTestCase):
     ):
         """Test error handling for invalid period parameter"""
         with vcr_instance.use_cassette("fundamental/error_invalid_period.yaml"):
-            with pytest.raises(ValueError) as exc_info:
+            with pytest.raises(ValidationError) as exc_info:
                 self._handle_rate_limit(
                     fmp_client.fundamental.get_income_statement,
                     symbol=self.TEST_SYMBOL,

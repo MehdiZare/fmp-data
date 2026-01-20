@@ -283,6 +283,7 @@ class FMPLogger:
             return
 
         self._initialized: bool = True
+        self._configured: bool = False  # Track if configure() has been called
         self._logger = logging.getLogger("fmp_data")
         self._logger.setLevel(logging.INFO)
         self._handlers: dict[str, logging.Handler] = {}
@@ -319,8 +320,23 @@ class FMPLogger:
         self._logger.addHandler(handler)
         self._handlers["console"] = handler
 
-    def configure(self, config: LoggingConfig) -> None:
-        """Configure logger with the given configuration"""
+    def configure(self, config: LoggingConfig, *, _force: bool = False) -> None:
+        """Configure logger with the given configuration.
+
+        Note: This method only applies configuration on the first call.
+        Subsequent calls are ignored to prevent multiple clients from
+        overwriting each other's logging configuration.
+
+        Args:
+            config: The logging configuration to apply.
+            _force: Internal flag for testing purposes. If True, forces
+                reconfiguration even if already configured. Do not use
+                in production code.
+        """
+        if self._configured and not _force:
+            return  # Skip reconfiguration; first client's config wins
+
+        self._configured = True
         self._logger.setLevel(getattr(logging, config.level))
 
         # Remove existing handlers

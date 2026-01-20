@@ -3,7 +3,7 @@ import logging
 
 import pytest
 
-from fmp_data import FMPDataClient
+from fmp_data import FMPDataClient, ValidationError
 from fmp_data.economics.models import (
     EconomicEvent,
     EconomicIndicator,
@@ -126,17 +126,12 @@ class TestEconomicsEndpoints(BaseTestCase):
     def test_error_handling(self, fmp_client: FMPDataClient, vcr_instance):
         """Test error handling for invalid inputs"""
         with vcr_instance.use_cassette("economics/error_handling.yaml"):
-            # Test with invalid indicator - should raise ValueError
-            with pytest.raises(ValueError) as exc_info:
-                # Use _handle_rate_limit but preserve the ValueError
-                try:
-                    self._handle_rate_limit(
-                        fmp_client.economics.get_economic_indicators,
-                        indicator_name="INVALID_INDICATOR",
-                    )
-                except ValueError as e:
-                    # Re-raise ValueError to be caught by pytest.raises
-                    raise ValueError(str(e)) from e
+            # Test with invalid indicator - should raise ValidationError
+            with pytest.raises(ValidationError) as exc_info:
+                self._handle_rate_limit(
+                    fmp_client.economics.get_economic_indicators,
+                    indicator_name="INVALID_INDICATOR",
+                )
 
             error_msg = str(exc_info.value)
             assert "Invalid value for name" in error_msg

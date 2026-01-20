@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextvars import ContextVar
 import json
 import logging
 import time
@@ -29,11 +30,17 @@ from fmp_data.exceptions import (
 )
 from fmp_data.logger import FMPLogger, log_api_call
 from fmp_data.models import Endpoint
-from fmp_data.rate_limit import FMPRateLimiter, QuotaConfig
+from fmp_data.rate_limit import AsyncFMPRateLimiter, FMPRateLimiter, QuotaConfig
 
 T = TypeVar("T")
 
 logger = FMPLogger().get_logger(__name__)
+
+# Context variable for request-scoped rate limit retry tracking.
+# This ensures each request has its own counter, even with concurrent requests.
+_rate_limit_retry_count: ContextVar[int] = ContextVar(
+    "rate_limit_retry_count", default=0
+)
 
 
 class BaseClient:
@@ -44,7 +51,6 @@ class BaseClient:
         self.config = config
         self.logger = FMPLogger().get_logger(__name__)
         self.max_rate_limit_retries = getattr(config, "max_rate_limit_retries", 3)
-        self._rate_limit_retry_count = 0
 
         # Configure logging based on config
         FMPLogger().configure(self.config.logging)
@@ -63,6 +69,9 @@ class BaseClient:
                 requests_per_minute=self.config.rate_limit.requests_per_minute,
             )
         )
+
+        # Async rate limiter wraps sync limiter with asyncio.Lock
+        self._async_rate_limiter = AsyncFMPRateLimiter(self._rate_limiter)
 
         # Async client (lazily initialized)
         self._async_client: httpx.AsyncClient | None = None
@@ -123,11 +132,13 @@ class BaseClient:
     def _handle_rate_limit(self, wait_time: float) -> None:
         """
         Handle rate limiting by waiting or raising an exception based on retry count.
+        Uses context variable for request-scoped retry tracking.
         """
-        self._rate_limit_retry_count += 1
+        current_count = _rate_limit_retry_count.get() + 1
+        _rate_limit_retry_count.set(current_count)
 
-        if self._rate_limit_retry_count > self.max_rate_limit_retries:
-            self._rate_limit_retry_count = 0  # Reset for next request
+        if current_count > self.max_rate_limit_retries:
+            _rate_limit_retry_count.set(0)  # Reset for next request
             raise RateLimitError(
                 f"Rate limit exceeded after "
                 f"{self.max_rate_limit_retries} retries. "
@@ -137,7 +148,7 @@ class BaseClient:
 
         self.logger.warning(
             f"Rate limit reached "
-            f"(attempt {self._rate_limit_retry_count}/{self.max_rate_limit_retries}), "
+            f"(attempt {current_count}/{self.max_rate_limit_retries}), "
             f"waiting {wait_time:.1f} seconds before retrying"
         )
         time.sleep(wait_time)
@@ -176,7 +187,7 @@ class BaseClient:
         Returns:
             Either a single Pydantic model of type T or a list of T.
         """
-        self._rate_limit_retry_count = 0  # Reset counter at start of new request
+        _rate_limit_retry_count.set(0)  # Reset counter at start of new request
 
         # Create retryer with configurable max_retries
         retryer = Retrying(
@@ -285,7 +296,7 @@ class BaseClient:
                         latency_ms=round(latency_ms, 2),
                         success=success,
                         status_code=status_code,
-                        retry_count=self._rate_limit_retry_count,
+                        retry_count=_rate_limit_retry_count.get(),
                     )
                 except Exception as callback_exc:
                     self.logger.warning(
@@ -483,7 +494,7 @@ class BaseClient:
         """
         Make async request with rate limiting and retry logic, returning T or list[T].
         """
-        self._rate_limit_retry_count = 0  # Reset counter at start of new request
+        _rate_limit_retry_count.set(0)  # Reset counter at start of new request
 
         # Create async retryer with configurable max_retries
         retryer = AsyncRetrying(
@@ -515,13 +526,14 @@ class BaseClient:
         Returns:
             Either a single Pydantic model of type T or a list of T.
         """
-        # Check rate limit before making request
-        if not self._rate_limiter.should_allow_request():
-            wait_time = self._rate_limiter.get_wait_time()
-            self._rate_limit_retry_count += 1
+        # Check rate limit using async rate limiter (concurrency-safe)
+        if not await self._async_rate_limiter.should_allow_request():
+            wait_time = self._async_rate_limiter.get_wait_time()
+            current_count = _rate_limit_retry_count.get() + 1
+            _rate_limit_retry_count.set(current_count)
 
-            if self._rate_limit_retry_count > self.max_rate_limit_retries:
-                self._rate_limit_retry_count = 0
+            if current_count > self.max_rate_limit_retries:
+                _rate_limit_retry_count.set(0)
                 raise RateLimitError(
                     f"Rate limit exceeded after "
                     f"{self.max_rate_limit_retries} retries. "
@@ -531,14 +543,14 @@ class BaseClient:
 
             self.logger.warning(
                 f"Rate limit reached "
-                f"(attempt {self._rate_limit_retry_count}/"
+                f"(attempt {current_count}/"
                 f"{self.max_rate_limit_retries}), "
                 f"waiting {wait_time:.1f} seconds before retrying"
             )
             await asyncio.sleep(wait_time)
 
         try:
-            self._rate_limiter.record_request()
+            await self._async_rate_limiter.record_request()
 
             # Validate and process parameters
             validated_params = endpoint.validate_params(kwargs)
