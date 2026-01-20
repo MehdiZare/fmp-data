@@ -1,4 +1,8 @@
 # fmp_data/batch/client.py
+import csv
+import io
+from typing import Any
+
 from fmp_data.base import EndpointGroup
 from fmp_data.batch.endpoints import (
     BATCH_AFTERMARKET_QUOTE,
@@ -13,6 +17,11 @@ from fmp_data.batch.endpoints import (
     BATCH_MUTUALFUND_QUOTES,
     BATCH_QUOTE,
     BATCH_QUOTE_SHORT,
+    DCF_BULK,
+    PROFILE_BULK,
+    RATING_BULK,
+    RATIOS_TTM_BULK,
+    SCORES_BULK,
 )
 from fmp_data.batch.models import (
     AftermarketQuote,
@@ -20,6 +29,13 @@ from fmp_data.batch.models import (
     BatchMarketCap,
     BatchQuote,
     BatchQuoteShort,
+)
+from fmp_data.company.models import CompanyProfile
+from fmp_data.fundamental.models import (
+    DCF,
+    CompanyRating,
+    FinancialRatiosTTM,
+    FinancialScore,
 )
 
 
@@ -29,6 +45,30 @@ class BatchClient(EndpointGroup):
     Provides methods to retrieve data for multiple symbols or entire asset classes
     in a single API call.
     """
+
+    @staticmethod
+    def _parse_csv_rows(raw: bytes) -> list[dict[str, Any]]:
+        text = raw.decode("utf-8").strip()
+        if not text:
+            return []
+        reader = csv.DictReader(io.StringIO(text))
+        rows: list[dict[str, Any]] = []
+        for row in reader:
+            if not row or all(value in (None, "", " ") for value in row.values()):
+                continue
+            normalized = {}
+            for key, value in row.items():
+                if value is None:
+                    normalized[key] = None
+                    continue
+                stripped = value.strip()
+                normalized[key] = stripped if stripped else None
+            rows.append(normalized)
+        return rows
+
+    @staticmethod
+    def _parse_csv_models(raw: bytes, model: type[Any]) -> list[Any]:
+        return [model.model_validate(row) for row in BatchClient._parse_csv_rows(raw)]
 
     def get_quotes(self, symbols: list[str]) -> list[BatchQuote]:
         """Get real-time quotes for multiple symbols
@@ -143,3 +183,32 @@ class BatchClient(EndpointGroup):
             List of market cap data for each symbol
         """
         return self.client.request(BATCH_MARKET_CAP, symbols=",".join(symbols))
+
+    def get_profile_bulk(self, part: str) -> list[CompanyProfile]:
+        """Get company profile data in bulk"""
+        raw = self.client.request(PROFILE_BULK, part=part)
+        return self._parse_csv_models(raw, CompanyProfile)
+
+    def get_dcf_bulk(self) -> list[DCF]:
+        """Get discounted cash flow valuations in bulk"""
+        raw = self.client.request(DCF_BULK)
+        rows = self._parse_csv_rows(raw)
+        for row in rows:
+            if "Stock Price" in row and "stockPrice" not in row:
+                row["stockPrice"] = row.pop("Stock Price")
+        return [DCF.model_validate(row) for row in rows]
+
+    def get_rating_bulk(self) -> list[CompanyRating]:
+        """Get stock ratings in bulk"""
+        raw = self.client.request(RATING_BULK)
+        return self._parse_csv_models(raw, CompanyRating)
+
+    def get_scores_bulk(self) -> list[FinancialScore]:
+        """Get financial scores in bulk"""
+        raw = self.client.request(SCORES_BULK)
+        return self._parse_csv_models(raw, FinancialScore)
+
+    def get_ratios_ttm_bulk(self) -> list[FinancialRatiosTTM]:
+        """Get trailing twelve month financial ratios in bulk"""
+        raw = self.client.request(RATIOS_TTM_BULK)
+        return self._parse_csv_models(raw, FinancialRatiosTTM)

@@ -3,7 +3,14 @@ from datetime import datetime
 from typing import Any
 import warnings
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 from pydantic.alias_generators import to_camel
 
 default_model_config = ConfigDict(
@@ -142,29 +149,43 @@ class SectorPerformance(BaseModel):
 
     sector: str = Field(description="Sector name")
     change_percentage: float | None = Field(
-        None, alias="changesPercentage", description="Change percentage as a float"
+        None,
+        validation_alias=AliasChoices("changesPercentage", "averageChange"),
+        description="Change percentage as a float",
     )
 
     @field_validator("change_percentage", mode="before")
-    def parse_percentage(cls, value: Any) -> float:
+    def parse_percentage(cls, value: Any) -> float | None:
         """
-        Convert percentage string to a float.
+        Convert percentage string or float to a float.
 
         Args:
-            value: Value to parse, expected to be a string ending with '%'
+            value: Value to parse, can be a string ending with '%' or a float
 
         Returns:
-            float: Parsed percentage value as decimal
+            float | None: Parsed percentage value as decimal, or None if value is None
 
         Raises:
             ValueError: If value cannot be parsed as a percentage
         """
+        if value is None:
+            return None
+        # Handle float values directly (API may return decimal like 0.054)
+        if isinstance(value, (int, float)):
+            return float(value)
+        # Handle percentage string like "5.5%"
         if isinstance(value, str) and value.endswith("%"):
             try:
                 return float(value.strip("%")) / 100
             except ValueError as e:
                 raise ValueError(f"Invalid percentage format: {value}") from e
-        raise ValueError(f"Expected a percentage string, got: {value}")
+        # Try to convert string to float
+        if isinstance(value, str):
+            try:
+                return float(value)
+            except ValueError as e:
+                raise ValueError(f"Invalid percentage value: {value}") from e
+        raise ValueError(f"Expected a percentage string or float, got: {value}")
 
 
 class PrePostMarketQuote(BaseModel):
@@ -185,8 +206,13 @@ class CIKResult(BaseModel):
     model_config = default_model_config
 
     cik: str = Field(description="CIK number")
-    name: str = Field(description="Company name")
     symbol: str = Field(description="Stock symbol")
+    company_name: str = Field(alias="companyName", description="Company name")
+    exchange_full_name: str | None = Field(
+        None, alias="exchangeFullName", description="Full exchange name"
+    )
+    exchange: str | None = Field(None, description="Exchange abbreviation")
+    currency: str | None = Field(None, description="Currency")
 
 
 class CUSIPResult(BaseModel):
@@ -196,7 +222,10 @@ class CUSIPResult(BaseModel):
 
     cusip: str = Field(description="CUSIP number")
     symbol: str = Field(description="Stock symbol")
-    name: str = Field(description="Company name")
+    name: str | None = Field(
+        None, alias="companyName", description="Company name"
+    )
+    market_cap: float | None = Field(None, alias="marketCap", description="Market cap")
 
 
 class ISINResult(BaseModel):
@@ -216,10 +245,13 @@ class AvailableIndex(BaseModel):
 
     symbol: str = Field(description="Index symbol")
     name: str = Field(description="Index name")
-    currency: str = Field(description="Trading currency")
-    stock_exchange: str = Field(alias="stockExchange", description="Stock exchange")
-    exchange_short_name: str = Field(
-        alias="exchangeShortName", description="Exchange short name"
+    currency: str | None = Field(None, description="Trading currency")
+    exchange: str | None = Field(None, alias="exchange", description="Exchange code")
+    stock_exchange: str | None = Field(
+        None, alias="stockExchange", description="Stock exchange"
+    )
+    exchange_short_name: str | None = Field(
+        None, alias="exchangeShortName", description="Exchange short name"
     )
 
 
@@ -240,24 +272,19 @@ class IPODisclosure(BaseModel):
 
     model_config = default_model_config
 
-    symbol: str = Field(description="Stock symbol")
-    company_name: str = Field(alias="companyName", description="Company name")
-    ipo_date: datetime = Field(alias="ipoDate", description="IPO date")
-    exchange: str = Field(description="Stock exchange")
-    price_range: str | None = Field(
-        None, alias="priceRange", description="IPO price range"
-    )
-    shares_offered: int | None = Field(
-        None, alias="sharesOffered", description="Number of shares offered"
-    )
-    disclosure_url: str | None = Field(
-        None, alias="disclosureUrl", description="Disclosure document URL"
-    )
+    symbol: str | None = Field(None, description="Stock symbol")
     filing_date: datetime | None = Field(
         None, alias="filingDate", description="Filing date"
     )
-    status: str | None = Field(None, description="IPO status")
-    underwriters: str | None = Field(None, description="Lead underwriters")
+    accepted_date: datetime | None = Field(
+        None, alias="acceptedDate", description="Accepted date"
+    )
+    effectiveness_date: datetime | None = Field(
+        None, alias="effectivenessDate", description="Effectiveness date"
+    )
+    cik: str | None = Field(None, description="CIK number")
+    form: str | None = Field(None, description="SEC form type")
+    url: str | None = Field(None, description="Disclosure document URL")
 
 
 class IPOProspectus(BaseModel):
@@ -265,26 +292,43 @@ class IPOProspectus(BaseModel):
 
     model_config = default_model_config
 
-    symbol: str = Field(description="Stock symbol")
-    company_name: str = Field(alias="companyName", description="Company name")
-    ipo_date: datetime = Field(alias="ipoDate", description="IPO date")
-    exchange: str = Field(description="Stock exchange")
-    prospectus_url: str = Field(
-        alias="prospectusUrl", description="Prospectus document URL"
+    symbol: str | None = Field(None, description="Stock symbol")
+    accepted_date: datetime | None = Field(
+        None, alias="acceptedDate", description="Accepted date"
     )
     filing_date: datetime | None = Field(
         None, alias="filingDate", description="Filing date"
     )
-    status: str | None = Field(None, description="IPO status")
-    shares_offered: int | None = Field(
-        None, alias="sharesOffered", description="Number of shares offered"
+    ipo_date: datetime | None = Field(alias="ipoDate", description="IPO date")
+    cik: str | None = Field(None, description="CIK number")
+    price_public_per_share: float | None = Field(
+        None, alias="pricePublicPerShare", description="Public price per share"
     )
-    offer_price: float | None = Field(
-        None, alias="offerPrice", description="IPO offer price"
+    price_public_total: float | None = Field(
+        None, alias="pricePublicTotal", description="Total public price"
     )
-    gross_proceeds: float | None = Field(
-        None, alias="grossProceeds", description="Gross proceeds from IPO"
+    discounts_and_commissions_per_share: float | None = Field(
+        None,
+        alias="discountsAndCommissionsPerShare",
+        description="Discounts/commissions per share",
     )
+    discounts_and_commissions_total: float | None = Field(
+        None,
+        alias="discountsAndCommissionsTotal",
+        description="Total discounts/commissions",
+    )
+    proceeds_before_expenses_per_share: float | None = Field(
+        None,
+        alias="proceedsBeforeExpensesPerShare",
+        description="Proceeds before expenses per share",
+    )
+    proceeds_before_expenses_total: float | None = Field(
+        None,
+        alias="proceedsBeforeExpensesTotal",
+        description="Total proceeds before expenses",
+    )
+    form: str | None = Field(None, description="SEC form type")
+    url: str | None = Field(None, description="Prospectus URL")
 
 
 class IndexQuote(BaseModel):

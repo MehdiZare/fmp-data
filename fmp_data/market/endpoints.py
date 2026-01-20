@@ -166,9 +166,19 @@ CIK_SEARCH: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             required=True,
             description="Search query",
+            alias="cik",
         )
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Maximum number of results to return",
+            default=50,
+        ),
+    ],
     response_model=CIKResult,
     arg_model=BaseSearchArg,
     example_queries=[
@@ -305,7 +315,14 @@ SECTOR_PERFORMANCE: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             required=False,
             description="Sector code (e.g., 'Technology')",
-        )
+        ),
+        EndpointParam(
+            name="date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Snapshot date (YYYY-MM-DD)",
+        ),
     ],
     response_model=SectorPerformance,
 )
@@ -357,7 +374,22 @@ CIK_LIST: Endpoint = Endpoint(
     path="cik-list",
     version=APIVersion.STABLE,
     description="Get complete list of all CIK numbers",
-    mandatory_params=[],
+    mandatory_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Page number",
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Number of results per page",
+        ),
+    ],
     optional_params=[],
     response_model=CIKResult,
 )
@@ -418,6 +450,13 @@ SEARCH_SYMBOL: Endpoint = Endpoint(
             param_type=ParamType.INTEGER,
             required=False,
             description="Number of results to return",
+        ),
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Filter results by exchange (e.g., NASDAQ)",
         ),
     ],
     response_model=CompanySearchResult,

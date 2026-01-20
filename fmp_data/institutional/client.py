@@ -7,7 +7,6 @@ from fmp_data.institutional.endpoints import (
     ASSET_ALLOCATION,
     BENEFICIAL_OWNERSHIP,
     CIK_MAPPER,
-    CIK_MAPPER_BY_NAME,
     FAIL_TO_DELIVER,
     FORM_13F,
     FORM_13F_DATES,
@@ -60,6 +59,11 @@ from fmp_data.institutional.models import (
 class InstitutionalClient(EndpointGroup):
     """Client for institutional activity endpoints"""
 
+    @staticmethod
+    def _date_to_year_quarter(filing_date: date) -> tuple[int, int]:
+        quarter = (filing_date.month - 1) // 3 + 1
+        return filing_date.year, quarter
+
     def get_form_13f(self, cik: str, filing_date: date) -> list[Form13F]:
         """
         Get Form 13F filing data
@@ -72,9 +76,8 @@ class InstitutionalClient(EndpointGroup):
             List of Form13F objects. Empty list if no records found.
         """
         try:
-            result = self.client.request(
-                FORM_13F, cik=cik, date=filing_date.strftime("%Y-%m-%d")
-            )
+            year, quarter = self._date_to_year_quarter(filing_date)
+            result = self.client.request(FORM_13F, cik=cik, year=year, quarter=quarter)
             # Ensure we always return a list
             return result if isinstance(result, list) else [result]
         except Exception as e:
@@ -111,23 +114,33 @@ class InstitutionalClient(EndpointGroup):
             ASSET_ALLOCATION, date=filing_date.strftime("%Y-%m-%d")
         )
 
-    def get_institutional_holders(self) -> list[InstitutionalHolder]:
+    def get_institutional_holders(
+        self, page: int = 0, limit: int = 100
+    ) -> list[InstitutionalHolder]:
         """Get list of institutional holders"""
-        return self.client.request(INSTITUTIONAL_HOLDERS)
+        return self.client.request(INSTITUTIONAL_HOLDERS, page=page, limit=limit)
 
     def get_institutional_holdings(
-        self, symbol: str, include_current_quarter: bool = False
+        self,
+        symbol: str,
+        filing_date: date,
+        year: int | None = None,
+        quarter: int | None = None,
     ) -> list[InstitutionalHolding]:
         """Get institutional holdings by symbol"""
+        if year is None or quarter is None:
+            year, quarter = self._date_to_year_quarter(filing_date)
         return self.client.request(
-            INSTITUTIONAL_HOLDINGS,
-            symbol=symbol,
-            includeCurrentQuarter=include_current_quarter,
+            INSTITUTIONAL_HOLDINGS, symbol=symbol, year=year, quarter=quarter
         )
 
-    def get_insider_trades(self, symbol: str, page: int = 0) -> list[InsiderTrade]:
+    def get_insider_trades(
+        self, symbol: str, page: int = 0, limit: int = 100
+    ) -> list[InsiderTrade]:
         """Get insider trades"""
-        return self.client.request(INSIDER_TRADES, symbol=symbol, page=page)
+        return self.client.request(
+            INSIDER_TRADES, symbol=symbol, page=page, limit=limit
+        )
 
     def get_transaction_types(self) -> list[InsiderTransactionType]:
         """Get insider transaction types"""
@@ -142,13 +155,22 @@ class InstitutionalClient(EndpointGroup):
         result = self.client.request(INSIDER_STATISTICS, symbol=symbol)
         return cast(InsiderStatistic, result[0] if isinstance(result, list) else result)
 
-    def get_cik_mappings(self, page: int = 0) -> list[CIKMapping]:
+    def get_cik_mappings(self, page: int = 0, limit: int = 1000) -> list[CIKMapping]:
         """Get CIK to name mappings"""
-        return self.client.request(CIK_MAPPER, page=page)
+        return self.client.request(CIK_MAPPER, page=page, limit=limit)
 
     def search_cik_by_name(self, name: str, page: int = 0) -> list[CIKMapping]:
         """Search CIK mappings by name"""
-        return self.client.request(CIK_MAPPER_BY_NAME, name=name, page=page)
+        results = self.client.request(CIK_MAPPER, page=page, limit=10000)
+        if not isinstance(results, list):
+            results = [results]
+        name_upper = name.strip().upper()
+        return [
+            item
+            for item in results
+            if isinstance(item, CIKMapping)
+            and name_upper in item.reporting_name.upper()
+        ]
 
     def get_beneficial_ownership(self, symbol: str) -> list[BeneficialOwnership]:
         """Get beneficial ownership data for a symbol"""
@@ -177,7 +199,7 @@ class InstitutionalClient(EndpointGroup):
     ) -> list[InsiderTradingByName]:
         """Search insider trades by reporting name"""
         return self.client.request(
-            INSIDER_TRADING_BY_NAME, reportingName=reporting_name, page=page
+            INSIDER_TRADING_BY_NAME, name=reporting_name, page=page
         )
 
     def get_insider_trading_statistics_enhanced(
@@ -203,10 +225,9 @@ class InstitutionalClient(EndpointGroup):
         self, cik: str, filing_date: date
     ) -> list[InstitutionalOwnershipExtract]:
         """Get filings extract data"""
+        year, quarter = self._date_to_year_quarter(filing_date)
         return self.client.request(
-            INSTITUTIONAL_OWNERSHIP_EXTRACT,
-            cik=cik,
-            date=filing_date.strftime("%Y-%m-%d"),
+            INSTITUTIONAL_OWNERSHIP_EXTRACT, cik=cik, year=year, quarter=quarter
         )
 
     def get_institutional_ownership_dates(
@@ -216,13 +237,17 @@ class InstitutionalClient(EndpointGroup):
         return self.client.request(INSTITUTIONAL_OWNERSHIP_DATES, cik=cik)
 
     def get_institutional_ownership_analytics(
-        self, cik: str, filing_date: date
+        self, symbol: str, filing_date: date, page: int = 0, limit: int = 100
     ) -> list[InstitutionalOwnershipAnalytics]:
         """Get filings extract with analytics by holder"""
+        year, quarter = self._date_to_year_quarter(filing_date)
         return self.client.request(
             INSTITUTIONAL_OWNERSHIP_ANALYTICS,
-            cik=cik,
-            date=filing_date.strftime("%Y-%m-%d"),
+            symbol=symbol,
+            year=year,
+            quarter=quarter,
+            page=page,
+            limit=limit,
         )
 
     def get_holder_performance_summary(
@@ -231,32 +256,39 @@ class InstitutionalClient(EndpointGroup):
         """Get holder performance summary"""
         params: dict[str, str] = {"cik": cik}
         if filing_date:
-            params["date"] = filing_date.strftime("%Y-%m-%d")
+            year, quarter = self._date_to_year_quarter(filing_date)
+            params["year"] = str(year)
+            params["quarter"] = str(quarter)
         return self.client.request(HOLDER_PERFORMANCE_SUMMARY, **params)
 
     def get_holder_industry_breakdown(
-        self, cik: str, filing_date: date | None = None
+        self, cik: str, filing_date: date
     ) -> list[HolderIndustryBreakdown]:
         """Get holders industry breakdown"""
-        params: dict[str, str] = {"cik": cik}
-        if filing_date:
-            params["date"] = filing_date.strftime("%Y-%m-%d")
+        year, quarter = self._date_to_year_quarter(filing_date)
+        params: dict[str, str] = {
+            "cik": cik,
+            "year": str(year),
+            "quarter": str(quarter),
+        }
         return self.client.request(HOLDER_INDUSTRY_BREAKDOWN, **params)
 
     def get_symbol_positions_summary(
-        self, symbol: str, filing_date: date | None = None
+        self, symbol: str, filing_date: date
     ) -> list[SymbolPositionsSummary]:
         """Get positions summary by symbol"""
-        params: dict[str, str] = {"symbol": symbol}
-        if filing_date:
-            params["date"] = filing_date.strftime("%Y-%m-%d")
+        year, quarter = self._date_to_year_quarter(filing_date)
+        params: dict[str, str] = {
+            "symbol": symbol,
+            "year": str(year),
+            "quarter": str(quarter),
+        }
         return self.client.request(SYMBOL_POSITIONS_SUMMARY, **params)
 
     def get_industry_performance_summary(
-        self, industry: str, filing_date: date | None = None
+        self, filing_date: date
     ) -> list[IndustryPerformanceSummary]:
         """Get industry performance summary"""
-        params: dict[str, str] = {"industry": industry}
-        if filing_date:
-            params["date"] = filing_date.strftime("%Y-%m-%d")
+        year, quarter = self._date_to_year_quarter(filing_date)
+        params: dict[str, str] = {"year": str(year), "quarter": str(quarter)}
         return self.client.request(INDUSTRY_PERFORMANCE_SUMMARY, **params)

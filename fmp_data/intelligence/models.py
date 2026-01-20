@@ -1,8 +1,15 @@
 # fmp_data/intelligence/models.py
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    HttpUrl,
+)
 from pydantic.alias_generators import to_camel
 
 default_model_config = ConfigDict(
@@ -14,6 +21,12 @@ default_model_config = ConfigDict(
 )
 
 
+def _empty_str_to_none(value: object) -> object:
+    if value == "":
+        return None
+    return value
+
+
 class EarningEvent(BaseModel):
     """Earnings calendar event based on FMP API response"""
 
@@ -21,20 +34,27 @@ class EarningEvent(BaseModel):
 
     event_date: date = Field(description="Earnings date", alias="date")
     symbol: str = Field(description="Company symbol")
-    eps: float | None = Field(default=None, description="Actual earnings per share")
+    eps: float | None = Field(
+        default=None, alias="epsActual", description="Actual earnings per share"
+    )
     eps_estimated: float | None = Field(
         alias="epsEstimated", default=None, description="Estimated earnings per share"
     )
     time: str | None = Field(default=None, description="Time of day (amc/bmo)")
-    revenue: float | None = Field(default=None, description="Actual revenue")
+    revenue: float | None = Field(
+        default=None, alias="revenueActual", description="Actual revenue"
+    )
     revenue_estimated: float | None = Field(
         alias="revenueEstimated", default=None, description="Estimated revenue"
     )
-    fiscal_date_ending: date = Field(
-        alias="fiscalDateEnding", description="Fiscal period end date"
+    fiscal_date_ending: date | None = Field(
+        None, alias="fiscalDateEnding", description="Fiscal period end date"
     )
-    updated_from_date: date = Field(
-        alias="updatedFromDate", description="Last update date"
+    updated_from_date: date | None = Field(
+        None, alias="updatedFromDate", description="Last update date"
+    )
+    last_updated: date | None = Field(
+        None, alias="lastUpdated", description="Last update date"
     )
 
 
@@ -77,20 +97,29 @@ class DividendEvent(BaseModel):
 
     symbol: str = Field(description="Company symbol")
     ex_dividend_date: date = Field(description="Ex-dividend date", alias="date")
-    label: str = Field(description="Human-readable date label")
-    adj_dividend: float = Field(
-        alias="adjDividend", description="Adjusted dividend amount"
+    label: str | None = Field(None, description="Human-readable date label")
+    adj_dividend: float | None = Field(
+        None, alias="adjDividend", description="Adjusted dividend amount"
     )
-    dividend: float = Field(description="Declared dividend amount")
-    record_date: date | None = Field(
+    dividend: float | None = Field(
+        None, description="Declared dividend amount"
+    )
+    dividend_yield: float | None = Field(
+        None, alias="yield", description="Dividend yield"
+    )
+    frequency: str | None = Field(
+        None, description="Dividend frequency"
+    )
+    record_date: Annotated[date | None, BeforeValidator(_empty_str_to_none)] = Field(
         None, alias="recordDate", description="Record date"
     )
-    payment_date: date | None = Field(
+    payment_date: Annotated[date | None, BeforeValidator(_empty_str_to_none)] = Field(
         None, alias="paymentDate", description="Payment date"
     )
-    declaration_date: date | None = Field(
-        None, alias="declarationDate", description="Declaration date"
-    )
+    declaration_date: Annotated[
+        date | None,
+        BeforeValidator(_empty_str_to_none),
+    ] = Field(None, alias="declarationDate", description="Declaration date")
 
 
 class StockSplitEvent(BaseModel):
@@ -100,9 +129,12 @@ class StockSplitEvent(BaseModel):
 
     symbol: str = Field(description="Company symbol")
     split_event_date: date = Field(description="Split date", alias="date")
-    label: str = Field(description="Human-readable date label")
+    label: str | None = Field(None, description="Human-readable date label")
     numerator: float = Field(description="Numerator of the split ratio")
     denominator: float = Field(description="Denominator of the split ratio")
+    split_type: str | None = Field(
+        None, alias="splitType", description="Split type"
+    )
 
 
 class IPOEvent(BaseModel):
@@ -168,7 +200,7 @@ class StockNewsArticle(BaseModel):
     symbol: str
     publishedDate: datetime
     title: str
-    image: HttpUrl
+    image: HttpUrl | None = None
     site: str
     text: str
     url: HttpUrl
@@ -201,7 +233,7 @@ class ForexNewsArticle(BaseModel):
     site: str = Field(description="Source website")
     text: str = Field(description="Article preview text/summary")
     url: HttpUrl = Field(description="Full article URL")
-    symbol: str = Field(description="Forex pair symbol")
+    symbol: str | None = Field(default=None, description="Forex pair symbol")
 
 
 class CryptoNewsArticle(BaseModel):
@@ -211,11 +243,12 @@ class CryptoNewsArticle(BaseModel):
 
     publishedDate: datetime = Field(description="Article publication date and time")
     title: str = Field(description="Article title")
-    image: HttpUrl = Field(description="URL of the article image")
+    image: HttpUrl | None = Field(default=None, description="URL of the article image")
     site: str = Field(description="Source website")
     text: str = Field(description="Article preview text/summary")
     url: HttpUrl = Field(description="Full article URL")
     symbol: str = Field(description="Cryptocurrency trading pair symbol")
+    publisher: str | None = Field(default=None, description="News publisher")
 
 
 class PressRelease(BaseModel):
@@ -223,8 +256,8 @@ class PressRelease(BaseModel):
 
     model_config = default_model_config
 
-    symbol: str
-    date: datetime
+    symbol: str | None = None
+    date: datetime | None = None
     title: str
     text: str
 
@@ -235,7 +268,7 @@ class PressReleaseBySymbol(BaseModel):
     model_config = default_model_config
 
     symbol: str
-    date: datetime
+    date: datetime | None = None
     title: str
     text: str
 
@@ -718,47 +751,69 @@ class RatingsSnapshot(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
-    date: datetime = Field(description="Rating date")
+    date: datetime | None = Field(default=None, description="Rating date")
     rating: str = Field(description="Overall rating (Buy, Hold, Sell)")
-    rating_score: int = Field(alias="ratingScore", description="Numeric rating score")
-    rating_recommendation: str = Field(
-        alias="ratingRecommendation", description="Rating recommendation"
+    rating_score: int | None = Field(
+        default=None,
+        alias="ratingScore",
+        description="Numeric rating score",
     )
-    rating_details_dcf_score: int = Field(
-        alias="ratingDetailsDCFScore", description="DCF model score"
+    rating_recommendation: str | None = Field(
+        default=None, alias="ratingRecommendation", description="Rating recommendation"
     )
-    rating_details_dcf_recommendation: str = Field(
-        alias="ratingDetailsDCFRecommendation", description="DCF recommendation"
+    rating_details_dcf_score: int | None = Field(
+        default=None, alias="ratingDetailsDCFScore", description="DCF model score"
     )
-    rating_details_roe_score: int = Field(
-        alias="ratingDetailsROEScore", description="Return on Equity score"
+    rating_details_dcf_recommendation: str | None = Field(
+        default=None,
+        alias="ratingDetailsDCFRecommendation",
+        description="DCF recommendation",
     )
-    rating_details_roe_recommendation: str = Field(
-        alias="ratingDetailsROERecommendation", description="ROE recommendation"
+    rating_details_roe_score: int | None = Field(
+        default=None,
+        alias="ratingDetailsROEScore",
+        description="Return on Equity score",
     )
-    rating_details_roa_score: int = Field(
-        alias="ratingDetailsROAScore", description="Return on Assets score"
+    rating_details_roe_recommendation: str | None = Field(
+        default=None,
+        alias="ratingDetailsROERecommendation",
+        description="ROE recommendation",
     )
-    rating_details_roa_recommendation: str = Field(
-        alias="ratingDetailsROARecommendation", description="ROA recommendation"
+    rating_details_roa_score: int | None = Field(
+        default=None,
+        alias="ratingDetailsROAScore",
+        description="Return on Assets score",
     )
-    rating_details_de_score: int = Field(
-        alias="ratingDetailsDEScore", description="Debt to Equity score"
+    rating_details_roa_recommendation: str | None = Field(
+        default=None,
+        alias="ratingDetailsROARecommendation",
+        description="ROA recommendation",
     )
-    rating_details_de_recommendation: str = Field(
-        alias="ratingDetailsDERecommendation", description="D/E recommendation"
+    rating_details_de_score: int | None = Field(
+        default=None, alias="ratingDetailsDEScore", description="Debt to Equity score"
     )
-    rating_details_pe_score: int = Field(
-        alias="ratingDetailsPEScore", description="Price to Earnings score"
+    rating_details_de_recommendation: str | None = Field(
+        default=None,
+        alias="ratingDetailsDERecommendation",
+        description="D/E recommendation",
     )
-    rating_details_pe_recommendation: str = Field(
-        alias="ratingDetailsPERecommendation", description="P/E recommendation"
+    rating_details_pe_score: int | None = Field(
+        default=None,
+        alias="ratingDetailsPEScore",
+        description="Price to Earnings score",
     )
-    rating_details_pb_score: int = Field(
-        alias="ratingDetailsPBScore", description="Price to Book score"
+    rating_details_pe_recommendation: str | None = Field(
+        default=None,
+        alias="ratingDetailsPERecommendation",
+        description="P/E recommendation",
     )
-    rating_details_pb_recommendation: str = Field(
-        alias="ratingDetailsPBRecommendation", description="P/B recommendation"
+    rating_details_pb_score: int | None = Field(
+        default=None, alias="ratingDetailsPBScore", description="Price to Book score"
+    )
+    rating_details_pb_recommendation: str | None = Field(
+        default=None,
+        alias="ratingDetailsPBRecommendation",
+        description="P/B recommendation",
     )
 
 
@@ -770,45 +825,67 @@ class HistoricalRating(BaseModel):
     symbol: str = Field(description="Company symbol")
     date: datetime = Field(description="Rating date")
     rating: str = Field(description="Overall rating")
-    rating_score: int = Field(alias="ratingScore", description="Numeric rating score")
-    rating_recommendation: str = Field(
-        alias="ratingRecommendation", description="Rating recommendation"
+    rating_score: int | None = Field(
+        default=None,
+        alias="ratingScore",
+        description="Numeric rating score",
     )
-    rating_details_dcf_score: int = Field(
-        alias="ratingDetailsDCFScore", description="DCF model score"
+    rating_recommendation: str | None = Field(
+        default=None, alias="ratingRecommendation", description="Rating recommendation"
     )
-    rating_details_dcf_recommendation: str = Field(
-        alias="ratingDetailsDCFRecommendation", description="DCF recommendation"
+    rating_details_dcf_score: int | None = Field(
+        default=None, alias="ratingDetailsDCFScore", description="DCF model score"
     )
-    rating_details_roe_score: int = Field(
-        alias="ratingDetailsROEScore", description="Return on Equity score"
+    rating_details_dcf_recommendation: str | None = Field(
+        default=None,
+        alias="ratingDetailsDCFRecommendation",
+        description="DCF recommendation",
     )
-    rating_details_roe_recommendation: str = Field(
-        alias="ratingDetailsROERecommendation", description="ROE recommendation"
+    rating_details_roe_score: int | None = Field(
+        default=None,
+        alias="ratingDetailsROEScore",
+        description="Return on Equity score",
     )
-    rating_details_roa_score: int = Field(
-        alias="ratingDetailsROAScore", description="Return on Assets score"
+    rating_details_roe_recommendation: str | None = Field(
+        default=None,
+        alias="ratingDetailsROERecommendation",
+        description="ROE recommendation",
     )
-    rating_details_roa_recommendation: str = Field(
-        alias="ratingDetailsROARecommendation", description="ROA recommendation"
+    rating_details_roa_score: int | None = Field(
+        default=None,
+        alias="ratingDetailsROAScore",
+        description="Return on Assets score",
     )
-    rating_details_de_score: int = Field(
-        alias="ratingDetailsDEScore", description="Debt to Equity score"
+    rating_details_roa_recommendation: str | None = Field(
+        default=None,
+        alias="ratingDetailsROARecommendation",
+        description="ROA recommendation",
     )
-    rating_details_de_recommendation: str = Field(
-        alias="ratingDetailsDERecommendation", description="D/E recommendation"
+    rating_details_de_score: int | None = Field(
+        default=None, alias="ratingDetailsDEScore", description="Debt to Equity score"
     )
-    rating_details_pe_score: int = Field(
-        alias="ratingDetailsPEScore", description="Price to Earnings score"
+    rating_details_de_recommendation: str | None = Field(
+        default=None,
+        alias="ratingDetailsDERecommendation",
+        description="D/E recommendation",
     )
-    rating_details_pe_recommendation: str = Field(
-        alias="ratingDetailsPERecommendation", description="P/E recommendation"
+    rating_details_pe_score: int | None = Field(
+        default=None,
+        alias="ratingDetailsPEScore",
+        description="Price to Earnings score",
     )
-    rating_details_pb_score: int = Field(
-        alias="ratingDetailsPBScore", description="Price to Book score"
+    rating_details_pe_recommendation: str | None = Field(
+        default=None,
+        alias="ratingDetailsPERecommendation",
+        description="P/E recommendation",
     )
-    rating_details_pb_recommendation: str = Field(
-        alias="ratingDetailsPBRecommendation", description="P/B recommendation"
+    rating_details_pb_score: int | None = Field(
+        default=None, alias="ratingDetailsPBScore", description="Price to Book score"
+    )
+    rating_details_pb_recommendation: str | None = Field(
+        default=None,
+        alias="ratingDetailsPBRecommendation",
+        description="P/B recommendation",
     )
 
 
@@ -844,13 +921,21 @@ class StockGrade(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
-    published_date: datetime = Field(
-        alias="publishedDate", description="Publication date"
+    published_date: datetime | None = Field(
+        default=None, alias="publishedDate", description="Publication date"
     )
-    news_url: HttpUrl = Field(alias="newsURL", description="News article URL")
-    news_title: str = Field(alias="newsTitle", description="News article title")
-    news_base_url: str = Field(alias="newsBaseURL", description="Publisher base URL")
-    news_publisher: str = Field(alias="newsPublisher", description="News publisher")
+    news_url: HttpUrl | None = Field(
+        default=None, alias="newsURL", description="News article URL"
+    )
+    news_title: str | None = Field(
+        default=None, alias="newsTitle", description="News article title"
+    )
+    news_base_url: str | None = Field(
+        default=None, alias="newsBaseURL", description="Publisher base URL"
+    )
+    news_publisher: str | None = Field(
+        default=None, alias="newsPublisher", description="News publisher"
+    )
     new_grade: str = Field(alias="newGrade", description="New grade assigned")
     previous_grade: str | None = Field(
         None, alias="previousGrade", description="Previous grade"
@@ -859,8 +944,10 @@ class StockGrade(BaseModel):
         alias="gradingCompany", description="Company issuing the grade"
     )
     action: str = Field(description="Action taken (upgrade, downgrade, etc.)")
-    price_when_posted: Decimal = Field(
-        alias="priceWhenPosted", description="Stock price when grade was posted"
+    price_when_posted: Decimal | None = Field(
+        default=None,
+        alias="priceWhenPosted",
+        description="Stock price when grade was posted",
     )
 
 
@@ -870,23 +957,35 @@ class HistoricalStockGrade(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
-    published_date: datetime = Field(
-        alias="publishedDate", description="Publication date"
+    published_date: datetime | None = Field(
+        default=None, alias="publishedDate", description="Publication date"
     )
-    news_url: HttpUrl = Field(alias="newsURL", description="News article URL")
-    news_title: str = Field(alias="newsTitle", description="News article title")
-    news_base_url: str = Field(alias="newsBaseURL", description="Publisher base URL")
-    news_publisher: str = Field(alias="newsPublisher", description="News publisher")
-    new_grade: str = Field(alias="newGrade", description="New grade assigned")
+    news_url: HttpUrl | None = Field(
+        default=None, alias="newsURL", description="News article URL"
+    )
+    news_title: str | None = Field(
+        default=None, alias="newsTitle", description="News article title"
+    )
+    news_base_url: str | None = Field(
+        default=None, alias="newsBaseURL", description="Publisher base URL"
+    )
+    news_publisher: str | None = Field(
+        default=None, alias="newsPublisher", description="News publisher"
+    )
+    new_grade: str | None = Field(
+        default=None, alias="newGrade", description="New grade assigned"
+    )
     previous_grade: str | None = Field(
         None, alias="previousGrade", description="Previous grade"
     )
-    grading_company: str = Field(
-        alias="gradingCompany", description="Company issuing the grade"
+    grading_company: str | None = Field(
+        default=None, alias="gradingCompany", description="Company issuing the grade"
     )
-    action: str = Field(description="Action taken")
-    price_when_posted: Decimal = Field(
-        alias="priceWhenPosted", description="Stock price when grade was posted"
+    action: str | None = Field(default=None, description="Action taken")
+    price_when_posted: Decimal | None = Field(
+        default=None,
+        alias="priceWhenPosted",
+        description="Stock price when grade was posted",
     )
 
 

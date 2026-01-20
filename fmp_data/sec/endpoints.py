@@ -27,6 +27,20 @@ SEC_FILINGS_8K: Endpoint = Endpoint(
     mandatory_params=[],
     optional_params=[
         EndpointParam(
+            name="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Start date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="End date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
@@ -60,6 +74,20 @@ SEC_FILINGS_FINANCIALS: Endpoint = Endpoint(
     description="Get the latest SEC financial filings (10-K, 10-Q)",
     mandatory_params=[],
     optional_params=[
+        EndpointParam(
+            name="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Start date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="End date (YYYY-MM-DD)",
+        ),
         EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
@@ -103,6 +131,20 @@ SEC_FILINGS_SEARCH_FORM_TYPE: Endpoint = Endpoint(
     ],
     optional_params=[
         EndpointParam(
+            name="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Start date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="End date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
@@ -144,6 +186,20 @@ SEC_FILINGS_SEARCH_SYMBOL: Endpoint = Endpoint(
         ),
     ],
     optional_params=[
+        EndpointParam(
+            name="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Start date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="End date (YYYY-MM-DD)",
+        ),
         EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
@@ -187,6 +243,20 @@ SEC_FILINGS_SEARCH_CIK: Endpoint = Endpoint(
     ],
     optional_params=[
         EndpointParam(
+            name="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Start date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="End date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
@@ -220,7 +290,7 @@ SEC_COMPANY_SEARCH_NAME: Endpoint = Endpoint(
     description="Search SEC companies by name",
     mandatory_params=[
         EndpointParam(
-            name="name",
+            name="company",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,

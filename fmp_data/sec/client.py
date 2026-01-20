@@ -1,4 +1,5 @@
 # fmp_data/sec/client.py
+from datetime import date, timedelta
 from typing import cast
 
 from pydantic import ValidationError as PydanticValidationError
@@ -66,6 +67,8 @@ class SECClient(EndpointGroup):
         form_type: str,
         page: int = 0,
         limit: int = 100,
+        from_date: date | None = None,
+        to_date: date | None = None,
     ) -> list[SECFilingSearchResult]:
         """Search SEC filings by form type
 
@@ -77,8 +80,17 @@ class SECClient(EndpointGroup):
         Returns:
             List of matching filings
         """
+        end_date = to_date or date.today()
+        start_date = from_date or (end_date - timedelta(days=30))
         return self.client.request(
-            SEC_FILINGS_SEARCH_FORM_TYPE, formType=form_type, page=page, limit=limit
+            SEC_FILINGS_SEARCH_FORM_TYPE,
+            formType=form_type,
+            page=page,
+            limit=limit,
+            **{
+                "from": start_date.strftime("%Y-%m-%d"),
+                "to": end_date.strftime("%Y-%m-%d"),
+            },
         )
 
     def search_by_symbol(
@@ -86,6 +98,8 @@ class SECClient(EndpointGroup):
         symbol: str,
         page: int = 0,
         limit: int = 100,
+        from_date: date | None = None,
+        to_date: date | None = None,
     ) -> list[SECFilingSearchResult]:
         """Search SEC filings by stock symbol
 
@@ -97,8 +111,17 @@ class SECClient(EndpointGroup):
         Returns:
             List of matching filings
         """
+        end_date = to_date or date.today()
+        start_date = from_date or (end_date - timedelta(days=30))
         return self.client.request(
-            SEC_FILINGS_SEARCH_SYMBOL, symbol=symbol, page=page, limit=limit
+            SEC_FILINGS_SEARCH_SYMBOL,
+            symbol=symbol,
+            page=page,
+            limit=limit,
+            **{
+                "from": start_date.strftime("%Y-%m-%d"),
+                "to": end_date.strftime("%Y-%m-%d"),
+            },
         )
 
     def search_by_cik(
@@ -106,6 +129,8 @@ class SECClient(EndpointGroup):
         cik: str,
         page: int = 0,
         limit: int = 100,
+        from_date: date | None = None,
+        to_date: date | None = None,
     ) -> list[SECFilingSearchResult]:
         """Search SEC filings by CIK number
 
@@ -117,8 +142,17 @@ class SECClient(EndpointGroup):
         Returns:
             List of matching filings
         """
+        end_date = to_date or date.today()
+        start_date = from_date or (end_date - timedelta(days=30))
         return self.client.request(
-            SEC_FILINGS_SEARCH_CIK, cik=cik, page=page, limit=limit
+            SEC_FILINGS_SEARCH_CIK,
+            cik=cik,
+            page=page,
+            limit=limit,
+            **{
+                "from": start_date.strftime("%Y-%m-%d"),
+                "to": end_date.strftime("%Y-%m-%d"),
+            },
         )
 
     def search_company_by_name(
@@ -138,7 +172,7 @@ class SECClient(EndpointGroup):
             List of matching companies
         """
         return self.client.request(
-            SEC_COMPANY_SEARCH_NAME, name=name, page=page, limit=limit
+            SEC_COMPANY_SEARCH_NAME, company=name, page=page, limit=limit
         )
 
     def search_company_by_symbol(self, symbol: str) -> list[SECCompanySearchResult]:

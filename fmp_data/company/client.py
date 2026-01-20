@@ -84,7 +84,7 @@ from fmp_data.company.models import (
     UpgradeDowngrade,
     UpgradeDowngradeConsensus,
 )
-from fmp_data.exceptions import FMPError
+from fmp_data.exceptions import FMPError, ValidationError
 from fmp_data.fundamental.models import (
     AsReportedBalanceSheet,
     AsReportedCashFlowStatement,
@@ -112,12 +112,14 @@ class CompanyClient(EndpointGroup):
             raise FMPError(f"Symbol {symbol} not found")
         return cast(CompanyProfile, result[0] if isinstance(result, list) else result)
 
-    def get_core_information(self, symbol: str) -> CompanyCoreInformation:
+    def get_core_information(self, symbol: str) -> CompanyCoreInformation | None:
         """Get core company information"""
         result = self.client.request(CORE_INFORMATION, symbol=symbol)
-        return cast(
-            CompanyCoreInformation, result[0] if isinstance(result, list) else result
-        )
+        if isinstance(result, list):
+            if not result:
+                return None
+            return cast(CompanyCoreInformation, result[0])
+        return cast(CompanyCoreInformation, result)
 
     def get_executives(self, symbol: str) -> list[CompanyExecutive]:
         """Get company executives information"""
@@ -130,6 +132,13 @@ class CompanyClient(EndpointGroup):
     def get_company_notes(self, symbol: str) -> list[CompanyNote]:
         """Get company financial notes"""
         return self.client.request(COMPANY_NOTES, symbol=symbol)
+
+    def get_company_logo_url(self, symbol: str) -> str:
+        """Get the company logo URL"""
+        if not symbol or not symbol.strip():
+            raise ValueError("Symbol is required for company logo URL")
+        base_url = self.client.config.base_url.rstrip("/")
+        return f"{base_url}/image-stock/{symbol}.png"
 
     def get_quote(self, symbol: str) -> Quote:
         """Get real-time stock quote"""
@@ -160,9 +169,9 @@ class CompanyClient(EndpointGroup):
         # Build request parameters
         params = {"symbol": symbol}
         if from_date:
-            params["from_"] = from_date
+            params["start_date"] = from_date
         if to_date:
-            params["to"] = to_date
+            params["end_date"] = to_date
 
         # Make request
         # this returns list[HistoricalPrice] due to response_model=HistoricalPrice
@@ -267,7 +276,12 @@ class CompanyClient(EndpointGroup):
 
     def get_analyst_estimates(self, symbol: str) -> list[AnalystEstimate]:
         """Get analyst estimates"""
-        return self.client.request(ANALYST_ESTIMATES, symbol=symbol)
+        try:
+            return self.client.request(ANALYST_ESTIMATES, symbol=symbol)
+        except ValidationError as exc:
+            if "period" in str(exc):
+                return []
+            raise
 
     def get_analyst_recommendations(self, symbol: str) -> list[AnalystRecommendation]:
         """Get analyst recommendations"""
@@ -279,12 +293,14 @@ class CompanyClient(EndpointGroup):
 
     def get_upgrades_downgrades_consensus(
         self, symbol: str
-    ) -> UpgradeDowngradeConsensus:
+    ) -> UpgradeDowngradeConsensus | None:
         """Get upgrades and downgrades consensus"""
         result = self.client.request(UPGRADES_DOWNGRADES_CONSENSUS, symbol=symbol)
-        return cast(
-            UpgradeDowngradeConsensus, result[0] if isinstance(result, list) else result
-        )
+        if isinstance(result, list):
+            if not result:
+                return None
+            return cast(UpgradeDowngradeConsensus, result[0])
+        return cast(UpgradeDowngradeConsensus, result)
 
     def get_company_peers(self, symbol: str) -> list[CompanyPeer]:
         """Get company peers"""

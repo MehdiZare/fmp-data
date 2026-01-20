@@ -22,7 +22,7 @@ from fmp_data.models import (
 # ETF endpoints
 ETF_HOLDINGS: Endpoint = Endpoint(
     name="etf_holdings",
-    path="etf-holdings",
+    path="etf/holdings",
     version=APIVersion.STABLE,
     description="Get ETF holdings",
     mandatory_params=[
@@ -47,7 +47,7 @@ ETF_HOLDINGS: Endpoint = Endpoint(
 
 ETF_HOLDING_DATES: Endpoint = Endpoint(
     name="etf_holding_dates",
-    path="etf-holdings/portfolio-date",
+    path="etf/portfolio-dates",
     version=APIVersion.STABLE,
     description="Get ETF holding dates",
     mandatory_params=[
@@ -65,7 +65,7 @@ ETF_HOLDING_DATES: Endpoint = Endpoint(
 
 ETF_INFO: Endpoint = Endpoint(
     name="etf_info",
-    path="etf-info",
+    path="etf/info",
     version=APIVersion.STABLE,
     description="Get ETF information",
     mandatory_params=[
@@ -83,7 +83,7 @@ ETF_INFO: Endpoint = Endpoint(
 
 ETF_SECTOR_WEIGHTINGS: Endpoint = Endpoint(
     name="etf_sector_weightings",
-    path="etf-sector-weightings",
+    path="etf/sector-weightings",
     version=APIVersion.STABLE,
     description="Get ETF sector weightings",
     mandatory_params=[
@@ -101,7 +101,7 @@ ETF_SECTOR_WEIGHTINGS: Endpoint = Endpoint(
 
 ETF_COUNTRY_WEIGHTINGS: Endpoint = Endpoint(
     name="etf_country_weightings",
-    path="etf-country-weightings",
+    path="etf/country-weightings",
     version=APIVersion.STABLE,
     description="Get ETF country weightings",
     mandatory_params=[
@@ -119,7 +119,7 @@ ETF_COUNTRY_WEIGHTINGS: Endpoint = Endpoint(
 
 ETF_EXPOSURE: Endpoint = Endpoint(
     name="etf_exposure",
-    path="etf-stock-exposure",
+    path="etf/asset-exposure",
     version=APIVersion.STABLE,
     description="Get ETF stock exposure",
     mandatory_params=[
@@ -137,7 +137,7 @@ ETF_EXPOSURE: Endpoint = Endpoint(
 
 ETF_HOLDER: Endpoint = Endpoint(
     name="etf_holder",
-    path="etf-holder",
+    path="etf/holder",
     version=APIVersion.STABLE,
     description="Get ETF holder information",
     mandatory_params=[
@@ -156,23 +156,16 @@ ETF_HOLDER: Endpoint = Endpoint(
 # Mutual Fund endpoints
 MUTUAL_FUND_DATES: Endpoint = Endpoint(
     name="mutual_fund_dates",
-    path="mutual-fund-holdings/portfolio-date",
+    path="funds/disclosure-dates",
     version=APIVersion.STABLE,
-    description="Get mutual fund dates",
+    description="Get mutual fund/ETF disclosure dates",
     mandatory_params=[
         EndpointParam(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
-            description="Fund symbol",
-        ),
-        EndpointParam(
-            name="cik",
-            location=ParamLocation.PATH,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Fund cik",
+            description="Fund or ETF symbol",
         ),
     ],
     optional_params=[],
@@ -224,7 +217,7 @@ MUTUAL_FUND_BY_NAME: Endpoint = Endpoint(
 
 MUTUAL_FUND_HOLDER: Endpoint = Endpoint(
     name="mutual_fund_holder",
-    path="mutual-fund-holder",
+    path="etf/holder",
     version=APIVersion.STABLE,
     description="Get mutual fund holder information",
     mandatory_params=[

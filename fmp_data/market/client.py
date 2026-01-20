@@ -1,5 +1,5 @@
 # fmp_data/market/client.py
-from datetime import date
+from datetime import date as dt_date
 from typing import cast
 
 from fmp_data.base import EndpointGroup
@@ -113,9 +113,16 @@ class MarketClient(EndpointGroup):
         """Get most active stocks"""
         return self.client.request(MOST_ACTIVE)
 
-    def get_sector_performance(self) -> list[SectorPerformance]:
+    def get_sector_performance(
+        self, sector: str | None = None, date: dt_date | None = None
+    ) -> list[SectorPerformance]:
         """Get sector performance data"""
-        return self.client.request(SECTOR_PERFORMANCE)
+        params = {}
+        if sector is not None:
+            params["sector"] = sector
+        snapshot_date = date or dt_date.today()
+        params["date"] = snapshot_date.strftime("%Y-%m-%d")
+        return self.client.request(SECTOR_PERFORMANCE, **params)
 
     def get_pre_post_market(self) -> list[PrePostMarketQuote]:
         """Get pre/post market data"""
@@ -143,8 +150,8 @@ class MarketClient(EndpointGroup):
 
     def get_ipo_disclosure(
         self,
-        from_date: date | None = None,
-        to_date: date | None = None,
+        from_date: dt_date | None = None,
+        to_date: dt_date | None = None,
         limit: int = 100,
     ) -> list[IPODisclosure]:
         """Get IPO disclosure documents
@@ -166,8 +173,8 @@ class MarketClient(EndpointGroup):
 
     def get_ipo_prospectus(
         self,
-        from_date: date | None = None,
-        to_date: date | None = None,
+        from_date: dt_date | None = None,
+        to_date: dt_date | None = None,
         limit: int = 100,
     ) -> list[IPOProspectus]:
         """Get IPO prospectus documents

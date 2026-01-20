@@ -9,15 +9,35 @@ import time
 import pytest
 import vcr
 from vcr.request import Request
+from dotenv import load_dotenv
 
 from fmp_data import ClientConfig, FMPDataClient, RateLimitConfig
 
 logger = logging.getLogger(__name__)
 
-pytest.importorskip("langchain_core", reason="langchain extra not installed")
-pytest.importorskip("langchain_community", reason="langchain extra not installed")
-pytest.importorskip("langchain_openai", reason="langchain extra not installed")
-pytest.importorskip("faiss", reason="faiss extra not installed")
+ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
+if ENV_PATH.exists():
+    load_dotenv(ENV_PATH, override=False)
+
+if not os.getenv("FMP_TEST_API_KEY") and os.getenv("FMP_API_KEY"):
+    os.environ["FMP_TEST_API_KEY"] = os.environ["FMP_API_KEY"]
+
+if not os.getenv("FMP_API_KEY") and os.getenv("FMP_TEST_API_KEY"):
+    os.environ["FMP_API_KEY"] = os.environ["FMP_TEST_API_KEY"]
+
+VCR_RECORD_MODE = os.getenv("FMP_VCR_RECORD", "new_episodes")
+if VCR_RECORD_MODE not in {"none", "once", "new_episodes", "all"}:
+    logger.warning(
+        "Invalid FMP_VCR_RECORD=%s; falling back to new_episodes", VCR_RECORD_MODE
+    )
+    VCR_RECORD_MODE = "new_episodes"
+
+
+def drop_unauthorized_response(response: dict | None) -> dict | None:
+    """Skip replaying stale 401 responses so they get re-recorded."""
+    if response and response.get("status", {}).get("code") == 401:
+        return None
+    return response
 
 
 def scrub_api_key(request: Request) -> Request:
@@ -29,11 +49,17 @@ def scrub_api_key(request: Request) -> Request:
     if "apikey=" in scrubbed_uri:
         scrubbed_uri = re.sub(r"apikey=([^&]+)", "apikey=DUMMY_API_KEY", scrubbed_uri)
 
+    scrubbed_headers = {
+        key: value
+        for key, value in request.headers.items()
+        if key.lower() != "apikey"
+    }
+
     return Request(
         method=request.method,
         uri=scrubbed_uri,
         body=request.body,
-        headers=request.headers,
+        headers=scrubbed_headers,
     )
 
 
@@ -43,18 +69,20 @@ CASSETTES_PATH.mkdir(exist_ok=True)
 vcr_config = vcr.VCR(
     serializer="yaml",
     cassette_library_dir=str(CASSETTES_PATH),
-    record_mode="new_episodes",
+    record_mode=VCR_RECORD_MODE,
     match_on=[
         "method",
         "host",
         "path",
-    ],  # Don't match on query to allow different API keys
-    filter_headers=["authorization", "x-api-key"],
+        "query",
+    ],  # Match on query with apikey filtered for stable replays
+    filter_headers=["authorization", "x-api-key", "apikey"],
     before_record_request=scrub_api_key,
     decode_compressed_response=True,
     filter_query_parameters=["apikey"],  # Add this to filter out apikey from matching
     path_transformer=lambda path: str(CASSETTES_PATH / path),
 )
+vcr_config.before_playback_response = drop_unauthorized_response
 
 logger.debug(f"VCR cassettes will be saved to: {CASSETTES_PATH}")
 
@@ -91,7 +119,7 @@ def fmp_client(rate_limit_config: RateLimitConfig) -> Generator[FMPDataClient]:
     config = ClientConfig(
         api_key=api_key,
         base_url=os.getenv("FMP_TEST_BASE_URL", "https://financialmodelingprep.com"),
-        timeout=10,
+        timeout=float(os.getenv("FMP_TEST_TIMEOUT", "10")),
         max_retries=2,
         rate_limit=rate_limit_config,
     )

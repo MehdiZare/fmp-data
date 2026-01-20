@@ -410,7 +410,15 @@ EMPLOYEE_COUNT: Endpoint = Endpoint(
             description="Stock symbol (ticker)",
         )
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Maximum number of employee count records to return",
+        ),
+    ],
     response_model=EmployeeCount,
     arg_model=BaseSymbolArg,
     example_queries=[
@@ -735,7 +743,16 @@ ANALYST_ESTIMATES: Endpoint = Endpoint(
             description="Stock symbol",
         )
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="period",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Estimate period (annual or quarter)",
+            default="annual",
+        )
+    ],
     response_model=AnalystEstimate,
 )
 

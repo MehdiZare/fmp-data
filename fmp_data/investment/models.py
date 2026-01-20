@@ -19,41 +19,23 @@ class ETFHolding(BaseModel):
 
     model_config = default_model_config
 
-    cik: str = Field(description="Central Index Key (CIK)")
-    acceptance_time: datetime | None = Field(
-        None, description="Acceptance time of the filing"
-    )
-    holding_date: date | None = Field(None, description="Holding date")
-    symbol: str = Field(description="Ticker symbol")
+    symbol: str = Field(description="ETF symbol")
+    asset: str = Field(description="Asset ticker symbol")
     name: str = Field(description="Asset name")
-    lei: str | None = Field(description="Legal Entity Identifier (LEI)")
-    title: str = Field(description="Asset title")
-    cusip: str | None = Field(description="Asset CUSIP")
-    isin: str | None = Field(description="Asset ISIN")
-    balance: float | None = Field(None, description="Number of shares held")
-    units: str = Field(description="Units type")
-    currency_code: str = Field(alias="cur_cd", description="Currency code")
-    value_usd: Decimal = Field(alias="valUsd", description="Market value in USD")
-    percentage_value: Decimal = Field(
-        alias="pctVal", description="Percentage of total value"
+    isin: str | None = Field(None, description="Asset ISIN")
+    security_cusip: str | None = Field(
+        None, alias="securityCusip", description="Asset CUSIP"
     )
-    payoff_profile: str | None = Field(None, description="Payoff profile")
-    asset_category: str = Field(alias="assetCat", description="Asset category")
-    issuer_category: str = Field(alias="issuerCat", description="Issuer category")
-    investment_country: str = Field(
-        alias="invCountry", description="Investment country"
+    shares_number: float = Field(
+        alias="sharesNumber", description="Number of shares held"
     )
-    is_restricted_security: bool = Field(
-        alias="isRestrictedSec", description="Is restricted security"
+    weight_percentage: float = Field(
+        alias="weightPercentage", description="Portfolio weight percentage"
     )
-    fair_value_level: str = Field(alias="fairValLevel", description="Fair value level")
-    is_cash_collateral: bool = Field(
-        alias="isCashCollateral", description="Is cash collateral"
+    market_value: float = Field(alias="marketValue", description="Market value in USD")
+    updated_at: datetime | None = Field(
+        None, alias="updatedAt", description="Timestamp of last update"
     )
-    is_non_cash_collateral: bool = Field(
-        alias="isNonCashCollateral", description="Is non-cash collateral"
-    )
-    is_loan_by_fund: bool = Field(alias="isLoanByFund", description="Is loan by fund")
 
 
 class ETFSectorExposure(BaseModel):
@@ -72,24 +54,45 @@ class ETFInfo(BaseModel):
 
     symbol: str = Field(description="ETF symbol")
     name: str = Field(description="ETF name")
+    description: str | None = Field(None, description="ETF description")
+    isin: str | None = Field(None, description="ISIN identifier for the ETF")
+    asset_class: str | None = Field(
+        None, alias="assetClass", description="Asset class"
+    )
+    security_cusip: str | None = Field(
+        None, alias="securityCusip", description="CUSIP identifier for the ETF"
+    )
+    domicile: str | None = Field(None, description="Country of domicile")
+    website: str | None = Field(None, description="ETF website")
+    etf_company: str | None = Field(
+        None, alias="etfCompany", description="ETF issuer company"
+    )
     expense_ratio: float = Field(alias="expenseRatio", description="Expense ratio")
     assets_under_management: float | None = Field(
-        None, alias="aum", description="Assets under management"
+        None, alias="assetsUnderManagement", description="Assets under management"
     )
-    avg_volume: int = Field(alias="avgVolume", description="Average volume")
-    cusip: str = Field(description="CUSIP identifier for the ETF")
-    isin: str = Field(description="ISIN identifier for the ETF")
-    description: str = Field(description="ETF description")
-    domicile: str = Field(description="Country of domicile")
-    etf_company: str = Field(alias="etfCompany", description="ETF issuer company")
-    inception_date: date = Field(alias="inceptionDate", description="Inception date")
-    nav: Decimal = Field(description="Net Asset Value (NAV)")
-    nav_currency: str = Field(alias="navCurrency", description="Currency of NAV")
+    avg_volume: int | None = Field(
+        None, alias="avgVolume", description="Average volume"
+    )
+    inception_date: date | None = Field(
+        None, alias="inceptionDate", description="Inception date"
+    )
+    nav: Decimal | None = Field(None, description="Net Asset Value (NAV)")
+    nav_currency: str | None = Field(
+        None, alias="navCurrency", description="Currency of NAV"
+    )
+    holdings_count: int | None = Field(
+        None, alias="holdingsCount", description="Number of holdings"
+    )
+    is_actively_trading: bool | None = Field(
+        None, alias="isActivelyTrading", description="Whether ETF is actively trading"
+    )
+    updated_at: datetime | None = Field(
+        None, alias="updatedAt", description="Timestamp of last update"
+    )
     sectors_list: list[ETFSectorExposure] | None = Field(
         None, alias="sectorsList", description="List of sector exposures"
     )
-    website: str = Field(description="ETF website")
-    holdings_count: int = Field(alias="holdingsCount", description="Number of holdings")
 
 
 class ETFSectorWeighting(BaseModel):
@@ -97,17 +100,22 @@ class ETFSectorWeighting(BaseModel):
 
     model_config = default_model_config
 
+    symbol: str | None = Field(None, description="ETF symbol")
     sector: str = Field(description="Sector name")
     weight_percentage: float = Field(
-        alias="weightPercentage", description="Sector weight percentage"
+        alias="weightPercentage", description="Sector weight percentage (0-1 scale)"
     )
 
     @field_validator("weight_percentage", mode="before")
-    def parse_weight_percentage(cls, value: str) -> float:
-        """Parse percentage string into float"""
+    def parse_weight_percentage(cls, value: str | float) -> float:
+        """Parse percentage string or number into normalized float (0-1 scale)"""
         if isinstance(value, str) and value.endswith("%"):
             return float(value.strip("%")) / 100
-        return float(value)
+        val = float(value)
+        # Normalize values > 1 (assume they are on 0-100 scale)
+        if val > 1:
+            return val / 100
+        return val
 
 
 class ETFCountryWeighting(BaseModel):
@@ -133,10 +141,8 @@ class ETFExposure(BaseModel):
 
     model_config = default_model_config
 
-    etf_symbol: str = Field(alias="etfSymbol", description="ETF symbol")
-    asset_exposure: str = Field(
-        alias="assetExposure", description="Asset symbol the ETF is exposed to"
-    )
+    symbol: str = Field(description="ETF symbol that holds the asset")
+    asset: str = Field(description="Asset symbol the ETF is exposed to")
     shares_number: int = Field(
         alias="sharesNumber", description="Number of shares held"
     )
@@ -218,3 +224,5 @@ class PortfolioDate(BaseModel):
     model_config = default_model_config
 
     portfolio_date: date = Field(description="Portfolio date", alias="date")
+    year: int | None = Field(None, description="Year of the disclosure")
+    quarter: int | None = Field(None, description="Quarter of the disclosure (1-4)")

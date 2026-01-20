@@ -7,7 +7,10 @@ including logging, rate limiting, and client settings.
 File: fmp_data/config.py
 """
 
+from __future__ import annotations
+
 import os
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -196,6 +199,11 @@ class ClientConfig(BaseModel):
     logging: LoggingConfig = Field(
         default_factory=LoggingConfig,
         description="Logging configuration",
+    )
+    metrics_callback: Callable[..., None] | None = Field(
+        default=None,
+        description="Optional callback(endpoint_name, latency_ms, success, status_code, retry_count)",
+        exclude=True,  # Don't include in serialization
     )
 
     @field_validator("api_key")

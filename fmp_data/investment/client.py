@@ -83,9 +83,23 @@ class InvestmentClient(EndpointGroup):
         return self.client.request(ETF_HOLDER, symbol=symbol)
 
     # Mutual Fund methods
-    def get_mutual_fund_dates(self, symbol: str, cik: str) -> list[date]:
-        """Get mutual fund dates"""
-        return self.client.request(MUTUAL_FUND_DATES, symbol=symbol, cik=cik)
+    def get_mutual_fund_dates(self, symbol: str, cik: str | None = None) -> list[date]:
+        """Get mutual fund/ETF disclosure dates
+
+        Args:
+            symbol: Fund or ETF symbol
+            cik: Deprecated, no longer used by the API
+
+        Returns:
+            List of disclosure dates
+        """
+        if cik is not None:
+            warnings.warn(
+                "The 'cik' parameter is deprecated and no longer used by the API",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        return self.client.request(MUTUAL_FUND_DATES, symbol=symbol)
 
     def get_mutual_fund_holdings(
         self, symbol: str, holdings_date: date

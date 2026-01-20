@@ -267,3 +267,71 @@ BATCH_MARKET_CAP: Endpoint = Endpoint(
         "Multiple company market caps",
     ],
 )
+
+PROFILE_BULK: Endpoint = Endpoint(
+    name="profile_bulk",
+    path="profile-bulk",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get company profile data in bulk",
+    mandatory_params=[
+        EndpointParam(
+            name="part",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Profile data partition identifier",
+        )
+    ],
+    optional_params=[],
+    response_model=bytes,
+)
+
+DCF_BULK: Endpoint = Endpoint(
+    name="dcf_bulk",
+    path="dcf-bulk",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get discounted cash flow valuations in bulk",
+    mandatory_params=[],
+    optional_params=[],
+    response_model=bytes,
+)
+
+RATING_BULK: Endpoint = Endpoint(
+    name="rating_bulk",
+    path="rating-bulk",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get stock ratings in bulk",
+    mandatory_params=[],
+    optional_params=[],
+    response_model=bytes,
+)
+
+SCORES_BULK: Endpoint = Endpoint(
+    name="scores_bulk",
+    path="scores-bulk",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get financial scores in bulk",
+    mandatory_params=[],
+    optional_params=[],
+    response_model=bytes,
+)
+
+RATIOS_TTM_BULK: Endpoint = Endpoint(
+    name="ratios_ttm_bulk",
+    path="ratios-ttm-bulk",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get trailing twelve month financial ratios in bulk",
+    mandatory_params=[],
+    optional_params=[],
+    response_model=bytes,
+)

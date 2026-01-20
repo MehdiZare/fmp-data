@@ -39,8 +39,8 @@ class BatchQuote(BaseModel):
         None, alias="priceAvg200", description="200-day moving average"
     )
     exchange: str | None = Field(None, description="Stock exchange")
-    volume: int | None = Field(None, description="Trading volume")
-    avg_volume: int | None = Field(
+    volume: float | None = Field(None, description="Trading volume")
+    avg_volume: float | None = Field(
         None, alias="avgVolume", description="Average volume"
     )
     open: float | None = Field(None, description="Opening price")
@@ -65,7 +65,7 @@ class BatchQuoteShort(BaseModel):
 
     symbol: str = Field(description="Stock symbol")
     price: float | None = Field(None, description="Current price")
-    volume: int | None = Field(None, description="Trading volume")
+    volume: float | None = Field(None, description="Trading volume")
 
 
 class AftermarketTrade(BaseModel):

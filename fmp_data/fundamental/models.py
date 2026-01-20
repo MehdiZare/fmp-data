@@ -1,7 +1,8 @@
 # fmp_data/fundamental/models.py
 from datetime import datetime
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
 default_model_config = ConfigDict(
@@ -418,24 +419,34 @@ class CashFlowStatement(FinancialStatementBase):
         default=None, alias="interestPaid", description="Interest paid"
     )
 
+    @property
+    def investing_cash_flow(self) -> float | None:
+        return self.net_cash_provided_by_investing_activities
+
+    @property
+    def financing_cash_flow(self) -> float | None:
+        return self.net_cash_provided_by_financing_activities
+
 
 class KeyMetrics(BaseModel):
     """Key financial metrics"""
 
     model_config = default_model_config
 
-    date: datetime = Field(description="Metrics date")
-    revenue_per_share: float = Field(
-        alias="revenuePerShare", description="Revenue per share"
+    date: datetime | None = Field(None, description="Metrics date")
+    revenue_per_share: float | None = Field(
+        None, alias="revenuePerShare", description="Revenue per share"
     )
-    net_income_per_share: float = Field(
-        alias="netIncomePerShare", description="Net income per share"
+    net_income_per_share: float | None = Field(
+        None, alias="netIncomePerShare", description="Net income per share"
     )
-    operating_cash_flow_per_share: float = Field(
-        alias="operatingCashFlowPerShare", description="Operating cash flow per share"
+    operating_cash_flow_per_share: float | None = Field(
+        None,
+        alias="operatingCashFlowPerShare",
+        description="Operating cash flow per share",
     )
-    free_cash_flow_per_share: float = Field(
-        alias="freeCashFlowPerShare", description="Free cash flow per share"
+    free_cash_flow_per_share: float | None = Field(
+        None, alias="freeCashFlowPerShare", description="Free cash flow per share"
     )
 
 
@@ -450,14 +461,18 @@ class FinancialRatios(BaseModel):
 
     model_config = default_model_config
 
-    date: datetime = Field(description="Ratios date")
-    current_ratio: float = Field(alias="currentRatio", description="Current ratio")
-    quick_ratio: float = Field(alias="quickRatio", description="Quick ratio")
-    debt_equity_ratio: float = Field(
-        alias="debtEquityRatio", description="Debt to equity ratio"
+    date: datetime | None = Field(None, description="Ratios date")
+    current_ratio: float | None = Field(
+        None, alias="currentRatio", description="Current ratio"
     )
-    return_on_equity: float = Field(
-        alias="returnOnEquity", description="Return on equity"
+    quick_ratio: float | None = Field(
+        None, alias="quickRatio", description="Quick ratio"
+    )
+    debt_equity_ratio: float | None = Field(
+        None, alias="debtEquityRatio", description="Debt to equity ratio"
+    )
+    return_on_equity: float | None = Field(
+        None, alias="returnOnEquity", description="Return on equity"
     )
     # Add more fields as needed
 
@@ -473,12 +488,18 @@ class FinancialGrowth(BaseModel):
 
     model_config = default_model_config
 
-    date: datetime = Field(description="Growth metrics date")
-    revenue_growth: float = Field(alias="revenueGrowth", description="Revenue growth")
-    gross_profit_growth: float = Field(
-        alias="grossProfitGrowth", description="Gross profit growth"
+    date: datetime | None = Field(None, description="Growth metrics date")
+    revenue_growth: float | None = Field(
+        None, alias="revenueGrowth", description="Revenue growth"
     )
-    eps_growth: float = Field(alias="epsGrowth", description="EPS growth")
+    gross_profit_growth: float | None = Field(
+        None, alias="grossProfitGrowth", description="Gross profit growth"
+    )
+    eps_growth: float | None = Field(
+        None,
+        validation_alias=AliasChoices("epsGrowth", "epsgrowth"),
+        description="EPS growth",
+    )
     # Add more fields as needed
 
 
@@ -487,9 +508,11 @@ class FinancialScore(BaseModel):
 
     model_config = default_model_config
 
-    altman_z_score: float = Field(alias="altmanZScore", description="Altman Z-Score")
-    piotroski_score: float = Field(
-        alias="piotroskiScore", description="Piotroski Score"
+    altman_z_score: float | None = Field(
+        None, alias="altmanZScore", description="Altman Z-Score"
+    )
+    piotroski_score: float | None = Field(
+        None, alias="piotroskiScore", description="Piotroski Score"
     )
     # Add more fields as needed
 
@@ -501,8 +524,10 @@ class DCF(BaseModel):
 
     symbol: str = Field(description="Company symbol")
     date: datetime = Field(description="Valuation date")
-    dcf: float = Field(description="DCF value per share")
-    stock_price: float = Field(alias="stockPrice", description="Current stock price")
+    dcf: float | None = Field(None, description="DCF value per share")
+    stock_price: float | None = Field(
+        None, alias="stockPrice", description="Current stock price"
+    )
 
 
 class CustomDCF(BaseModel):
@@ -511,43 +536,91 @@ class CustomDCF(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
-    date: datetime = Field(description="Valuation date")
-    fcf0: float = Field(description="Current year free cash flow")
-    fcf1: float = Field(description="Year 1 projected free cash flow")
-    fcf2: float = Field(description="Year 2 projected free cash flow")
-    fcf3: float = Field(description="Year 3 projected free cash flow")
-    fcf4: float = Field(description="Year 4 projected free cash flow")
-    fcf5: float = Field(description="Year 5 projected free cash flow")
-    fcf6: float = Field(description="Year 6 projected free cash flow")
-    fcf7: float = Field(description="Year 7 projected free cash flow")
-    fcf8: float = Field(description="Year 8 projected free cash flow")
-    fcf9: float = Field(description="Year 9 projected free cash flow")
-    fcf10: float = Field(description="Year 10 projected free cash flow")
-    terminal_value: float = Field(alias="terminalValue", description="Terminal value")
-    growth_rate: float = Field(alias="growthRate", description="Growth rate used")
-    terminal_growth_rate: float = Field(
-        alias="terminalGrowthRate", description="Terminal growth rate"
+    year: str | int | None = Field(default=None, description="Projection year")
+    date: datetime | None = Field(default=None, description="Valuation date")
+    fcf0: float | None = Field(default=None, description="Current year free cash flow")
+    fcf1: float | None = Field(
+        default=None,
+        description="Year 1 projected free cash flow",
     )
-    wacc: float = Field(description="Weighted average cost of capital")
-    present_value_of_fcf: float = Field(
-        alias="presentValueOfFCF", description="Present value of free cash flows"
+    fcf2: float | None = Field(
+        default=None,
+        description="Year 2 projected free cash flow",
     )
-    present_value_of_terminal_value: float = Field(
+    fcf3: float | None = Field(
+        default=None,
+        description="Year 3 projected free cash flow",
+    )
+    fcf4: float | None = Field(
+        default=None,
+        description="Year 4 projected free cash flow",
+    )
+    fcf5: float | None = Field(
+        default=None,
+        description="Year 5 projected free cash flow",
+    )
+    fcf6: float | None = Field(
+        default=None,
+        description="Year 6 projected free cash flow",
+    )
+    fcf7: float | None = Field(
+        default=None,
+        description="Year 7 projected free cash flow",
+    )
+    fcf8: float | None = Field(
+        default=None,
+        description="Year 8 projected free cash flow",
+    )
+    fcf9: float | None = Field(
+        default=None,
+        description="Year 9 projected free cash flow",
+    )
+    fcf10: float | None = Field(
+        default=None,
+        description="Year 10 projected free cash flow",
+    )
+    terminal_value: float | None = Field(
+        default=None, alias="terminalValue", description="Terminal value"
+    )
+    growth_rate: float | None = Field(
+        default=None, alias="growthRate", description="Growth rate used"
+    )
+    terminal_growth_rate: float | None = Field(
+        default=None, alias="terminalGrowthRate", description="Terminal growth rate"
+    )
+    wacc: float | None = Field(
+        default=None, description="Weighted average cost of capital"
+    )
+    present_value_of_fcf: float | None = Field(
+        default=None,
+        alias="presentValueOfFCF",
+        description="Present value of free cash flows",
+    )
+    present_value_of_terminal_value: float | None = Field(
+        default=None,
         alias="presentValueOfTerminalValue",
         description="Present value of terminal value",
     )
-    enterprise_value: float = Field(
-        alias="enterpriseValue", description="Enterprise value"
+    enterprise_value: float | None = Field(
+        default=None, alias="enterpriseValue", description="Enterprise value"
     )
-    net_debt: float = Field(alias="netDebt", description="Net debt")
-    equity_value: float = Field(alias="equityValue", description="Equity value")
-    shares_outstanding: float = Field(
-        alias="sharesOutstanding", description="Shares outstanding"
+    net_debt: float | None = Field(
+        default=None, alias="netDebt", description="Net debt"
     )
-    dcf: float = Field(description="DCF value per share")
-    stock_price: float = Field(alias="stockPrice", description="Current stock price")
-    implied_share_price: float = Field(
-        alias="impliedSharePrice", description="Implied share price from DCF"
+    equity_value: float | None = Field(
+        default=None, alias="equityValue", description="Equity value"
+    )
+    shares_outstanding: float | None = Field(
+        default=None, alias="sharesOutstanding", description="Shares outstanding"
+    )
+    dcf: float | None = Field(default=None, description="DCF value per share")
+    stock_price: float | None = Field(
+        default=None, alias="stockPrice", description="Current stock price"
+    )
+    implied_share_price: float | None = Field(
+        default=None,
+        alias="impliedSharePrice",
+        description="Implied share price from DCF",
     )
 
 
@@ -557,40 +630,77 @@ class CustomLeveredDCF(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
-    date: datetime = Field(description="Valuation date")
-    fcfe0: float = Field(description="Current year free cash flow to equity")
-    fcfe1: float = Field(description="Year 1 projected free cash flow to equity")
-    fcfe2: float = Field(description="Year 2 projected free cash flow to equity")
-    fcfe3: float = Field(description="Year 3 projected free cash flow to equity")
-    fcfe4: float = Field(description="Year 4 projected free cash flow to equity")
-    fcfe5: float = Field(description="Year 5 projected free cash flow to equity")
-    fcfe6: float = Field(description="Year 6 projected free cash flow to equity")
-    fcfe7: float = Field(description="Year 7 projected free cash flow to equity")
-    fcfe8: float = Field(description="Year 8 projected free cash flow to equity")
-    fcfe9: float = Field(description="Year 9 projected free cash flow to equity")
-    fcfe10: float = Field(description="Year 10 projected free cash flow to equity")
-    terminal_value: float = Field(alias="terminalValue", description="Terminal value")
-    growth_rate: float = Field(alias="growthRate", description="Growth rate used")
-    terminal_growth_rate: float = Field(
-        alias="terminalGrowthRate", description="Terminal growth rate"
+    year: str | int | None = Field(default=None, description="Projection year")
+    date: datetime | None = Field(default=None, description="Valuation date")
+    fcfe0: float | None = Field(
+        default=None, description="Current year free cash flow to equity"
     )
-    cost_of_equity: float = Field(alias="costOfEquity", description="Cost of equity")
-    present_value_of_fcfe: float = Field(
+    fcfe1: float | None = Field(
+        default=None, description="Year 1 projected free cash flow to equity"
+    )
+    fcfe2: float | None = Field(
+        default=None, description="Year 2 projected free cash flow to equity"
+    )
+    fcfe3: float | None = Field(
+        default=None, description="Year 3 projected free cash flow to equity"
+    )
+    fcfe4: float | None = Field(
+        default=None, description="Year 4 projected free cash flow to equity"
+    )
+    fcfe5: float | None = Field(
+        default=None, description="Year 5 projected free cash flow to equity"
+    )
+    fcfe6: float | None = Field(
+        default=None, description="Year 6 projected free cash flow to equity"
+    )
+    fcfe7: float | None = Field(
+        default=None, description="Year 7 projected free cash flow to equity"
+    )
+    fcfe8: float | None = Field(
+        default=None, description="Year 8 projected free cash flow to equity"
+    )
+    fcfe9: float | None = Field(
+        default=None, description="Year 9 projected free cash flow to equity"
+    )
+    fcfe10: float | None = Field(
+        default=None, description="Year 10 projected free cash flow to equity"
+    )
+    terminal_value: float | None = Field(
+        default=None, alias="terminalValue", description="Terminal value"
+    )
+    growth_rate: float | None = Field(
+        default=None, alias="growthRate", description="Growth rate used"
+    )
+    terminal_growth_rate: float | None = Field(
+        default=None, alias="terminalGrowthRate", description="Terminal growth rate"
+    )
+    cost_of_equity: float | None = Field(
+        default=None, alias="costOfEquity", description="Cost of equity"
+    )
+    present_value_of_fcfe: float | None = Field(
+        default=None,
         alias="presentValueOfFCFE",
         description="Present value of free cash flows to equity",
     )
-    present_value_of_terminal_value: float = Field(
+    present_value_of_terminal_value: float | None = Field(
+        default=None,
         alias="presentValueOfTerminalValue",
         description="Present value of terminal value",
     )
-    equity_value: float = Field(alias="equityValue", description="Equity value")
-    shares_outstanding: float = Field(
-        alias="sharesOutstanding", description="Shares outstanding"
+    equity_value: float | None = Field(
+        default=None, alias="equityValue", description="Equity value"
     )
-    dcf: float = Field(description="DCF value per share")
-    stock_price: float = Field(alias="stockPrice", description="Current stock price")
-    implied_share_price: float = Field(
-        alias="impliedSharePrice", description="Implied share price from DCF"
+    shares_outstanding: float | None = Field(
+        default=None, alias="sharesOutstanding", description="Shares outstanding"
+    )
+    dcf: float | None = Field(default=None, description="DCF value per share")
+    stock_price: float | None = Field(
+        default=None, alias="stockPrice", description="Current stock price"
+    )
+    implied_share_price: float | None = Field(
+        default=None,
+        alias="impliedSharePrice",
+        description="Implied share price from DCF",
     )
 
 
@@ -602,7 +712,7 @@ class CompanyRating(BaseModel):
     symbol: str = Field(description="Company symbol")
     date: datetime = Field(description="Rating date")
     rating: str = Field(description="Overall rating")
-    recommendation: str = Field(description="Investment recommendation")
+    recommendation: str | None = Field(None, description="Investment recommendation")
     # Add more fields as needed
 
 
@@ -810,11 +920,18 @@ class OwnerEarnings(BaseModel):
 
     date: datetime = Field(description="Date")
     symbol: str = Field(description="Company symbol")
-    reported_owner_earnings: float = Field(
-        alias="reportedOwnerEarnings", description="Reported owner earnings"
+    reported_owner_earnings: float | None = Field(
+        default=None,
+        validation_alias=AliasChoices("reportedOwnerEarnings", "ownersEarnings"),
+        description="Reported owner earnings",
     )
-    owner_earnings_per_share: float = Field(
-        alias="ownerEarningsPerShare", description="Owner earnings per share"
+    owner_earnings_per_share: float | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "ownerEarningsPerShare",
+            "ownersEarningsPerShare",
+        ),
+        description="Owner earnings per share",
     )
 
 
@@ -841,11 +958,21 @@ class LeveredDCF(BaseModel):
 
     symbol: str = Field(description="Company symbol")
     date: datetime = Field(description="Valuation date")
-    levered_dcf: float = Field(alias="leveredDCF", description="Levered DCF value")
-    stock_price: float = Field(alias="stockPrice", description="Current stock price")
-    growth_rate: float = Field(alias="growthRate", description="Growth rate used")
-    cost_of_equity: float = Field(
-        alias="costOfEquity", description="Cost of equity used"
+    levered_dcf: float | None = Field(
+        default=None,
+        validation_alias=AliasChoices("leveredDCF", "dcf"),
+        description="Levered DCF value",
+    )
+    stock_price: float | None = Field(
+        default=None,
+        validation_alias=AliasChoices("stockPrice", "Stock Price"),
+        description="Current stock price",
+    )
+    growth_rate: float | None = Field(
+        default=None, alias="growthRate", description="Growth rate used"
+    )
+    cost_of_equity: float | None = Field(
+        default=None, alias="costOfEquity", description="Cost of equity used"
     )
 
 
@@ -854,26 +981,48 @@ class AsReportedFinancialStatementBase(BaseModel):
 
     model_config = default_model_config
 
-    date: datetime = Field(description="Statement date")
-    symbol: str = Field(description="Company symbol")
-    period: str = Field(description="Reporting period (annual/quarter)")
-    filing_date: datetime = Field(alias="filingDate", description="SEC filing date")
-    form_type: str = Field(alias="formType", description="SEC form type")
-    source_filing_url: str = Field(
-        alias="sourceFilingURL", description="Source SEC filing URL"
+    date: datetime | None = Field(None, description="Statement date")
+    symbol: str | None = Field(None, description="Company symbol")
+    period: str | None = Field(None, description="Reporting period (annual/quarter)")
+    filing_date: datetime | None = Field(
+        None, alias="filingDate", description="SEC filing date"
     )
-    start_date: datetime = Field(alias="startDate", description="Period start date")
-    end_date: datetime = Field(alias="endDate", description="Period end date")
-    fiscal_year: int = Field(alias="fiscalYear", description="Fiscal year")
-    fiscal_period: str = Field(alias="fiscalPeriod", description="Fiscal period")
-    units: str = Field(description="Currency units")
-    audited: bool = Field(description="Whether statement is audited")
-    original_filing_url: str = Field(
-        alias="originalFilingUrl", description="Original SEC filing URL"
+    form_type: str | None = Field(None, alias="formType", description="SEC form type")
+    source_filing_url: str | None = Field(
+        None, alias="sourceFilingURL", description="Source SEC filing URL"
     )
-    filing_date_time: datetime = Field(
-        alias="filingDateTime", description="Exact filing date and time"
+    start_date: datetime | None = Field(
+        None, alias="startDate", description="Period start date"
     )
+    end_date: datetime | None = Field(
+        None, alias="endDate", description="Period end date"
+    )
+    fiscal_year: int | None = Field(
+        None, alias="fiscalYear", description="Fiscal year"
+    )
+    fiscal_period: str | None = Field(
+        None, alias="fiscalPeriod", description="Fiscal period"
+    )
+    units: str | None = Field(None, description="Currency units")
+    audited: bool | None = Field(None, description="Whether statement is audited")
+    original_filing_url: str | None = Field(
+        None, alias="originalFilingUrl", description="Original SEC filing URL"
+    )
+    filing_date_time: datetime | None = Field(
+        None, alias="filingDateTime", description="Exact filing date and time"
+    )
+
+    @classmethod
+    @model_validator(mode="before")
+    def merge_data_payload(cls, values: dict[str, Any]) -> dict[str, Any]:
+        if isinstance(values, dict) and "data" in values:
+            data = values.get("data") or {}
+            if isinstance(data, dict):
+                merged = dict(values)
+                merged.pop("data", None)
+                merged.update(data)
+                return merged
+        return values
 
 
 class AsReportedIncomeStatement(AsReportedFinancialStatementBase):
@@ -1190,7 +1339,10 @@ class FinancialReportDate(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol")
-    report_date: str = Field(description="Report date", alias="date")
+    fiscal_year: int | None = Field(
+        None, alias="fiscalYear", description="Fiscal year"
+    )
+    report_date: str | None = Field(None, description="Report date", alias="date")
     period: str = Field(description="Reporting period")
     link_xlsx: str = Field(alias="linkXlsx", description="XLSX report link")
     link_json: str = Field(alias="linkJson", description="JSON report link")
