@@ -67,7 +67,7 @@ uv run mypy fmp_data
 # Run tests
 uv run pytest
 
-# Run tests with coverage
+# Run tests with coverage (coverage is collected in the dedicated CI job)
 uv run pytest --cov=fmp_data --cov-report=html
 ```
 
@@ -116,7 +116,7 @@ All configurations are in `pyproject.toml` and `.pre-commit-config.yaml`.
 # Run all tests
 make test
 
-# Run with coverage
+# Run with coverage (coverage is collected in the dedicated CI job)
 make test-cov
 
 # Run specific test file
