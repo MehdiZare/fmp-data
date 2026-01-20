@@ -124,7 +124,7 @@ def get_tool_by_spec(spec: str) -> dict[str, Any] | None:
         Tool definition or None if not found
     """
     try:
-        client_name, key = spec.split(".", 1)
+        client_name, _ = spec.split(".", 1)
     except ValueError:
         return None
 
