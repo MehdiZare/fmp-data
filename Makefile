@@ -4,7 +4,7 @@
 #
 # For maintainer/developer commands, see Makefile.dev
 
-.PHONY: help install test lint format fix clean update update-dev
+.PHONY: help install install-dev test lint format fix clean update update-dev
 .PHONY: mcp-setup mcp-test mcp-list mcp-status
 
 # Default target
@@ -28,6 +28,7 @@ help: ## Show available commands
 	@echo ""
 	@echo "$(BOLD)📦 Installation:$(RESET)"
 	@echo "  $(GREEN)make install$(RESET)         Install package with all features"
+	@echo "  $(GREEN)make install-dev$(RESET)     Install all dependencies (dev + docs + extras)"
 	@echo "  $(GREEN)make install-mcp$(RESET)     Install with MCP server support"
 	@echo ""
 	@echo "$(BOLD)🤖 MCP Server (Claude Desktop):$(RESET)"
@@ -56,6 +57,11 @@ help: ## Show available commands
 install: ## Install package with all features
 	@echo "$(BOLD)$(BLUE)📦 Installing fmp-data with all features...$(RESET)"
 	pip install -e ".[langchain,mcp]"
+	@echo "$(GREEN)✅ Installation complete!$(RESET)"
+
+install-dev: ## Install all dependencies (dev + docs + extras)
+	@echo "$(BOLD)$(BLUE)📦 Installing fmp-data with all dev dependencies...$(RESET)"
+	pip install -e ".[dev,docs,langchain,mcp]"
 	@echo "$(GREEN)✅ Installation complete!$(RESET)"
 
 install-mcp: ## Install package with MCP server support
@@ -99,41 +105,75 @@ mcp-status: ## Check MCP server status
 # ══════════════════════════════════════════════════════════════════════════
 
 test: ## Run tests
-	@echo "$(BOLD)$(BLUE)🧪 Running tests...$(RESET)"
-	@if command -v pytest >/dev/null 2>&1; then \
-		pytest -q; \
-	else \
-		echo "$(YELLOW)pytest not installed. Install with: pip install pytest$(RESET)"; \
-		exit 1; \
+	@echo "$(BOLD)$(BLUE)🧪 Running tests (creates .venv if missing)...$(RESET)"
+	@if [ ! -d ".venv" ]; then \
+		echo "$(CYAN)Creating virtual environment at .venv...$(RESET)"; \
+		python3 -m venv .venv; \
 	fi
+	@. .venv/bin/activate && pip install -e ".[dev]"
+	@set -a; [ -f .env ] && . ./.env; set +a; \
+		if [ -z "$$FMP_TEST_API_KEY" ] && [ -n "$$FMP_API_KEY" ]; then export FMP_TEST_API_KEY="$$FMP_API_KEY"; fi; \
+		if [ -z "$$FMP_API_KEY" ] && [ -n "$$FMP_TEST_API_KEY" ]; then export FMP_API_KEY="$$FMP_TEST_API_KEY"; fi; \
+		. .venv/bin/activate && pytest -q
 
 lint: ## Check code quality with ruff
 	@echo "$(BOLD)$(BLUE)🔍 Checking code quality...$(RESET)"
-	@if command -v ruff >/dev/null 2>&1; then \
+	@if command -v uv >/dev/null 2>&1; then \
+		uv run ruff check fmp_data; \
+	elif [ -x ".venv/bin/ruff" ]; then \
+		. .venv/bin/activate && ruff check fmp_data; \
+	elif command -v ruff >/dev/null 2>&1; then \
 		ruff check fmp_data; \
 	else \
-		echo "$(YELLOW)ruff not installed. Install with: pip install ruff$(RESET)"; \
-		exit 1; \
+		if [ ! -d ".venv" ]; then \
+			echo "$(CYAN)Creating virtual environment at .venv...$(RESET)"; \
+			python3 -m venv .venv; \
+		fi; \
+		echo "$(CYAN)Installing dev dependencies in .venv...$(RESET)"; \
+		. .venv/bin/activate && pip install -e ".[dev]"; \
+		. .venv/bin/activate && ruff check fmp_data; \
 	fi
 
 format: ## Check code formatting
 	@echo "$(BOLD)$(BLUE)📝 Checking code formatting...$(RESET)"
-	@if command -v ruff >/dev/null 2>&1; then \
+	@if command -v uv >/dev/null 2>&1; then \
+		uv run ruff format --check fmp_data; \
+	elif [ -x ".venv/bin/ruff" ]; then \
+		. .venv/bin/activate && ruff format --check fmp_data; \
+	elif command -v ruff >/dev/null 2>&1; then \
 		ruff format --check fmp_data; \
 	else \
-		echo "$(YELLOW)ruff not installed. Install with: pip install ruff$(RESET)"; \
-		exit 1; \
+		if [ ! -d ".venv" ]; then \
+			echo "$(CYAN)Creating virtual environment at .venv...$(RESET)"; \
+			python3 -m venv .venv; \
+		fi; \
+		echo "$(CYAN)Installing dev dependencies in .venv...$(RESET)"; \
+		. .venv/bin/activate && pip install -e ".[dev]"; \
+		. .venv/bin/activate && ruff format --check fmp_data; \
 	fi
 
 fix: ## Auto-fix code issues
 	@echo "$(BOLD)$(CYAN)🔧 Auto-fixing code issues...$(RESET)"
-	@if command -v ruff >/dev/null 2>&1; then \
-		ruff check --fix fmp_data && ruff format fmp_data; \
-		echo "$(GREEN)✅ Auto-fixes applied!$(RESET)"; \
+	@if command -v uv >/dev/null 2>&1; then \
+		uv run ruff check --fix fmp_data; \
+		uv run ruff format fmp_data; \
+	elif [ -x ".venv/bin/ruff" ]; then \
+		. .venv/bin/activate && ruff check --fix fmp_data; \
+		. .venv/bin/activate && ruff format fmp_data; \
+	elif command -v ruff >/dev/null 2>&1; then \
+		ruff check --fix fmp_data; \
+		ruff format fmp_data; \
 	else \
-		echo "$(YELLOW)ruff not installed. Install with: pip install ruff$(RESET)"; \
-		exit 1; \
+		if [ ! -d ".venv" ]; then \
+			echo "$(CYAN)Creating virtual environment at .venv...$(RESET)"; \
+			python3 -m venv .venv; \
+		fi; \
+		echo "$(CYAN)Installing dev dependencies in .venv...$(RESET)"; \
+		. .venv/bin/activate && pip install -e ".[dev]"; \
+		. .venv/bin/activate && ruff check --fix fmp_data; \
+		. .venv/bin/activate && ruff format fmp_data; \
 	fi
+	@echo "$(GREEN)✅ Auto-fixes applied!$(RESET)"
 
 # ══════════════════════════════════════════════════════════════════════════
 # Maintenance
