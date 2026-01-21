@@ -17,6 +17,7 @@ from fmp_data.mcp.utils import (
     get_claude_config_path,
     get_manifest_choices,
     load_claude_config,
+    load_manifest_tools,
     restart_claude_desktop_instructions,
     save_claude_config,
     test_mcp_server,
@@ -302,26 +303,28 @@ class SetupWizard:
 
         manifest_choices = get_manifest_choices()
 
-        choices = [
-            "Default (130 tools) - Comprehensive toolkit",
-            "Minimal (8 tools) - Essential tools only",
-            "Trading (25 tools) - Trading and technical analysis",
-            "Research (38 tools) - Fundamental analysis and research",
-            "Crypto (14 tools) - Cryptocurrency focused",
+        profiles = [
+            ("default", "Default", "Comprehensive toolkit"),
+            ("minimal", "Minimal", "Essential tools only"),
+            ("trading", "Trading", "Trading and technical analysis"),
+            ("research", "Research", "Fundamental analysis and research"),
+            ("crypto", "Crypto", "Cryptocurrency focused"),
         ]
 
         # Only show choices that have available manifests
         available_choices = []
         available_keys = []
 
-        for key, desc in zip(
-            ["default", "minimal", "trading", "research", "crypto"],
-            choices,
-            strict=False,
-        ):
-            if key in manifest_choices:
-                available_choices.append(desc)
-                available_keys.append(key)
+        for key, label, suffix in profiles:
+            if key not in manifest_choices:
+                continue
+            try:
+                count = len(load_manifest_tools(manifest_choices[key]))
+                desc = f"{label} ({count} tools) - {suffix}"
+            except Exception:
+                desc = f"{label} - {suffix}"
+            available_choices.append(desc)
+            available_keys.append(key)
 
         if len(available_choices) == 1:
             self.print("Using default configuration", "info")

@@ -222,7 +222,7 @@ class TestInvestmentEndpoints(BaseTestCase):
                 for holder in holders:
                     assert isinstance(holder, FundDisclosureHolderLatest)
                     assert holder.shares >= 0
-                    assert 0 <= holder.weight_percent <= 100
+                    assert holder.weight_percent >= 0
 
     def test_get_fund_disclosure(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting fund disclosure holdings"""

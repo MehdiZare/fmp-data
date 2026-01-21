@@ -223,7 +223,10 @@ class TestFundamentalEndpoints(BaseTestCase):
                     symbol=self.TEST_SYMBOL,
                     period="invalid_period",
                 )
-            assert "Must be one of: ['annual', 'quarter']" in str(exc_info.value)
+        assert (
+            "Must be one of: ['annual', 'quarter', 'FY', 'Q1', 'Q2', 'Q3', 'Q4']"
+            in str(exc_info.value)
+        )
 
     def test_rate_limiting(self, fmp_client: FMPDataClient, vcr_instance):
         """Test rate limiting handling"""

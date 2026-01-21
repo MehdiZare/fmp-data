@@ -194,7 +194,7 @@ EXTENDED_TOOLS: list[str] = [
     "market.available_indexes",
     "market.search",
     # Institutional data
-    "institutional.holders",
+    "institutional.institutional_holders",
     "institutional.insider_trades",
     # Investment products
     "investment.etf_info",
