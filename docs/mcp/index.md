@@ -1,6 +1,8 @@
 # MCP Integration
 
 FMP Data ships an MCP server for Claude Desktop and other MCP clients.
+The MCP tool catalog covers endpoints with MCP tool semantics; for full endpoint
+coverage, use the Python client.
 
 ## Guides
 

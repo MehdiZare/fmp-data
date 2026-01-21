@@ -31,7 +31,7 @@ This project uses UV as the primary package management tool for several key bene
 - Automatic retries with exponential backoff
 - 85%+ test coverage with comprehensive test suite
 - Secure API key handling
-- Support for all major FMP endpoints
+- 100% coverage of FMP stable endpoints
 - Detailed error messages
 - Configurable retry strategies
 - **Langchain Integration**
@@ -127,8 +127,8 @@ export FMP_MCP_MANIFEST=/path/to/custom/manifest.py
 # Custom manifest example (manifest.py)
 TOOLS = [
     "company.profile",
-    "company.search",
-    "market.quote",
+    "market.search",
+    "company.quote",
     "fundamental.income_statement",
     "fundamental.balance_sheet"
 ]
@@ -145,7 +145,7 @@ from fmp_data.mcp.server import create_app
 app = create_app()
 
 # Create with custom tools
-app = create_app(tools=["company.profile", "market.quote"])
+app = create_app(tools=["company.profile", "company.quote"])
 
 # Create with manifest file
 app = create_app(tools="/path/to/manifest.py")
@@ -153,12 +153,13 @@ app = create_app(tools="/path/to/manifest.py")
 
 ### Available Tools
 
-The server supports all FMP endpoints through a simple naming convention:
+The MCP server exposes tools for endpoints that have MCP tool semantics.
+For the full MCP catalog, run `fmp-mcp list` or see [docs/mcp/tools.md](docs/mcp/tools.md).
 - `company.profile` - Get company profiles
-- `company.search` - Search companies
-- `market.quote` - Get real-time quotes
+- `market.search` - Search companies
+- `company.quote` - Get real-time quotes
 - `fundamental.income_statement` - Financial statements
-- `technical.indicators` - Technical analysis
+- `technical.rsi` - Technical analysis
 - And many more...
 
 ## Langchain Integration
@@ -202,16 +203,20 @@ for query in queries:
     # You can also search endpoints directly
     results = vector_store.search(query)
     print("\nRelevant Endpoints:")
-    for result in results:
+for result in results:
         print(f"Endpoint: {result.name}")
         print(f"Score: {result.score:.2f}")
         print()
 ```
 
+Note (2.0.0+): Loading cached vector stores now requires
+`EndpointVectorStore.load(..., allow_dangerous_deserialization=True)` and should
+only be used with trusted cache sources.
+
 ### Alternative Setup: Using Configuration
 
 ```python
-from fmp_data import FMPDataClient, ClientConfig
+from fmp_data import FMPDataClient, ClientConfig, create_vector_store
 from fmp_data.lc.config import LangChainConfig
 from fmp_data.lc.embedding import EmbeddingProvider
 
@@ -226,8 +231,14 @@ config = LangChainConfig(
 # Create client with LangChain config
 client = FMPDataClient(config=config)
 
-# Create vector store using the client
-vector_store = client.create_vector_store()
+# Create vector store using the config
+vector_store = create_vector_store(
+    fmp_api_key=config.api_key,  # pragma: allowlist secret
+    openai_api_key=config.embedding_api_key,  # pragma: allowlist secret
+    cache_dir=config.vector_store_path,
+    embedding_provider=config.embedding_provider,
+    embedding_model=config.embedding_model,
+)
 
 # Search for relevant endpoints
 results = vector_store.search("show me Tesla's financial metrics")
@@ -259,7 +270,7 @@ export FMP_EMBEDDING_MODEL=text-embedding-3-small
 ```
 
 ### Features
-- Semantic search across all FMP endpoints
+- Semantic search across the full FMP endpoint catalog
 - Auto-conversion to LangChain tools
 - Query endpoints using natural language
 - Relevance scoring for search results
@@ -298,7 +309,7 @@ with FMPDataClient(api_key="your_api_key_here") as client: # pragma: allowlist s
         print(f"Market Cap: ${profile.mkt_cap:,.2f}")
 
         # Search companies
-        results = client.company.search("Tesla", limit=5)
+        results = client.market.search_company("Tesla", limit=5)
         for company in results:
             print(f"{company.symbol}: {company.name}")
 
@@ -314,10 +325,11 @@ with FMPDataClient(api_key="your_api_key_here") as client: # pragma: allowlist s
 
 ## Available Client Modules
 
-The FMP Data Client provides access to all FMP API endpoints through specialized client modules:
+The FMP Data Client provides access to all FMP API endpoints (100% stable coverage)
+through specialized client modules:
 
-- **company**: Company profiles, executives, employee counts, peers
-- **market**: Real-time quotes, historical prices, market hours
+- **company**: Company profiles, quotes, historical prices, executives, peers
+- **market**: Market movers, sector performance, market hours, listings/search
 - **fundamental**: Financial statements (income, balance sheet, cash flow)
 - **technical**: Technical indicators (SMA, EMA, RSI, MACD, etc.)
 - **intelligence**: Market news, press releases, analyst ratings
@@ -329,6 +341,8 @@ The FMP Data Client provides access to all FMP API endpoints through specialized
 - **transcripts**: Earnings call transcripts
 - **sec**: SEC filings, company profiles, and SIC codes
 - **index**: Market index constituents (S&P 500, NASDAQ, Dow Jones)
+
+Full endpoint catalog: [docs/api/endpoints.md](docs/api/endpoints.md)
 
 ## Key Components
 
@@ -343,8 +357,8 @@ with FMPDataClient.from_env() as client:
     # Get company executives
     executives = client.company.get_executives("AAPL")
 
-    # Search companies
-    results = client.company.search_ticker("apple", limit=5)
+    # Search companies (market lookup)
+    results = client.market.search_company("apple", limit=5)
 
     # Get employee count history
     employees = client.company.get_employee_count("AAPL")
@@ -372,30 +386,28 @@ with FMPDataClient.from_env() as client:
     )
 
     # Get cash flow statements
-    cash_flow = client.fundamental.get_cash_flow_statement("AAPL")
+    cash_flow = client.fundamental.get_cash_flow("AAPL")
 ```
 
 ### 3. Market Data
 ```python
 from fmp_data import FMPDataClient
-from datetime import date
 
 with FMPDataClient.from_env() as client:
     # Get real-time quote
     quote = client.company.get_quote("TSLA")
 
     # Get historical prices
-    history = client.company.get_historical_price(
-        "TSLA",
-        start_date=date(2023, 1, 1),
-        end_date=date(2023, 12, 31)
+    history = client.company.get_historical_prices(
+        symbol="TSLA",
+        from_date="2023-01-01",
+        to_date="2023-12-31"
     )
 
     # Get intraday prices
-    intraday = client.company.get_historical_price_intraday(
+    intraday = client.company.get_intraday_prices(
         "TSLA",
-        interval="5min",
-        start_date=date(2024, 1, 1)
+        interval="5min"
     )
 ```
 
