@@ -1,6 +1,5 @@
 # fmp_data/fundamental/async_client.py
 """Async client for fundamental analysis endpoints."""
-from datetime import datetime
 
 from fmp_data.base import AsyncEndpointGroup
 from fmp_data.fundamental import endpoints
@@ -11,6 +10,7 @@ from fmp_data.fundamental.models import (
     CustomDCF,
     CustomLeveredDCF,
     FinancialRatios,
+    FinancialReportDate,
     FinancialStatementFull,
     HistoricalRating,
     IncomeStatement,
@@ -83,15 +83,21 @@ class AsyncFundamentalClient(AsyncEndpointGroup):
             limit=limit,
         )
 
-    async def get_financial_reports_dates(self, symbol: str) -> list[datetime]:
+    async def get_financial_reports_dates(
+        self, symbol: str
+    ) -> list[FinancialReportDate]:
         """Get list of financial reports dates"""
         return await self.client.request_async(
             endpoints.FINANCIAL_REPORTS_DATES, symbol=symbol
         )
 
-    async def get_owner_earnings(self, symbol: str) -> list[OwnerEarnings]:
+    async def get_owner_earnings(
+        self, symbol: str, limit: int | None = None
+    ) -> list[OwnerEarnings]:
         """Get owner earnings metrics"""
-        return await self.client.request_async(endpoints.OWNER_EARNINGS, symbol=symbol)
+        return await self.client.request_async(
+            endpoints.OWNER_EARNINGS, symbol=symbol, limit=limit
+        )
 
     async def get_levered_dcf(self, symbol: str) -> list[LeveredDCF]:
         """Get levered DCF valuation"""

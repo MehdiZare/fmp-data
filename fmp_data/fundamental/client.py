@@ -1,6 +1,4 @@
 # fmp_data/fundamental/client.py
-from datetime import datetime
-
 from fmp_data.base import EndpointGroup
 from fmp_data.fundamental import endpoints
 from fmp_data.fundamental.models import (
@@ -10,6 +8,7 @@ from fmp_data.fundamental.models import (
     CustomDCF,
     CustomLeveredDCF,
     FinancialRatios,
+    FinancialReportDate,
     FinancialStatementFull,
     HistoricalRating,
     IncomeStatement,
@@ -82,13 +81,15 @@ class FundamentalClient(EndpointGroup):
             limit=limit,
         )
 
-    def get_financial_reports_dates(self, symbol: str) -> list[datetime]:
+    def get_financial_reports_dates(self, symbol: str) -> list[FinancialReportDate]:
         """Get list of financial reports dates"""
         return self.client.request(endpoints.FINANCIAL_REPORTS_DATES, symbol=symbol)
 
-    def get_owner_earnings(self, symbol: str) -> list[OwnerEarnings]:
+    def get_owner_earnings(
+        self, symbol: str, limit: int | None = None
+    ) -> list[OwnerEarnings]:
         """Get owner earnings metrics"""
-        return self.client.request(endpoints.OWNER_EARNINGS, symbol=symbol)
+        return self.client.request(endpoints.OWNER_EARNINGS, symbol=symbol, limit=limit)
 
     def get_levered_dcf(self, symbol: str) -> list[LeveredDCF]:
         """Get levered DCF valuation"""

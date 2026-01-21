@@ -11,14 +11,19 @@ from fmp_data.company.models import (
     AftermarketQuote,
     AftermarketTrade,
     CompanyProfile,
+    IntradayPrice,
     Quote,
     StockPriceChange,
 )
 from fmp_data.economics.models import TreasuryRate
-from fmp_data.fundamental.models import BalanceSheet, IncomeStatement
+from fmp_data.fundamental.models import BalanceSheet, IncomeStatement, OwnerEarnings
 from fmp_data.index.models import IndexConstituent
 from fmp_data.institutional.models import InsiderTrade
-from fmp_data.intelligence.models import StockNewsArticle
+from fmp_data.intelligence.models import (
+    DividendEvent,
+    StockNewsArticle,
+    StockSplitEvent,
+)
 from fmp_data.investment.models import ETFInfo
 from fmp_data.market.models import (
     CIKListEntry,
@@ -28,6 +33,7 @@ from fmp_data.market.models import (
 from fmp_data.models import CompanySymbol
 from fmp_data.sec.models import SECFiling8K
 from fmp_data.technical.models import SMAIndicator
+from fmp_data.transcripts.endpoints import EARNINGS_TRANSCRIPT
 from fmp_data.transcripts.models import EarningsTranscript
 
 
@@ -164,6 +170,68 @@ class TestAsyncCompanyClient:
 
         assert isinstance(result, StockPriceChange)
         assert result.one_day == 2.1008
+
+    @pytest.mark.asyncio
+    async def test_get_dividends_with_limit(self, mock_client):
+        """Test async get_dividends with limit."""
+        from fmp_data.company import endpoints as company_endpoints
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        mock_dividend = MagicMock(spec=DividendEvent)
+        mock_client.request_async.return_value = [mock_dividend]
+
+        async_client = AsyncCompanyClient(mock_client)
+        result = await async_client.get_dividends("AAPL", limit=5)
+
+        assert len(result) == 1
+        mock_client.request_async.assert_called_once_with(
+            company_endpoints.COMPANY_DIVIDENDS, symbol="AAPL", limit=5
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_stock_splits_with_limit(self, mock_client):
+        """Test async get_stock_splits with limit."""
+        from fmp_data.company import endpoints as company_endpoints
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        mock_split = MagicMock(spec=StockSplitEvent)
+        mock_client.request_async.return_value = [mock_split]
+
+        async_client = AsyncCompanyClient(mock_client)
+        result = await async_client.get_stock_splits("AAPL", limit=5)
+
+        assert len(result) == 1
+        mock_client.request_async.assert_called_once_with(
+            company_endpoints.COMPANY_SPLITS, symbol="AAPL", limit=5
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_intraday_prices_with_filters(self, mock_client):
+        """Test async get_intraday_prices with filters."""
+        from fmp_data.company import endpoints as company_endpoints
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        mock_price = MagicMock(spec=IntradayPrice)
+        mock_client.request_async.return_value = [mock_price]
+
+        async_client = AsyncCompanyClient(mock_client)
+        result = await async_client.get_intraday_prices(
+            "AAPL",
+            interval="1min",
+            from_date="2025-02-01",
+            to_date="2025-02-04",
+            nonadjusted=True,
+        )
+
+        assert len(result) == 1
+        mock_client.request_async.assert_called_once_with(
+            company_endpoints.INTRADAY_PRICE,
+            symbol="AAPL",
+            interval="1min",
+            start_date="2025-02-01",
+            end_date="2025-02-04",
+            nonadjusted=True,
+        )
 
 
 class TestAsyncMarketClient:
@@ -379,6 +447,25 @@ class TestAsyncFundamentalClient:
         assert result == []
         mock_client.request_async.assert_called_once_with(
             fundamental_endpoints.LATEST_FINANCIAL_STATEMENTS, page=0, limit=250
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_owner_earnings(self, mock_client):
+        """Test async get_owner_earnings method."""
+        from fmp_data.fundamental import endpoints as fundamental_endpoints
+        from fmp_data.fundamental.async_client import AsyncFundamentalClient
+
+        mock_owner = MagicMock(spec=OwnerEarnings)
+        mock_owner.symbol = "AAPL"
+        mock_client.request_async.return_value = [mock_owner]
+
+        async_client = AsyncFundamentalClient(mock_client)
+        result = await async_client.get_owner_earnings("AAPL", limit=5)
+
+        assert len(result) == 1
+        assert result[0].symbol == "AAPL"
+        mock_client.request_async.assert_called_once_with(
+            fundamental_endpoints.OWNER_EARNINGS, symbol="AAPL", limit=5
         )
 
 
@@ -696,11 +783,20 @@ class TestAsyncTranscriptsClient:
         ]
 
         async_client = AsyncTranscriptsClient(mock_client)
-        result = await async_client.get_transcript("AAPL", year=2024, quarter=1)
+        result = await async_client.get_transcript(
+            "AAPL", year=2024, quarter=1, limit=1
+        )
 
         assert len(result) == 1
         assert isinstance(result[0], EarningsTranscript)
         assert result[0].symbol == "AAPL"
+        mock_client.request_async.assert_called_once_with(
+            EARNINGS_TRANSCRIPT,
+            symbol="AAPL",
+            year=2024,
+            quarter=1,
+            limit=1,
+        )
 
 
 class TestAsyncSECClient:

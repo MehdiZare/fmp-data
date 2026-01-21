@@ -10,6 +10,8 @@ from fmp_data.company.models import (
     CompanyExecutive,
     CompanyPeer,
     CompanyProfile,
+    GeographicRevenueSegment,
+    IntradayPrice,
     Quote,
     StockPriceChange,
 )
@@ -144,6 +146,29 @@ class TestCompanyClientCoverage:
             "max": 181279.04168,
         }
 
+    @pytest.fixture
+    def geographic_revenue_data(self):
+        """Mock geographic revenue segmentation data"""
+        return {
+            "date": "2024-09-28",
+            "data": {
+                "Americas Segment": 167045000000,
+                "Europe Segment": 101328000000,
+            },
+        }
+
+    @pytest.fixture
+    def intraday_price_data(self):
+        """Mock intraday price data"""
+        return {
+            "date": "2025-02-04 15:59:00",
+            "open": 233.01,
+            "low": 232.72,
+            "high": 233.13,
+            "close": 232.79,
+            "volume": 720121,
+        }
+
     @patch("httpx.Client.request")
     def test_get_company_profile(
         self, mock_request, fmp_client, mock_response, company_profile_data
@@ -242,6 +267,50 @@ class TestCompanyClientCoverage:
         assert result.symbol == "AAPL"
         assert result.one_day == 2.1008
         assert result.max_change == 181279.04168
+
+    @patch("httpx.Client.request")
+    def test_get_geographic_revenue_segmentation_period(
+        self, mock_request, fmp_client, mock_response, geographic_revenue_data
+    ):
+        """Test geographic revenue segmentation passes period"""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[geographic_revenue_data]
+        )
+
+        result = fmp_client.company.get_geographic_revenue_segmentation(
+            "AAPL", period="annual"
+        )
+
+        assert len(result) == 1
+        assert isinstance(result[0], GeographicRevenueSegment)
+        params = mock_request.call_args.kwargs["params"]
+        assert params["symbol"] == "AAPL"
+        assert params["period"] == "annual"
+
+    @patch("httpx.Client.request")
+    def test_get_intraday_prices_with_filters(
+        self, mock_request, fmp_client, mock_response, intraday_price_data
+    ):
+        """Test intraday price parameters are forwarded"""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[intraday_price_data]
+        )
+
+        result = fmp_client.company.get_intraday_prices(
+            "AAPL",
+            interval="1min",
+            from_date="2025-02-01",
+            to_date="2025-02-04",
+            nonadjusted=True,
+        )
+
+        assert len(result) == 1
+        assert isinstance(result[0], IntradayPrice)
+        params = mock_request.call_args.kwargs["params"]
+        assert params["symbol"] == "AAPL"
+        assert params["from"].isoformat() == "2025-02-01"
+        assert params["to"].isoformat() == "2025-02-04"
+        assert params["nonadjusted"] is True
 
     @patch("httpx.Client.request")
     def test_get_ttm_statements_with_limit(

@@ -195,7 +195,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             HistoricalData object containing the price history
         """
-        params = {"symbol": symbol}
+        params: dict[str, str | int] = {"symbol": symbol}
         if from_date:
             params["start_date"] = from_date
         if to_date:
@@ -209,11 +209,29 @@ class AsyncCompanyClient(AsyncEndpointGroup):
             return HistoricalData(symbol=symbol, historical=[result])
 
     async def get_intraday_prices(
-        self, symbol: str, interval: str = "1min"
+        self,
+        symbol: str,
+        interval: str = "1min",
+        from_date: str | None = None,
+        to_date: str | None = None,
+        nonadjusted: bool | None = None,
     ) -> list[IntradayPrice]:
-        """Get intraday price data"""
+        """Get intraday price data
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            interval: Time interval (1min, 5min, 15min, 30min, 1hour, 4hour)
+            from_date: Start date in YYYY-MM-DD format (optional)
+            to_date: End date in YYYY-MM-DD format (optional)
+            nonadjusted: Use non-adjusted data (optional)
+        """
         return await self.client.request_async(
-            INTRADAY_PRICE, symbol=symbol, interval=interval
+            INTRADAY_PRICE,
+            symbol=symbol,
+            interval=interval,
+            start_date=from_date,
+            end_date=to_date,
+            nonadjusted=nonadjusted,
         )
 
     async def get_executive_compensation(
@@ -248,12 +266,13 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         )
 
     async def get_geographic_revenue_segmentation(
-        self, symbol: str
+        self, symbol: str, period: str = "annual"
     ) -> list[GeographicRevenueSegment]:
         """Get revenue segmentation by geographic region.
 
         Args:
             symbol: Company symbol
+            period: Data period ('annual' or 'quarter')
 
         Returns:
             List of geographic revenue segments by fiscal year
@@ -262,6 +281,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
             GEOGRAPHIC_REVENUE_SEGMENTATION,
             symbol=symbol,
             structure="flat",
+            period=period,
         )
 
     async def get_symbol_changes(self) -> list[SymbolChange]:
@@ -398,7 +418,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             HistoricalData object containing the price history
         """
-        params = {"symbol": symbol}
+        params: dict[str, str | int] = {"symbol": symbol}
         if from_date:
             params["start_date"] = from_date
         if to_date:
@@ -427,7 +447,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             HistoricalData object containing the price history without split adjustments
         """
-        params = {"symbol": symbol}
+        params: dict[str, str | int] = {"symbol": symbol}
         if from_date:
             params["start_date"] = from_date
         if to_date:
@@ -458,7 +478,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             HistoricalData object containing the dividend-adjusted price history
         """
-        params = {"symbol": symbol}
+        params: dict[str, str | int] = {"symbol": symbol}
         if from_date:
             params["start_date"] = from_date
         if to_date:
@@ -474,7 +494,11 @@ class AsyncCompanyClient(AsyncEndpointGroup):
             return HistoricalData(symbol=symbol, historical=[result])
 
     async def get_dividends(
-        self, symbol: str, from_date: str | None = None, to_date: str | None = None
+        self,
+        symbol: str,
+        from_date: str | None = None,
+        to_date: str | None = None,
+        limit: int | None = None,
     ) -> list[DividendEvent]:
         """Get historical dividend payments for a specific company
 
@@ -482,15 +506,18 @@ class AsyncCompanyClient(AsyncEndpointGroup):
             symbol: Stock symbol (e.g., 'AAPL')
             from_date: Start date in YYYY-MM-DD format (optional)
             to_date: End date in YYYY-MM-DD format (optional)
+            limit: Number of dividend records to return (optional)
 
         Returns:
             List of DividendEvent objects containing dividend history
         """
-        params = {"symbol": symbol}
+        params: dict[str, str | int] = {"symbol": symbol}
         if from_date:
             params["from_date"] = from_date
         if to_date:
             params["to_date"] = to_date
+        if limit is not None:
+            params["limit"] = limit
         return await self.client.request_async(COMPANY_DIVIDENDS, **params)
 
     async def get_earnings(self, symbol: str, limit: int = 20) -> list[EarningEvent]:
@@ -508,7 +535,11 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         )
 
     async def get_stock_splits(
-        self, symbol: str, from_date: str | None = None, to_date: str | None = None
+        self,
+        symbol: str,
+        from_date: str | None = None,
+        to_date: str | None = None,
+        limit: int | None = None,
     ) -> list[StockSplitEvent]:
         """Get historical stock split information for a specific company
 
@@ -516,15 +547,18 @@ class AsyncCompanyClient(AsyncEndpointGroup):
             symbol: Stock symbol (e.g., 'AAPL')
             from_date: Start date in YYYY-MM-DD format (optional)
             to_date: End date in YYYY-MM-DD format (optional)
+            limit: Number of split records to return (optional)
 
         Returns:
             List of StockSplitEvent objects containing split history
         """
-        params = {"symbol": symbol}
+        params: dict[str, str | int] = {"symbol": symbol}
         if from_date:
             params["from_date"] = from_date
         if to_date:
             params["to_date"] = to_date
+        if limit is not None:
+            params["limit"] = limit
         return await self.client.request_async(COMPANY_SPLITS, **params)
 
     # Financial Statement Methods
@@ -616,7 +650,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
-            period: 'annual' or 'quarter' (default: 'annual')
+            period: 'annual', 'quarter', 'FY', or 'Q1'-'Q4' (default: 'annual')
             limit: Number of periods to return (default: 20)
 
         Returns:
@@ -633,7 +667,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
-            period: 'annual' or 'quarter' (default: 'annual')
+            period: 'annual', 'quarter', 'FY', or 'Q1'-'Q4' (default: 'annual')
             limit: Number of periods to return (default: 20)
 
         Returns:
@@ -650,7 +684,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
-            period: 'annual' or 'quarter' (default: 'annual')
+            period: 'annual', 'quarter', 'FY', or 'Q1'-'Q4' (default: 'annual')
             limit: Number of periods to return (default: 20)
 
         Returns:
@@ -667,7 +701,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
-            period: 'annual' or 'quarter' (default: 'annual')
+            period: 'annual', 'quarter', 'FY', or 'Q1'-'Q4' (default: 'annual')
             limit: Number of periods to return (default: 20)
 
         Returns:
@@ -684,7 +718,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
-            period: 'annual' or 'quarter' (default: 'annual')
+            period: 'annual', 'quarter', 'FY', or 'Q1'-'Q4' (default: 'annual')
             limit: Number of periods to return (default: 20)
 
         Returns:
@@ -695,40 +729,44 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         )
 
     async def get_financial_reports_json(
-        self, symbol: str, year: int | None = None, period: str = "FY"
+        self, symbol: str, year: int, period: str = "FY"
     ) -> dict:
         """Get Form 10-K financial reports in JSON format
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
-            year: Report year (optional)
+            year: Report year
             period: Report period - 'FY' or 'Q1'-'Q4' (default: 'FY')
 
         Returns:
             Dictionary containing financial report data
         """
-        params: dict[str, str | int] = {"symbol": symbol, "period": period}
-        if year:
-            params["year"] = year
+        params: dict[str, str | int] = {
+            "symbol": symbol,
+            "year": year,
+            "period": period,
+        }
         result = await self.client.request_async(FINANCIAL_REPORTS_JSON, **params)
         return cast(dict, result)
 
     async def get_financial_reports_xlsx(
-        self, symbol: str, year: int | None = None, period: str = "FY"
+        self, symbol: str, year: int, period: str = "FY"
     ) -> bytes:
         """Get Form 10-K financial reports in Excel format
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
-            year: Report year (optional)
+            year: Report year
             period: Report period - 'FY' or 'Q1'-'Q4' (default: 'FY')
 
         Returns:
             Binary data for XLSX file
         """
-        params: dict[str, str | int] = {"symbol": symbol, "period": period}
-        if year:
-            params["year"] = year
+        params: dict[str, str | int] = {
+            "symbol": symbol,
+            "year": year,
+            "period": period,
+        }
         result = await self.client.request_async(FINANCIAL_REPORTS_XLSX, **params)
         return cast(bytes, result)
 

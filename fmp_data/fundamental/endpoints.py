@@ -22,6 +22,7 @@ from fmp_data.fundamental.schema import (
     IncomeStatementArgs,
     KeyMetricsArgs,
     LatestFinancialStatementsArgs,
+    OwnerEarningsArgs,
     SimpleSymbolArgs,
 )
 from fmp_data.models import (
@@ -55,9 +56,9 @@ INCOME_STATEMENT: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=False,
-            description="Period (annual, quarter, FY, Q1-Q4)",
+            description="Period (annual, quarter)",
             default="annual",
-            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
+            valid_values=["annual", "quarter"],
         ),
         EndpointParam(
             name="limit",
@@ -231,9 +232,9 @@ KEY_METRICS: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=False,
-            description="Period (annual/quarter)",
+            description="Period (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter"],
+            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
         ),
         EndpointParam(
             name="limit",
@@ -278,9 +279,9 @@ FINANCIAL_RATIOS: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=False,
-            description="Period (annual/quarter)",
+            description="Period (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter"],
+            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
         ),
         EndpointParam(
             name="limit",
@@ -321,9 +322,9 @@ FULL_FINANCIAL_STATEMENT: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=False,
-            description="Period (annual/quarter)",
+            description="Period (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter"],
+            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
         ),
         EndpointParam(
             name="limit",
@@ -372,9 +373,17 @@ OWNER_EARNINGS: Endpoint = Endpoint(
             description="Stock symbol (ticker)",
         )
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results",
+        ),
+    ],
     response_model=OwnerEarnings,
-    arg_model=SimpleSymbolArgs,
+    arg_model=OwnerEarningsArgs,
     example_queries=[
         "Calculate AAPL owner earnings",
         "Get Microsoft's owner earnings",

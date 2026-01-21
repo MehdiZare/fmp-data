@@ -174,7 +174,7 @@ HISTORICAL_PRICE: Endpoint = Endpoint(
             name="start_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=True,
+            required=False,
             description="Start date",
             alias="from",
         ),
@@ -182,7 +182,7 @@ HISTORICAL_PRICE: Endpoint = Endpoint(
             name="end_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=True,
+            required=False,
             description="End date",
             alias="to",
         ),
@@ -316,7 +316,31 @@ INTRADAY_PRICE: Endpoint = Endpoint(
             description="Stock symbol (ticker)",
         ),
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="start_date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Start date",
+            alias="from",
+        ),
+        EndpointParam(
+            name="end_date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="End date",
+            alias="to",
+        ),
+        EndpointParam(
+            name="nonadjusted",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            required=False,
+            description="Use non-adjusted data",
+        ),
+    ],
     response_model=IntradayPrice,
 )
 # Profile Endpoints
@@ -625,6 +649,15 @@ GEOGRAPHIC_REVENUE_SEGMENTATION: Endpoint = Endpoint(
             required=True,
             description="Data structure format",
             default="flat",
+        ),
+        EndpointParam(
+            name="period",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Annual or quarterly data",
+            default="annual",
+            valid_values=["annual", "quarter"],
         ),
     ],
     optional_params=[],
@@ -1216,6 +1249,7 @@ COMPANY_DIVIDENDS: Endpoint = Endpoint(
             param_type=ParamType.DATE,
             required=False,
             description="Start date for dividend history (YYYY-MM-DD)",
+            alias="from",
         ),
         EndpointParam(
             name="to_date",
@@ -1223,6 +1257,14 @@ COMPANY_DIVIDENDS: Endpoint = Endpoint(
             param_type=ParamType.DATE,
             required=False,
             description="End date for dividend history (YYYY-MM-DD)",
+            alias="to",
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of dividend records to return",
         ),
     ],
     response_model=DividendEvent,
@@ -1302,6 +1344,7 @@ COMPANY_SPLITS: Endpoint = Endpoint(
             param_type=ParamType.DATE,
             required=False,
             description="Start date for split history (YYYY-MM-DD)",
+            alias="from",
         ),
         EndpointParam(
             name="to_date",
@@ -1309,6 +1352,14 @@ COMPANY_SPLITS: Endpoint = Endpoint(
             param_type=ParamType.DATE,
             required=False,
             description="End date for split history (YYYY-MM-DD)",
+            alias="to",
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of split records to return",
         ),
     ],
     response_model=StockSplitEvent,
@@ -1509,8 +1560,9 @@ ENTERPRISE_VALUES: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=False,
-            description="Period type (annual or quarter)",
+            description="Period type (annual, quarter, FY, Q1-Q4)",
             default="annual",
+            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
         ),
         EndpointParam(
             name="limit",
@@ -1549,8 +1601,9 @@ INCOME_STATEMENT_GROWTH: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=False,
-            description="Period type (annual or quarter)",
+            description="Period type (annual, quarter, FY, Q1-Q4)",
             default="annual",
+            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
         ),
         EndpointParam(
             name="limit",
@@ -1589,8 +1642,9 @@ BALANCE_SHEET_GROWTH: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=False,
-            description="Period type (annual or quarter)",
+            description="Period type (annual, quarter, FY, Q1-Q4)",
             default="annual",
+            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
         ),
         EndpointParam(
             name="limit",
@@ -1629,8 +1683,9 @@ CASH_FLOW_GROWTH: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=False,
-            description="Period type (annual or quarter)",
+            description="Period type (annual, quarter, FY, Q1-Q4)",
             default="annual",
+            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
         ),
         EndpointParam(
             name="limit",
@@ -1669,8 +1724,9 @@ FINANCIAL_GROWTH: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=False,
-            description="Period type (annual or quarter)",
+            description="Period type (annual, quarter, FY, Q1-Q4)",
             default="annual",
+            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
         ),
         EndpointParam(
             name="limit",
@@ -1701,25 +1757,25 @@ FINANCIAL_REPORTS_JSON: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
-        )
-    ],
-    optional_params=[
+        ),
         EndpointParam(
             name="year",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
+            required=True,
             description="Report year",
         ),
         EndpointParam(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=False,
+            required=True,
             description="Report period (FY or Q1-Q4)",
             default="FY",
+            valid_values=["FY", "Q1", "Q2", "Q3", "Q4"],
         ),
     ],
+    optional_params=[],
     response_model=dict,  # This would need a proper model
 )
 
@@ -1740,25 +1796,25 @@ FINANCIAL_REPORTS_XLSX: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol (ticker)",
-        )
-    ],
-    optional_params=[
+        ),
         EndpointParam(
             name="year",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
+            required=True,
             description="Report year",
         ),
         EndpointParam(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=False,
+            required=True,
             description="Report period (FY or Q1-Q4)",
             default="FY",
+            valid_values=["FY", "Q1", "Q2", "Q3", "Q4"],
         ),
     ],
+    optional_params=[],
     response_model=bytes,  # Binary data
 )
 
@@ -1789,6 +1845,7 @@ INCOME_STATEMENT_AS_REPORTED: Endpoint = Endpoint(
             required=False,
             description="Period type (annual or quarter)",
             default="annual",
+            valid_values=["annual", "quarter"],
         ),
         EndpointParam(
             name="limit",
@@ -1829,6 +1886,7 @@ BALANCE_SHEET_AS_REPORTED: Endpoint = Endpoint(
             required=False,
             description="Period type (annual or quarter)",
             default="annual",
+            valid_values=["annual", "quarter"],
         ),
         EndpointParam(
             name="limit",
@@ -1869,6 +1927,7 @@ CASH_FLOW_AS_REPORTED: Endpoint = Endpoint(
             required=False,
             description="Period type (annual or quarter)",
             default="annual",
+            valid_values=["annual", "quarter"],
         ),
         EndpointParam(
             name="limit",

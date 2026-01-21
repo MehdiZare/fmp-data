@@ -42,6 +42,14 @@ class SimpleSymbolArgs(SymbolArg):
     pass
 
 
+class OwnerEarningsArgs(SymbolArg):
+    """Arguments for owner earnings endpoints"""
+
+    limit: int | None = Field(
+        default=None, ge=1, le=1000, description="Number of results"
+    )
+
+
 class LatestFinancialStatementsArgs(BaseArgModel):
     """Arguments for latest financial statements listing"""
 
