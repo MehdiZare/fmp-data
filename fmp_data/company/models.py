@@ -95,7 +95,10 @@ class CompanyProfile(BaseModel):
             )
             if "://" not in cleaned:
                 return f"https://{cleaned}"
-            parsed = urlparse(cleaned)
+            try:
+                parsed = urlparse(cleaned)
+            except ValueError:
+                return None
             if not parsed.scheme or not parsed.netloc:
                 return None
             if not parsed.hostname or "." not in parsed.hostname:

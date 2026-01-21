@@ -2,7 +2,11 @@
 import csv
 from datetime import date
 import io
-from typing import Any, cast
+import logging
+from typing import Any, cast, get_args, get_origin
+
+from pydantic import AnyHttpUrl, HttpUrl
+from pydantic import ValidationError as PydanticValidationError
 
 from fmp_data.base import EndpointGroup
 from fmp_data.batch.endpoints import (
@@ -65,6 +69,8 @@ from fmp_data.fundamental.models import (
 )
 from fmp_data.investment.models import ETFHolding
 
+logger = logging.getLogger(__name__)
+
 
 class BatchClient(EndpointGroup):
     """Client for batch data endpoints
@@ -95,7 +101,53 @@ class BatchClient(EndpointGroup):
 
     @staticmethod
     def _parse_csv_models(raw: bytes, model: type[Any]) -> list[Any]:
-        return [model.model_validate(row) for row in BatchClient._parse_csv_rows(raw)]
+        results: list[Any] = []
+        url_fields = BatchClient._get_url_fields(model)
+        for row in BatchClient._parse_csv_rows(raw):
+            try:
+                results.append(model.model_validate(row))
+            except PydanticValidationError as exc:
+                if url_fields:
+                    retry_row = dict(row)
+                    for error in exc.errors():
+                        if not error.get("loc"):
+                            continue
+                        field = error["loc"][0]
+                        if isinstance(field, str) and field in url_fields:
+                            retry_row[field] = None
+                    try:
+                        results.append(model.model_validate(retry_row))
+                        continue
+                    except PydanticValidationError:
+                        pass
+                logger.warning(
+                    "Skipping invalid %s row: %s",
+                    model.__name__,
+                    exc,
+                )
+        return results
+
+    @staticmethod
+    def _get_url_fields(model: type[Any]) -> set[str]:
+        url_fields: set[str] = set()
+        model_fields = getattr(model, "model_fields", None)
+        if not model_fields:
+            return url_fields
+        for name, field in model_fields.items():
+            if BatchClient._is_url_annotation(field.annotation):
+                url_fields.add(name)
+        return url_fields
+
+    @staticmethod
+    def _is_url_annotation(annotation: Any) -> bool:
+        origin = get_origin(annotation)
+        if origin is None:
+            return annotation in {AnyHttpUrl, HttpUrl}
+        if origin is list:
+            return any(
+                BatchClient._is_url_annotation(arg) for arg in get_args(annotation)
+            )
+        return any(BatchClient._is_url_annotation(arg) for arg in get_args(annotation))
 
     def get_quotes(self, symbols: list[str]) -> list[BatchQuote]:
         """Get real-time quotes for multiple symbols

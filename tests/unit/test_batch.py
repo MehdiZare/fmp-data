@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from fmp_data.batch.client import BatchClient
 from fmp_data.batch.models import (
     AftermarketQuote,
     AftermarketTrade,
@@ -15,6 +16,7 @@ from fmp_data.batch.models import (
     EODBulk,
     PeersBulk,
 )
+from fmp_data.company.models import CompanyProfile
 
 
 class TestBatchModels:
@@ -203,6 +205,22 @@ class TestBatchClient:
             "changesPercentage": 1.5,
             "volume": 50000000,
         }
+
+    def test_parse_csv_models_skips_invalid_url(self):
+        """Invalid URL fields should be coerced to None."""
+        csv_text = (
+            '"symbol","website","image"\n'
+            '"APPX","ttps://www.tradretfs.com[","https://example.com/logo.png"\n'
+        )
+
+        results = BatchClient._parse_csv_models(
+            csv_text.encode("utf-8"),
+            CompanyProfile,
+        )
+
+        assert len(results) == 1
+        assert results[0].symbol == "APPX"
+        assert results[0].website is None
 
     @patch("httpx.Client.request")
     def test_get_quotes(

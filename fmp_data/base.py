@@ -370,7 +370,12 @@ class BaseClient:
 
         if status_code == 429:
             self._rate_limiter.handle_response(status_code, error.response.text)
-            wait_time = self._rate_limiter.get_wait_time()
+            retry_after = self._rate_limiter.get_retry_after(error.response.headers)
+            wait_time = (
+                retry_after
+                if retry_after is not None
+                else self._rate_limiter.get_wait_time()
+            )
             raise RateLimitError(
                 f"Rate limit exceeded. Please wait {wait_time:.1f} seconds",
                 status_code=429,

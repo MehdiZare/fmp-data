@@ -219,6 +219,12 @@ class TestCompanyProfile:
         profile = CompanyProfile.model_validate(profile_data)
         assert profile.website is None
 
+    def test_model_validation_invalid_website_ipv6(self, profile_data):
+        """Test CompanyProfile model with malformed URL that breaks urlparse"""
+        profile_data["website"] = "ttps://www.tradretfs.com["
+        profile = CompanyProfile.model_validate(profile_data)
+        assert profile.website is None
+
     @patch("httpx.Client.request")
     def test_get_company_profile(
         self, mock_request, fmp_client, mock_response, profile_data
