@@ -140,6 +140,9 @@ fmp-mcp list --client technical
 fmp-mcp list --format json > tools.json
 ```
 
+Tip: set `FMP_MCP_TOOL_NAME_STYLE=spec` to expose fully qualified tool names
+(`client.key`) and avoid naming collisions when multiple tools share a key.
+
 ## Validation
 
 Validate your manifest file before using:
