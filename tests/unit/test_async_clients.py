@@ -71,6 +71,18 @@ class TestAsyncCompanyClient:
         assert result.symbol == "AAPL"
 
     @pytest.mark.asyncio
+    async def test_get_profile_raises_for_empty_result(self, mock_client):
+        """Test get_profile raises when no profile is returned."""
+        from fmp_data.company.async_client import AsyncCompanyClient
+        from fmp_data.exceptions import FMPError
+
+        mock_client.request_async.return_value = []
+
+        async_client = AsyncCompanyClient(mock_client)
+        with pytest.raises(FMPError, match="Symbol AAPL not found"):
+            await async_client.get_profile("AAPL")
+
+    @pytest.mark.asyncio
     async def test_get_quote(self, mock_client):
         """Test async get_quote method."""
         from fmp_data.company.async_client import AsyncCompanyClient
@@ -233,6 +245,41 @@ class TestAsyncCompanyClient:
             end_date="2025-02-04",
             nonadjusted=True,
         )
+
+    def test_get_company_logo_url_strips_trailing_slash(self, mock_client):
+        """Test get_company_logo_url normalizes the base URL."""
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        mock_client.config = MagicMock(base_url="https://example.com/")
+        async_client = AsyncCompanyClient(mock_client)
+
+        result = async_client.get_company_logo_url("AAPL")
+
+        assert result == "https://example.com/image-stock/AAPL.png"
+
+    def test_get_company_logo_url_requires_symbol(self, mock_client):
+        """Test get_company_logo_url rejects empty symbols."""
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        mock_client.config = MagicMock(base_url="https://example.com/")
+        async_client = AsyncCompanyClient(mock_client)
+
+        with pytest.raises(ValueError, match="Symbol is required"):
+            async_client.get_company_logo_url(" ")
+
+    @pytest.mark.asyncio
+    async def test_get_historical_prices_wraps_single_result(self, mock_client):
+        """Test get_historical_prices wraps non-list results."""
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        mock_client.request_async.return_value = {"date": "2024-01-01"}
+
+        async_client = AsyncCompanyClient(mock_client)
+        result = await async_client.get_historical_prices("AAPL")
+
+        assert result.symbol == "AAPL"
+        assert len(result.historical) == 1
+        assert result.historical[0].date.date() == dt_date(2024, 1, 1)
 
 
 class TestAsyncMarketClient:
@@ -761,6 +808,33 @@ class TestAsyncTechnicalClient:
         assert len(result) == 1
         assert isinstance(result[0], SMAIndicator)
 
+    @pytest.mark.asyncio
+    async def test_get_sma_normalizes_interval(self, mock_client):
+        """Test interval normalization for SMA requests."""
+        from fmp_data.technical import endpoints as technical_endpoints
+        from fmp_data.technical.async_client import AsyncTechnicalClient
+
+        mock_client.request_async.return_value = []
+
+        async_client = AsyncTechnicalClient(mock_client)
+        result = await async_client.get_sma(
+            "AAPL",
+            period_length=14,
+            timeframe="4hour",
+            interval="daily",
+            start_date=dt_date(2024, 1, 1),
+            end_date=dt_date(2024, 1, 10),
+        )
+
+        assert result == []
+        mock_client.request_async.assert_called_once_with(
+            technical_endpoints.SMA,
+            symbol="AAPL",
+            periodLength=14,
+            timeframe="1day",
+            **{"from": "2024-01-01", "to": "2024-01-10"},
+        )
+
 
 class TestAsyncIntelligenceClient:
     """Tests for AsyncMarketIntelligenceClient."""
@@ -786,6 +860,123 @@ class TestAsyncIntelligenceClient:
 
         assert len(result) == 1
         assert isinstance(result[0], StockNewsArticle)
+
+    @pytest.mark.asyncio
+    async def test_get_stock_news_delegates_to_symbol_news(self, mock_client):
+        """Test get_stock_news uses symbol-specific endpoint."""
+        from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
+
+        async_client = AsyncMarketIntelligenceClient(mock_client)
+        async_client.get_stock_symbol_news = AsyncMock(return_value=["sentinel"])
+
+        result = await async_client.get_stock_news(
+            symbol="AAPL",
+            page=2,
+            limit=5,
+        )
+
+        assert result == ["sentinel"]
+        async_client.get_stock_symbol_news.assert_awaited_once_with(
+            symbol="AAPL",
+            page=2,
+            from_date=None,
+            to_date=None,
+            limit=5,
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_earnings_calendar_formats_dates(self, mock_client):
+        """Test earnings calendar date formatting."""
+        from fmp_data.intelligence import endpoints as intelligence_endpoints
+        from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncMarketIntelligenceClient(mock_client)
+
+        result = await async_client.get_earnings_calendar(
+            dt_date(2024, 1, 1), dt_date(2024, 1, 15)
+        )
+
+        assert result == []
+        mock_client.request_async.assert_called_once_with(
+            intelligence_endpoints.EARNINGS_CALENDAR,
+            start_date="2024-01-01",
+            end_date="2024-01-15",
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_fmp_articles_size_alias(self, mock_client):
+        """Test size alias overrides limit for FMP articles."""
+        from datetime import datetime
+
+        from fmp_data.intelligence import endpoints as intelligence_endpoints
+        from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
+        from fmp_data.intelligence.models import FMPArticle, FMPArticlesResponse
+
+        article = FMPArticle(
+            title="Test",
+            date=datetime(2024, 1, 1, 12, 0, 0),
+            content="content",
+            link="https://example.com/article",
+            image="https://example.com/image.png",
+            author="Author",
+            site="Example",
+        )
+        mock_client.request_async.return_value = FMPArticlesResponse(content=[article])
+
+        async_client = AsyncMarketIntelligenceClient(mock_client)
+        result = await async_client.get_fmp_articles(page=2, limit=20, size=5)
+
+        assert result == [article]
+        mock_client.request_async.assert_called_once_with(
+            intelligence_endpoints.FMP_ARTICLES_ENDPOINT,
+            page=2,
+            limit=5,
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_crypto_news_defaults_to_today(self, mock_client, monkeypatch):
+        """Test crypto news defaults end_date when from_date is set."""
+        from fmp_data.intelligence import async_client as intelligence_async
+        from fmp_data.intelligence import endpoints as intelligence_endpoints
+        from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
+
+        class FixedDate(dt_date):
+            @classmethod
+            def today(cls):  # type: ignore[override]
+                return dt_date(2024, 2, 1)
+
+        monkeypatch.setattr(intelligence_async, "date", FixedDate)
+        mock_client.request_async.return_value = []
+
+        async_client = AsyncMarketIntelligenceClient(mock_client)
+        result = await async_client.get_crypto_news(from_date=dt_date(2024, 1, 15))
+
+        assert result == []
+        mock_client.request_async.assert_called_once_with(
+            intelligence_endpoints.CRYPTO_NEWS_ENDPOINT,
+            page=0,
+            start_date="2024-01-15",
+            end_date="2024-02-01",
+            limit=20,
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_ratings_snapshot_empty_list(self, mock_client):
+        """Test ratings snapshot returns None on empty results."""
+        from fmp_data.intelligence import endpoints as intelligence_endpoints
+        from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncMarketIntelligenceClient(mock_client)
+
+        result = await async_client.get_ratings_snapshot("AAPL")
+
+        assert result is None
+        mock_client.request_async.assert_called_once_with(
+            intelligence_endpoints.RATINGS_SNAPSHOT,
+            symbol="AAPL",
+        )
 
 
 class TestAsyncInstitutionalClient:
@@ -1210,6 +1401,32 @@ class TestAsyncInvestmentClient:
         assert isinstance(result, ETFInfo)
         assert result.symbol == "SPY"
 
+    @pytest.mark.asyncio
+    async def test_get_etf_info_warns_on_unexpected_type(self, mock_client):
+        """Test get_etf_info warns on unexpected responses."""
+        from fmp_data.investment.async_client import AsyncInvestmentClient
+
+        mock_client.request_async.return_value = {"unexpected": "data"}
+
+        async_client = AsyncInvestmentClient(mock_client)
+        with pytest.warns(UserWarning, match="Unexpected result type"):
+            result = await async_client.get_etf_info("SPY")
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_etf_info_warns_on_exception(self, mock_client):
+        """Test get_etf_info warns when request raises."""
+        from fmp_data.investment.async_client import AsyncInvestmentClient
+
+        mock_client.request_async.side_effect = RuntimeError("boom")
+
+        async_client = AsyncInvestmentClient(mock_client)
+        with pytest.warns(UserWarning, match="Error in get_etf_info"):
+            result = await async_client.get_etf_info("SPY")
+
+        assert result is None
+
 
 class TestAsyncAlternativeMarketsClient:
     """Tests for AsyncAlternativeMarketsClient."""
@@ -1271,6 +1488,49 @@ class TestAsyncAlternativeMarketsClient:
         assert isinstance(result, ForexQuote)
         assert result.symbol == "EURUSD"
 
+    @pytest.mark.asyncio
+    async def test_get_crypto_historical_wraps_list_response(
+        self, mock_client, monkeypatch
+    ):
+        """Test crypto historical list responses are wrapped."""
+        from fmp_data.alternative.async_client import AsyncAlternativeMarketsClient
+        from fmp_data.alternative.models import CryptoHistoricalData
+
+        sentinel = MagicMock()
+        mock_validate = MagicMock(return_value=sentinel)
+        monkeypatch.setattr(CryptoHistoricalData, "model_validate", mock_validate)
+
+        mock_client.request_async.return_value = [{"date": "2024-01-01"}]
+
+        async_client = AsyncAlternativeMarketsClient(mock_client)
+        result = await async_client.get_crypto_historical("BTCUSD")
+
+        assert result is sentinel
+        mock_validate.assert_called_once_with(
+            {"symbol": "BTCUSD", "historical": [{"date": "2024-01-01"}]}
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_crypto_historical_passes_dict_response(
+        self, mock_client, monkeypatch
+    ):
+        """Test crypto historical dict responses pass through."""
+        from fmp_data.alternative.async_client import AsyncAlternativeMarketsClient
+        from fmp_data.alternative.models import CryptoHistoricalData
+
+        sentinel = MagicMock()
+        mock_validate = MagicMock(return_value=sentinel)
+        monkeypatch.setattr(CryptoHistoricalData, "model_validate", mock_validate)
+
+        response = {"symbol": "BTCUSD", "historical": [{"date": "2024-01-01"}]}
+        mock_client.request_async.return_value = response
+
+        async_client = AsyncAlternativeMarketsClient(mock_client)
+        result = await async_client.get_crypto_historical("BTCUSD")
+
+        assert result is sentinel
+        mock_validate.assert_called_once_with(response)
+
 
 class TestAsyncEconomicsClient:
     """Tests for AsyncEconomicsClient."""
@@ -1303,6 +1563,48 @@ class TestAsyncEconomicsClient:
 
         assert len(result) == 1
         assert isinstance(result[0], TreasuryRate)
+
+    @pytest.mark.asyncio
+    async def test_get_economic_calendar_formats_dates(self, mock_client):
+        """Test economic calendar date formatting."""
+        from fmp_data.economics import endpoints as economics_endpoints
+        from fmp_data.economics.async_client import AsyncEconomicsClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncEconomicsClient(mock_client)
+
+        result = await async_client.get_economic_calendar(
+            start_date=dt_date(2024, 1, 1),
+            end_date=dt_date(2024, 1, 31),
+        )
+
+        assert result == []
+        mock_client.request_async.assert_called_once_with(
+            economics_endpoints.ECONOMIC_CALENDAR,
+            start_date="2024-01-01",
+            end_date="2024-01-31",
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_commitment_of_traders_report_formats_dates(self, mock_client):
+        """Test COT report date formatting."""
+        from fmp_data.economics import endpoints as economics_endpoints
+        from fmp_data.economics.async_client import AsyncEconomicsClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncEconomicsClient(mock_client)
+
+        result = await async_client.get_commitment_of_traders_report(
+            "CL", start_date=dt_date(2024, 1, 1), end_date=dt_date(2024, 1, 31)
+        )
+
+        assert result == []
+        mock_client.request_async.assert_called_once_with(
+            economics_endpoints.COMMITMENT_OF_TRADERS_REPORT,
+            symbol="CL",
+            start_date="2024-01-01",
+            end_date="2024-01-31",
+        )
 
 
 class TestAsyncBatchClient:
@@ -1485,6 +1787,99 @@ class TestAsyncSECClient:
 
         assert len(result) == 1
         assert isinstance(result[0], SECFiling8K)
+
+    @pytest.mark.asyncio
+    async def test_get_latest_8k_with_dates(self, mock_client):
+        """Test get_latest_8k formats date filters."""
+        from fmp_data.sec import endpoints as sec_endpoints
+        from fmp_data.sec.async_client import AsyncSECClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncSECClient(mock_client)
+
+        result = await async_client.get_latest_8k(
+            page=1,
+            limit=50,
+            from_date=dt_date(2024, 1, 1),
+            to_date=dt_date(2024, 1, 31),
+        )
+
+        assert result == []
+        mock_client.request_async.assert_called_once_with(
+            sec_endpoints.SEC_FILINGS_8K,
+            page=1,
+            limit=50,
+            **{"from": "2024-01-01", "to": "2024-01-31"},
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_profile_handles_validation_errors(self, mock_client):
+        """Test get_profile returns None on validation errors."""
+        from pydantic import ValidationError
+
+        from fmp_data.sec.async_client import AsyncSECClient
+
+        mock_client.logger = MagicMock()
+        error = ValidationError.from_exception_data(
+            "SECProfile",
+            [
+                {
+                    "type": "missing",
+                    "loc": ("symbol",),
+                    "msg": "Field required",
+                    "input": None,
+                }
+            ],
+        )
+        mock_client.request_async.side_effect = error
+
+        async_client = AsyncSECClient(mock_client)
+        result = await async_client.get_profile("AAPL")
+
+        assert result is None
+        mock_client.logger.warning.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_profile_empty_list_returns_none(self, mock_client):
+        """Test get_profile returns None for empty list."""
+        from fmp_data.sec.async_client import AsyncSECClient
+
+        mock_client.request_async.return_value = []
+
+        async_client = AsyncSECClient(mock_client)
+        result = await async_client.get_profile("AAPL")
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_search_industry_classification_requires_params(self, mock_client):
+        """Test search_industry_classification requires a filter."""
+        from fmp_data.sec.async_client import AsyncSECClient
+
+        async_client = AsyncSECClient(mock_client)
+        with pytest.raises(ValueError, match="Provide at least one"):
+            await async_client.search_industry_classification()
+
+    @pytest.mark.asyncio
+    async def test_search_industry_classification_builds_params(self, mock_client):
+        """Test search_industry_classification builds optional params."""
+        from fmp_data.sec import endpoints as sec_endpoints
+        from fmp_data.sec.async_client import AsyncSECClient
+
+        mock_client.request_async.return_value = []
+
+        async_client = AsyncSECClient(mock_client)
+        result = await async_client.search_industry_classification(
+            symbol="AAPL",
+            sic_code="3571",
+        )
+
+        assert result == []
+        mock_client.request_async.assert_called_once_with(
+            sec_endpoints.INDUSTRY_CLASSIFICATION_SEARCH,
+            symbol="AAPL",
+            sicCode="3571",
+        )
 
 
 class TestAsyncIndexClient:

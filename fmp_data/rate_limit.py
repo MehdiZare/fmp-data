@@ -110,7 +110,10 @@ class FMPRateLimiter:
     ) -> dict[str, str]:
         if not response_headers or not isinstance(response_headers, Mapping):
             return {}
-        return {key.lower(): value for key, value in response_headers.items()}
+        try:
+            return {key.lower(): value for key, value in response_headers.items()}
+        except TypeError:
+            return {}
 
     @staticmethod
     def _parse_retry_after(value: str) -> float | None:
@@ -140,9 +143,9 @@ class FMPRateLimiter:
         except ValueError:
             return None
         now_epoch = time.time()
-        if reset_value >= now_epoch:
-            return max(0.0, reset_value - now_epoch)
         if reset_value >= 0:
+            if reset_value > 60:
+                return max(0.0, reset_value - now_epoch)
             return reset_value
         return None
 
