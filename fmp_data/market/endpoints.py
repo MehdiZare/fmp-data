@@ -6,6 +6,8 @@ from fmp_data.market.models import (
     CompanySearchResult,
     CUSIPResult,
     ExchangeSymbol,
+    IndustryPerformance,
+    IndustryPESnapshot,
     IPODisclosure,
     IPOProspectus,
     ISINResult,
@@ -13,6 +15,7 @@ from fmp_data.market.models import (
     MarketMover,
     PrePostMarketQuote,
     SectorPerformance,
+    SectorPESnapshot,
 )
 from fmp_data.market.schema import (
     AvailableIndexesArgs,
@@ -308,7 +311,15 @@ SECTOR_PERFORMANCE: Endpoint = Endpoint(
     path="sector-performance-snapshot",
     version=APIVersion.STABLE,
     description="Get sector performance data",
-    mandatory_params=[],
+    mandatory_params=[
+        EndpointParam(
+            name="date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=True,
+            description="Snapshot date (YYYY-MM-DD)",
+        )
+    ],
     optional_params=[
         EndpointParam(
             name="sector",
@@ -318,14 +329,273 @@ SECTOR_PERFORMANCE: Endpoint = Endpoint(
             description="Sector code (e.g., 'Technology')",
         ),
         EndpointParam(
-            name="date",
+            name="exchange",
             location=ParamLocation.QUERY,
-            param_type=ParamType.DATE,
+            param_type=ParamType.STRING,
             required=False,
-            description="Snapshot date (YYYY-MM-DD)",
+            description="Exchange code (e.g., NYSE, NASDAQ)",
         ),
     ],
     response_model=SectorPerformance,
+)
+
+INDUSTRY_PERFORMANCE_SNAPSHOT: Endpoint = Endpoint(
+    name="industry_performance_snapshot",
+    path="industry-performance-snapshot",
+    version=APIVersion.STABLE,
+    description="Get industry performance data",
+    mandatory_params=[
+        EndpointParam(
+            name="date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=True,
+            description="Snapshot date (YYYY-MM-DD)",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="industry",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Industry name (e.g., 'Biotechnology')",
+        ),
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Exchange code (e.g., NYSE, NASDAQ)",
+        ),
+    ],
+    response_model=IndustryPerformance,
+)
+
+HISTORICAL_SECTOR_PERFORMANCE: Endpoint = Endpoint(
+    name="historical_sector_performance",
+    path="historical-sector-performance",
+    version=APIVersion.STABLE,
+    description="Get historical sector performance data",
+    mandatory_params=[
+        EndpointParam(
+            name="sector",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Sector name (e.g., 'Energy')",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Start date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="End date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Exchange code (e.g., NYSE, NASDAQ)",
+        ),
+    ],
+    response_model=SectorPerformance,
+)
+
+HISTORICAL_INDUSTRY_PERFORMANCE: Endpoint = Endpoint(
+    name="historical_industry_performance",
+    path="historical-industry-performance",
+    version=APIVersion.STABLE,
+    description="Get historical industry performance data",
+    mandatory_params=[
+        EndpointParam(
+            name="industry",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Industry name (e.g., 'Biotechnology')",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Start date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="End date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Exchange code (e.g., NYSE, NASDAQ)",
+        ),
+    ],
+    response_model=IndustryPerformance,
+)
+
+SECTOR_PE_SNAPSHOT: Endpoint = Endpoint(
+    name="sector_pe_snapshot",
+    path="sector-pe-snapshot",
+    version=APIVersion.STABLE,
+    description="Get sector PE snapshot data",
+    mandatory_params=[
+        EndpointParam(
+            name="date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=True,
+            description="Snapshot date (YYYY-MM-DD)",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="sector",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Sector name (e.g., 'Energy')",
+        ),
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Exchange code (e.g., NYSE, NASDAQ)",
+        ),
+    ],
+    response_model=SectorPESnapshot,
+)
+
+INDUSTRY_PE_SNAPSHOT: Endpoint = Endpoint(
+    name="industry_pe_snapshot",
+    path="industry-pe-snapshot",
+    version=APIVersion.STABLE,
+    description="Get industry PE snapshot data",
+    mandatory_params=[
+        EndpointParam(
+            name="date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=True,
+            description="Snapshot date (YYYY-MM-DD)",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="industry",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Industry name (e.g., 'Biotechnology')",
+        ),
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Exchange code (e.g., NYSE, NASDAQ)",
+        ),
+    ],
+    response_model=IndustryPESnapshot,
+)
+
+HISTORICAL_SECTOR_PE: Endpoint = Endpoint(
+    name="historical_sector_pe",
+    path="historical-sector-pe",
+    version=APIVersion.STABLE,
+    description="Get historical sector PE data",
+    mandatory_params=[
+        EndpointParam(
+            name="sector",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Sector name (e.g., 'Energy')",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Start date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="End date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Exchange code (e.g., NYSE, NASDAQ)",
+        ),
+    ],
+    response_model=SectorPESnapshot,
+)
+
+HISTORICAL_INDUSTRY_PE: Endpoint = Endpoint(
+    name="historical_industry_pe",
+    path="historical-industry-pe",
+    version=APIVersion.STABLE,
+    description="Get historical industry PE data",
+    mandatory_params=[
+        EndpointParam(
+            name="industry",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Industry name (e.g., 'Biotechnology')",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Start date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="End date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Exchange code (e.g., NYSE, NASDAQ)",
+        ),
+    ],
+    response_model=IndustryPESnapshot,
 )
 
 PRE_POST_MARKET: Endpoint = Endpoint(

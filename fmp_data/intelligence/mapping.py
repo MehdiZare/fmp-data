@@ -5,6 +5,7 @@ from fmp_data.intelligence.endpoints import (
     CROWDFUNDING_RSS,
     CROWDFUNDING_SEARCH,
     CRYPTO_NEWS_ENDPOINT,
+    CRYPTO_SYMBOL_NEWS_ENDPOINT,
     DIVIDENDS_CALENDAR,
     EARNINGS_CALENDAR,
     EARNINGS_CONFIRMED,
@@ -17,6 +18,7 @@ from fmp_data.intelligence.endpoints import (
     ESG_RATINGS,
     FMP_ARTICLES_ENDPOINT,
     FOREX_NEWS_ENDPOINT,
+    FOREX_SYMBOL_NEWS_ENDPOINT,
     GENERAL_NEWS_ENDPOINT,
     HISTORICAL_EARNINGS,
     HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT,
@@ -72,7 +74,9 @@ INTELLIGENCE_ENDPOINT_MAP = {
     "get_stock_news": STOCK_NEWS_ENDPOINT,
     "get_stock_news_sentiments": STOCK_NEWS_SENTIMENTS_ENDPOINT,
     "get_forex_news": FOREX_NEWS_ENDPOINT,
+    "get_forex_symbol_news": FOREX_SYMBOL_NEWS_ENDPOINT,
     "get_crypto_news": CRYPTO_NEWS_ENDPOINT,
+    "get_crypto_symbol_news": CRYPTO_SYMBOL_NEWS_ENDPOINT,
     "get_press_releases": PRESS_RELEASES_ENDPOINT,
     "get_press_releases_by_symbol": PRESS_RELEASES_BY_SYMBOL_ENDPOINT,
     # Social Sentiment endpoints
@@ -373,7 +377,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         sub_category="News & Research",
         parameter_hints={
             "page": PAGE_HINT,
-            "size": LIMIT_HINT,
+            "limit": LIMIT_HINT,
         },
         response_hints={
             "title": ResponseFieldInfo(
@@ -416,7 +420,12 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INTELLIGENCE,
         sub_category="News & Media",
-        parameter_hints={"page": PAGE_HINT},
+        parameter_hints={
+            "page": PAGE_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+            "limit": LIMIT_HINT,
+        },
         response_hints={
             "site": ResponseFieldInfo(
                 description="News source",
@@ -510,7 +519,12 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INTELLIGENCE,
         sub_category="News & Media",
-        parameter_hints={"page": PAGE_HINT},
+        parameter_hints={
+            "page": PAGE_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+            "limit": LIMIT_HINT,
+        },
         response_hints={
             "sentiment": ResponseFieldInfo(
                 description="News sentiment score",
@@ -554,6 +568,9 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         parameter_hints={
             "symbol": SYMBOL_HINT,
             "page": PAGE_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+            "limit": LIMIT_HINT,
         },
         response_hints={
             "title": ResponseFieldInfo(
@@ -792,7 +809,12 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INTELLIGENCE,
         sub_category="News & Media",
-        parameter_hints={"page": PAGE_HINT},
+        parameter_hints={
+            "page": PAGE_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+            "limit": LIMIT_HINT,
+        },
         response_hints={
             "title": ResponseFieldInfo(
                 description="Press release title",
@@ -826,10 +848,57 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "market developments"
         ),
         example_queries=[
-            "Get forex news for EURUSD",
+            "Get latest forex news",
             "Show currency market updates",
             "Latest FX news",
             "Foreign exchange headlines",
+        ],
+        related_terms=[
+            "currency news",
+            "forex market",
+            "exchange rates",
+            "currency trading",
+            "fx updates",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="News & Media",
+        parameter_hints={
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+        },
+        response_hints={
+            "title": ResponseFieldInfo(
+                description="News article headline",
+                examples=["EUR/USD Breaks Resistance", "GBP Falls After Data"],
+                related_terms=["headline", "story", "forex news"],
+            ),
+            "text": ResponseFieldInfo(
+                description="Article content",
+                examples=["Currency analysis...", "Market movement details..."],
+                related_terms=["content", "article text", "details"],
+            ),
+        },
+        use_cases=[
+            "Currency market monitoring",
+            "Exchange rate tracking",
+            "Forex trading research",
+            "International markets",
+        ],
+    ),
+    "forex_symbol_news": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_forex_symbol_news",
+        natural_description=(
+            "Search forex news for a specific currency pair "
+            "to monitor pair-specific developments and analysis"
+        ),
+        example_queries=[
+            "Get forex news for EURUSD",
+            "Show GBPUSD headlines",
+            "USDJPY forex news",
+            "FX news for EURUSD",
         ],
         related_terms=[
             "currency news",
@@ -865,10 +934,10 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             ),
         },
         use_cases=[
-            "Currency market monitoring",
-            "Exchange rate tracking",
-            "Forex trading research",
-            "International markets",
+            "Pair-specific monitoring",
+            "FX trading research",
+            "Market analysis",
+            "News tracking",
         ],
     ),
     "crowdfunding_rss": EndpointSemantics(
@@ -1027,10 +1096,51 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "trading information, and digital asset developments"
         ),
         example_queries=[
-            "Get crypto news for BTC",
-            "Show Bitcoin headlines",
+            "Get latest crypto news",
+            "Show cryptocurrency headlines",
             "Latest cryptocurrency news",
             "Crypto market updates",
+        ],
+        related_terms=[
+            "crypto news",
+            "digital assets",
+            "cryptocurrency",
+            "blockchain news",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="News & Media",
+        parameter_hints={
+            "page": PAGE_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+            "limit": LIMIT_HINT,
+        },
+        response_hints={
+            "title": ResponseFieldInfo(
+                description="News article headline",
+                examples=["Bitcoin Reaches New High", "ETH 2.0 Launch"],
+                related_terms=["headline", "title", "news"],
+            ),
+        },
+        use_cases=[
+            "Crypto market monitoring",
+            "Trading research",
+            "Market analysis",
+            "News tracking",
+        ],
+    ),
+    "crypto_symbol_news": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_crypto_symbol_news",
+        natural_description=(
+            "Search cryptocurrency news for a specific trading pair "
+            "to track asset-specific developments"
+        ),
+        example_queries=[
+            "Get crypto news for BTCUSD",
+            "Show Bitcoin headlines",
+            "ETHUSD crypto news",
+            "Crypto news for BTCUSD",
         ],
         related_terms=[
             "crypto news",
@@ -1045,7 +1155,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "page": PAGE_HINT,
             "start_date": DATE_HINTS["start_date"],
             "end_date": DATE_HINTS["end_date"],
-            "limit": LIMIT_HINT,  # Added missing limit parameter
+            "limit": LIMIT_HINT,
         },
         response_hints={
             "title": ResponseFieldInfo(
@@ -1055,7 +1165,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             ),
         },
         use_cases=[
-            "Crypto market monitoring",
+            "Asset-specific monitoring",
             "Trading research",
             "Market analysis",
             "News tracking",

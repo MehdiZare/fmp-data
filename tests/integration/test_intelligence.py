@@ -210,7 +210,7 @@ class TestIntelligenceEndpoints(BaseTestCase):
         """Test getting FMP articles"""
         with vcr_instance.use_cassette("intelligence/fmp_articles.yaml"):
             articles = self._handle_rate_limit(
-                fmp_client.intelligence.get_fmp_articles, page=0, size=5
+                fmp_client.intelligence.get_fmp_articles, page=0, limit=5
             )
 
             assert isinstance(articles, list)
@@ -240,6 +240,7 @@ class TestIntelligenceEndpoints(BaseTestCase):
             articles = self._handle_rate_limit(
                 fmp_client.intelligence.get_general_news,
                 page=0,
+                limit=20,
             )
 
             assert isinstance(articles, list)
@@ -303,11 +304,11 @@ class TestIntelligenceEndpoints(BaseTestCase):
         """Test getting forex news articles"""
         with vcr_instance.use_cassette("intelligence/forex_news.yaml"):
             articles = self._handle_rate_limit(
-                fmp_client.intelligence.get_forex_news,
-                page=0,
+                fmp_client.intelligence.get_forex_symbol_news,
                 symbol="EURUSD",
                 from_date=date(2024, 1, 1),
                 to_date=date(2024, 1, 31),
+                limit=20,
             )
 
             assert isinstance(articles, list)
@@ -326,9 +327,10 @@ class TestIntelligenceEndpoints(BaseTestCase):
         """Test getting crypto news articles"""
         with vcr_instance.use_cassette("intelligence/crypto_news.yaml"):
             articles = self._handle_rate_limit(
-                fmp_client.intelligence.get_crypto_news,
-                symbol="BTC",
+                fmp_client.intelligence.get_crypto_symbol_news,
+                symbol="BTCUSD",
                 from_date=date(2024, 1, 1),
+                limit=20,
             )
 
             assert isinstance(articles, list)
@@ -351,6 +353,7 @@ class TestIntelligenceEndpoints(BaseTestCase):
             releases = self._handle_rate_limit(
                 fmp_client.intelligence.get_press_releases,
                 page=0,
+                limit=20,
             )
 
             assert isinstance(releases, list)
@@ -374,6 +377,7 @@ class TestIntelligenceEndpoints(BaseTestCase):
                 fmp_client.intelligence.get_press_releases_by_symbol,
                 symbol="AAPL",
                 page=0,
+                limit=20,
             )
 
             assert isinstance(releases, list)

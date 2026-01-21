@@ -13,6 +13,8 @@ from fmp_data.market.models import (
     CompanySearchResult,
     CUSIPResult,
     ExchangeSymbol,
+    IndustryPerformance,
+    IndustryPESnapshot,
     IPODisclosure,
     IPOProspectus,
     ISINResult,
@@ -20,6 +22,7 @@ from fmp_data.market.models import (
     MarketMover,
     PrePostMarketQuote,
     SectorPerformance,
+    SectorPESnapshot,
 )
 from fmp_data.models import CompanySymbol, ShareFloat
 from tests.integration.base import BaseTestCase
@@ -119,7 +122,11 @@ class TestMarketClientEndpoints(BaseTestCase):
     def test_get_sector_performance(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting sector performance data"""
         with vcr_instance.use_cassette("market/sector_performance.yaml"):
-            sectors = self._handle_rate_limit(fmp_client.market.get_sector_performance)
+            sectors = self._handle_rate_limit(
+                fmp_client.market.get_sector_performance,
+                date=date(2024, 2, 1),
+                exchange="NASDAQ",
+            )
 
             assert isinstance(sectors, list)
             assert len(sectors) > 0
@@ -127,6 +134,135 @@ class TestMarketClientEndpoints(BaseTestCase):
             for sector in sectors:
                 assert isinstance(sector, SectorPerformance)
                 assert isinstance(sector.change_percentage, float)
+
+    def test_get_industry_performance_snapshot(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting industry performance snapshot data"""
+        with vcr_instance.use_cassette("market/industry_performance_snapshot.yaml"):
+            industries = self._handle_rate_limit(
+                fmp_client.market.get_industry_performance_snapshot,
+                date=date(2024, 2, 1),
+                industry="Biotechnology",
+                exchange="NASDAQ",
+            )
+
+            assert isinstance(industries, list)
+            assert len(industries) > 0
+
+            for industry in industries:
+                assert isinstance(industry, IndustryPerformance)
+                assert isinstance(industry.change_percentage, float)
+
+    def test_get_historical_sector_performance(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting historical sector performance data"""
+        with vcr_instance.use_cassette("market/historical_sector_performance.yaml"):
+            sectors = self._handle_rate_limit(
+                fmp_client.market.get_historical_sector_performance,
+                sector="Energy",
+                from_date=date(2024, 2, 1),
+                to_date=date(2024, 3, 1),
+                exchange="NASDAQ",
+            )
+
+            assert isinstance(sectors, list)
+            assert len(sectors) > 0
+
+            for sector in sectors:
+                assert isinstance(sector, SectorPerformance)
+                assert isinstance(sector.change_percentage, float)
+
+    def test_get_historical_industry_performance(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting historical industry performance data"""
+        with vcr_instance.use_cassette("market/historical_industry_performance.yaml"):
+            industries = self._handle_rate_limit(
+                fmp_client.market.get_historical_industry_performance,
+                industry="Biotechnology",
+                from_date=date(2024, 2, 1),
+                to_date=date(2024, 3, 1),
+                exchange="NASDAQ",
+            )
+
+            assert isinstance(industries, list)
+            assert len(industries) > 0
+
+            for industry in industries:
+                assert isinstance(industry, IndustryPerformance)
+                assert isinstance(industry.change_percentage, float)
+
+    def test_get_sector_pe_snapshot(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting sector PE snapshot data"""
+        with vcr_instance.use_cassette("market/sector_pe_snapshot.yaml"):
+            sectors = self._handle_rate_limit(
+                fmp_client.market.get_sector_pe_snapshot,
+                date=date(2024, 2, 1),
+                sector="Energy",
+                exchange="NASDAQ",
+            )
+
+            assert isinstance(sectors, list)
+            assert len(sectors) > 0
+
+            for sector in sectors:
+                assert isinstance(sector, SectorPESnapshot)
+                assert isinstance(sector.pe, float)
+
+    def test_get_industry_pe_snapshot(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting industry PE snapshot data"""
+        with vcr_instance.use_cassette("market/industry_pe_snapshot.yaml"):
+            industries = self._handle_rate_limit(
+                fmp_client.market.get_industry_pe_snapshot,
+                date=date(2024, 2, 1),
+                industry="Biotechnology",
+                exchange="NASDAQ",
+            )
+
+            assert isinstance(industries, list)
+            assert len(industries) > 0
+
+            for industry in industries:
+                assert isinstance(industry, IndustryPESnapshot)
+                assert isinstance(industry.pe, float)
+
+    def test_get_historical_sector_pe(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting historical sector PE data"""
+        with vcr_instance.use_cassette("market/historical_sector_pe.yaml"):
+            sectors = self._handle_rate_limit(
+                fmp_client.market.get_historical_sector_pe,
+                sector="Energy",
+                from_date=date(2024, 2, 1),
+                to_date=date(2024, 3, 1),
+                exchange="NASDAQ",
+            )
+
+            assert isinstance(sectors, list)
+            assert len(sectors) > 0
+
+            for sector in sectors:
+                assert isinstance(sector, SectorPESnapshot)
+                assert isinstance(sector.pe, float)
+
+    def test_get_historical_industry_pe(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting historical industry PE data"""
+        with vcr_instance.use_cassette("market/historical_industry_pe.yaml"):
+            industries = self._handle_rate_limit(
+                fmp_client.market.get_historical_industry_pe,
+                industry="Biotechnology",
+                from_date=date(2024, 2, 1),
+                to_date=date(2024, 3, 1),
+                exchange="NASDAQ",
+            )
+
+            assert isinstance(industries, list)
+            assert len(industries) > 0
+
+            for industry in industries:
+                assert isinstance(industry, IndustryPESnapshot)
+                assert isinstance(industry.pe, float)
 
     def test_get_pre_post_market(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting pre/post market data"""

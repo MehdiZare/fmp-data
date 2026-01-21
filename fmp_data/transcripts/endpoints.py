@@ -63,21 +63,29 @@ EARNINGS_TRANSCRIPT: Endpoint = Endpoint(
             required=True,
             description="Stock symbol",
         ),
-    ],
-    optional_params=[
         EndpointParam(
             name="year",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
+            required=True,
             description="Fiscal year",
         ),
         EndpointParam(
             name="quarter",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
+            required=True,
             description="Fiscal quarter (1-4)",
+            valid_values=[1, 2, 3, 4],
+        ),
+    ],
+    optional_params=[
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of transcripts to return",
         ),
     ],
     response_model=EarningsTranscript,

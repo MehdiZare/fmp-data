@@ -97,7 +97,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
             "business description",
         ],
         category=SemanticCategory.COMPANY_INFO,
-        parameter_hints={"symbol": SYMBOL_HINT},
+        parameter_hints={"symbol": SYMBOL_HINT, "period": PERIOD_HINT},
         response_hints=PROFILE_RESPONSE_HINTS,
         use_cases=[
             "Understanding company basics",

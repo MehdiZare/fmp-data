@@ -212,6 +212,8 @@ def get_recommended_tools() -> list[str]:
         "market.gainers",
         "market.losers",
         "market.most_active",
+        "market.sector_performance",
+        "market.industry_performance_snapshot",
         # Fundamental data
         "fundamental.income_statement",
         "fundamental.balance_sheet",

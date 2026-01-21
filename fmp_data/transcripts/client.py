@@ -19,9 +19,7 @@ class TranscriptsClient(EndpointGroup):
     Provides methods to retrieve earnings call transcripts and related data.
     """
 
-    def get_latest(
-        self, page: int = 0, limit: int = 100
-    ) -> list[EarningsTranscript]:
+    def get_latest(self, page: int = 0, limit: int = 100) -> list[EarningsTranscript]:
         """Get the most recent earnings call transcripts
 
         Args:
@@ -36,24 +34,28 @@ class TranscriptsClient(EndpointGroup):
     def get_transcript(
         self,
         symbol: str,
-        year: int | None = None,
-        quarter: int | None = None,
+        year: int,
+        quarter: int,
+        limit: int | None = None,
     ) -> list[EarningsTranscript]:
         """Get earnings call transcript for a specific company
 
         Args:
             symbol: Stock symbol
-            year: Fiscal year (optional)
-            quarter: Fiscal quarter 1-4 (optional)
+            year: Fiscal year
+            quarter: Fiscal quarter 1-4
+            limit: Number of transcripts to return (optional)
 
         Returns:
             List of matching earnings transcripts
         """
-        params: dict[str, str | int] = {"symbol": symbol}
-        if year is not None:
-            params["year"] = year
-        if quarter is not None:
-            params["quarter"] = quarter
+        params: dict[str, str | int] = {
+            "symbol": symbol,
+            "year": year,
+            "quarter": quarter,
+        }
+        if limit is not None:
+            params["limit"] = limit
         return self.client.request(EARNINGS_TRANSCRIPT, **params)
 
     def get_available_dates(self, symbol: str) -> list[TranscriptDate]:

@@ -106,9 +106,15 @@ class TestTranscriptsClient:
         mock_request.return_value = mock_response(
             status_code=200, json_data=[transcript_data]
         )
-        result = fmp_client.transcripts.get_transcript("AAPL")
+        result = fmp_client.transcripts.get_transcript(
+            "AAPL", year=2023, quarter=4, limit=1
+        )
         assert len(result) == 1
         assert isinstance(result[0], EarningsTranscript)
+        call_args = mock_request.call_args
+        assert call_args.kwargs["params"]["limit"] == 1
+        assert call_args.kwargs["params"]["year"] == 2023
+        assert call_args.kwargs["params"]["quarter"] == 4
 
     @patch("httpx.Client.request")
     def test_get_transcript_with_year_quarter(

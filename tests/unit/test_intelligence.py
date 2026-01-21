@@ -22,7 +22,6 @@ from fmp_data.intelligence.models import (
     ForexNewsArticle,
     GeneralNewsArticle,
     HistoricalRating,
-    HistoricalSocialSentiment,
     HistoricalStockGrade,
     HouseDisclosure,
     IPOEvent,
@@ -31,14 +30,12 @@ from fmp_data.intelligence.models import (
     PriceTargetNews,
     RatingsSnapshot,
     SenateTrade,
-    SocialSentimentChanges,
     StockGrade,
     StockGradeNews,
     StockGradesConsensus,
     StockNewsArticle,
     StockNewsSentiment,
     StockSplitEvent,
-    TrendingSocialSentiment,
 )
 
 
@@ -340,7 +337,7 @@ class TestMarketIntelligenceClientNews:
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 0
-        assert kwargs["size"] == 5
+        assert kwargs["limit"] == 20
         assert isinstance(result, list)
         assert len(result) == 1
 
@@ -348,12 +345,12 @@ class TestMarketIntelligenceClientNews:
         """Test get_fmp_articles with custom parameters"""
         mock_client.request.return_value = []
 
-        _ = fmp_client.intelligence.get_fmp_articles(page=1, size=10)
+        _ = fmp_client.intelligence.get_fmp_articles(page=1, limit=10)
 
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 1
-        assert kwargs["size"] == 10
+        assert kwargs["limit"] == 10
 
     def test_get_fmp_articles_direct_list(self, fmp_client, mock_client):
         """Test get_fmp_articles when API returns direct list"""
@@ -392,7 +389,34 @@ class TestMarketIntelligenceClientNews:
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 0
+        assert kwargs["limit"] == 20
         assert isinstance(result, list)
+
+    def test_get_general_news_with_dates(self, fmp_client, mock_client):
+        """Test get_general_news with date filters"""
+        mock_data = {
+            "publishedDate": "2024-01-15T10:00:00",
+            "title": "Market Update",
+            "image": "https://example.com/image.jpg",
+            "site": "Example News",
+            "text": "News content",
+            "url": "https://example.com/news",
+        }
+        mock_client.request.return_value = [GeneralNewsArticle(**mock_data)]
+
+        _ = fmp_client.intelligence.get_general_news(
+            page=1,
+            from_date=date(2024, 1, 1),
+            to_date=date(2024, 1, 31),
+            limit=10,
+        )
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["page"] == 1
+        assert kwargs["start_date"] == "2024-01-01"
+        assert kwargs["end_date"] == "2024-01-31"
+        assert kwargs["limit"] == 10
 
     def test_get_stock_news(self, fmp_client, mock_client, stock_news_data):
         """Test get_stock_news with all parameters"""
@@ -454,7 +478,33 @@ class TestMarketIntelligenceClientNews:
 
         _ = fmp_client.intelligence.get_forex_news(
             page=1,
+            from_date=date(2024, 1, 1),
+            to_date=date(2024, 1, 31),
+            limit=25,
+        )
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["start_date"] == "2024-01-01"
+        assert kwargs["end_date"] == "2024-01-31"
+        assert kwargs["limit"] == 25
+
+    def test_get_forex_symbol_news(self, fmp_client, mock_client):
+        """Test get_forex_symbol_news"""
+        mock_data = {
+            "publishedDate": "2024-01-15T10:00:00",
+            "title": "Forex Update",
+            "image": "https://example.com/image.jpg",
+            "site": "Forex News",
+            "text": "News content",
+            "url": "https://example.com/forex",
+            "symbol": "EURUSD",
+        }
+        mock_client.request.return_value = [ForexNewsArticle(**mock_data)]
+
+        _ = fmp_client.intelligence.get_forex_symbol_news(
             symbol="EURUSD",
+            page=1,
             from_date=date(2024, 1, 1),
             to_date=date(2024, 1, 31),
             limit=25,
@@ -465,9 +515,36 @@ class TestMarketIntelligenceClientNews:
         assert kwargs["symbol"] == "EURUSD"
         assert kwargs["start_date"] == "2024-01-01"
         assert kwargs["end_date"] == "2024-01-31"
+        assert kwargs["limit"] == 25
 
     def test_get_crypto_news(self, fmp_client, mock_client):
         """Test get_crypto_news"""
+        mock_data = {
+            "publishedDate": "2024-01-15T10:00:00",
+            "title": "Crypto Update",
+            "image": "https://example.com/image.jpg",
+            "site": "Crypto News",
+            "text": "News content",
+            "url": "https://example.com/crypto",
+            "symbol": "BTCUSD",
+        }
+        mock_client.request.return_value = [CryptoNewsArticle(**mock_data)]
+
+        _ = fmp_client.intelligence.get_crypto_news(
+            page=0,
+            from_date=date(2024, 1, 1),
+            to_date=date(2024, 1, 31),
+            limit=20,
+        )
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["start_date"] == "2024-01-01"
+        assert kwargs["end_date"] == "2024-01-31"
+        assert kwargs["limit"] == 20
+
+    def test_get_crypto_symbol_news(self, fmp_client, mock_client):
+        """Test get_crypto_symbol_news"""
         mock_data = {
             "publishedDate": "2024-01-15T10:00:00",
             "title": "Crypto Update",
@@ -479,15 +556,20 @@ class TestMarketIntelligenceClientNews:
         }
         mock_client.request.return_value = [CryptoNewsArticle(**mock_data)]
 
-        _ = fmp_client.intelligence.get_crypto_news(
-            symbol="BTC", from_date=date(2024, 1, 1), to_date=date(2024, 1, 31)
+        _ = fmp_client.intelligence.get_crypto_symbol_news(
+            symbol="BTCUSD",
+            page=0,
+            from_date=date(2024, 1, 1),
+            to_date=date(2024, 1, 31),
+            limit=20,
         )
 
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
-        assert kwargs["symbol"] == "BTC"
+        assert kwargs["symbol"] == "BTCUSD"
         assert kwargs["start_date"] == "2024-01-01"
         assert kwargs["end_date"] == "2024-01-31"
+        assert kwargs["limit"] == 20
 
 
 class TestMarketIntelligenceClientPressReleases:
@@ -503,11 +585,19 @@ class TestMarketIntelligenceClientPressReleases:
         }
         mock_client.request.return_value = [PressRelease(**mock_data)]
 
-        _ = fmp_client.intelligence.get_press_releases(page=0)
+        _ = fmp_client.intelligence.get_press_releases(
+            page=0,
+            from_date=date(2024, 1, 1),
+            to_date=date(2024, 1, 31),
+            limit=10,
+        )
 
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 0
+        assert kwargs["start_date"] == "2024-01-01"
+        assert kwargs["end_date"] == "2024-01-31"
+        assert kwargs["limit"] == 10
 
     def test_get_press_releases_by_symbol(self, fmp_client, mock_client):
         """Test get_press_releases_by_symbol"""
@@ -519,18 +609,29 @@ class TestMarketIntelligenceClientPressReleases:
         }
         mock_client.request.return_value = [PressReleaseBySymbol(**mock_data)]
 
-        _ = fmp_client.intelligence.get_press_releases_by_symbol("AAPL", page=1)
+        _ = fmp_client.intelligence.get_press_releases_by_symbol(
+            "AAPL",
+            page=1,
+            from_date=date(2024, 1, 1),
+            to_date=date(2024, 1, 31),
+            limit=15,
+        )
 
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "AAPL"
         assert kwargs["page"] == 1
+        assert kwargs["start_date"] == "2024-01-01"
+        assert kwargs["end_date"] == "2024-01-31"
+        assert kwargs["limit"] == 15
 
 
 class TestMarketIntelligenceClientSocialSentiment:
     """Test social sentiment functionality (removed endpoints)"""
 
-    def test_get_historical_social_sentiment_raises_error(self, fmp_client, mock_client):
+    def test_get_historical_social_sentiment_raises_error(
+        self, fmp_client, mock_client
+    ):
         """Test get_historical_social_sentiment raises RemovedEndpointError"""
         with pytest.raises(RemovedEndpointError) as exc_info:
             fmp_client.intelligence.get_historical_social_sentiment("AAPL", page=0)
@@ -540,7 +641,9 @@ class TestMarketIntelligenceClientSocialSentiment:
     def test_get_trending_social_sentiment_raises_error(self, fmp_client, mock_client):
         """Test get_trending_social_sentiment raises RemovedEndpointError"""
         with pytest.raises(RemovedEndpointError) as exc_info:
-            fmp_client.intelligence.get_trending_social_sentiment("bullish", "stocktwits")
+            fmp_client.intelligence.get_trending_social_sentiment(
+                "bullish", "stocktwits"
+            )
         assert "get_trending_social_sentiment" in str(exc_info.value)
         assert "removed" in str(exc_info.value).lower()
 
@@ -931,7 +1034,6 @@ class TestMarketIntelligenceClientEdgeCases:
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
         assert kwargs["page"] is None
-        assert kwargs["symbol"] is None
         assert kwargs["start_date"] is None
         assert kwargs["end_date"] is None
         assert kwargs["limit"] is None

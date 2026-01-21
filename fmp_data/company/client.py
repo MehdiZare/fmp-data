@@ -89,7 +89,7 @@ from fmp_data.company.models import (
     UpgradeDowngrade,
     UpgradeDowngradeConsensus,
 )
-from fmp_data.exceptions import FMPError, ValidationError
+from fmp_data.exceptions import FMPError
 from fmp_data.fundamental.models import (
     AsReportedBalanceSheet,
     AsReportedCashFlowStatement,
@@ -310,14 +310,21 @@ class CompanyClient(EndpointGroup):
         result = self.client.request(PRICE_TARGET_CONSENSUS, symbol=symbol)
         return self._unwrap_single(result, PriceTargetConsensus)
 
-    def get_analyst_estimates(self, symbol: str) -> list[AnalystEstimate]:
+    def get_analyst_estimates(
+        self,
+        symbol: str,
+        period: str = "annual",
+        page: int = 0,
+        limit: int = 10,
+    ) -> list[AnalystEstimate]:
         """Get analyst estimates"""
-        try:
-            return self.client.request(ANALYST_ESTIMATES, symbol=symbol)
-        except ValidationError as exc:
-            if "period" in str(exc):
-                return []
-            raise
+        return self.client.request(
+            ANALYST_ESTIMATES,
+            symbol=symbol,
+            period=period,
+            page=page,
+            limit=limit,
+        )
 
     def get_analyst_recommendations(self, symbol: str) -> list[AnalystRecommendation]:
         """Get analyst recommendations"""

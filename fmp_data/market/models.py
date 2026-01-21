@@ -147,7 +147,9 @@ class SectorPerformance(BaseModel):
 
     model_config = default_model_config
 
+    date: datetime | None = Field(None, description="Snapshot date")
     sector: str = Field(description="Sector name")
+    exchange: str | None = Field(None, description="Exchange code")
     change_percentage: float | None = Field(
         None,
         validation_alias=AliasChoices("changesPercentage", "averageChange"),
@@ -186,6 +188,61 @@ class SectorPerformance(BaseModel):
             except ValueError as e:
                 raise ValueError(f"Invalid percentage value: {value}") from e
         raise ValueError(f"Expected a percentage string or float, got: {value}")
+
+
+class IndustryPerformance(BaseModel):
+    """Industry performance data"""
+
+    model_config = default_model_config
+
+    date: datetime | None = Field(None, description="Snapshot date")
+    industry: str = Field(description="Industry name")
+    exchange: str | None = Field(None, description="Exchange code")
+    change_percentage: float | None = Field(
+        None,
+        validation_alias=AliasChoices("changesPercentage", "averageChange"),
+        description="Change percentage as a float",
+    )
+
+    @field_validator("change_percentage", mode="before")
+    def parse_percentage(cls, value: Any) -> float | None:
+        if value is None:
+            return None
+        if isinstance(value, int | float):
+            return float(value)
+        if isinstance(value, str) and value.endswith("%"):
+            try:
+                return float(value.strip("%")) / 100
+            except ValueError as e:
+                raise ValueError(f"Invalid percentage format: {value}") from e
+        if isinstance(value, str):
+            try:
+                return float(value)
+            except ValueError as e:
+                raise ValueError(f"Invalid percentage value: {value}") from e
+        raise ValueError(f"Expected a percentage string or float, got: {value}")
+
+
+class SectorPESnapshot(BaseModel):
+    """Sector price-to-earnings snapshot data"""
+
+    model_config = default_model_config
+
+    date: datetime | None = Field(None, description="Snapshot date")
+    sector: str = Field(description="Sector name")
+    exchange: str | None = Field(None, description="Exchange code")
+    pe: float | None = Field(None, description="Price to earnings ratio")
+
+
+class IndustryPESnapshot(BaseModel):
+    """Industry price-to-earnings snapshot data"""
+
+    model_config = default_model_config
+
+    date: datetime | None = Field(None, description="Snapshot date")
+    industry: str = Field(description="Industry name")
+    exchange: str | None = Field(None, description="Exchange code")
+    pe: float | None = Field(None, description="Price to earnings ratio")
 
 
 class PrePostMarketQuote(BaseModel):

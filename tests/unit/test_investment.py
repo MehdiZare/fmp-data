@@ -1,5 +1,6 @@
 from datetime import date
 from unittest.mock import patch
+
 import pytest
 
 from fmp_data.client import FMPDataClient
@@ -9,6 +10,9 @@ from fmp_data.investment.models import (
     ETFHolding,
     ETFInfo,
     ETFSectorWeighting,
+    FundDisclosureHolderLatest,
+    FundDisclosureHolding,
+    FundDisclosureSearchResult,
     MutualFundHolding,
 )
 
@@ -85,6 +89,66 @@ class TestInvestmentClient:
             "shares": 1000,
         }
 
+    @pytest.fixture
+    def fund_disclosure_holder_latest_data(self):
+        """Mock data for latest mutual fund/ETF disclosure holders"""
+        return {
+            "cik": "0000106444",
+            "holder": "VANGUARD FIXED INCOME SECURITIES FUNDS",
+            "shares": 67030000,
+            "dateReported": "2024-07-31",
+            "change": 0,
+            "weightPercent": 0.03840197,
+        }
+
+    @pytest.fixture
+    def fund_disclosure_data(self):
+        """Mock data for mutual fund/ETF disclosure holdings"""
+        return {
+            "cik": "0000857489",
+            "date": "2023-10-31",
+            "acceptedDate": "2023-12-28 09:26:13",
+            "symbol": "000089.SZ",
+            "name": "Shenzhen Airport Co Ltd",
+            "lei": "3003009W045RIKRBZI44",
+            "title": "SHENZ AIRPORT-A",
+            "cusip": "N/A",
+            "isin": "CNE000000VK1",
+            "balance": 2438784,
+            "units": "NS",
+            "cur_cd": "CNY",
+            "valUsd": 2255873.6,
+            "pctVal": 0.0023838966,
+            "payoffProfile": "Long",
+            "assetCat": "EC",
+            "issuerCat": "CORP",
+            "invCountry": "CN",
+            "isRestrictedSec": "N",
+            "fairValLevel": "2",
+            "isCashCollateral": "N",
+            "isNonCashCollateral": "N",
+            "isLoanByFund": "N",
+        }
+
+    @pytest.fixture
+    def fund_disclosure_search_result_data(self):
+        """Mock data for mutual fund/ETF disclosure holder search"""
+        return {
+            "symbol": "FGOAX",
+            "cik": "0000355691",
+            "classId": "C000024574",
+            "seriesId": "S000009042",
+            "entityName": "Federated Hermes Government Income Securities, Inc.",
+            "entityOrgType": "30",
+            "seriesName": "Federated Hermes Government Income Securities, Inc.",
+            "className": "Class A Shares",
+            "reportingFileNumber": "811-03266",
+            "address": "4000 ERICSSON DRIVE",
+            "city": "WARRENDALE",
+            "zipCode": "15086-7561",
+            "state": "PA",
+        }
+
     # ETF endpoint tests
     @patch("httpx.Client.request")
     def test_get_etf_holdings(
@@ -94,9 +158,7 @@ class TestInvestmentClient:
         mock_request.return_value = mock_response(
             status_code=200, json_data=[etf_holding_data]
         )
-        result = fmp_client.investment.get_etf_holdings(
-            symbol="SPY", holdings_date=date(2024, 1, 15)
-        )
+        result = fmp_client.investment.get_etf_holdings(symbol="SPY")
         assert len(result) == 1
         holding = result[0]
         assert isinstance(holding, ETFHolding)
@@ -166,6 +228,64 @@ class TestInvestmentClient:
         assert holding.market_value == 1000000.0
 
     @patch("httpx.Client.request")
+    def test_get_fund_disclosure_holders_latest(
+        self,
+        mock_request,
+        fmp_client,
+        mock_response,
+        fund_disclosure_holder_latest_data,
+    ):
+        """Test fetching latest fund disclosure holders"""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[fund_disclosure_holder_latest_data]
+        )
+        result = fmp_client.investment.get_fund_disclosure_holders_latest(symbol="AAPL")
+        assert len(result) == 1
+        holder = result[0]
+        assert isinstance(holder, FundDisclosureHolderLatest)
+        assert holder.holder == "VANGUARD FIXED INCOME SECURITIES FUNDS"
+        assert holder.weight_percent == 0.03840197
+
+    @patch("httpx.Client.request")
+    def test_get_fund_disclosure(
+        self, mock_request, fmp_client, mock_response, fund_disclosure_data
+    ):
+        """Test fetching mutual fund/ETF disclosure holdings"""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[fund_disclosure_data]
+        )
+        result = fmp_client.investment.get_fund_disclosure(
+            symbol="VWO", year=2023, quarter=4
+        )
+        assert len(result) == 1
+        holding = result[0]
+        assert isinstance(holding, FundDisclosureHolding)
+        assert holding.symbol == "000089.SZ"
+        assert holding.cur_cd == "CNY"
+        assert holding.val_usd == 2255873.6
+
+    @patch("httpx.Client.request")
+    def test_search_fund_disclosure_holders(
+        self,
+        mock_request,
+        fmp_client,
+        mock_response,
+        fund_disclosure_search_result_data,
+    ):
+        """Test searching fund disclosure holders by name"""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[fund_disclosure_search_result_data]
+        )
+        result = fmp_client.investment.search_fund_disclosure_holders(
+            name="Federated Hermes"
+        )
+        assert len(result) == 1
+        entry = result[0]
+        assert isinstance(entry, FundDisclosureSearchResult)
+        assert entry.symbol == "FGOAX"
+        assert entry.reporting_file_number == "811-03266"
+
+    @patch("httpx.Client.request")
     def test_rate_limit_handling(self, mock_request, fmp_client):
         """Test handling rate limit errors for investment endpoints"""
         client = FMPDataClient(
@@ -176,7 +296,9 @@ class TestInvestmentClient:
                 client._rate_limiter, "should_allow_request", return_value=False
             ),
             patch.object(client._rate_limiter, "get_wait_time", return_value=0.0),
-            patch.object(client, "_handle_rate_limit", side_effect=RateLimitError("rl")),
+            patch.object(
+                client, "_handle_rate_limit", side_effect=RateLimitError("rl")
+            ),
         ):
             with pytest.raises(RateLimitError):
                 client.investment.get_etf_holdings(

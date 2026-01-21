@@ -9,6 +9,7 @@ from fmp_data.intelligence.endpoints import (
     CROWDFUNDING_RSS,
     CROWDFUNDING_SEARCH,
     CRYPTO_NEWS_ENDPOINT,
+    CRYPTO_SYMBOL_NEWS_ENDPOINT,
     DIVIDENDS_CALENDAR,
     EARNINGS_CALENDAR,
     EARNINGS_CONFIRMED,
@@ -21,6 +22,7 @@ from fmp_data.intelligence.endpoints import (
     ESG_RATINGS,
     FMP_ARTICLES_ENDPOINT,
     FOREX_NEWS_ENDPOINT,
+    FOREX_SYMBOL_NEWS_ENDPOINT,
     GENERAL_NEWS_ENDPOINT,
     GRADES,
     GRADES_CONSENSUS,
@@ -153,19 +155,24 @@ class MarketIntelligenceClient(EndpointGroup):
         params = self._build_date_params(start_date, end_date)
         return self.client.request(IPO_CALENDAR, **params)
 
-    def get_fmp_articles(self, page: int = 0, size: int = 5) -> list[FMPArticle]:
+    def get_fmp_articles(
+        self, page: int = 0, limit: int = 20, size: int | None = None
+    ) -> list[FMPArticle]:
         """Get a list of the latest FMP articles
 
         Args:
             page: Page number to fetch (default: 0)
-            size: Number of articles per page (default: 5)
+            limit: Number of articles per page (default: 20)
+            size: Deprecated alias for limit (default: None)
 
         Returns:
             list[FMPArticle]: List of FMP articles from the content array
         """
+        if size is not None:
+            limit = size
         params = {
             "page": page,
-            "size": size,
+            "limit": limit,
         }
         response = self.client.request(FMP_ARTICLES_ENDPOINT, **params)
         # Extract articles from the content array in the response
@@ -173,10 +180,19 @@ class MarketIntelligenceClient(EndpointGroup):
             response.content if isinstance(response, FMPArticlesResponse) else response
         )
 
-    def get_general_news(self, page: int = 0) -> list[GeneralNewsArticle]:
+    def get_general_news(
+        self,
+        page: int = 0,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        limit: int = 20,
+    ) -> list[GeneralNewsArticle]:
         """Get a list of the latest general news articles"""
         params = {
             "page": page,
+            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
+            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "limit": limit,
         }
         return self.client.request(GENERAL_NEWS_ENDPOINT, **params)
 
@@ -186,11 +202,11 @@ class MarketIntelligenceClient(EndpointGroup):
         page: int | None = 0,
         from_date: date | None = None,
         to_date: date | None = None,
-        limit: int = 50,
+        limit: int = 20,
     ) -> list[StockNewsArticle]:
         """Get a list of the latest stock news articles"""
         params = {
-            "symbols": symbol,
+            "symbol": symbol,
             "page": page,
             "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
             "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
@@ -204,7 +220,7 @@ class MarketIntelligenceClient(EndpointGroup):
         page: int | None = 0,
         from_date: date | None = None,
         to_date: date | None = None,
-        limit: int = 50,
+        limit: int = 20,
     ) -> list[StockNewsArticle]:
         """Get a list of the latest stock news articles"""
         if symbol:
@@ -236,17 +252,42 @@ class MarketIntelligenceClient(EndpointGroup):
         symbol: str | None = None,
         from_date: date | None = None,
         to_date: date | None = None,
-        limit: int | None = 50,
+        limit: int | None = 20,
     ) -> list[ForexNewsArticle]:
-        """Get a list of the latest forex news articles"""
+        """Get a list of the latest forex news articles (or search by symbol)"""
+        if symbol:
+            return self.get_forex_symbol_news(
+                symbol=symbol,
+                page=page,
+                from_date=from_date,
+                to_date=to_date,
+                limit=limit,
+            )
         params = {
             "page": page,
-            "symbol": symbol,
             "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
             "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
             "limit": limit,
         }
         return self.client.request(FOREX_NEWS_ENDPOINT, **params)
+
+    def get_forex_symbol_news(
+        self,
+        symbol: str,
+        page: int | None = 0,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        limit: int | None = 20,
+    ) -> list[ForexNewsArticle]:
+        """Search forex news articles by symbol"""
+        params = {
+            "symbol": symbol,
+            "page": page,
+            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
+            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "limit": limit,
+        }
+        return self.client.request(FOREX_SYMBOL_NEWS_ENDPOINT, **params)
 
     def get_crypto_news(
         self,
@@ -254,34 +295,76 @@ class MarketIntelligenceClient(EndpointGroup):
         symbol: str | None = None,
         from_date: date | None = None,
         to_date: date | None = None,
-        limit: int = 50,
+        limit: int = 20,
     ) -> list[CryptoNewsArticle]:
-        """Get a list of the latest crypto news articles"""
+        """Get a list of the latest crypto news articles (or search by symbol)"""
         if from_date and to_date is None:
             to_date = date.today()
+        if symbol:
+            return self.get_crypto_symbol_news(
+                symbol=symbol,
+                page=page,
+                from_date=from_date,
+                to_date=to_date,
+                limit=limit,
+            )
         params = {
             "page": page,
-            "symbol": symbol,
             "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
             "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
             "limit": limit,
         }
         return self.client.request(CRYPTO_NEWS_ENDPOINT, **params)
 
-    def get_press_releases(self, page: int = 0) -> list[PressRelease]:
+    def get_crypto_symbol_news(
+        self,
+        symbol: str,
+        page: int = 0,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        limit: int = 20,
+    ) -> list[CryptoNewsArticle]:
+        """Search crypto news articles by symbol"""
+        params = {
+            "symbol": symbol,
+            "page": page,
+            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
+            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "limit": limit,
+        }
+        return self.client.request(CRYPTO_SYMBOL_NEWS_ENDPOINT, **params)
+
+    def get_press_releases(
+        self,
+        page: int = 0,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        limit: int = 20,
+    ) -> list[PressRelease]:
         """Get a list of the latest press releases"""
         params = {
             "page": page,
+            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
+            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "limit": limit,
         }
         return self.client.request(PRESS_RELEASES_ENDPOINT, **params)
 
     def get_press_releases_by_symbol(
-        self, symbol: str, page: int = 0
+        self,
+        symbol: str,
+        page: int = 0,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        limit: int = 20,
     ) -> list[PressReleaseBySymbol]:
         """Get a list of the latest press releases for a specific company"""
         params = {
             "symbol": symbol,
             "page": page,
+            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
+            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "limit": limit,
         }
         return self.client.request(PRESS_RELEASES_BY_SYMBOL_ENDPOINT, **params)
 

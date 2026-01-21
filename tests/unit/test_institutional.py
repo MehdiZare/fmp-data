@@ -394,6 +394,9 @@ class TestInstitutionalClientEnhanced:
         assert isinstance(ownership[0], InstitutionalOwnershipLatest)
         assert ownership[0].cik == "0001067983"
         assert ownership[0].report_date.strftime("%Y-%m-%d") == "2023-09-30"
+        _, kwargs = mock_request.call_args
+        assert kwargs["params"]["page"] == 0
+        assert kwargs["params"]["limit"] == 100
 
     @patch("httpx.Client.request")
     def test_get_institutional_ownership_extract(
@@ -495,6 +498,8 @@ class TestInstitutionalClientEnhanced:
         assert len(performance) == 1
         assert isinstance(performance[0], HolderPerformanceSummary)
         assert performance[0].investor_name == "Berkshire Hathaway Inc"
+        _, kwargs = mock_request.call_args
+        assert kwargs["params"]["page"] == 0
 
     @patch("httpx.Client.request")
     def test_get_symbol_positions_summary(

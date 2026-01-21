@@ -377,11 +377,19 @@ def test_get_price_target_summary(fmp_client, mock_client, price_target_summary_
 def test_get_analyst_estimates(fmp_client, mock_client, analyst_estimates_data):
     """Test fetching analyst estimates"""
     mock_client.request.return_value = [AnalystEstimate(**analyst_estimates_data[0])]
-    result = fmp_client.get_analyst_estimates(symbol="AAPL")
+    result = fmp_client.get_analyst_estimates(
+        symbol="AAPL", period="annual", page=0, limit=10
+    )
     assert isinstance(result, list)
     assert isinstance(result[0], AnalystEstimate)
     assert result[0].symbol == "AAPL"
     assert result[0].estimated_revenue_avg == 52500000.0
+
+    call_args = mock_client.request.call_args
+    assert call_args[1]["symbol"] == "AAPL"
+    assert call_args[1]["period"] == "annual"
+    assert call_args[1]["page"] == 0
+    assert call_args[1]["limit"] == 10
 
 
 class TestMergersAcquisitions:
@@ -829,6 +837,17 @@ class TestCompanyCalendarEndpoints:
         assert "from_date" not in call_args[1]
         assert "to_date" not in call_args[1]
 
+    def test_get_dividends_with_limit(self, fmp_client, mock_client, dividend_data):
+        """Test fetching dividend history with limit"""
+        mock_client.request.return_value = [DividendEvent(**dividend_data)]
+
+        result = fmp_client.get_dividends(symbol="AAPL", limit=5)
+
+        assert len(result) == 1
+        call_args = mock_client.request.call_args
+        assert call_args[1]["symbol"] == "AAPL"
+        assert call_args[1]["limit"] == 5
+
     def test_get_earnings(self, fmp_client, mock_client, earnings_data):
         """Test fetching earnings history"""
         mock_client.request.return_value = [EarningEvent(**earnings_data)]
@@ -899,6 +918,17 @@ class TestCompanyCalendarEndpoints:
         assert call_args[1]["symbol"] == "AAPL"
         assert "from_date" not in call_args[1]
         assert "to_date" not in call_args[1]
+
+    def test_get_stock_splits_with_limit(self, fmp_client, mock_client, split_data):
+        """Test fetching stock splits with limit"""
+        mock_client.request.return_value = [StockSplitEvent(**split_data)]
+
+        result = fmp_client.get_stock_splits(symbol="AAPL", limit=5)
+
+        assert len(result) == 1
+        call_args = mock_client.request.call_args
+        assert call_args[1]["symbol"] == "AAPL"
+        assert call_args[1]["limit"] == 5
 
     def test_multiple_dividends(self, fmp_client, mock_client):
         """Test handling multiple dividend events"""

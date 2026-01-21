@@ -537,3 +537,105 @@ class TestIPOEndpoints:
         assert call_args[1]["params"]["limit"] == 5
         assert "from" not in call_args[1]["params"]
         assert "to" not in call_args[1]["params"]
+
+
+@pytest.mark.parametrize(
+    ("method_name", "kwargs", "expected_params"),
+    [
+        (
+            "get_sector_performance",
+            {"sector": "Energy", "date": date(2024, 2, 1), "exchange": "NASDAQ"},
+            {"sector": "Energy", "date": "2024-02-01", "exchange": "NASDAQ"},
+        ),
+        (
+            "get_industry_performance_snapshot",
+            {
+                "industry": "Biotechnology",
+                "date": date(2024, 2, 1),
+                "exchange": "NASDAQ",
+            },
+            {"industry": "Biotechnology", "date": "2024-02-01", "exchange": "NASDAQ"},
+        ),
+        (
+            "get_historical_sector_performance",
+            {
+                "sector": "Energy",
+                "from_date": date(2024, 2, 1),
+                "to_date": date(2024, 3, 1),
+                "exchange": "NASDAQ",
+            },
+            {
+                "sector": "Energy",
+                "from": "2024-02-01",
+                "to": "2024-03-01",
+                "exchange": "NASDAQ",
+            },
+        ),
+        (
+            "get_historical_industry_performance",
+            {
+                "industry": "Biotechnology",
+                "from_date": date(2024, 2, 1),
+                "to_date": date(2024, 3, 1),
+                "exchange": "NASDAQ",
+            },
+            {
+                "industry": "Biotechnology",
+                "from": "2024-02-01",
+                "to": "2024-03-01",
+                "exchange": "NASDAQ",
+            },
+        ),
+        (
+            "get_sector_pe_snapshot",
+            {"sector": "Energy", "date": date(2024, 2, 1), "exchange": "NASDAQ"},
+            {"sector": "Energy", "date": "2024-02-01", "exchange": "NASDAQ"},
+        ),
+        (
+            "get_industry_pe_snapshot",
+            {
+                "industry": "Biotechnology",
+                "date": date(2024, 2, 1),
+                "exchange": "NASDAQ",
+            },
+            {"industry": "Biotechnology", "date": "2024-02-01", "exchange": "NASDAQ"},
+        ),
+        (
+            "get_historical_sector_pe",
+            {
+                "sector": "Energy",
+                "from_date": date(2024, 2, 1),
+                "to_date": date(2024, 3, 1),
+                "exchange": "NASDAQ",
+            },
+            {
+                "sector": "Energy",
+                "from": "2024-02-01",
+                "to": "2024-03-01",
+                "exchange": "NASDAQ",
+            },
+        ),
+        (
+            "get_historical_industry_pe",
+            {
+                "industry": "Biotechnology",
+                "from_date": date(2024, 2, 1),
+                "to_date": date(2024, 3, 1),
+                "exchange": "NASDAQ",
+            },
+            {
+                "industry": "Biotechnology",
+                "from": "2024-02-01",
+                "to": "2024-03-01",
+                "exchange": "NASDAQ",
+            },
+        ),
+    ],
+)
+def test_market_performance_requests(fmp_client, method_name, kwargs, expected_params):
+    """Test market performance request parameters"""
+    with patch.object(fmp_client.market.client, "request", return_value=[]) as mock_req:
+        getattr(fmp_client.market, method_name)(**kwargs)
+        call_args = mock_req.call_args
+    for key, value in expected_params.items():
+        assert call_args[1][key] == value

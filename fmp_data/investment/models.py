@@ -2,7 +2,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
 
 default_model_config = ConfigDict(
@@ -36,6 +36,7 @@ class ETFHolding(BaseModel):
     updated_at: datetime | None = Field(
         None, alias="updatedAt", description="Timestamp of last update"
     )
+    updated: datetime | None = Field(None, description="Last refresh timestamp")
 
 
 class ETFSectorExposure(BaseModel):
@@ -56,9 +57,7 @@ class ETFInfo(BaseModel):
     name: str = Field(description="ETF name")
     description: str | None = Field(None, description="ETF description")
     isin: str | None = Field(None, description="ISIN identifier for the ETF")
-    asset_class: str | None = Field(
-        None, alias="assetClass", description="Asset class"
-    )
+    asset_class: str | None = Field(None, alias="assetClass", description="Asset class")
     security_cusip: str | None = Field(
         None, alias="securityCusip", description="CUSIP identifier for the ETF"
     )
@@ -208,6 +207,108 @@ class MutualFundHolder(BaseModel):
     weight_percent: float = Field(
         alias="weightPercent", description="Portfolio weight percentage"
     )
+
+
+class FundDisclosureHolderLatest(BaseModel):
+    """Latest mutual fund/ETF disclosure holder information"""
+
+    model_config = default_model_config
+
+    cik: str | None = Field(None, description="Fund CIK")
+    holder: str = Field(description="Fund name")
+    shares: float = Field(description="Number of shares")
+    date_reported: date = Field(alias="dateReported", description="Report date")
+    change: float = Field(description="Change in the number of shares")
+    weight_percent: float = Field(
+        alias="weightPercent", description="Portfolio weight percentage"
+    )
+
+
+class FundDisclosureHolding(BaseModel):
+    """Mutual fund/ETF disclosure holding data"""
+
+    model_config = default_model_config
+
+    cik: str | None = Field(None, description="Fund CIK")
+    date: date | None = Field(None, description="Disclosure date")
+    accepted_date: datetime | None = Field(
+        None, alias="acceptedDate", description="Accepted timestamp"
+    )
+    symbol: str | None = Field(None, description="Holding symbol")
+    name: str | None = Field(None, description="Holding name")
+    lei: str | None = Field(None, description="Legal entity identifier")
+    title: str | None = Field(None, description="Holding title")
+    cusip: str | None = Field(None, description="CUSIP identifier")
+    isin: str | None = Field(None, description="ISIN identifier")
+    balance: float | None = Field(None, description="Holding balance")
+    units: str | None = Field(None, description="Holding units")
+    cur_cd: str | None = Field(
+        None,
+        alias="cur_cd",
+        validation_alias=AliasChoices("cur_cd", "curCd"),
+        description="Currency code",
+    )
+    val_usd: float | None = Field(
+        None,
+        alias="valUsd",
+        validation_alias=AliasChoices("valUsd", "val_usd"),
+        description="Value in USD",
+    )
+    pct_val: float | None = Field(
+        None,
+        alias="pctVal",
+        validation_alias=AliasChoices("pctVal", "pct_val"),
+        description="Percent of portfolio value",
+    )
+    payoff_profile: str | None = Field(
+        None, alias="payoffProfile", description="Payoff profile"
+    )
+    asset_cat: str | None = Field(None, alias="assetCat", description="Asset category")
+    issuer_cat: str | None = Field(
+        None, alias="issuerCat", description="Issuer category"
+    )
+    inv_country: str | None = Field(
+        None, alias="invCountry", description="Investment country"
+    )
+    is_restricted_sec: str | None = Field(
+        None, alias="isRestrictedSec", description="Restricted security flag"
+    )
+    fair_val_level: str | None = Field(
+        None, alias="fairValLevel", description="Fair value level"
+    )
+    is_cash_collateral: str | None = Field(
+        None, alias="isCashCollateral", description="Cash collateral flag"
+    )
+    is_non_cash_collateral: str | None = Field(
+        None, alias="isNonCashCollateral", description="Non-cash collateral flag"
+    )
+    is_loan_by_fund: str | None = Field(
+        None, alias="isLoanByFund", description="Loan by fund flag"
+    )
+
+
+class FundDisclosureSearchResult(BaseModel):
+    """Mutual fund/ETF disclosure holder search result"""
+
+    model_config = default_model_config
+
+    symbol: str | None = Field(None, description="Fund or ETF symbol")
+    cik: str | None = Field(None, description="Fund CIK")
+    class_id: str | None = Field(None, alias="classId", description="Class ID")
+    series_id: str | None = Field(None, alias="seriesId", description="Series ID")
+    entity_name: str | None = Field(None, alias="entityName", description="Entity name")
+    entity_org_type: str | None = Field(
+        None, alias="entityOrgType", description="Entity organization type"
+    )
+    series_name: str | None = Field(None, alias="seriesName", description="Series name")
+    class_name: str | None = Field(None, alias="className", description="Class name")
+    reporting_file_number: str | None = Field(
+        None, alias="reportingFileNumber", description="Reporting file number"
+    )
+    address: str | None = Field(None, description="Entity address")
+    city: str | None = Field(None, description="Entity city")
+    zip_code: str | None = Field(None, alias="zipCode", description="ZIP code")
+    state: str | None = Field(None, description="State")
 
 
 class ETFPortfolioDate(BaseModel):

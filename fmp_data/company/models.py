@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
 
 from pydantic import (
+    AliasChoices,
     AnyHttpUrl,
     BaseModel,
     ConfigDict,
@@ -555,73 +556,125 @@ class AnalystEstimate(BaseModel):
     symbol: str = Field(description="Company symbol")
     date: datetime | None = Field(None, description="Estimate date")
     estimated_revenue_low: float | None = Field(
-        None, alias="estimatedRevenueLow", description="Lowest estimated revenue"
+        None,
+        alias="estimatedRevenueLow",
+        validation_alias=AliasChoices("estimatedRevenueLow", "revenueLow"),
+        description="Lowest estimated revenue",
     )
     estimated_revenue_high: float | None = Field(
-        None, alias="estimatedRevenueHigh", description="Highest estimated revenue"
+        None,
+        alias="estimatedRevenueHigh",
+        validation_alias=AliasChoices("estimatedRevenueHigh", "revenueHigh"),
+        description="Highest estimated revenue",
     )
     estimated_revenue_avg: float | None = Field(
-        None, alias="estimatedRevenueAvg", description="Average estimated revenue"
+        None,
+        alias="estimatedRevenueAvg",
+        validation_alias=AliasChoices("estimatedRevenueAvg", "revenueAvg"),
+        description="Average estimated revenue",
     )
     estimated_ebitda_low: float | None = Field(
-        None, alias="estimatedEbitdaLow", description="Lowest estimated EBITDA"
+        None,
+        alias="estimatedEbitdaLow",
+        validation_alias=AliasChoices("estimatedEbitdaLow", "ebitdaLow"),
+        description="Lowest estimated EBITDA",
     )
     estimated_ebitda_high: float | None = Field(
-        None, alias="estimatedEbitdaHigh", description="Highest estimated EBITDA"
+        None,
+        alias="estimatedEbitdaHigh",
+        validation_alias=AliasChoices("estimatedEbitdaHigh", "ebitdaHigh"),
+        description="Highest estimated EBITDA",
     )
     estimated_ebitda_avg: float | None = Field(
-        None, alias="estimatedEbitdaAvg", description="Average estimated EBITDA"
+        None,
+        alias="estimatedEbitdaAvg",
+        validation_alias=AliasChoices("estimatedEbitdaAvg", "ebitdaAvg"),
+        description="Average estimated EBITDA",
     )
     estimated_ebit_low: float | None = Field(
-        None, alias="estimatedEbitLow", description="Lowest estimated EBIT"
+        None,
+        alias="estimatedEbitLow",
+        validation_alias=AliasChoices("estimatedEbitLow", "ebitLow"),
+        description="Lowest estimated EBIT",
     )
     estimated_ebit_high: float | None = Field(
-        None, alias="estimatedEbitHigh", description="Highest estimated EBIT"
+        None,
+        alias="estimatedEbitHigh",
+        validation_alias=AliasChoices("estimatedEbitHigh", "ebitHigh"),
+        description="Highest estimated EBIT",
     )
     estimated_ebit_avg: float | None = Field(
-        None, alias="estimatedEbitAvg", description="Average estimated EBIT"
+        None,
+        alias="estimatedEbitAvg",
+        validation_alias=AliasChoices("estimatedEbitAvg", "ebitAvg"),
+        description="Average estimated EBIT",
     )
     estimated_net_income_low: float | None = Field(
-        None, alias="estimatedNetIncomeLow", description="Lowest estimated net income"
+        None,
+        alias="estimatedNetIncomeLow",
+        validation_alias=AliasChoices("estimatedNetIncomeLow", "netIncomeLow"),
+        description="Lowest estimated net income",
     )
     estimated_net_income_high: float | None = Field(
-        None, alias="estimatedNetIncomeHigh", description="Highest estimated net income"
+        None,
+        alias="estimatedNetIncomeHigh",
+        validation_alias=AliasChoices("estimatedNetIncomeHigh", "netIncomeHigh"),
+        description="Highest estimated net income",
     )
     estimated_net_income_avg: float | None = Field(
-        None, alias="estimatedNetIncomeAvg", description="Average estimated net income"
+        None,
+        alias="estimatedNetIncomeAvg",
+        validation_alias=AliasChoices("estimatedNetIncomeAvg", "netIncomeAvg"),
+        description="Average estimated net income",
     )
     estimated_sga_expense_low: float | None = Field(
         None,
         alias="estimatedSgaExpenseLow",
+        validation_alias=AliasChoices("estimatedSgaExpenseLow", "sgaExpenseLow"),
         description="Lowest estimated SG&A expense",
     )
     estimated_sga_expense_high: float | None = Field(
         None,
         alias="estimatedSgaExpenseHigh",
+        validation_alias=AliasChoices("estimatedSgaExpenseHigh", "sgaExpenseHigh"),
         description="Highest estimated SG&A expense",
     )
     estimated_sga_expense_avg: float | None = Field(
         None,
         alias="estimatedSgaExpenseAvg",
+        validation_alias=AliasChoices("estimatedSgaExpenseAvg", "sgaExpenseAvg"),
         description="Average estimated SG&A expense",
     )
     estimated_eps_low: float | None = Field(
-        None, alias="estimatedEpsLow", description="Lowest estimated EPS"
+        None,
+        alias="estimatedEpsLow",
+        validation_alias=AliasChoices("estimatedEpsLow", "epsLow"),
+        description="Lowest estimated EPS",
     )
     estimated_eps_high: float | None = Field(
-        None, alias="estimatedEpsHigh", description="Highest estimated EPS"
+        None,
+        alias="estimatedEpsHigh",
+        validation_alias=AliasChoices("estimatedEpsHigh", "epsHigh"),
+        description="Highest estimated EPS",
     )
     estimated_eps_avg: float | None = Field(
-        None, alias="estimatedEpsAvg", description="Average estimated EPS"
+        None,
+        alias="estimatedEpsAvg",
+        validation_alias=AliasChoices("estimatedEpsAvg", "epsAvg"),
+        description="Average estimated EPS",
     )
     number_analyst_estimated_revenue: int | None = Field(
         None,
         alias="numberAnalystEstimatedRevenue",
+        validation_alias=AliasChoices(
+            "numberAnalystEstimatedRevenue", "numAnalystsRevenue"
+        ),
         description="Number of analysts estimating revenue",
     )
     number_analysts_estimated_eps: int | None = Field(
         None,
         alias="numberAnalystsEstimatedEps",
+        validation_alias=AliasChoices("numberAnalystsEstimatedEps", "numAnalystsEps"),
         description="Number of analysts estimating EPS",
     )
 

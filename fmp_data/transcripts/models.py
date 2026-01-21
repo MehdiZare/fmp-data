@@ -56,3 +56,9 @@ class TranscriptSymbol(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol")
+    company_name: str | None = Field(
+        None, alias="companyName", description="Company name"
+    )
+    no_of_transcripts: int | None = Field(
+        None, alias="noOfTranscripts", description="Number of transcripts"
+    )

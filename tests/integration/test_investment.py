@@ -8,8 +8,11 @@ from fmp_data.investment.models import (
     ETFHolding,
     ETFInfo,
     ETFSectorWeighting,
-    MutualFundHolding,
+    FundDisclosureHolderLatest,
+    FundDisclosureHolding,
+    FundDisclosureSearchResult,
     MutualFundHolder,
+    MutualFundHolding,
     PortfolioDate,
 )
 
@@ -58,7 +61,10 @@ class TestInvestmentEndpoints(BaseTestCase):
             assert "S&P 500" in info.name
             assert isinstance(info.expense_ratio, float)
             assert info.expense_ratio > 0
-            assert info.assets_under_management is not None and info.assets_under_management > 0
+            assert (
+                info.assets_under_management is not None
+                and info.assets_under_management > 0
+            )
             assert info.avg_volume is not None and info.avg_volume > 0
             assert info.inception_date is not None
             assert info.etf_company
@@ -197,6 +203,59 @@ class TestInvestmentEndpoints(BaseTestCase):
             assert isinstance(results, list)
             if results:
                 assert isinstance(results[0], MutualFundHolding)
+
+    def test_get_fund_disclosure_holders_latest(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting latest fund disclosure holders"""
+        with vcr_instance.use_cassette(
+            "investment/fund_disclosure_holders_latest.yaml"
+        ):
+            holders = self._handle_rate_limit(
+                fmp_client.investment.get_fund_disclosure_holders_latest, "AAPL"
+            )
+
+            assert isinstance(holders, list)
+            assert len(holders) >= 0
+
+            if holders:
+                for holder in holders:
+                    assert isinstance(holder, FundDisclosureHolderLatest)
+                    assert holder.holder
+                    assert holder.shares >= 0
+                    assert 0 <= holder.weight_percent <= 100
+
+    def test_get_fund_disclosure(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting fund disclosure holdings"""
+        with vcr_instance.use_cassette("investment/fund_disclosure.yaml"):
+            holdings = self._handle_rate_limit(
+                fmp_client.investment.get_fund_disclosure, "VWO", 2023, 4
+            )
+
+            assert isinstance(holdings, list)
+            assert len(holdings) >= 0
+
+            if holdings:
+                for holding in holdings:
+                    assert isinstance(holding, FundDisclosureHolding)
+                    assert holding.name or holding.symbol or holding.title
+
+    def test_search_fund_disclosure_holders(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test searching fund disclosure holders by name"""
+        with vcr_instance.use_cassette(
+            "investment/fund_disclosure_holders_search.yaml"
+        ):
+            results = self._handle_rate_limit(
+                fmp_client.investment.search_fund_disclosure_holders,
+                "Federated Hermes",
+            )
+
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], FundDisclosureSearchResult)
+                assert results[0].entity_name
 
     def test_error_handling_invalid_symbol(
         self, fmp_client: FMPDataClient, vcr_instance

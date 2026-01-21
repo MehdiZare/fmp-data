@@ -833,17 +833,33 @@ ANALYST_ESTIMATES: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol",
-        )
-    ],
-    optional_params=[
+        ),
         EndpointParam(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=False,
+            required=True,
             description="Estimate period (annual or quarter)",
-            default="annual",
-        )
+            valid_values=["annual", "quarter"],
+        ),
+    ],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Page number for pagination",
+            default=0,
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results per page",
+            default=10,
+        ),
     ],
     response_model=AnalystEstimate,
 )

@@ -491,6 +491,14 @@ INSTITUTIONAL_OWNERSHIP_LATEST: Endpoint = Endpoint(
             description="Page number",
             default=0,
         ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results",
+            default=100,
+        ),
     ],
     response_model=InstitutionalOwnershipLatest,
 )
@@ -618,6 +626,14 @@ HOLDER_PERFORMANCE_SUMMARY: Endpoint = Endpoint(
     ],
     optional_params=[
         EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Page number",
+            default=0,
+        ),
+        EndpointParam(
             name="year",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
@@ -630,7 +646,7 @@ HOLDER_PERFORMANCE_SUMMARY: Endpoint = Endpoint(
             param_type=ParamType.INTEGER,
             required=False,
             description="Filing quarter (1-4)",
-        )
+        ),
     ],
     response_model=HolderPerformanceSummary,
 )
@@ -649,9 +665,7 @@ HOLDER_INDUSTRY_BREAKDOWN: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             required=True,
             description="Institution CIK",
-        )
-    ],
-    optional_params=[
+        ),
         EndpointParam(
             name="year",
             location=ParamLocation.QUERY,
@@ -665,8 +679,9 @@ HOLDER_INDUSTRY_BREAKDOWN: Endpoint = Endpoint(
             param_type=ParamType.INTEGER,
             required=True,
             description="Filing quarter (1-4)",
-        )
+        ),
     ],
+    optional_params=[],
     response_model=HolderIndustryBreakdown,
 )
 
@@ -684,9 +699,7 @@ SYMBOL_POSITIONS_SUMMARY: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol",
-        )
-    ],
-    optional_params=[
+        ),
         EndpointParam(
             name="year",
             location=ParamLocation.QUERY,
@@ -700,8 +713,9 @@ SYMBOL_POSITIONS_SUMMARY: Endpoint = Endpoint(
             param_type=ParamType.INTEGER,
             required=True,
             description="Filing quarter (1-4)",
-        )
+        ),
     ],
+    optional_params=[],
     response_model=SymbolPositionsSummary,
 )
 
@@ -726,7 +740,7 @@ INDUSTRY_PERFORMANCE_SUMMARY: Endpoint = Endpoint(
             param_type=ParamType.INTEGER,
             required=True,
             description="Filing quarter (1-4)",
-        )
+        ),
     ],
     optional_params=[],
     response_model=IndustryPerformanceSummary,

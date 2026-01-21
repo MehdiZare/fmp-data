@@ -19,6 +19,12 @@ from fmp_data.market.endpoints import (
     ETF_LIST,
     FINANCIAL_STATEMENT_SYMBOL_LIST,
     GAINERS,
+    HISTORICAL_INDUSTRY_PE,
+    HISTORICAL_INDUSTRY_PERFORMANCE,
+    HISTORICAL_SECTOR_PE,
+    HISTORICAL_SECTOR_PERFORMANCE,
+    INDUSTRY_PE_SNAPSHOT,
+    INDUSTRY_PERFORMANCE_SNAPSHOT,
     IPO_DISCLOSURE,
     IPO_PROSPECTUS,
     ISIN_SEARCH,
@@ -29,6 +35,7 @@ from fmp_data.market.endpoints import (
     SEARCH_COMPANY,
     SEARCH_EXCHANGE_VARIANTS,
     SEARCH_SYMBOL,
+    SECTOR_PE_SNAPSHOT,
     SECTOR_PERFORMANCE,
     STOCK_LIST,
     TRADABLE_SEARCH,
@@ -40,6 +47,8 @@ from fmp_data.market.models import (
     CompanySearchResult,
     CUSIPResult,
     ExchangeSymbol,
+    IndustryPerformance,
+    IndustryPESnapshot,
     IPODisclosure,
     IPOProspectus,
     ISINResult,
@@ -47,6 +56,7 @@ from fmp_data.market.models import (
     MarketMover,
     PrePostMarketQuote,
     SectorPerformance,
+    SectorPESnapshot,
 )
 from fmp_data.models import CompanySymbol, ShareFloat
 
@@ -206,15 +216,138 @@ class AsyncMarketClient(AsyncEndpointGroup):
         return await self.client.request_async(MOST_ACTIVE)
 
     async def get_sector_performance(
-        self, sector: str | None = None, date: dt_date | None = None
+        self,
+        sector: str | None = None,
+        date: dt_date | None = None,
+        exchange: str | None = None,
     ) -> list[SectorPerformance]:
         """Get sector performance data"""
         params = {}
         if sector is not None:
             params["sector"] = sector
+        if exchange is not None:
+            params["exchange"] = exchange
         snapshot_date = date or dt_date.today()
         params["date"] = snapshot_date.strftime("%Y-%m-%d")
         return await self.client.request_async(SECTOR_PERFORMANCE, **params)
+
+    async def get_industry_performance_snapshot(
+        self,
+        industry: str | None = None,
+        date: dt_date | None = None,
+        exchange: str | None = None,
+    ) -> list[IndustryPerformance]:
+        """Get industry performance snapshot data"""
+        params = {}
+        if industry is not None:
+            params["industry"] = industry
+        if exchange is not None:
+            params["exchange"] = exchange
+        snapshot_date = date or dt_date.today()
+        params["date"] = snapshot_date.strftime("%Y-%m-%d")
+        return await self.client.request_async(INDUSTRY_PERFORMANCE_SNAPSHOT, **params)
+
+    async def get_historical_sector_performance(
+        self,
+        sector: str,
+        from_date: dt_date | None = None,
+        to_date: dt_date | None = None,
+        exchange: str | None = None,
+    ) -> list[SectorPerformance]:
+        """Get historical sector performance data"""
+        params: dict[str, str] = {"sector": sector}
+        if from_date:
+            params["from"] = from_date.strftime("%Y-%m-%d")
+        if to_date:
+            params["to"] = to_date.strftime("%Y-%m-%d")
+        if exchange:
+            params["exchange"] = exchange
+        return await self.client.request_async(HISTORICAL_SECTOR_PERFORMANCE, **params)
+
+    async def get_historical_industry_performance(
+        self,
+        industry: str,
+        from_date: dt_date | None = None,
+        to_date: dt_date | None = None,
+        exchange: str | None = None,
+    ) -> list[IndustryPerformance]:
+        """Get historical industry performance data"""
+        params: dict[str, str] = {"industry": industry}
+        if from_date:
+            params["from"] = from_date.strftime("%Y-%m-%d")
+        if to_date:
+            params["to"] = to_date.strftime("%Y-%m-%d")
+        if exchange:
+            params["exchange"] = exchange
+        return await self.client.request_async(
+            HISTORICAL_INDUSTRY_PERFORMANCE, **params
+        )
+
+    async def get_sector_pe_snapshot(
+        self,
+        date: dt_date | None = None,
+        sector: str | None = None,
+        exchange: str | None = None,
+    ) -> list[SectorPESnapshot]:
+        """Get sector price-to-earnings snapshot data"""
+        params = {}
+        if sector is not None:
+            params["sector"] = sector
+        if exchange is not None:
+            params["exchange"] = exchange
+        snapshot_date = date or dt_date.today()
+        params["date"] = snapshot_date.strftime("%Y-%m-%d")
+        return await self.client.request_async(SECTOR_PE_SNAPSHOT, **params)
+
+    async def get_industry_pe_snapshot(
+        self,
+        date: dt_date | None = None,
+        industry: str | None = None,
+        exchange: str | None = None,
+    ) -> list[IndustryPESnapshot]:
+        """Get industry price-to-earnings snapshot data"""
+        params = {}
+        if industry is not None:
+            params["industry"] = industry
+        if exchange is not None:
+            params["exchange"] = exchange
+        snapshot_date = date or dt_date.today()
+        params["date"] = snapshot_date.strftime("%Y-%m-%d")
+        return await self.client.request_async(INDUSTRY_PE_SNAPSHOT, **params)
+
+    async def get_historical_sector_pe(
+        self,
+        sector: str,
+        from_date: dt_date | None = None,
+        to_date: dt_date | None = None,
+        exchange: str | None = None,
+    ) -> list[SectorPESnapshot]:
+        """Get historical sector price-to-earnings data"""
+        params: dict[str, str] = {"sector": sector}
+        if from_date:
+            params["from"] = from_date.strftime("%Y-%m-%d")
+        if to_date:
+            params["to"] = to_date.strftime("%Y-%m-%d")
+        if exchange:
+            params["exchange"] = exchange
+        return await self.client.request_async(HISTORICAL_SECTOR_PE, **params)
+
+    async def get_historical_industry_pe(
+        self,
+        industry: str,
+        from_date: dt_date | None = None,
+        to_date: dt_date | None = None,
+        exchange: str | None = None,
+    ) -> list[IndustryPESnapshot]:
+        """Get historical industry price-to-earnings data"""
+        params: dict[str, str] = {"industry": industry}
+        if from_date:
+            params["from"] = from_date.strftime("%Y-%m-%d")
+        if to_date:
+            params["to"] = to_date.strftime("%Y-%m-%d")
+        if exchange:
+            params["exchange"] = exchange
+        return await self.client.request_async(HISTORICAL_INDUSTRY_PE, **params)
 
     async def get_pre_post_market(self) -> list[PrePostMarketQuote]:
         """Get pre/post market data"""

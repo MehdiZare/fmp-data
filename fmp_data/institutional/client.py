@@ -213,10 +213,10 @@ class InstitutionalClient(EndpointGroup):
 
     # Form 13F Methods
     def get_institutional_ownership_latest(
-        self, cik: str | None = None, page: int = 0
+        self, cik: str | None = None, page: int = 0, limit: int = 100
     ) -> list[InstitutionalOwnershipLatest]:
         """Get latest institutional ownership filings"""
-        params: dict[str, str | int] = {"page": page}
+        params: dict[str, str | int] = {"page": page, "limit": limit}
         if cik:
             params["cik"] = cik
         return self.client.request(INSTITUTIONAL_OWNERSHIP_LATEST, **params)
@@ -251,10 +251,10 @@ class InstitutionalClient(EndpointGroup):
         )
 
     def get_holder_performance_summary(
-        self, cik: str, report_date: date | None = None
+        self, cik: str, report_date: date | None = None, page: int = 0
     ) -> list[HolderPerformanceSummary]:
         """Get holder performance summary for a report period end date"""
-        params: dict[str, str] = {"cik": cik}
+        params: dict[str, str | int] = {"cik": cik, "page": page}
         if report_date:
             year, quarter = self._date_to_year_quarter(report_date)
             params["year"] = str(year)

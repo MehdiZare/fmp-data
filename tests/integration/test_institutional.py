@@ -442,6 +442,7 @@ class TestInstitutionalAdditionalEndpoints(BaseTestCase):
                 fmp_client.institutional.get_institutional_ownership_latest,
                 cik=self.CIK,
                 page=0,
+                limit=100,
             )
             assert isinstance(results, list)
             if results:
@@ -499,6 +500,7 @@ class TestInstitutionalAdditionalEndpoints(BaseTestCase):
                 fmp_client.institutional.get_holder_performance_summary,
                 self.CIK,
                 self.REPORT_DATE,
+                page=0,
             )
             assert isinstance(results, list)
             if results:

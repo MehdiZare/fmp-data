@@ -425,7 +425,11 @@ class TestCompanyEndpoints(BaseTestCase):
         """Test getting analyst estimates"""
         with vcr_instance.use_cassette("intelligence/analyst_estimates.yaml"):
             estimates = self._handle_rate_limit(
-                fmp_client.company.get_analyst_estimates, "AAPL"
+                fmp_client.company.get_analyst_estimates,
+                "AAPL",
+                period="annual",
+                page=0,
+                limit=10,
             )
 
             assert isinstance(estimates, list)

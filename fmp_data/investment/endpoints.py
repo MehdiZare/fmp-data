@@ -7,6 +7,9 @@ from fmp_data.investment.models import (
     ETFInfo,
     ETFPortfolioDate,
     ETFSectorWeighting,
+    FundDisclosureHolderLatest,
+    FundDisclosureHolding,
+    FundDisclosureSearchResult,
     MutualFundHolder,
     MutualFundHolding,
     PortfolioDate,
@@ -33,15 +36,16 @@ ETF_HOLDINGS: Endpoint = Endpoint(
             required=True,
             description="Stock symbol (ticker)",
         ),
+    ],
+    optional_params=[
         EndpointParam(
             name="date",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Holdings date",
+            param_type=ParamType.DATE,
+            required=False,
+            description="Holdings date (YYYY-MM-DD)",
         ),
     ],
-    optional_params=[],
     response_model=ETFHolding,
 )
 
@@ -168,7 +172,15 @@ MUTUAL_FUND_DATES: Endpoint = Endpoint(
             description="Fund or ETF symbol",
         ),
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="cik",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Fund CIK",
+        ),
+    ],
     response_model=PortfolioDate,
 )
 
@@ -231,4 +243,80 @@ MUTUAL_FUND_HOLDER: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=MutualFundHolder,
+)
+
+FUNDS_DISCLOSURE_HOLDERS_LATEST: Endpoint = Endpoint(
+    name="funds_disclosure_holders_latest",
+    path="funds/disclosure-holders-latest",
+    version=APIVersion.STABLE,
+    description="Get latest mutual fund/ETF disclosure holders",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Fund or ETF symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=FundDisclosureHolderLatest,
+)
+
+FUNDS_DISCLOSURE: Endpoint = Endpoint(
+    name="funds_disclosure",
+    path="funds/disclosure",
+    version=APIVersion.STABLE,
+    description="Get mutual fund/ETF disclosure holdings",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Fund or ETF symbol",
+        ),
+        EndpointParam(
+            name="year",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Disclosure year",
+        ),
+        EndpointParam(
+            name="quarter",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Disclosure quarter (1-4)",
+        ),
+    ],
+    optional_params=[
+        EndpointParam(
+            name="cik",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Fund CIK",
+        ),
+    ],
+    response_model=FundDisclosureHolding,
+)
+
+FUNDS_DISCLOSURE_HOLDERS_SEARCH: Endpoint = Endpoint(
+    name="funds_disclosure_holders_search",
+    path="funds/disclosure-holders-search",
+    version=APIVersion.STABLE,
+    description="Search mutual fund/ETF disclosure holders by name",
+    mandatory_params=[
+        EndpointParam(
+            name="name",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Fund or ETF name",
+        )
+    ],
+    optional_params=[],
+    response_model=FundDisclosureSearchResult,
 )
