@@ -218,6 +218,86 @@ def test_request_with_retry(base_client, mock_endpoint, mock_response):
         assert result.test == "data"
 
 
+def test_parse_json_response_invalid_type():
+    """Test parsing raises for unexpected JSON types."""
+    response = Mock()
+    response.json.return_value = "oops"
+
+    with pytest.raises(FMPError, match="Unexpected response type"):
+        BaseClient._parse_json_response(response)
+
+
+def test_get_error_details_json_decode_error():
+    """Test error details fallback when JSON decode fails."""
+    response = Mock()
+    response.json.side_effect = json.JSONDecodeError("bad", "doc", 0)
+    response.content = b"not json"
+
+    details = BaseClient._get_error_details(response)
+
+    assert details == {"raw_content": "not json"}
+
+
+def test_handle_http_status_error_404_empty_payloads(base_client):
+    """Test 404 errors return empty payloads without raising."""
+    request = httpx.Request("GET", "https://example.com")
+    list_response = httpx.Response(404, json=[])
+    list_error = httpx.HTTPStatusError(
+        "Not found", request=request, response=list_response
+    )
+    assert base_client._handle_http_status_error(list_error) == []
+
+    dict_response = httpx.Response(404, json={})
+    dict_error = httpx.HTTPStatusError(
+        "Not found", request=request, response=dict_response
+    )
+    assert base_client._handle_http_status_error(dict_error) == {}
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"Error Message": "boom"},
+        {"message": "boom"},
+        {"error": "boom"},
+    ],
+)
+def test_check_error_response_raises(payload):
+    """Test error payloads raise FMPError."""
+    with pytest.raises(FMPError):
+        BaseClient._check_error_response(payload)
+
+
+def test_validate_single_item_primitives_and_model():
+    """Test validation handles primitive and model responses."""
+
+    class SingleField(BaseModel):
+        value: int
+
+    endpoint = Mock()
+    endpoint.response_model = int
+    assert BaseClient._validate_single_item(endpoint, "5") == 5
+
+    endpoint.response_model = dict
+    assert BaseClient._validate_single_item(endpoint, {"key": "value"}) == {
+        "key": "value"
+    }
+
+    endpoint.response_model = SingleField
+    result = BaseClient._validate_single_item(endpoint, 7)
+    assert isinstance(result, SingleField)
+    assert result.value == 7
+
+
+def test_process_response_raises_on_error_message():
+    """Test process_response raises on error payloads."""
+    endpoint = Mock()
+    endpoint.response_model = dict
+
+    with pytest.raises(FMPError):
+        BaseClient._process_response(endpoint, {"message": "boom"})
+
+
 def test_client_cleanup(base_client):
     """Test client cleanup"""
     # Store reference to client

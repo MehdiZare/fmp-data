@@ -1,6 +1,6 @@
 # tests/unit/test_client.py
 import os
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
 from pydantic import ValidationError as PydanticValidationError
@@ -235,6 +235,29 @@ class TestFMPDataClientContextManager:
             client.__enter__()
 
         # Cleanup
+        client._initialized = True
+        client.close()
+
+    @pytest.mark.asyncio
+    async def test_async_context_manager_usage(self):
+        """Test async context manager on sync client."""
+        client = FMPDataClient(api_key="test_key")
+
+        async with client as async_client:
+            assert async_client is client
+            assert not client.client.is_closed
+
+        assert client.client.is_closed
+
+    @pytest.mark.asyncio
+    async def test_async_context_manager_not_initialized_error(self):
+        """Test async context manager when client not properly initialized."""
+        client = FMPDataClient(api_key="test_key")
+        client._initialized = False
+
+        with pytest.raises(RuntimeError, match="Client not properly initialized"):
+            await client.__aenter__()
+
         client._initialized = True
         client.close()
 
@@ -487,6 +510,34 @@ class TestFMPDataClientCleanup:
 
         # Should not raise any exceptions
         client.close()
+
+    @pytest.mark.asyncio
+    async def test_aclose_closes_async_client(self):
+        """Test aclose handles async clients and sync cleanup."""
+        client = FMPDataClient(api_key="test_key")
+        async_client = AsyncMock()
+        async_client.is_closed = False
+        client._async_client = async_client
+        client.client = Mock()
+        client._logger = Mock()
+
+        await client.aclose()
+
+        async_client.aclose.assert_awaited_once()
+        client.client.close.assert_called_once()
+        client._logger.info.assert_called_once_with("FMP Data client closed")
+
+    @pytest.mark.asyncio
+    async def test_async_exit_logs_error(self):
+        """Test async exit logs errors."""
+        client = FMPDataClient(api_key="test_key")
+        client.client = Mock()
+        client._logger = Mock()
+        client.aclose = AsyncMock()
+
+        await client.__aexit__(ValueError, ValueError("boom"), None)
+
+        client._logger.error.assert_called_once()
 
 
 class TestFMPDataClientEdgeCases:

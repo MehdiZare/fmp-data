@@ -222,6 +222,48 @@ class TestBatchClient:
         assert results[0].symbol == "APPX"
         assert results[0].website is None
 
+    def test_parse_csv_rows_empty(self):
+        """Empty CSV input returns no rows."""
+        assert BatchClient._parse_csv_rows(b"") == []
+
+    def test_parse_csv_rows_skips_blank_rows(self):
+        """Blank CSV rows should be skipped."""
+        csv_text = "symbol,name\nAAPL, Apple Inc. \n, \n"
+        rows = BatchClient._parse_csv_rows(csv_text.encode("utf-8"))
+
+        assert rows == [{"symbol": "AAPL", "name": "Apple Inc."}]
+
+    def test_get_url_fields_detects_urls(self):
+        """URL fields should be detected for URL-typed annotations."""
+
+        from pydantic import AnyHttpUrl, BaseModel
+
+        class URLRow(BaseModel):
+            website: AnyHttpUrl | None = None
+            images: list[AnyHttpUrl] | None = None
+            name: str | None = None
+
+        assert BatchClient._get_url_fields(URLRow) == {"website", "images"}
+
+    def test_parse_csv_models_skips_invalid_rows_without_url_fields(self, caplog):
+        """Invalid rows without URL fields should be skipped."""
+        from pydantic import BaseModel
+
+        class SimpleRow(BaseModel):
+            symbol: str
+            value: int
+
+        csv_text = "symbol,value\nAAPL,not-a-number\n"
+
+        with caplog.at_level("WARNING"):
+            results = BatchClient._parse_csv_models(
+                csv_text.encode("utf-8"),
+                SimpleRow,
+            )
+
+        assert results == []
+        assert "Skipping invalid SimpleRow row" in caplog.text
+
     @patch("httpx.Client.request")
     def test_get_quotes(
         self, mock_request, fmp_client, mock_response, batch_quote_data
@@ -391,7 +433,8 @@ class TestBatchClient:
     def test_get_balance_sheet_growth_bulk(self, mock_request, fmp_client):
         """Test fetching balance sheet growth bulk data"""
         csv_text = (
-            "symbol,date,fiscalYear,period,reportedCurrency,growthCashAndCashEquivalents\n"
+            "symbol,date,fiscalYear,period,reportedCurrency,"
+            "growthCashAndCashEquivalents\n"
             "000001.SZ,2025-03-31,2025,Q1,CNY,0.09574482\n"
         )
         mock_request.return_value = self._mock_csv_response(csv_text)
