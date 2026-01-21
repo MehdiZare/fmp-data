@@ -1,6 +1,7 @@
 # tests/unit/test_async_clients.py
 """Tests for async endpoint group clients."""
 
+from datetime import date as dt_date
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -18,7 +19,7 @@ from fmp_data.company.models import (
 from fmp_data.economics.models import TreasuryRate
 from fmp_data.fundamental.models import BalanceSheet, IncomeStatement, OwnerEarnings
 from fmp_data.index.models import IndexConstituent
-from fmp_data.institutional.models import InsiderTrade
+from fmp_data.institutional.models import CIKMapping, InsiderTrade
 from fmp_data.intelligence.models import (
     DividendEvent,
     StockNewsArticle,
@@ -396,6 +397,271 @@ class TestAsyncMarketClient:
             limit=5,
         )
 
+    @pytest.mark.asyncio
+    async def test_search_company_with_filters(self, mock_client):
+        """Test async search_company method with optional filters."""
+        from fmp_data.market.async_client import AsyncMarketClient
+        from fmp_data.market.endpoints import SEARCH_COMPANY
+
+        mock_client.request_async.return_value = [
+            CompanySearchResult(symbol="AAPL", name="Apple Inc.")
+        ]
+
+        async_client = AsyncMarketClient(mock_client)
+        result = await async_client.search_company("Apple", limit=3, exchange="NASDAQ")
+
+        assert len(result) == 1
+        mock_client.request_async.assert_called_once_with(
+            SEARCH_COMPANY,
+            query="Apple",
+            limit=3,
+            exchange="NASDAQ",
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_market_hours_success(self, mock_client):
+        """Test get_market_hours returns the first entry."""
+        from fmp_data.market.async_client import AsyncMarketClient
+        from fmp_data.market.endpoints import MARKET_HOURS
+
+        mock_hours = MagicMock()
+        mock_client.request_async.return_value = [mock_hours]
+
+        async_client = AsyncMarketClient(mock_client)
+        result = await async_client.get_market_hours(exchange="NASDAQ")
+
+        assert result is mock_hours
+        mock_client.request_async.assert_called_once_with(
+            MARKET_HOURS, exchange="NASDAQ"
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_market_hours_empty_raises(self, mock_client):
+        """Test get_market_hours raises when API returns no data."""
+        from fmp_data.market.async_client import AsyncMarketClient
+
+        mock_client.request_async.return_value = []
+
+        async_client = AsyncMarketClient(mock_client)
+        with pytest.raises(ValueError, match="No market hours data"):
+            await async_client.get_market_hours(exchange="NYSE")
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "method_name,kwargs,endpoint_name,expected_kwargs",
+        [
+            ("get_stock_list", {}, "STOCK_LIST", {}),
+            ("get_etf_list", {}, "ETF_LIST", {}),
+            ("get_available_indexes", {}, "AVAILABLE_INDEXES", {}),
+            (
+                "search_by_cik",
+                {"query": "0000320193"},
+                "CIK_SEARCH",
+                {"query": "0000320193"},
+            ),
+            (
+                "search_by_cusip",
+                {"query": "037833100"},
+                "CUSIP_SEARCH",
+                {"query": "037833100"},
+            ),
+            (
+                "search_by_isin",
+                {"query": "US0378331005"},
+                "ISIN_SEARCH",
+                {"query": "US0378331005"},
+            ),
+            (
+                "get_all_exchange_market_hours",
+                {},
+                "ALL_EXCHANGE_MARKET_HOURS",
+                {},
+            ),
+            (
+                "get_holidays_by_exchange",
+                {"exchange": "NASDAQ"},
+                "HOLIDAYS_BY_EXCHANGE",
+                {"exchange": "NASDAQ"},
+            ),
+            ("get_losers", {}, "LOSERS", {}),
+            ("get_most_active", {}, "MOST_ACTIVE", {}),
+            ("get_pre_post_market", {}, "PRE_POST_MARKET", {}),
+            ("get_all_shares_float", {}, "ALL_SHARES_FLOAT", {}),
+            ("get_available_exchanges", {}, "AVAILABLE_EXCHANGES", {}),
+            ("get_available_sectors", {}, "AVAILABLE_SECTORS", {}),
+            ("get_available_industries", {}, "AVAILABLE_INDUSTRIES", {}),
+            ("get_available_countries", {}, "AVAILABLE_COUNTRIES", {}),
+        ],
+    )
+    async def test_market_simple_endpoints(
+        self, mock_client, method_name, kwargs, endpoint_name, expected_kwargs
+    ):
+        """Test async market endpoints that only forward params."""
+        from fmp_data.market import endpoints as market_endpoints
+        from fmp_data.market.async_client import AsyncMarketClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncMarketClient(mock_client)
+
+        method = getattr(async_client, method_name)
+        result = await method(**kwargs)
+
+        assert result == []
+        endpoint = getattr(market_endpoints, endpoint_name)
+        if expected_kwargs:
+            mock_client.request_async.assert_called_once_with(
+                endpoint, **expected_kwargs
+            )
+        else:
+            mock_client.request_async.assert_called_once_with(endpoint)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "method_name,kwargs,endpoint_name,expected_kwargs",
+        [
+            (
+                "get_sector_performance",
+                {
+                    "sector": "Technology",
+                    "exchange": "NYSE",
+                    "date": dt_date(2024, 1, 2),
+                },
+                "SECTOR_PERFORMANCE",
+                {"sector": "Technology", "exchange": "NYSE", "date": "2024-01-02"},
+            ),
+            (
+                "get_industry_performance_snapshot",
+                {
+                    "industry": "Software",
+                    "exchange": "NASDAQ",
+                    "date": dt_date(2024, 2, 3),
+                },
+                "INDUSTRY_PERFORMANCE_SNAPSHOT",
+                {"industry": "Software", "exchange": "NASDAQ", "date": "2024-02-03"},
+            ),
+            (
+                "get_historical_sector_performance",
+                {
+                    "sector": "Technology",
+                    "from_date": dt_date(2024, 1, 1),
+                    "to_date": dt_date(2024, 1, 31),
+                    "exchange": "NYSE",
+                },
+                "HISTORICAL_SECTOR_PERFORMANCE",
+                {
+                    "sector": "Technology",
+                    "from": "2024-01-01",
+                    "to": "2024-01-31",
+                    "exchange": "NYSE",
+                },
+            ),
+            (
+                "get_historical_industry_performance",
+                {
+                    "industry": "Software",
+                    "from_date": dt_date(2024, 1, 1),
+                    "to_date": dt_date(2024, 1, 31),
+                    "exchange": "NASDAQ",
+                },
+                "HISTORICAL_INDUSTRY_PERFORMANCE",
+                {
+                    "industry": "Software",
+                    "from": "2024-01-01",
+                    "to": "2024-01-31",
+                    "exchange": "NASDAQ",
+                },
+            ),
+            (
+                "get_sector_pe_snapshot",
+                {
+                    "sector": "Energy",
+                    "exchange": "NYSE",
+                    "date": dt_date(2024, 3, 1),
+                },
+                "SECTOR_PE_SNAPSHOT",
+                {"sector": "Energy", "exchange": "NYSE", "date": "2024-03-01"},
+            ),
+            (
+                "get_industry_pe_snapshot",
+                {
+                    "industry": "Banks",
+                    "exchange": "NYSE",
+                    "date": dt_date(2024, 3, 1),
+                },
+                "INDUSTRY_PE_SNAPSHOT",
+                {"industry": "Banks", "exchange": "NYSE", "date": "2024-03-01"},
+            ),
+            (
+                "get_historical_sector_pe",
+                {
+                    "sector": "Energy",
+                    "from_date": dt_date(2024, 1, 1),
+                    "to_date": dt_date(2024, 1, 31),
+                    "exchange": "NYSE",
+                },
+                "HISTORICAL_SECTOR_PE",
+                {
+                    "sector": "Energy",
+                    "from": "2024-01-01",
+                    "to": "2024-01-31",
+                    "exchange": "NYSE",
+                },
+            ),
+            (
+                "get_historical_industry_pe",
+                {
+                    "industry": "Banks",
+                    "from_date": dt_date(2024, 1, 1),
+                    "to_date": dt_date(2024, 1, 31),
+                    "exchange": "NYSE",
+                },
+                "HISTORICAL_INDUSTRY_PE",
+                {
+                    "industry": "Banks",
+                    "from": "2024-01-01",
+                    "to": "2024-01-31",
+                    "exchange": "NYSE",
+                },
+            ),
+            (
+                "get_ipo_disclosure",
+                {
+                    "from_date": dt_date(2024, 1, 1),
+                    "to_date": dt_date(2024, 1, 31),
+                    "limit": 50,
+                },
+                "IPO_DISCLOSURE",
+                {"from": "2024-01-01", "to": "2024-01-31", "limit": 50},
+            ),
+            (
+                "get_ipo_prospectus",
+                {
+                    "from_date": dt_date(2024, 1, 1),
+                    "to_date": dt_date(2024, 1, 31),
+                    "limit": 75,
+                },
+                "IPO_PROSPECTUS",
+                {"from": "2024-01-01", "to": "2024-01-31", "limit": 75},
+            ),
+        ],
+    )
+    async def test_market_date_param_endpoints(
+        self, mock_client, method_name, kwargs, endpoint_name, expected_kwargs
+    ):
+        """Test market endpoints that format dates or build params."""
+        from fmp_data.market import endpoints as market_endpoints
+        from fmp_data.market.async_client import AsyncMarketClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncMarketClient(mock_client)
+
+        method = getattr(async_client, method_name)
+        result = await method(**kwargs)
+
+        assert result == []
+        endpoint = getattr(market_endpoints, endpoint_name)
+        mock_client.request_async.assert_called_once_with(endpoint, **expected_kwargs)
+
 
 class TestAsyncFundamentalClient:
     """Tests for AsyncFundamentalClient."""
@@ -541,6 +807,384 @@ class TestAsyncInstitutionalClient:
         assert len(result) == 1
         assert result[0].symbol == "AAPL"
         mock_client.request_async.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_form_13f_wraps_non_list_result(self, mock_client):
+        """Test get_form_13f wraps single result in a list."""
+        from fmp_data.institutional import endpoints as institutional_endpoints
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_form = MagicMock()
+        mock_client.request_async.return_value = mock_form
+
+        async_client = AsyncInstitutionalClient(mock_client)
+        report_date = dt_date(2024, 6, 30)
+        result = await async_client.get_form_13f("0000320193", report_date)
+
+        assert result == [mock_form]
+        mock_client.request_async.assert_called_once_with(
+            institutional_endpoints.FORM_13F,
+            cik="0000320193",
+            year=2024,
+            quarter=2,
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_form_13f_handles_exception(self, mock_client):
+        """Test get_form_13f returns empty list on errors."""
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.logger = MagicMock()
+        mock_client.request_async.side_effect = RuntimeError("boom")
+
+        async_client = AsyncInstitutionalClient(mock_client)
+        report_date = dt_date(2024, 6, 30)
+        result = await async_client.get_form_13f("0000320193", report_date)
+
+        assert result == []
+        mock_client.logger.warning.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_form_13f_dates_wraps_non_list_result(self, mock_client):
+        """Test get_form_13f_dates wraps single result in a list."""
+        from fmp_data.institutional import endpoints as institutional_endpoints
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_date = MagicMock()
+        mock_client.request_async.return_value = mock_date
+
+        async_client = AsyncInstitutionalClient(mock_client)
+        result = await async_client.get_form_13f_dates("0000320193")
+
+        assert result == [mock_date]
+        mock_client.request_async.assert_called_once_with(
+            institutional_endpoints.FORM_13F_DATES, cik="0000320193"
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_institutional_holdings_uses_report_date(self, mock_client):
+        """Test get_institutional_holdings derives year/quarter from date."""
+        from fmp_data.institutional import endpoints as institutional_endpoints
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncInstitutionalClient(mock_client)
+
+        report_date = dt_date(2024, 5, 15)
+        result = await async_client.get_institutional_holdings("AAPL", report_date)
+
+        assert result == []
+        mock_client.request_async.assert_called_once_with(
+            institutional_endpoints.INSTITUTIONAL_HOLDINGS,
+            symbol="AAPL",
+            year=2024,
+            quarter=2,
+        )
+
+    @pytest.mark.asyncio
+    async def test_search_cik_by_name_filters_results(self, mock_client):
+        """Test search_cik_by_name filters by uppercased name."""
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mapping_match = CIKMapping(
+            reporting_cik="0000000001", reporting_name="Acme Corp"
+        )
+        mapping_other = CIKMapping(
+            reporting_cik="0000000002", reporting_name="Other Corp"
+        )
+        mock_client.request_async.return_value = [mapping_match, mapping_other]
+
+        async_client = AsyncInstitutionalClient(mock_client)
+        result = await async_client.search_cik_by_name("acme")
+
+        assert result == [mapping_match]
+
+    @pytest.mark.asyncio
+    async def test_search_cik_by_name_wraps_non_list(self, mock_client):
+        """Test search_cik_by_name wraps non-list results."""
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mapping = CIKMapping(reporting_cik="0000000001", reporting_name="Acme Corp")
+        mock_client.request_async.return_value = mapping
+
+        async_client = AsyncInstitutionalClient(mock_client)
+        result = await async_client.search_cik_by_name("acme")
+
+        assert result == [mapping]
+
+    @pytest.mark.asyncio
+    async def test_get_insider_trading_latest_includes_date(self, mock_client):
+        """Test get_insider_trading_latest includes trade_date."""
+        from fmp_data.institutional import endpoints as institutional_endpoints
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncInstitutionalClient(mock_client)
+
+        trade_date = dt_date(2024, 1, 15)
+        result = await async_client.get_insider_trading_latest(
+            page=1, limit=10, trade_date=trade_date
+        )
+
+        assert result == []
+        mock_client.request_async.assert_called_once_with(
+            institutional_endpoints.INSIDER_TRADING_LATEST,
+            page=1,
+            limit=10,
+            date=trade_date,
+        )
+
+    @pytest.mark.asyncio
+    async def test_search_insider_trading_builds_params(self, mock_client):
+        """Test search_insider_trading forwards optional filters."""
+        from fmp_data.institutional import endpoints as institutional_endpoints
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncInstitutionalClient(mock_client)
+
+        result = await async_client.search_insider_trading(
+            symbol="AAPL",
+            page=2,
+            limit=25,
+            reporting_cik="0000000001",
+            company_cik="0000000002",
+            transaction_type="P",
+        )
+
+        assert result == []
+        mock_client.request_async.assert_called_once_with(
+            institutional_endpoints.INSIDER_TRADING_SEARCH,
+            page=2,
+            limit=25,
+            symbol="AAPL",
+            reportingCik="0000000001",
+            companyCik="0000000002",
+            transactionType="P",
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_insider_statistics_returns_first(self, mock_client):
+        """Test get_insider_statistics returns first element."""
+        from fmp_data.institutional import endpoints as institutional_endpoints
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_stat = MagicMock()
+        mock_client.request_async.return_value = [mock_stat]
+
+        async_client = AsyncInstitutionalClient(mock_client)
+        result = await async_client.get_insider_statistics("AAPL")
+
+        assert result is mock_stat
+        mock_client.request_async.assert_called_once_with(
+            institutional_endpoints.INSIDER_STATISTICS,
+            symbol="AAPL",
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_insider_trading_statistics_enhanced_list(self, mock_client):
+        """Test get_insider_trading_statistics_enhanced returns first element."""
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_stat = MagicMock()
+        mock_client.request_async.return_value = [mock_stat]
+
+        async_client = AsyncInstitutionalClient(mock_client)
+        result = await async_client.get_insider_trading_statistics_enhanced("AAPL")
+
+        assert result is mock_stat
+
+    @pytest.mark.asyncio
+    async def test_get_institutional_ownership_latest_with_cik(self, mock_client):
+        """Test get_institutional_ownership_latest includes cik param."""
+        from fmp_data.institutional import endpoints as institutional_endpoints
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncInstitutionalClient(mock_client)
+
+        result = await async_client.get_institutional_ownership_latest(
+            cik="0000320193", page=1, limit=5
+        )
+
+        assert result == []
+        mock_client.request_async.assert_called_once_with(
+            institutional_endpoints.INSTITUTIONAL_OWNERSHIP_LATEST,
+            cik="0000320193",
+            page=1,
+            limit=5,
+        )
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "method_name,kwargs,endpoint_name,expected_kwargs",
+        [
+            (
+                "get_asset_allocation",
+                {"report_date": dt_date(2024, 6, 30)},
+                "ASSET_ALLOCATION",
+                {"date": "2024-06-30"},
+            ),
+            (
+                "get_institutional_holders",
+                {"page": 1, "limit": 10},
+                "INSTITUTIONAL_HOLDERS",
+                {"page": 1, "limit": 10},
+            ),
+            ("get_transaction_types", {}, "TRANSACTION_TYPES", {}),
+            (
+                "get_insider_roster",
+                {"symbol": "AAPL"},
+                "INSIDER_ROSTER",
+                {"symbol": "AAPL"},
+            ),
+            (
+                "get_cik_mappings",
+                {"page": 2, "limit": 500},
+                "CIK_MAPPER",
+                {"page": 2, "limit": 500},
+            ),
+            (
+                "get_beneficial_ownership",
+                {"symbol": "AAPL"},
+                "BENEFICIAL_OWNERSHIP",
+                {"symbol": "AAPL"},
+            ),
+            (
+                "get_fail_to_deliver",
+                {"symbol": "AAPL", "page": 3},
+                "FAIL_TO_DELIVER",
+                {"symbol": "AAPL", "page": 3},
+            ),
+        ],
+    )
+    async def test_institutional_simple_endpoints(
+        self, mock_client, method_name, kwargs, endpoint_name, expected_kwargs
+    ):
+        """Test institutional endpoints that forward params."""
+        from fmp_data.institutional import endpoints as institutional_endpoints
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncInstitutionalClient(mock_client)
+
+        method = getattr(async_client, method_name)
+        result = await method(**kwargs)
+
+        assert result == []
+        endpoint = getattr(institutional_endpoints, endpoint_name)
+        if expected_kwargs:
+            mock_client.request_async.assert_called_once_with(
+                endpoint, **expected_kwargs
+            )
+        else:
+            mock_client.request_async.assert_called_once_with(endpoint)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "method_name,kwargs,endpoint_name,expected_kwargs",
+        [
+            (
+                "get_institutional_ownership_extract",
+                {"cik": "0000320193", "report_date": dt_date(2024, 3, 31)},
+                "INSTITUTIONAL_OWNERSHIP_EXTRACT",
+                {"cik": "0000320193", "year": 2024, "quarter": 1},
+            ),
+            (
+                "get_institutional_ownership_analytics",
+                {
+                    "symbol": "AAPL",
+                    "report_date": dt_date(2024, 3, 31),
+                    "page": 2,
+                    "limit": 50,
+                },
+                "INSTITUTIONAL_OWNERSHIP_ANALYTICS",
+                {
+                    "symbol": "AAPL",
+                    "year": 2024,
+                    "quarter": 1,
+                    "page": 2,
+                    "limit": 50,
+                },
+            ),
+        ],
+    )
+    async def test_institutional_year_quarter_params(
+        self, mock_client, method_name, kwargs, endpoint_name, expected_kwargs
+    ):
+        """Test institutional endpoints using year/quarter integers."""
+        from fmp_data.institutional import endpoints as institutional_endpoints
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncInstitutionalClient(mock_client)
+
+        method = getattr(async_client, method_name)
+        result = await method(**kwargs)
+
+        assert result == []
+        endpoint = getattr(institutional_endpoints, endpoint_name)
+        mock_client.request_async.assert_called_once_with(endpoint, **expected_kwargs)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "method_name,kwargs,endpoint_name,expected_kwargs",
+        [
+            (
+                "get_holder_performance_summary",
+                {
+                    "cik": "0000320193",
+                    "report_date": dt_date(2024, 3, 31),
+                    "page": 1,
+                },
+                "HOLDER_PERFORMANCE_SUMMARY",
+                {
+                    "cik": "0000320193",
+                    "page": 1,
+                    "year": "2024",
+                    "quarter": "1",
+                },
+            ),
+            (
+                "get_holder_industry_breakdown",
+                {"cik": "0000320193", "report_date": dt_date(2024, 3, 31)},
+                "HOLDER_INDUSTRY_BREAKDOWN",
+                {
+                    "cik": "0000320193",
+                    "year": "2024",
+                    "quarter": "1",
+                },
+            ),
+            (
+                "get_symbol_positions_summary",
+                {"symbol": "AAPL", "report_date": dt_date(2024, 3, 31)},
+                "SYMBOL_POSITIONS_SUMMARY",
+                {"symbol": "AAPL", "year": "2024", "quarter": "1"},
+            ),
+            (
+                "get_industry_performance_summary",
+                {"report_date": dt_date(2024, 3, 31)},
+                "INDUSTRY_PERFORMANCE_SUMMARY",
+                {"year": "2024", "quarter": "1"},
+            ),
+        ],
+    )
+    async def test_institutional_string_year_quarter_params(
+        self, mock_client, method_name, kwargs, endpoint_name, expected_kwargs
+    ):
+        """Test institutional endpoints using year/quarter strings."""
+        from fmp_data.institutional import endpoints as institutional_endpoints
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncInstitutionalClient(mock_client)
+
+        method = getattr(async_client, method_name)
+        result = await method(**kwargs)
+
+        assert result == []
+        endpoint = getattr(institutional_endpoints, endpoint_name)
+        mock_client.request_async.assert_called_once_with(endpoint, **expected_kwargs)
 
 
 class TestAsyncInvestmentClient:

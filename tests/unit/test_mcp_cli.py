@@ -21,6 +21,18 @@ pytest.importorskip("mcp", reason="MCP dependencies not installed")
 class TestMCPDiscovery:
     """Test suite for MCP tool discovery functionality."""
 
+    def test_get_client_modules_includes_core(self):
+        """Ensure dynamic client discovery includes core modules."""
+        from fmp_data.mcp.discovery import _get_client_modules
+
+        modules = _get_client_modules()
+
+        assert "company" in modules
+        assert "market" in modules
+        assert "fundamental" in modules
+        assert "mcp" not in modules
+        assert "lc" not in modules
+
     @patch("fmp_data.mcp.discovery.importlib.import_module")
     def test_discover_client_tools(self, mock_import):
         """Test discovering tools for a specific client."""
@@ -279,7 +291,7 @@ class TestMCPCLI:
         # Mock available tools
         mock_list_tools.return_value = [
             {"spec": "company.profile", "client": "company"},
-            {"spec": "market.quote", "client": "market"},
+            {"spec": "market.gainers", "client": "market"},
         ]
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
@@ -289,7 +301,7 @@ class TestMCPCLI:
             # Generate manifest with specific tools
             generate_manifest(
                 temp_path,
-                tools=["company.profile", "market.quote"],
+                tools=["company.profile", "market.gainers"],
                 include_defaults=False,
             )
 
@@ -300,7 +312,7 @@ class TestMCPCLI:
             content = temp_path.read_text()
             assert "TOOLS = [" in content
             assert '"company.profile"' in content
-            assert '"market.quote"' in content
+            assert '"market.gainers"' in content
 
         finally:
             # Cleanup
@@ -312,7 +324,7 @@ class TestMCPCLI:
         from fmp_data.mcp.cli import validate_manifest
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write('TOOLS = ["company.profile", "market.quote"]')
+            f.write('TOOLS = ["company.profile", "market.gainers"]')
             temp_path = Path(f.name)
 
         try:
