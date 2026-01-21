@@ -935,7 +935,6 @@ SEARCH_EXCHANGE_VARIANTS: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             required=True,
             description="Company name or symbol to search",
-            alias="symbol",
         )
     ],
     optional_params=[],

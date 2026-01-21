@@ -713,17 +713,13 @@ class TestIntelligenceEndpoints(BaseTestCase):
             if articles:
                 assert isinstance(articles[0], StockNewsArticle)
 
-    def test_get_historical_social_sentiment(
-        self, fmp_client: FMPDataClient, _vcr_instance
-    ):
+    def test_get_historical_social_sentiment(self, fmp_client: FMPDataClient):
         """Test that historical social sentiment raises RemovedEndpointError"""
         with pytest.raises(RemovedEndpointError) as exc_info:
             fmp_client.intelligence.get_historical_social_sentiment("AAPL", page=0)
         assert "get_historical_social_sentiment" in str(exc_info.value)
 
-    def test_get_trending_social_sentiment(
-        self, fmp_client: FMPDataClient, _vcr_instance
-    ):
+    def test_get_trending_social_sentiment(self, fmp_client: FMPDataClient):
         """Test that trending social sentiment raises RemovedEndpointError"""
         with pytest.raises(RemovedEndpointError) as exc_info:
             fmp_client.intelligence.get_trending_social_sentiment(
@@ -731,9 +727,7 @@ class TestIntelligenceEndpoints(BaseTestCase):
             )
         assert "get_trending_social_sentiment" in str(exc_info.value)
 
-    def test_get_social_sentiment_changes(
-        self, fmp_client: FMPDataClient, _vcr_instance
-    ):
+    def test_get_social_sentiment_changes(self, fmp_client: FMPDataClient):
         """Test that social sentiment changes raises RemovedEndpointError"""
         with pytest.raises(RemovedEndpointError) as exc_info:
             fmp_client.intelligence.get_social_sentiment_changes(

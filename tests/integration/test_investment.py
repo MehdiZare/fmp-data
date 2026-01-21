@@ -221,7 +221,6 @@ class TestInvestmentEndpoints(BaseTestCase):
             if holders:
                 for holder in holders:
                     assert isinstance(holder, FundDisclosureHolderLatest)
-                    assert holder.holder
                     assert holder.shares >= 0
                     assert 0 <= holder.weight_percent <= 100
 

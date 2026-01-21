@@ -355,14 +355,14 @@ class TestBatchClient:
             "totalCurrentAssets,propertyPlantEquipmentNet,totalNonCurrentAssets,"
             "totalAssets,accountPayables,shortTermDebt,totalCurrentLiabilities,"
             "longTermDebt,totalNonCurrentLiabilities,totalLiabilities,commonStock,"
-            "retainedEarnings,totalStockholdersEquity,totalLiabilitiesAndTotalEquity,"
-            "totalInvestments,totalDebt,netDebt\n"
+            "retainedEarnings,totalStockholdersEquity,totalEquity,"
+            "totalLiabilitiesAndTotalEquity,totalInvestments,totalDebt,netDebt\n"
             "2025-03-31,000001.SZ,CNY,0000000000,2025-05-31,"
             "2025-03-31 07:00:00,2025,Q1,1985000,9666577000,4520000,"
             "9700830000,194000,238171027000,247871857000,3861497000,"
             "4842848000,8851455000,178923999000,232235780000,244087635000,"
-            "5550277000,-5066509000,6784622000,247871857000,237373355000,"
-            "183766847000,183764862000\n"
+            "5550277000,-5066509000,6784622000,6784622000,247871857000,"
+            "237373355000,183766847000,183764862000\n"
         )
         mock_request.return_value = self._mock_csv_response(csv_text)
         results = fmp_client.batch.get_balance_sheet_bulk(2025, "Q1")

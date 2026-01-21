@@ -58,7 +58,7 @@ INCOME_STATEMENT: Endpoint = Endpoint(
             required=False,
             description="Period (annual, quarter)",
             default="annual",
-            valid_values=["annual", "quarter"],
+            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
         ),
         EndpointParam(
             name="limit",

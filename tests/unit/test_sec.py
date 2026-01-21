@@ -17,6 +17,20 @@ from fmp_data.sec.models import (
 )
 
 
+@pytest.fixture
+def industry_classification_data():
+    """Mock industry classification data"""
+    return {
+        "symbol": "AAPL",
+        "name": "APPLE INC.",
+        "cik": "0000320193",
+        "sicCode": "3571",
+        "industryTitle": "ELECTRONIC COMPUTERS",
+        "businessAddress": "['ONE APPLE PARK WAY', 'CUPERTINO CA 95014']",
+        "phoneNumber": "(408) 996-1010",
+    }
+
+
 class TestSECModels:
     """Tests for SEC model validation"""
 

@@ -218,7 +218,7 @@ class TestCompanySearch:
         assert isinstance(results[0], CompanySearchResult)
 
         params = mock_request.call_args[1]["params"]
-        assert params["symbol"] == "Apple"
+        assert params["query"] == "Apple"
 
     @patch("httpx.Client.request")
     def test_search_by_cik(self, mock_request, fmp_client, mock_response):

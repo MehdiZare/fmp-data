@@ -332,8 +332,8 @@ class TestCommitmentOfTraders:
         assert isinstance(reports[0], CommitmentOfTradersReport)
         params = mock_request.call_args[1]["params"]
         assert params["symbol"] == "KC"
-        assert params["from"] == "2024-01-01"
-        assert params["to"] == "2024-03-01"
+        assert params["from"] == date(2024, 1, 1)
+        assert params["to"] == date(2024, 3, 1)
 
     @patch("httpx.Client.request")
     def test_get_commitment_of_traders_analysis(
@@ -351,8 +351,8 @@ class TestCommitmentOfTraders:
         assert isinstance(analysis[0], CommitmentOfTradersAnalysis)
         params = mock_request.call_args[1]["params"]
         assert params["symbol"] == "B6"
-        assert params["from"] == "2024-01-01"
-        assert params["to"] == "2024-03-01"
+        assert params["from"] == date(2024, 1, 1)
+        assert params["to"] == date(2024, 3, 1)
 
     @patch("httpx.Client.request")
     def test_get_commitment_of_traders_list(

@@ -71,9 +71,9 @@ class AsyncMarketClient(AsyncEndpointGroup):
         self, query: str, limit: int | None = None, exchange: str | None = None
     ) -> list[CompanySearchResult]:
         """Search for companies"""
-        params = {"query": query}
+        params: dict[str, str | int] = {"query": query}
         if limit is not None:
-            params["limit"] = str(limit)
+            params["limit"] = limit
         if exchange is not None:
             params["exchange"] = exchange
         return await self.client.request_async(SEARCH_COMPANY, **params)
@@ -82,9 +82,9 @@ class AsyncMarketClient(AsyncEndpointGroup):
         self, query: str, limit: int | None = None, exchange: str | None = None
     ) -> list[CompanySearchResult]:
         """Search for security symbols across all asset types"""
-        params = {"query": query}
+        params: dict[str, str | int] = {"query": query}
         if limit is not None:
-            params["limit"] = str(limit)
+            params["limit"] = limit
         if exchange is not None:
             params["exchange"] = exchange
         return await self.client.request_async(SEARCH_SYMBOL, **params)
