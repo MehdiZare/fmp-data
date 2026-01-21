@@ -14,6 +14,7 @@ from fmp_data.fundamental.models import (
     HistoricalRating,
     IncomeStatement,
     KeyMetrics,
+    LatestFinancialStatement,
     LeveredDCF,
     OwnerEarnings,
 )
@@ -44,6 +45,14 @@ class FundamentalClient(EndpointGroup):
         """Get cash flow statements"""
         return self.client.request(
             endpoints.CASH_FLOW, symbol=symbol, period=period, limit=limit
+        )
+
+    def get_latest_financial_statements(
+        self, page: int = 0, limit: int = 250
+    ) -> list[LatestFinancialStatement]:
+        """Get latest financial statement metadata across symbols"""
+        return self.client.request(
+            endpoints.LATEST_FINANCIAL_STATEMENTS, page=page, limit=limit
         )
 
     def get_key_metrics(

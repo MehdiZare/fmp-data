@@ -114,64 +114,106 @@ class BatchClient(EndpointGroup):
         """
         return self.client.request(BATCH_AFTERMARKET_QUOTE, symbols=",".join(symbols))
 
-    def get_exchange_quotes(self, exchange: str) -> list[BatchQuote]:
+    def get_exchange_quotes(
+        self, exchange: str, short: bool | None = None
+    ) -> list[BatchQuote]:
         """Get quotes for all stocks on a specific exchange
 
         Args:
             exchange: Exchange code (e.g., NYSE, NASDAQ)
+            short: Whether to return short quote data
 
         Returns:
             List of quotes for all stocks on the exchange
         """
-        return self.client.request(BATCH_EXCHANGE_QUOTE, exchange=exchange)
+        params: dict[str, object] = {"exchange": exchange}
+        if short is not None:
+            params["short"] = short
+        return self.client.request(BATCH_EXCHANGE_QUOTE, **params)
 
-    def get_mutualfund_quotes(self) -> list[BatchQuote]:
+    def get_mutualfund_quotes(self, short: bool | None = None) -> list[BatchQuote]:
         """Get batch quotes for all mutual funds
+
+        Args:
+            short: Whether to return short quote data
 
         Returns:
             List of quotes for all mutual funds
         """
-        return self.client.request(BATCH_MUTUALFUND_QUOTES)
+        params: dict[str, object] = {}
+        if short is not None:
+            params["short"] = short
+        return self.client.request(BATCH_MUTUALFUND_QUOTES, **params)
 
-    def get_etf_quotes(self) -> list[BatchQuote]:
+    def get_etf_quotes(self, short: bool | None = None) -> list[BatchQuote]:
         """Get batch quotes for all ETFs
+
+        Args:
+            short: Whether to return short quote data
 
         Returns:
             List of quotes for all ETFs
         """
-        return self.client.request(BATCH_ETF_QUOTES)
+        params: dict[str, object] = {}
+        if short is not None:
+            params["short"] = short
+        return self.client.request(BATCH_ETF_QUOTES, **params)
 
-    def get_commodity_quotes(self) -> list[BatchQuote]:
+    def get_commodity_quotes(self, short: bool | None = None) -> list[BatchQuote]:
         """Get batch quotes for all commodities
+
+        Args:
+            short: Whether to return short quote data
 
         Returns:
             List of quotes for all commodities
         """
-        return self.client.request(BATCH_COMMODITY_QUOTES)
+        params: dict[str, object] = {}
+        if short is not None:
+            params["short"] = short
+        return self.client.request(BATCH_COMMODITY_QUOTES, **params)
 
-    def get_crypto_quotes(self) -> list[BatchQuote]:
+    def get_crypto_quotes(self, short: bool | None = None) -> list[BatchQuote]:
         """Get batch quotes for all cryptocurrencies
+
+        Args:
+            short: Whether to return short quote data
 
         Returns:
             List of quotes for all cryptocurrencies
         """
-        return self.client.request(BATCH_CRYPTO_QUOTES)
+        params: dict[str, object] = {}
+        if short is not None:
+            params["short"] = short
+        return self.client.request(BATCH_CRYPTO_QUOTES, **params)
 
-    def get_forex_quotes(self) -> list[BatchQuote]:
+    def get_forex_quotes(self, short: bool | None = None) -> list[BatchQuote]:
         """Get batch quotes for all forex pairs
+
+        Args:
+            short: Whether to return short quote data
 
         Returns:
             List of quotes for all forex pairs
         """
-        return self.client.request(BATCH_FOREX_QUOTES)
+        params: dict[str, object] = {}
+        if short is not None:
+            params["short"] = short
+        return self.client.request(BATCH_FOREX_QUOTES, **params)
 
-    def get_index_quotes(self) -> list[BatchQuote]:
+    def get_index_quotes(self, short: bool | None = None) -> list[BatchQuote]:
         """Get batch quotes for all market indexes
+
+        Args:
+            short: Whether to return short quote data
 
         Returns:
             List of quotes for all market indexes
         """
-        return self.client.request(BATCH_INDEX_QUOTES)
+        params: dict[str, object] = {}
+        if short is not None:
+            params["short"] = short
+        return self.client.request(BATCH_INDEX_QUOTES, **params)
 
     def get_market_caps(self, symbols: list[str]) -> list[BatchMarketCap]:
         """Get market capitalization for multiple symbols

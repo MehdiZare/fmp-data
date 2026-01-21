@@ -2,12 +2,17 @@ import unittest
 from unittest.mock import MagicMock
 
 from fmp_data.fundamental.client import FundamentalClient
-from fmp_data.fundamental.endpoints import FINANCIAL_REPORTS_DATES, INCOME_STATEMENT
+from fmp_data.fundamental.endpoints import (
+    FINANCIAL_REPORTS_DATES,
+    INCOME_STATEMENT,
+    LATEST_FINANCIAL_STATEMENTS,
+)
 from fmp_data.fundamental.models import (
     FinancialRatios,
     FinancialReportDate,
     FinancialStatementFull,
     IncomeStatement,
+    LatestFinancialStatement,
 )
 
 
@@ -112,6 +117,13 @@ class TestFundamentalEndpoints(unittest.TestCase):
             "costofgoodsandservicessold": 210352000000,
             "grossprofit": 180683000000,
         }
+        self.sample_latest_financial_statement = {
+            "symbol": "FGFI",
+            "calendarYear": 2024,
+            "period": "Q4",
+            "date": "2024-12-31",
+            "dateAdded": "2025-03-13 17:03:59",
+        }
 
     def test_get_income_statement(self):
         """Test getting income statements"""
@@ -163,6 +175,13 @@ class TestFundamentalEndpoints(unittest.TestCase):
         self.assertEqual(income_stmt.symbol, self.symbol)
         self.assertEqual(income_stmt.fiscal_year, "2024")
 
+    def test_income_statement_period_validation(self):
+        """Test period validation for income statements"""
+        params = INCOME_STATEMENT.validate_params(
+            {"symbol": self.symbol, "period": "Q1", "limit": 5}
+        )
+        self.assertEqual(params["period"], "Q1")
+
     def test_income_statement_field_validation(self):
         """Test that income statement validates all required fields correctly"""
         # Test with minimal required data (base fields only)
@@ -184,6 +203,23 @@ class TestFundamentalEndpoints(unittest.TestCase):
         self.assertIsNone(income_stmt.revenue)  # Optional field should be None
         self.assertIsNone(income_stmt.cost_of_revenue)
         self.assertIsNone(income_stmt.operating_income)
+
+    def test_get_latest_financial_statements(self):
+        """Test getting latest financial statements metadata"""
+        mock_response = dict_to_model(
+            LatestFinancialStatement, self.sample_latest_financial_statement
+        )
+        self.mock_client.request.return_value = [mock_response]
+
+        result = self.fundamental_client.get_latest_financial_statements(
+            page=0, limit=250
+        )
+
+        self.mock_client.request.assert_called_once_with(
+            LATEST_FINANCIAL_STATEMENTS, page=0, limit=250
+        )
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], LatestFinancialStatement)
 
     def test_get_financial_ratios(self):
         """Test getting financial ratios"""

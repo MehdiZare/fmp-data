@@ -65,6 +65,7 @@ class BatchQuoteShort(BaseModel):
 
     symbol: str = Field(description="Stock symbol")
     price: float | None = Field(None, description="Current price")
+    change: float | None = Field(None, description="Price change")
     volume: float | None = Field(None, description="Trading volume")
 
 

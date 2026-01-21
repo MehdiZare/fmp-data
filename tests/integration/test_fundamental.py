@@ -6,17 +6,18 @@ import pytest
 
 from fmp_data import FMPDataClient, ValidationError
 from fmp_data.fundamental.models import (
+    DCF,
     BalanceSheet,
     CashFlowStatement,
     CustomDCF,
     CustomLeveredDCF,
-    DCF,
     FinancialRatios,
     FinancialReportDate,
     FinancialStatementFull,
     HistoricalRating,
     IncomeStatement,
     KeyMetrics,
+    LatestFinancialStatement,
     LeveredDCF,
     OwnerEarnings,
 )
@@ -93,6 +94,21 @@ class TestFundamentalEndpoints(BaseTestCase):
                     assert isinstance(statement.investing_cash_flow, float)
                 if statement.financing_cash_flow is not None:
                     assert isinstance(statement.financing_cash_flow, float)
+
+    def test_get_latest_financial_statements(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting latest financial statements metadata"""
+        with vcr_instance.use_cassette("fundamental/latest_financial_statements.yaml"):
+            statements = self._handle_rate_limit(
+                fmp_client.fundamental.get_latest_financial_statements,
+                page=0,
+                limit=250,
+            )
+
+            assert isinstance(statements, list)
+            if statements:
+                assert isinstance(statements[0], LatestFinancialStatement)
 
     def test_get_key_metrics(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting key metrics"""

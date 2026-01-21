@@ -26,7 +26,7 @@ DEFAULT_TOOLS: list[str] = [
     "alternative.forex_list",
     "alternative.forex_quote",
     "alternative.forex_quotes",
-    # Company (28 tools) - Company Information and Quotes
+    # Company (31 tools) - Company Information and Quotes
     "company.analyst_estimates",
     "company.analyst_recommendations",
     "company.company_notes",
@@ -34,6 +34,8 @@ DEFAULT_TOOLS: list[str] = [
     "company.employee_count",
     "company.executive_compensation",
     "company.executives",
+    "company.aftermarket_quote",
+    "company.aftermarket_trade",
     "company.geographic_revenue_segmentation",
     "company.historical_market_cap",
     "company.historical_price",
@@ -51,6 +53,7 @@ DEFAULT_TOOLS: list[str] = [
     "company.quote",
     "company.share_float",
     "company.simple_quote",
+    "company.stock_price_change",
     "company.symbol_changes",
     "company.upgrades_downgrades",
     "company.upgrades_downgrades_consensus",
@@ -59,7 +62,7 @@ DEFAULT_TOOLS: list[str] = [
     "economics.economic_indicators",
     "economics.market_risk_premium",
     "economics.treasury_rates",
-    # Fundamental (13 tools) - Financial Statements and Valuation
+    # Fundamental (14 tools) - Financial Statements and Valuation
     "fundamental.balance_sheet",
     "fundamental.cash_flow",
     "fundamental.custom_discounted_cash_flow",
@@ -71,6 +74,7 @@ DEFAULT_TOOLS: list[str] = [
     "fundamental.income_statement",
     "fundamental.key_metrics",
     "fundamental.levered_dcf",
+    "fundamental.latest_financial_statements",
     "fundamental.owner_earnings",
     # Institutional (13 tools) - Institutional and Insider Data
     "institutional.asset_allocation",

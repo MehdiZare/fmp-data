@@ -51,6 +51,7 @@ class TestBatchModels:
         return {
             "symbol": "AAPL",
             "price": 150.25,
+            "change": 2.25,
             "volume": 50000000,
         }
 
@@ -111,6 +112,7 @@ class TestBatchModels:
         quote = BatchQuoteShort.model_validate(batch_quote_short_data)
         assert quote.symbol == "AAPL"
         assert quote.price == 150.25
+        assert quote.change == 2.25
         assert quote.volume == 50000000
 
     def test_aftermarket_trade_model(self, aftermarket_trade_data):
@@ -179,11 +181,14 @@ class TestBatchClient:
         assert result[1].symbol == "MSFT"
 
     @patch("httpx.Client.request")
-    def test_get_quotes_short(
-        self, mock_request, fmp_client, mock_response
-    ):
+    def test_get_quotes_short(self, mock_request, fmp_client, mock_response):
         """Test fetching short batch quotes"""
-        short_data = {"symbol": "AAPL", "price": 150.25, "volume": 50000000}
+        short_data = {
+            "symbol": "AAPL",
+            "price": 150.25,
+            "change": 2.25,
+            "volume": 50000000,
+        }
         mock_request.return_value = mock_response(
             status_code=200, json_data=[short_data]
         )
@@ -191,11 +196,10 @@ class TestBatchClient:
         assert len(result) == 1
         assert isinstance(result[0], BatchQuoteShort)
         assert result[0].price == 150.25
+        assert result[0].change == 2.25
 
     @patch("httpx.Client.request")
-    def test_get_aftermarket_trades(
-        self, mock_request, fmp_client, mock_response
-    ):
+    def test_get_aftermarket_trades(self, mock_request, fmp_client, mock_response):
         """Test fetching aftermarket trades"""
         trade_data = {"symbol": "AAPL", "price": 151.00, "size": 100, "timestamp": 123}
         mock_request.return_value = mock_response(
@@ -207,9 +211,7 @@ class TestBatchClient:
         assert result[0].price == 151.00
 
     @patch("httpx.Client.request")
-    def test_get_aftermarket_quotes(
-        self, mock_request, fmp_client, mock_response
-    ):
+    def test_get_aftermarket_quotes(self, mock_request, fmp_client, mock_response):
         """Test fetching aftermarket quotes"""
         quote_data = {
             "symbol": "AAPL",
@@ -238,13 +240,50 @@ class TestBatchClient:
         assert len(result) == 1
         assert isinstance(result[0], BatchQuote)
 
+    @pytest.mark.parametrize(
+        "method_name,kwargs,expected_params",
+        [
+            (
+                "get_exchange_quotes",
+                {"exchange": "NASDAQ", "short": True},
+                {"exchange": "NASDAQ", "short": True},
+            ),
+            ("get_mutualfund_quotes", {"short": True}, {"short": True}),
+            ("get_etf_quotes", {"short": True}, {"short": True}),
+            ("get_commodity_quotes", {"short": True}, {"short": True}),
+            ("get_crypto_quotes", {"short": True}, {"short": True}),
+            ("get_forex_quotes", {"short": True}, {"short": True}),
+            ("get_index_quotes", {"short": True}, {"short": True}),
+        ],
+    )
+    @patch("httpx.Client.request")
+    def test_batch_short_param(
+        self,
+        mock_request,
+        fmp_client,
+        mock_response,
+        method_name,
+        kwargs,
+        expected_params,
+    ):
+        """Test short param forwarding for batch quote endpoints"""
+        short_data = {"symbol": "AAPL", "price": 150.25, "change": 2.25, "volume": 10}
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[short_data]
+        )
+
+        method = getattr(fmp_client.batch, method_name)
+        method(**kwargs)
+
+        params = mock_request.call_args.kwargs["params"]
+        for key, value in expected_params.items():
+            assert params[key] == value
+
     @patch("httpx.Client.request")
     def test_get_market_caps(self, mock_request, fmp_client, mock_response):
         """Test fetching batch market caps"""
         cap_data = {"symbol": "AAPL", "date": "2024-01-01", "marketCap": 2500000000000}
-        mock_request.return_value = mock_response(
-            status_code=200, json_data=[cap_data]
-        )
+        mock_request.return_value = mock_response(status_code=200, json_data=[cap_data])
         result = fmp_client.batch.get_market_caps(["AAPL"])
         assert len(result) == 1
         assert isinstance(result[0], BatchMarketCap)

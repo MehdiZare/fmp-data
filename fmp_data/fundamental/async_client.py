@@ -15,6 +15,7 @@ from fmp_data.fundamental.models import (
     HistoricalRating,
     IncomeStatement,
     KeyMetrics,
+    LatestFinancialStatement,
     LeveredDCF,
     OwnerEarnings,
 )
@@ -45,6 +46,14 @@ class AsyncFundamentalClient(AsyncEndpointGroup):
         """Get cash flow statements"""
         return await self.client.request_async(
             endpoints.CASH_FLOW, symbol=symbol, period=period, limit=limit
+        )
+
+    async def get_latest_financial_statements(
+        self, page: int = 0, limit: int = 250
+    ) -> list[LatestFinancialStatement]:
+        """Get latest financial statement metadata across symbols"""
+        return await self.client.request_async(
+            endpoints.LATEST_FINANCIAL_STATEMENTS, page=page, limit=limit
         )
 
     async def get_key_metrics(

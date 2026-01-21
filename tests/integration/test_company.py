@@ -34,7 +34,6 @@ from fmp_data.company.models import (
     UpgradeDowngradeConsensus,
 )
 from fmp_data.exceptions import FMPError
-from fmp_data.models import MarketCapitalization, ShareFloat
 from fmp_data.fundamental.models import (
     AsReportedBalanceSheet,
     AsReportedCashFlowStatement,
@@ -45,11 +44,11 @@ from fmp_data.fundamental.models import (
     FinancialGrowth,
     FinancialRatiosTTM,
     FinancialScore,
-    FinancialStatementFull,
     IncomeStatement,
     KeyMetricsTTM,
 )
 from fmp_data.intelligence.models import DividendEvent, EarningEvent, StockSplitEvent
+from fmp_data.models import MarketCapitalization, ShareFloat
 
 from .base import BaseTestCase
 
@@ -666,16 +665,6 @@ class TestCompanyAdditionalEndpoints(BaseTestCase):
             if results:
                 assert isinstance(results[0], MergerAcquisition)
 
-    def test_get_latest_financial_statements(
-        self, fmp_client: FMPDataClient, vcr_instance
-    ):
-        """Test getting latest financial statements"""
-        with vcr_instance.use_cassette("company/latest_financial_statements.yaml"):
-            result = self._handle_rate_limit(
-                fmp_client.company.get_latest_financial_statements, self.TEST_SYMBOL
-            )
-            assert isinstance(result, FinancialStatementFull)
-
     @pytest.mark.parametrize(
         "method_name,cassette",
         [
@@ -706,9 +695,7 @@ class TestCompanyAdditionalEndpoints(BaseTestCase):
             assert isinstance(data, HistoricalData)
             assert isinstance(data.historical, list)
 
-    def test_get_financial_reports_json(
-        self, fmp_client: FMPDataClient, vcr_instance
-    ):
+    def test_get_financial_reports_json(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting financial reports JSON"""
         with vcr_instance.use_cassette("company/financial_reports_json.yaml"):
             report = self._handle_rate_limit(
@@ -719,9 +706,7 @@ class TestCompanyAdditionalEndpoints(BaseTestCase):
             )
             assert isinstance(report, dict)
 
-    def test_get_financial_reports_xlsx(
-        self, fmp_client: FMPDataClient, vcr_instance
-    ):
+    def test_get_financial_reports_xlsx(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting financial reports XLSX"""
         with vcr_instance.use_cassette("company/financial_reports_xlsx.yaml"):
             report = self._handle_rate_limit(

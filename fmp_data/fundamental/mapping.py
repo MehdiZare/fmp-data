@@ -12,6 +12,7 @@ from fmp_data.fundamental.endpoints import (
     HISTORICAL_RATING,
     INCOME_STATEMENT,
     KEY_METRICS,
+    LATEST_FINANCIAL_STATEMENTS,
     LEVERED_DCF,
     OWNER_EARNINGS,
 )
@@ -37,6 +38,7 @@ FUNDAMENTAL_ENDPOINT_MAP = {
     "get_custom_levered_dcf": CUSTOM_LEVERED_DCF,
     "get_full_financial_statement": FULL_FINANCIAL_STATEMENT,
     "get_financial_reports_dates": FINANCIAL_REPORTS_DATES,
+    "get_latest_financial_statements": LATEST_FINANCIAL_STATEMENTS,
 }
 # Common parameter hints
 SYMBOL_HINT = ParameterHint(
@@ -62,14 +64,19 @@ SYMBOL_HINT = ParameterHint(
 PERIOD_HINT = ParameterHint(
     natural_names=["period", "frequency", "interval"],
     extraction_patterns=[
-        r"(?i)(annual|yearly|quarterly|quarter)",
+        r"(?i)(annual|yearly|quarterly|quarter|fy|q1|q2|q3|q4)",
         r"(?i)every\s+(year|quarter)",
     ],
-    examples=["annual", "quarter"],
+    examples=["annual", "quarter", "FY", "Q1"],
     context_clues=[
         "annual",
         "yearly",
         "quarterly",
+        "q1",
+        "q2",
+        "q3",
+        "q4",
+        "fy",
         "fiscal",
         "period",
         "reporting",
@@ -94,6 +101,15 @@ LIMIT_HINT = ParameterHint(
         "statements",
         "reports",
     ],
+)
+PAGE_HINT = ParameterHint(
+    natural_names=["page"],
+    extraction_patterns=[
+        r"(?i)page\s+(\d+)",
+        r"(?i)page\s+number\s+(\d+)",
+    ],
+    examples=["0", "1", "2"],
+    context_clues=["page", "pagination"],
 )
 FUNDAMENTAL_CONCEPTS = {
     "profitability": [
@@ -217,6 +233,54 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
             "Investment research",
             "Earnings analysis",
             "Cost structure evaluation",
+        ],
+    ),
+    "latest_financial_statements": EndpointSemantics(
+        client_name="fundamental",
+        method_name="get_latest_financial_statements",
+        natural_description=(
+            "Get the latest financial statement publication metadata across symbols "
+            "with pagination."
+        ),
+        example_queries=[
+            "List the latest financial statements",
+            "Show recent financial statement updates",
+            "Get latest financial statements page 1",
+            "Fetch latest financial statements with limit 250",
+        ],
+        related_terms=[
+            "latest financial statements",
+            "recent filings",
+            "statement updates",
+            "reporting updates",
+        ],
+        category=SemanticCategory.FUNDAMENTAL_ANALYSIS,
+        sub_category="Financial Statements",
+        parameter_hints={
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
+        response_hints={
+            "symbol": ResponseFieldInfo(
+                description="Company ticker symbol",
+                examples=["AAPL", "MSFT"],
+                related_terms=["ticker", "symbol"],
+            ),
+            "period": ResponseFieldInfo(
+                description="Reporting period",
+                examples=["Q1", "Q4", "FY"],
+                related_terms=["period", "quarter", "fiscal year"],
+            ),
+            "date_added": ResponseFieldInfo(
+                description="Date the statement was added",
+                examples=["2025-03-13 17:03:59"],
+                related_terms=["added", "timestamp", "published"],
+            ),
+        },
+        use_cases=[
+            "Tracking recent financial statement releases",
+            "Monitoring reporting activity",
+            "Discovering newly updated filings",
         ],
     ),
     "balance_sheet": EndpointSemantics(

@@ -5,6 +5,8 @@ from typing import cast
 
 from fmp_data.base import EndpointGroup
 from fmp_data.company.endpoints import (
+    AFTERMARKET_QUOTE,
+    AFTERMARKET_TRADE,
     ANALYST_ESTIMATES,
     ANALYST_RECOMMENDATIONS,
     BALANCE_SHEET_AS_REPORTED,
@@ -41,7 +43,6 @@ from fmp_data.company.endpoints import (
     INTRADAY_PRICE,
     KEY_EXECUTIVES,
     KEY_METRICS_TTM,
-    LATEST_FINANCIAL_STATEMENTS,
     MARKET_CAP,
     MERGERS_ACQUISITIONS_LATEST,
     MERGERS_ACQUISITIONS_SEARCH,
@@ -53,11 +54,14 @@ from fmp_data.company.endpoints import (
     QUOTE,
     SHARE_FLOAT,
     SIMPLE_QUOTE,
+    STOCK_PRICE_CHANGE,
     SYMBOL_CHANGES,
     UPGRADES_DOWNGRADES,
     UPGRADES_DOWNGRADES_CONSENSUS,
 )
 from fmp_data.company.models import (
+    AftermarketQuote,
+    AftermarketTrade,
     AnalystEstimate,
     AnalystRecommendation,
     CompanyCoreInformation,
@@ -80,6 +84,7 @@ from fmp_data.company.models import (
     Quote,
     ShareFloat,
     SimpleQuote,
+    StockPriceChange,
     SymbolChange,
     UpgradeDowngrade,
     UpgradeDowngradeConsensus,
@@ -95,7 +100,6 @@ from fmp_data.fundamental.models import (
     FinancialGrowth,
     FinancialRatiosTTM,
     FinancialScore,
-    FinancialStatementFull,
     IncomeStatement,
     KeyMetricsTTM,
 )
@@ -150,6 +154,21 @@ class CompanyClient(EndpointGroup):
         """Get simple stock quote"""
         result = self.client.request(SIMPLE_QUOTE, symbol=symbol)
         return self._unwrap_single(result, SimpleQuote)
+
+    def get_aftermarket_trade(self, symbol: str) -> AftermarketTrade:
+        """Get aftermarket trade data"""
+        result = self.client.request(AFTERMARKET_TRADE, symbol=symbol)
+        return self._unwrap_single(result, AftermarketTrade)
+
+    def get_aftermarket_quote(self, symbol: str) -> AftermarketQuote:
+        """Get aftermarket quote data"""
+        result = self.client.request(AFTERMARKET_QUOTE, symbol=symbol)
+        return self._unwrap_single(result, AftermarketQuote)
+
+    def get_stock_price_change(self, symbol: str) -> StockPriceChange:
+        """Get stock price change percentages across time horizons"""
+        result = self.client.request(STOCK_PRICE_CHANGE, symbol=symbol)
+        return self._unwrap_single(result, StockPriceChange)
 
     def get_historical_prices(
         self,
@@ -485,50 +504,47 @@ class CompanyClient(EndpointGroup):
         return self.client.request(COMPANY_SPLITS, **params)
 
     # Financial Statement Methods
-    def get_latest_financial_statements(self, symbol: str) -> FinancialStatementFull:
-        """Get the latest comprehensive financial statements
-
-        Args:
-            symbol: Stock symbol (e.g., 'AAPL')
-
-        Returns:
-            FinancialStatementFull object with income, balance sheet, and cash flow
-        """
-        result = self.client.request(LATEST_FINANCIAL_STATEMENTS, symbol=symbol)
-        return self._unwrap_single(result, FinancialStatementFull)
-
-    def get_income_statement_ttm(self, symbol: str) -> list[IncomeStatement]:
+    def get_income_statement_ttm(
+        self, symbol: str, limit: int | None = None
+    ) -> list[IncomeStatement]:
         """Get trailing twelve months (TTM) income statement
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
+            limit: Number of periods to return
 
         Returns:
             List of TTM income statement data
         """
-        return self.client.request(INCOME_STATEMENT_TTM, symbol=symbol)
+        return self.client.request(INCOME_STATEMENT_TTM, symbol=symbol, limit=limit)
 
-    def get_balance_sheet_ttm(self, symbol: str) -> list[BalanceSheet]:
+    def get_balance_sheet_ttm(
+        self, symbol: str, limit: int | None = None
+    ) -> list[BalanceSheet]:
         """Get trailing twelve months (TTM) balance sheet
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
+            limit: Number of periods to return
 
         Returns:
             List of TTM balance sheet data
         """
-        return self.client.request(BALANCE_SHEET_TTM, symbol=symbol)
+        return self.client.request(BALANCE_SHEET_TTM, symbol=symbol, limit=limit)
 
-    def get_cash_flow_ttm(self, symbol: str) -> list[CashFlowStatement]:
+    def get_cash_flow_ttm(
+        self, symbol: str, limit: int | None = None
+    ) -> list[CashFlowStatement]:
         """Get trailing twelve months (TTM) cash flow statement
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
+            limit: Number of periods to return
 
         Returns:
             List of TTM cash flow data
         """
-        return self.client.request(CASH_FLOW_TTM, symbol=symbol)
+        return self.client.request(CASH_FLOW_TTM, symbol=symbol, limit=limit)
 
     def get_key_metrics_ttm(self, symbol: str) -> list[KeyMetricsTTM]:
         """Get trailing twelve months (TTM) key financial metrics

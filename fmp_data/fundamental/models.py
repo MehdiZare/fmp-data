@@ -997,9 +997,7 @@ class AsReportedFinancialStatementBase(BaseModel):
     end_date: datetime | None = Field(
         None, alias="endDate", description="Period end date"
     )
-    fiscal_year: int | None = Field(
-        None, alias="fiscalYear", description="Fiscal year"
-    )
+    fiscal_year: int | None = Field(None, alias="fiscalYear", description="Fiscal year")
     fiscal_period: str | None = Field(
         None, alias="fiscalPeriod", description="Fiscal period"
     )
@@ -1339,9 +1337,7 @@ class FinancialReportDate(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol")
-    fiscal_year: int | None = Field(
-        None, alias="fiscalYear", description="Fiscal year"
-    )
+    fiscal_year: int | None = Field(None, alias="fiscalYear", description="Fiscal year")
     report_date: str | None = Field(None, description="Report date", alias="date")
     period: str = Field(description="Reporting period")
     link_xlsx: str = Field(alias="linkXlsx", description="XLSX report link")
@@ -1354,3 +1350,17 @@ class FinancialReportDates(BaseModel):
     model_config = default_model_config
 
     financial_reports_dates: list[FinancialReportDate]
+
+
+class LatestFinancialStatement(BaseModel):
+    """Latest financial statement metadata"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Stock symbol")
+    calendar_year: int | None = Field(
+        None, alias="calendarYear", description="Calendar year"
+    )
+    period: str = Field(description="Reporting period")
+    date: datetime = Field(description="Statement date")
+    date_added: datetime = Field(alias="dateAdded", description="Date added")

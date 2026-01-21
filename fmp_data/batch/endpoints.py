@@ -132,7 +132,15 @@ BATCH_EXCHANGE_QUOTE: Endpoint = Endpoint(
             description="Exchange code (e.g., NYSE, NASDAQ)",
         )
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="short",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            required=False,
+            description="Return short quote data only",
+        )
+    ],
     response_model=BatchQuote,
     example_queries=[
         "Get all NYSE stock quotes",
@@ -149,7 +157,15 @@ BATCH_MUTUALFUND_QUOTES: Endpoint = Endpoint(
     method=HTTPMethod.GET,
     description="Get batch quotes for all mutual funds",
     mandatory_params=[],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="short",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            required=False,
+            description="Return short quote data only",
+        )
+    ],
     response_model=BatchQuote,
     example_queries=[
         "Get all mutual fund quotes",
@@ -166,7 +182,15 @@ BATCH_ETF_QUOTES: Endpoint = Endpoint(
     method=HTTPMethod.GET,
     description="Get batch quotes for all ETFs",
     mandatory_params=[],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="short",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            required=False,
+            description="Return short quote data only",
+        )
+    ],
     response_model=BatchQuote,
     example_queries=[
         "Get all ETF quotes",
@@ -183,7 +207,15 @@ BATCH_COMMODITY_QUOTES: Endpoint = Endpoint(
     method=HTTPMethod.GET,
     description="Get batch quotes for all commodities",
     mandatory_params=[],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="short",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            required=False,
+            description="Return short quote data only",
+        )
+    ],
     response_model=BatchQuote,
     example_queries=[
         "Get all commodity quotes",
@@ -200,7 +232,15 @@ BATCH_CRYPTO_QUOTES: Endpoint = Endpoint(
     method=HTTPMethod.GET,
     description="Get batch quotes for all cryptocurrencies",
     mandatory_params=[],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="short",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            required=False,
+            description="Return short quote data only",
+        )
+    ],
     response_model=BatchQuote,
     example_queries=[
         "Get all crypto quotes",
@@ -217,7 +257,15 @@ BATCH_FOREX_QUOTES: Endpoint = Endpoint(
     method=HTTPMethod.GET,
     description="Get batch quotes for all forex pairs",
     mandatory_params=[],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="short",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            required=False,
+            description="Return short quote data only",
+        )
+    ],
     response_model=BatchQuote,
     example_queries=[
         "Get all forex quotes",
@@ -234,7 +282,15 @@ BATCH_INDEX_QUOTES: Endpoint = Endpoint(
     method=HTTPMethod.GET,
     description="Get batch quotes for all market indexes",
     mandatory_params=[],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="short",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            required=False,
+            description="Return short quote data only",
+        )
+    ],
     response_model=BatchQuote,
     example_queries=[
         "Get all index quotes",

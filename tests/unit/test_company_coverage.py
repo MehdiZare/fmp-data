@@ -4,7 +4,15 @@ from unittest.mock import patch
 
 import pytest
 
-from fmp_data.company.models import CompanyExecutive, CompanyPeer, CompanyProfile, Quote
+from fmp_data.company.models import (
+    AftermarketQuote,
+    AftermarketTrade,
+    CompanyExecutive,
+    CompanyPeer,
+    CompanyProfile,
+    Quote,
+    StockPriceChange,
+)
 from fmp_data.market.models import CompanySearchResult
 
 
@@ -95,6 +103,47 @@ class TestCompanyClientCoverage:
             "timestamp": 1704067200,
         }
 
+    @pytest.fixture
+    def aftermarket_trade_data(self):
+        """Mock aftermarket trade data"""
+        return {
+            "symbol": "AAPL",
+            "price": 232.53,
+            "tradeSize": 132,
+            "timestamp": 1738715334311,
+        }
+
+    @pytest.fixture
+    def aftermarket_quote_data(self):
+        """Mock aftermarket quote data"""
+        return {
+            "symbol": "AAPL",
+            "bidSize": 1,
+            "bidPrice": 232.45,
+            "askSize": 3,
+            "askPrice": 232.64,
+            "volume": 41647042,
+            "timestamp": 1738715334311,
+        }
+
+    @pytest.fixture
+    def stock_price_change_data(self):
+        """Mock stock price change data"""
+        return {
+            "symbol": "AAPL",
+            "1D": 2.1008,
+            "5D": -2.45946,
+            "1M": -4.33925,
+            "3M": 4.86014,
+            "6M": 5.88556,
+            "ytd": -4.53147,
+            "1Y": 24.04092,
+            "3Y": 35.04264,
+            "5Y": 192.05871,
+            "10Y": 678.8558,
+            "max": 181279.04168,
+        }
+
     @patch("httpx.Client.request")
     def test_get_company_profile(
         self, mock_request, fmp_client, mock_response, company_profile_data
@@ -145,6 +194,66 @@ class TestCompanyClientCoverage:
         assert result.symbol == "AAPL"
         assert result.price == 195.50
         assert result.market_cap == 3000000000000
+
+    @patch("httpx.Client.request")
+    def test_get_aftermarket_trade(
+        self, mock_request, fmp_client, mock_response, aftermarket_trade_data
+    ):
+        """Test fetching aftermarket trades"""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[aftermarket_trade_data]
+        )
+
+        result = fmp_client.company.get_aftermarket_trade("AAPL")
+
+        assert isinstance(result, AftermarketTrade)
+        assert result.symbol == "AAPL"
+        assert result.trade_size == 132
+        assert result.price == 232.53
+
+    @patch("httpx.Client.request")
+    def test_get_aftermarket_quote(
+        self, mock_request, fmp_client, mock_response, aftermarket_quote_data
+    ):
+        """Test fetching aftermarket quote"""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[aftermarket_quote_data]
+        )
+
+        result = fmp_client.company.get_aftermarket_quote("AAPL")
+
+        assert isinstance(result, AftermarketQuote)
+        assert result.symbol == "AAPL"
+        assert result.bid_price == 232.45
+        assert result.ask_price == 232.64
+
+    @patch("httpx.Client.request")
+    def test_get_stock_price_change(
+        self, mock_request, fmp_client, mock_response, stock_price_change_data
+    ):
+        """Test fetching stock price change data"""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[stock_price_change_data]
+        )
+
+        result = fmp_client.company.get_stock_price_change("AAPL")
+
+        assert isinstance(result, StockPriceChange)
+        assert result.symbol == "AAPL"
+        assert result.one_day == 2.1008
+        assert result.max_change == 181279.04168
+
+    @patch("httpx.Client.request")
+    def test_get_ttm_statements_with_limit(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """Test forwarding limit for TTM statement endpoints"""
+        mock_request.return_value = mock_response(status_code=200, json_data=[])
+
+        fmp_client.company.get_income_statement_ttm("AAPL", limit=5)
+        params = mock_request.call_args.kwargs["params"]
+        assert params["symbol"] == "AAPL"
+        assert params["limit"] == 5
 
     @patch("httpx.Client.request")
     def test_get_company_profile_with_multiple_symbols(

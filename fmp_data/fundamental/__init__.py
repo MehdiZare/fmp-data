@@ -19,14 +19,15 @@ from fmp_data.fundamental.models import (
     IncomeStatement,
     KeyMetrics,
     KeyMetricsTTM,
+    LatestFinancialStatement,
 )
 
 __all__ = [
-    "AsyncFundamentalClient",
     "DCF",
     "AsReportedBalanceSheet",
     "AsReportedCashFlowStatement",
     "AsReportedIncomeStatement",
+    "AsyncFundamentalClient",
     "BalanceSheet",
     "CashFlowStatement",
     "CompanyRating",
@@ -41,4 +42,5 @@ __all__ = [
     "IncomeStatement",
     "KeyMetrics",
     "KeyMetricsTTM",
+    "LatestFinancialStatement",
 ]

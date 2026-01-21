@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from fmp_data.company.endpoints import (
+    AFTERMARKET_QUOTE,
+    AFTERMARKET_TRADE,
     ANALYST_ESTIMATES,
     ANALYST_RECOMMENDATIONS,
     COMPANY_NOTES,
@@ -23,6 +25,7 @@ from fmp_data.company.endpoints import (
     QUOTE,
     SHARE_FLOAT,
     SIMPLE_QUOTE,
+    STOCK_PRICE_CHANGE,
     SYMBOL_CHANGES,
     UPGRADES_DOWNGRADES,
     UPGRADES_DOWNGRADES_CONSENSUS,
@@ -49,6 +52,9 @@ COMPANY_ENDPOINT_MAP = {
     "get_upgrades_downgrades_consensus": UPGRADES_DOWNGRADES_CONSENSUS,
     "get_quote": QUOTE,
     "get_simple_quote": SIMPLE_QUOTE,
+    "get_aftermarket_trade": AFTERMARKET_TRADE,
+    "get_aftermarket_quote": AFTERMARKET_QUOTE,
+    "get_stock_price_change": STOCK_PRICE_CHANGE,
     "get_historical_prices": HISTORICAL_PRICE,
     "get_intraday_prices": INTRADAY_PRICE,
     "get_market_cap": MARKET_CAP,
@@ -708,6 +714,148 @@ COMPANY_ENDPOINTS_SEMANTICS = {
             "Basic stock tracking",
             "Quick price checks",
             "Portfolio monitoring",
+        ],
+    ),
+    "aftermarket_trade": EndpointSemantics(
+        client_name="company",
+        method_name="get_aftermarket_trade",
+        natural_description=(
+            "Get after-hours trade data for a stock, including price, size, "
+            "and trade timestamp"
+        ),
+        example_queries=[
+            "Show AAPL after-hours trades",
+            "Get TSLA post-market trades",
+            "Aftermarket trade data for MSFT",
+            "What are the latest after-hours trades for NVDA?",
+            "Post-market trade prints for AMZN",
+        ],
+        related_terms=[
+            "aftermarket trade",
+            "after-hours trade",
+            "post-market trade",
+            "extended hours trade",
+        ],
+        category=SemanticCategory.MARKET_DATA,
+        sub_category="Aftermarket Data",
+        parameter_hints={"symbol": SYMBOL_HINT},
+        response_hints={
+            "price": ResponseFieldInfo(
+                description="Trade price",
+                examples=["232.53", "415.20"],
+                related_terms=["trade price", "print price", "execution price"],
+            ),
+            "trade_size": ResponseFieldInfo(
+                description="Trade size",
+                examples=["132", "500"],
+                related_terms=["trade size", "share size", "print size"],
+            ),
+            "timestamp": ResponseFieldInfo(
+                description="Trade timestamp",
+                examples=["1738715334311"],
+                related_terms=["time", "trade time", "print time"],
+            ),
+        },
+        use_cases=[
+            "After-hours liquidity monitoring",
+            "Extended trading activity tracking",
+            "Post-market price discovery",
+        ],
+    ),
+    "aftermarket_quote": EndpointSemantics(
+        client_name="company",
+        method_name="get_aftermarket_quote",
+        natural_description=(
+            "Get after-hours bid/ask quote data for a stock with "
+            "sizes, prices, and timestamp"
+        ),
+        example_queries=[
+            "Show AAPL after-hours quote",
+            "Get TSLA post-market bid/ask",
+            "Aftermarket quote for MSFT",
+            "What's NVDA trading at after hours?",
+            "Extended hours bid/ask for AMZN",
+        ],
+        related_terms=[
+            "aftermarket quote",
+            "after-hours quote",
+            "post-market quote",
+            "extended hours quote",
+        ],
+        category=SemanticCategory.MARKET_DATA,
+        sub_category="Aftermarket Data",
+        parameter_hints={"symbol": SYMBOL_HINT},
+        response_hints={
+            "bid_price": ResponseFieldInfo(
+                description="Bid price",
+                examples=["232.45", "415.10"],
+                related_terms=["bid", "best bid", "bid price"],
+            ),
+            "ask_price": ResponseFieldInfo(
+                description="Ask price",
+                examples=["232.64", "415.35"],
+                related_terms=["ask", "offer", "ask price"],
+            ),
+            "bid_size": ResponseFieldInfo(
+                description="Bid size",
+                examples=["1", "50"],
+                related_terms=["bid size", "bid quantity", "bid shares"],
+            ),
+            "ask_size": ResponseFieldInfo(
+                description="Ask size",
+                examples=["3", "40"],
+                related_terms=["ask size", "offer size", "ask shares"],
+            ),
+        },
+        use_cases=[
+            "After-hours spread monitoring",
+            "Extended trading price checks",
+            "Post-market liquidity assessment",
+        ],
+    ),
+    "stock_price_change": EndpointSemantics(
+        client_name="company",
+        method_name="get_stock_price_change",
+        natural_description=(
+            "Get percentage price changes across multiple time horizons " "for a stock"
+        ),
+        example_queries=[
+            "Show AAPL price change over 1D, 1M, and 1Y",
+            "Get TSLA performance across timeframes",
+            "How has MSFT changed over 5D and YTD?",
+            "Stock price change history for NVDA",
+            "AMZN multi-period price change",
+        ],
+        related_terms=[
+            "price change",
+            "performance",
+            "return",
+            "timeframe change",
+        ],
+        category=SemanticCategory.MARKET_DATA,
+        sub_category="Price Performance",
+        parameter_hints={"symbol": SYMBOL_HINT},
+        response_hints={
+            "one_day": ResponseFieldInfo(
+                description="1-day price change percentage",
+                examples=["2.10", "-1.25"],
+                related_terms=["1D", "daily change", "day change"],
+            ),
+            "one_month": ResponseFieldInfo(
+                description="1-month price change percentage",
+                examples=["-4.33", "6.75"],
+                related_terms=["1M", "monthly change", "month change"],
+            ),
+            "one_year": ResponseFieldInfo(
+                description="1-year price change percentage",
+                examples=["24.04", "15.80"],
+                related_terms=["1Y", "yearly change", "annual change"],
+            ),
+        },
+        use_cases=[
+            "Performance screening",
+            "Multi-period return comparison",
+            "Trend analysis",
         ],
     ),
     "intraday_prices": EndpointSemantics(

@@ -230,6 +230,72 @@ class SimpleQuote(BaseModel):
     volume: int = Field(description="Trading volume")
 
 
+class AftermarketTrade(BaseModel):
+    """Aftermarket trade data"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Stock symbol")
+    price: float | None = Field(None, description="Trade price")
+    trade_size: int | None = Field(None, alias="tradeSize", description="Trade size")
+    timestamp: int | None = Field(None, description="Trade timestamp")
+
+
+class AftermarketQuote(BaseModel):
+    """Aftermarket quote data"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Stock symbol")
+    bid_size: int | None = Field(None, alias="bidSize", description="Bid size")
+    bid_price: float | None = Field(None, alias="bidPrice", description="Bid price")
+    ask_size: int | None = Field(None, alias="askSize", description="Ask size")
+    ask_price: float | None = Field(None, alias="askPrice", description="Ask price")
+    volume: int | None = Field(None, description="Trading volume")
+    timestamp: int | None = Field(None, description="Quote timestamp")
+
+
+class StockPriceChange(BaseModel):
+    """Stock price change percentages over multiple time horizons"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Stock symbol")
+    one_day: float | None = Field(
+        None, alias="1D", description="1-day price change percentage"
+    )
+    five_day: float | None = Field(
+        None, alias="5D", description="5-day price change percentage"
+    )
+    one_month: float | None = Field(
+        None, alias="1M", description="1-month price change percentage"
+    )
+    three_month: float | None = Field(
+        None, alias="3M", description="3-month price change percentage"
+    )
+    six_month: float | None = Field(
+        None, alias="6M", description="6-month price change percentage"
+    )
+    ytd: float | None = Field(
+        None, alias="ytd", description="Year-to-date price change percentage"
+    )
+    one_year: float | None = Field(
+        None, alias="1Y", description="1-year price change percentage"
+    )
+    three_year: float | None = Field(
+        None, alias="3Y", description="3-year price change percentage"
+    )
+    five_year: float | None = Field(
+        None, alias="5Y", description="5-year price change percentage"
+    )
+    ten_year: float | None = Field(
+        None, alias="10Y", description="10-year price change percentage"
+    )
+    max_change: float | None = Field(
+        None, alias="max", description="Max price change percentage"
+    )
+
+
 class HistoricalPrice(BaseModel):
     """Historical price data point"""
 

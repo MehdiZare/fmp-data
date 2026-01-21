@@ -7,7 +7,13 @@ import pytest
 
 from fmp_data.alternative.models import CryptoQuote, ForexQuote
 from fmp_data.batch.models import BatchQuote, BatchQuoteShort
-from fmp_data.company.models import CompanyProfile, Quote
+from fmp_data.company.models import (
+    AftermarketQuote,
+    AftermarketTrade,
+    CompanyProfile,
+    Quote,
+    StockPriceChange,
+)
 from fmp_data.economics.models import TreasuryRate
 from fmp_data.fundamental.models import BalanceSheet, IncomeStatement
 from fmp_data.index.models import IndexConstituent
@@ -90,6 +96,74 @@ class TestAsyncCompanyClient:
 
         assert isinstance(result, Quote)
         assert result.symbol == "AAPL"
+
+    @pytest.mark.asyncio
+    async def test_get_aftermarket_trade(self, mock_client):
+        """Test async get_aftermarket_trade method."""
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        trade_data = {
+            "symbol": "AAPL",
+            "price": 232.53,
+            "tradeSize": 132,
+            "timestamp": 1738715334311,
+        }
+        mock_client.request_async.return_value = [AftermarketTrade(**trade_data)]
+
+        async_client = AsyncCompanyClient(mock_client)
+        result = await async_client.get_aftermarket_trade("AAPL")
+
+        assert isinstance(result, AftermarketTrade)
+        assert result.symbol == "AAPL"
+
+    @pytest.mark.asyncio
+    async def test_get_aftermarket_quote(self, mock_client):
+        """Test async get_aftermarket_quote method."""
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        quote_data = {
+            "symbol": "AAPL",
+            "bidSize": 1,
+            "bidPrice": 232.45,
+            "askSize": 3,
+            "askPrice": 232.64,
+            "volume": 41647042,
+            "timestamp": 1738715334311,
+        }
+        mock_client.request_async.return_value = [AftermarketQuote(**quote_data)]
+
+        async_client = AsyncCompanyClient(mock_client)
+        result = await async_client.get_aftermarket_quote("AAPL")
+
+        assert isinstance(result, AftermarketQuote)
+        assert result.symbol == "AAPL"
+
+    @pytest.mark.asyncio
+    async def test_get_stock_price_change(self, mock_client):
+        """Test async get_stock_price_change method."""
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        change_data = {
+            "symbol": "AAPL",
+            "1D": 2.1008,
+            "5D": -2.45946,
+            "1M": -4.33925,
+            "3M": 4.86014,
+            "6M": 5.88556,
+            "ytd": -4.53147,
+            "1Y": 24.04092,
+            "3Y": 35.04264,
+            "5Y": 192.05871,
+            "10Y": 678.8558,
+            "max": 181279.04168,
+        }
+        mock_client.request_async.return_value = [StockPriceChange(**change_data)]
+
+        async_client = AsyncCompanyClient(mock_client)
+        result = await async_client.get_stock_price_change("AAPL")
+
+        assert isinstance(result, StockPriceChange)
+        assert result.one_day == 2.1008
 
 
 class TestAsyncMarketClient:
@@ -291,6 +365,21 @@ class TestAsyncFundamentalClient:
         assert len(result) == 1
         assert result[0].symbol == "AAPL"
         mock_client.request_async.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_latest_financial_statements(self, mock_client):
+        """Test async get_latest_financial_statements method."""
+        from fmp_data.fundamental import endpoints as fundamental_endpoints
+        from fmp_data.fundamental.async_client import AsyncFundamentalClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncFundamentalClient(mock_client)
+        result = await async_client.get_latest_financial_statements(page=0, limit=250)
+
+        assert result == []
+        mock_client.request_async.assert_called_once_with(
+            fundamental_endpoints.LATEST_FINANCIAL_STATEMENTS, page=0, limit=250
+        )
 
 
 class TestAsyncTechnicalClient:
@@ -555,6 +644,37 @@ class TestAsyncBatchClient:
 
         assert len(result) == 2
         assert isinstance(result[0], BatchQuoteShort)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "method_name,kwargs,endpoint",
+        [
+            (
+                "get_exchange_quotes",
+                {"exchange": "NASDAQ", "short": True},
+                "BATCH_EXCHANGE_QUOTE",
+            ),
+            ("get_mutualfund_quotes", {"short": True}, "BATCH_MUTUALFUND_QUOTES"),
+            ("get_etf_quotes", {"short": True}, "BATCH_ETF_QUOTES"),
+            ("get_commodity_quotes", {"short": True}, "BATCH_COMMODITY_QUOTES"),
+            ("get_crypto_quotes", {"short": True}, "BATCH_CRYPTO_QUOTES"),
+            ("get_forex_quotes", {"short": True}, "BATCH_FOREX_QUOTES"),
+            ("get_index_quotes", {"short": True}, "BATCH_INDEX_QUOTES"),
+        ],
+    )
+    async def test_batch_short_param(self, mock_client, method_name, kwargs, endpoint):
+        """Test short param forwarding for async batch endpoints."""
+        from fmp_data.batch import endpoints as batch_endpoints
+        from fmp_data.batch.async_client import AsyncBatchClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncBatchClient(mock_client)
+
+        method = getattr(async_client, method_name)
+        await method(**kwargs)
+
+        expected_endpoint = getattr(batch_endpoints, endpoint)
+        mock_client.request_async.assert_called_once_with(expected_endpoint, **kwargs)
 
 
 class TestAsyncTranscriptsClient:

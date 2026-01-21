@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from fmp_data.company.models import (
+    AftermarketQuote,
+    AftermarketTrade,
     AnalystEstimate,
     AnalystRecommendation,
     CompanyCoreInformation,
@@ -24,6 +26,7 @@ from fmp_data.company.models import (
     Quote,
     ShareFloat,
     SimpleQuote,
+    StockPriceChange,
     SymbolChange,
     UpgradeDowngrade,
     UpgradeDowngradeConsensus,
@@ -44,7 +47,6 @@ from fmp_data.fundamental.models import (
     FinancialGrowth,
     FinancialRatiosTTM,
     FinancialScore,
-    FinancialStatementFull,
     IncomeStatement,
     KeyMetricsTTM,
 )
@@ -94,6 +96,63 @@ SIMPLE_QUOTE: Endpoint[SimpleQuote] = Endpoint(
     ],
     optional_params=[],
     response_model=SimpleQuote,
+)
+
+AFTERMARKET_TRADE: Endpoint[AftermarketTrade] = Endpoint(
+    name="aftermarket_trade",
+    path="aftermarket-trade",
+    version=APIVersion.STABLE,
+    description="Get aftermarket (post-market) trade data for a symbol",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[],
+    response_model=AftermarketTrade,
+    arg_model=BaseSymbolArg,
+)
+
+AFTERMARKET_QUOTE: Endpoint[AftermarketQuote] = Endpoint(
+    name="aftermarket_quote",
+    path="aftermarket-quote",
+    version=APIVersion.STABLE,
+    description="Get aftermarket (post-market) quote data for a symbol",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[],
+    response_model=AftermarketQuote,
+    arg_model=BaseSymbolArg,
+)
+
+STOCK_PRICE_CHANGE: Endpoint[StockPriceChange] = Endpoint(
+    name="stock_price_change",
+    path="stock-price-change",
+    version=APIVersion.STABLE,
+    description="Get price change percentages across multiple time horizons",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Stock symbol (ticker)",
+        )
+    ],
+    optional_params=[],
+    response_model=StockPriceChange,
+    arg_model=BaseSymbolArg,
 )
 
 HISTORICAL_PRICE: Endpoint = Endpoint(
@@ -1263,30 +1322,6 @@ COMPANY_SPLITS: Endpoint = Endpoint(
     ],
 )
 
-# Financial Statement Endpoints
-LATEST_FINANCIAL_STATEMENTS: Endpoint[FinancialStatementFull] = Endpoint(
-    name="latest_financial_statements",
-    path="latest-financial-statements",
-    version=APIVersion.STABLE,
-    url_type=URLType.API,
-    method=HTTPMethod.GET,
-    description=(
-        "Get the latest comprehensive financial statements including income statement, "
-        "balance sheet, and cash flow statement in a single response."
-    ),
-    mandatory_params=[
-        EndpointParam(
-            name="symbol",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Stock symbol (ticker)",
-        )
-    ],
-    optional_params=[],
-    response_model=FinancialStatementFull,
-)
-
 INCOME_STATEMENT_TTM: Endpoint = Endpoint(
     name="income_statement_ttm",
     path="income-statement-ttm",
@@ -1306,7 +1341,15 @@ INCOME_STATEMENT_TTM: Endpoint = Endpoint(
             description="Stock symbol (ticker)",
         )
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of periods to return",
+        )
+    ],
     response_model=IncomeStatement,
 )
 
@@ -1329,7 +1372,15 @@ BALANCE_SHEET_TTM: Endpoint = Endpoint(
             description="Stock symbol (ticker)",
         )
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of periods to return",
+        )
+    ],
     response_model=BalanceSheet,
 )
 
@@ -1352,7 +1403,15 @@ CASH_FLOW_TTM: Endpoint = Endpoint(
             description="Stock symbol (ticker)",
         )
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of periods to return",
+        )
+    ],
     response_model=CashFlowStatement,
 )
 
