@@ -259,10 +259,27 @@ class CompanySearchResult(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol (ticker)")
-    name: str = Field(description="Company name")
+    name: str = Field(
+        description="Company name",
+        validation_alias=AliasChoices("name", "companyName"),
+    )
     currency: str | None = Field(None, description="Trading currency")
-    stock_exchange: str | None = Field(None, description="Stock exchange")
+    stock_exchange: str | None = Field(
+        None,
+        description="Stock exchange",
+        validation_alias=AliasChoices("stockExchange", "exchange"),
+    )
     exchange_short_name: str | None = Field(None, description="Exchange short name")
+
+
+class CIKListEntry(BaseModel):
+    """CIK list entry"""
+
+    model_config = default_model_config
+
+    cik: str = Field(description="CIK number")
+    company_name: str | None = Field(None, description="Company name")
+    symbol: str | None = Field(None, description="Stock symbol")
 
 
 class IPODisclosure(BaseModel):

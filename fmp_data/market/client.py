@@ -4,15 +4,19 @@ from typing import cast
 
 from fmp_data.base import EndpointGroup
 from fmp_data.market.endpoints import (
+    ACTIVELY_TRADING_LIST,
     ALL_SHARES_FLOAT,
     AVAILABLE_COUNTRIES,
     AVAILABLE_EXCHANGES,
     AVAILABLE_INDEXES,
     AVAILABLE_INDUSTRIES,
     AVAILABLE_SECTORS,
+    CIK_LIST,
     CIK_SEARCH,
+    COMPANY_SCREENER,
     CUSIP_SEARCH,
     ETF_LIST,
+    FINANCIAL_STATEMENT_SYMBOL_LIST,
     GAINERS,
     IPO_DISCLOSURE,
     IPO_PROSPECTUS,
@@ -22,11 +26,15 @@ from fmp_data.market.endpoints import (
     MOST_ACTIVE,
     PRE_POST_MARKET,
     SEARCH_COMPANY,
+    SEARCH_EXCHANGE_VARIANTS,
+    SEARCH_SYMBOL,
     SECTOR_PERFORMANCE,
     STOCK_LIST,
+    TRADABLE_SEARCH,
 )
 from fmp_data.market.models import (
     AvailableIndex,
+    CIKListEntry,
     CIKResult,
     CompanySearchResult,
     CUSIPResult,
@@ -56,13 +64,47 @@ class MarketClient(EndpointGroup):
             params["exchange"] = exchange
         return self.client.request(SEARCH_COMPANY, **params)
 
+    def search_symbol(
+        self, query: str, limit: int | None = None, exchange: str | None = None
+    ) -> list[CompanySearchResult]:
+        """Search for security symbols across all asset types"""
+        params = {"query": query}
+        if limit is not None:
+            params["limit"] = str(limit)
+        if exchange is not None:
+            params["exchange"] = exchange
+        return self.client.request(SEARCH_SYMBOL, **params)
+
+    def search_exchange_variants(self, query: str) -> list[CompanySearchResult]:
+        """Search for exchange trading variants of a company"""
+        return self.client.request(SEARCH_EXCHANGE_VARIANTS, query=query)
+
     def get_stock_list(self) -> list[CompanySymbol]:
         """Get list of all available stocks"""
         return self.client.request(STOCK_LIST)
 
+    def get_financial_statement_symbol_list(self) -> list[CompanySymbol]:
+        """Get list of symbols with financial statements available"""
+        return self.client.request(FINANCIAL_STATEMENT_SYMBOL_LIST)
+
     def get_etf_list(self) -> list[CompanySymbol]:
         """Get list of all available ETFs"""
         return self.client.request(ETF_LIST)
+
+    def get_actively_trading_list(self) -> list[CompanySymbol]:
+        """Get list of actively trading stocks"""
+        return self.client.request(ACTIVELY_TRADING_LIST)
+
+    def get_tradable_list(
+        self, limit: int | None = None, offset: int | None = None
+    ) -> list[CompanySymbol]:
+        """Get list of tradable securities"""
+        params: dict[str, int] = {}
+        if limit is not None:
+            params["limit"] = limit
+        if offset is not None:
+            params["offset"] = offset
+        return self.client.request(TRADABLE_SEARCH, **params)
 
     def get_available_indexes(self) -> list[AvailableIndex]:
         """Get list of all available indexes"""
@@ -72,6 +114,10 @@ class MarketClient(EndpointGroup):
         """Search companies by CIK number"""
         return self.client.request(CIK_SEARCH, query=query)
 
+    def get_cik_list(self, page: int = 0, limit: int = 1000) -> list[CIKListEntry]:
+        """Get complete list of all CIK numbers"""
+        return self.client.request(CIK_LIST, page=page, limit=limit)
+
     def search_by_cusip(self, query: str) -> list[CUSIPResult]:
         """Search companies by CUSIP"""
         return self.client.request(CUSIP_SEARCH, query=query)
@@ -79,6 +125,49 @@ class MarketClient(EndpointGroup):
     def search_by_isin(self, query: str) -> list[ISINResult]:
         """Search companies by ISIN"""
         return self.client.request(ISIN_SEARCH, query=query)
+
+    def get_company_screener(
+        self,
+        market_cap_more_than: float | None = None,
+        market_cap_less_than: float | None = None,
+        price_more_than: float | None = None,
+        price_less_than: float | None = None,
+        beta_more_than: float | None = None,
+        beta_less_than: float | None = None,
+        volume_more_than: int | None = None,
+        volume_less_than: int | None = None,
+        dividend_more_than: float | None = None,
+        dividend_less_than: float | None = None,
+        is_etf: bool | None = None,
+        is_fund: bool | None = None,
+        sector: str | None = None,
+        industry: str | None = None,
+        country: str | None = None,
+        exchange: str | None = None,
+        limit: int | None = None,
+    ) -> list[CompanySearchResult]:
+        """Screen companies based on various criteria"""
+        params = {
+            "market_cap_more_than": market_cap_more_than,
+            "market_cap_less_than": market_cap_less_than,
+            "price_more_than": price_more_than,
+            "price_less_than": price_less_than,
+            "beta_more_than": beta_more_than,
+            "beta_less_than": beta_less_than,
+            "volume_more_than": volume_more_than,
+            "volume_less_than": volume_less_than,
+            "dividend_more_than": dividend_more_than,
+            "dividend_less_than": dividend_less_than,
+            "is_etf": is_etf,
+            "is_fund": is_fund,
+            "sector": sector,
+            "industry": industry,
+            "country": country,
+            "exchange": exchange,
+            "limit": limit,
+        }
+        params = {key: value for key, value in params.items() if value is not None}
+        return self.client.request(COMPANY_SCREENER, **params)
 
     def get_market_hours(self, exchange: str = "NYSE") -> MarketHours:
         """Get market trading hours information for a specific exchange

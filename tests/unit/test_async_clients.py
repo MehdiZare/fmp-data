@@ -14,7 +14,12 @@ from fmp_data.index.models import IndexConstituent
 from fmp_data.institutional.models import InsiderTrade
 from fmp_data.intelligence.models import StockNewsArticle
 from fmp_data.investment.models import ETFInfo
-from fmp_data.market.models import MarketMover
+from fmp_data.market.models import (
+    CIKListEntry,
+    CompanySearchResult,
+    MarketMover,
+)
+from fmp_data.models import CompanySymbol
 from fmp_data.sec.models import SECFiling8K
 from fmp_data.technical.models import SMAIndicator
 from fmp_data.transcripts.models import EarningsTranscript
@@ -110,6 +115,144 @@ class TestAsyncMarketClient:
 
         assert len(result) == 1
         assert isinstance(result[0], MarketMover)
+
+    @pytest.mark.asyncio
+    async def test_search_symbol(self, mock_client):
+        """Test async search_symbol method."""
+        from fmp_data.market.async_client import AsyncMarketClient
+        from fmp_data.market.endpoints import SEARCH_SYMBOL
+
+        mock_client.request_async.return_value = [
+            CompanySearchResult(symbol="AAPL", name="Apple Inc.")
+        ]
+
+        async_client = AsyncMarketClient(mock_client)
+        result = await async_client.search_symbol("Apple", limit=5, exchange="NASDAQ")
+
+        assert len(result) == 1
+        assert isinstance(result[0], CompanySearchResult)
+        mock_client.request_async.assert_called_once_with(
+            SEARCH_SYMBOL, query="Apple", limit=5, exchange="NASDAQ"
+        )
+
+    @pytest.mark.asyncio
+    async def test_search_exchange_variants(self, mock_client):
+        """Test async search_exchange_variants method."""
+        from fmp_data.market.async_client import AsyncMarketClient
+        from fmp_data.market.endpoints import SEARCH_EXCHANGE_VARIANTS
+
+        mock_client.request_async.return_value = [
+            CompanySearchResult(symbol="AAPL", name="Apple Inc.")
+        ]
+
+        async_client = AsyncMarketClient(mock_client)
+        result = await async_client.search_exchange_variants("Apple")
+
+        assert len(result) == 1
+        assert isinstance(result[0], CompanySearchResult)
+        mock_client.request_async.assert_called_once_with(
+            SEARCH_EXCHANGE_VARIANTS, query="Apple"
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_financial_statement_symbol_list(self, mock_client):
+        """Test async get_financial_statement_symbol_list method."""
+        from fmp_data.market.async_client import AsyncMarketClient
+        from fmp_data.market.endpoints import FINANCIAL_STATEMENT_SYMBOL_LIST
+
+        mock_client.request_async.return_value = [
+            CompanySymbol(symbol="AAPL", name="Apple Inc.")
+        ]
+
+        async_client = AsyncMarketClient(mock_client)
+        result = await async_client.get_financial_statement_symbol_list()
+
+        assert len(result) == 1
+        assert isinstance(result[0], CompanySymbol)
+        mock_client.request_async.assert_called_once_with(
+            FINANCIAL_STATEMENT_SYMBOL_LIST
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_actively_trading_list(self, mock_client):
+        """Test async get_actively_trading_list method."""
+        from fmp_data.market.async_client import AsyncMarketClient
+        from fmp_data.market.endpoints import ACTIVELY_TRADING_LIST
+
+        mock_client.request_async.return_value = [
+            CompanySymbol(symbol="AAPL", name="Apple Inc.")
+        ]
+
+        async_client = AsyncMarketClient(mock_client)
+        result = await async_client.get_actively_trading_list()
+
+        assert len(result) == 1
+        assert isinstance(result[0], CompanySymbol)
+        mock_client.request_async.assert_called_once_with(ACTIVELY_TRADING_LIST)
+
+    @pytest.mark.asyncio
+    async def test_get_tradable_list(self, mock_client):
+        """Test async get_tradable_list method."""
+        from fmp_data.market.async_client import AsyncMarketClient
+        from fmp_data.market.endpoints import TRADABLE_SEARCH
+
+        mock_client.request_async.return_value = [
+            CompanySymbol(symbol="AAPL", name="Apple Inc.")
+        ]
+
+        async_client = AsyncMarketClient(mock_client)
+        result = await async_client.get_tradable_list(limit=5, offset=10)
+
+        assert len(result) == 1
+        assert isinstance(result[0], CompanySymbol)
+        mock_client.request_async.assert_called_once_with(
+            TRADABLE_SEARCH, limit=5, offset=10
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_cik_list(self, mock_client):
+        """Test async get_cik_list method."""
+        from fmp_data.market.async_client import AsyncMarketClient
+        from fmp_data.market.endpoints import CIK_LIST
+
+        mock_client.request_async.return_value = [
+            CIKListEntry(cik="0000320193", company_name="Apple Inc.")
+        ]
+
+        async_client = AsyncMarketClient(mock_client)
+        result = await async_client.get_cik_list(page=1, limit=20)
+
+        assert len(result) == 1
+        assert isinstance(result[0], CIKListEntry)
+        mock_client.request_async.assert_called_once_with(CIK_LIST, page=1, limit=20)
+
+    @pytest.mark.asyncio
+    async def test_get_company_screener(self, mock_client):
+        """Test async get_company_screener method."""
+        from fmp_data.market.async_client import AsyncMarketClient
+        from fmp_data.market.endpoints import COMPANY_SCREENER
+
+        mock_client.request_async.return_value = [
+            CompanySearchResult(symbol="AAPL", name="Apple Inc.")
+        ]
+
+        async_client = AsyncMarketClient(mock_client)
+        result = await async_client.get_company_screener(
+            market_cap_more_than=1_000_000_000,
+            is_etf=False,
+            sector="Technology",
+            limit=5,
+        )
+
+        assert len(result) == 1
+        assert isinstance(result[0], CompanySearchResult)
+        mock_client.request_async.assert_called_once_with(
+            COMPANY_SCREENER,
+            market_cap_more_than=1_000_000_000,
+            is_etf=False,
+            sector="Technology",
+            limit=5,
+        )
 
 
 class TestAsyncFundamentalClient:

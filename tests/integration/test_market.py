@@ -8,6 +8,7 @@ import vcr
 from fmp_data import FMPDataClient
 from fmp_data.market.models import (
     AvailableIndex,
+    CIKListEntry,
     CIKResult,
     CompanySearchResult,
     CUSIPResult,
@@ -159,6 +160,28 @@ class TestMarketClientEndpoints(BaseTestCase):
             assert len(results) <= 5
             assert all(isinstance(r, CompanySearchResult) for r in results)
 
+    def test_search_symbol(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
+        """Test symbol search"""
+        with vcr_instance.use_cassette("market/search_symbol.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.market.search_symbol, "Apple", limit=5
+            )
+            assert isinstance(results, list)
+            assert len(results) <= 5
+            assert all(isinstance(r, CompanySearchResult) for r in results)
+
+    def test_search_exchange_variants(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
+    ):
+        """Test exchange variants search"""
+        with vcr_instance.use_cassette("market/search_exchange_variants.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.market.search_exchange_variants, "Apple"
+            )
+            assert isinstance(results, list)
+            assert len(results) > 0
+            assert all(isinstance(r, CompanySearchResult) for r in results)
+
     def test_get_stock_list(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test getting stock list"""
         with vcr_instance.use_cassette("market/stock_list.yaml"):
@@ -169,6 +192,64 @@ class TestMarketClientEndpoints(BaseTestCase):
                 assert isinstance(stock, CompanySymbol)
                 assert hasattr(stock, "symbol")  # Only check required field
                 assert isinstance(stock.symbol, str)
+
+    def test_get_financial_statement_symbol_list(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
+    ):
+        """Test getting financial statement symbol list"""
+        with vcr_instance.use_cassette("market/financial_statement_symbol_list.yaml"):
+            symbols = self._handle_rate_limit(
+                fmp_client.market.get_financial_statement_symbol_list
+            )
+            assert isinstance(symbols, list)
+            assert len(symbols) > 0
+            assert all(isinstance(symbol, CompanySymbol) for symbol in symbols)
+
+    def test_get_actively_trading_list(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
+    ):
+        """Test getting actively trading list"""
+        with vcr_instance.use_cassette("market/actively_trading_list.yaml"):
+            symbols = self._handle_rate_limit(
+                fmp_client.market.get_actively_trading_list
+            )
+            assert isinstance(symbols, list)
+            assert len(symbols) > 0
+            assert all(isinstance(symbol, CompanySymbol) for symbol in symbols)
+
+    def test_get_tradable_list(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
+        """Test getting tradable list"""
+        with vcr_instance.use_cassette("market/tradable_list.yaml"):
+            symbols = self._handle_rate_limit(
+                fmp_client.market.get_tradable_list, limit=5, offset=0
+            )
+            assert isinstance(symbols, list)
+            if symbols:
+                assert all(isinstance(symbol, CompanySymbol) for symbol in symbols)
+
+    def test_get_cik_list(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
+        """Test getting CIK list"""
+        with vcr_instance.use_cassette("market/cik_list.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.market.get_cik_list, page=0, limit=10
+            )
+            assert isinstance(results, list)
+            assert len(results) > 0
+            assert all(isinstance(r, CIKListEntry) for r in results)
+
+    def test_get_company_screener(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
+    ):
+        """Test getting company screener results"""
+        with vcr_instance.use_cassette("market/company_screener.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.market.get_company_screener,
+                sector="Technology",
+                limit=5,
+            )
+            assert isinstance(results, list)
+            assert len(results) > 0
+            assert all(isinstance(r, CompanySearchResult) for r in results)
 
     def test_get_etf_list(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test getting ETF list"""
@@ -237,9 +318,7 @@ class TestMarketClientEndpoints(BaseTestCase):
             assert len(countries) > 0
             assert all(isinstance(c, str) for c in countries)
 
-    def test_get_ipo_disclosure(
-        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
-    ):
+    def test_get_ipo_disclosure(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test getting IPO disclosure data"""
         with vcr_instance.use_cassette("market/ipo_disclosure.yaml"):
             results = self._handle_rate_limit(
@@ -252,9 +331,7 @@ class TestMarketClientEndpoints(BaseTestCase):
             if results:
                 assert isinstance(results[0], IPODisclosure)
 
-    def test_get_ipo_prospectus(
-        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
-    ):
+    def test_get_ipo_prospectus(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test getting IPO prospectus data"""
         with vcr_instance.use_cassette("market/ipo_prospectus.yaml"):
             results = self._handle_rate_limit(

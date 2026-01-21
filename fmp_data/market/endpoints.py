@@ -1,6 +1,7 @@
 # fmp_data/market/endpoints.py
 from fmp_data.market.models import (
     AvailableIndex,
+    CIKListEntry,
     CIKResult,
     CompanySearchResult,
     CUSIPResult,
@@ -391,7 +392,7 @@ CIK_LIST: Endpoint = Endpoint(
         ),
     ],
     optional_params=[],
-    response_model=CIKResult,
+    response_model=CIKListEntry,
 )
 
 ACTIVELY_TRADING_LIST: Endpoint = Endpoint(

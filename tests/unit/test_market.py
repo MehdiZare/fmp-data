@@ -4,12 +4,14 @@ from unittest.mock import patch
 import pytest
 
 from fmp_data.market.models import (
+    CIKListEntry,
     CompanySearchResult,
     ExchangeSymbol,
     IPODisclosure,
     IPOProspectus,
     MarketHours,
 )
+from fmp_data.models import CompanySymbol
 
 
 @pytest.fixture
@@ -135,6 +137,40 @@ class TestCompanySearch:
         assert isinstance(result, CompanySearchResult)
         assert result.symbol == "AAPL"
         assert result.name == "Apple Inc."
+
+    @patch("httpx.Client.request")
+    def test_search_symbols(
+        self, mock_request, fmp_client, mock_response, search_result_data
+    ):
+        """Test symbol search through client"""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[search_result_data]
+        )
+
+        results = fmp_client.market.search_symbol("Apple", limit=2, exchange="NASDAQ")
+        assert len(results) == 1
+        assert isinstance(results[0], CompanySearchResult)
+
+        params = mock_request.call_args[1]["params"]
+        assert params["query"] == "Apple"
+        assert params["limit"] == 2
+        assert params["exchange"] == "NASDAQ"
+
+    @patch("httpx.Client.request")
+    def test_search_exchange_variants(
+        self, mock_request, fmp_client, mock_response, search_result_data
+    ):
+        """Test exchange variants search through client"""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[search_result_data]
+        )
+
+        results = fmp_client.market.search_exchange_variants("Apple")
+        assert len(results) == 1
+        assert isinstance(results[0], CompanySearchResult)
+
+        params = mock_request.call_args[1]["params"]
+        assert params["query"] == "Apple"
 
 
 class TestExchangeSymbol:
@@ -312,6 +348,89 @@ class TestDirectoryEndpoints:
         assert all(isinstance(country, str) for country in countries)
         assert "US" in countries
         assert "JP" in countries
+
+
+@patch("httpx.Client.request")
+def test_get_financial_statement_symbol_list(mock_request, fmp_client, mock_response):
+    """Test getting financial statement symbol list"""
+    response_data = [{"symbol": "AAPL", "name": "Apple Inc."}]
+    mock_request.return_value = mock_response(status_code=200, json_data=response_data)
+
+    symbols = fmp_client.market.get_financial_statement_symbol_list()
+    assert len(symbols) == 1
+    assert isinstance(symbols[0], CompanySymbol)
+    assert symbols[0].symbol == "AAPL"
+
+
+@patch("httpx.Client.request")
+def test_get_actively_trading_list(mock_request, fmp_client, mock_response):
+    """Test getting actively trading list"""
+    response_data = [{"symbol": "AAPL", "name": "Apple Inc."}]
+    mock_request.return_value = mock_response(status_code=200, json_data=response_data)
+
+    symbols = fmp_client.market.get_actively_trading_list()
+    assert len(symbols) == 1
+    assert isinstance(symbols[0], CompanySymbol)
+    assert symbols[0].symbol == "AAPL"
+
+
+@patch("httpx.Client.request")
+def test_get_tradable_list(mock_request, fmp_client, mock_response):
+    """Test getting tradable list"""
+    response_data = [{"symbol": "AAPL", "name": "Apple Inc."}]
+    mock_request.return_value = mock_response(status_code=200, json_data=response_data)
+
+    symbols = fmp_client.market.get_tradable_list(limit=5, offset=10)
+    assert len(symbols) == 1
+    assert isinstance(symbols[0], CompanySymbol)
+
+    params = mock_request.call_args[1]["params"]
+    assert params["limit"] == 5
+    assert params["offset"] == 10
+
+
+@patch("httpx.Client.request")
+def test_get_cik_list(mock_request, fmp_client, mock_response):
+    """Test getting CIK list"""
+    response_data = [
+        {
+            "cik": "0000320193",
+            "companyName": "Apple Inc.",
+        }
+    ]
+    mock_request.return_value = mock_response(status_code=200, json_data=response_data)
+
+    results = fmp_client.market.get_cik_list(page=1, limit=20)
+    assert len(results) == 1
+    assert isinstance(results[0], CIKListEntry)
+    assert results[0].cik == "0000320193"
+
+    params = mock_request.call_args[1]["params"]
+    assert params["page"] == 1
+    assert params["limit"] == 20
+
+
+@patch("httpx.Client.request")
+def test_get_company_screener(mock_request, fmp_client, mock_response):
+    """Test getting company screener results"""
+    response_data = [{"symbol": "AAPL", "name": "Apple Inc.", "currency": "USD"}]
+    mock_request.return_value = mock_response(status_code=200, json_data=response_data)
+
+    results = fmp_client.market.get_company_screener(
+        market_cap_more_than=1_000_000_000,
+        is_etf=False,
+        sector="Technology",
+        limit=5,
+    )
+    assert len(results) == 1
+    assert isinstance(results[0], CompanySearchResult)
+    assert results[0].symbol == "AAPL"
+
+    params = mock_request.call_args[1]["params"]
+    assert params["market_cap_more_than"] == 1_000_000_000
+    assert params["is_etf"] is False
+    assert params["sector"] == "Technology"
+    assert params["limit"] == 5
 
 
 class TestIPOEndpoints:
