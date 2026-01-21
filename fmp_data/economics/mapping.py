@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from fmp_data.economics.endpoints import (
+    COMMITMENT_OF_TRADERS_ANALYSIS,
+    COMMITMENT_OF_TRADERS_LIST,
+    COMMITMENT_OF_TRADERS_REPORT,
     ECONOMIC_CALENDAR,
     ECONOMIC_INDICATORS,
     MARKET_RISK_PREMIUM,
@@ -19,6 +22,9 @@ ECONOMICS_ENDPOINT_MAP = {
     "get_economic_indicators": ECONOMIC_INDICATORS,
     "get_economic_calendar": ECONOMIC_CALENDAR,
     "get_market_risk_premium": MARKET_RISK_PREMIUM,
+    "get_commitment_of_traders_report": COMMITMENT_OF_TRADERS_REPORT,
+    "get_commitment_of_traders_analysis": COMMITMENT_OF_TRADERS_ANALYSIS,
+    "get_commitment_of_traders_list": COMMITMENT_OF_TRADERS_LIST,
 }
 # Additional semantic mappings for common terms and concepts
 ECONOMICS_COMMON_TERMS = {
@@ -72,6 +78,16 @@ DATE_HINTS = {
         context_clues=["to", "until", "through", "ending"],
     ),
 }
+
+COT_SYMBOL_HINT = ParameterHint(
+    natural_names=["symbol", "cot symbol", "contract", "futures symbol"],
+    extraction_patterns=[
+        r"(?i)symbol[:\\s]+([A-Z0-9]{1,10})",
+        r"(?i)contract[:\\s]+([A-Z0-9]{1,10})",
+    ],
+    examples=["KC", "NG", "B6"],
+    context_clues=["cot", "commitment of traders", "futures", "commodities"],
+)
 # Time period mapping for natural language processing
 ECONOMICS_TIME_PERIODS = {
     "daily": {
@@ -636,6 +652,140 @@ ECONOMICS_ENDPOINTS_SEMANTICS = {
             "Capital budgeting",
             "Cost of capital estimation",
             "Risk-adjusted return analysis",
+        ],
+    ),
+    "commitment_of_traders_report": EndpointSemantics(
+        client_name="economics",
+        method_name="get_commitment_of_traders_report",
+        natural_description=(
+            "Retrieve Commitment of Traders (COT) reports for a given futures contract "
+            "over a specified date range"
+        ),
+        example_queries=[
+            "Get COT report for KC",
+            "Show commitment of traders report for NG",
+            "COT report for B6 between dates",
+        ],
+        related_terms=[
+            "cot report",
+            "commitment of traders",
+            "futures positioning",
+            "market positioning",
+            "trader positions",
+        ],
+        category=SemanticCategory.ECONOMIC,
+        sub_category="Market Positioning",
+        parameter_hints={
+            "symbol": COT_SYMBOL_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+        },
+        response_hints={
+            "symbol": ResponseFieldInfo(
+                description="COT report symbol",
+                examples=["KC", "NG", "B6"],
+                related_terms=["contract symbol", "futures symbol"],
+            ),
+            "date": ResponseFieldInfo(
+                description="Report date",
+                examples=["2024-02-27", "2024-03-05"],
+                related_terms=["report date", "as of date"],
+            ),
+            "sector": ResponseFieldInfo(
+                description="Market sector",
+                examples=["SOFTS", "CURRENCIES"],
+                related_terms=["sector", "market group"],
+            ),
+        },
+        use_cases=[
+            "Positioning analysis",
+            "Sentiment monitoring",
+            "Market research",
+            "Trend analysis",
+        ],
+    ),
+    "commitment_of_traders_analysis": EndpointSemantics(
+        client_name="economics",
+        method_name="get_commitment_of_traders_analysis",
+        natural_description=(
+            "Analyze COT reports for a symbol over a date range to assess sentiment "
+            "and potential reversals"
+        ),
+        example_queries=[
+            "Get COT analysis for KC",
+            "Show COT analysis for NG between dates",
+            "Commitment of traders analysis for B6",
+        ],
+        related_terms=[
+            "cot analysis",
+            "market sentiment",
+            "positioning analysis",
+            "futures sentiment",
+        ],
+        category=SemanticCategory.ECONOMIC,
+        sub_category="Market Positioning",
+        parameter_hints={
+            "symbol": COT_SYMBOL_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+        },
+        response_hints={
+            "market_situation": ResponseFieldInfo(
+                description="Market situation classification",
+                examples=["Bullish", "Bearish"],
+                related_terms=["trend", "bias"],
+            ),
+            "market_sentiment": ResponseFieldInfo(
+                description="Market sentiment summary",
+                examples=["Increasing Bullish", "Decreasing Bearish"],
+                related_terms=["sentiment", "momentum"],
+            ),
+            "reversal_trend": ResponseFieldInfo(
+                description="Potential reversal flag",
+                examples=["true", "false"],
+                related_terms=["reversal", "trend change"],
+            ),
+        },
+        use_cases=[
+            "Sentiment tracking",
+            "Trend confirmation",
+            "Risk management",
+            "Trading research",
+        ],
+    ),
+    "commitment_of_traders_list": EndpointSemantics(
+        client_name="economics",
+        method_name="get_commitment_of_traders_list",
+        natural_description="List available Commitment of Traders (COT) symbols",
+        example_queries=[
+            "List COT report symbols",
+            "Available commitment of traders contracts",
+            "Show all COT symbols",
+        ],
+        related_terms=[
+            "cot symbols",
+            "futures list",
+            "contract list",
+        ],
+        category=SemanticCategory.ECONOMIC,
+        sub_category="Market Positioning",
+        parameter_hints={},
+        response_hints={
+            "symbol": ResponseFieldInfo(
+                description="COT report symbol",
+                examples=["NG", "KC"],
+                related_terms=["contract symbol", "futures symbol"],
+            ),
+            "name": ResponseFieldInfo(
+                description="Contract name",
+                examples=["Natural Gas (NG)", "Coffee (KC)"],
+                related_terms=["contract name", "futures name"],
+            ),
+        },
+        use_cases=[
+            "Contract discovery",
+            "Coverage review",
+            "Dataset exploration",
         ],
     ),
 }

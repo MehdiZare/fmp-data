@@ -7,6 +7,9 @@ from fmp_data.batch.models import (
     BatchMarketCap,
     BatchQuote,
     BatchQuoteShort,
+    EarningsSurpriseBulk,
+    EODBulk,
+    PeersBulk,
 )
 
 __all__ = [
@@ -17,4 +20,7 @@ __all__ = [
     "BatchMarketCap",
     "BatchQuote",
     "BatchQuoteShort",
+    "EODBulk",
+    "EarningsSurpriseBulk",
+    "PeersBulk",
 ]

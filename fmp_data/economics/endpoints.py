@@ -1,10 +1,15 @@
 from fmp_data.economics.models import (
+    CommitmentOfTradersAnalysis,
+    CommitmentOfTradersListItem,
+    CommitmentOfTradersReport,
     EconomicEvent,
     EconomicIndicator,
     MarketRiskPremium,
     TreasuryRate,
 )
 from fmp_data.economics.schema import (
+    CommitmentOfTradersArgs,
+    CommitmentOfTradersListArgs,
     EconomicCalendarArgs,
     EconomicIndicatorsArgs,
     EconomicIndicatorType,
@@ -160,5 +165,107 @@ MARKET_RISK_PREMIUM: Endpoint = Endpoint(
         "Show market risk by region",
         "Compare country risk premiums",
         "What's the US market premium?",
+    ],
+)
+
+COMMITMENT_OF_TRADERS_REPORT: Endpoint = Endpoint(
+    name="commitment_of_traders_report",
+    path="commitment-of-traders-report",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get Commitment of Traders (COT) report data",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="COT report symbol",
+        ),
+        EndpointParam(
+            name="start_date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=True,
+            description="Start date",
+            alias="from",
+        ),
+        EndpointParam(
+            name="end_date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=True,
+            description="End date",
+            alias="to",
+        ),
+    ],
+    optional_params=[],
+    response_model=CommitmentOfTradersReport,
+    arg_model=CommitmentOfTradersArgs,
+    example_queries=[
+        "Get COT report for KC",
+        "Show commitment of traders report for NG",
+        "COT report for B6 between dates",
+    ],
+)
+
+COMMITMENT_OF_TRADERS_ANALYSIS: Endpoint = Endpoint(
+    name="commitment_of_traders_analysis",
+    path="commitment-of-traders-analysis",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get Commitment of Traders (COT) analysis data",
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="COT report symbol",
+        ),
+        EndpointParam(
+            name="start_date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=True,
+            description="Start date",
+            alias="from",
+        ),
+        EndpointParam(
+            name="end_date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=True,
+            description="End date",
+            alias="to",
+        ),
+    ],
+    optional_params=[],
+    response_model=CommitmentOfTradersAnalysis,
+    arg_model=CommitmentOfTradersArgs,
+    example_queries=[
+        "Get COT analysis for KC",
+        "Show COT analysis for NG between dates",
+        "Commitment of traders analysis for B6",
+    ],
+)
+
+COMMITMENT_OF_TRADERS_LIST: Endpoint = Endpoint(
+    name="commitment_of_traders_list",
+    path="commitment-of-traders-list",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get list of available Commitment of Traders (COT) symbols",
+    mandatory_params=[],
+    optional_params=[],
+    response_model=CommitmentOfTradersListItem,
+    arg_model=CommitmentOfTradersListArgs,
+    example_queries=[
+        "List COT report symbols",
+        "Show all commitment of traders contracts",
+        "Available COT symbols",
     ],
 )

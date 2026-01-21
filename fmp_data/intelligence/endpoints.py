@@ -1,5 +1,6 @@
 from fmp_data.intelligence.models import (
     CrowdfundingOffering,
+    CrowdfundingOfferingSearchItem,
     CryptoNewsArticle,
     DividendEvent,
     EarningConfirmed,
@@ -773,7 +774,7 @@ SOCIAL_SENTIMENT_CHANGES_ENDPOINT: Endpoint = Endpoint(
 # ESG Endpoints
 ESG_DATA: Endpoint = Endpoint(
     name="esg_data",
-    path="esg-environmental-social-governance-data",
+    path="esg-disclosures",
     version=APIVersion.STABLE,
     description="Get ESG data for a company",
     mandatory_params=[
@@ -791,7 +792,7 @@ ESG_DATA: Endpoint = Endpoint(
 
 ESG_RATINGS: Endpoint = Endpoint(
     name="esg_ratings",
-    path="esg-environmental-social-governance-data-ratings",
+    path="esg-ratings",
     version=APIVersion.STABLE,
     description="Get ESG ratings for a company",
     mandatory_params=[
@@ -809,28 +810,47 @@ ESG_RATINGS: Endpoint = Endpoint(
 
 ESG_BENCHMARK: Endpoint = Endpoint(
     name="esg_benchmark",
-    path="esg-environmental-social-governance-sector-benchmark",
+    path="esg-benchmark",
     version=APIVersion.STABLE,
-    description="Get ESG sector benchmark data",
-    mandatory_params=[
-        EndpointParam(
-            name="year",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.INTEGER,
-            required=True,
-            description="Benchmark year",
-        )
-    ],
+    description="Get ESG benchmark data",
+    mandatory_params=[],
     optional_params=[],
     response_model=ESGBenchmark,
 )
 
 # Government Trading Endpoints
+SENATE_LATEST: Endpoint = Endpoint(
+    name="senate_latest",
+    path="senate-latest",
+    version=APIVersion.STABLE,
+    description="Get latest Senate financial disclosures",
+    mandatory_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Page number",
+            default=0,
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Number of results",
+            default=100,
+        ),
+    ],
+    optional_params=[],
+    response_model=SenateTrade,
+)
+
 SENATE_TRADING: Endpoint = Endpoint(
     name="senate_trading",
-    path="senate-trading",
+    path="senate-trades",
     version=APIVersion.STABLE,
-    description="Get Senate trading data",
+    description="Get Senate trading data by symbol",
     mandatory_params=[
         EndpointParam(
             name="symbol",
@@ -838,6 +858,24 @@ SENATE_TRADING: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=SenateTrade,
+)
+
+SENATE_TRADES_BY_NAME: Endpoint = Endpoint(
+    name="senate_trades_by_name",
+    path="senate-trades-by-name",
+    version=APIVersion.STABLE,
+    description="Get Senate trading data by name",
+    mandatory_params=[
+        EndpointParam(
+            name="name",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Senator first or last name",
         )
     ],
     optional_params=[],
@@ -863,11 +901,38 @@ SENATE_TRADING_RSS: Endpoint = Endpoint(
     response_model=SenateTrade,
 )
 
+HOUSE_LATEST: Endpoint = Endpoint(
+    name="house_latest",
+    path="house-latest",
+    version=APIVersion.STABLE,
+    description="Get latest House financial disclosures",
+    mandatory_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Page number",
+            default=0,
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Number of results",
+            default=100,
+        ),
+    ],
+    optional_params=[],
+    response_model=HouseDisclosure,
+)
+
 HOUSE_DISCLOSURE: Endpoint = Endpoint(
     name="house_disclosure",
-    path="senate-disclosure",
+    path="house-trades",
     version=APIVersion.STABLE,
-    description="Get House disclosure data",
+    description="Get House trading data by symbol",
     mandatory_params=[
         EndpointParam(
             name="symbol",
@@ -875,6 +940,24 @@ HOUSE_DISCLOSURE: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol",
+        )
+    ],
+    optional_params=[],
+    response_model=HouseDisclosure,
+)
+
+HOUSE_TRADES_BY_NAME: Endpoint = Endpoint(
+    name="house_trades_by_name",
+    path="house-trades-by-name",
+    version=APIVersion.STABLE,
+    description="Get House trading data by name",
+    mandatory_params=[
+        EndpointParam(
+            name="name",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Representative first or last name",
         )
     ],
     optional_params=[],
@@ -903,9 +986,9 @@ HOUSE_DISCLOSURE_RSS: Endpoint = Endpoint(
 # Fundraising Endpoints
 CROWDFUNDING_RSS: Endpoint = Endpoint(
     name="crowdfunding_rss",
-    path="crowdfunding-offerings-rss-feed",
+    path="crowdfunding-offerings-latest",
     version=APIVersion.STABLE,
-    description="Get crowdfunding offerings RSS feed",
+    description="Get latest crowdfunding offerings",
     mandatory_params=[
         EndpointParam(
             name="page",
@@ -914,7 +997,15 @@ CROWDFUNDING_RSS: Endpoint = Endpoint(
             required=True,
             description="Page number",
             default=0,
-        )
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Number of results",
+            default=100,
+        ),
     ],
     optional_params=[],
     response_model=CrowdfundingOffering,
@@ -922,7 +1013,7 @@ CROWDFUNDING_RSS: Endpoint = Endpoint(
 
 CROWDFUNDING_SEARCH: Endpoint = Endpoint(
     name="crowdfunding_search",
-    path="crowdfunding-offerings/search",
+    path="crowdfunding-offerings-search",
     version=APIVersion.STABLE,
     description="Search crowdfunding offerings",
     mandatory_params=[
@@ -935,7 +1026,7 @@ CROWDFUNDING_SEARCH: Endpoint = Endpoint(
         )
     ],
     optional_params=[],
-    response_model=CrowdfundingOffering,
+    response_model=CrowdfundingOfferingSearchItem,
 )
 
 CROWDFUNDING_BY_CIK: Endpoint = Endpoint(
@@ -958,9 +1049,9 @@ CROWDFUNDING_BY_CIK: Endpoint = Endpoint(
 
 EQUITY_OFFERING_RSS: Endpoint = Endpoint(
     name="equity_offering_rss",
-    path="fundraising-rss-feed",
+    path="fundraising-latest",
     version=APIVersion.STABLE,
-    description="Get equity offering RSS feed",
+    description="Get latest equity offerings",
     mandatory_params=[
         EndpointParam(
             name="page",
@@ -969,15 +1060,31 @@ EQUITY_OFFERING_RSS: Endpoint = Endpoint(
             required=True,
             description="Page number",
             default=0,
-        )
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Number of results",
+            default=10,
+        ),
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="cik",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Company CIK number",
+        ),
+    ],
     response_model=EquityOffering,
 )
 
 EQUITY_OFFERING_SEARCH: Endpoint = Endpoint(
     name="equity_offering_search",
-    path="fundraising/search",
+    path="fundraising-search",
     version=APIVersion.STABLE,
     description="Search equity offerings",
     mandatory_params=[

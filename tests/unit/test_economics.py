@@ -5,6 +5,9 @@ from pydantic import ValidationError
 import pytest
 
 from fmp_data.economics.models import (
+    CommitmentOfTradersAnalysis,
+    CommitmentOfTradersListItem,
+    CommitmentOfTradersReport,
     EconomicEvent,
     EconomicIndicator,
     MarketRiskPremium,
@@ -250,3 +253,116 @@ class TestMarketRiskPremium:
         assert isinstance(premium, MarketRiskPremium)
         assert premium.country == "United States"
         assert premium.total_equity_risk_premium == 5.5
+
+
+class TestCommitmentOfTraders:
+    """Tests for Commitment of Traders endpoints"""
+
+    @pytest.fixture
+    def cot_report_data(self):
+        return {
+            "symbol": "KC",
+            "date": "2024-02-27 00:00:00",
+            "name": "Coffee (KC)",
+            "sector": "SOFTS",
+            "marketAndExchangeNames": "COFFEE C - ICE FUTURES U.S.",
+            "openInterestAll": 209453,
+            "noncommPositionsLongAll": 75330,
+            "noncommPositionsShortAll": 23630,
+            "commPositionsLongAll": 79690,
+            "commPositionsShortAll": 132114,
+            "contractUnits": "(CONTRACTS OF 37,500 POUNDS)",
+        }
+
+    @pytest.fixture
+    def cot_analysis_data(self):
+        return {
+            "symbol": "B6",
+            "date": "2024-02-27 00:00:00",
+            "name": "British Pound (B6)",
+            "sector": "CURRENCIES",
+            "exchange": "BRITISH POUND - CHICAGO MERCANTILE EXCHANGE",
+            "currentLongMarketSituation": 66.85,
+            "currentShortMarketSituation": 33.15,
+            "marketSituation": "Bullish",
+            "previousLongMarketSituation": 67.97,
+            "previousShortMarketSituation": 32.03,
+            "previousMarketSituation": "Bullish",
+            "netPostion": 46358,
+            "previousNetPosition": 46312,
+            "changeInNetPosition": 0.1,
+            "marketSentiment": "Increasing Bullish",
+            "reversalTrend": False,
+        }
+
+    @pytest.fixture
+    def cot_list_data(self):
+        return {"symbol": "NG", "name": "Natural Gas (NG)"}
+
+    def test_cot_report_model(self, cot_report_data):
+        report = CommitmentOfTradersReport.model_validate(cot_report_data)
+        assert report.symbol == "KC"
+        assert report.sector == "SOFTS"
+        assert report.open_interest_all == 209453
+
+    def test_cot_analysis_model(self, cot_analysis_data):
+        analysis = CommitmentOfTradersAnalysis.model_validate(cot_analysis_data)
+        assert analysis.symbol == "B6"
+        assert analysis.market_situation == "Bullish"
+        assert analysis.net_position == 46358
+
+    def test_cot_list_model(self, cot_list_data):
+        item = CommitmentOfTradersListItem.model_validate(cot_list_data)
+        assert item.symbol == "NG"
+        assert item.name == "Natural Gas (NG)"
+
+    @patch("httpx.Client.request")
+    def test_get_commitment_of_traders_report(
+        self, mock_request, fmp_client, mock_response, cot_report_data
+    ):
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[cot_report_data]
+        )
+
+        reports = fmp_client.economics.get_commitment_of_traders_report(
+            "KC", date(2024, 1, 1), date(2024, 3, 1)
+        )
+
+        assert isinstance(reports, list)
+        assert isinstance(reports[0], CommitmentOfTradersReport)
+        params = mock_request.call_args[1]["params"]
+        assert params["symbol"] == "KC"
+        assert params["from"] == "2024-01-01"
+        assert params["to"] == "2024-03-01"
+
+    @patch("httpx.Client.request")
+    def test_get_commitment_of_traders_analysis(
+        self, mock_request, fmp_client, mock_response, cot_analysis_data
+    ):
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[cot_analysis_data]
+        )
+
+        analysis = fmp_client.economics.get_commitment_of_traders_analysis(
+            "B6", date(2024, 1, 1), date(2024, 3, 1)
+        )
+
+        assert isinstance(analysis, list)
+        assert isinstance(analysis[0], CommitmentOfTradersAnalysis)
+        params = mock_request.call_args[1]["params"]
+        assert params["symbol"] == "B6"
+        assert params["from"] == "2024-01-01"
+        assert params["to"] == "2024-03-01"
+
+    @patch("httpx.Client.request")
+    def test_get_commitment_of_traders_list(
+        self, mock_request, fmp_client, mock_response, cot_list_data
+    ):
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[cot_list_data]
+        )
+
+        items = fmp_client.economics.get_commitment_of_traders_list()
+
+        assert isinstance(items, list)
+        assert isinstance(items[0], CommitmentOfTradersListItem)

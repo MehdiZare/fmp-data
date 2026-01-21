@@ -391,3 +391,279 @@ RATIOS_TTM_BULK: Endpoint = Endpoint(
     optional_params=[],
     response_model=bytes,
 )
+
+PRICE_TARGET_SUMMARY_BULK: Endpoint = Endpoint(
+    name="price_target_summary_bulk",
+    path="price-target-summary-bulk",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get bulk price target summary data",
+    mandatory_params=[],
+    optional_params=[],
+    response_model=bytes,
+)
+
+ETF_HOLDER_BULK: Endpoint = Endpoint(
+    name="etf_holder_bulk",
+    path="etf-holder-bulk",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get ETF holdings in bulk",
+    mandatory_params=[
+        EndpointParam(
+            name="part",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="ETF holdings partition identifier",
+        )
+    ],
+    optional_params=[],
+    response_model=bytes,
+)
+
+UPGRADES_DOWNGRADES_CONSENSUS_BULK: Endpoint = Endpoint(
+    name="upgrades_downgrades_consensus_bulk",
+    path="upgrades-downgrades-consensus-bulk",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get upgrades/downgrades consensus data in bulk",
+    mandatory_params=[],
+    optional_params=[],
+    response_model=bytes,
+)
+
+KEY_METRICS_TTM_BULK: Endpoint = Endpoint(
+    name="key_metrics_ttm_bulk",
+    path="key-metrics-ttm-bulk",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get trailing twelve month key metrics in bulk",
+    mandatory_params=[],
+    optional_params=[],
+    response_model=bytes,
+)
+
+PEERS_BULK: Endpoint = Endpoint(
+    name="peers_bulk",
+    path="peers-bulk",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get peer lists for all symbols in bulk",
+    mandatory_params=[],
+    optional_params=[],
+    response_model=bytes,
+)
+
+EARNINGS_SURPRISES_BULK: Endpoint = Endpoint(
+    name="earnings_surprises_bulk",
+    path="earnings-surprises-bulk",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get earnings surprises in bulk for a given year",
+    mandatory_params=[
+        EndpointParam(
+            name="year",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Earnings year",
+        )
+    ],
+    optional_params=[],
+    response_model=bytes,
+)
+
+INCOME_STATEMENT_BULK: Endpoint = Endpoint(
+    name="income_statement_bulk",
+    path="income-statement-bulk",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get income statements in bulk",
+    mandatory_params=[
+        EndpointParam(
+            name="year",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Filing year",
+        ),
+        EndpointParam(
+            name="period",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Reporting period",
+            valid_values=["Q1", "Q2", "Q3", "Q4", "FY"],
+        ),
+    ],
+    optional_params=[],
+    response_model=bytes,
+)
+
+INCOME_STATEMENT_GROWTH_BULK: Endpoint = Endpoint(
+    name="income_statement_growth_bulk",
+    path="income-statement-growth-bulk",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get income statement growth in bulk",
+    mandatory_params=[
+        EndpointParam(
+            name="year",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Filing year",
+        ),
+        EndpointParam(
+            name="period",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Reporting period",
+            valid_values=["Q1", "Q2", "Q3", "Q4", "FY"],
+        ),
+    ],
+    optional_params=[],
+    response_model=bytes,
+)
+
+BALANCE_SHEET_STATEMENT_BULK: Endpoint = Endpoint(
+    name="balance_sheet_statement_bulk",
+    path="balance-sheet-statement-bulk",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get balance sheet statements in bulk",
+    mandatory_params=[
+        EndpointParam(
+            name="year",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Filing year",
+        ),
+        EndpointParam(
+            name="period",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Reporting period",
+            valid_values=["Q1", "Q2", "Q3", "Q4", "FY"],
+        ),
+    ],
+    optional_params=[],
+    response_model=bytes,
+)
+
+BALANCE_SHEET_STATEMENT_GROWTH_BULK: Endpoint = Endpoint(
+    name="balance_sheet_statement_growth_bulk",
+    path="balance-sheet-statement-growth-bulk",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get balance sheet statement growth in bulk",
+    mandatory_params=[
+        EndpointParam(
+            name="year",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Filing year",
+        ),
+        EndpointParam(
+            name="period",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Reporting period",
+            valid_values=["Q1", "Q2", "Q3", "Q4", "FY"],
+        ),
+    ],
+    optional_params=[],
+    response_model=bytes,
+)
+
+CASH_FLOW_STATEMENT_BULK: Endpoint = Endpoint(
+    name="cash_flow_statement_bulk",
+    path="cash-flow-statement-bulk",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get cash flow statements in bulk",
+    mandatory_params=[
+        EndpointParam(
+            name="year",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Filing year",
+        ),
+        EndpointParam(
+            name="period",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Reporting period",
+            valid_values=["Q1", "Q2", "Q3", "Q4", "FY"],
+        ),
+    ],
+    optional_params=[],
+    response_model=bytes,
+)
+
+CASH_FLOW_STATEMENT_GROWTH_BULK: Endpoint = Endpoint(
+    name="cash_flow_statement_growth_bulk",
+    path="cash-flow-statement-growth-bulk",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get cash flow statement growth in bulk",
+    mandatory_params=[
+        EndpointParam(
+            name="year",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Filing year",
+        ),
+        EndpointParam(
+            name="period",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Reporting period",
+            valid_values=["Q1", "Q2", "Q3", "Q4", "FY"],
+        ),
+    ],
+    optional_params=[],
+    response_model=bytes,
+)
+
+EOD_BULK: Endpoint = Endpoint(
+    name="eod_bulk",
+    path="eod-bulk",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get end-of-day prices in bulk",
+    mandatory_params=[
+        EndpointParam(
+            name="date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=True,
+            description="End-of-day date",
+        )
+    ],
+    optional_params=[],
+    response_model=bytes,
+)

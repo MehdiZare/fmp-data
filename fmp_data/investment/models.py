@@ -1,5 +1,6 @@
 # fmp_data/investment/models.py
-from datetime import date, datetime
+from datetime import date as dt_date
+from datetime import datetime
 from decimal import Decimal
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
@@ -24,7 +25,9 @@ class ETFHolding(BaseModel):
     name: str = Field(description="Asset name")
     isin: str | None = Field(None, description="Asset ISIN")
     security_cusip: str | None = Field(
-        None, alias="securityCusip", description="Asset CUSIP"
+        None,
+        validation_alias=AliasChoices("securityCusip", "cusip"),
+        description="Asset CUSIP",
     )
     shares_number: float = Field(
         alias="sharesNumber", description="Number of shares held"
@@ -34,7 +37,9 @@ class ETFHolding(BaseModel):
     )
     market_value: float = Field(alias="marketValue", description="Market value in USD")
     updated_at: datetime | None = Field(
-        None, alias="updatedAt", description="Timestamp of last update"
+        None,
+        validation_alias=AliasChoices("updatedAt", "lastUpdated"),
+        description="Timestamp of last update",
     )
     updated: datetime | None = Field(None, description="Last refresh timestamp")
 
@@ -73,7 +78,7 @@ class ETFInfo(BaseModel):
     avg_volume: int | None = Field(
         None, alias="avgVolume", description="Average volume"
     )
-    inception_date: date | None = Field(
+    inception_date: dt_date | None = Field(
         None, alias="inceptionDate", description="Inception date"
     )
     nav: Decimal | None = Field(None, description="Net Asset Value (NAV)")
@@ -192,7 +197,7 @@ class MutualFundHolding(BaseModel):
         alias="weightPercentage", description="Portfolio weight percentage"
     )
     market_value: Decimal = Field(alias="marketValue", description="Market value")
-    reported_date: date = Field(alias="reportedDate", description="Report date")
+    reported_date: dt_date = Field(alias="reportedDate", description="Report date")
 
 
 class MutualFundHolder(BaseModel):
@@ -202,7 +207,7 @@ class MutualFundHolder(BaseModel):
 
     holder: str = Field(description="Fund name")
     shares: float = Field(description="Number of shares")
-    date_reported: date = Field(alias="dateReported", description="Report date")
+    date_reported: dt_date = Field(alias="dateReported", description="Report date")
     change: int = Field(description="Change in the number of shares")
     weight_percent: float = Field(
         alias="weightPercent", description="Portfolio weight percentage"
@@ -217,7 +222,7 @@ class FundDisclosureHolderLatest(BaseModel):
     cik: str | None = Field(None, description="Fund CIK")
     holder: str = Field(description="Fund name")
     shares: float = Field(description="Number of shares")
-    date_reported: date = Field(alias="dateReported", description="Report date")
+    date_reported: dt_date = Field(alias="dateReported", description="Report date")
     change: float = Field(description="Change in the number of shares")
     weight_percent: float = Field(
         alias="weightPercent", description="Portfolio weight percentage"
@@ -230,7 +235,7 @@ class FundDisclosureHolding(BaseModel):
     model_config = default_model_config
 
     cik: str | None = Field(None, description="Fund CIK")
-    date: date | None = Field(None, description="Disclosure date")
+    date: dt_date | None = Field(None, description="Disclosure date")
     accepted_date: datetime | None = Field(
         None, alias="acceptedDate", description="Accepted timestamp"
     )
@@ -316,7 +321,7 @@ class ETFPortfolioDate(BaseModel):
 
     model_config = default_model_config
 
-    portfolio_date: date = Field(description="Portfolio date", alias="date")
+    portfolio_date: dt_date = Field(description="Portfolio date", alias="date")
 
 
 class PortfolioDate(BaseModel):
@@ -324,6 +329,6 @@ class PortfolioDate(BaseModel):
 
     model_config = default_model_config
 
-    portfolio_date: date = Field(description="Portfolio date", alias="date")
+    portfolio_date: dt_date = Field(description="Portfolio date", alias="date")
     year: int | None = Field(None, description="Year of the disclosure")
     quarter: int | None = Field(None, description="Quarter of the disclosure (1-4)")

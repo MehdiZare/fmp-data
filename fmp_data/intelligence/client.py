@@ -32,6 +32,8 @@ from fmp_data.intelligence.endpoints import (
     HISTORICAL_EARNINGS,
     HOUSE_DISCLOSURE,
     HOUSE_DISCLOSURE_RSS,
+    HOUSE_LATEST,
+    HOUSE_TRADES_BY_NAME,
     IPO_CALENDAR,
     PRESS_RELEASES_BY_SYMBOL_ENDPOINT,
     PRESS_RELEASES_ENDPOINT,
@@ -39,6 +41,8 @@ from fmp_data.intelligence.endpoints import (
     PRICE_TARGET_NEWS,
     RATINGS_HISTORICAL,
     RATINGS_SNAPSHOT,
+    SENATE_LATEST,
+    SENATE_TRADES_BY_NAME,
     SENATE_TRADING,
     SENATE_TRADING_RSS,
     STOCK_NEWS_ENDPOINT,
@@ -49,6 +53,7 @@ from fmp_data.intelligence.endpoints import (
 )
 from fmp_data.intelligence.models import (
     CrowdfundingOffering,
+    CrowdfundingOfferingSearchItem,
     CryptoNewsArticle,
     DividendEvent,
     EarningConfirmed,
@@ -413,33 +418,53 @@ class MarketIntelligenceClient(EndpointGroup):
             return cast(ESGRating, result[0]) if len(result) > 0 else None
         return cast(ESGRating, result)
 
-    def get_esg_benchmark(self, year: int) -> list[ESGBenchmark]:
-        """Get ESG sector benchmark data"""
-        return self.client.request(ESG_BENCHMARK, year=year)
+    def get_esg_benchmark(self) -> list[ESGBenchmark]:
+        """Get ESG benchmark data"""
+        return self.client.request(ESG_BENCHMARK)
 
     # Government trading methods
+    def get_senate_latest(self, page: int = 0, limit: int = 100) -> list[SenateTrade]:
+        """Get latest Senate financial disclosures"""
+        return self.client.request(SENATE_LATEST, page=page, limit=limit)
+
     def get_senate_trading(self, symbol: str) -> list[SenateTrade]:
         """Get Senate trading data"""
         return self.client.request(SENATE_TRADING, symbol=symbol)
+
+    def get_senate_trades_by_name(self, name: str) -> list[SenateTrade]:
+        """Get Senate trading data by name"""
+        return self.client.request(SENATE_TRADES_BY_NAME, name=name)
 
     def get_senate_trading_rss(self, page: int = 0) -> list[SenateTrade]:
         """Get Senate trading RSS feed"""
         return self.client.request(SENATE_TRADING_RSS, page=page)
 
+    def get_house_latest(
+        self, page: int = 0, limit: int = 100
+    ) -> list[HouseDisclosure]:
+        """Get latest House financial disclosures"""
+        return self.client.request(HOUSE_LATEST, page=page, limit=limit)
+
     def get_house_disclosure(self, symbol: str) -> list[HouseDisclosure]:
         """Get House disclosure data"""
         return self.client.request(HOUSE_DISCLOSURE, symbol=symbol)
+
+    def get_house_trades_by_name(self, name: str) -> list[HouseDisclosure]:
+        """Get House trading data by name"""
+        return self.client.request(HOUSE_TRADES_BY_NAME, name=name)
 
     def get_house_disclosure_rss(self, page: int = 0) -> list[HouseDisclosure]:
         """Get House disclosure RSS feed"""
         return self.client.request(HOUSE_DISCLOSURE_RSS, page=page)
 
     # Fundraising methods
-    def get_crowdfunding_rss(self, page: int = 0) -> list[CrowdfundingOffering]:
-        """Get crowdfunding offerings RSS feed"""
-        return self.client.request(CROWDFUNDING_RSS, page=page)
+    def get_crowdfunding_rss(
+        self, page: int = 0, limit: int = 100
+    ) -> list[CrowdfundingOffering]:
+        """Get latest crowdfunding offerings"""
+        return self.client.request(CROWDFUNDING_RSS, page=page, limit=limit)
 
-    def search_crowdfunding(self, name: str) -> list[CrowdfundingOffering]:
+    def search_crowdfunding(self, name: str) -> list[CrowdfundingOfferingSearchItem]:
         """Search crowdfunding offerings"""
         return self.client.request(CROWDFUNDING_SEARCH, name=name)
 
@@ -447,9 +472,14 @@ class MarketIntelligenceClient(EndpointGroup):
         """Get crowdfunding offerings by CIK"""
         return self.client.request(CROWDFUNDING_BY_CIK, cik=cik)
 
-    def get_equity_offering_rss(self, page: int = 0) -> list[EquityOffering]:
-        """Get equity offering RSS feed"""
-        return self.client.request(EQUITY_OFFERING_RSS, page=page)
+    def get_equity_offering_rss(
+        self, page: int = 0, limit: int = 10, cik: str | None = None
+    ) -> list[EquityOffering]:
+        """Get latest equity offerings"""
+        params: dict[str, int | str] = {"page": page, "limit": limit}
+        if cik is not None:
+            params["cik"] = cik
+        return self.client.request(EQUITY_OFFERING_RSS, **params)
 
     def search_equity_offering(self, name: str) -> list[EquityOffering]:
         """Search equity offerings"""

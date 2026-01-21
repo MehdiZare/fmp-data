@@ -1,10 +1,13 @@
 # fmp_data/batch/client.py
 import csv
+from datetime import date
 import io
 from typing import Any, cast
 
 from fmp_data.base import EndpointGroup
 from fmp_data.batch.endpoints import (
+    BALANCE_SHEET_STATEMENT_BULK,
+    BALANCE_SHEET_STATEMENT_GROWTH_BULK,
     BATCH_AFTERMARKET_QUOTE,
     BATCH_AFTERMARKET_TRADE,
     BATCH_COMMODITY_QUOTES,
@@ -17,11 +20,22 @@ from fmp_data.batch.endpoints import (
     BATCH_MUTUALFUND_QUOTES,
     BATCH_QUOTE,
     BATCH_QUOTE_SHORT,
+    CASH_FLOW_STATEMENT_BULK,
+    CASH_FLOW_STATEMENT_GROWTH_BULK,
     DCF_BULK,
+    EARNINGS_SURPRISES_BULK,
+    EOD_BULK,
+    ETF_HOLDER_BULK,
+    INCOME_STATEMENT_BULK,
+    INCOME_STATEMENT_GROWTH_BULK,
+    KEY_METRICS_TTM_BULK,
+    PEERS_BULK,
+    PRICE_TARGET_SUMMARY_BULK,
     PROFILE_BULK,
     RATING_BULK,
     RATIOS_TTM_BULK,
     SCORES_BULK,
+    UPGRADES_DOWNGRADES_CONSENSUS_BULK,
 )
 from fmp_data.batch.models import (
     AftermarketQuote,
@@ -29,14 +43,27 @@ from fmp_data.batch.models import (
     BatchMarketCap,
     BatchQuote,
     BatchQuoteShort,
+    EarningsSurpriseBulk,
+    EODBulk,
+    PeersBulk,
 )
-from fmp_data.company.models import CompanyProfile
+from fmp_data.company.models import (
+    CompanyProfile,
+    PriceTargetSummary,
+    UpgradeDowngradeConsensus,
+)
 from fmp_data.fundamental.models import (
     DCF,
+    BalanceSheet,
+    CashFlowStatement,
     CompanyRating,
+    FinancialGrowth,
     FinancialRatiosTTM,
     FinancialScore,
+    IncomeStatement,
+    KeyMetricsTTM,
 )
+from fmp_data.investment.models import ETFHolding
 
 
 class BatchClient(EndpointGroup):
@@ -254,3 +281,101 @@ class BatchClient(EndpointGroup):
         """Get trailing twelve month financial ratios in bulk"""
         raw = cast(bytes, self.client.request(RATIOS_TTM_BULK))
         return self._parse_csv_models(raw, FinancialRatiosTTM)
+
+    def get_price_target_summary_bulk(self) -> list[PriceTargetSummary]:
+        """Get bulk price target summaries"""
+        raw = cast(bytes, self.client.request(PRICE_TARGET_SUMMARY_BULK))
+        return self._parse_csv_models(raw, PriceTargetSummary)
+
+    def get_etf_holder_bulk(self, part: str) -> list[ETFHolding]:
+        """Get bulk ETF holdings"""
+        raw = cast(bytes, self.client.request(ETF_HOLDER_BULK, part=part))
+        return self._parse_csv_models(raw, ETFHolding)
+
+    def get_upgrades_downgrades_consensus_bulk(
+        self,
+    ) -> list[UpgradeDowngradeConsensus]:
+        """Get bulk upgrades/downgrades consensus data"""
+        raw = cast(bytes, self.client.request(UPGRADES_DOWNGRADES_CONSENSUS_BULK))
+        rows = [row for row in self._parse_csv_rows(raw) if row.get("symbol")]
+        return [UpgradeDowngradeConsensus.model_validate(row) for row in rows]
+
+    def get_key_metrics_ttm_bulk(self) -> list[KeyMetricsTTM]:
+        """Get bulk trailing twelve month key metrics"""
+        raw = cast(bytes, self.client.request(KEY_METRICS_TTM_BULK))
+        return self._parse_csv_models(raw, KeyMetricsTTM)
+
+    def get_peers_bulk(self) -> list[PeersBulk]:
+        """Get bulk peer lists"""
+        raw = cast(bytes, self.client.request(PEERS_BULK))
+        return self._parse_csv_models(raw, PeersBulk)
+
+    def get_earnings_surprises_bulk(self, year: int) -> list[EarningsSurpriseBulk]:
+        """Get bulk earnings surprises for a given year"""
+        raw = cast(bytes, self.client.request(EARNINGS_SURPRISES_BULK, year=year))
+        return self._parse_csv_models(raw, EarningsSurpriseBulk)
+
+    def get_income_statement_bulk(
+        self, year: int, period: str
+    ) -> list[IncomeStatement]:
+        """Get bulk income statements"""
+        raw = cast(
+            bytes,
+            self.client.request(INCOME_STATEMENT_BULK, year=year, period=period),
+        )
+        return self._parse_csv_models(raw, IncomeStatement)
+
+    def get_income_statement_growth_bulk(
+        self, year: int, period: str
+    ) -> list[FinancialGrowth]:
+        """Get bulk income statement growth data"""
+        raw = cast(
+            bytes,
+            self.client.request(INCOME_STATEMENT_GROWTH_BULK, year=year, period=period),
+        )
+        return self._parse_csv_models(raw, FinancialGrowth)
+
+    def get_balance_sheet_bulk(self, year: int, period: str) -> list[BalanceSheet]:
+        """Get bulk balance sheet statements"""
+        raw = cast(
+            bytes,
+            self.client.request(BALANCE_SHEET_STATEMENT_BULK, year=year, period=period),
+        )
+        return self._parse_csv_models(raw, BalanceSheet)
+
+    def get_balance_sheet_growth_bulk(
+        self, year: int, period: str
+    ) -> list[FinancialGrowth]:
+        """Get bulk balance sheet growth data"""
+        raw = cast(
+            bytes,
+            self.client.request(
+                BALANCE_SHEET_STATEMENT_GROWTH_BULK, year=year, period=period
+            ),
+        )
+        return self._parse_csv_models(raw, FinancialGrowth)
+
+    def get_cash_flow_bulk(self, year: int, period: str) -> list[CashFlowStatement]:
+        """Get bulk cash flow statements"""
+        raw = cast(
+            bytes,
+            self.client.request(CASH_FLOW_STATEMENT_BULK, year=year, period=period),
+        )
+        return self._parse_csv_models(raw, CashFlowStatement)
+
+    def get_cash_flow_growth_bulk(
+        self, year: int, period: str
+    ) -> list[FinancialGrowth]:
+        """Get bulk cash flow growth data"""
+        raw = cast(
+            bytes,
+            self.client.request(
+                CASH_FLOW_STATEMENT_GROWTH_BULK, year=year, period=period
+            ),
+        )
+        return self._parse_csv_models(raw, FinancialGrowth)
+
+    def get_eod_bulk(self, target_date: date | str) -> list[EODBulk]:
+        """Get bulk end-of-day prices"""
+        raw = cast(bytes, self.client.request(EOD_BULK, date=target_date))
+        return self._parse_csv_models(raw, EODBulk)

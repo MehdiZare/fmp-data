@@ -8,6 +8,7 @@ from fmp_data.helpers import RemovedEndpointError
 from fmp_data.intelligence.client import MarketIntelligenceClient
 from fmp_data.intelligence.models import (
     CrowdfundingOffering,
+    CrowdfundingOfferingSearchItem,
     CryptoNewsArticle,
     DividendEvent,
     EarningConfirmed,
@@ -657,7 +658,6 @@ class TestMarketIntelligenceClientSocialSentiment:
     def test_get_esg_benchmark(self, fmp_client, mock_client):
         """Test get_esg_benchmark"""
         mock_data = {
-            "year": 2024,
             "sector": "Technology",
             "environmentalScore": 70.0,  # NOT "averageEnvironmentalScore"
             "socialScore": 60.0,  # NOT "averageSocialScore"
@@ -666,11 +666,11 @@ class TestMarketIntelligenceClientSocialSentiment:
         }
         mock_client.request.return_value = [ESGBenchmark(**mock_data)]
 
-        result = fmp_client.intelligence.get_esg_benchmark(2024)
+        result = fmp_client.intelligence.get_esg_benchmark()
 
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
-        assert kwargs["year"] == 2024
+        assert "year" not in kwargs
         assert isinstance(result, list)
         assert len(result) == 1
         assert result[0].sector == "Technology"
@@ -718,7 +718,6 @@ class TestMarketIntelligenceClientESG:
     def test_get_esg_benchmark(self, fmp_client, mock_client):
         """Test get_esg_benchmark"""
         mock_data = {
-            "year": 2024,
             "sector": "Technology",
             "ESGScore": 65.5,
             "numberOfCompanies": 100,
@@ -729,15 +728,43 @@ class TestMarketIntelligenceClientESG:
         }
         mock_client.request.return_value = [ESGBenchmark(**mock_data)]
 
-        _ = fmp_client.intelligence.get_esg_benchmark(2024)
+        _ = fmp_client.intelligence.get_esg_benchmark()
 
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
-        assert kwargs["year"] == 2024
+        assert "year" not in kwargs
 
 
 class TestMarketIntelligenceClientGovernment:
     """Test government trading functionality"""
+
+    def test_get_senate_latest(self, fmp_client, mock_client):
+        """Test get_senate_latest"""
+        mock_data = {
+            "symbol": "AAPL",
+            "disclosureDate": "2025-01-08",
+            "transactionDate": "2024-12-19",
+            "firstName": "Sheldon",
+            "lastName": "Whitehouse",
+            "office": "Sheldon Whitehouse",
+            "district": "RI",
+            "owner": "Self",
+            "assetDescription": "Apple Inc",
+            "assetType": "Stock",
+            "type": "Sale (Partial)",
+            "amount": "$15,001 - $50,000",
+            "capitalGainsOver200USD": "False",
+            "comment": "--",
+            "link": "https://example.com/filing",
+        }
+        mock_client.request.return_value = [SenateTrade(**mock_data)]
+
+        _ = fmp_client.intelligence.get_senate_latest(page=0, limit=100)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["page"] == 0
+        assert kwargs["limit"] == 100
 
     def test_get_senate_trading(self, fmp_client, mock_client):
         """Test get_senate_trading"""
@@ -746,7 +773,7 @@ class TestMarketIntelligenceClientGovernment:
             "lastName": "Doe",
             "office": "Senate Office",
             "link": "https://example.com/filing",
-            "dateRecieved": "2024-01-15T10:00:00",
+            "disclosureDate": "2024-01-15T10:00:00",
             "transactionDate": "2024-01-10T10:00:00",
             "owner": "Self",
             "assetDescription": "Apple Inc Common Stock",
@@ -764,6 +791,16 @@ class TestMarketIntelligenceClientGovernment:
         args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "AAPL"
 
+    def test_get_senate_trades_by_name(self, fmp_client, mock_client):
+        """Test get_senate_trades_by_name"""
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_trades_by_name("Jerry")
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["name"] == "Jerry"
+
     def test_get_senate_trading_rss(self, fmp_client, mock_client):
         """Test get_senate_trading_rss"""
         mock_client.request.return_value = []
@@ -774,18 +811,47 @@ class TestMarketIntelligenceClientGovernment:
         args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 0
 
+    def test_get_house_latest(self, fmp_client, mock_client):
+        """Test get_house_latest"""
+        mock_data = {
+            "symbol": "AAPL",
+            "disclosureDate": "2025-02-03",
+            "transactionDate": "2025-01-03",
+            "firstName": "Michael",
+            "lastName": "Collins",
+            "office": "Michael Collins",
+            "district": "GA10",
+            "owner": "",
+            "assetDescription": "VIRTUALS PROTOCOL",
+            "assetType": "Cryptocurrency",
+            "type": "Purchase",
+            "amount": "$1,001 - $15,000",
+            "capitalGainsOver200USD": "False",
+            "comment": "",
+            "link": "https://example.com/filing",
+        }
+        mock_client.request.return_value = [HouseDisclosure(**mock_data)]
+
+        _ = fmp_client.intelligence.get_house_latest(page=0, limit=100)
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["page"] == 0
+        assert kwargs["limit"] == 100
+
     def test_get_house_disclosure(self, fmp_client, mock_client):
         """Test get_house_disclosure"""
         mock_data = {
-            "disclosureYear": "2024",
             "disclosureDate": "2024-01-15T10:00:00",
             "transactionDate": "2024-01-10T10:00:00",
             "owner": "Self",
-            "ticker": "AAPL",
+            "symbol": "AAPL",
             "assetDescription": "Apple Inc Common Stock",
             "type": "Purchase",
             "amount": "$15,001-$50,000",
-            "representative": "Jane Doe",
+            "firstName": "Jane",
+            "lastName": "Doe",
+            "office": "Jane Doe",
             "district": "NY-1",
             "link": "https://example.com/filing",
             "capitalGainsOver200USD": False,
@@ -797,6 +863,16 @@ class TestMarketIntelligenceClientGovernment:
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "AAPL"
+
+    def test_get_house_trades_by_name(self, fmp_client, mock_client):
+        """Test get_house_trades_by_name"""
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_house_trades_by_name("James")
+
+        mock_client.request.assert_called_once()
+        args, kwargs = mock_client.request.call_args
+        assert kwargs["name"] == "James"
 
     def test_get_house_disclosure_rss(self, fmp_client, mock_client):
         """Test get_house_disclosure_rss"""
@@ -817,10 +893,10 @@ class TestMarketIntelligenceClientFundraising:
         mock_data = {
             # Basic required fields
             "cik": "0001234567",
-            "acceptanceTime": "2024-01-15T10:00:00",
+            "acceptedDate": "2024-01-15T10:00:00",
             "formType": "C",
             "formSignification": "Offering Statement",
-            "fillingDate": "2024-01-15T00:00:00.000Z",
+            "filingDate": "2024-01-15T00:00:00.000Z",
             # Additional required offering fields
             "offeringAmount": 1000000,  # Added missing required field
             "offeringPrice": 10.0,  # Added missing required field
@@ -853,24 +929,31 @@ class TestMarketIntelligenceClientFundraising:
         }
         mock_client.request.return_value = [CrowdfundingOffering(**mock_data)]
 
-        result = fmp_client.intelligence.get_crowdfunding_rss(page=0)
+        result = fmp_client.intelligence.get_crowdfunding_rss(page=0, limit=100)
 
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 0
+        assert kwargs["limit"] == 100
         assert isinstance(result, list)
         assert len(result) == 1
         assert result[0].cik == "0001234567"
 
     def test_search_crowdfunding(self, fmp_client, mock_client):
         """Test search_crowdfunding"""
-        mock_client.request.return_value = []
+        mock_client.request.return_value = [
+            CrowdfundingOfferingSearchItem(
+                cik="0001234567", name="Startup Inc", date="2024-01-15"
+            )
+        ]
 
-        _ = fmp_client.intelligence.search_crowdfunding("startup")
+        result = fmp_client.intelligence.search_crowdfunding("startup")
 
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
         assert kwargs["name"] == "startup"
+        assert isinstance(result, list)
+        assert isinstance(result[0], CrowdfundingOfferingSearchItem)
 
     def test_get_crowdfunding_by_cik(self, fmp_client, mock_client):
         """Test get_crowdfunding_by_cik"""
@@ -888,7 +971,7 @@ class TestMarketIntelligenceClientFundraising:
             # Basic required fields
             "formType": "D",
             "formSignification": "Notice of Exempt Offering",
-            "acceptanceTime": "2024-01-15T10:00:00",
+            "acceptedDate": "2024-01-15T10:00:00",
             "cik": "0001234567",
             "entityName": "Company Inc",
             "entityType": "Corporation",
@@ -927,11 +1010,12 @@ class TestMarketIntelligenceClientFundraising:
         }
         mock_client.request.return_value = [EquityOffering(**mock_data)]
 
-        result = fmp_client.intelligence.get_equity_offering_rss(page=0)
+        result = fmp_client.intelligence.get_equity_offering_rss(page=0, limit=10)
 
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 0
+        assert kwargs["limit"] == 10
         assert isinstance(result, list)
         assert len(result) == 1
         assert result[0].cik == "0001234567"

@@ -1,4 +1,5 @@
 # fmp_data/batch/models.py
+from datetime import date as dt_date
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -103,3 +104,54 @@ class BatchMarketCap(BaseModel):
     market_cap: float | None = Field(
         None, alias="marketCap", description="Market capitalization"
     )
+
+
+class PeersBulk(BaseModel):
+    """Bulk peer list data"""
+
+    model_config = default_model_config
+
+    symbol: str | None = Field(None, description="Company symbol")
+    peers: str | None = Field(None, description="Comma-separated peer symbols")
+
+    @property
+    def peers_list(self) -> list[str] | None:
+        """Return peers as a list of symbols."""
+        if not self.peers:
+            return None
+        return [peer.strip() for peer in self.peers.split(",") if peer.strip()]
+
+
+class EarningsSurpriseBulk(BaseModel):
+    """Bulk earnings surprise data"""
+
+    model_config = default_model_config
+
+    symbol: str | None = Field(None, description="Company symbol")
+    date: dt_date | None = Field(None, description="Earnings date")
+    eps_actual: float | None = Field(
+        None, alias="epsActual", description="Reported EPS"
+    )
+    eps_estimated: float | None = Field(
+        None, alias="epsEstimated", description="Estimated EPS"
+    )
+    last_updated: dt_date | None = Field(
+        None, alias="lastUpdated", description="Last updated date"
+    )
+
+
+class EODBulk(BaseModel):
+    """Bulk end-of-day price data"""
+
+    model_config = default_model_config
+
+    symbol: str | None = Field(None, description="Symbol")
+    date: dt_date | None = Field(None, description="End-of-day date")
+    open: float | None = Field(None, description="Open price")
+    low: float | None = Field(None, description="Low price")
+    high: float | None = Field(None, description="High price")
+    close: float | None = Field(None, description="Close price")
+    adj_close: float | None = Field(
+        None, alias="adjClose", description="Adjusted close price"
+    )
+    volume: float | None = Field(None, description="Trading volume")

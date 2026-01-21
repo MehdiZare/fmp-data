@@ -153,11 +153,13 @@ class MarketClient(EndpointGroup):
         dividend_less_than: float | None = None,
         is_etf: bool | None = None,
         is_fund: bool | None = None,
+        is_actively_trading: bool | None = None,
         sector: str | None = None,
         industry: str | None = None,
         country: str | None = None,
         exchange: str | None = None,
         limit: int | None = None,
+        include_all_share_classes: bool | None = None,
     ) -> list[CompanySearchResult]:
         """Screen companies based on various criteria"""
         params = {
@@ -173,11 +175,13 @@ class MarketClient(EndpointGroup):
             "dividend_less_than": dividend_less_than,
             "is_etf": is_etf,
             "is_fund": is_fund,
+            "is_actively_trading": is_actively_trading,
             "sector": sector,
             "industry": industry,
             "country": country,
             "exchange": exchange,
             "limit": limit,
+            "include_all_share_classes": include_all_share_classes,
         }
         params = {key: value for key, value in params.items() if value is not None}
         return self.client.request(COMPANY_SCREENER, **params)

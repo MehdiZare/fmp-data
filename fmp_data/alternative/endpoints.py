@@ -208,7 +208,7 @@ CRYPTO_INTRADAY: Endpoint = Endpoint(
 
 FOREX_LIST: Endpoint = Endpoint(
     name="forex_list",
-    path="symbol/available-forex-currency-pairs",
+    path="forex-list",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -368,7 +368,7 @@ FOREX_INTRADAY: Endpoint = Endpoint(
 
 COMMODITIES_LIST: Endpoint = Endpoint(
     name="commodities_list",
-    path="symbol/available-commodities",
+    path="commodities-list",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,

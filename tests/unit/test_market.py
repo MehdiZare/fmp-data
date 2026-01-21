@@ -5,10 +5,13 @@ import pytest
 
 from fmp_data.market.models import (
     CIKListEntry,
+    CIKResult,
     CompanySearchResult,
+    CUSIPResult,
     ExchangeSymbol,
     IPODisclosure,
     IPOProspectus,
+    ISINResult,
     MarketHoliday,
     MarketHours,
 )
@@ -215,7 +218,62 @@ class TestCompanySearch:
         assert isinstance(results[0], CompanySearchResult)
 
         params = mock_request.call_args[1]["params"]
-        assert params["query"] == "Apple"
+        assert params["symbol"] == "Apple"
+
+    @patch("httpx.Client.request")
+    def test_search_by_cik(self, mock_request, fmp_client, mock_response):
+        """Test CIK search through client"""
+        response_data = [
+            {
+                "symbol": "AAPL",
+                "companyName": "Apple Inc.",
+                "cik": "0000320193",
+            }
+        ]
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=response_data
+        )
+
+        results = fmp_client.market.search_by_cik("320193")
+        assert len(results) == 1
+        assert isinstance(results[0], CIKResult)
+
+        params = mock_request.call_args[1]["params"]
+        assert params["cik"] == "320193"
+
+    @patch("httpx.Client.request")
+    def test_search_by_cusip(self, mock_request, fmp_client, mock_response):
+        """Test CUSIP search through client"""
+        response_data = [
+            {"symbol": "AAPL", "companyName": "Apple Inc.", "cusip": "037833100"}
+        ]
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=response_data
+        )
+
+        results = fmp_client.market.search_by_cusip("037833100")
+        assert len(results) == 1
+        assert isinstance(results[0], CUSIPResult)
+
+        params = mock_request.call_args[1]["params"]
+        assert params["cusip"] == "037833100"
+
+    @patch("httpx.Client.request")
+    def test_search_by_isin(self, mock_request, fmp_client, mock_response):
+        """Test ISIN search through client"""
+        response_data = [
+            {"symbol": "AAPL", "name": "Apple Inc.", "isin": "US0378331005"}
+        ]
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=response_data
+        )
+
+        results = fmp_client.market.search_by_isin("US0378331005")
+        assert len(results) == 1
+        assert isinstance(results[0], ISINResult)
+
+        params = mock_request.call_args[1]["params"]
+        assert params["isin"] == "US0378331005"
 
 
 class TestExchangeSymbol:
@@ -472,8 +530,8 @@ def test_get_company_screener(mock_request, fmp_client, mock_response):
     assert results[0].symbol == "AAPL"
 
     params = mock_request.call_args[1]["params"]
-    assert params["market_cap_more_than"] == 1_000_000_000
-    assert params["is_etf"] is False
+    assert params["marketCapMoreThan"] == 1_000_000_000
+    assert params["isEtf"] is False
     assert params["sector"] == "Technology"
     assert params["limit"] == 5
 

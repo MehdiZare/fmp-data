@@ -4,6 +4,7 @@ from decimal import Decimal
 from typing import Annotated
 
 from pydantic import (
+    AliasChoices,
     BaseModel,
     BeforeValidator,
     ConfigDict,
@@ -101,15 +102,11 @@ class DividendEvent(BaseModel):
     adj_dividend: float | None = Field(
         None, alias="adjDividend", description="Adjusted dividend amount"
     )
-    dividend: float | None = Field(
-        None, description="Declared dividend amount"
-    )
+    dividend: float | None = Field(None, description="Declared dividend amount")
     dividend_yield: float | None = Field(
         None, alias="yield", description="Dividend yield"
     )
-    frequency: str | None = Field(
-        None, description="Dividend frequency"
-    )
+    frequency: str | None = Field(None, description="Dividend frequency")
     record_date: Annotated[date | None, BeforeValidator(_empty_str_to_none)] = Field(
         None, alias="recordDate", description="Record date"
     )
@@ -132,9 +129,7 @@ class StockSplitEvent(BaseModel):
     label: str | None = Field(None, description="Human-readable date label")
     numerator: float = Field(description="Numerator of the split ratio")
     denominator: float = Field(description="Denominator of the split ratio")
-    split_type: str | None = Field(
-        None, alias="splitType", description="Split type"
-    )
+    split_type: str | None = Field(None, alias="splitType", description="Split type")
 
 
 class IPOEvent(BaseModel):
@@ -321,24 +316,30 @@ class ESGData(BaseModel):
 
     model_config = default_model_config
 
-    symbol: str = Field(description="Company symbol")
-    cik: str = Field(description="CIK number")
-    date: datetime = Field(description="ESG data date")
-    environmental_score: float = Field(
-        alias="environmentalScore", description="Environmental score"
+    symbol: str | None = Field(None, description="Company symbol")
+    cik: str | None = Field(None, description="CIK number")
+    date: datetime | None = Field(None, description="ESG data date")
+    environmental_score: float | None = Field(
+        None, alias="environmentalScore", description="Environmental score"
     )
-    social_score: float = Field(alias="socialScore", description="Social score")
-    governance_score: float = Field(
-        alias="governanceScore", description="Governance score"
+    social_score: float | None = Field(
+        None, alias="socialScore", description="Social score"
     )
-    esg_score: float = Field(alias="ESGScore", description="Total ESG score")
-    company_name: str = Field(alias="companyName", description="Company name")
-    industry: str = Field(description="Industry classification")
-    form_type: str = Field(alias="formType", description="SEC form type")
-    accepted_date: datetime = Field(
-        alias="acceptedDate", description="SEC acceptance date"
+    governance_score: float | None = Field(
+        None, alias="governanceScore", description="Governance score"
     )
-    url: HttpUrl = Field(description="SEC filing URL")
+    esg_score: float | None = Field(
+        None, alias="ESGScore", description="Total ESG score"
+    )
+    company_name: str | None = Field(
+        None, alias="companyName", description="Company name"
+    )
+    industry: str | None = Field(None, description="Industry classification")
+    form_type: str | None = Field(None, alias="formType", description="SEC form type")
+    accepted_date: datetime | None = Field(
+        None, alias="acceptedDate", description="SEC acceptance date"
+    )
+    url: HttpUrl | None = Field(None, description="SEC filing URL")
 
 
 class ESGRating(BaseModel):
@@ -346,24 +347,26 @@ class ESGRating(BaseModel):
 
     model_config = default_model_config
 
-    symbol: str = Field(description="Company symbol")
-    cik: str = Field(description="CIK number")
-    company_name: str = Field(alias="companyName", description="Company name")
-    industry: str = Field(description="Industry classification")
-    year: int = Field(description="Rating year")
-    esg_risk_rating: str = Field(
-        alias="ESGRiskRating", description="ESG risk rating grade"
+    symbol: str | None = Field(None, description="Company symbol")
+    cik: str | None = Field(None, description="CIK number")
+    company_name: str | None = Field(
+        None, alias="companyName", description="Company name"
     )
-    industry_rank: str = Field(
-        alias="industryRank", description="Industry rank (e.g. '4 out of 5')"
+    industry: str | None = Field(None, description="Industry classification")
+    year: int | None = Field(None, description="Rating year")
+    esg_risk_rating: str | None = Field(
+        None, alias="ESGRiskRating", description="ESG risk rating grade"
+    )
+    industry_rank: str | None = Field(
+        None, alias="industryRank", description="Industry rank (e.g. '4 out of 5')"
     )
 
 
 class ESGBenchmark(BaseModel):
     model_config = default_model_config
 
-    year: int
-    sector: str
+    year: int | None = None
+    sector: str | None = None
 
     # raw scores (always present in “sector benchmark” endpoint)
     environmental_score: float | None = Field(None, alias="environmentalScore")
@@ -386,25 +389,42 @@ class SenateTrade(BaseModel):
 
     model_config = default_model_config
 
-    first_name: str = Field(alias="firstName", description="Senator's first name")
-    last_name: str = Field(alias="lastName", description="Senator's last name")
-    office: str = Field(description="Senate office")
-    link: HttpUrl = Field(description="Link to filing")
-    date_received: datetime = Field(
-        alias="dateRecieved", description="Date filing received"
+    symbol: str | None = Field(None, description="Stock symbol")
+    disclosure_date: datetime | None = Field(
+        None,
+        validation_alias=AliasChoices("disclosureDate", "dateRecieved"),
+        description="Date disclosure received",
     )
-    transaction_date: datetime = Field(
-        alias="transactionDate", description="Date of transaction"
+    transaction_date: datetime | None = Field(
+        None, alias="transactionDate", description="Date of transaction"
     )
-    owner: str = Field(description="Owner of the asset")
-    asset_description: str = Field(
-        alias="assetDescription", description="Description of the asset"
+    first_name: str | None = Field(
+        None, alias="firstName", description="Senator's first name"
     )
-    asset_type: str = Field(alias="assetType", description="Type of asset")
-    type: str = Field(description="Transaction type")
-    amount: str = Field(description="Transaction amount range")
+    last_name: str | None = Field(
+        None, alias="lastName", description="Senator's last name"
+    )
+    office: str | None = Field(None, description="Senate office")
+    district: str | None = Field(None, description="Senate district")
+    owner: str | None = Field(None, description="Owner of the asset")
+    asset_description: str | None = Field(
+        None, alias="assetDescription", description="Description of the asset"
+    )
+    asset_type: str | None = Field(None, alias="assetType", description="Type of asset")
+    type: str | None = Field(None, description="Transaction type")
+    amount: str | None = Field(None, description="Transaction amount range")
+    capital_gains_over_200usd: bool | None = Field(
+        None,
+        alias="capitalGainsOver200USD",
+        description="Whether capital gains exceeded $200",
+    )
     comment: str | None = Field(default="", description="Additional comments")
-    symbol: str = Field(description="Stock symbol")
+    link: HttpUrl | None = Field(None, description="Link to filing")
+
+    @property
+    def date_received(self) -> datetime | None:
+        """Backward-compatible alias for disclosure_date."""
+        return self.disclosure_date
 
 
 class HouseDisclosure(BaseModel):
@@ -412,29 +432,57 @@ class HouseDisclosure(BaseModel):
 
     model_config = default_model_config
 
-    disclosure_year: str = Field(
-        alias="disclosureYear", description="Year of disclosure"
+    symbol: str | None = Field(
+        None,
+        validation_alias=AliasChoices("symbol", "ticker"),
+        description="Stock symbol",
     )
-    disclosure_date: datetime = Field(
-        alias="disclosureDate", description="Date of disclosure"
+    disclosure_date: datetime | None = Field(
+        None, alias="disclosureDate", description="Date of disclosure"
     )
-    transaction_date: datetime = Field(
-        alias="transactionDate", description="Date of transaction"
+    transaction_date: datetime | None = Field(
+        None, alias="transactionDate", description="Date of transaction"
     )
+    first_name: str | None = Field(
+        None, alias="firstName", description="Representative's first name"
+    )
+    last_name: str | None = Field(
+        None, alias="lastName", description="Representative's last name"
+    )
+    office: str | None = Field(None, description="Representative office")
+    district: str | None = Field(None, description="Congressional district")
     owner: str | None = Field(default="", description="Owner of the asset")
-    ticker: str = Field(description="Stock symbol")
-    asset_description: str = Field(
-        alias="assetDescription", description="Description of the asset"
+    asset_description: str | None = Field(
+        None, alias="assetDescription", description="Description of the asset"
     )
-    type: str = Field(description="Transaction type")
-    amount: str = Field(description="Transaction amount range")
-    representative: str = Field(description="Representative's name")
-    district: str = Field(description="Congressional district")
-    link: HttpUrl = Field(description="Link to filing")
-    capital_gains_over_200usd: bool = Field(
+    asset_type: str | None = Field(None, alias="assetType", description="Type of asset")
+    type: str | None = Field(None, description="Transaction type")
+    amount: str | None = Field(None, description="Transaction amount range")
+    comment: str | None = Field(default="", description="Additional comments")
+    link: HttpUrl | None = Field(None, description="Link to filing")
+    capital_gains_over_200usd: bool | None = Field(
+        None,
         alias="capitalGainsOver200USD",
         description="Whether capital gains exceeded $200",
     )
+
+    @property
+    def representative(self) -> str | None:
+        """Backward-compatible representative name."""
+        if self.office:
+            return self.office
+        name = " ".join(filter(None, [self.first_name, self.last_name])).strip()
+        return name or None
+
+    @property
+    def ticker(self) -> str | None:
+        """Backward-compatible ticker symbol."""
+        return self.symbol
+
+    @property
+    def disclosure_year(self) -> str | None:
+        """Backward-compatible disclosure year."""
+        return str(self.disclosure_date.year) if self.disclosure_date else None
 
 
 class CrowdfundingOffering(BaseModel):
@@ -446,14 +494,20 @@ class CrowdfundingOffering(BaseModel):
     company_name: str | None | None = Field(
         None, alias="companyName", description="Company name"
     )
-    acceptance_time: datetime = Field(
-        alias="acceptanceTime", description="Filing acceptance time"
+    acceptance_time: datetime | None = Field(
+        None,
+        validation_alias=AliasChoices("acceptedDate", "acceptanceTime"),
+        description="Filing acceptance time",
     )
     form_type: str = Field(alias="formType", description="SEC form type")
     form_signification: str = Field(
         alias="formSignification", description="Form signification"
     )
-    filing_date: datetime = Field(alias="fillingDate", description="Filing date")
+    filing_date: datetime | None = Field(
+        None,
+        validation_alias=AliasChoices("filingDate", "fillingDate"),
+        description="Filing date",
+    )
     date: str | None | None = Field(None, description="Date in MM-DD-YYYY format")
     name_of_issuer: str | None | None = Field(
         None, alias="nameOfIssuer", description="Name of issuer"
@@ -600,18 +654,34 @@ class CrowdfundingOffering(BaseModel):
     )
 
 
+class CrowdfundingOfferingSearchItem(BaseModel):
+    """Crowdfunding offering search item"""
+
+    model_config = default_model_config
+
+    cik: str = Field(description="Company CIK number")
+    name: str | None = Field(None, description="Company or issuer name")
+    date: str | None = Field(None, description="Offering date")
+
+
 class EquityOffering(BaseModel):
     """Equity offering data"""
 
     model_config = default_model_config
 
     # Filing information
+    date: str | None = Field(None, description="Offering date")
+    filing_date: datetime | None = Field(
+        None, alias="filingDate", description="Filing date"
+    )
     form_type: str = Field(alias="formType", description="SEC form type")
     form_signification: str = Field(
         alias="formSignification", description="Form signification"
     )
-    acceptance_time: datetime = Field(
-        alias="acceptanceTime", description="Filing acceptance time"
+    acceptance_time: datetime | None = Field(
+        None,
+        validation_alias=AliasChoices("acceptedDate", "acceptanceTime"),
+        description="Filing acceptance time",
     )
     is_amendment: bool | None | None = Field(
         None, alias="isAmendment", description="Whether this is an amendment"
@@ -619,6 +689,9 @@ class EquityOffering(BaseModel):
 
     # Issuer information
     cik: str = Field(description="Company CIK number")
+    company_name: str | None = Field(
+        None, alias="companyName", description="Company name"
+    )
     entity_name: str = Field(alias="entityName", description="Entity name")
     entity_type: str = Field(alias="entityType", description="Type of entity")
     jurisdiction_of_incorporation: str = Field(

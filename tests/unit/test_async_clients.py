@@ -763,6 +763,24 @@ class TestAsyncBatchClient:
         expected_endpoint = getattr(batch_endpoints, endpoint)
         mock_client.request_async.assert_called_once_with(expected_endpoint, **kwargs)
 
+    @pytest.mark.asyncio
+    async def test_get_eod_bulk(self, mock_client):
+        """Test async get_eod_bulk method."""
+        from fmp_data.batch.async_client import AsyncBatchClient
+        from fmp_data.batch.endpoints import EOD_BULK
+
+        mock_client.request_async.return_value = (
+            b"symbol,date,open,low,high,close,adjClose,volume\n"
+            b"EGS745W1C011.CA,2024-10-22,2.67,2.7,2.9,2.93,2.93,920904\n"
+        )
+
+        async_client = AsyncBatchClient(mock_client)
+        result = await async_client.get_eod_bulk("2024-10-22")
+
+        assert result[0].symbol == "EGS745W1C011.CA"
+        assert result[0].adj_close == 2.93
+        mock_client.request_async.assert_called_once_with(EOD_BULK, date="2024-10-22")
+
 
 class TestAsyncTranscriptsClient:
     """Tests for AsyncTranscriptsClient."""

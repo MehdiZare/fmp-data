@@ -33,6 +33,8 @@ from fmp_data.intelligence.endpoints import (
     HISTORICAL_EARNINGS,
     HOUSE_DISCLOSURE,
     HOUSE_DISCLOSURE_RSS,
+    HOUSE_LATEST,
+    HOUSE_TRADES_BY_NAME,
     IPO_CALENDAR,
     PRESS_RELEASES_BY_SYMBOL_ENDPOINT,
     PRESS_RELEASES_ENDPOINT,
@@ -40,6 +42,8 @@ from fmp_data.intelligence.endpoints import (
     PRICE_TARGET_NEWS,
     RATINGS_HISTORICAL,
     RATINGS_SNAPSHOT,
+    SENATE_LATEST,
+    SENATE_TRADES_BY_NAME,
     SENATE_TRADING,
     SENATE_TRADING_RSS,
     STOCK_NEWS_ENDPOINT,
@@ -50,6 +54,7 @@ from fmp_data.intelligence.endpoints import (
 )
 from fmp_data.intelligence.models import (
     CrowdfundingOffering,
+    CrowdfundingOfferingSearchItem,
     CryptoNewsArticle,
     DividendEvent,
     EarningConfirmed,
@@ -418,33 +423,57 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             return cast(ESGRating, result[0]) if len(result) > 0 else None
         return cast(ESGRating, result)
 
-    async def get_esg_benchmark(self, year: int) -> list[ESGBenchmark]:
-        """Get ESG sector benchmark data"""
-        return await self.client.request_async(ESG_BENCHMARK, year=year)
+    async def get_esg_benchmark(self) -> list[ESGBenchmark]:
+        """Get ESG benchmark data"""
+        return await self.client.request_async(ESG_BENCHMARK)
 
     # Government trading methods
+    async def get_senate_latest(
+        self, page: int = 0, limit: int = 100
+    ) -> list[SenateTrade]:
+        """Get latest Senate financial disclosures"""
+        return await self.client.request_async(SENATE_LATEST, page=page, limit=limit)
+
     async def get_senate_trading(self, symbol: str) -> list[SenateTrade]:
         """Get Senate trading data"""
         return await self.client.request_async(SENATE_TRADING, symbol=symbol)
+
+    async def get_senate_trades_by_name(self, name: str) -> list[SenateTrade]:
+        """Get Senate trading data by name"""
+        return await self.client.request_async(SENATE_TRADES_BY_NAME, name=name)
 
     async def get_senate_trading_rss(self, page: int = 0) -> list[SenateTrade]:
         """Get Senate trading RSS feed"""
         return await self.client.request_async(SENATE_TRADING_RSS, page=page)
 
+    async def get_house_latest(
+        self, page: int = 0, limit: int = 100
+    ) -> list[HouseDisclosure]:
+        """Get latest House financial disclosures"""
+        return await self.client.request_async(HOUSE_LATEST, page=page, limit=limit)
+
     async def get_house_disclosure(self, symbol: str) -> list[HouseDisclosure]:
         """Get House disclosure data"""
         return await self.client.request_async(HOUSE_DISCLOSURE, symbol=symbol)
+
+    async def get_house_trades_by_name(self, name: str) -> list[HouseDisclosure]:
+        """Get House trading data by name"""
+        return await self.client.request_async(HOUSE_TRADES_BY_NAME, name=name)
 
     async def get_house_disclosure_rss(self, page: int = 0) -> list[HouseDisclosure]:
         """Get House disclosure RSS feed"""
         return await self.client.request_async(HOUSE_DISCLOSURE_RSS, page=page)
 
     # Fundraising methods
-    async def get_crowdfunding_rss(self, page: int = 0) -> list[CrowdfundingOffering]:
-        """Get crowdfunding offerings RSS feed"""
-        return await self.client.request_async(CROWDFUNDING_RSS, page=page)
+    async def get_crowdfunding_rss(
+        self, page: int = 0, limit: int = 100
+    ) -> list[CrowdfundingOffering]:
+        """Get latest crowdfunding offerings"""
+        return await self.client.request_async(CROWDFUNDING_RSS, page=page, limit=limit)
 
-    async def search_crowdfunding(self, name: str) -> list[CrowdfundingOffering]:
+    async def search_crowdfunding(
+        self, name: str
+    ) -> list[CrowdfundingOfferingSearchItem]:
         """Search crowdfunding offerings"""
         return await self.client.request_async(CROWDFUNDING_SEARCH, name=name)
 
@@ -452,9 +481,14 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         """Get crowdfunding offerings by CIK"""
         return await self.client.request_async(CROWDFUNDING_BY_CIK, cik=cik)
 
-    async def get_equity_offering_rss(self, page: int = 0) -> list[EquityOffering]:
-        """Get equity offering RSS feed"""
-        return await self.client.request_async(EQUITY_OFFERING_RSS, page=page)
+    async def get_equity_offering_rss(
+        self, page: int = 0, limit: int = 10, cik: str | None = None
+    ) -> list[EquityOffering]:
+        """Get latest equity offerings"""
+        params: dict[str, int | str] = {"page": page, "limit": limit}
+        if cik is not None:
+            params["cik"] = cik
+        return await self.client.request_async(EQUITY_OFFERING_RSS, **params)
 
     async def search_equity_offering(self, name: str) -> list[EquityOffering]:
         """Search equity offerings"""

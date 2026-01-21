@@ -213,6 +213,7 @@ CUSIP_SEARCH: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             required=True,
             description="Search query",
+            alias="cusip",
         )
     ],
     optional_params=[],
@@ -244,6 +245,7 @@ ISIN_SEARCH: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             required=True,
             description="Search query",
+            alias="isin",
         )
     ],
     optional_params=[],
@@ -776,6 +778,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.FLOAT,
             required=False,
             description="Market cap greater than",
+            alias="marketCapMoreThan",
         ),
         EndpointParam(
             name="market_cap_less_than",
@@ -783,6 +786,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.FLOAT,
             required=False,
             description="Market cap less than",
+            alias="marketCapLowerThan",
         ),
         EndpointParam(
             name="price_more_than",
@@ -790,6 +794,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.FLOAT,
             required=False,
             description="Price greater than",
+            alias="priceMoreThan",
         ),
         EndpointParam(
             name="price_less_than",
@@ -797,6 +802,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.FLOAT,
             required=False,
             description="Price less than",
+            alias="priceLowerThan",
         ),
         EndpointParam(
             name="beta_more_than",
@@ -804,6 +810,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.FLOAT,
             required=False,
             description="Beta greater than",
+            alias="betaMoreThan",
         ),
         EndpointParam(
             name="beta_less_than",
@@ -811,6 +818,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.FLOAT,
             required=False,
             description="Beta less than",
+            alias="betaLowerThan",
         ),
         EndpointParam(
             name="volume_more_than",
@@ -818,6 +826,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.INTEGER,
             required=False,
             description="Volume greater than",
+            alias="volumeMoreThan",
         ),
         EndpointParam(
             name="volume_less_than",
@@ -825,6 +834,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.INTEGER,
             required=False,
             description="Volume less than",
+            alias="volumeLowerThan",
         ),
         EndpointParam(
             name="dividend_more_than",
@@ -832,6 +842,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.FLOAT,
             required=False,
             description="Dividend yield greater than",
+            alias="dividendMoreThan",
         ),
         EndpointParam(
             name="dividend_less_than",
@@ -839,6 +850,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.FLOAT,
             required=False,
             description="Dividend yield less than",
+            alias="dividendLowerThan",
         ),
         EndpointParam(
             name="is_etf",
@@ -846,6 +858,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.BOOLEAN,
             required=False,
             description="Filter for ETFs",
+            alias="isEtf",
         ),
         EndpointParam(
             name="is_fund",
@@ -853,6 +866,15 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.BOOLEAN,
             required=False,
             description="Filter for funds",
+            alias="isFund",
+        ),
+        EndpointParam(
+            name="is_actively_trading",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            required=False,
+            description="Filter for actively trading symbols",
+            alias="isActivelyTrading",
         ),
         EndpointParam(
             name="sector",
@@ -889,6 +911,14 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             required=False,
             description="Number of results to return",
         ),
+        EndpointParam(
+            name="include_all_share_classes",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            required=False,
+            description="Include all share classes in results",
+            alias="includeAllShareClasses",
+        ),
     ],
     response_model=CompanySearchResult,
 )
@@ -905,6 +935,7 @@ SEARCH_EXCHANGE_VARIANTS: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             required=True,
             description="Company name or symbol to search",
+            alias="symbol",
         )
     ],
     optional_params=[],
