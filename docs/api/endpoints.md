@@ -192,6 +192,32 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT`.
 - Bulk Financial Scores `/stable/scores-bulk`
 - Bulk Ratios TTM `/stable/ratios-ttm-bulk`
 
+## 11. Earnings Transcripts
+- Latest Transcripts `/stable/earning-call-transcript-latest`
+- Earnings Transcript `/stable/earning-call-transcript?symbol={symbol}`
+- Transcript Dates `/stable/earning-call-transcript-dates?symbol={symbol}`
+- Transcript Symbols `/stable/earnings-transcript-list`
+
+## 12. SEC Filings & Company Data
+- Latest 8-K Filings `/stable/sec-filings-8k`
+- Latest Financial Filings `/stable/sec-filings-financials`
+- Filings By Form Type `/stable/sec-filings-search/form-type?formType={formType}`
+- Filings By Symbol `/stable/sec-filings-search/symbol?symbol={symbol}`
+- Filings By CIK `/stable/sec-filings-search/cik?cik={cik}`
+- Company Search By Name `/stable/sec-filings-company-search/name?company={company}`
+- Company Search By Symbol `/stable/sec-filings-company-search/symbol?symbol={symbol}`
+- Company Search By CIK `/stable/sec-filings-company-search/cik?cik={cik}`
+- SEC Company Profile `/stable/sec-profile?symbol={symbol}`
+- SIC Codes `/stable/standard-industrial-classification-list`
+
+## 13. Index Constituents
+- S&P 500 Constituents `/stable/sp500-constituent`
+- NASDAQ Constituents `/stable/nasdaq-constituent`
+- Dow Jones Constituents `/stable/dowjones-constituent`
+- Historical S&P 500 Constituents `/stable/historical-sp500-constituent`
+- Historical NASDAQ Constituents `/stable/historical-nasdaq-constituent`
+- Historical Dow Jones Constituents `/stable/historical-dowjones-constituent`
+
 ## Notes
 - All endpoints require API authentication
 - Rate limits apply based on your subscription plan

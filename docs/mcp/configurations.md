@@ -111,7 +111,7 @@ You can create your own manifest by:
 # my_custom_manifest.py
 TOOLS = [
     "company.profile",
-    "market.quote",
+    "company.quote",
     # Add your desired tools here
 ]
 ```
@@ -119,10 +119,10 @@ TOOLS = [
 2. **Using the CLI tool** - Generate a manifest with specific tools:
 ```bash
 # Generate manifest with specific tools
-fmp-mcp generate my_manifest.py --tools company.profile market.quote
+fmp-mcp generate my_manifest.py --tools company.profile company.quote
 
 # Generate manifest without default tools
-fmp-mcp generate my_manifest.py --no-defaults --tools market.quote market.movers
+fmp-mcp generate my_manifest.py --no-defaults --tools company.quote market.gainers
 ```
 
 3. **Discovering available tools** - List all available tools:

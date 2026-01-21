@@ -58,7 +58,7 @@ Create or update the file:
       "command": "python",
       "args": ["-m", "fmp_data.mcp"],
       "env": {
-        "FMP_API_KEY": "your_api_key_here"
+        "FMP_API_KEY": "your_api_key_here"  // pragma: allowlist secret
       }
     }
   }
@@ -81,7 +81,7 @@ fmp-mcp status
 fmp-mcp test
 fmp-mcp list
 fmp-mcp list --client market
-fmp-mcp generate custom.py --tools company.profile market.quote
+fmp-mcp generate custom.py --tools company.profile company.quote
 fmp-mcp validate custom.py
 fmp-mcp serve --manifest custom.py
 ```
@@ -104,7 +104,7 @@ To use a predefined or custom tool set, set `FMP_MCP_MANIFEST`:
       "command": "python",
       "args": ["-m", "fmp_data.mcp"],
       "env": {
-        "FMP_API_KEY": "your_api_key_here",
+        "FMP_API_KEY": "your_api_key_here",  // pragma: allowlist secret
         "FMP_MCP_MANIFEST": "examples/mcp_configurations/trading_manifest.py"
       }
     }

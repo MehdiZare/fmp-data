@@ -263,6 +263,106 @@ show_source: false
 filters:
 - "!^_"
 
+### Technical Models
+
+::: fmp_data.technical.models
+handler: python
+options:
+show_root_heading: true
+show_source: false
+filters:
+- "!^_"
+
+### Market Intelligence Models
+
+::: fmp_data.intelligence.models
+handler: python
+options:
+show_root_heading: true
+show_source: false
+filters:
+- "!^_"
+
+### Institutional Models
+
+::: fmp_data.institutional.models
+handler: python
+options:
+show_root_heading: true
+show_source: false
+filters:
+- "!^_"
+
+### Investment Models
+
+::: fmp_data.investment.models
+handler: python
+options:
+show_root_heading: true
+show_source: false
+filters:
+- "!^_"
+
+### Alternative Markets Models
+
+::: fmp_data.alternative.models
+handler: python
+options:
+show_root_heading: true
+show_source: false
+filters:
+- "!^_"
+
+### Economics Models
+
+::: fmp_data.economics.models
+handler: python
+options:
+show_root_heading: true
+show_source: false
+filters:
+- "!^_"
+
+### Batch Models
+
+::: fmp_data.batch.models
+handler: python
+options:
+show_root_heading: true
+show_source: false
+filters:
+- "!^_"
+
+### Transcripts Models
+
+::: fmp_data.transcripts.models
+handler: python
+options:
+show_root_heading: true
+show_source: false
+filters:
+- "!^_"
+
+### SEC Models
+
+::: fmp_data.sec.models
+handler: python
+options:
+show_root_heading: true
+show_source: false
+filters:
+- "!^_"
+
+### Index Models
+
+::: fmp_data.index.models
+handler: python
+options:
+show_root_heading: true
+show_source: false
+filters:
+- "!^_"
+
 ## Usage Examples
 
 ### Sync Client Usage
@@ -338,7 +438,7 @@ from fmp_data import FMPDataClient, ClientConfig, LoggingConfig, LogHandlerConfi
 # Custom configuration
 config = ClientConfig(
     api_key="your_api_key", # pragma: allowlist secret
-    base_url="https://financialmodelingprep.com/api",
+    base_url="https://financialmodelingprep.com",
     timeout=60,
     max_retries=5,
     logging=LoggingConfig(

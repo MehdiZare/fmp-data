@@ -76,6 +76,8 @@ or call `model_dump()` / `model_dump_json()` for raw data.
 ## Optional integrations
 - LangChain extras: `pip install "fmp-data[langchain]"`
   - Vector store helper: `from fmp_data import create_vector_store`
+  - 2.0.0+: `EndpointVectorStore.load(..., allow_dangerous_deserialization=True)` is
+    required for cached stores and should only be used with trusted cache sources.
 - MCP server extras: `pip install "fmp-data[mcp]"`
   - CLI: `fmp-mcp setup` or `fmp-mcp`
   - Server API: `from fmp_data.mcp.server import create_app`

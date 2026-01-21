@@ -21,6 +21,10 @@ A robust Python client for Financial Modeling Prep API with comprehensive featur
 - Investment funds data
 - Alternative markets data
 - Economic indicators
+- Batch market data
+- Earnings call transcripts
+- SEC filings and company profiles
+- Index constituents and historical changes
 
 🔧 **Developer Experience**
 - Intuitive client interface with property-based access
@@ -127,8 +131,8 @@ client = FMPDataClient.from_env()
 async_client = AsyncFMPDataClient.from_env()
 
 # Both clients provide access to these endpoint groups:
-client.company.*        # Company data and profiles
-client.market.*         # Market data and quotes
+client.company.*        # Company data, quotes, and historical prices
+client.market.*         # Market movers, hours, and listings/search
 client.fundamental.*    # Fundamental analysis
 client.technical.*      # Technical analysis
 client.intelligence.*   # Market intelligence
@@ -165,14 +169,14 @@ with FMPDataClient.from_env() as client:
     # Financial statements (last 5 years)
     income_statements = client.fundamental.get_income_statement(symbol, limit=5)
     balance_sheets = client.fundamental.get_balance_sheet(symbol, limit=5)
-    cash_flows = client.fundamental.get_cash_flow_statement(symbol, limit=5)
+    cash_flows = client.fundamental.get_cash_flow(symbol, limit=5)
 
     # Key metrics and ratios
     metrics = client.fundamental.get_key_metrics(symbol, limit=5)
     ratios = client.fundamental.get_financial_ratios(symbol, limit=5)
 
     # Valuation
-    dcf = client.fundamental.get_dcf(symbol)
+    dcf = client.fundamental.get_discounted_cash_flow(symbol)
 ```
 
 ### Market Monitoring
@@ -184,12 +188,12 @@ with FMPDataClient.from_env() as client:
     sector_performance = client.market.get_sector_performance()
 
     # Top movers
-    gainers = client.market.get_market_gainers()
-    losers = client.market.get_market_losers()
+    gainers = client.market.get_gainers()
+    losers = client.market.get_losers()
     active = client.market.get_most_active()
 
     # Company search
-    results = client.market.search_companies("technology")
+    results = client.market.search_company("technology")
 ```
 
 ### Async Concurrent Requests
