@@ -9,6 +9,7 @@ from fmp_data.models import (
     URLType,
 )
 from fmp_data.sec.models import (
+    IndustryClassification,
     SECCompanySearchResult,
     SECFiling8K,
     SECFilingSearchResult,
@@ -24,22 +25,23 @@ SEC_FILINGS_8K: Endpoint = Endpoint(
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description="Get the latest SEC 8-K filings",
-    mandatory_params=[],
-    optional_params=[
+    mandatory_params=[
         EndpointParam(
             name="from",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="Start date (YYYY-MM-DD)",
         ),
         EndpointParam(
             name="to",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="End date (YYYY-MM-DD)",
         ),
+    ],
+    optional_params=[
         EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
@@ -72,22 +74,23 @@ SEC_FILINGS_FINANCIALS: Endpoint = Endpoint(
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description="Get the latest SEC financial filings (10-K, 10-Q)",
-    mandatory_params=[],
-    optional_params=[
+    mandatory_params=[
         EndpointParam(
             name="from",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="Start date (YYYY-MM-DD)",
         ),
         EndpointParam(
             name="to",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="End date (YYYY-MM-DD)",
         ),
+    ],
+    optional_params=[
         EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
@@ -412,5 +415,78 @@ SIC_LIST: Endpoint = Endpoint(
         "Get all SIC codes",
         "List industrial classification codes",
         "SIC code directory",
+    ],
+)
+
+INDUSTRY_CLASSIFICATION_SEARCH: Endpoint = Endpoint(
+    name="industry_classification_search",
+    path="industry-classification-search",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Search industry classification data",
+    mandatory_params=[],
+    optional_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Stock symbol",
+        ),
+        EndpointParam(
+            name="cik",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="SEC CIK number",
+        ),
+        EndpointParam(
+            name="sicCode",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="SIC code",
+        ),
+    ],
+    response_model=IndustryClassification,
+    example_queries=[
+        "Search industry classification for AAPL",
+        "Find industry data by CIK",
+        "Lookup classification by SIC code",
+    ],
+)
+
+ALL_INDUSTRY_CLASSIFICATION: Endpoint = Endpoint(
+    name="all_industry_classification",
+    path="all-industry-classification",
+    version=APIVersion.STABLE,
+    url_type=URLType.API,
+    method=HTTPMethod.GET,
+    description="Get all industry classification data",
+    mandatory_params=[],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Page number for pagination",
+            default=0,
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results per page",
+            default=100,
+        ),
+    ],
+    response_model=IndustryClassification,
+    example_queries=[
+        "Get all industry classification records",
+        "List industry classifications",
+        "Browse industry classification data",
     ],
 )

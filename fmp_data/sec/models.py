@@ -1,7 +1,7 @@
 # fmp_data/sec/models.py
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 default_model_config = ConfigDict(
@@ -25,7 +25,10 @@ class SECFiling8K(BaseModel):
         None, alias="acceptedDate", description="Filing acceptance date"
     )
     filed_date: datetime | None = Field(
-        None, alias="filedDate", description="Filing date"
+        None,
+        alias="filedDate",
+        validation_alias=AliasChoices("filedDate", "filingDate"),
+        description="Filing date",
     )
     final_link: str | None = Field(
         None, alias="finalLink", description="Link to the filing"
@@ -53,7 +56,10 @@ class SECFinancialFiling(BaseModel):
         None, alias="acceptedDate", description="Filing acceptance date"
     )
     filed_date: datetime | None = Field(
-        None, alias="filedDate", description="Filing date"
+        None,
+        alias="filedDate",
+        validation_alias=AliasChoices("filedDate", "filingDate"),
+        description="Filing date",
     )
     final_link: str | None = Field(
         None, alias="finalLink", description="Link to the filing"
@@ -84,7 +90,10 @@ class SECFilingSearchResult(BaseModel):
         None, alias="acceptedDate", description="Filing acceptance date"
     )
     filed_date: datetime | None = Field(
-        None, alias="filedDate", description="Filing date"
+        None,
+        alias="filedDate",
+        validation_alias=AliasChoices("filedDate", "filingDate"),
+        description="Filing date",
     )
     final_link: str | None = Field(
         None, alias="finalLink", description="Link to the filing"
@@ -99,12 +108,24 @@ class SECCompanySearchResult(BaseModel):
     symbol: str | None = Field(None, description="Stock symbol")
     cik: str | None = Field(None, description="SEC CIK number")
     company_name: str | None = Field(
-        None, alias="companyName", description="Company name"
+        None,
+        alias="companyName",
+        validation_alias=AliasChoices("companyName", "name"),
+        description="Company name",
     )
     exchange: str | None = Field(None, description="Stock exchange")
     sic_code: str | None = Field(None, alias="sicCode", description="SIC code")
     sic_description: str | None = Field(
         None, alias="sicDescription", description="SIC description"
+    )
+    industry_title: str | None = Field(
+        None, alias="industryTitle", description="Industry title"
+    )
+    business_address: str | None = Field(
+        None, alias="businessAddress", description="Business address"
+    )
+    phone_number: str | None = Field(
+        None, alias="phoneNumber", description="Business phone number"
     )
     state: str | None = Field(None, description="State of incorporation")
     fiscal_year_end: str | None = Field(
@@ -120,7 +141,10 @@ class SECProfile(BaseModel):
     symbol: str = Field(description="Stock symbol")
     cik: str | None = Field(None, description="SEC CIK number")
     company_name: str | None = Field(
-        None, alias="companyName", description="Company name"
+        None,
+        alias="companyName",
+        validation_alias=AliasChoices("companyName", "registrantName"),
+        description="Company name",
     )
     exchange: str | None = Field(None, description="Stock exchange")
     sic_code: str | None = Field(None, alias="sicCode", description="SIC code")
@@ -143,7 +167,10 @@ class SECProfile(BaseModel):
         None, alias="mailingAddress", description="Mailing address"
     )
     business_phone: str | None = Field(
-        None, alias="businessPhone", description="Business phone"
+        None,
+        alias="businessPhone",
+        validation_alias=AliasChoices("businessPhone", "phoneNumber"),
+        description="Business phone",
     )
 
 
@@ -153,5 +180,30 @@ class SICCode(BaseModel):
     model_config = default_model_config
 
     sic_code: str = Field(alias="sicCode", description="SIC code")
-    industry: str | None = Field(None, description="Industry name")
+    industry: str | None = Field(
+        None,
+        alias="industryTitle",
+        validation_alias=AliasChoices("industryTitle", "industry"),
+        description="Industry name",
+    )
     office: str | None = Field(None, description="SEC office")
+
+
+class IndustryClassification(BaseModel):
+    """Industry classification data"""
+
+    model_config = default_model_config
+
+    symbol: str | None = Field(None, description="Stock symbol")
+    name: str | None = Field(None, description="Company name")
+    cik: str | None = Field(None, description="SEC CIK number")
+    sic_code: str | None = Field(None, alias="sicCode", description="SIC code")
+    industry_title: str | None = Field(
+        None, alias="industryTitle", description="Industry title"
+    )
+    business_address: str | None = Field(
+        None, alias="businessAddress", description="Business address"
+    )
+    phone_number: str | None = Field(
+        None, alias="phoneNumber", description="Business phone number"
+    )

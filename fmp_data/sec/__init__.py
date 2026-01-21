@@ -2,6 +2,7 @@
 from fmp_data.sec.async_client import AsyncSECClient
 from fmp_data.sec.client import SECClient
 from fmp_data.sec.models import (
+    IndustryClassification,
     SECCompanySearchResult,
     SECFiling8K,
     SECFilingSearchResult,
@@ -12,6 +13,7 @@ from fmp_data.sec.models import (
 
 __all__ = [
     "AsyncSECClient",
+    "IndustryClassification",
     "SECClient",
     "SECCompanySearchResult",
     "SECFiling8K",
