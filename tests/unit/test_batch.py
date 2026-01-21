@@ -247,6 +247,8 @@ class TestBatchClient:
 
     def test_parse_csv_models_skips_invalid_rows_without_url_fields(self, caplog):
         """Invalid rows without URL fields should be skipped."""
+        import logging
+
         from pydantic import BaseModel
 
         class SimpleRow(BaseModel):
@@ -255,7 +257,7 @@ class TestBatchClient:
 
         csv_text = "symbol,value\nAAPL,not-a-number\n"
 
-        with caplog.at_level("WARNING"):
+        with caplog.at_level(logging.WARNING, logger="fmp_data.batch.client"):
             results = BatchClient._parse_csv_models(
                 csv_text.encode("utf-8"),
                 SimpleRow,
