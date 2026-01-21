@@ -108,7 +108,7 @@ class FMPRateLimiter:
     def _normalize_headers(
         response_headers: Mapping[str, str] | None,
     ) -> dict[str, str]:
-        if not response_headers:
+        if not response_headers or not isinstance(response_headers, Mapping):
             return {}
         return {key.lower(): value for key, value in response_headers.items()}
 
@@ -140,7 +140,7 @@ class FMPRateLimiter:
         except ValueError:
             return None
         now_epoch = time.time()
-        if reset_value > now_epoch + 60:
+        if reset_value >= now_epoch:
             return max(0.0, reset_value - now_epoch)
         if reset_value >= 0:
             return reset_value
