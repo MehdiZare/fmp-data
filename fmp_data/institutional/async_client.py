@@ -193,18 +193,33 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
 
     # Insider Trading Methods
     async def get_insider_trading_latest(
-        self, page: int = 0
+        self, page: int = 0, limit: int = 100, trade_date: date | None = None
     ) -> list[InsiderTradingLatest]:
         """Get latest insider trading activity"""
-        return await self.client.request_async(INSIDER_TRADING_LATEST, page=page)
+        params: dict[str, int | date] = {"page": page, "limit": limit}
+        if trade_date is not None:
+            params["date"] = trade_date
+        return await self.client.request_async(INSIDER_TRADING_LATEST, **params)
 
     async def search_insider_trading(
-        self, symbol: str | None = None, page: int = 0, limit: int = 100
+        self,
+        symbol: str | None = None,
+        page: int = 0,
+        limit: int = 100,
+        reporting_cik: str | None = None,
+        company_cik: str | None = None,
+        transaction_type: str | None = None,
     ) -> list[InsiderTradingSearch]:
         """Search insider trades with optional filters"""
         params: dict[str, str | int] = {"page": page, "limit": limit}
         if symbol:
             params["symbol"] = symbol
+        if reporting_cik:
+            params["reportingCik"] = reporting_cik
+        if company_cik:
+            params["companyCik"] = company_cik
+        if transaction_type:
+            params["transactionType"] = transaction_type
         return await self.client.request_async(INSIDER_TRADING_SEARCH, **params)
 
     async def get_insider_trading_by_name(

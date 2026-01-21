@@ -304,11 +304,17 @@ class TestInstitutionalClientEnhanced:
             status_code=200, json_data=[mock_insider_trade]
         )
 
-        trades = fmp_client.institutional.get_insider_trading_latest()
+        trades = fmp_client.institutional.get_insider_trading_latest(
+            page=0, limit=50, trade_date=date(2024, 1, 5)
+        )
         assert isinstance(trades, list)
         assert len(trades) == 1
         assert isinstance(trades[0], InsiderTradingLatest)
         assert trades[0].symbol == "AAPL"
+        _, kwargs = mock_request.call_args
+        assert kwargs["params"]["page"] == 0
+        assert kwargs["params"]["limit"] == 50
+        assert kwargs["params"]["date"] == date(2024, 1, 5)
 
     @patch("httpx.Client.request")
     def test_search_insider_trading(
@@ -319,11 +325,21 @@ class TestInstitutionalClientEnhanced:
             status_code=200, json_data=[mock_insider_trade]
         )
 
-        trades = fmp_client.institutional.search_insider_trading(symbol="AAPL")
+        trades = fmp_client.institutional.search_insider_trading(
+            symbol="AAPL",
+            reporting_cik="0001214128",
+            company_cik="0000320193",
+            transaction_type="S-Sale",
+        )
         assert isinstance(trades, list)
         assert len(trades) == 1
         assert isinstance(trades[0], InsiderTradingSearch)
         assert trades[0].symbol == "AAPL"
+        _, kwargs = mock_request.call_args
+        assert kwargs["params"]["symbol"] == "AAPL"
+        assert kwargs["params"]["reportingCik"] == "0001214128"
+        assert kwargs["params"]["companyCik"] == "0000320193"
+        assert kwargs["params"]["transactionType"] == "S-Sale"
 
     @patch("httpx.Client.request")
     def test_get_insider_trading_by_name(

@@ -1,6 +1,9 @@
 # tests/integration/test_sec.py
+from datetime import date
+
 from fmp_data import FMPDataClient
 from fmp_data.sec.models import (
+    IndustryClassification,
     SECCompanySearchResult,
     SECFiling8K,
     SECFilingSearchResult,
@@ -18,7 +21,11 @@ class TestSECClientEndpoints(BaseTestCase):
         """Test getting latest 8-K filings"""
         with vcr_instance.use_cassette("sec/latest_8k.yaml"):
             filings = self._handle_rate_limit(
-                fmp_client.sec.get_latest_8k, page=0, limit=5
+                fmp_client.sec.get_latest_8k,
+                page=0,
+                limit=5,
+                from_date=date(2024, 1, 1),
+                to_date=date(2024, 3, 1),
             )
             assert isinstance(filings, list)
             if filings:
@@ -28,7 +35,11 @@ class TestSECClientEndpoints(BaseTestCase):
         """Test getting latest financial filings"""
         with vcr_instance.use_cassette("sec/latest_financials.yaml"):
             filings = self._handle_rate_limit(
-                fmp_client.sec.get_latest_financials, page=0, limit=5
+                fmp_client.sec.get_latest_financials,
+                page=0,
+                limit=5,
+                from_date=date(2024, 1, 1),
+                to_date=date(2024, 3, 1),
             )
             assert isinstance(filings, list)
             if filings:
@@ -107,3 +118,27 @@ class TestSECClientEndpoints(BaseTestCase):
             assert isinstance(results, list)
             if results:
                 assert isinstance(results[0], SICCode)
+
+    def test_search_industry_classification(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test searching industry classification data"""
+        with vcr_instance.use_cassette("sec/industry_classification_search.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.sec.search_industry_classification, symbol="AAPL"
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], IndustryClassification)
+
+    def test_get_all_industry_classification(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting all industry classification records"""
+        with vcr_instance.use_cassette("sec/all_industry_classification.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.sec.get_all_industry_classification, page=0, limit=5
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], IndustryClassification)

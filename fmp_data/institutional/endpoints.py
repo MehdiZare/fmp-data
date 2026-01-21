@@ -316,7 +316,7 @@ CIK_MAPPER_BY_NAME: Endpoint = Endpoint(
 
 BENEFICIAL_OWNERSHIP: Endpoint = Endpoint(
     name="beneficial_ownership",
-    path="insider/ownership/acquisition_of_beneficial_ownership",
+    path="acquisition-of-beneficial-ownership",
     version=APIVersion.STABLE,
     description="Get beneficial ownership data",
     mandatory_params=[
@@ -370,13 +370,28 @@ INSIDER_TRADING_LATEST: Endpoint = Endpoint(
     mandatory_params=[],
     optional_params=[
         EndpointParam(
+            name="date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Filter by transaction date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
             required=False,
             description="Page number",
             default=0,
-        )
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results per page",
+            default=100,
+        ),
     ],
     response_model=InsiderTradingLatest,
 )
@@ -396,6 +411,27 @@ INSIDER_TRADING_SEARCH: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             required=False,
             description="Stock symbol filter",
+        ),
+        EndpointParam(
+            name="reportingCik",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Reporting CIK filter",
+        ),
+        EndpointParam(
+            name="companyCik",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Company CIK filter",
+        ),
+        EndpointParam(
+            name="transactionType",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Transaction type filter",
         ),
         EndpointParam(
             name="page",

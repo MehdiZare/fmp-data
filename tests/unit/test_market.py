@@ -9,6 +9,7 @@ from fmp_data.market.models import (
     ExchangeSymbol,
     IPODisclosure,
     IPOProspectus,
+    MarketHoliday,
     MarketHours,
 )
 from fmp_data.models import CompanySymbol
@@ -25,6 +26,18 @@ def mock_market_hours_data():
             "closingHour": "04:00 PM -04:00",
             "timezone": "America/New_York",
             "isMarketOpen": False,
+        }
+    ]
+
+
+@pytest.fixture
+def mock_market_holidays_data():
+    """Mock market holidays data"""
+    return [
+        {
+            "date": "2024-12-25",
+            "exchange": "NYSE",
+            "holiday": "Christmas Day",
         }
     ]
 
@@ -85,6 +98,38 @@ def test_get_market_hours_empty_response(fmp_client):
     with patch.object(fmp_client.market.client, "request", return_value=[]):
         with pytest.raises(ValueError, match="No market hours data returned from API"):
             fmp_client.market.get_market_hours()
+
+
+def test_get_all_exchange_market_hours(fmp_client, mock_market_hours_data):
+    """Test getting market hours for all exchanges"""
+    market_hours_objs = [MarketHours(**item) for item in mock_market_hours_data]
+
+    with patch.object(
+        fmp_client.market.client, "request", return_value=market_hours_objs
+    ):
+        hours = fmp_client.market.get_all_exchange_market_hours()
+
+    assert isinstance(hours, list)
+    assert len(hours) == 1
+    assert isinstance(hours[0], MarketHours)
+
+
+def test_get_holidays_by_exchange(fmp_client, mock_market_holidays_data):
+    """Test getting market holidays for a specific exchange"""
+    holiday_objs = [MarketHoliday(**item) for item in mock_market_holidays_data]
+
+    with patch.object(
+        fmp_client.market.client, "request", return_value=holiday_objs
+    ) as mock_request:
+        holidays = fmp_client.market.get_holidays_by_exchange("NYSE")
+
+    assert isinstance(holidays, list)
+    assert len(holidays) == 1
+    assert isinstance(holidays[0], MarketHoliday)
+    assert holidays[0].exchange == "NYSE"
+    assert holidays[0].holiday == "Christmas Day"
+    mock_request.assert_called_once()
+    assert mock_request.call_args[1]["exchange"] == "NYSE"
 
 
 class TestCompanySearch:

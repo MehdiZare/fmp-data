@@ -11,6 +11,7 @@ from fmp_data.market.models import (
     IPODisclosure,
     IPOProspectus,
     ISINResult,
+    MarketHoliday,
     MarketHours,
     MarketMover,
     PrePostMarketQuote,
@@ -274,6 +275,35 @@ MARKET_HOURS: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=MarketHours,
+)
+
+ALL_EXCHANGE_MARKET_HOURS: Endpoint = Endpoint(
+    name="all_exchange_market_hours",
+    path="all-exchange-market-hours",
+    version=APIVersion.STABLE,
+    description="Get market trading hours for all exchanges",
+    mandatory_params=[],
+    optional_params=[],
+    response_model=MarketHours,
+)
+
+HOLIDAYS_BY_EXCHANGE: Endpoint = Endpoint(
+    name="holidays_by_exchange",
+    path="holidays-by-exchange",
+    version=APIVersion.STABLE,
+    description="Get market holidays for a specific exchange",
+    mandatory_params=[
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Exchange code (e.g., NYSE, NASDAQ)",
+            valid_values=None,
+        )
+    ],
+    optional_params=[],
+    response_model=MarketHoliday,
 )
 
 GAINERS: Endpoint = Endpoint(

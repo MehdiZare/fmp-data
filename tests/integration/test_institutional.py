@@ -387,7 +387,7 @@ class TestInstitutionalAdditionalEndpoints(BaseTestCase):
         """Test getting latest insider trading activity"""
         with vcr_instance.use_cassette("institutional/insider_trading_latest.yaml"):
             results = self._handle_rate_limit(
-                fmp_client.institutional.get_insider_trading_latest, page=0
+                fmp_client.institutional.get_insider_trading_latest, page=0, limit=5
             )
             assert isinstance(results, list)
             if results:

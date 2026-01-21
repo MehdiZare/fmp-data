@@ -1,11 +1,13 @@
 # tests/unit/test_sec.py
 """Tests for the SEC module endpoints"""
 
+from datetime import date
 from unittest.mock import patch
 
 import pytest
 
 from fmp_data.sec.models import (
+    IndustryClassification,
     SECCompanySearchResult,
     SECFiling8K,
     SECFilingSearchResult,
@@ -26,7 +28,7 @@ class TestSECModels:
             "cik": "0000320193",
             "formType": "8-K",
             "acceptedDate": "2024-01-15T08:30:00.000+0000",
-            "filedDate": "2024-01-15",
+            "filingDate": "2024-01-15",
             "finalLink": "https://www.sec.gov/Archives/...",
             "linkToTxt": "https://www.sec.gov/Archives/...txt",
             "linkToHtml": "https://www.sec.gov/Archives/...html",
@@ -41,7 +43,7 @@ class TestSECModels:
             "cik": "0000320193",
             "formType": "10-K",
             "acceptedDate": "2024-01-15T08:30:00.000+0000",
-            "filedDate": "2024-01-15",
+            "filingDate": "2024-01-15",
             "finalLink": "https://www.sec.gov/Archives/...",
             "linkToXbrl": "https://www.sec.gov/Archives/...xbrl",
         }
@@ -52,7 +54,7 @@ class TestSECModels:
         return {
             "symbol": "AAPL",
             "cik": "0000320193",
-            "companyName": "Apple Inc.",
+            "name": "Apple Inc.",
             "exchange": "NASDAQ",
             "sicCode": "3571",
             "sicDescription": "Electronic Computers",
@@ -82,8 +84,21 @@ class TestSECModels:
         """Mock SIC code data"""
         return {
             "sicCode": "3571",
-            "industry": "Electronic Computers",
+            "industryTitle": "Electronic Computers",
             "office": "Office of Technology",
+        }
+
+    @pytest.fixture
+    def industry_classification_data(self):
+        """Mock industry classification data"""
+        return {
+            "symbol": "AAPL",
+            "name": "APPLE INC.",
+            "cik": "0000320193",
+            "sicCode": "3571",
+            "industryTitle": "ELECTRONIC COMPUTERS",
+            "businessAddress": "['ONE APPLE PARK WAY', 'CUPERTINO CA 95014']",
+            "phoneNumber": "(408) 996-1010",
         }
 
     def test_sec_filing_8k_model(self, filing_8k_data):
@@ -138,6 +153,14 @@ class TestSECModels:
         assert sic.industry == "Electronic Computers"
         assert sic.office == "Office of Technology"
 
+    def test_industry_classification_model(self, industry_classification_data):
+        """Test IndustryClassification model validation"""
+        entry = IndustryClassification.model_validate(industry_classification_data)
+        assert entry.symbol == "AAPL"
+        assert entry.name == "APPLE INC."
+        assert entry.sic_code == "3571"
+        assert entry.industry_title == "ELECTRONIC COMPUTERS"
+
 
 class TestSECClient:
     """Tests for SECClient methods"""
@@ -159,7 +182,12 @@ class TestSECClient:
         mock_request.return_value = mock_response(
             status_code=200, json_data=[filing_8k_data]
         )
-        result = fmp_client.sec.get_latest_8k(page=0, limit=10)
+        result = fmp_client.sec.get_latest_8k(
+            page=0,
+            limit=10,
+            from_date=date(2024, 1, 1),
+            to_date=date(2024, 2, 1),
+        )
         assert len(result) == 1
         assert isinstance(result[0], SECFiling8K)
         assert result[0].form_type == "8-K"
@@ -171,7 +199,12 @@ class TestSECClient:
         mock_request.return_value = mock_response(
             status_code=200, json_data=[financial_data]
         )
-        result = fmp_client.sec.get_latest_financials(page=0, limit=10)
+        result = fmp_client.sec.get_latest_financials(
+            page=0,
+            limit=10,
+            from_date=date(2024, 1, 1),
+            to_date=date(2024, 2, 1),
+        )
         assert len(result) == 1
         assert isinstance(result[0], SECFinancialFiling)
 
@@ -262,3 +295,27 @@ class TestSECClient:
         assert len(result) == 2
         assert isinstance(result[0], SICCode)
         assert result[0].sic_code == "3571"
+
+    @patch("httpx.Client.request")
+    def test_search_industry_classification(
+        self, mock_request, fmp_client, mock_response, industry_classification_data
+    ):
+        """Test searching industry classification data"""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[industry_classification_data]
+        )
+        result = fmp_client.sec.search_industry_classification(symbol="AAPL")
+        assert len(result) == 1
+        assert result[0].sic_code == "3571"
+
+    @patch("httpx.Client.request")
+    def test_get_all_industry_classification(
+        self, mock_request, fmp_client, mock_response, industry_classification_data
+    ):
+        """Test fetching all industry classification records"""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[industry_classification_data]
+        )
+        result = fmp_client.sec.get_all_industry_classification(page=0, limit=10)
+        assert len(result) == 1
+        assert result[0].symbol == "AAPL"

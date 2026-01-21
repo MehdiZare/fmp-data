@@ -136,6 +136,7 @@ DEFAULT_TOOLS: list[str] = [
     "investment.mutual_fund_holdings",
     # Market (14 tools) - Market Data and Search
     "market.all_shares_float",
+    "market.all_exchange_market_hours",
     "market.available_indexes",
     "market.etf_list",
     "market.gainers",
@@ -145,6 +146,7 @@ DEFAULT_TOOLS: list[str] = [
     "market.historical_sector_performance",
     "market.industry_pe_snapshot",
     "market.industry_performance_snapshot",
+    "market.holidays_by_exchange",
     "market.losers",
     "market.market_hours",
     "market.most_active",

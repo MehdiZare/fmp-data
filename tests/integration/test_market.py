@@ -18,6 +18,7 @@ from fmp_data.market.models import (
     IPODisclosure,
     IPOProspectus,
     ISINResult,
+    MarketHoliday,
     MarketHours,
     MarketMover,
     PrePostMarketQuote,
@@ -44,6 +45,34 @@ class TestMarketClientEndpoints(BaseTestCase):
             assert hours.closing_hour
             assert hours.timezone
             assert isinstance(hours.is_market_open, bool)
+
+    def test_get_all_exchange_market_hours(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting market hours for all exchanges"""
+        with vcr_instance.use_cassette("market/all_exchange_market_hours.yaml"):
+            hours = self._handle_rate_limit(
+                fmp_client.market.get_all_exchange_market_hours,
+            )
+            assert isinstance(hours, list)
+            assert len(hours) > 0
+            assert isinstance(hours[0], MarketHours)
+            assert hours[0].exchange
+            assert hours[0].opening_hour
+            assert hours[0].closing_hour
+
+    def test_get_holidays_by_exchange(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting market holidays for an exchange"""
+        with vcr_instance.use_cassette("market/holidays_by_exchange.yaml"):
+            holidays = self._handle_rate_limit(
+                fmp_client.market.get_holidays_by_exchange,
+                "NYSE",
+            )
+            assert isinstance(holidays, list)
+            if holidays:
+                assert isinstance(holidays[0], MarketHoliday)
+                assert holidays[0].exchange
+                assert holidays[0].holiday or holidays[0].date
 
     def test_get_gainers(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting market gainers"""

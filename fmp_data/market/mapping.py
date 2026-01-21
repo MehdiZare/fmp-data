@@ -3,6 +3,7 @@
 from fmp_data.lc.hints import DATE_HINTS, EXCHANGE_HINT, LIMIT_HINT
 from fmp_data.lc.models import EndpointSemantics, ResponseFieldInfo, SemanticCategory
 from fmp_data.market.endpoints import (
+    ALL_EXCHANGE_MARKET_HOURS,
     ALL_SHARES_FLOAT,
     AVAILABLE_INDEXES,
     CIK_SEARCH,
@@ -13,6 +14,7 @@ from fmp_data.market.endpoints import (
     HISTORICAL_INDUSTRY_PERFORMANCE,
     HISTORICAL_SECTOR_PE,
     HISTORICAL_SECTOR_PERFORMANCE,
+    HOLIDAYS_BY_EXCHANGE,
     INDUSTRY_PE_SNAPSHOT,
     INDUSTRY_PERFORMANCE_SNAPSHOT,
     ISIN_SEARCH,
@@ -32,6 +34,8 @@ MARKET_ENDPOINT_MAP = {
     "search_company": SEARCH_COMPANY,
     "get_all_shares_float": ALL_SHARES_FLOAT,
     "get_market_hours": MARKET_HOURS,
+    "get_all_exchange_market_hours": ALL_EXCHANGE_MARKET_HOURS,
+    "get_holidays_by_exchange": HOLIDAYS_BY_EXCHANGE,
     "get_gainers": GAINERS,
     "get_losers": LOSERS,
     "get_most_active": MOST_ACTIVE,
@@ -540,6 +544,96 @@ MARKET_ENDPOINTS_SEMANTICS = {
             "Market status monitoring",
             "Trading automation",
             "Order timing",
+        ],
+    ),
+    "all_exchange_market_hours": EndpointSemantics(
+        client_name="market",
+        method_name="get_all_exchange_market_hours",
+        natural_description=(
+            "Get trading hours for all exchanges to compare schedules at once"
+        ),
+        example_queries=[
+            "Show trading hours for all exchanges",
+            "Get global exchange market hours",
+            "List market hours for every exchange",
+        ],
+        related_terms=[
+            "global market hours",
+            "exchange schedules",
+            "all exchanges hours",
+        ],
+        category=SemanticCategory.MARKET_DATA,
+        sub_category="Market Status",
+        parameter_hints={},  # No parameters required
+        response_hints={
+            "exchange": ResponseFieldInfo(
+                description="Exchange code",
+                examples=["NYSE", "NASDAQ"],
+                related_terms=["exchange code", "market identifier"],
+            ),
+            "name": ResponseFieldInfo(
+                description="Full exchange name",
+                examples=["New York Stock Exchange", "NASDAQ"],
+                related_terms=["exchange name", "market name"],
+            ),
+            "opening_hour": ResponseFieldInfo(
+                description="Market opening time with timezone",
+                examples=["09:30 AM -04:00", "08:00 AM -05:00"],
+                related_terms=["opening time", "market open"],
+            ),
+            "closing_hour": ResponseFieldInfo(
+                description="Market closing time with timezone",
+                examples=["04:00 PM -04:00", "03:00 PM -05:00"],
+                related_terms=["closing time", "market close"],
+            ),
+            "timezone": ResponseFieldInfo(
+                description="Exchange timezone",
+                examples=["America/New_York", "America/Chicago"],
+                related_terms=["time zone", "market timezone"],
+            ),
+        },
+        use_cases=[
+            "Cross-exchange schedule comparison",
+            "Global market overview",
+        ],
+    ),
+    "holidays_by_exchange": EndpointSemantics(
+        client_name="market",
+        method_name="get_holidays_by_exchange",
+        natural_description="Get exchange holiday dates for a specific exchange",
+        example_queries=[
+            "Show NYSE holidays",
+            "Get NASDAQ market holidays",
+            "Which dates is the exchange closed?",
+        ],
+        related_terms=[
+            "market holidays",
+            "exchange holidays",
+            "trading calendar",
+        ],
+        category=SemanticCategory.MARKET_DATA,
+        sub_category="Market Calendar",
+        parameter_hints={"exchange": EXCHANGE_HINT},
+        response_hints={
+            "date": ResponseFieldInfo(
+                description="Holiday date",
+                examples=["2024-12-25", "2024-01-01"],
+                related_terms=["holiday date", "market closure date"],
+            ),
+            "holiday": ResponseFieldInfo(
+                description="Holiday name",
+                examples=["New Year's Day", "Christmas Day"],
+                related_terms=["holiday name", "market holiday"],
+            ),
+            "exchange": ResponseFieldInfo(
+                description="Exchange code",
+                examples=["NYSE", "NASDAQ"],
+                related_terms=["exchange code", "market identifier"],
+            ),
+        },
+        use_cases=[
+            "Trading calendar planning",
+            "Holiday schedule checks",
         ],
     ),
     "gainers": EndpointSemantics(

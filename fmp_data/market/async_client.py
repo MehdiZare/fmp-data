@@ -6,6 +6,7 @@ from typing import cast
 from fmp_data.base import AsyncEndpointGroup
 from fmp_data.market.endpoints import (
     ACTIVELY_TRADING_LIST,
+    ALL_EXCHANGE_MARKET_HOURS,
     ALL_SHARES_FLOAT,
     AVAILABLE_COUNTRIES,
     AVAILABLE_EXCHANGES,
@@ -23,6 +24,7 @@ from fmp_data.market.endpoints import (
     HISTORICAL_INDUSTRY_PERFORMANCE,
     HISTORICAL_SECTOR_PE,
     HISTORICAL_SECTOR_PERFORMANCE,
+    HOLIDAYS_BY_EXCHANGE,
     INDUSTRY_PE_SNAPSHOT,
     INDUSTRY_PERFORMANCE_SNAPSHOT,
     IPO_DISCLOSURE,
@@ -52,6 +54,7 @@ from fmp_data.market.models import (
     IPODisclosure,
     IPOProspectus,
     ISINResult,
+    MarketHoliday,
     MarketHours,
     MarketMover,
     PrePostMarketQuote,
@@ -202,6 +205,16 @@ class AsyncMarketClient(AsyncEndpointGroup):
 
         # Cast to help mypy understand the type
         return cast(MarketHours, result[0])
+
+    async def get_all_exchange_market_hours(self) -> list[MarketHours]:
+        """Get market trading hours information for all exchanges"""
+        return await self.client.request_async(ALL_EXCHANGE_MARKET_HOURS)
+
+    async def get_holidays_by_exchange(
+        self, exchange: str = "NYSE"
+    ) -> list[MarketHoliday]:
+        """Get market holidays for a specific exchange"""
+        return await self.client.request_async(HOLIDAYS_BY_EXCHANGE, exchange=exchange)
 
     async def get_gainers(self) -> list[MarketMover]:
         """Get market gainers"""

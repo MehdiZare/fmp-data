@@ -126,6 +126,20 @@ class MarketHours(BaseModel):
     )
 
 
+class MarketHoliday(BaseModel):
+    """Market holiday for a single exchange"""
+
+    model_config = default_model_config
+
+    date: datetime | None = Field(None, description="Holiday date")
+    exchange: str | None = Field(None, description="Exchange code")
+    holiday: str | None = Field(
+        None,
+        validation_alias=AliasChoices("holiday", "name", "description"),
+        description="Holiday name",
+    )
+
+
 class MarketMover(BaseModel):
     """Market mover (gainer/loser) data"""
 
