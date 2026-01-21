@@ -61,6 +61,15 @@ pip-log.txt
 pip-delete-this-directory.txt
 site/
 
+# Documentation build
+site/
+
+# Security reports
+reports/
+
+# Test fixtures (can be regenerated)
+tests/integration/vcr_cassettes/
+
 # Misc
 .DS_Store
 
