@@ -1,18 +1,19 @@
 # FMP Data
 
-A robust Python client for Financial Modeling Prep API with comprehensive features including rate limiting, caching, retry strategies, and full type safety.
+A robust Python client for Financial Modeling Prep API with comprehensive features including rate limiting, retry strategies, async support, and full type safety.
+Now with 100% coverage of the FMP stable endpoint catalog.
 
 ## Features
 
 ✨ **Core Features**
 - Rate limiting with automatic backoff
-- Response caching with configurable TTL
 - Retry strategies for failed requests
 - Comprehensive error handling
 - Async/await support
 - Full type hints with Pydantic validation
 
 🏢 **API Coverage**
+- Full coverage of FMP stable endpoints
 - Company profiles and financial data
 - Market data and quotes
 - Fundamental analysis (financial statements, ratios, metrics)
@@ -22,13 +23,17 @@ A robust Python client for Financial Modeling Prep API with comprehensive featur
 - Investment funds data
 - Alternative markets data
 - Economic indicators
+- Batch market data
+- Earnings call transcripts
+- SEC filings and company profiles
+- Index constituents and historical changes
 
 🔧 **Developer Experience**
 - Intuitive client interface with property-based access
 - Structured logging with configurable handlers
 - Environment-based configuration
 - LangChain integration for AI applications
-- Modern Python 3.10+ syntax support
+- Python 3.10-3.14 support
 
 ## Quick Start
 
@@ -42,6 +47,8 @@ For LangChain integration:
 ```bash
 pip install "fmp-data[langchain]"
 ```
+
+LangChain integration requires LangChain v1 (`langchain-core`, `langchain-openai`) and LangGraph v1.
 
 ### Basic Usage
 
@@ -63,6 +70,30 @@ with FMPDataClient.from_env() as client:
     print(f"Current Price: ${quote.price}")
 ```
 
+### Async Usage
+
+For async applications, use `AsyncFMPDataClient`:
+
+```python
+import asyncio
+from fmp_data import AsyncFMPDataClient
+
+async def main():
+    async with AsyncFMPDataClient.from_env() as client:
+        # All methods are async - same names as sync client
+        profile = await client.company.get_profile("AAPL")
+        print(f"Company: {profile.company_name}")
+
+        # Fetch multiple items concurrently
+        quote, income = await asyncio.gather(
+            client.company.get_quote("AAPL"),
+            client.fundamental.get_income_statement("AAPL", period="annual")
+        )
+        print(f"Price: ${quote.price}, Revenue: ${income[0].revenue:,.0f}")
+
+asyncio.run(main())
+```
+
 ### Environment Configuration
 
 Create a `.env` file in your project root:
@@ -71,7 +102,8 @@ Create a `.env` file in your project root:
 FMP_API_KEY=your_api_key_here
 FMP_TIMEOUT=30
 FMP_MAX_RETRIES=3
-FMP_BASE_URL=https://financialmodelingprep.com/api
+# Note: Do NOT include /api in the base URL - it's added automatically
+FMP_BASE_URL=https://financialmodelingprep.com
 ```
 
 ### Error Handling
@@ -91,42 +123,36 @@ except AuthenticationError:
 
 ## API Client Structure
 
-The `FMPDataClient` provides organized access to different data categories:
+Both `FMPDataClient` (sync) and `AsyncFMPDataClient` (async) provide organized access to different data categories through the same interface:
 
 ```python
+# Sync client
 client = FMPDataClient.from_env()
 
-# Company data and profiles
-client.company.*
+# Async client (same structure, async methods)
+async_client = AsyncFMPDataClient.from_env()
 
-# Market data and quotes
-client.market.*
-
-# Fundamental analysis
-client.fundamental.*
-
-# Technical analysis
-client.technical.*
-
-# Market intelligence
-client.intelligence.*
-
-# Institutional data
-client.institutional.*
-
-# Investment funds
-client.investment.*
-
-# Alternative markets
-client.alternative.*
-
-# Economic data
-client.economics.*
+# Both clients provide access to these endpoint groups:
+client.company.*        # Company data, quotes, and historical prices
+client.market.*         # Market movers, hours, and listings/search
+client.fundamental.*    # Fundamental analysis
+client.technical.*      # Technical analysis
+client.intelligence.*   # Market intelligence
+client.institutional.*  # Institutional data
+client.investment.*     # Investment funds
+client.alternative.*    # Alternative markets
+client.economics.*      # Economic data
+client.batch.*          # Batch data operations
+client.transcripts.*    # Earnings call transcripts
+client.sec.*            # SEC filings
+client.index.*          # Index constituents
 ```
 
 ## Documentation
 
 - **[API Reference](api/reference.md)**: Complete API documentation
+- **[Endpoints List](api/endpoints.md)**: Stable endpoint catalog
+- **[MCP Integration](mcp/index.md)**: Claude Desktop setup, manifests, and tools
 - **[Development Guide](contributing/development.md)**: Set up development environment
 - **[Testing Guide](contributing/testing.md)**: Running and writing tests
 
@@ -145,14 +171,14 @@ with FMPDataClient.from_env() as client:
     # Financial statements (last 5 years)
     income_statements = client.fundamental.get_income_statement(symbol, limit=5)
     balance_sheets = client.fundamental.get_balance_sheet(symbol, limit=5)
-    cash_flows = client.fundamental.get_cash_flow_statement(symbol, limit=5)
+    cash_flows = client.fundamental.get_cash_flow(symbol, limit=5)
 
     # Key metrics and ratios
     metrics = client.fundamental.get_key_metrics(symbol, limit=5)
     ratios = client.fundamental.get_financial_ratios(symbol, limit=5)
 
     # Valuation
-    dcf = client.fundamental.get_dcf(symbol)
+    dcf = client.fundamental.get_discounted_cash_flow(symbol)
 ```
 
 ### Market Monitoring
@@ -164,12 +190,36 @@ with FMPDataClient.from_env() as client:
     sector_performance = client.market.get_sector_performance()
 
     # Top movers
-    gainers = client.market.get_market_gainers()
-    losers = client.market.get_market_losers()
+    gainers = client.market.get_gainers()
+    losers = client.market.get_losers()
     active = client.market.get_most_active()
 
     # Company search
-    results = client.market.search_companies("technology")
+    results = client.market.search_company("technology")
+```
+
+### Async Concurrent Requests
+
+```python
+import asyncio
+from fmp_data import AsyncFMPDataClient
+
+async def analyze_portfolio(symbols: list[str]):
+    async with AsyncFMPDataClient.from_env() as client:
+        # Fetch all profiles concurrently
+        profiles = await asyncio.gather(
+            *[client.company.get_profile(symbol) for symbol in symbols]
+        )
+
+        # Fetch all quotes concurrently
+        quotes = await asyncio.gather(
+            *[client.company.get_quote(symbol) for symbol in symbols]
+        )
+
+        for profile, quote in zip(profiles, quotes):
+            print(f"{profile.symbol}: ${quote.price:,.2f} ({profile.sector})")
+
+asyncio.run(analyze_portfolio(["AAPL", "MSFT", "GOOGL", "AMZN"]))
 ```
 
 ## Getting Help

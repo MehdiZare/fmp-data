@@ -6,6 +6,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   tests:
     runs-on: ubuntu-latest
@@ -17,6 +21,7 @@ jobs:
           - "3.11"
           - "3.12"
           - "3.13"
+          - "3.14"
 
     steps:
       - name: 🛎️  Checkout
@@ -34,24 +39,11 @@ jobs:
         with:
           enable-cache: true
 
-      - name: 🗄️  Cache uv wheels
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/uv
-            ~/.local/share/uv
-          key: ${{ runner.os }}-py${{ matrix.python }}-uv-${{ hashFiles('**/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-py${{ matrix.python }}-uv-
-
       - name: ▶️  Run Tests
         env:
           NOX_USE_UV: "1"
           CI: "true"
         run: |
-          # Clean any existing coverage files
-          rm -f .coverage*
-
           # Install nox first
           uv tool install nox
 
@@ -66,12 +58,8 @@ jobs:
           uv tool run nox -s "tests-${{ matrix.python }}(langchain)"
           uv tool run nox -s "tests-${{ matrix.python }}(mcp-server)"
 
-          # Verify coverage files were created
-          echo "Coverage files generated:"
-          ls -la .coverage* || echo "No coverage files found"
-
       - name: 🔍 Quality Gates
-        if: matrix.python == '3.13'
+        if: matrix.python == '3.14'
         env:
           NOX_USE_UV: "1"
         run: |
@@ -87,7 +75,7 @@ jobs:
       - name: 🐍  Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       - name: ⚡  Install uv
         uses: astral-sh/setup-uv@v6
@@ -106,3 +94,17 @@ jobs:
           files: coverage.xml
           flags: unittests
           fail_ci_if_error: false
+
+  test-matrix-expected:
+    name: Test-MatrixExpected
+    runs-on: ubuntu-latest
+    needs: [tests, coverage]
+    if: ${{ always() }}
+    steps:
+      - name: ✅ Verify matrix results
+        run: |
+          if [[ "${{ needs.tests.result }}" != "success" || "${{ needs.coverage.result }}" != "success" ]]; then
+            echo "Upstream checks failed"
+            exit 1
+          fi
+          echo "All required checks passed"

@@ -72,25 +72,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.14'
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
 
-      - name: Determine Version Bump
-        uses: ./.github/actions/version-bump
+      - name: Build distribution
+        run: python -m build --wheel --sdist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and Publish
-        env:
-          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        run: |
-          poetry config pypi-token.pypi $PYPI_TOKEN
-          poetry build
-          poetry publish
+          packages-dir: dist/
 ```
 
 ## Manual Release Process
@@ -112,10 +107,10 @@ For emergency releases or when automation fails:
    git checkout -b release/v1.2.3
    ```
 
-2. **Update Version**
+2. **Confirm Release Version (Tag-based)**
    ```bash
-   # Update version in pyproject.toml if needed
-   poetry version patch  # or minor/major
+   # Version is derived from git tags via hatch-vcs (e.g. v2.0.0)
+   git describe --tags --abbrev=0
    ```
 
 3. **Update Changelog**
@@ -126,11 +121,11 @@ For emergency releases or when automation fails:
 
 4. **Run Quality Checks**
    ```bash
-   poetry run pytest
-   poetry run black .
-   poetry run ruff check .
-   poetry run mypy fmp_data
-   poetry run mkdocs build --strict
+   uv run pytest
+   uv run ruff format --check fmp_data tests
+   uv run ruff check fmp_data tests
+   uv run mypy fmp_data
+   uv run mkdocs build --strict
    ```
 
 5. **Commit Changes**
@@ -156,8 +151,8 @@ For emergency releases or when automation fails:
 
 8. **Build and Publish**
    ```bash
-   poetry build
-   poetry publish
+   uv build --wheel --sdist
+   uv publish --token "$PYPI_TOKEN"
    ```
 
 9. **Create GitHub Release**
@@ -174,21 +169,24 @@ For alpha, beta, and release candidate versions:
 
 ```bash
 # Alpha release
-poetry version prerelease  # 1.0.0a1
+git tag v1.0.0a1
+git push origin v1.0.0a1
 
 # Beta release
-poetry version 1.0.0b1
+git tag v1.0.0b1
+git push origin v1.0.0b1
 
 # Release candidate
-poetry version 1.0.0rc1
+git tag v1.0.0rc1
+git push origin v1.0.0rc1
 ```
 
 ### Publishing Pre-releases
 
 ```bash
 # Build and publish to PyPI
-poetry build
-poetry publish
+uv build --wheel --sdist
+uv publish --token "$PYPI_TOKEN"
 
 # Install pre-release
 pip install --pre fmp-data
@@ -322,7 +320,7 @@ For critical security or data corruption bugs:
 - [ ] All tests passing
 - [ ] Documentation updated
 - [ ] CHANGELOG.md updated
-- [ ] Version number updated
+- [ ] Release tag prepared
 - [ ] Migration guide written (for breaking changes)
 - [ ] Security review completed (for major releases)
 
@@ -388,7 +386,8 @@ pip install fmp-data==1.2.2
 - CI/CD system access
 
 ### Tools Used
-- **Poetry**: Dependency management and publishing
+- **uv**: Dependency management, builds, and publishing
+- **hatch-vcs**: Tag-based versioning
 - **GitHub Actions**: CI/CD automation
 - **PyPI**: Package distribution
 - **MkDocs**: Documentation generation
@@ -401,21 +400,20 @@ pip install fmp-data==1.2.2
 **PyPI Publishing Fails**
 ```bash
 # Check credentials
-poetry config --list
+uv publish --dry-run --token "$PYPI_TOKEN"
 
 # Verify package
-poetry check
-poetry build
-twine check dist/*
+uv build --wheel --sdist
+uv run twine check dist/*
 ```
 
 **Version Conflicts**
 ```bash
 # Check current version
-poetry version
+git describe --tags --abbrev=0
 
 # Force version update
-poetry version 1.2.3
+git tag v1.2.3
 ```
 
 **GitHub Actions Failure**

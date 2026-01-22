@@ -1,20 +1,29 @@
 # fmp_data/market/mapping.py
 
-from fmp_data.lc.hints import EXCHANGE_HINT, LIMIT_HINT
+from fmp_data.lc.hints import DATE_HINTS, EXCHANGE_HINT, LIMIT_HINT
 from fmp_data.lc.models import EndpointSemantics, ResponseFieldInfo, SemanticCategory
 from fmp_data.market.endpoints import (
+    ALL_EXCHANGE_MARKET_HOURS,
     ALL_SHARES_FLOAT,
     AVAILABLE_INDEXES,
     CIK_SEARCH,
     CUSIP_SEARCH,
     ETF_LIST,
     GAINERS,
+    HISTORICAL_INDUSTRY_PE,
+    HISTORICAL_INDUSTRY_PERFORMANCE,
+    HISTORICAL_SECTOR_PE,
+    HISTORICAL_SECTOR_PERFORMANCE,
+    HOLIDAYS_BY_EXCHANGE,
+    INDUSTRY_PE_SNAPSHOT,
+    INDUSTRY_PERFORMANCE_SNAPSHOT,
     ISIN_SEARCH,
     LOSERS,
     MARKET_HOURS,
     MOST_ACTIVE,
     PRE_POST_MARKET,
     SEARCH_COMPANY,
+    SECTOR_PE_SNAPSHOT,
     SECTOR_PERFORMANCE,
     STOCK_LIST,
 )
@@ -25,10 +34,19 @@ MARKET_ENDPOINT_MAP = {
     "search_company": SEARCH_COMPANY,
     "get_all_shares_float": ALL_SHARES_FLOAT,
     "get_market_hours": MARKET_HOURS,
+    "get_all_exchange_market_hours": ALL_EXCHANGE_MARKET_HOURS,
+    "get_holidays_by_exchange": HOLIDAYS_BY_EXCHANGE,
     "get_gainers": GAINERS,
     "get_losers": LOSERS,
     "get_most_active": MOST_ACTIVE,
     "get_sector_performance": SECTOR_PERFORMANCE,
+    "get_industry_performance_snapshot": INDUSTRY_PERFORMANCE_SNAPSHOT,
+    "get_historical_sector_performance": HISTORICAL_SECTOR_PERFORMANCE,
+    "get_historical_industry_performance": HISTORICAL_INDUSTRY_PERFORMANCE,
+    "get_sector_pe_snapshot": SECTOR_PE_SNAPSHOT,
+    "get_industry_pe_snapshot": INDUSTRY_PE_SNAPSHOT,
+    "get_historical_sector_pe": HISTORICAL_SECTOR_PE,
+    "get_historical_industry_pe": HISTORICAL_INDUSTRY_PE,
     "get_pre_post_market": PRE_POST_MARKET,
     "get_stock_list": STOCK_LIST,
     "get_etf_list": ETF_LIST,
@@ -528,6 +546,96 @@ MARKET_ENDPOINTS_SEMANTICS = {
             "Order timing",
         ],
     ),
+    "all_exchange_market_hours": EndpointSemantics(
+        client_name="market",
+        method_name="get_all_exchange_market_hours",
+        natural_description=(
+            "Get trading hours for all exchanges to compare schedules at once"
+        ),
+        example_queries=[
+            "Show trading hours for all exchanges",
+            "Get global exchange market hours",
+            "List market hours for every exchange",
+        ],
+        related_terms=[
+            "global market hours",
+            "exchange schedules",
+            "all exchanges hours",
+        ],
+        category=SemanticCategory.MARKET_DATA,
+        sub_category="Market Status",
+        parameter_hints={},  # No parameters required
+        response_hints={
+            "exchange": ResponseFieldInfo(
+                description="Exchange code",
+                examples=["NYSE", "NASDAQ"],
+                related_terms=["exchange code", "market identifier"],
+            ),
+            "name": ResponseFieldInfo(
+                description="Full exchange name",
+                examples=["New York Stock Exchange", "NASDAQ"],
+                related_terms=["exchange name", "market name"],
+            ),
+            "opening_hour": ResponseFieldInfo(
+                description="Market opening time with timezone",
+                examples=["09:30 AM -04:00", "08:00 AM -05:00"],
+                related_terms=["opening time", "market open"],
+            ),
+            "closing_hour": ResponseFieldInfo(
+                description="Market closing time with timezone",
+                examples=["04:00 PM -04:00", "03:00 PM -05:00"],
+                related_terms=["closing time", "market close"],
+            ),
+            "timezone": ResponseFieldInfo(
+                description="Exchange timezone",
+                examples=["America/New_York", "America/Chicago"],
+                related_terms=["time zone", "market timezone"],
+            ),
+        },
+        use_cases=[
+            "Cross-exchange schedule comparison",
+            "Global market overview",
+        ],
+    ),
+    "holidays_by_exchange": EndpointSemantics(
+        client_name="market",
+        method_name="get_holidays_by_exchange",
+        natural_description="Get exchange holiday dates for a specific exchange",
+        example_queries=[
+            "Show NYSE holidays",
+            "Get NASDAQ market holidays",
+            "Which dates is the exchange closed?",
+        ],
+        related_terms=[
+            "market holidays",
+            "exchange holidays",
+            "trading calendar",
+        ],
+        category=SemanticCategory.MARKET_DATA,
+        sub_category="Market Calendar",
+        parameter_hints={"exchange": EXCHANGE_HINT},
+        response_hints={
+            "date": ResponseFieldInfo(
+                description="Holiday date",
+                examples=["2024-12-25", "2024-01-01"],
+                related_terms=["holiday date", "market closure date"],
+            ),
+            "holiday": ResponseFieldInfo(
+                description="Holiday name",
+                examples=["New Year's Day", "Christmas Day"],
+                related_terms=["holiday name", "market holiday"],
+            ),
+            "exchange": ResponseFieldInfo(
+                description="Exchange code",
+                examples=["NYSE", "NASDAQ"],
+                related_terms=["exchange code", "market identifier"],
+            ),
+        },
+        use_cases=[
+            "Trading calendar planning",
+            "Holiday schedule checks",
+        ],
+    ),
     "gainers": EndpointSemantics(
         client_name="market",
         method_name="get_gainers",
@@ -687,7 +795,10 @@ MARKET_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.MARKET_DATA,
         sub_category="Sector Analysis",
-        parameter_hints={},  # No parameters needed
+        parameter_hints={
+            "date": DATE_HINTS["start_date"],
+            "exchange": EXCHANGE_HINT,
+        },
         response_hints={
             "sector": ResponseFieldInfo(
                 description="Sector name",
@@ -706,6 +817,262 @@ MARKET_ENDPOINTS_SEMANTICS = {
             "Portfolio sector allocation",
             "Relative strength analysis",
             "Market breadth analysis",
+        ],
+    ),
+    "industry_performance_snapshot": EndpointSemantics(
+        client_name="market",
+        method_name="get_industry_performance_snapshot",
+        natural_description=(
+            "Get a snapshot of industry performance, including average changes "
+            "by industry for a specific date and optional exchange"
+        ),
+        example_queries=[
+            "Show industry performance for NASDAQ",
+            "Industry performance snapshot for 2024-02-01",
+            "How did biotechnology perform yesterday?",
+        ],
+        related_terms=[
+            "industry returns",
+            "industry performance",
+            "industry movement",
+            "market industries",
+        ],
+        category=SemanticCategory.MARKET_DATA,
+        sub_category="Industry Analysis",
+        parameter_hints={
+            "date": DATE_HINTS["start_date"],
+            "exchange": EXCHANGE_HINT,
+        },
+        response_hints={
+            "industry": ResponseFieldInfo(
+                description="Industry name",
+                examples=["Biotechnology", "Advertising Agencies"],
+                related_terms=["industry", "industry group"],
+            ),
+            "change_percentage": ResponseFieldInfo(
+                description="Industry performance",
+                examples=["1.25", "-0.8"],
+                related_terms=["industry return", "performance"],
+            ),
+        },
+        use_cases=[
+            "Industry rotation analysis",
+            "Market trend analysis",
+            "Relative strength analysis",
+        ],
+    ),
+    "historical_sector_performance": EndpointSemantics(
+        client_name="market",
+        method_name="get_historical_sector_performance",
+        natural_description=(
+            "Retrieve historical sector performance over a date range for "
+            "trend and rotation analysis"
+        ),
+        example_queries=[
+            "Historical sector performance for Energy",
+            "How did Technology perform last month?",
+        ],
+        related_terms=["sector history", "sector trend", "sector performance"],
+        category=SemanticCategory.MARKET_DATA,
+        sub_category="Sector Analysis",
+        parameter_hints={
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+            "exchange": EXCHANGE_HINT,
+        },
+        response_hints={
+            "sector": ResponseFieldInfo(
+                description="Sector name",
+                examples=["Energy", "Technology"],
+                related_terms=["industry", "market sector"],
+            ),
+            "change_percentage": ResponseFieldInfo(
+                description="Sector performance",
+                examples=["0.64", "-1.2"],
+                related_terms=["sector return", "performance"],
+            ),
+        },
+        use_cases=[
+            "Sector trend analysis",
+            "Performance backtesting",
+            "Portfolio rotation studies",
+        ],
+    ),
+    "historical_industry_performance": EndpointSemantics(
+        client_name="market",
+        method_name="get_historical_industry_performance",
+        natural_description=(
+            "Retrieve historical industry performance over a date range for "
+            "trend and rotation analysis"
+        ),
+        example_queries=[
+            "Historical industry performance for Biotechnology",
+            "How did Advertising Agencies perform last month?",
+        ],
+        related_terms=["industry history", "industry trend", "industry performance"],
+        category=SemanticCategory.MARKET_DATA,
+        sub_category="Industry Analysis",
+        parameter_hints={
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+            "exchange": EXCHANGE_HINT,
+        },
+        response_hints={
+            "industry": ResponseFieldInfo(
+                description="Industry name",
+                examples=["Biotechnology", "Advertising Agencies"],
+                related_terms=["industry", "industry group"],
+            ),
+            "change_percentage": ResponseFieldInfo(
+                description="Industry performance",
+                examples=["1.15", "-0.4"],
+                related_terms=["industry return", "performance"],
+            ),
+        },
+        use_cases=[
+            "Industry trend analysis",
+            "Performance backtesting",
+            "Relative strength analysis",
+        ],
+    ),
+    "sector_pe_snapshot": EndpointSemantics(
+        client_name="market",
+        method_name="get_sector_pe_snapshot",
+        natural_description=(
+            "Get sector price-to-earnings snapshots for a specific date, "
+            "optionally filtered by exchange or sector"
+        ),
+        example_queries=[
+            "Sector PE snapshot for 2024-02-01",
+            "What is the PE for Energy sector?",
+        ],
+        related_terms=["sector valuation", "sector PE", "market valuation"],
+        category=SemanticCategory.MARKET_DATA,
+        sub_category="Valuation",
+        parameter_hints={
+            "date": DATE_HINTS["start_date"],
+            "exchange": EXCHANGE_HINT,
+        },
+        response_hints={
+            "sector": ResponseFieldInfo(
+                description="Sector name",
+                examples=["Energy", "Technology"],
+                related_terms=["industry", "market sector"],
+            ),
+            "pe": ResponseFieldInfo(
+                description="Price-to-earnings ratio",
+                examples=["15.6", "21.3"],
+                related_terms=["valuation", "P/E"],
+            ),
+        },
+        use_cases=[
+            "Sector valuation analysis",
+            "Market comparison",
+        ],
+    ),
+    "industry_pe_snapshot": EndpointSemantics(
+        client_name="market",
+        method_name="get_industry_pe_snapshot",
+        natural_description=(
+            "Get industry price-to-earnings snapshots for a specific date, "
+            "optionally filtered by exchange or industry"
+        ),
+        example_queries=[
+            "Industry PE snapshot for 2024-02-01",
+            "What is the PE for Biotechnology?",
+        ],
+        related_terms=["industry valuation", "industry PE", "valuation snapshot"],
+        category=SemanticCategory.MARKET_DATA,
+        sub_category="Valuation",
+        parameter_hints={
+            "date": DATE_HINTS["start_date"],
+            "exchange": EXCHANGE_HINT,
+        },
+        response_hints={
+            "industry": ResponseFieldInfo(
+                description="Industry name",
+                examples=["Biotechnology", "Advertising Agencies"],
+                related_terms=["industry", "industry group"],
+            ),
+            "pe": ResponseFieldInfo(
+                description="Price-to-earnings ratio",
+                examples=["10.2", "71.1"],
+                related_terms=["valuation", "P/E"],
+            ),
+        },
+        use_cases=[
+            "Industry valuation analysis",
+            "Market comparison",
+        ],
+    ),
+    "historical_sector_pe": EndpointSemantics(
+        client_name="market",
+        method_name="get_historical_sector_pe",
+        natural_description=(
+            "Retrieve historical sector price-to-earnings ratios over a date range"
+        ),
+        example_queries=[
+            "Historical sector PE for Energy",
+            "How has Technology PE changed over time?",
+        ],
+        related_terms=["sector PE history", "sector valuation trend"],
+        category=SemanticCategory.MARKET_DATA,
+        sub_category="Valuation",
+        parameter_hints={
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+            "exchange": EXCHANGE_HINT,
+        },
+        response_hints={
+            "sector": ResponseFieldInfo(
+                description="Sector name",
+                examples=["Energy", "Technology"],
+                related_terms=["industry", "market sector"],
+            ),
+            "pe": ResponseFieldInfo(
+                description="Price-to-earnings ratio",
+                examples=["14.4", "28.7"],
+                related_terms=["valuation", "P/E"],
+            ),
+        },
+        use_cases=[
+            "Sector valuation history",
+            "Market trend analysis",
+        ],
+    ),
+    "historical_industry_pe": EndpointSemantics(
+        client_name="market",
+        method_name="get_historical_industry_pe",
+        natural_description=(
+            "Retrieve historical industry price-to-earnings ratios over a date range"
+        ),
+        example_queries=[
+            "Historical industry PE for Biotechnology",
+            "How has Advertising Agencies PE changed over time?",
+        ],
+        related_terms=["industry PE history", "industry valuation trend"],
+        category=SemanticCategory.MARKET_DATA,
+        sub_category="Valuation",
+        parameter_hints={
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+            "exchange": EXCHANGE_HINT,
+        },
+        response_hints={
+            "industry": ResponseFieldInfo(
+                description="Industry name",
+                examples=["Biotechnology", "Advertising Agencies"],
+                related_terms=["industry", "industry group"],
+            ),
+            "pe": ResponseFieldInfo(
+                description="Price-to-earnings ratio",
+                examples=["10.1", "71.1"],
+                related_terms=["valuation", "P/E"],
+            ),
+        },
+        use_cases=[
+            "Industry valuation history",
+            "Market trend analysis",
         ],
     ),
     "pre_post_market": EndpointSemantics(

@@ -1,17 +1,22 @@
 # fmp_data/market/endpoints.py
 from fmp_data.market.models import (
     AvailableIndex,
+    CIKListEntry,
     CIKResult,
     CompanySearchResult,
     CUSIPResult,
     ExchangeSymbol,
+    IndustryPerformance,
+    IndustryPESnapshot,
     IPODisclosure,
     IPOProspectus,
     ISINResult,
+    MarketHoliday,
     MarketHours,
     MarketMover,
     PrePostMarketQuote,
     SectorPerformance,
+    SectorPESnapshot,
 )
 from fmp_data.market.schema import (
     AvailableIndexesArgs,
@@ -166,9 +171,19 @@ CIK_SEARCH: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             required=True,
             description="Search query",
+            alias="cik",
         )
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Maximum number of results to return",
+            default=50,
+        ),
+    ],
     response_model=CIKResult,
     arg_model=BaseSearchArg,
     example_queries=[
@@ -198,6 +213,7 @@ CUSIP_SEARCH: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             required=True,
             description="Search query",
+            alias="cusip",
         )
     ],
     optional_params=[],
@@ -229,6 +245,7 @@ ISIN_SEARCH: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             required=True,
             description="Search query",
+            alias="isin",
         )
     ],
     optional_params=[],
@@ -260,6 +277,35 @@ MARKET_HOURS: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=MarketHours,
+)
+
+ALL_EXCHANGE_MARKET_HOURS: Endpoint = Endpoint(
+    name="all_exchange_market_hours",
+    path="all-exchange-market-hours",
+    version=APIVersion.STABLE,
+    description="Get market trading hours for all exchanges",
+    mandatory_params=[],
+    optional_params=[],
+    response_model=MarketHours,
+)
+
+HOLIDAYS_BY_EXCHANGE: Endpoint = Endpoint(
+    name="holidays_by_exchange",
+    path="holidays-by-exchange",
+    version=APIVersion.STABLE,
+    description="Get market holidays for a specific exchange",
+    mandatory_params=[
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Exchange code (e.g., NYSE, NASDAQ)",
+            valid_values=None,
+        )
+    ],
+    optional_params=[],
+    response_model=MarketHoliday,
 )
 
 GAINERS: Endpoint = Endpoint(
@@ -297,7 +343,15 @@ SECTOR_PERFORMANCE: Endpoint = Endpoint(
     path="sector-performance-snapshot",
     version=APIVersion.STABLE,
     description="Get sector performance data",
-    mandatory_params=[],
+    mandatory_params=[
+        EndpointParam(
+            name="date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=True,
+            description="Snapshot date (YYYY-MM-DD)",
+        )
+    ],
     optional_params=[
         EndpointParam(
             name="sector",
@@ -305,9 +359,275 @@ SECTOR_PERFORMANCE: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             required=False,
             description="Sector code (e.g., 'Technology')",
-        )
+        ),
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Exchange code (e.g., NYSE, NASDAQ)",
+        ),
     ],
     response_model=SectorPerformance,
+)
+
+INDUSTRY_PERFORMANCE_SNAPSHOT: Endpoint = Endpoint(
+    name="industry_performance_snapshot",
+    path="industry-performance-snapshot",
+    version=APIVersion.STABLE,
+    description="Get industry performance data",
+    mandatory_params=[
+        EndpointParam(
+            name="date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=True,
+            description="Snapshot date (YYYY-MM-DD)",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="industry",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Industry name (e.g., 'Biotechnology')",
+        ),
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Exchange code (e.g., NYSE, NASDAQ)",
+        ),
+    ],
+    response_model=IndustryPerformance,
+)
+
+HISTORICAL_SECTOR_PERFORMANCE: Endpoint = Endpoint(
+    name="historical_sector_performance",
+    path="historical-sector-performance",
+    version=APIVersion.STABLE,
+    description="Get historical sector performance data",
+    mandatory_params=[
+        EndpointParam(
+            name="sector",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Sector name (e.g., 'Energy')",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Start date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="End date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Exchange code (e.g., NYSE, NASDAQ)",
+        ),
+    ],
+    response_model=SectorPerformance,
+)
+
+HISTORICAL_INDUSTRY_PERFORMANCE: Endpoint = Endpoint(
+    name="historical_industry_performance",
+    path="historical-industry-performance",
+    version=APIVersion.STABLE,
+    description="Get historical industry performance data",
+    mandatory_params=[
+        EndpointParam(
+            name="industry",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Industry name (e.g., 'Biotechnology')",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Start date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="End date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Exchange code (e.g., NYSE, NASDAQ)",
+        ),
+    ],
+    response_model=IndustryPerformance,
+)
+
+SECTOR_PE_SNAPSHOT: Endpoint = Endpoint(
+    name="sector_pe_snapshot",
+    path="sector-pe-snapshot",
+    version=APIVersion.STABLE,
+    description="Get sector PE snapshot data",
+    mandatory_params=[
+        EndpointParam(
+            name="date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=True,
+            description="Snapshot date (YYYY-MM-DD)",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="sector",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Sector name (e.g., 'Energy')",
+        ),
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Exchange code (e.g., NYSE, NASDAQ)",
+        ),
+    ],
+    response_model=SectorPESnapshot,
+)
+
+INDUSTRY_PE_SNAPSHOT: Endpoint = Endpoint(
+    name="industry_pe_snapshot",
+    path="industry-pe-snapshot",
+    version=APIVersion.STABLE,
+    description="Get industry PE snapshot data",
+    mandatory_params=[
+        EndpointParam(
+            name="date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=True,
+            description="Snapshot date (YYYY-MM-DD)",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="industry",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Industry name (e.g., 'Biotechnology')",
+        ),
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Exchange code (e.g., NYSE, NASDAQ)",
+        ),
+    ],
+    response_model=IndustryPESnapshot,
+)
+
+HISTORICAL_SECTOR_PE: Endpoint = Endpoint(
+    name="historical_sector_pe",
+    path="historical-sector-pe",
+    version=APIVersion.STABLE,
+    description="Get historical sector PE data",
+    mandatory_params=[
+        EndpointParam(
+            name="sector",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Sector name (e.g., 'Energy')",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Start date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="End date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Exchange code (e.g., NYSE, NASDAQ)",
+        ),
+    ],
+    response_model=SectorPESnapshot,
+)
+
+HISTORICAL_INDUSTRY_PE: Endpoint = Endpoint(
+    name="historical_industry_pe",
+    path="historical-industry-pe",
+    version=APIVersion.STABLE,
+    description="Get historical industry PE data",
+    mandatory_params=[
+        EndpointParam(
+            name="industry",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Industry name (e.g., 'Biotechnology')",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Start date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="End date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Exchange code (e.g., NYSE, NASDAQ)",
+        ),
+    ],
+    response_model=IndustryPESnapshot,
 )
 
 PRE_POST_MARKET: Endpoint = Endpoint(
@@ -357,9 +677,24 @@ CIK_LIST: Endpoint = Endpoint(
     path="cik-list",
     version=APIVersion.STABLE,
     description="Get complete list of all CIK numbers",
-    mandatory_params=[],
+    mandatory_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Page number",
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Number of results per page",
+        ),
+    ],
     optional_params=[],
-    response_model=CIKResult,
+    response_model=CIKListEntry,
 )
 
 ACTIVELY_TRADING_LIST: Endpoint = Endpoint(
@@ -419,6 +754,13 @@ SEARCH_SYMBOL: Endpoint = Endpoint(
             required=False,
             description="Number of results to return",
         ),
+        EndpointParam(
+            name="exchange",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Filter results by exchange (e.g., NASDAQ)",
+        ),
     ],
     response_model=CompanySearchResult,
 )
@@ -436,6 +778,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.FLOAT,
             required=False,
             description="Market cap greater than",
+            alias="marketCapMoreThan",
         ),
         EndpointParam(
             name="market_cap_less_than",
@@ -443,6 +786,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.FLOAT,
             required=False,
             description="Market cap less than",
+            alias="marketCapLowerThan",
         ),
         EndpointParam(
             name="price_more_than",
@@ -450,6 +794,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.FLOAT,
             required=False,
             description="Price greater than",
+            alias="priceMoreThan",
         ),
         EndpointParam(
             name="price_less_than",
@@ -457,6 +802,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.FLOAT,
             required=False,
             description="Price less than",
+            alias="priceLowerThan",
         ),
         EndpointParam(
             name="beta_more_than",
@@ -464,6 +810,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.FLOAT,
             required=False,
             description="Beta greater than",
+            alias="betaMoreThan",
         ),
         EndpointParam(
             name="beta_less_than",
@@ -471,6 +818,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.FLOAT,
             required=False,
             description="Beta less than",
+            alias="betaLowerThan",
         ),
         EndpointParam(
             name="volume_more_than",
@@ -478,6 +826,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.INTEGER,
             required=False,
             description="Volume greater than",
+            alias="volumeMoreThan",
         ),
         EndpointParam(
             name="volume_less_than",
@@ -485,6 +834,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.INTEGER,
             required=False,
             description="Volume less than",
+            alias="volumeLowerThan",
         ),
         EndpointParam(
             name="dividend_more_than",
@@ -492,6 +842,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.FLOAT,
             required=False,
             description="Dividend yield greater than",
+            alias="dividendMoreThan",
         ),
         EndpointParam(
             name="dividend_less_than",
@@ -499,6 +850,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.FLOAT,
             required=False,
             description="Dividend yield less than",
+            alias="dividendLowerThan",
         ),
         EndpointParam(
             name="is_etf",
@@ -506,6 +858,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.BOOLEAN,
             required=False,
             description="Filter for ETFs",
+            alias="isEtf",
         ),
         EndpointParam(
             name="is_fund",
@@ -513,6 +866,15 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.BOOLEAN,
             required=False,
             description="Filter for funds",
+            alias="isFund",
+        ),
+        EndpointParam(
+            name="is_actively_trading",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            required=False,
+            description="Filter for actively trading symbols",
+            alias="isActivelyTrading",
         ),
         EndpointParam(
             name="sector",
@@ -548,6 +910,14 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             param_type=ParamType.INTEGER,
             required=False,
             description="Number of results to return",
+        ),
+        EndpointParam(
+            name="include_all_share_classes",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            required=False,
+            description="Include all share classes in results",
+            alias="includeAllShareClasses",
         ),
     ],
     response_model=CompanySearchResult,

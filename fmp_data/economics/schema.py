@@ -56,6 +56,31 @@ class EconomicCalendarArgs(DateRangeArg):
     pass
 
 
+# Commitment of Traders arguments
+class CommitmentOfTradersArgs(DateRangeArg):
+    """Arguments for Commitment of Traders endpoints"""
+
+    symbol: str = Field(
+        description="COT report symbol",
+        pattern=r"^[A-Z0-9]{1,10}$",
+        json_schema_extra={"examples": ["KC", "NG", "B6"]},
+    )
+    start_date: date = Field(
+        description="Start date",
+        json_schema_extra={"examples": ["2024-01-01"]},
+    )
+    end_date: date = Field(
+        description="End date",
+        json_schema_extra={"examples": ["2024-03-01"]},
+    )
+
+
+class CommitmentOfTradersListArgs(BaseArgModel):
+    """Arguments for Commitment of Traders list endpoint"""
+
+    pass
+
+
 # Response schemas for economics endpoints
 class TreasuryRateData(BaseModel):
     """Daily treasury rate data"""

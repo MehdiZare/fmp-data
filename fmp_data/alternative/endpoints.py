@@ -88,7 +88,7 @@ CRYPTO_QUOTES: Endpoint = Endpoint(
     ],
 )
 
-CRYPTO_QUOTE: Endpoint = Endpoint(
+CRYPTO_QUOTE: Endpoint[CryptoQuote] = Endpoint(
     name="crypto_quote",
     path="quote",
     version=APIVersion.STABLE,
@@ -208,7 +208,7 @@ CRYPTO_INTRADAY: Endpoint = Endpoint(
 
 FOREX_LIST: Endpoint = Endpoint(
     name="forex_list",
-    path="symbol/available-forex-currency-pairs",
+    path="forex-list",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -250,7 +250,7 @@ FOREX_QUOTES: Endpoint = Endpoint(
     ],
 )
 
-FOREX_QUOTE: Endpoint = Endpoint(
+FOREX_QUOTE: Endpoint[ForexQuote] = Endpoint(
     name="forex_quote",
     path="quote",
     version=APIVersion.STABLE,
@@ -368,7 +368,7 @@ FOREX_INTRADAY: Endpoint = Endpoint(
 
 COMMODITIES_LIST: Endpoint = Endpoint(
     name="commodities_list",
-    path="symbol/available-commodities",
+    path="commodities-list",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -410,7 +410,7 @@ COMMODITIES_QUOTES: Endpoint = Endpoint(
     ],
 )
 
-COMMODITY_QUOTE: Endpoint = Endpoint(
+COMMODITY_QUOTE: Endpoint[CommodityQuote] = Endpoint(
     name="commodity_quote",
     path="quote",
     version=APIVersion.STABLE,

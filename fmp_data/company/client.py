@@ -5,6 +5,8 @@ from typing import cast
 
 from fmp_data.base import EndpointGroup
 from fmp_data.company.endpoints import (
+    AFTERMARKET_QUOTE,
+    AFTERMARKET_TRADE,
     ANALYST_ESTIMATES,
     ANALYST_RECOMMENDATIONS,
     BALANCE_SHEET_AS_REPORTED,
@@ -41,7 +43,6 @@ from fmp_data.company.endpoints import (
     INTRADAY_PRICE,
     KEY_EXECUTIVES,
     KEY_METRICS_TTM,
-    LATEST_FINANCIAL_STATEMENTS,
     MARKET_CAP,
     MERGERS_ACQUISITIONS_LATEST,
     MERGERS_ACQUISITIONS_SEARCH,
@@ -53,11 +54,14 @@ from fmp_data.company.endpoints import (
     QUOTE,
     SHARE_FLOAT,
     SIMPLE_QUOTE,
+    STOCK_PRICE_CHANGE,
     SYMBOL_CHANGES,
     UPGRADES_DOWNGRADES,
     UPGRADES_DOWNGRADES_CONSENSUS,
 )
 from fmp_data.company.models import (
+    AftermarketQuote,
+    AftermarketTrade,
     AnalystEstimate,
     AnalystRecommendation,
     CompanyCoreInformation,
@@ -80,6 +84,7 @@ from fmp_data.company.models import (
     Quote,
     ShareFloat,
     SimpleQuote,
+    StockPriceChange,
     SymbolChange,
     UpgradeDowngrade,
     UpgradeDowngradeConsensus,
@@ -95,7 +100,6 @@ from fmp_data.fundamental.models import (
     FinancialGrowth,
     FinancialRatiosTTM,
     FinancialScore,
-    FinancialStatementFull,
     IncomeStatement,
     KeyMetricsTTM,
 )
@@ -104,20 +108,23 @@ from fmp_data.models import MarketCapitalization
 
 
 class CompanyClient(EndpointGroup):
-    """Client for company-related API endpoints"""
+    """Client for company-related API endpoints.
+
+    For async support, use AsyncCompanyClient instead.
+    """
 
     def get_profile(self, symbol: str) -> CompanyProfile:
+        """Get company profile"""
         result = self.client.request(PROFILE, symbol=symbol)
-        if not result:
+        profile = self._unwrap_single(result, CompanyProfile, allow_none=True)
+        if profile is None:
             raise FMPError(f"Symbol {symbol} not found")
-        return cast(CompanyProfile, result[0] if isinstance(result, list) else result)
+        return profile
 
-    def get_core_information(self, symbol: str) -> CompanyCoreInformation:
+    def get_core_information(self, symbol: str) -> CompanyCoreInformation | None:
         """Get core company information"""
         result = self.client.request(CORE_INFORMATION, symbol=symbol)
-        return cast(
-            CompanyCoreInformation, result[0] if isinstance(result, list) else result
-        )
+        return self._unwrap_single(result, CompanyCoreInformation, allow_none=True)
 
     def get_executives(self, symbol: str) -> list[CompanyExecutive]:
         """Get company executives information"""
@@ -131,15 +138,37 @@ class CompanyClient(EndpointGroup):
         """Get company financial notes"""
         return self.client.request(COMPANY_NOTES, symbol=symbol)
 
+    def get_company_logo_url(self, symbol: str) -> str:
+        """Get the company logo URL"""
+        if not symbol or not symbol.strip():
+            raise ValueError("Symbol is required for company logo URL")
+        base_url = self.client.config.base_url.rstrip("/")
+        return f"{base_url}/image-stock/{symbol}.png"
+
     def get_quote(self, symbol: str) -> Quote:
         """Get real-time stock quote"""
         result = self.client.request(QUOTE, symbol=symbol)
-        return cast(Quote, result[0] if isinstance(result, list) else result)
+        return self._unwrap_single(result, Quote)
 
     def get_simple_quote(self, symbol: str) -> SimpleQuote:
         """Get simple stock quote"""
         result = self.client.request(SIMPLE_QUOTE, symbol=symbol)
-        return cast(SimpleQuote, result[0] if isinstance(result, list) else result)
+        return self._unwrap_single(result, SimpleQuote)
+
+    def get_aftermarket_trade(self, symbol: str) -> AftermarketTrade:
+        """Get aftermarket trade data"""
+        result = self.client.request(AFTERMARKET_TRADE, symbol=symbol)
+        return self._unwrap_single(result, AftermarketTrade)
+
+    def get_aftermarket_quote(self, symbol: str) -> AftermarketQuote:
+        """Get aftermarket quote data"""
+        result = self.client.request(AFTERMARKET_QUOTE, symbol=symbol)
+        return self._unwrap_single(result, AftermarketQuote)
+
+    def get_stock_price_change(self, symbol: str) -> StockPriceChange:
+        """Get stock price change percentages across time horizons"""
+        result = self.client.request(STOCK_PRICE_CHANGE, symbol=symbol)
+        return self._unwrap_single(result, StockPriceChange)
 
     def get_historical_prices(
         self,
@@ -158,11 +187,11 @@ class CompanyClient(EndpointGroup):
             HistoricalData object containing the price history
         """
         # Build request parameters
-        params = {"symbol": symbol}
+        params: dict[str, str | int] = {"symbol": symbol}
         if from_date:
-            params["from_"] = from_date
+            params["start_date"] = from_date
         if to_date:
-            params["to"] = to_date
+            params["end_date"] = to_date
 
         # Make request
         # this returns list[HistoricalPrice] due to response_model=HistoricalPrice
@@ -178,10 +207,30 @@ class CompanyClient(EndpointGroup):
             return HistoricalData(symbol=symbol, historical=[result])
 
     def get_intraday_prices(
-        self, symbol: str, interval: str = "1min"
+        self,
+        symbol: str,
+        interval: str = "1min",
+        from_date: str | None = None,
+        to_date: str | None = None,
+        nonadjusted: bool | None = None,
     ) -> list[IntradayPrice]:
-        """Get intraday price data"""
-        return self.client.request(INTRADAY_PRICE, symbol=symbol, interval=interval)
+        """Get intraday price data
+
+        Args:
+            symbol: Stock symbol (e.g., 'AAPL')
+            interval: Time interval (1min, 5min, 15min, 30min, 1hour, 4hour)
+            from_date: Start date in YYYY-MM-DD format (optional)
+            to_date: End date in YYYY-MM-DD format (optional)
+            nonadjusted: Use non-adjusted data (optional)
+        """
+        return self.client.request(
+            INTRADAY_PRICE,
+            symbol=symbol,
+            interval=interval,
+            start_date=from_date,
+            end_date=to_date,
+            nonadjusted=nonadjusted,
+        )
 
     def get_executive_compensation(self, symbol: str) -> list[ExecutiveCompensation]:
         """Get executive compensation data for a company"""
@@ -211,12 +260,13 @@ class CompanyClient(EndpointGroup):
         )
 
     def get_geographic_revenue_segmentation(
-        self, symbol: str
+        self, symbol: str, period: str = "annual"
     ) -> list[GeographicRevenueSegment]:
         """Get revenue segmentation by geographic region.
 
         Args:
             symbol: Company symbol
+            period: Data period ('annual' or 'quarter')
 
         Returns:
             List of geographic revenue segments by fiscal year
@@ -225,6 +275,7 @@ class CompanyClient(EndpointGroup):
             GEOGRAPHIC_REVENUE_SEGMENTATION,
             symbol=symbol,
             structure="flat",
+            period=period,
         )
 
     def get_symbol_changes(self) -> list[SymbolChange]:
@@ -234,14 +285,12 @@ class CompanyClient(EndpointGroup):
     def get_share_float(self, symbol: str) -> ShareFloat:
         """Get current share float data for a company"""
         result = self.client.request(SHARE_FLOAT, symbol=symbol)
-        return cast(ShareFloat, result[0] if isinstance(result, list) else result)
+        return self._unwrap_single(result, ShareFloat)
 
     def get_market_cap(self, symbol: str) -> MarketCapitalization:
         """Get market capitalization data"""
         result = self.client.request(MARKET_CAP, symbol=symbol)
-        return cast(
-            MarketCapitalization, result[0] if isinstance(result, list) else result
-        )
+        return self._unwrap_single(result, MarketCapitalization)
 
     def get_historical_market_cap(self, symbol: str) -> list[MarketCapitalization]:
         """Get historical market capitalization data"""
@@ -254,20 +303,28 @@ class CompanyClient(EndpointGroup):
     def get_price_target_summary(self, symbol: str) -> PriceTargetSummary:
         """Get price target summary"""
         result = self.client.request(PRICE_TARGET_SUMMARY, symbol=symbol)
-        return cast(
-            PriceTargetSummary, result[0] if isinstance(result, list) else result
-        )
+        return self._unwrap_single(result, PriceTargetSummary)
 
     def get_price_target_consensus(self, symbol: str) -> PriceTargetConsensus:
         """Get price target consensus"""
         result = self.client.request(PRICE_TARGET_CONSENSUS, symbol=symbol)
-        return cast(
-            PriceTargetConsensus, result[0] if isinstance(result, list) else result
-        )
+        return self._unwrap_single(result, PriceTargetConsensus)
 
-    def get_analyst_estimates(self, symbol: str) -> list[AnalystEstimate]:
+    def get_analyst_estimates(
+        self,
+        symbol: str,
+        period: str = "annual",
+        page: int = 0,
+        limit: int = 10,
+    ) -> list[AnalystEstimate]:
         """Get analyst estimates"""
-        return self.client.request(ANALYST_ESTIMATES, symbol=symbol)
+        return self.client.request(
+            ANALYST_ESTIMATES,
+            symbol=symbol,
+            period=period,
+            page=page,
+            limit=limit,
+        )
 
     def get_analyst_recommendations(self, symbol: str) -> list[AnalystRecommendation]:
         """Get analyst recommendations"""
@@ -279,12 +336,14 @@ class CompanyClient(EndpointGroup):
 
     def get_upgrades_downgrades_consensus(
         self, symbol: str
-    ) -> UpgradeDowngradeConsensus:
+    ) -> UpgradeDowngradeConsensus | None:
         """Get upgrades and downgrades consensus"""
         result = self.client.request(UPGRADES_DOWNGRADES_CONSENSUS, symbol=symbol)
-        return cast(
-            UpgradeDowngradeConsensus, result[0] if isinstance(result, list) else result
-        )
+        if isinstance(result, list):
+            if not result:
+                return None
+            return cast(UpgradeDowngradeConsensus, result[0])
+        return cast(UpgradeDowngradeConsensus, result)
 
     def get_company_peers(self, symbol: str) -> list[CompanyPeer]:
         """Get company peers"""
@@ -350,7 +409,7 @@ class CompanyClient(EndpointGroup):
         Returns:
             HistoricalData object containing the price history
         """
-        params = {"symbol": symbol}
+        params: dict[str, str | int] = {"symbol": symbol}
         if from_date:
             params["start_date"] = from_date
         if to_date:
@@ -379,7 +438,7 @@ class CompanyClient(EndpointGroup):
         Returns:
             HistoricalData object containing the price history without split adjustments
         """
-        params = {"symbol": symbol}
+        params: dict[str, str | int] = {"symbol": symbol}
         if from_date:
             params["start_date"] = from_date
         if to_date:
@@ -408,7 +467,7 @@ class CompanyClient(EndpointGroup):
         Returns:
             HistoricalData object containing the dividend-adjusted price history
         """
-        params = {"symbol": symbol}
+        params: dict[str, str | int] = {"symbol": symbol}
         if from_date:
             params["start_date"] = from_date
         if to_date:
@@ -422,7 +481,11 @@ class CompanyClient(EndpointGroup):
             return HistoricalData(symbol=symbol, historical=[result])
 
     def get_dividends(
-        self, symbol: str, from_date: str | None = None, to_date: str | None = None
+        self,
+        symbol: str,
+        from_date: str | None = None,
+        to_date: str | None = None,
+        limit: int | None = None,
     ) -> list[DividendEvent]:
         """Get historical dividend payments for a specific company
 
@@ -430,15 +493,18 @@ class CompanyClient(EndpointGroup):
             symbol: Stock symbol (e.g., 'AAPL')
             from_date: Start date in YYYY-MM-DD format (optional)
             to_date: End date in YYYY-MM-DD format (optional)
+            limit: Number of dividend records to return (optional)
 
         Returns:
             List of DividendEvent objects containing dividend history
         """
-        params = {"symbol": symbol}
+        params: dict[str, str | int] = {"symbol": symbol}
         if from_date:
             params["from_date"] = from_date
         if to_date:
             params["to_date"] = to_date
+        if limit is not None:
+            params["limit"] = limit
         return self.client.request(COMPANY_DIVIDENDS, **params)
 
     def get_earnings(self, symbol: str, limit: int = 20) -> list[EarningEvent]:
@@ -454,7 +520,11 @@ class CompanyClient(EndpointGroup):
         return self.client.request(COMPANY_EARNINGS, symbol=symbol, limit=limit)
 
     def get_stock_splits(
-        self, symbol: str, from_date: str | None = None, to_date: str | None = None
+        self,
+        symbol: str,
+        from_date: str | None = None,
+        to_date: str | None = None,
+        limit: int | None = None,
     ) -> list[StockSplitEvent]:
         """Get historical stock split information for a specific company
 
@@ -462,64 +532,62 @@ class CompanyClient(EndpointGroup):
             symbol: Stock symbol (e.g., 'AAPL')
             from_date: Start date in YYYY-MM-DD format (optional)
             to_date: End date in YYYY-MM-DD format (optional)
+            limit: Number of split records to return (optional)
 
         Returns:
             List of StockSplitEvent objects containing split history
         """
-        params = {"symbol": symbol}
+        params: dict[str, str | int] = {"symbol": symbol}
         if from_date:
             params["from_date"] = from_date
         if to_date:
             params["to_date"] = to_date
+        if limit is not None:
+            params["limit"] = limit
         return self.client.request(COMPANY_SPLITS, **params)
 
     # Financial Statement Methods
-    def get_latest_financial_statements(self, symbol: str) -> FinancialStatementFull:
-        """Get the latest comprehensive financial statements
-
-        Args:
-            symbol: Stock symbol (e.g., 'AAPL')
-
-        Returns:
-            FinancialStatementFull object with income, balance sheet, and cash flow
-        """
-        result = self.client.request(LATEST_FINANCIAL_STATEMENTS, symbol=symbol)
-        return cast(
-            FinancialStatementFull, result[0] if isinstance(result, list) else result
-        )
-
-    def get_income_statement_ttm(self, symbol: str) -> list[IncomeStatement]:
+    def get_income_statement_ttm(
+        self, symbol: str, limit: int | None = None
+    ) -> list[IncomeStatement]:
         """Get trailing twelve months (TTM) income statement
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
+            limit: Number of periods to return
 
         Returns:
             List of TTM income statement data
         """
-        return self.client.request(INCOME_STATEMENT_TTM, symbol=symbol)
+        return self.client.request(INCOME_STATEMENT_TTM, symbol=symbol, limit=limit)
 
-    def get_balance_sheet_ttm(self, symbol: str) -> list[BalanceSheet]:
+    def get_balance_sheet_ttm(
+        self, symbol: str, limit: int | None = None
+    ) -> list[BalanceSheet]:
         """Get trailing twelve months (TTM) balance sheet
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
+            limit: Number of periods to return
 
         Returns:
             List of TTM balance sheet data
         """
-        return self.client.request(BALANCE_SHEET_TTM, symbol=symbol)
+        return self.client.request(BALANCE_SHEET_TTM, symbol=symbol, limit=limit)
 
-    def get_cash_flow_ttm(self, symbol: str) -> list[CashFlowStatement]:
+    def get_cash_flow_ttm(
+        self, symbol: str, limit: int | None = None
+    ) -> list[CashFlowStatement]:
         """Get trailing twelve months (TTM) cash flow statement
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
+            limit: Number of periods to return
 
         Returns:
             List of TTM cash flow data
         """
-        return self.client.request(CASH_FLOW_TTM, symbol=symbol)
+        return self.client.request(CASH_FLOW_TTM, symbol=symbol, limit=limit)
 
     def get_key_metrics_ttm(self, symbol: str) -> list[KeyMetricsTTM]:
         """Get trailing twelve months (TTM) key financial metrics
@@ -561,7 +629,7 @@ class CompanyClient(EndpointGroup):
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
-            period: 'annual' or 'quarter' (default: 'annual')
+            period: 'annual', 'quarter', 'FY', or 'Q1'-'Q4' (default: 'annual')
             limit: Number of periods to return (default: 20)
 
         Returns:
@@ -578,7 +646,7 @@ class CompanyClient(EndpointGroup):
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
-            period: 'annual' or 'quarter' (default: 'annual')
+            period: 'annual', 'quarter', 'FY', or 'Q1'-'Q4' (default: 'annual')
             limit: Number of periods to return (default: 20)
 
         Returns:
@@ -595,7 +663,7 @@ class CompanyClient(EndpointGroup):
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
-            period: 'annual' or 'quarter' (default: 'annual')
+            period: 'annual', 'quarter', 'FY', or 'Q1'-'Q4' (default: 'annual')
             limit: Number of periods to return (default: 20)
 
         Returns:
@@ -612,7 +680,7 @@ class CompanyClient(EndpointGroup):
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
-            period: 'annual' or 'quarter' (default: 'annual')
+            period: 'annual', 'quarter', 'FY', or 'Q1'-'Q4' (default: 'annual')
             limit: Number of periods to return (default: 20)
 
         Returns:
@@ -629,7 +697,7 @@ class CompanyClient(EndpointGroup):
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
-            period: 'annual' or 'quarter' (default: 'annual')
+            period: 'annual', 'quarter', 'FY', or 'Q1'-'Q4' (default: 'annual')
             limit: Number of periods to return (default: 20)
 
         Returns:
@@ -640,40 +708,44 @@ class CompanyClient(EndpointGroup):
         )
 
     def get_financial_reports_json(
-        self, symbol: str, year: int | None = None, period: str = "FY"
+        self, symbol: str, year: int, period: str = "FY"
     ) -> dict:
         """Get Form 10-K financial reports in JSON format
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
-            year: Report year (optional)
+            year: Report year
             period: Report period - 'FY' or 'Q1'-'Q4' (default: 'FY')
 
         Returns:
             Dictionary containing financial report data
         """
-        params: dict[str, str | int] = {"symbol": symbol, "period": period}
-        if year:
-            params["year"] = year
+        params: dict[str, str | int] = {
+            "symbol": symbol,
+            "year": year,
+            "period": period,
+        }
         result = self.client.request(FINANCIAL_REPORTS_JSON, **params)
         return cast(dict, result)
 
     def get_financial_reports_xlsx(
-        self, symbol: str, year: int | None = None, period: str = "FY"
+        self, symbol: str, year: int, period: str = "FY"
     ) -> bytes:
         """Get Form 10-K financial reports in Excel format
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
-            year: Report year (optional)
+            year: Report year
             period: Report period - 'FY' or 'Q1'-'Q4' (default: 'FY')
 
         Returns:
             Binary data for XLSX file
         """
-        params: dict[str, str | int] = {"symbol": symbol, "period": period}
-        if year:
-            params["year"] = year
+        params: dict[str, str | int] = {
+            "symbol": symbol,
+            "year": year,
+            "period": period,
+        }
         result = self.client.request(FINANCIAL_REPORTS_XLSX, **params)
         return cast(bytes, result)
 

@@ -1,7 +1,7 @@
 # fmp_data/economics/models.py
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 default_model_config = ConfigDict(
@@ -73,3 +73,87 @@ class MarketRiskPremium(BaseModel):
     total_equity_risk_premium: float | None = Field(
         None, alias="totalEquityRiskPremium", description="Total equity risk premium"
     )
+
+
+class CommitmentOfTradersReport(BaseModel):
+    """Commitment of Traders (COT) report data"""
+
+    model_config = default_model_config
+
+    symbol: str | None = Field(None, description="COT report symbol")
+    date: datetime | None = Field(None, description="Report date")
+    name: str | None = Field(None, description="Contract name")
+    sector: str | None = Field(None, description="Sector")
+    market_and_exchange_names: str | None = Field(
+        None, description="Market and exchange names"
+    )
+    cftc_contract_market_code: str | None = Field(
+        None, description="CFTC contract market code"
+    )
+    cftc_market_code: str | None = Field(None, description="CFTC market code")
+    cftc_region_code: str | None = Field(None, description="CFTC region code")
+    cftc_commodity_code: str | None = Field(None, description="CFTC commodity code")
+    open_interest_all: int | None = Field(None, description="Open interest (all)")
+    noncomm_positions_long_all: int | None = Field(
+        None, description="Non-commercial long positions (all)"
+    )
+    noncomm_positions_short_all: int | None = Field(
+        None, description="Non-commercial short positions (all)"
+    )
+    comm_positions_long_all: int | None = Field(
+        None, description="Commercial long positions (all)"
+    )
+    comm_positions_short_all: int | None = Field(
+        None, description="Commercial short positions (all)"
+    )
+    contract_units: str | None = Field(None, description="Contract units")
+
+
+class CommitmentOfTradersAnalysis(BaseModel):
+    """Commitment of Traders (COT) analysis data"""
+
+    model_config = default_model_config
+
+    symbol: str | None = Field(None, description="COT report symbol")
+    date: datetime | None = Field(None, description="Report date")
+    name: str | None = Field(None, description="Contract name")
+    sector: str | None = Field(None, description="Sector")
+    exchange: str | None = Field(None, description="Exchange")
+    current_long_market_situation: float | None = Field(
+        None, description="Current long market situation"
+    )
+    current_short_market_situation: float | None = Field(
+        None, description="Current short market situation"
+    )
+    market_situation: str | None = Field(None, description="Market situation")
+    previous_long_market_situation: float | None = Field(
+        None, description="Previous long market situation"
+    )
+    previous_short_market_situation: float | None = Field(
+        None, description="Previous short market situation"
+    )
+    previous_market_situation: str | None = Field(
+        None, description="Previous market situation"
+    )
+    net_position: float | None = Field(
+        None,
+        validation_alias=AliasChoices("netPostion", "netPosition"),
+        description="Net position",
+    )
+    previous_net_position: float | None = Field(
+        None, description="Previous net position"
+    )
+    change_in_net_position: float | None = Field(
+        None, description="Change in net position"
+    )
+    market_sentiment: str | None = Field(None, description="Market sentiment")
+    reversal_trend: bool | None = Field(None, description="Reversal trend")
+
+
+class CommitmentOfTradersListItem(BaseModel):
+    """Commitment of Traders (COT) report list item"""
+
+    model_config = default_model_config
+
+    symbol: str | None = Field(None, description="COT report symbol")
+    name: str | None = Field(None, description="Contract name")

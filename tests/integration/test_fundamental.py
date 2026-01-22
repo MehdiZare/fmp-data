@@ -4,15 +4,22 @@ import time
 
 import pytest
 
-from fmp_data import FMPDataClient
+from fmp_data import FMPDataClient, ValidationError
 from fmp_data.fundamental.models import (
+    DCF,
     BalanceSheet,
     CashFlowStatement,
+    CustomDCF,
+    CustomLeveredDCF,
     FinancialRatios,
     FinancialReportDate,
     FinancialStatementFull,
+    HistoricalRating,
     IncomeStatement,
     KeyMetrics,
+    LatestFinancialStatement,
+    LeveredDCF,
+    OwnerEarnings,
 )
 
 from .base import BaseTestCase
@@ -83,8 +90,25 @@ class TestFundamentalEndpoints(BaseTestCase):
                 assert isinstance(statement, CashFlowStatement)
                 assert isinstance(statement.date, datetime)
                 assert isinstance(statement.operating_cash_flow, float)
-                assert isinstance(statement.investing_cash_flow, float)
-                assert isinstance(statement.financing_cash_flow, float)
+                if statement.investing_cash_flow is not None:
+                    assert isinstance(statement.investing_cash_flow, float)
+                if statement.financing_cash_flow is not None:
+                    assert isinstance(statement.financing_cash_flow, float)
+
+    def test_get_latest_financial_statements(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting latest financial statements metadata"""
+        with vcr_instance.use_cassette("fundamental/latest_financial_statements.yaml"):
+            statements = self._handle_rate_limit(
+                fmp_client.fundamental.get_latest_financial_statements,
+                page=0,
+                limit=250,
+            )
+
+            assert isinstance(statements, list)
+            if statements:
+                assert isinstance(statements[0], LatestFinancialStatement)
 
     def test_get_key_metrics(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting key metrics"""
@@ -102,9 +126,12 @@ class TestFundamentalEndpoints(BaseTestCase):
             for metric in metrics:
                 assert isinstance(metric, KeyMetrics)
                 assert isinstance(metric.date, datetime)
-                assert isinstance(metric.revenue_per_share, float)
-                assert isinstance(metric.net_income_per_share, float)
-                assert isinstance(metric.operating_cash_flow_per_share, float)
+                if metric.revenue_per_share is not None:
+                    assert isinstance(metric.revenue_per_share, float)
+                if metric.net_income_per_share is not None:
+                    assert isinstance(metric.net_income_per_share, float)
+                if metric.operating_cash_flow_per_share is not None:
+                    assert isinstance(metric.operating_cash_flow_per_share, float)
 
     def test_get_financial_ratios(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting financial ratios"""
@@ -122,9 +149,12 @@ class TestFundamentalEndpoints(BaseTestCase):
             for ratio in ratios:
                 assert isinstance(ratio, FinancialRatios)
                 assert isinstance(ratio.date, datetime)
-                assert isinstance(ratio.current_ratio, float)
-                assert isinstance(ratio.quick_ratio, float)
-                assert isinstance(ratio.debt_equity_ratio, float)
+                if ratio.current_ratio is not None:
+                    assert isinstance(ratio.current_ratio, float)
+                if ratio.quick_ratio is not None:
+                    assert isinstance(ratio.quick_ratio, float)
+                if ratio.debt_equity_ratio is not None:
+                    assert isinstance(ratio.debt_equity_ratio, float)
 
     def test_get_full_financial_statement(
         self, fmp_client: FMPDataClient, vcr_instance
@@ -146,7 +176,8 @@ class TestFundamentalEndpoints(BaseTestCase):
                 assert isinstance(statement.date, datetime)
                 assert isinstance(statement.symbol, str)
                 assert isinstance(statement.period, str)
-                assert isinstance(statement.revenue, float)
+                if statement.revenue is not None:
+                    assert isinstance(statement.revenue, float)
 
     def test_get_financial_reports_dates(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting financial report dates"""
@@ -161,7 +192,7 @@ class TestFundamentalEndpoints(BaseTestCase):
                 for date_obj in dates:
                     assert isinstance(date_obj, FinancialReportDate)
                     assert date_obj.symbol == self.TEST_SYMBOL
-                    assert isinstance(date_obj.report_date, str)
+                    assert isinstance(date_obj.fiscal_year, int)
                     assert isinstance(date_obj.period, str)
 
     def test_period_parameter(self, fmp_client: FMPDataClient, vcr_instance):
@@ -186,13 +217,16 @@ class TestFundamentalEndpoints(BaseTestCase):
     ):
         """Test error handling for invalid period parameter"""
         with vcr_instance.use_cassette("fundamental/error_invalid_period.yaml"):
-            with pytest.raises(ValueError) as exc_info:
+            with pytest.raises(ValidationError) as exc_info:
                 self._handle_rate_limit(
                     fmp_client.fundamental.get_income_statement,
                     symbol=self.TEST_SYMBOL,
                     period="invalid_period",
                 )
-            assert "Must be one of: ['annual', 'quarter']" in str(exc_info.value)
+        assert (
+            "Must be one of: ['annual', 'quarter', 'FY', 'Q1', 'Q2', 'Q3', 'Q4']"
+            in str(exc_info.value)
+        )
 
     def test_rate_limiting(self, fmp_client: FMPDataClient, vcr_instance):
         """Test rate limiting handling"""
@@ -206,3 +240,66 @@ class TestFundamentalEndpoints(BaseTestCase):
                 )
                 assert isinstance(result, list)
                 time.sleep(1)  # Add small delay between requests
+
+    def test_get_owner_earnings(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting owner earnings metrics"""
+        with vcr_instance.use_cassette("fundamental/owner_earnings.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.fundamental.get_owner_earnings, self.TEST_SYMBOL
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], OwnerEarnings)
+
+    def test_get_levered_dcf(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting levered DCF valuation"""
+        with vcr_instance.use_cassette("fundamental/levered_dcf.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.fundamental.get_levered_dcf, self.TEST_SYMBOL
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], LeveredDCF)
+
+    def test_get_historical_rating(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting historical ratings"""
+        with vcr_instance.use_cassette("fundamental/historical_rating.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.fundamental.get_historical_rating, self.TEST_SYMBOL
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], HistoricalRating)
+
+    def test_get_discounted_cash_flow(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting discounted cash flow valuation"""
+        with vcr_instance.use_cassette("fundamental/discounted_cash_flow.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.fundamental.get_discounted_cash_flow, self.TEST_SYMBOL
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], DCF)
+
+    def test_get_custom_discounted_cash_flow(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting custom DCF analysis"""
+        with vcr_instance.use_cassette("fundamental/custom_discounted_cash_flow.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.fundamental.get_custom_discounted_cash_flow,
+                self.TEST_SYMBOL,
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], CustomDCF)
+
+    def test_get_custom_levered_dcf(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting custom levered DCF analysis"""
+        with vcr_instance.use_cassette("fundamental/custom_levered_dcf.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.fundamental.get_custom_levered_dcf, self.TEST_SYMBOL
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], CustomLeveredDCF)

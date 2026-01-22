@@ -7,6 +7,90 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+- 429 retry handling now respects `retry_after` wait times to avoid premature retries.
+
+## [2.0.0] - 2026-01-19
+
+[Compare changes](https://github.com/MehdiZare/fmp-data/compare/v1.0.1...v2.0.0)
+
+### Added
+- **New Modules** - 4 new client modules with 32 new endpoints:
+  - `batch/` - Batch data endpoints (12 endpoints)
+    - Batch quotes for multiple symbols
+    - Aftermarket trades and quotes
+    - Exchange-wide stock quotes
+    - Batch quotes for mutual funds, ETFs, commodities, crypto, forex, and indices
+    - Batch market capitalization
+  - `transcripts/` - Earnings call transcripts (4 endpoints)
+    - Latest transcripts feed
+    - Transcripts by symbol, year, and quarter
+    - Available transcript dates
+    - Symbols with available transcripts
+  - `sec/` - SEC filing and company data (10 endpoints)
+    - Latest 8-K and financial filings
+    - Filing search by form type, symbol, or CIK
+    - Company search by name, symbol, or CIK
+    - SEC company profiles
+    - Standard Industrial Classification (SIC) codes
+  - `index/` - Market index constituents (6 endpoints)
+    - S&P 500, NASDAQ, and Dow Jones constituents
+    - Historical constituent changes for all three indices
+- **Python 3.14 Support** - Full support for Python 3.14
+- **New Tests** - 76 new unit tests for:
+  - `@deprecated` decorator
+  - Exception hierarchy
+  - All new modules (batch, transcripts, sec, index)
+
+### Fixed
+- **Critical Bug Fixes**:
+  - Fixed OpenAI embedding parameter bug (`openai_api_base` → `api_key`)
+  - Fixed `FMPVectorStore` export (corrected to `EndpointVectorStore`)
+  - Fixed MCP install hint (`[mcp-server]` → `[mcp]`)
+  - Fixed retry configuration being ignored - now uses configurable `max_retries`
+  - Fixed `_handle_rate_limit` not being called in request flow
+  - Fixed vector store security issue - made `allow_dangerous_deserialization` opt-in with warning
+  - Fixed `CompanyProfile` model validation errors by making optional fields nullable (e.g., `dcf`, `cik`, `isin`, etc.)
+
+### Changed
+- **Code Quality Improvements**:
+  - Refactored `TechnicalClient` with generic `_get_indicator` helper (reduces code duplication)
+  - Extracted `_build_date_params` helper in `MarketIntelligenceClient`
+  - Refactored `BaseClient._process_response()` into smaller helper methods
+  - Improved LangChain exception handling with specific exception types
+- **Dependencies Updated**:
+  - `pydantic` ≥ 2.12.5
+  - `pydantic-settings` ≥ 2.12.0
+  - `python-dotenv` ≥ 1.2.1
+  - `langchain-core` ≥ 1.2.7
+  - `langchain-openai` ≥ 1.1.7
+  - `langgraph` ≥ 1.0.6
+  - `openai` ≥ 2.15.0
+  - `tiktoken` ≥ 0.12.0
+  - `faiss-cpu` ≥ 1.13.2
+  - `mcp` ≥ 1.25.0
+  - `pyyaml` ≥ 6.0.3
+
+### Removed
+- Removed unused dependencies: `cachetools`, `structlog`, `pandas`, `tqdm`
+- Removed `black` dependency (replaced by `ruff format`)
+
+### Breaking Changes
+- **LangChain v1 Requirement**: LangChain integration now requires LangChain v1 packages (`langchain-core`, `langchain-openai`) and LangGraph v1.
+- **Vector Store Security**: `EndpointVectorStore.load()` now requires `allow_dangerous_deserialization=True` to load cached stores. This is a security improvement to prevent arbitrary code execution from untrusted cache sources.
+
+  **Migration steps:**
+  ```python
+  # Old (pre-2.0.0)
+  vector_store = EndpointVectorStore.load(cache_dir)
+
+  # New (2.0.0+)
+  vector_store = EndpointVectorStore.load(
+      cache_dir,
+      allow_dangerous_deserialization=True  # Only if you trust the cache source
+  )
+  ```
+
 ## [1.0.1] - 2025-08-09
 
 [Compare changes](https://github.com/MehdiZare/fmp-data/compare/v1.0.0...v1.0.1)

@@ -5,7 +5,7 @@ Thank you for your interest in contributing to FMP Data! This guide will help yo
 ## Development Setup
 
 ### Prerequisites
-- Python 3.10+
+- Python 3.10-3.14
 - UV (recommended) or pip
 - Git
 
@@ -67,7 +67,7 @@ uv run mypy fmp_data
 # Run tests
 uv run pytest
 
-# Run tests with coverage
+# Run tests with coverage (coverage is collected in the dedicated CI job)
 uv run pytest --cov=fmp_data --cov-report=html
 ```
 
@@ -101,7 +101,7 @@ Pre-commit hooks will automatically run to ensure code quality.
 
 This project uses:
 - **ruff** for linting and import sorting (replaces flake8, isort)
-- **ruff format** and **black** for code formatting
+- **ruff format** for code formatting
 - **mypy** for type checking
 - **pytest** for testing
 - **pre-commit** for git hooks
@@ -116,7 +116,7 @@ All configurations are in `pyproject.toml` and `.pre-commit-config.yaml`.
 # Run all tests
 make test
 
-# Run with coverage
+# Run with coverage (coverage is collected in the dedicated CI job)
 make test-cov
 
 # Run specific test file

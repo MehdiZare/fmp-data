@@ -1,7 +1,9 @@
 # fmp_data/intelligence/__init__.py
+from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
 from fmp_data.intelligence.client import MarketIntelligenceClient
 from fmp_data.intelligence.models import (
     CrowdfundingOffering,
+    CrowdfundingOfferingSearchItem,
     CryptoNewsArticle,
     DividendEvent,
     EarningConfirmed,
@@ -29,7 +31,9 @@ from fmp_data.intelligence.models import (
 )
 
 __all__ = [
+    "AsyncMarketIntelligenceClient",
     "CrowdfundingOffering",
+    "CrowdfundingOfferingSearchItem",
     "CryptoNewsArticle",
     "DividendEvent",
     "ESGBenchmark",

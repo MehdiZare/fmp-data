@@ -36,7 +36,7 @@ from fmp_data.models import (
 
 FORM_13F: Endpoint = Endpoint(
     name="form_13f",
-    path="form-thirteen/{cik}",
+    path="institutional-ownership/extract",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -44,17 +44,24 @@ FORM_13F: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="cik",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Institution CIK number",
         ),
         EndpointParam(
-            name="date",
+            name="year",
             location=ParamLocation.QUERY,
-            param_type=ParamType.DATE,
+            param_type=ParamType.INTEGER,
             required=True,
-            description="Filing date",
+            description="Filing year",
+        ),
+        EndpointParam(
+            name="quarter",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Filing quarter (1-4)",
         ),
     ],
     optional_params=[],
@@ -63,7 +70,7 @@ FORM_13F: Endpoint = Endpoint(
 
 FORM_13F_DATES: Endpoint = Endpoint(
     name="form_13f_dates",
-    path="form-thirteen-date/{cik}",
+    path="institutional-ownership/dates",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -71,7 +78,7 @@ FORM_13F_DATES: Endpoint = Endpoint(
     mandatory_params=[
         EndpointParam(
             name="cik",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Institution CIK number",
@@ -103,19 +110,36 @@ ASSET_ALLOCATION: Endpoint = Endpoint(
 
 INSTITUTIONAL_HOLDERS: Endpoint = Endpoint(
     name="institutional_holders",
-    path="institutional-ownership/list",
+    path="institutional-ownership/latest",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description="Get list of institutional holders",
     mandatory_params=[],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Page number",
+            default=0,
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results",
+            default=100,
+        ),
+    ],
     response_model=InstitutionalHolder,
 )
 
 INSTITUTIONAL_HOLDINGS: Endpoint = Endpoint(
     name="institutional_holdings",
-    path="institutional-ownership/symbol-ownership",
+    path="institutional-ownership/symbol-positions-summary",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -129,12 +153,18 @@ INSTITUTIONAL_HOLDINGS: Endpoint = Endpoint(
             description="Stock symbol",
         ),
         EndpointParam(
-            name="includeCurrentQuarter",
+            name="year",
             location=ParamLocation.QUERY,
-            param_type=ParamType.BOOLEAN,
-            required=False,
-            description="Include current quarter",
-            default=False,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Filing year",
+        ),
+        EndpointParam(
+            name="quarter",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Filing quarter (1-4)",
         ),
     ],
     optional_params=[],
@@ -143,7 +173,7 @@ INSTITUTIONAL_HOLDINGS: Endpoint = Endpoint(
 
 INSIDER_TRADES: Endpoint = Endpoint(
     name="insider_trades",
-    path="insider-trading",
+    path="insider-trading/search",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -165,7 +195,15 @@ INSIDER_TRADES: Endpoint = Endpoint(
             required=False,
             description="Page number",
             default=0,
-        )
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results per page",
+            default=100,
+        ),
     ],
     response_model=InsiderTrade,
 )
@@ -184,7 +222,7 @@ TRANSACTION_TYPES: Endpoint = Endpoint(
 
 INSIDER_ROSTER: Endpoint = Endpoint(
     name="insider_roster",
-    path="insider-roaster",
+    path="insider-trading/search",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -204,7 +242,7 @@ INSIDER_ROSTER: Endpoint = Endpoint(
 
 INSIDER_STATISTICS: Endpoint = Endpoint(
     name="insider_statistics",
-    path="insider-roaster-statistic",
+    path="insider-trading/statistics",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -224,7 +262,7 @@ INSIDER_STATISTICS: Endpoint = Endpoint(
 
 CIK_MAPPER: Endpoint = Endpoint(
     name="cik_mapper",
-    path="mapper-cik-name",
+    path="cik-list",
     version=APIVersion.STABLE,
     description="Get CIK to name mappings",
     mandatory_params=[],
@@ -236,25 +274,25 @@ CIK_MAPPER: Endpoint = Endpoint(
             required=False,
             description="Page number",
             default=0,
-        )
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results",
+            default=1000,
+        ),
     ],
     response_model=CIKMapping,
 )
 
 CIK_MAPPER_BY_NAME: Endpoint = Endpoint(
     name="cik_mapper_by_name",
-    path="mapper-cik-name",
+    path="cik-list",
     version=APIVersion.STABLE,
     description="Search CIK mappings by name",
-    mandatory_params=[
-        EndpointParam(
-            name="name",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
-            description="Name to search",
-        )
-    ],
+    mandatory_params=[],
     optional_params=[
         EndpointParam(
             name="page",
@@ -263,14 +301,22 @@ CIK_MAPPER_BY_NAME: Endpoint = Endpoint(
             required=False,
             description="Page number",
             default=0,
-        )
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results",
+            default=1000,
+        ),
     ],
     response_model=CIKMapping,
 )
 
 BENEFICIAL_OWNERSHIP: Endpoint = Endpoint(
     name="beneficial_ownership",
-    path="insider/ownership/acquisition_of_beneficial_ownership",
+    path="acquisition-of-beneficial-ownership",
     version=APIVersion.STABLE,
     description="Get beneficial ownership data",
     mandatory_params=[
@@ -324,13 +370,28 @@ INSIDER_TRADING_LATEST: Endpoint = Endpoint(
     mandatory_params=[],
     optional_params=[
         EndpointParam(
+            name="date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            required=False,
+            description="Filter by transaction date (YYYY-MM-DD)",
+        ),
+        EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
             required=False,
             description="Page number",
             default=0,
-        )
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results per page",
+            default=100,
+        ),
     ],
     response_model=InsiderTradingLatest,
 )
@@ -350,6 +411,27 @@ INSIDER_TRADING_SEARCH: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             required=False,
             description="Stock symbol filter",
+        ),
+        EndpointParam(
+            name="reportingCik",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Reporting CIK filter",
+        ),
+        EndpointParam(
+            name="companyCik",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Company CIK filter",
+        ),
+        EndpointParam(
+            name="transactionType",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=False,
+            description="Transaction type filter",
         ),
         EndpointParam(
             name="page",
@@ -380,7 +462,7 @@ INSIDER_TRADING_BY_NAME: Endpoint = Endpoint(
     description="Search insider trades by reporting name",
     mandatory_params=[
         EndpointParam(
-            name="reportingName",
+            name="name",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
@@ -445,6 +527,14 @@ INSTITUTIONAL_OWNERSHIP_LATEST: Endpoint = Endpoint(
             description="Page number",
             default=0,
         ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results",
+            default=100,
+        ),
     ],
     response_model=InstitutionalOwnershipLatest,
 )
@@ -465,11 +555,18 @@ INSTITUTIONAL_OWNERSHIP_EXTRACT: Endpoint = Endpoint(
             description="Institution CIK",
         ),
         EndpointParam(
-            name="date",
+            name="year",
             location=ParamLocation.QUERY,
-            param_type=ParamType.DATE,
+            param_type=ParamType.INTEGER,
             required=True,
-            description="Filing date",
+            description="Filing year",
+        ),
+        EndpointParam(
+            name="quarter",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Filing quarter (1-4)",
         ),
     ],
     optional_params=[],
@@ -505,21 +602,45 @@ INSTITUTIONAL_OWNERSHIP_ANALYTICS: Endpoint = Endpoint(
     description="Get filings extract with analytics by holder",
     mandatory_params=[
         EndpointParam(
-            name="cik",
+            name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
-            description="Institution CIK",
+            description="Stock symbol",
         ),
         EndpointParam(
-            name="date",
+            name="year",
             location=ParamLocation.QUERY,
-            param_type=ParamType.DATE,
+            param_type=ParamType.INTEGER,
             required=True,
-            description="Filing date",
+            description="Filing year",
+        ),
+        EndpointParam(
+            name="quarter",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Filing quarter (1-4)",
         ),
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Page number",
+            default=0,
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results",
+            default=100,
+        ),
+    ],
     response_model=InstitutionalOwnershipAnalytics,
 )
 
@@ -541,12 +662,27 @@ HOLDER_PERFORMANCE_SUMMARY: Endpoint = Endpoint(
     ],
     optional_params=[
         EndpointParam(
-            name="date",
+            name="page",
             location=ParamLocation.QUERY,
-            param_type=ParamType.DATE,
+            param_type=ParamType.INTEGER,
             required=False,
-            description="Filing date",
-        )
+            description="Page number",
+            default=0,
+        ),
+        EndpointParam(
+            name="year",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Filing year",
+        ),
+        EndpointParam(
+            name="quarter",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Filing quarter (1-4)",
+        ),
     ],
     response_model=HolderPerformanceSummary,
 )
@@ -565,17 +701,23 @@ HOLDER_INDUSTRY_BREAKDOWN: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             required=True,
             description="Institution CIK",
-        )
-    ],
-    optional_params=[
+        ),
         EndpointParam(
-            name="date",
+            name="year",
             location=ParamLocation.QUERY,
-            param_type=ParamType.DATE,
-            required=False,
-            description="Filing date",
-        )
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Filing year",
+        ),
+        EndpointParam(
+            name="quarter",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Filing quarter (1-4)",
+        ),
     ],
+    optional_params=[],
     response_model=HolderIndustryBreakdown,
 )
 
@@ -593,17 +735,23 @@ SYMBOL_POSITIONS_SUMMARY: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             required=True,
             description="Stock symbol",
-        )
-    ],
-    optional_params=[
+        ),
         EndpointParam(
-            name="date",
+            name="year",
             location=ParamLocation.QUERY,
-            param_type=ParamType.DATE,
-            required=False,
-            description="Filing date",
-        )
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Filing year",
+        ),
+        EndpointParam(
+            name="quarter",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Filing quarter (1-4)",
+        ),
     ],
+    optional_params=[],
     response_model=SymbolPositionsSummary,
 )
 
@@ -616,21 +764,20 @@ INDUSTRY_PERFORMANCE_SUMMARY: Endpoint = Endpoint(
     description="Get industry performance summary",
     mandatory_params=[
         EndpointParam(
-            name="industry",
+            name="year",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
+            param_type=ParamType.INTEGER,
             required=True,
-            description="Industry sector",
-        )
-    ],
-    optional_params=[
+            description="Filing year",
+        ),
         EndpointParam(
-            name="date",
+            name="quarter",
             location=ParamLocation.QUERY,
-            param_type=ParamType.DATE,
-            required=False,
-            description="Filing date",
-        )
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Filing quarter (1-4)",
+        ),
     ],
+    optional_params=[],
     response_model=IndustryPerformanceSummary,
 )

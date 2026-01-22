@@ -5,13 +5,11 @@ from datetime import date, datetime
 import json
 from logging import Logger
 from pathlib import Path
-from typing import Any, ClassVar, cast
+from typing import Any, ClassVar, Protocol, cast
 
-from langchain.embeddings.base import Embeddings
-from langchain.tools import StructuredTool
-from langchain_community.docstore.in_memory import InMemoryDocstore
 from langchain_core.documents import Document
-from langchain_core.utils.function_calling import convert_to_openai_function
+from langchain_core.embeddings import Embeddings
+from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
 try:
@@ -86,6 +84,14 @@ class ToolFactory:
         return param_fields
 
 
+class ToolLike(Protocol):
+    """Minimal protocol for tool objects returned by this module."""
+
+    name: str
+    description: str
+    args_schema: Any
+
+
 class VectorStoreMetadata(BaseModel):
     """Metadata for the vector store"""
 
@@ -138,12 +144,26 @@ class EndpointVectorStore:
         cache_dir: str | None = None,
         store_name: str = "default",
         logger: Logger | None = None,
+        allow_dangerous_deserialization: bool = False,
     ):
-        """Initialize vector store"""
+        """Initialize vector store
+
+        Args:
+            client: FMP API client instance
+            registry: Endpoint registry instance
+            embeddings: LangChain embeddings instance
+            cache_dir: Directory for storing vector store cache
+            store_name: Name for this vector store instance
+            logger: Optional logger instance
+            allow_dangerous_deserialization: If True, allows loading pickled data from
+                the cached FAISS index. Only enable this if you trust the source of
+                the cache files. Defaults to False for security.
+        """
         self.client = client
         self.registry = registry
         self.embeddings = embeddings
         self.logger = logger or FMPLogger().get_logger(__name__)
+        self._allow_dangerous_deserialization = allow_dangerous_deserialization
 
         # Setup storage paths
         self.cache_dir = Path(cache_dir) if cache_dir else Path.home() / ".fmp_cache"
@@ -165,6 +185,14 @@ class EndpointVectorStore:
                 # Get proper dimension from embeddings
                 dimension = len(self.embeddings.embed_query("test"))
                 index = faiss.IndexFlatL2(dimension)
+
+                try:
+                    from langchain_community.docstore.in_memory import InMemoryDocstore
+                except ModuleNotFoundError as exc:  # pragma: no cover
+                    raise ImportError(
+                        "LangChain dependencies not available. "
+                        "Install with: pip install 'fmp-data[langchain]'"
+                    ) from exc
 
                 self.vector_store = FAISS(
                     embedding_function=self.embeddings,
@@ -192,7 +220,21 @@ class EndpointVectorStore:
         return self.index_path.exists() and self.metadata_path.exists()
 
     def _load_store(self) -> None:
-        """Load stored vectors and metadata"""
+        """Load stored vectors and metadata
+
+        Raises:
+            ConfigError: If loading fails or if dangerous deserialization is not allowed
+        """
+        if not self._allow_dangerous_deserialization:
+            raise ConfigError(
+                "Cannot load cached vector store: "
+                "allow_dangerous_deserialization=False. "
+                "Loading a cached FAISS index involves deserializing pickled "
+                "data which can execute arbitrary code. Only enable this if "
+                "you trust the cache source. "
+                "Set allow_dangerous_deserialization=True to load cached stores."
+            )
+
         try:
             # Load metadata
             with self.metadata_path.open("r") as f:
@@ -205,18 +247,20 @@ class EndpointVectorStore:
                 self.embeddings,
                 allow_dangerous_deserialization=True,
             )
+        except ConfigError:
+            raise
+        except json.JSONDecodeError as e:
+            raise ConfigError(f"Failed to parse vector store metadata: {e!s}") from e
+        except OSError as e:
+            raise ConfigError(f"Failed to read vector store files: {e!s}") from e
         except Exception as e:
             raise ConfigError(f"Failed to load vector store: {e!s}") from e
 
-    from typing import Any
-
-    from pydantic import BaseModel
-
     @staticmethod
     def _format_tool_for_provider(
-        tool: StructuredTool,
+        tool: ToolLike,
         provider: str = "openai",
-    ) -> dict[str, Any] | StructuredTool:
+    ) -> dict[str, Any] | ToolLike:
         """
         Convert a LangChain ``StructuredTool`` into the JSON/function spec required
         by a specific provider.
@@ -234,16 +278,26 @@ class EndpointVectorStore:
         """
         match provider.lower():
             case "openai":
-                return convert_to_openai_function(tool)
+                try:
+                    from langchain_core.utils.function_calling import (
+                        convert_to_openai_function,
+                    )
+                except ModuleNotFoundError as exc:  # pragma: no cover
+                    raise ImportError(
+                        "LangChain dependencies not available. "
+                        "Install with: pip install 'fmp-data[langchain]'"
+                    ) from exc
+                result = cast(Any, convert_to_openai_function(cast(Any, tool)))
+                return cast(dict[str, Any], result)
 
             case "anthropic":
+                model_schema: dict[str, Any]
                 if isinstance(tool.args_schema, type) and issubclass(
                     tool.args_schema, BaseModel
                 ):
-                    model_schema: dict[str, Any] = tool.args_schema.model_json_schema()
+                    model_schema = tool.args_schema.model_json_schema()
                 else:
-                    # just assign, no new annotation
-                    model_schema = tool.args_schema or {}
+                    model_schema = cast(dict[str, Any], tool.args_schema or {})
 
                 return {
                     "name": tool.name,
@@ -298,7 +352,11 @@ class EndpointVectorStore:
             return False
 
     def save(self) -> None:
-        """Save vector store to disk"""
+        """Save vector store to disk
+
+        Raises:
+            ConfigError: If saving fails due to IO or serialization errors
+        """
         try:
             # Update and save metadata
             self.metadata.updated_at = datetime.now()
@@ -313,6 +371,10 @@ class EndpointVectorStore:
             self.logger.info(
                 f"Saved vector store with {self.metadata.num_vectors} vectors"
             )
+        except OSError as e:
+            raise ConfigError(f"Failed to write vector store files: {e!s}") from e
+        except (TypeError, ValueError) as e:
+            raise ConfigError(f"Failed to serialize vector store data: {e!s}") from e
         except Exception as e:
             raise ConfigError(f"Failed to save vector store: {e!s}") from e
 
@@ -422,7 +484,7 @@ class EndpointVectorStore:
             self.logger.error(f"Search failed: {e!s}")
             raise
 
-    def create_tool(self, info: EndpointInfo) -> StructuredTool:
+    def create_tool(self, info: EndpointInfo) -> ToolLike:
         """Create a LangChain tool from endpoint info."""
         if not info:
             raise ValueError("EndpointInfo cannot be None")
@@ -531,13 +593,16 @@ class EndpointVectorStore:
                 f"Check 'status' field to handle success/error cases appropriately."
             )
 
-            return StructuredTool.from_function(
-                func=endpoint_func,
-                name=semantics.method_name,
-                description=full_description,
-                args_schema=tool_args_model,
-                return_direct=True,
-                infer_schema=False,
+            return cast(
+                ToolLike,
+                StructuredTool.from_function(
+                    func=endpoint_func,
+                    name=semantics.method_name,
+                    description=full_description,
+                    args_schema=tool_args_model,
+                    return_direct=True,
+                    infer_schema=False,
+                ),
             )
 
         except Exception as e:
@@ -550,7 +615,7 @@ class EndpointVectorStore:
         k: int = 3,
         threshold: float = 0.3,
         provider: str | None = None,
-    ) -> Sequence[StructuredTool | dict[str, Any]]:
+    ) -> Sequence[ToolLike | dict[str, Any]]:
         """
         Get LangChain tools for relevant endpoints.
 
@@ -565,7 +630,7 @@ class EndpointVectorStore:
             List of tools (formatted or unformatted based on provider)
         """
         try:
-            tools: list[StructuredTool] = []
+            tools: list[ToolLike] = []
             if query:
                 results = self.search(query, k=k, threshold=threshold)
                 tools = [self.create_tool(r.info) for r in results]

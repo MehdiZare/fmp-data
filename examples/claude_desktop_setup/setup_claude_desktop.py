@@ -274,7 +274,7 @@ def main():
     print("   - 'Calculate the RSI for Microsoft'")
     print("   - 'What's the current Bitcoin price?'")
     print("\n📚 For more information, see:")
-    print("   examples/claude_desktop_setup/README.md")
+    print("   docs/mcp/claude_desktop.md")
 
     return 0
 

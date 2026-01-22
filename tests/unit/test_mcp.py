@@ -8,6 +8,7 @@ Relative path: tests/unit/test_mcp.py
 from __future__ import annotations
 
 import os
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
@@ -134,6 +135,46 @@ class TestToolLoader:
         with pytest.raises(RuntimeError, match="lacks.*ENDPOINTS_SEMANTICS"):
             _load_semantics("company", "profile")
 
+    def test_register_from_manifest_duplicate_keys_raises(self):
+        """Ensure duplicate semantic keys are rejected when using key names."""
+        from fmp_data.mcp.tool_loader import register_from_manifest
+
+        mcp = Mock()
+        fmp_client = Mock()
+        tool_specs = [
+            "fundamental.financial_reports_dates",
+            "intelligence.financial_reports_dates",
+        ]
+
+        with patch.dict(os.environ, {"FMP_MCP_TOOL_NAME_STYLE": "key"}):
+            with patch("fmp_data.mcp.discovery.discover_all_tools", return_value=[]):
+                with pytest.raises(RuntimeError, match="Duplicate tool keys"):
+                    register_from_manifest(mcp, fmp_client, tool_specs)
+
+    def test_register_from_manifest_name_style_spec(self):
+        """Ensure tool names use fully-qualified specs when configured."""
+        from fmp_data.client import FMPDataClient
+        from fmp_data.mcp.tool_loader import register_from_manifest
+
+        sem = SimpleNamespace(method_name="get_profile", natural_description="Profile")
+        fmp_client = Mock(spec=FMPDataClient)
+        fmp_client.company = SimpleNamespace(get_profile=Mock())
+        mcp = Mock()
+
+        with patch.dict(os.environ, {"FMP_MCP_TOOL_NAME_STYLE": "spec"}):
+            with (
+                patch("fmp_data.mcp.tool_loader._load_semantics", return_value=sem),
+                patch(
+                    "fmp_data.mcp.discovery.discover_all_tools",
+                    return_value=[{"spec": "company.profile", "key": "profile"}],
+                ),
+            ):
+                register_from_manifest(mcp, fmp_client, ["company.profile"])
+
+        mcp.add_tool.assert_called_once()
+        _, kwargs = mcp.add_tool.call_args
+        assert kwargs["name"] == "company.profile"
+
 
 class TestToolsManifest:
     """Test suite for tools manifest."""
@@ -167,6 +208,30 @@ class TestToolsManifest:
             assert (
                 tool in DEFAULT_TOOLS
             ), f"Expected tool {tool} not found in DEFAULT_TOOLS"
+
+
+class TestMCPManifestLoading:
+    """Test suite for manifest loading utilities."""
+
+    def test_load_manifest_tools_from_file(self, tmp_path):
+        """Load tool specs from a manifest file."""
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        manifest = tmp_path / "manifest.py"
+        manifest.write_text('TOOLS = ["company.profile", "market.gainers"]')
+
+        tools = load_manifest_tools(manifest)
+        assert tools == ["company.profile", "market.gainers"]
+
+    def test_load_manifest_tools_missing_tools(self, tmp_path):
+        """Missing TOOLS should raise."""
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        manifest = tmp_path / "manifest.py"
+        manifest.write_text("X = 1")
+
+        with pytest.raises(AttributeError, match="does not define"):
+            load_manifest_tools(manifest)
 
 
 @pytest.mark.integration

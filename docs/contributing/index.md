@@ -13,8 +13,8 @@ Welcome! We appreciate your interest in contributing to the FMP Data project. Th
 
 ### Prerequisites
 
-- Python 3.10 or higher
-- Poetry for dependency management
+- Python 3.10-3.14
+- UV for dependency management (recommended)
 - Git for version control
 
 ### Development Setup
@@ -27,17 +27,17 @@ Welcome! We appreciate your interest in contributing to the FMP Data project. Th
 
 2. **Install Dependencies**
    ```bash
-   poetry install --with dev,docs,test
+   uv sync --group dev --group docs --group langchain --group mcp
    ```
 
 3. **Set Up Pre-commit Hooks**
    ```bash
-   poetry run pre-commit install
+   uv run pre-commit install
    ```
 
 4. **Run Tests to Verify Setup**
    ```bash
-   poetry run pytest
+   uv run pytest
    ```
 
 ## Development Workflow
@@ -50,7 +50,7 @@ git checkout -b feature/your-feature-name
 
 ### Making Changes
 
-1. **Code Style**: We use Black, isort, and Ruff for code formatting and linting
+1. **Code Style**: We use Ruff for formatting and linting
 2. **Type Hints**: All functions must have accurate type hints
 3. **Documentation**: Update docstrings and include relative file paths
 4. **Tests**: Add or update tests for your changes
@@ -59,17 +59,16 @@ git checkout -b feature/your-feature-name
 
 ```bash
 # Format code
-poetry run black .
-poetry run isort .
+uv run ruff format fmp_data tests
 
 # Lint code
-poetry run ruff check .
+uv run ruff check fmp_data tests
 
 # Type checking
-poetry run mypy fmp_data
+uv run mypy fmp_data
 
 # Run tests
-poetry run pytest --cov=fmp_data
+uv run pytest --cov=fmp_data
 ```
 
 ### Submitting Changes
@@ -95,7 +94,7 @@ poetry run pytest --cov=fmp_data
 
 ### Python Code Style
 
-- **Python Version**: Use Python 3.10+ syntax and features
+- **Python Version**: Use Python 3.10-3.14 syntax and features
 - **Type Hints**: Required for all function parameters and return values
 - **Docstrings**: Include relative file paths in docstrings
 - **Error Handling**: Use appropriate exception types

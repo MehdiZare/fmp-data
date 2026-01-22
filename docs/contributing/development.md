@@ -9,19 +9,19 @@ git clone https://github.com/MehdiZare/fmp-data.git
 cd fmp-data
 ```
 
-2. Install Poetry (if not already installed):
+2. Install UV (if not already installed):
 ```bash
-curl -sSL https://install.python-poetry.org | python3 -
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 3. Install dependencies:
 ```bash
-poetry install
+uv sync --group dev --group docs --group langchain --group mcp
 ```
 
 4. Install pre-commit hooks:
 ```bash
-poetry run pre-commit install
+uv run pre-commit install
 ```
 
 ## Project Structure
@@ -40,7 +40,7 @@ fmp_data/
 
 ## Version Management
 
-We use `poetry-dynamic-versioning` to automatically manage versions based on git tags. The version number follows [Semantic Versioning](https://semver.org/):
+We use `hatch-vcs` to automatically manage versions based on git tags. The version number follows [Semantic Versioning](https://semver.org/):
 
 - MAJOR.MINOR.PATCH (e.g., 1.0.0)
 - Pre-releases: MAJOR.MINOR.PATCH-alpha.N, -beta.N, -rc.N
@@ -51,24 +51,19 @@ Version numbers are automatically generated from git tags and commits.
 
 We use several tools to ensure code quality:
 
-1. **Black**: Code formatting
+1. **Ruff format**: Code formatting
    ```bash
-   poetry run black .
+   uv run ruff format fmp_data tests
    ```
 
-2. **isort**: Import sorting
+2. **Ruff**: Linting
    ```bash
-   poetry run isort .
+   uv run ruff check fmp_data tests
    ```
 
-3. **Ruff**: Linting
+3. **mypy**: Type checking
    ```bash
-   poetry run ruff check .
-   ```
-
-4. **mypy**: Type checking
-   ```bash
-   poetry run mypy fmp_data
+   uv run mypy fmp_data
    ```
 
 Pre-commit hooks will run these checks automatically before each commit.
@@ -77,15 +72,15 @@ Pre-commit hooks will run these checks automatically before each commit.
 
 1. Install documentation dependencies:
 ```bash
-poetry install --with docs
+uv sync --group docs
 ```
 
 2. Serve documentation locally:
 ```bash
-poetry run mkdocs serve
+uv run mkdocs serve
 ```
 
 3. Build documentation:
 ```bash
-poetry run mkdocs build
+uv run mkdocs build
 ```

@@ -16,13 +16,21 @@ theme:
 
 nav:
   - Home: index.md
+  - MCP:
+      - Overview: mcp/index.md
+      - Claude Desktop Setup: mcp/claude_desktop.md
+      - Configuration Profiles: mcp/configurations.md
+      - Troubleshooting: mcp/troubleshooting.md
+      - Tools Reference: mcp/tools.md
   - Contributing: contributing/index.md
   - Development:
     - Setup: contributing/development.md
     - Testing: contributing/testing.md
     - Workflow: contributing/workflow.md
     - Releasing: contributing/releasing.md
-  - API Reference: api/reference.md
+  - API:
+      - Reference: api/reference.md
+      - Endpoints: api/endpoints.md
 
 markdown_extensions:
   - pymdownx.highlight:

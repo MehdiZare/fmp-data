@@ -64,7 +64,7 @@ class EmbeddingConfig(BaseModel):
                 from langchain_openai import OpenAIEmbeddings
 
                 return OpenAIEmbeddings(
-                    openai_api_base=self.api_key,
+                    api_key=self.api_key,
                     model=self.model_name or "text-embedding-ada-002",
                     **self.additional_kwargs,
                 )
@@ -73,7 +73,7 @@ class EmbeddingConfig(BaseModel):
                 check_package_dependency("sentence_transformers", "HuggingFace")
                 check_package_dependency("torch", "HuggingFace")
 
-                from langchain.embeddings import HuggingFaceEmbeddings
+                from langchain_community.embeddings import HuggingFaceEmbeddings
 
                 return HuggingFaceEmbeddings(
                     model_name=self.model_name
@@ -90,7 +90,7 @@ class EmbeddingConfig(BaseModel):
                         "Please provide it in the configuration."
                     )
 
-                from langchain.embeddings import CohereEmbeddings
+                from langchain_community.embeddings import CohereEmbeddings
 
                 return CohereEmbeddings(
                     cohere_api_key=self.api_key,

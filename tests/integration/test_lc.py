@@ -1,10 +1,13 @@
 from collections.abc import Generator
 from datetime import datetime
+import importlib
 import os
 
-from langchain_openai import OpenAIEmbeddings
-from pydantic import SecretStr
 import pytest
+pytest.importorskip("langchain_core", reason="langchain extra not installed")
+pytest.importorskip("langchain_community", reason="langchain extra not installed")
+pytest.importorskip("langchain_openai", reason="langchain extra not installed")
+pytest.importorskip("faiss", reason="faiss extra not installed")
 
 from fmp_data import FMPDataClient
 from fmp_data.lc import EndpointVectorStore, LangChainConfig, create_vector_store
@@ -20,14 +23,6 @@ def openai_api_key() -> str:
 
 
 @pytest.fixture(scope="session")
-def embeddings(openai_api_key: str) -> OpenAIEmbeddings:
-    """Create OpenAI embeddings instance"""
-    return OpenAIEmbeddings(
-        openai_api_key=openai_api_key, model="text-embedding-3-small"
-    )
-
-
-@pytest.fixture(scope="session")
 def langchain_config(fmp_client: FMPDataClient, openai_api_key: str) -> LangChainConfig:
     """Create LangChain config for testing"""
     return LangChainConfig(
@@ -40,24 +35,17 @@ def langchain_config(fmp_client: FMPDataClient, openai_api_key: str) -> LangChai
 @pytest.fixture(scope="session")
 def vector_store(
     fmp_client: FMPDataClient,
-    embeddings: OpenAIEmbeddings,
+    openai_api_key: str,
     tmp_path_factory,
 ) -> Generator[EndpointVectorStore, None, None]:
     """Create temporary vector store for testing"""
     # Use temporary directory for test cache
     cache_dir = tmp_path_factory.mktemp("vector_store_cache")
 
-    # Extract raw API key if it's a SecretStr
-    openai_key = (
-        embeddings.openai_api_key.get_secret_value()
-        if isinstance(embeddings.openai_api_key, SecretStr)
-        else embeddings.openai_api_key
-    )
-
     # Create store
     store = create_vector_store(
         fmp_api_key=fmp_client.config.api_key,
-        openai_api_key=openai_key,  # Pass raw string
+        openai_api_key=openai_api_key,
         cache_dir=str(cache_dir),
         store_name="test_store",
         force_create=True,
@@ -83,20 +71,13 @@ class TestLangChainIntegration:
     def test_vector_store_creation(
         self,
         fmp_client: FMPDataClient,
-        embeddings: OpenAIEmbeddings,
+        openai_api_key: str,
         tmp_path,
     ):
         """Test vector store creation and basic functionality"""
-        # Extract raw API key
-        openai_key = (
-            embeddings.openai_api_key.get_secret_value()
-            if isinstance(embeddings.openai_api_key, SecretStr)
-            else embeddings.openai_api_key
-        )
-
         store = create_vector_store(
             fmp_api_key=fmp_client.config.api_key,
-            openai_api_key=openai_key,
+            openai_api_key=openai_api_key,
             cache_dir=str(tmp_path),
             store_name="test_store",
             force_create=True,
@@ -166,7 +147,9 @@ class TestLangChainIntegration:
                     assert all(isinstance(tool, dict) for tool in tools)
                     assert all("parameters" in tool for tool in tools)
                 else:
-                    from langchain.tools import StructuredTool
+                    StructuredTool = importlib.import_module(
+                        "langchain_core.tools"
+                    ).StructuredTool
 
                     assert all(isinstance(tool, StructuredTool) for tool in tools)
 

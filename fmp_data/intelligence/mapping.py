@@ -5,6 +5,7 @@ from fmp_data.intelligence.endpoints import (
     CROWDFUNDING_RSS,
     CROWDFUNDING_SEARCH,
     CRYPTO_NEWS_ENDPOINT,
+    CRYPTO_SYMBOL_NEWS_ENDPOINT,
     DIVIDENDS_CALENDAR,
     EARNINGS_CALENDAR,
     EARNINGS_CONFIRMED,
@@ -17,14 +18,19 @@ from fmp_data.intelligence.endpoints import (
     ESG_RATINGS,
     FMP_ARTICLES_ENDPOINT,
     FOREX_NEWS_ENDPOINT,
+    FOREX_SYMBOL_NEWS_ENDPOINT,
     GENERAL_NEWS_ENDPOINT,
     HISTORICAL_EARNINGS,
     HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT,
     HOUSE_DISCLOSURE,
     HOUSE_DISCLOSURE_RSS,
+    HOUSE_LATEST,
+    HOUSE_TRADES_BY_NAME,
     IPO_CALENDAR,
     PRESS_RELEASES_BY_SYMBOL_ENDPOINT,
     PRESS_RELEASES_ENDPOINT,
+    SENATE_LATEST,
+    SENATE_TRADES_BY_NAME,
     SENATE_TRADING,
     SENATE_TRADING_RSS,
     SOCIAL_SENTIMENT_CHANGES_ENDPOINT,
@@ -55,9 +61,13 @@ INTELLIGENCE_ENDPOINT_MAP = {
     "get_esg_ratings": ESG_RATINGS,
     "get_esg_benchmark": ESG_BENCHMARK,
     # Government Trading endpoints
+    "get_senate_latest": SENATE_LATEST,
     "get_senate_trading": SENATE_TRADING,
+    "get_senate_trades_by_name": SENATE_TRADES_BY_NAME,
     "get_senate_trading_rss": SENATE_TRADING_RSS,
+    "get_house_latest": HOUSE_LATEST,
     "get_house_disclosure": HOUSE_DISCLOSURE,
+    "get_house_trades_by_name": HOUSE_TRADES_BY_NAME,
     "get_house_disclosure_rss": HOUSE_DISCLOSURE_RSS,
     # Fundraising endpoints
     "get_crowdfunding_rss": CROWDFUNDING_RSS,
@@ -72,7 +82,9 @@ INTELLIGENCE_ENDPOINT_MAP = {
     "get_stock_news": STOCK_NEWS_ENDPOINT,
     "get_stock_news_sentiments": STOCK_NEWS_SENTIMENTS_ENDPOINT,
     "get_forex_news": FOREX_NEWS_ENDPOINT,
+    "get_forex_symbol_news": FOREX_SYMBOL_NEWS_ENDPOINT,
     "get_crypto_news": CRYPTO_NEWS_ENDPOINT,
+    "get_crypto_symbol_news": CRYPTO_SYMBOL_NEWS_ENDPOINT,
     "get_press_releases": PRESS_RELEASES_ENDPOINT,
     "get_press_releases_by_symbol": PRESS_RELEASES_BY_SYMBOL_ENDPOINT,
     # Social Sentiment endpoints
@@ -263,9 +275,9 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         client_name="intelligence",
         method_name="get_equity_offering_rss",
         natural_description=(
-            "Get real-time RSS feed of "
-            "equity offerings including new issues, follow-on "
-            "offerings, and capital raising events"
+            "Get latest equity offerings "
+            "including new issues, follow-on offerings, "
+            "and capital raising events"
         ),
         example_queries=[
             "Show latest equity offerings",
@@ -282,7 +294,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INTELLIGENCE,
         sub_category="Fundraising",
-        parameter_hints={"page": PAGE_HINT},
+        parameter_hints={"page": PAGE_HINT, "limit": LIMIT_HINT},
         response_hints={
             "offering_type": ResponseFieldInfo(
                 description="Type of equity offering",
@@ -373,7 +385,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         sub_category="News & Research",
         parameter_hints={
             "page": PAGE_HINT,
-            "size": LIMIT_HINT,
+            "limit": LIMIT_HINT,
         },
         response_hints={
             "title": ResponseFieldInfo(
@@ -416,7 +428,12 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INTELLIGENCE,
         sub_category="News & Media",
-        parameter_hints={"page": PAGE_HINT},
+        parameter_hints={
+            "page": PAGE_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+            "limit": LIMIT_HINT,
+        },
         response_hints={
             "site": ResponseFieldInfo(
                 description="News source",
@@ -510,7 +527,12 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INTELLIGENCE,
         sub_category="News & Media",
-        parameter_hints={"page": PAGE_HINT},
+        parameter_hints={
+            "page": PAGE_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+            "limit": LIMIT_HINT,
+        },
         response_hints={
             "sentiment": ResponseFieldInfo(
                 description="News sentiment score",
@@ -554,6 +576,9 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         parameter_hints={
             "symbol": SYMBOL_HINT,
             "page": PAGE_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+            "limit": LIMIT_HINT,
         },
         response_hints={
             "title": ResponseFieldInfo(
@@ -752,10 +777,15 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         sub_category="Government Trading",
         parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
-            "representative": ResponseFieldInfo(
-                description="Name of representative",
-                examples=["John Smith", "Jane Doe"],
-                related_terms=["congress member", "representative name"],
+            "first_name": ResponseFieldInfo(
+                description="Representative first name",
+                examples=["Nancy", "James"],
+                related_terms=["congress member", "first name"],
+            ),
+            "last_name": ResponseFieldInfo(
+                description="Representative last name",
+                examples=["Pelosi", "Comer"],
+                related_terms=["congress member", "last name"],
             ),
             "transaction_date": ResponseFieldInfo(
                 description="Date of trade",
@@ -768,6 +798,85 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "Insider activity monitoring",
             "Regulatory compliance",
             "Government oversight",
+        ],
+    ),
+    "house_latest": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_house_latest",
+        natural_description=(
+            "Get the latest House financial disclosures with transaction details"
+        ),
+        example_queries=[
+            "Latest House disclosures",
+            "Recent House trades",
+            "House financial disclosures",
+        ],
+        related_terms=[
+            "house latest",
+            "house disclosures",
+            "congress trades",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Government Trading",
+        parameter_hints={"page": PAGE_HINT, "limit": LIMIT_HINT},
+        response_hints={
+            "disclosure_date": ResponseFieldInfo(
+                description="Disclosure date",
+                examples=["2025-02-03", "2025-01-20"],
+                related_terms=["filing date", "disclosure date"],
+            ),
+            "symbol": ResponseFieldInfo(
+                description="Stock symbol",
+                examples=["AAPL", "MSFT"],
+                related_terms=["ticker", "company symbol"],
+            ),
+        },
+        use_cases=[
+            "Political trading monitoring",
+            "Market research",
+            "Compliance tracking",
+        ],
+    ),
+    "house_trades_by_name": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_house_trades_by_name",
+        natural_description="Get House trading data filtered by representative name",
+        example_queries=[
+            "House trades by name",
+            "Representative trades for James",
+            "Find House trades by member",
+        ],
+        related_terms=[
+            "house trades by name",
+            "representative trades",
+            "congress trades",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Government Trading",
+        parameter_hints={
+            "name": ParameterHint(
+                natural_names=["name", "representative", "member"],
+                extraction_patterns=[r"(?i)name[:\\s]+([A-Za-z\\s]+)"],
+                examples=["James", "Nancy Pelosi"],
+                context_clues=["representative", "member", "congress"],
+            )
+        },
+        response_hints={
+            "symbol": ResponseFieldInfo(
+                description="Stock symbol",
+                examples=["AAPL", "LUV"],
+                related_terms=["ticker", "company symbol"],
+            ),
+            "amount": ResponseFieldInfo(
+                description="Trade amount range",
+                examples=["$1,001 - $15,000", "$15,001 - $50,000"],
+                related_terms=["value", "transaction size"],
+            ),
+        },
+        use_cases=[
+            "Member trade review",
+            "Political trading analysis",
+            "Compliance checks",
         ],
     ),
     "press_releases": EndpointSemantics(
@@ -792,7 +901,12 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INTELLIGENCE,
         sub_category="News & Media",
-        parameter_hints={"page": PAGE_HINT},
+        parameter_hints={
+            "page": PAGE_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+            "limit": LIMIT_HINT,
+        },
         response_hints={
             "title": ResponseFieldInfo(
                 description="Press release title",
@@ -826,10 +940,57 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "market developments"
         ),
         example_queries=[
-            "Get forex news for EURUSD",
+            "Get latest forex news",
             "Show currency market updates",
             "Latest FX news",
             "Foreign exchange headlines",
+        ],
+        related_terms=[
+            "currency news",
+            "forex market",
+            "exchange rates",
+            "currency trading",
+            "fx updates",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="News & Media",
+        parameter_hints={
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+        },
+        response_hints={
+            "title": ResponseFieldInfo(
+                description="News article headline",
+                examples=["EUR/USD Breaks Resistance", "GBP Falls After Data"],
+                related_terms=["headline", "story", "forex news"],
+            ),
+            "text": ResponseFieldInfo(
+                description="Article content",
+                examples=["Currency analysis...", "Market movement details..."],
+                related_terms=["content", "article text", "details"],
+            ),
+        },
+        use_cases=[
+            "Currency market monitoring",
+            "Exchange rate tracking",
+            "Forex trading research",
+            "International markets",
+        ],
+    ),
+    "forex_symbol_news": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_forex_symbol_news",
+        natural_description=(
+            "Search forex news for a specific currency pair "
+            "to monitor pair-specific developments and analysis"
+        ),
+        example_queries=[
+            "Get forex news for EURUSD",
+            "Show GBPUSD headlines",
+            "USDJPY forex news",
+            "FX news for EURUSD",
         ],
         related_terms=[
             "currency news",
@@ -865,10 +1026,10 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             ),
         },
         use_cases=[
-            "Currency market monitoring",
-            "Exchange rate tracking",
-            "Forex trading research",
-            "International markets",
+            "Pair-specific monitoring",
+            "FX trading research",
+            "Market analysis",
+            "News tracking",
         ],
     ),
     "crowdfunding_rss": EndpointSemantics(
@@ -895,7 +1056,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INTELLIGENCE,
         sub_category="Fundraising",
-        parameter_hints={"page": PAGE_HINT},
+        parameter_hints={"page": PAGE_HINT, "limit": LIMIT_HINT},
         response_hints={
             "company_name": ResponseFieldInfo(
                 description="Name of company raising funds",
@@ -1027,10 +1188,51 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "trading information, and digital asset developments"
         ),
         example_queries=[
-            "Get crypto news for BTC",
-            "Show Bitcoin headlines",
+            "Get latest crypto news",
+            "Show cryptocurrency headlines",
             "Latest cryptocurrency news",
             "Crypto market updates",
+        ],
+        related_terms=[
+            "crypto news",
+            "digital assets",
+            "cryptocurrency",
+            "blockchain news",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="News & Media",
+        parameter_hints={
+            "page": PAGE_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+            "limit": LIMIT_HINT,
+        },
+        response_hints={
+            "title": ResponseFieldInfo(
+                description="News article headline",
+                examples=["Bitcoin Reaches New High", "ETH 2.0 Launch"],
+                related_terms=["headline", "title", "news"],
+            ),
+        },
+        use_cases=[
+            "Crypto market monitoring",
+            "Trading research",
+            "Market analysis",
+            "News tracking",
+        ],
+    ),
+    "crypto_symbol_news": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_crypto_symbol_news",
+        natural_description=(
+            "Search cryptocurrency news for a specific trading pair "
+            "to track asset-specific developments"
+        ),
+        example_queries=[
+            "Get crypto news for BTCUSD",
+            "Show Bitcoin headlines",
+            "ETHUSD crypto news",
+            "Crypto news for BTCUSD",
         ],
         related_terms=[
             "crypto news",
@@ -1045,7 +1247,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "page": PAGE_HINT,
             "start_date": DATE_HINTS["start_date"],
             "end_date": DATE_HINTS["end_date"],
-            "limit": LIMIT_HINT,  # Added missing limit parameter
+            "limit": LIMIT_HINT,
         },
         response_hints={
             "title": ResponseFieldInfo(
@@ -1055,7 +1257,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             ),
         },
         use_cases=[
-            "Crypto market monitoring",
+            "Asset-specific monitoring",
             "Trading research",
             "Market analysis",
             "News tracking",
@@ -1354,14 +1556,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INTELLIGENCE,
         sub_category="ESG",
-        parameter_hints={
-            "year": ParameterHint(
-                natural_names=["year", "annual", "period"],
-                extraction_patterns=[r"20\d{2}"],
-                examples=["2023", "2024"],
-                context_clues=["year", "annual", "yearly"],
-            ),
-        },
+        parameter_hints={},
         response_hints={
             "sector": ResponseFieldInfo(
                 description="Industry sector name",
@@ -1423,6 +1618,85 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "Market research",
         ],
     ),
+    "senate_latest": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_senate_latest",
+        natural_description=(
+            "Get the latest Senate financial disclosures with transaction details"
+        ),
+        example_queries=[
+            "Latest Senate disclosures",
+            "Recent Senate trades",
+            "Senate financial disclosures",
+        ],
+        related_terms=[
+            "senate latest",
+            "senate disclosures",
+            "congress trades",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Government Trading",
+        parameter_hints={"page": PAGE_HINT, "limit": LIMIT_HINT},
+        response_hints={
+            "disclosure_date": ResponseFieldInfo(
+                description="Disclosure date",
+                examples=["2025-01-31", "2025-01-08"],
+                related_terms=["filing date", "disclosure date"],
+            ),
+            "symbol": ResponseFieldInfo(
+                description="Stock symbol",
+                examples=["AAPL", "LRN"],
+                related_terms=["ticker", "company symbol"],
+            ),
+        },
+        use_cases=[
+            "Political trading monitoring",
+            "Market research",
+            "Compliance tracking",
+        ],
+    ),
+    "senate_trades_by_name": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_senate_trades_by_name",
+        natural_description="Get Senate trading data filtered by senator name",
+        example_queries=[
+            "Senate trades by name",
+            "Senator trades for Jerry",
+            "Find Senate trades by member",
+        ],
+        related_terms=[
+            "senate trades by name",
+            "senator trades",
+            "congress trades",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Government Trading",
+        parameter_hints={
+            "name": ParameterHint(
+                natural_names=["name", "senator", "member"],
+                extraction_patterns=[r"(?i)name[:\\s]+([A-Za-z\\s]+)"],
+                examples=["Jerry", "Sheldon Whitehouse"],
+                context_clues=["senator", "member", "congress"],
+            )
+        },
+        response_hints={
+            "symbol": ResponseFieldInfo(
+                description="Stock symbol",
+                examples=["AAPL", "BRK/B"],
+                related_terms=["ticker", "company symbol"],
+            ),
+            "amount": ResponseFieldInfo(
+                description="Trade amount range",
+                examples=["$1,001 - $15,000", "$15,001 - $50,000"],
+                related_terms=["value", "transaction size"],
+            ),
+        },
+        use_cases=[
+            "Member trade review",
+            "Political trading analysis",
+            "Compliance checks",
+        ],
+    ),
     "senate_trading_rss": EndpointSemantics(
         client_name="intelligence",
         method_name="get_senate_trading_rss",
@@ -1446,7 +1720,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         sub_category="Government Trading",
         parameter_hints={"page": PAGE_HINT},
         response_hints={
-            "date_received": ResponseFieldInfo(
+            "disclosure_date": ResponseFieldInfo(
                 description="Filing receipt date",
                 examples=["2024-01-15", "2023-12-20"],
                 related_terms=["filing date", "disclosure date"],
@@ -1578,15 +1852,20 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             ),
         },
         response_hints={
-            "offering_amount": ResponseFieldInfo(
-                description="Fundraising amount",
-                examples=["1000000", "500000"],
-                related_terms=["raise amount", "target", "goal"],
+            "cik": ResponseFieldInfo(
+                description="Company CIK number",
+                examples=["0001912939", "0001547416"],
+                related_terms=["CIK", "issuer id"],
             ),
-            "security_type": ResponseFieldInfo(
-                description="Type of security offered",
-                examples=["Common Stock", "SAFE"],
-                related_terms=["instrument", "security", "investment type"],
+            "name": ResponseFieldInfo(
+                description="Company or issuer name",
+                examples=["Enotap LLC", "NJOY INC"],
+                related_terms=["issuer", "company"],
+            ),
+            "date": ResponseFieldInfo(
+                description="Offering date",
+                examples=["2025-01-27", "2024-03-01"],
+                related_terms=["filing date", "offer date"],
             ),
         },
         use_cases=[
