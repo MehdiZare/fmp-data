@@ -874,16 +874,6 @@ class TestMarketIntelligenceClientGovernment:
         args, kwargs = mock_client.request.call_args
         assert kwargs["name"] == "James"
 
-    def test_get_house_disclosure_rss(self, fmp_client, mock_client):
-        """Test get_house_disclosure_rss"""
-        mock_client.request.return_value = []
-
-        _ = fmp_client.intelligence.get_house_disclosure_rss(page=1)
-
-        mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
-        assert kwargs["page"] == 1
-
 
 class TestMarketIntelligenceClientFundraising:
     """Test fundraising functionality"""

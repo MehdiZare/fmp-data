@@ -23,7 +23,6 @@ from fmp_data.intelligence.endpoints import (
     HISTORICAL_EARNINGS,
     HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT,
     HOUSE_DISCLOSURE,
-    HOUSE_DISCLOSURE_RSS,
     HOUSE_LATEST,
     HOUSE_TRADES_BY_NAME,
     IPO_CALENDAR,
@@ -68,7 +67,6 @@ INTELLIGENCE_ENDPOINT_MAP = {
     "get_house_latest": HOUSE_LATEST,
     "get_house_disclosure": HOUSE_DISCLOSURE,
     "get_house_trades_by_name": HOUSE_TRADES_BY_NAME,
-    "get_house_disclosure_rss": HOUSE_DISCLOSURE_RSS,
     # Fundraising endpoints
     "get_crowdfunding_rss": CROWDFUNDING_RSS,
     "get_crowdfunding_search": CROWDFUNDING_SEARCH,
@@ -1736,47 +1734,6 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "Trade tracking",
             "Compliance updates",
             "Market analysis",
-        ],
-    ),
-    "house_disclosure_rss": EndpointSemantics(
-        client_name="intelligence",
-        method_name="get_house_disclosure_rss",
-        natural_description=(
-            "Access real-time RSS feed of House Representative trading disclosures "
-            "including new filings and updates"
-        ),
-        example_queries=[
-            "Show House trading disclosures",
-            "Recent Representative trades",
-            "House disclosure feed",
-            "Political trading updates",
-        ],
-        related_terms=[
-            "house trades",
-            "congress disclosures",
-            "representative trading",
-            "political updates",
-        ],
-        category=SemanticCategory.INTELLIGENCE,
-        sub_category="Government Trading",
-        parameter_hints={"page": PAGE_HINT},
-        response_hints={
-            "disclosure_date": ResponseFieldInfo(
-                description="Disclosure filing date",
-                examples=["2024-01-15", "2023-12-20"],
-                related_terms=["filing date", "report date"],
-            ),
-            "transaction_date": ResponseFieldInfo(
-                description="Trade execution date",
-                examples=["2024-01-10", "2023-12-15"],
-                related_terms=["trade date", "execution date"],
-            ),
-        },
-        use_cases=[
-            "Disclosure monitoring",
-            "Political trading analysis",
-            "Regulatory tracking",
-            "Market research",
         ],
     ),
     "institutional_holders": EndpointSemantics(

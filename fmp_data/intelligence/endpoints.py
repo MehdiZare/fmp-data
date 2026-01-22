@@ -964,25 +964,6 @@ HOUSE_TRADES_BY_NAME: Endpoint = Endpoint(
     response_model=HouseDisclosure,
 )
 
-HOUSE_DISCLOSURE_RSS: Endpoint = Endpoint(
-    name="house_disclosure_rss",
-    path="senate-disclosure-rss-feed",
-    version=APIVersion.STABLE,
-    description="Get House disclosure RSS feed",
-    mandatory_params=[
-        EndpointParam(
-            name="page",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.INTEGER,
-            required=True,
-            description="Page number",
-            default=0,
-        )
-    ],
-    optional_params=[],
-    response_model=HouseDisclosure,
-)
-
 # Fundraising Endpoints
 CROWDFUNDING_RSS: Endpoint = Endpoint(
     name="crowdfunding_rss",

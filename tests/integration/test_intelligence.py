@@ -577,27 +577,6 @@ class TestIntelligenceEndpoints(BaseTestCase):
                     assert disclosure.first_name
                     assert disclosure.last_name
 
-    def test_get_house_disclosure_rss(self, fmp_client: FMPDataClient, vcr_instance):
-        """Test getting house disclosure RSS feed"""
-        with vcr_instance.use_cassette("intelligence/house_disclosure_rss.yaml"):
-            disclosures = self._handle_rate_limit(
-                fmp_client.intelligence.get_house_disclosure_rss,
-                page=0,
-            )
-
-            assert isinstance(disclosures, list)
-            # API may return empty array if no data available
-            if len(disclosures) > 0:
-                for disclosure in disclosures:
-                    assert isinstance(disclosure, HouseDisclosure)
-                    assert isinstance(disclosure.disclosure_date, datetime)
-                    assert isinstance(disclosure.transaction_date, datetime)
-                    assert isinstance(disclosure.amount, str)
-                    assert isinstance(disclosure.first_name, str)
-                    assert isinstance(disclosure.last_name, str)
-                    assert isinstance(disclosure.district, str)
-                    assert isinstance(disclosure.asset_description, str)
-
     def test_get_crowdfunding_rss(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting latest crowdfunding offerings"""
         with vcr_instance.use_cassette("intelligence/crowdfunding_rss.yaml"):

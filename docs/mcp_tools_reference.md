@@ -161,7 +161,6 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 | `historical_earnings` | Access historical earnings reports including revenue, EPS, and dates for past quarters and fiscal years |
 | `historical_social_sentiment` | Retrieve historical social media sentiment data including sentiment scores, engagement metrics, and trend analysis |
 | `house_disclosure` | Access House of Representatives trading disclosures including transaction details, filing information, and trade specifics |
-| `house_disclosure_rss` | Access real-time RSS feed of House Representative trading disclosures including new filings and updates |
 | `house_latest` | Get the latest House financial disclosures with transaction details |
 | `house_trades_by_name` | Get House trading data filtered by representative name |
 | `institutional_holders` | Retrieve institutional ownership data including holder details, position sizes, and ownership changes |

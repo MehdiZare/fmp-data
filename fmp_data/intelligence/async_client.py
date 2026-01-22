@@ -33,7 +33,6 @@ from fmp_data.intelligence.endpoints import (
     GRADES_NEWS,
     HISTORICAL_EARNINGS,
     HOUSE_DISCLOSURE,
-    HOUSE_DISCLOSURE_RSS,
     HOUSE_LATEST,
     HOUSE_TRADES_BY_NAME,
     IPO_CALENDAR,
@@ -460,10 +459,6 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
     async def get_house_trades_by_name(self, name: str) -> list[HouseDisclosure]:
         """Get House trading data by name"""
         return await self.client.request_async(HOUSE_TRADES_BY_NAME, name=name)
-
-    async def get_house_disclosure_rss(self, page: int = 0) -> list[HouseDisclosure]:
-        """Get House disclosure RSS feed"""
-        return await self.client.request_async(HOUSE_DISCLOSURE_RSS, page=page)
 
     # Fundraising methods
     async def get_crowdfunding_rss(

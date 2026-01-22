@@ -90,7 +90,7 @@ DEFAULT_TOOLS: list[str] = [
     "institutional.insider_trades",
     "institutional.institutional_holdings",
     "institutional.transaction_types",
-    # Intelligence (35 tools) - News, Sentiment, and Market Events
+    # Intelligence (34 tools) - News, Sentiment, and Market Events
     "intelligence.crowdfunding_by_cik",
     "intelligence.crowdfunding_rss",
     "intelligence.crypto_news",
@@ -111,7 +111,6 @@ DEFAULT_TOOLS: list[str] = [
     "intelligence.historical_earnings",
     "intelligence.historical_social_sentiment",
     "intelligence.house_disclosure",
-    "intelligence.house_disclosure_rss",
     "intelligence.house_latest",
     "intelligence.house_trades_by_name",
     "intelligence.ipo_calendar",
