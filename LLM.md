@@ -18,13 +18,15 @@ LangChain and MCP integrations. Coverage is maintained as the catalog evolves.
 
 ## Quickstart (sync)
 ```python
+from datetime import date
+
 from fmp_data import FMPDataClient
 
 with FMPDataClient.from_env() as client:
     quote = client.company.get_quote("AAPL")
     profile = client.company.get_profile("AAPL")
     prices = client.company.get_historical_prices(
-        symbol="AAPL", from_date="2024-01-01", to_date="2024-03-01"
+        symbol="AAPL", from_date=date(2024, 1, 1), to_date=date(2024, 3, 1)
     )
     gainers = client.market.get_gainers()
     ratios = client.fundamental.get_financial_ratios("AAPL")

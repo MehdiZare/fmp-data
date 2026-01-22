@@ -350,6 +350,8 @@ Full endpoint catalog: [docs/api/endpoints.md](docs/api/endpoints.md)
 
 ### 1. Company Information
 ```python
+from datetime import date
+
 from fmp_data import FMPDataClient
 
 with FMPDataClient.from_env() as client:
@@ -402,8 +404,8 @@ with FMPDataClient.from_env() as client:
     # Get historical prices
     history = client.company.get_historical_prices(
         symbol="TSLA",
-        from_date="2023-01-01",
-        to_date="2023-12-31"
+        from_date=date(2023, 1, 1),
+        to_date=date(2023, 12, 31)
     )
 
     # Get intraday prices
