@@ -659,7 +659,7 @@ EOD_BULK: Endpoint = Endpoint(
         EndpointParam(
             name="date",
             location=ParamLocation.QUERY,
-            param_type=ParamType.DATE,
+            param_type=ParamType.STRING,
             required=True,
             description="End-of-day date",
         )

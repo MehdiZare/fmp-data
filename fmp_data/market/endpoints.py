@@ -260,7 +260,7 @@ ISIN_SEARCH: Endpoint = Endpoint(
     ],
 )
 
-MARKET_HOURS: Endpoint = Endpoint(
+MARKET_HOURS: Endpoint[MarketHours] = Endpoint(
     name="market_hours",
     path="exchange-market-hours",
     version=APIVersion.STABLE,
@@ -279,7 +279,7 @@ MARKET_HOURS: Endpoint = Endpoint(
     response_model=MarketHours,
 )
 
-ALL_EXCHANGE_MARKET_HOURS: Endpoint = Endpoint(
+ALL_EXCHANGE_MARKET_HOURS: Endpoint[MarketHours] = Endpoint(
     name="all_exchange_market_hours",
     path="all-exchange-market-hours",
     version=APIVersion.STABLE,

@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import asyncio
 from contextvars import ContextVar
-from datetime import date, datetime
 import json
 import logging
 import time
@@ -244,8 +243,6 @@ class BaseClient:
             # Extract query parameters and add API key
             query_params = endpoint.get_query_params(validated_params)
             query_params["apikey"] = self.config.api_key
-            query_params = self._serialize_query_params(query_params)
-            query_params = self._serialize_query_params(query_params)
 
             self.logger.debug(
                 f"Making request to {endpoint.name}",
@@ -336,8 +333,8 @@ class BaseClient:
             else:
                 raise TypeError("handle_response() missing required response argument")
         else:
-            assert isinstance(endpoint, Endpoint)
-            endpoint_for_error = endpoint
+            if isinstance(endpoint, Endpoint):
+                endpoint_for_error = endpoint
 
         assert response is not None
 
@@ -375,19 +372,6 @@ class BaseClient:
         if isinstance(data, dict | list):
             return data
         return {"raw_content": str(data)}
-
-    @staticmethod
-    def _serialize_query_params(params: dict[str, Any]) -> dict[str, Any]:
-        """Normalize query params for transport (e.g., date/datetime to strings)."""
-        serialized: dict[str, Any] = {}
-        for key, value in params.items():
-            if isinstance(value, datetime):
-                serialized[key] = value.isoformat()
-            elif isinstance(value, date):
-                serialized[key] = value.strftime("%Y-%m-%d")
-            else:
-                serialized[key] = value
-        return serialized
 
     def _handle_http_status_error(
         self,

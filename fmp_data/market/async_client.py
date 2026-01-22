@@ -2,7 +2,6 @@
 """Async client for market data endpoints."""
 
 from datetime import date as dt_date
-from typing import cast
 
 from fmp_data.base import AsyncEndpointGroup
 from fmp_data.market.endpoints import (
@@ -203,12 +202,17 @@ class AsyncMarketClient(AsyncEndpointGroup):
             ValueError: If no market hours data returned from API
         """
         result = await self.client.request_async(MARKET_HOURS, exchange=exchange)
-
-        return cast(MarketHours, self._unwrap_single(result, MarketHours))
+        try:
+            return self._unwrap_single(result, MarketHours)
+        except ValueError as exc:
+            raise ValueError("No market hours data returned from API") from exc
 
     async def get_all_exchange_market_hours(self) -> list[MarketHours]:
         """Get market trading hours information for all exchanges"""
-        return await self.client.request_async(ALL_EXCHANGE_MARKET_HOURS)
+        result = await self.client.request_async(ALL_EXCHANGE_MARKET_HOURS)
+        if isinstance(result, list):
+            return result
+        return [result]
 
     async def get_holidays_by_exchange(
         self, exchange: str = "NYSE"

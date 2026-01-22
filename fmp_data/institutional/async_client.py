@@ -2,7 +2,6 @@
 """Async client for institutional activity endpoints."""
 
 from datetime import date
-from typing import cast
 
 from fmp_data.base import AsyncEndpointGroup
 from fmp_data.institutional.endpoints import (
@@ -183,7 +182,7 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
     async def get_insider_statistics(self, symbol: str) -> InsiderStatistic:
         """Get insider trading statistics"""
         result = await self.client.request_async(INSIDER_STATISTICS, symbol=symbol)
-        return cast(InsiderStatistic, self._unwrap_single(result, InsiderStatistic))
+        return self._unwrap_single(result, InsiderStatistic)
 
     async def get_cik_mappings(
         self, page: int = 0, limit: int = 1000
@@ -262,10 +261,7 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         result = await self.client.request_async(
             INSIDER_TRADING_STATISTICS_ENHANCED, symbol=symbol
         )
-        return cast(
-            InsiderTradingStatistics,
-            self._unwrap_single(result, InsiderTradingStatistics),
-        )
+        return self._unwrap_single(result, InsiderTradingStatistics)
 
     # Form 13F Methods
     async def get_institutional_ownership_latest(

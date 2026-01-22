@@ -772,7 +772,7 @@ SOCIAL_SENTIMENT_CHANGES_ENDPOINT: Endpoint = Endpoint(
 )
 
 # ESG Endpoints
-ESG_DATA: Endpoint = Endpoint(
+ESG_DATA: Endpoint[ESGData] = Endpoint(
     name="esg_data",
     path="esg-disclosures",
     version=APIVersion.STABLE,
@@ -790,7 +790,7 @@ ESG_DATA: Endpoint = Endpoint(
     response_model=ESGData,
 )
 
-ESG_RATINGS: Endpoint = Endpoint(
+ESG_RATINGS: Endpoint[ESGRating] = Endpoint(
     name="esg_ratings",
     path="esg-ratings",
     version=APIVersion.STABLE,
@@ -1100,7 +1100,7 @@ EQUITY_OFFERING_BY_CIK: Endpoint = Endpoint(
 )
 
 # Analyst Ratings and Grades Endpoints
-RATINGS_SNAPSHOT: Endpoint = Endpoint(
+RATINGS_SNAPSHOT: Endpoint[RatingsSnapshot] = Endpoint(
     name="ratings_snapshot",
     path="ratings-snapshot",
     version=APIVersion.STABLE,
@@ -1245,7 +1245,7 @@ GRADES_HISTORICAL: Endpoint = Endpoint(
     response_model=HistoricalStockGrade,
 )
 
-GRADES_CONSENSUS: Endpoint = Endpoint(
+GRADES_CONSENSUS: Endpoint[StockGradesConsensus] = Endpoint(
     name="grades_consensus",
     path="grades-consensus",
     version=APIVersion.STABLE,

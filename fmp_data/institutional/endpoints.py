@@ -240,7 +240,7 @@ INSIDER_ROSTER: Endpoint = Endpoint(
     response_model=InsiderRoster,
 )
 
-INSIDER_STATISTICS: Endpoint = Endpoint(
+INSIDER_STATISTICS: Endpoint[InsiderStatistic] = Endpoint(
     name="insider_statistics",
     path="insider-trading/statistics",
     version=APIVersion.STABLE,
@@ -482,7 +482,7 @@ INSIDER_TRADING_BY_NAME: Endpoint = Endpoint(
     response_model=InsiderTradingByName,
 )
 
-INSIDER_TRADING_STATISTICS_ENHANCED: Endpoint = Endpoint(
+INSIDER_TRADING_STATISTICS_ENHANCED: Endpoint[InsiderTradingStatistics] = Endpoint(
     name="insider_trading_statistics_enhanced",
     path="insider-trading/statistics",
     version=APIVersion.STABLE,

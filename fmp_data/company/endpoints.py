@@ -904,7 +904,7 @@ UPGRADES_DOWNGRADES: Endpoint = Endpoint(
     response_model=UpgradeDowngrade,
 )
 
-UPGRADES_DOWNGRADES_CONSENSUS: Endpoint = Endpoint(
+UPGRADES_DOWNGRADES_CONSENSUS: Endpoint[UpgradeDowngradeConsensus] = Endpoint(
     name="upgrades_downgrades_consensus",
     path="upgrades-downgrades-consensus",
     version=APIVersion.STABLE,

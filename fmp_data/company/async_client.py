@@ -7,8 +7,6 @@ and have the same names as their sync equivalents (no _async suffix).
 
 from __future__ import annotations
 
-from typing import cast
-
 from fmp_data.base import AsyncEndpointGroup
 from fmp_data.company.endpoints import (
     AFTERMARKET_QUOTE,
@@ -352,10 +350,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         result = await self.client.request_async(
             UPGRADES_DOWNGRADES_CONSENSUS, symbol=symbol
         )
-        return cast(
-            UpgradeDowngradeConsensus | None,
-            self._unwrap_single(result, UpgradeDowngradeConsensus, allow_none=True),
-        )
+        return self._unwrap_single(result, UpgradeDowngradeConsensus, allow_none=True)
 
     async def get_company_peers(self, symbol: str) -> list[CompanyPeer]:
         """Get company peers"""

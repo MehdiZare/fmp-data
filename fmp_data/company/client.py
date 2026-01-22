@@ -1,8 +1,6 @@
 # fmp_data/company/client.py
 from __future__ import annotations
 
-from typing import cast
-
 from fmp_data.base import EndpointGroup
 from fmp_data.company.endpoints import (
     AFTERMARKET_QUOTE,
@@ -339,10 +337,7 @@ class CompanyClient(EndpointGroup):
     ) -> UpgradeDowngradeConsensus | None:
         """Get upgrades and downgrades consensus"""
         result = self.client.request(UPGRADES_DOWNGRADES_CONSENSUS, symbol=symbol)
-        return cast(
-            UpgradeDowngradeConsensus | None,
-            self._unwrap_single(result, UpgradeDowngradeConsensus, allow_none=True),
-        )
+        return self._unwrap_single(result, UpgradeDowngradeConsensus, allow_none=True)
 
     def get_company_peers(self, symbol: str) -> list[CompanyPeer]:
         """Get company peers"""

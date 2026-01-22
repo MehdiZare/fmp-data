@@ -1,6 +1,5 @@
 # fmp_data/sec/client.py
 from datetime import date, timedelta
-from typing import cast
 
 from pydantic import ValidationError as PydanticValidationError
 from pydantic_core import ValidationError as PydanticCoreValidationError
@@ -249,10 +248,7 @@ class SECClient(EndpointGroup):
                 extra={"symbol": symbol, "error": str(exc)},
             )
             return None
-        return cast(
-            SECProfile | None,
-            self._unwrap_single(result, SECProfile, allow_none=True),
-        )
+        return self._unwrap_single(result, SECProfile, allow_none=True)
 
     def get_sic_codes(self) -> list[SICCode]:
         """Get list of all Standard Industrial Classification (SIC) codes

@@ -1,6 +1,5 @@
 # fmp_data/market/client.py
 from datetime import date as dt_date
-from typing import cast
 
 from fmp_data.base import EndpointGroup
 from fmp_data.market.endpoints import (
@@ -199,12 +198,17 @@ class MarketClient(EndpointGroup):
             ValueError: If no market hours data returned from API
         """
         result = self.client.request(MARKET_HOURS, exchange=exchange)
-
-        return cast(MarketHours, self._unwrap_single(result, MarketHours))
+        try:
+            return self._unwrap_single(result, MarketHours)
+        except ValueError as exc:
+            raise ValueError("No market hours data returned from API") from exc
 
     def get_all_exchange_market_hours(self) -> list[MarketHours]:
         """Get market trading hours information for all exchanges"""
-        return self.client.request(ALL_EXCHANGE_MARKET_HOURS)
+        result = self.client.request(ALL_EXCHANGE_MARKET_HOURS)
+        if isinstance(result, list):
+            return result
+        return [result]
 
     def get_holidays_by_exchange(self, exchange: str = "NYSE") -> list[MarketHoliday]:
         """Get market holidays for a specific exchange"""

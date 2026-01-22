@@ -376,7 +376,7 @@ SEC_COMPANY_SEARCH_CIK: Endpoint = Endpoint(
     ],
 )
 
-SEC_PROFILE: Endpoint = Endpoint(
+SEC_PROFILE: Endpoint[SECProfile] = Endpoint(
     name="sec_profile",
     path="sec-profile",
     version=APIVersion.STABLE,

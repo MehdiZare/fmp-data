@@ -1,6 +1,5 @@
 # fmp_data/intelligence/client.py
 from datetime import date
-from typing import cast
 
 from fmp_data.base import EndpointGroup
 from fmp_data.helpers import RemovedEndpointError, removed
@@ -407,18 +406,12 @@ class MarketIntelligenceClient(EndpointGroup):
     def get_esg_data(self, symbol: str) -> ESGData | None:
         """Get ESG data for a company"""
         result = self.client.request(ESG_DATA, symbol=symbol)
-        return cast(
-            ESGData | None,
-            self._unwrap_single(result, ESGData, allow_none=True),
-        )
+        return self._unwrap_single(result, ESGData, allow_none=True)
 
     def get_esg_ratings(self, symbol: str) -> ESGRating | None:
         """Get ESG ratings for a company"""
         result = self.client.request(ESG_RATINGS, symbol=symbol)
-        return cast(
-            ESGRating | None,
-            self._unwrap_single(result, ESGRating, allow_none=True),
-        )
+        return self._unwrap_single(result, ESGRating, allow_none=True)
 
     def get_esg_benchmark(self) -> list[ESGBenchmark]:
         """Get ESG benchmark data"""
@@ -491,10 +484,7 @@ class MarketIntelligenceClient(EndpointGroup):
     def get_ratings_snapshot(self, symbol: str) -> RatingsSnapshot | None:
         """Get current analyst ratings snapshot"""
         result = self.client.request(RATINGS_SNAPSHOT, symbol=symbol)
-        return cast(
-            RatingsSnapshot | None,
-            self._unwrap_single(result, RatingsSnapshot, allow_none=True),
-        )
+        return self._unwrap_single(result, RatingsSnapshot, allow_none=True)
 
     def get_ratings_historical(
         self, symbol: str, limit: int = 100
@@ -525,10 +515,7 @@ class MarketIntelligenceClient(EndpointGroup):
     def get_grades_consensus(self, symbol: str) -> StockGradesConsensus | None:
         """Get stock grades consensus summary"""
         result = self.client.request(GRADES_CONSENSUS, symbol=symbol)
-        return cast(
-            StockGradesConsensus | None,
-            self._unwrap_single(result, StockGradesConsensus, allow_none=True),
-        )
+        return self._unwrap_single(result, StockGradesConsensus, allow_none=True)
 
     def get_grades_news(self, symbol: str, page: int = 0) -> list[StockGradeNews]:
         """Get stock grade news"""

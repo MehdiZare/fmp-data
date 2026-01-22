@@ -1,6 +1,5 @@
 # fmp_data/institutional/client.py
 from datetime import date
-from typing import cast
 
 from fmp_data.base import EndpointGroup
 from fmp_data.institutional.endpoints import (
@@ -177,7 +176,7 @@ class InstitutionalClient(EndpointGroup):
     def get_insider_statistics(self, symbol: str) -> InsiderStatistic:
         """Get insider trading statistics"""
         result = self.client.request(INSIDER_STATISTICS, symbol=symbol)
-        return cast(InsiderStatistic, self._unwrap_single(result, InsiderStatistic))
+        return self._unwrap_single(result, InsiderStatistic)
 
     def get_cik_mappings(self, page: int = 0, limit: int = 1000) -> list[CIKMapping]:
         """Get CIK to name mappings"""
@@ -248,10 +247,7 @@ class InstitutionalClient(EndpointGroup):
     ) -> InsiderTradingStatistics:
         """Get enhanced insider trading statistics"""
         result = self.client.request(INSIDER_TRADING_STATISTICS_ENHANCED, symbol=symbol)
-        return cast(
-            InsiderTradingStatistics,
-            self._unwrap_single(result, InsiderTradingStatistics),
-        )
+        return self._unwrap_single(result, InsiderTradingStatistics)
 
     # Form 13F Methods
     def get_institutional_ownership_latest(
