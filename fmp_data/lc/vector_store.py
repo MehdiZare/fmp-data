@@ -287,8 +287,12 @@ class EndpointVectorStore:
                         "LangChain dependencies not available. "
                         "Install with: pip install 'fmp-data[langchain]'"
                     ) from exc
-                result = cast(Any, convert_to_openai_function(cast(Any, tool)))
-                return cast(dict[str, Any], result)
+                if not isinstance(tool, StructuredTool):
+                    raise TypeError("OpenAI tool conversion requires StructuredTool")
+                result = convert_to_openai_function(tool)
+                if not isinstance(result, dict):
+                    raise TypeError("OpenAI tool conversion returned non-dict")
+                return result
 
             case "anthropic":
                 model_schema: dict[str, Any]
@@ -297,7 +301,10 @@ class EndpointVectorStore:
                 ):
                     model_schema = tool.args_schema.model_json_schema()
                 else:
-                    model_schema = cast(dict[str, Any], tool.args_schema or {})
+                    raw_schema = tool.args_schema or {}
+                    if not isinstance(raw_schema, dict):
+                        raise TypeError("Tool args schema must be a dict")
+                    model_schema = raw_schema
 
                 return {
                     "name": tool.name,
@@ -472,7 +479,9 @@ class EndpointVectorStore:
                 if similarity < threshold:
                     continue
 
-                endpoint_name = cast(str, doc.metadata.get("endpoint"))
+                endpoint_name = doc.metadata.get("endpoint")
+                if not isinstance(endpoint_name, str):
+                    continue
                 info = self.registry.get_endpoint(endpoint_name)
                 if info:
                     results.append(
@@ -593,17 +602,15 @@ class EndpointVectorStore:
                 f"Check 'status' field to handle success/error cases appropriately."
             )
 
-            return cast(
-                ToolLike,
-                StructuredTool.from_function(
-                    func=endpoint_func,
-                    name=semantics.method_name,
-                    description=full_description,
-                    args_schema=tool_args_model,
-                    return_direct=True,
-                    infer_schema=False,
-                ),
+            tool: StructuredTool = StructuredTool.from_function(
+                func=endpoint_func,
+                name=semantics.method_name,
+                description=full_description,
+                args_schema=tool_args_model,
+                return_direct=True,
+                infer_schema=False,
             )
+            return cast(ToolLike, tool)
 
         except Exception as e:
             self.logger.error(f"Failed to create tool: {e!s}", exc_info=True)
@@ -637,7 +644,9 @@ class EndpointVectorStore:
             else:
                 stored_docs = self.vector_store.similarity_search("", k=10000)
                 for doc in stored_docs:
-                    endpoint_name = cast(str, doc.metadata.get("endpoint"))
+                    endpoint_name = doc.metadata.get("endpoint")
+                    if not isinstance(endpoint_name, str):
+                        continue
                     info = self.registry.get_endpoint(endpoint_name)
                     if info:
                         tools.append(self.create_tool(info))

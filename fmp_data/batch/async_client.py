@@ -5,7 +5,7 @@ import csv
 from datetime import date
 import io
 import logging
-from typing import Any, TypeVar, cast, get_args, get_origin
+from typing import Any, TypeVar, get_args, get_origin
 
 from pydantic import AnyHttpUrl, BaseModel, HttpUrl
 from pydantic import ValidationError as PydanticValidationError
@@ -70,6 +70,7 @@ from fmp_data.fundamental.models import (
     KeyMetricsTTM,
 )
 from fmp_data.investment.models import ETFHolding
+from fmp_data.models import Endpoint
 
 logger = logging.getLogger(__name__)
 ModelT = TypeVar("ModelT", bound=BaseModel)
@@ -101,6 +102,14 @@ class AsyncBatchClient(AsyncEndpointGroup):
                 normalized[key] = stripped if stripped else None
             rows.append(normalized)
         return rows
+
+    async def _request_csv(self, endpoint: Endpoint, **params: Any) -> bytes:
+        result = await self.client.request_async(endpoint, **params)
+        if isinstance(result, bytearray):
+            return bytes(result)
+        if not isinstance(result, bytes):
+            raise TypeError(f"Expected bytes response for {endpoint.name}")
+        return result
 
     @staticmethod
     def _parse_csv_models(raw: bytes, model: type[ModelT]) -> list[ModelT]:
@@ -326,12 +335,12 @@ class AsyncBatchClient(AsyncEndpointGroup):
 
     async def get_profile_bulk(self, part: str) -> list[CompanyProfile]:
         """Get company profile data in bulk"""
-        raw = cast(bytes, await self.client.request_async(PROFILE_BULK, part=part))
+        raw = await self._request_csv(PROFILE_BULK, part=part)
         return self._parse_csv_models(raw, CompanyProfile)
 
     async def get_dcf_bulk(self) -> list[DCF]:
         """Get discounted cash flow valuations in bulk"""
-        raw = cast(bytes, await self.client.request_async(DCF_BULK))
+        raw = await self._request_csv(DCF_BULK)
         rows = self._parse_csv_rows(raw)
         for row in rows:
             if "Stock Price" in row and "stockPrice" not in row:
@@ -340,80 +349,67 @@ class AsyncBatchClient(AsyncEndpointGroup):
 
     async def get_rating_bulk(self) -> list[CompanyRating]:
         """Get stock ratings in bulk"""
-        raw = cast(bytes, await self.client.request_async(RATING_BULK))
+        raw = await self._request_csv(RATING_BULK)
         return self._parse_csv_models(raw, CompanyRating)
 
     async def get_scores_bulk(self) -> list[FinancialScore]:
         """Get financial scores in bulk"""
-        raw = cast(bytes, await self.client.request_async(SCORES_BULK))
+        raw = await self._request_csv(SCORES_BULK)
         return self._parse_csv_models(raw, FinancialScore)
 
     async def get_ratios_ttm_bulk(self) -> list[FinancialRatiosTTM]:
         """Get trailing twelve month financial ratios in bulk"""
-        raw = cast(bytes, await self.client.request_async(RATIOS_TTM_BULK))
+        raw = await self._request_csv(RATIOS_TTM_BULK)
         return self._parse_csv_models(raw, FinancialRatiosTTM)
 
     async def get_price_target_summary_bulk(self) -> list[PriceTargetSummary]:
         """Get bulk price target summaries"""
-        raw = cast(bytes, await self.client.request_async(PRICE_TARGET_SUMMARY_BULK))
+        raw = await self._request_csv(PRICE_TARGET_SUMMARY_BULK)
         return self._parse_csv_models(raw, PriceTargetSummary)
 
     async def get_etf_holder_bulk(self, part: str) -> list[ETFHolding]:
         """Get bulk ETF holdings"""
-        raw = cast(bytes, await self.client.request_async(ETF_HOLDER_BULK, part=part))
+        raw = await self._request_csv(ETF_HOLDER_BULK, part=part)
         return self._parse_csv_models(raw, ETFHolding)
 
     async def get_upgrades_downgrades_consensus_bulk(
         self,
     ) -> list[UpgradeDowngradeConsensus]:
         """Get bulk upgrades/downgrades consensus data"""
-        raw = cast(
-            bytes,
-            await self.client.request_async(UPGRADES_DOWNGRADES_CONSENSUS_BULK),
-        )
+        raw = await self._request_csv(UPGRADES_DOWNGRADES_CONSENSUS_BULK)
         rows = [row for row in self._parse_csv_rows(raw) if row.get("symbol")]
         return [UpgradeDowngradeConsensus.model_validate(row) for row in rows]
 
     async def get_key_metrics_ttm_bulk(self) -> list[KeyMetricsTTM]:
         """Get bulk trailing twelve month key metrics"""
-        raw = cast(bytes, await self.client.request_async(KEY_METRICS_TTM_BULK))
+        raw = await self._request_csv(KEY_METRICS_TTM_BULK)
         return self._parse_csv_models(raw, KeyMetricsTTM)
 
     async def get_peers_bulk(self) -> list[PeersBulk]:
         """Get bulk peer lists"""
-        raw = cast(bytes, await self.client.request_async(PEERS_BULK))
+        raw = await self._request_csv(PEERS_BULK)
         return self._parse_csv_models(raw, PeersBulk)
 
     async def get_earnings_surprises_bulk(
         self, year: int
     ) -> list[EarningsSurpriseBulk]:
         """Get bulk earnings surprises for a given year"""
-        raw = cast(
-            bytes, await self.client.request_async(EARNINGS_SURPRISES_BULK, year=year)
-        )
+        raw = await self._request_csv(EARNINGS_SURPRISES_BULK, year=year)
         return self._parse_csv_models(raw, EarningsSurpriseBulk)
 
     async def get_income_statement_bulk(
         self, year: int, period: str
     ) -> list[IncomeStatement]:
         """Get bulk income statements"""
-        raw = cast(
-            bytes,
-            await self.client.request_async(
-                INCOME_STATEMENT_BULK, year=year, period=period
-            ),
-        )
+        raw = await self._request_csv(INCOME_STATEMENT_BULK, year=year, period=period)
         return self._parse_csv_models(raw, IncomeStatement)
 
     async def get_income_statement_growth_bulk(
         self, year: int, period: str
     ) -> list[FinancialGrowth]:
         """Get bulk income statement growth data"""
-        raw = cast(
-            bytes,
-            await self.client.request_async(
-                INCOME_STATEMENT_GROWTH_BULK, year=year, period=period
-            ),
+        raw = await self._request_csv(
+            INCOME_STATEMENT_GROWTH_BULK, year=year, period=period
         )
         return self._parse_csv_models(raw, FinancialGrowth)
 
@@ -421,11 +417,8 @@ class AsyncBatchClient(AsyncEndpointGroup):
         self, year: int, period: str
     ) -> list[BalanceSheet]:
         """Get bulk balance sheet statements"""
-        raw = cast(
-            bytes,
-            await self.client.request_async(
-                BALANCE_SHEET_STATEMENT_BULK, year=year, period=period
-            ),
+        raw = await self._request_csv(
+            BALANCE_SHEET_STATEMENT_BULK, year=year, period=period
         )
         return self._parse_csv_models(raw, BalanceSheet)
 
@@ -433,11 +426,8 @@ class AsyncBatchClient(AsyncEndpointGroup):
         self, year: int, period: str
     ) -> list[FinancialGrowth]:
         """Get bulk balance sheet growth data"""
-        raw = cast(
-            bytes,
-            await self.client.request_async(
-                BALANCE_SHEET_STATEMENT_GROWTH_BULK, year=year, period=period
-            ),
+        raw = await self._request_csv(
+            BALANCE_SHEET_STATEMENT_GROWTH_BULK, year=year, period=period
         )
         return self._parse_csv_models(raw, FinancialGrowth)
 
@@ -445,11 +435,8 @@ class AsyncBatchClient(AsyncEndpointGroup):
         self, year: int, period: str
     ) -> list[CashFlowStatement]:
         """Get bulk cash flow statements"""
-        raw = cast(
-            bytes,
-            await self.client.request_async(
-                CASH_FLOW_STATEMENT_BULK, year=year, period=period
-            ),
+        raw = await self._request_csv(
+            CASH_FLOW_STATEMENT_BULK, year=year, period=period
         )
         return self._parse_csv_models(raw, CashFlowStatement)
 
@@ -457,11 +444,8 @@ class AsyncBatchClient(AsyncEndpointGroup):
         self, year: int, period: str
     ) -> list[FinancialGrowth]:
         """Get bulk cash flow growth data"""
-        raw = cast(
-            bytes,
-            await self.client.request_async(
-                CASH_FLOW_STATEMENT_GROWTH_BULK, year=year, period=period
-            ),
+        raw = await self._request_csv(
+            CASH_FLOW_STATEMENT_GROWTH_BULK, year=year, period=period
         )
         return self._parse_csv_models(raw, FinancialGrowth)
 
@@ -472,5 +456,5 @@ class AsyncBatchClient(AsyncEndpointGroup):
             if isinstance(target_date, date)
             else target_date
         )
-        raw = cast(bytes, await self.client.request_async(EOD_BULK, date=date_param))
+        raw = await self._request_csv(EOD_BULK, date=date_param)
         return self._parse_csv_models(raw, EODBulk)

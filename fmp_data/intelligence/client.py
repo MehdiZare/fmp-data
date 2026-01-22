@@ -407,16 +407,18 @@ class MarketIntelligenceClient(EndpointGroup):
     def get_esg_data(self, symbol: str) -> ESGData | None:
         """Get ESG data for a company"""
         result = self.client.request(ESG_DATA, symbol=symbol)
-        if isinstance(result, list):
-            return cast(ESGData, result[0]) if len(result) > 0 else None
-        return cast(ESGData, result)
+        return cast(
+            ESGData | None,
+            self._unwrap_single(result, ESGData, allow_none=True),
+        )
 
     def get_esg_ratings(self, symbol: str) -> ESGRating | None:
         """Get ESG ratings for a company"""
         result = self.client.request(ESG_RATINGS, symbol=symbol)
-        if isinstance(result, list):
-            return cast(ESGRating, result[0]) if len(result) > 0 else None
-        return cast(ESGRating, result)
+        return cast(
+            ESGRating | None,
+            self._unwrap_single(result, ESGRating, allow_none=True),
+        )
 
     def get_esg_benchmark(self) -> list[ESGBenchmark]:
         """Get ESG benchmark data"""
@@ -489,9 +491,10 @@ class MarketIntelligenceClient(EndpointGroup):
     def get_ratings_snapshot(self, symbol: str) -> RatingsSnapshot | None:
         """Get current analyst ratings snapshot"""
         result = self.client.request(RATINGS_SNAPSHOT, symbol=symbol)
-        if isinstance(result, list):
-            return cast(RatingsSnapshot, result[0]) if len(result) > 0 else None
-        return cast(RatingsSnapshot, result)
+        return cast(
+            RatingsSnapshot | None,
+            self._unwrap_single(result, RatingsSnapshot, allow_none=True),
+        )
 
     def get_ratings_historical(
         self, symbol: str, limit: int = 100
@@ -522,9 +525,10 @@ class MarketIntelligenceClient(EndpointGroup):
     def get_grades_consensus(self, symbol: str) -> StockGradesConsensus | None:
         """Get stock grades consensus summary"""
         result = self.client.request(GRADES_CONSENSUS, symbol=symbol)
-        if isinstance(result, list):
-            return cast(StockGradesConsensus, result[0]) if len(result) > 0 else None
-        return cast(StockGradesConsensus, result)
+        return cast(
+            StockGradesConsensus | None,
+            self._unwrap_single(result, StockGradesConsensus, allow_none=True),
+        )
 
     def get_grades_news(self, symbol: str, page: int = 0) -> list[StockGradeNews]:
         """Get stock grade news"""

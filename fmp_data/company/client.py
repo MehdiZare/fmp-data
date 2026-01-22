@@ -339,11 +339,10 @@ class CompanyClient(EndpointGroup):
     ) -> UpgradeDowngradeConsensus | None:
         """Get upgrades and downgrades consensus"""
         result = self.client.request(UPGRADES_DOWNGRADES_CONSENSUS, symbol=symbol)
-        if isinstance(result, list):
-            if not result:
-                return None
-            return cast(UpgradeDowngradeConsensus, result[0])
-        return cast(UpgradeDowngradeConsensus, result)
+        return cast(
+            UpgradeDowngradeConsensus | None,
+            self._unwrap_single(result, UpgradeDowngradeConsensus, allow_none=True),
+        )
 
     def get_company_peers(self, symbol: str) -> list[CompanyPeer]:
         """Get company peers"""
@@ -726,7 +725,9 @@ class CompanyClient(EndpointGroup):
             "period": period,
         }
         result = self.client.request(FINANCIAL_REPORTS_JSON, **params)
-        return cast(dict, result)
+        if not isinstance(result, dict):
+            raise TypeError("Expected dict response for financial_reports_json")
+        return result
 
     def get_financial_reports_xlsx(
         self, symbol: str, year: int, period: str = "FY"
@@ -747,7 +748,9 @@ class CompanyClient(EndpointGroup):
             "period": period,
         }
         result = self.client.request(FINANCIAL_REPORTS_XLSX, **params)
-        return cast(bytes, result)
+        if not isinstance(result, bytes | bytearray):
+            raise TypeError("Expected bytes response for financial_reports_xlsx")
+        return bytes(result)
 
     def get_income_statement_as_reported(
         self, symbol: str, period: str = "annual", limit: int = 10

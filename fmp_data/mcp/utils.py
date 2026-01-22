@@ -15,7 +15,7 @@ import platform
 import shutil
 import subprocess
 import sys
-from typing import Any, cast
+from typing import Any
 
 
 def get_claude_config_path() -> Path:
@@ -132,7 +132,10 @@ def load_claude_config() -> dict[str, Any]:
 
     if config_path.exists():
         with open(config_path) as f:
-            return cast(dict[str, Any], json.load(f))
+            data = json.load(f)
+        if not isinstance(data, dict):
+            raise TypeError("Claude config JSON must be an object")
+        return data
 
     return {}
 

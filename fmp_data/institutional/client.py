@@ -177,7 +177,7 @@ class InstitutionalClient(EndpointGroup):
     def get_insider_statistics(self, symbol: str) -> InsiderStatistic:
         """Get insider trading statistics"""
         result = self.client.request(INSIDER_STATISTICS, symbol=symbol)
-        return cast(InsiderStatistic, result[0] if isinstance(result, list) else result)
+        return cast(InsiderStatistic, self._unwrap_single(result, InsiderStatistic))
 
     def get_cik_mappings(self, page: int = 0, limit: int = 1000) -> list[CIKMapping]:
         """Get CIK to name mappings"""
@@ -249,7 +249,8 @@ class InstitutionalClient(EndpointGroup):
         """Get enhanced insider trading statistics"""
         result = self.client.request(INSIDER_TRADING_STATISTICS_ENHANCED, symbol=symbol)
         return cast(
-            InsiderTradingStatistics, result[0] if isinstance(result, list) else result
+            InsiderTradingStatistics,
+            self._unwrap_single(result, InsiderTradingStatistics),
         )
 
     # Form 13F Methods

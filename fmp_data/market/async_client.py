@@ -204,12 +204,7 @@ class AsyncMarketClient(AsyncEndpointGroup):
         """
         result = await self.client.request_async(MARKET_HOURS, exchange=exchange)
 
-        # result is already a list[MarketHours] from base client processing
-        if not isinstance(result, list) or not result:
-            raise ValueError("No market hours data returned from API")
-
-        # Cast to help mypy understand the type
-        return cast(MarketHours, result[0])
+        return cast(MarketHours, self._unwrap_single(result, MarketHours))
 
     async def get_all_exchange_market_hours(self) -> list[MarketHours]:
         """Get market trading hours information for all exchanges"""

@@ -249,11 +249,10 @@ class SECClient(EndpointGroup):
                 extra={"symbol": symbol, "error": str(exc)},
             )
             return None
-        if isinstance(result, list):
-            if not result:
-                return None
-            return cast(SECProfile, result[0])
-        return cast(SECProfile, result)
+        return cast(
+            SECProfile | None,
+            self._unwrap_single(result, SECProfile, allow_none=True),
+        )
 
     def get_sic_codes(self) -> list[SICCode]:
         """Get list of all Standard Industrial Classification (SIC) codes
