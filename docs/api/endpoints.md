@@ -209,7 +209,6 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 | `price_target_news` | `/stable/price-target-news` | Get price target news |
 | `ratings_historical` | `/stable/ratings-historical` | Get historical analyst ratings |
 | `ratings_snapshot` | `/stable/ratings-snapshot` | Get current analyst ratings snapshot |
-| `house_disclosure_rss` | `/stable/senate-disclosure-rss-feed` | Get House disclosure RSS feed |
 | `senate_latest` | `/stable/senate-latest` | Get latest Senate financial disclosures |
 | `senate_trading` | `/stable/senate-trades` | Get Senate trading data by symbol |
 | `senate_trades_by_name` | `/stable/senate-trades-by-name` | Get Senate trading data by name |

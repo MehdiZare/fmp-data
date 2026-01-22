@@ -153,7 +153,6 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 | `esg_benchmark` | Retrieve industry ESG benchmarks and sector averages for environmental, social, and governance metrics |
 | `esg_data` | Retrieve detailed ESG (Environmental, Social, Governance) metrics and scores for companies including component breakdowns and benchmarks |
 | `esg_ratings` | Access company ESG ratings and scores including environmental, social, and governance performance metrics and industry rankings |
-| `financial_reports_dates` | Retrieve available financial report dates and filing deadlines |
 | `fmp_articles` | Access Financial Modeling Prep articles including market analysis, company research, and financial insights |
 | `forex_news` | Retrieve forex market news including currency pair updates, exchange rate movements, and international market developments |
 | `forex_symbol_news` | Search forex news for a specific currency pair to monitor pair-specific developments and analysis |
@@ -161,10 +160,8 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 | `historical_earnings` | Access historical earnings reports including revenue, EPS, and dates for past quarters and fiscal years |
 | `historical_social_sentiment` | Retrieve historical social media sentiment data including sentiment scores, engagement metrics, and trend analysis |
 | `house_disclosure` | Access House of Representatives trading disclosures including transaction details, filing information, and trade specifics |
-| `house_disclosure_rss` | Access real-time RSS feed of House Representative trading disclosures including new filings and updates |
 | `house_latest` | Get the latest House financial disclosures with transaction details |
 | `house_trades_by_name` | Get House trading data filtered by representative name |
-| `institutional_holders` | Retrieve institutional ownership data including holder details, position sizes, and ownership changes |
 | `ipo_calendar` | Retrieve upcoming and recent IPO events including pricing details, offering sizes, and listing dates |
 | `press_releases` | Retrieve corporate press releases and official company announcements with detailed content and publication information |
 | `press_releases_by_symbol` | Retrieve company-specific press releases and official announcements including corporate events and updates |

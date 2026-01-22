@@ -31,7 +31,7 @@ The smallest useful configuration with just essential tools:
 Optimized for active trading and technical analysis:
 - Real-time quotes and market movers
 - Technical indicators (SMA, RSI, MACD, etc.)
-- Pre/post market data
+- Pre-/post-market data
 - Price targets and news
 
 **Use case:** Day trading, swing trading, technical analysis
