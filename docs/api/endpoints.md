@@ -78,7 +78,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 | `product_revenue_segmentation` | `/stable/revenue-product-segmentation` | Get detailed revenue segmentation by product or service line. Shows how company revenue is distributed across different products and services, helping understand revenue diversification and key product contributions. |
 | `share_float` | `/stable/shares-float` | Get current share float data including number of shares available for trading and percentage of total shares outstanding. Important for understanding stock liquidity and institutional ownership. |
 | `company_splits` | `/stable/splits` | Get historical stock split information for a specific company. Includes split dates, ratios (numerator/denominator), and split details. |
-| `stock_peers/{symbol}` | `/stable/stock-peers` | Retrieves a list of peers of a company. |
+| `stock_peers` | `/stable/stock-peers` | Retrieves a list of peers of a company. |
 | `stock_price_change` | `/stable/stock-price-change` | Get price change percentages across multiple time horizons |
 | `stock_screener` | `/stable/stock-screener` | Screen stocks based on various criteria |
 | `symbol_changes` | `/stable/symbol-change` | Get historical record of company symbol changes. Tracks when and why companies changed their ticker symbols, useful for maintaining accurate historical data and understanding corporate actions. |
@@ -120,7 +120,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 | `cusip_search` | `/stable/search-cusip` | Search for companies by their CUSIP (Committee on Uniform Securities Identification Procedures) number. Helps identify securities using their unique identifier. |
 | `search_exchange_variants` | `/stable/search-exchange-variants` | Search for exchange trading variants of a company |
 | `isin_search` | `/stable/search-isin` | Search for companies by their ISIN (International Securities Identification Number). Used to find securities using their globally unique identifier. |
-| `search-name` | `/stable/search-name` | Search for companies by name, ticker, or other identifiers. Returns matching companies with their basic information including symbol, name, and exchange. Useful for finding companies based on keywords or partial matches. |
+| `search_name` | `/stable/search_name` | Search for companies by name, ticker, or other identifiers. Returns matching companies with their basic information including symbol, name, and exchange. Useful for finding companies based on keywords or partial matches. |
 | `search_symbol` | `/stable/search-symbol` | Search for security symbols across all asset types |
 | `sector_pe_snapshot` | `/stable/sector-pe-snapshot` | Get sector PE snapshot data |
 | `sector_performance` | `/stable/sector-performance-snapshot` | Get sector performance data |

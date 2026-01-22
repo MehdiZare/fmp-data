@@ -12,7 +12,7 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 - [Economics (7 tools)](#economics)
 - [Fundamental (14 tools)](#fundamental)
 - [Institutional (13 tools)](#institutional)
-- [Intelligence (39 tools)](#intelligence)
+- [Intelligence (38 tools)](#intelligence)
 - [Investment (14 tools)](#investment)
 - [Market (23 tools)](#market)
 - [Technical (9 tools)](#technical)
@@ -134,7 +134,7 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 
 ## Intelligence
 
-**39 tools** for news, sentiment, and market events.
+**38 tools** for news, sentiment, and market events.
 
 | Tool Key | Description |
 |----------|-------------|
