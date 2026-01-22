@@ -198,10 +198,11 @@ class MarketClient(EndpointGroup):
             ValueError: If no market hours data returned from API
         """
         result = self.client.request(MARKET_HOURS, exchange=exchange)
-        try:
-            return self._unwrap_single(result, MarketHours)
-        except ValueError as exc:
-            raise ValueError("No market hours data returned from API") from exc
+        if isinstance(result, list):
+            if not result:
+                raise ValueError("No market hours data returned from API")
+            return result[0]
+        return result
 
     def get_all_exchange_market_hours(self) -> list[MarketHours]:
         """Get market trading hours information for all exchanges"""
@@ -233,13 +234,13 @@ class MarketClient(EndpointGroup):
         exchange: str | None = None,
     ) -> list[SectorPerformance]:
         """Get sector performance data"""
-        params = {}
+        params: dict[str, dt_date | str] = {}
         if sector is not None:
             params["sector"] = sector
         if exchange is not None:
             params["exchange"] = exchange
         snapshot_date = date or dt_date.today()
-        params["date"] = snapshot_date.strftime("%Y-%m-%d")
+        params["date"] = snapshot_date
         return self.client.request(SECTOR_PERFORMANCE, **params)
 
     def get_industry_performance_snapshot(
@@ -249,13 +250,13 @@ class MarketClient(EndpointGroup):
         exchange: str | None = None,
     ) -> list[IndustryPerformance]:
         """Get industry performance snapshot data"""
-        params = {}
+        params: dict[str, dt_date | str] = {}
         if industry is not None:
             params["industry"] = industry
         if exchange is not None:
             params["exchange"] = exchange
         snapshot_date = date or dt_date.today()
-        params["date"] = snapshot_date.strftime("%Y-%m-%d")
+        params["date"] = snapshot_date
         return self.client.request(INDUSTRY_PERFORMANCE_SNAPSHOT, **params)
 
     def get_historical_sector_performance(
@@ -266,11 +267,11 @@ class MarketClient(EndpointGroup):
         exchange: str | None = None,
     ) -> list[SectorPerformance]:
         """Get historical sector performance data"""
-        params: dict[str, str] = {"sector": sector}
+        params: dict[str, dt_date | str] = {"sector": sector}
         if from_date:
-            params["from"] = from_date.strftime("%Y-%m-%d")
+            params["from"] = from_date
         if to_date:
-            params["to"] = to_date.strftime("%Y-%m-%d")
+            params["to"] = to_date
         if exchange:
             params["exchange"] = exchange
         return self.client.request(HISTORICAL_SECTOR_PERFORMANCE, **params)
@@ -283,11 +284,11 @@ class MarketClient(EndpointGroup):
         exchange: str | None = None,
     ) -> list[IndustryPerformance]:
         """Get historical industry performance data"""
-        params: dict[str, str] = {"industry": industry}
+        params: dict[str, dt_date | str] = {"industry": industry}
         if from_date:
-            params["from"] = from_date.strftime("%Y-%m-%d")
+            params["from"] = from_date
         if to_date:
-            params["to"] = to_date.strftime("%Y-%m-%d")
+            params["to"] = to_date
         if exchange:
             params["exchange"] = exchange
         return self.client.request(HISTORICAL_INDUSTRY_PERFORMANCE, **params)
@@ -299,13 +300,13 @@ class MarketClient(EndpointGroup):
         exchange: str | None = None,
     ) -> list[SectorPESnapshot]:
         """Get sector price-to-earnings snapshot data"""
-        params = {}
+        params: dict[str, dt_date | str] = {}
         if sector is not None:
             params["sector"] = sector
         if exchange is not None:
             params["exchange"] = exchange
         snapshot_date = date or dt_date.today()
-        params["date"] = snapshot_date.strftime("%Y-%m-%d")
+        params["date"] = snapshot_date
         return self.client.request(SECTOR_PE_SNAPSHOT, **params)
 
     def get_industry_pe_snapshot(
@@ -315,13 +316,13 @@ class MarketClient(EndpointGroup):
         exchange: str | None = None,
     ) -> list[IndustryPESnapshot]:
         """Get industry price-to-earnings snapshot data"""
-        params = {}
+        params: dict[str, dt_date | str] = {}
         if industry is not None:
             params["industry"] = industry
         if exchange is not None:
             params["exchange"] = exchange
         snapshot_date = date or dt_date.today()
-        params["date"] = snapshot_date.strftime("%Y-%m-%d")
+        params["date"] = snapshot_date
         return self.client.request(INDUSTRY_PE_SNAPSHOT, **params)
 
     def get_historical_sector_pe(
@@ -332,11 +333,11 @@ class MarketClient(EndpointGroup):
         exchange: str | None = None,
     ) -> list[SectorPESnapshot]:
         """Get historical sector price-to-earnings data"""
-        params: dict[str, str] = {"sector": sector}
+        params: dict[str, dt_date | str] = {"sector": sector}
         if from_date:
-            params["from"] = from_date.strftime("%Y-%m-%d")
+            params["from"] = from_date
         if to_date:
-            params["to"] = to_date.strftime("%Y-%m-%d")
+            params["to"] = to_date
         if exchange:
             params["exchange"] = exchange
         return self.client.request(HISTORICAL_SECTOR_PE, **params)
@@ -349,11 +350,11 @@ class MarketClient(EndpointGroup):
         exchange: str | None = None,
     ) -> list[IndustryPESnapshot]:
         """Get historical industry price-to-earnings data"""
-        params: dict[str, str] = {"industry": industry}
+        params: dict[str, dt_date | str] = {"industry": industry}
         if from_date:
-            params["from"] = from_date.strftime("%Y-%m-%d")
+            params["from"] = from_date
         if to_date:
-            params["to"] = to_date.strftime("%Y-%m-%d")
+            params["to"] = to_date
         if exchange:
             params["exchange"] = exchange
         return self.client.request(HISTORICAL_INDUSTRY_PE, **params)
@@ -398,11 +399,11 @@ class MarketClient(EndpointGroup):
         Returns:
             List of IPO disclosure information
         """
-        params: dict[str, str | int] = {"limit": limit}
+        params: dict[str, dt_date | int | str] = {"limit": limit}
         if from_date:
-            params["from"] = from_date.strftime("%Y-%m-%d")
+            params["from"] = from_date
         if to_date:
-            params["to"] = to_date.strftime("%Y-%m-%d")
+            params["to"] = to_date
         return self.client.request(IPO_DISCLOSURE, **params)
 
     def get_ipo_prospectus(
@@ -421,9 +422,9 @@ class MarketClient(EndpointGroup):
         Returns:
             List of IPO prospectus information
         """
-        params: dict[str, str | int] = {"limit": limit}
+        params: dict[str, dt_date | int | str] = {"limit": limit}
         if from_date:
-            params["from"] = from_date.strftime("%Y-%m-%d")
+            params["from"] = from_date
         if to_date:
-            params["to"] = to_date.strftime("%Y-%m-%d")
+            params["to"] = to_date
         return self.client.request(IPO_PROSPECTUS, **params)

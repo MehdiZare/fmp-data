@@ -95,7 +95,7 @@ class MarketIntelligenceClient(EndpointGroup):
         end_date: date | None = None,
         start_key: str = "start_date",
         end_key: str = "end_date",
-    ) -> dict[str, str]:
+    ) -> dict[str, date]:
         """Build date parameters dict from optional date values
 
         Args:
@@ -107,11 +107,11 @@ class MarketIntelligenceClient(EndpointGroup):
         Returns:
             Dictionary with formatted date parameters
         """
-        params: dict[str, str] = {}
+        params: dict[str, date] = {}
         if start_date:
-            params[start_key] = start_date.strftime("%Y-%m-%d")
+            params[start_key] = start_date
         if end_date:
-            params[end_key] = end_date.strftime("%Y-%m-%d")
+            params[end_key] = end_date
         return params
 
     def get_earnings_calendar(
@@ -194,8 +194,8 @@ class MarketIntelligenceClient(EndpointGroup):
         """Get a list of the latest general news articles"""
         params = {
             "page": page,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": from_date,
+            "end_date": to_date,
             "limit": limit,
         }
         return self.client.request(GENERAL_NEWS_ENDPOINT, **params)
@@ -212,8 +212,8 @@ class MarketIntelligenceClient(EndpointGroup):
         params = {
             "symbol": symbol,
             "page": page,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": from_date,
+            "end_date": to_date,
             "limit": limit,
         }
         return self.client.request(STOCK_SYMBOL_NEWS_ENDPOINT, **params)
@@ -237,8 +237,8 @@ class MarketIntelligenceClient(EndpointGroup):
             )
         params = {
             "page": page,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": from_date,
+            "end_date": to_date,
             "limit": limit,
         }
         return self.client.request(STOCK_NEWS_ENDPOINT, **params)
@@ -269,8 +269,8 @@ class MarketIntelligenceClient(EndpointGroup):
             )
         params = {
             "page": page,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": from_date,
+            "end_date": to_date,
             "limit": limit,
         }
         return self.client.request(FOREX_NEWS_ENDPOINT, **params)
@@ -287,8 +287,8 @@ class MarketIntelligenceClient(EndpointGroup):
         params = {
             "symbol": symbol,
             "page": page,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": from_date,
+            "end_date": to_date,
             "limit": limit,
         }
         return self.client.request(FOREX_SYMBOL_NEWS_ENDPOINT, **params)
@@ -314,8 +314,8 @@ class MarketIntelligenceClient(EndpointGroup):
             )
         params = {
             "page": page,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": from_date,
+            "end_date": to_date,
             "limit": limit,
         }
         return self.client.request(CRYPTO_NEWS_ENDPOINT, **params)
@@ -332,8 +332,8 @@ class MarketIntelligenceClient(EndpointGroup):
         params = {
             "symbol": symbol,
             "page": page,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": from_date,
+            "end_date": to_date,
             "limit": limit,
         }
         return self.client.request(CRYPTO_SYMBOL_NEWS_ENDPOINT, **params)
@@ -348,8 +348,8 @@ class MarketIntelligenceClient(EndpointGroup):
         """Get a list of the latest press releases"""
         params = {
             "page": page,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": from_date,
+            "end_date": to_date,
             "limit": limit,
         }
         return self.client.request(PRESS_RELEASES_ENDPOINT, **params)
@@ -366,8 +366,8 @@ class MarketIntelligenceClient(EndpointGroup):
         params = {
             "symbol": symbol,
             "page": page,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": from_date,
+            "end_date": to_date,
             "limit": limit,
         }
         return self.client.request(PRESS_RELEASES_BY_SYMBOL_ENDPOINT, **params)

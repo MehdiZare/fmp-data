@@ -61,8 +61,8 @@ class SECClient(EndpointGroup):
             page=page,
             limit=limit,
             **{
-                "from": start_date.strftime("%Y-%m-%d"),
-                "to": end_date.strftime("%Y-%m-%d"),
+                "from": start_date,
+                "to": end_date,
             },
         )
 
@@ -91,8 +91,8 @@ class SECClient(EndpointGroup):
             page=page,
             limit=limit,
             **{
-                "from": start_date.strftime("%Y-%m-%d"),
-                "to": end_date.strftime("%Y-%m-%d"),
+                "from": start_date,
+                "to": end_date,
             },
         )
 
@@ -122,8 +122,8 @@ class SECClient(EndpointGroup):
             page=page,
             limit=limit,
             **{
-                "from": start_date.strftime("%Y-%m-%d"),
-                "to": end_date.strftime("%Y-%m-%d"),
+                "from": start_date,
+                "to": end_date,
             },
         )
 
@@ -153,8 +153,8 @@ class SECClient(EndpointGroup):
             page=page,
             limit=limit,
             **{
-                "from": start_date.strftime("%Y-%m-%d"),
-                "to": end_date.strftime("%Y-%m-%d"),
+                "from": start_date,
+                "to": end_date,
             },
         )
 
@@ -184,8 +184,8 @@ class SECClient(EndpointGroup):
             page=page,
             limit=limit,
             **{
-                "from": start_date.strftime("%Y-%m-%d"),
-                "to": end_date.strftime("%Y-%m-%d"),
+                "from": start_date,
+                "to": end_date,
             },
         )
 

@@ -31,11 +31,11 @@ class AsyncEconomicsClient(AsyncEndpointGroup):
         self, start_date: date | None = None, end_date: date | None = None
     ) -> list[TreasuryRate]:
         """Get treasury rates"""
-        params: dict[str, str] = {}
+        params: dict[str, date] = {}
         if start_date:
-            params["start_date"] = start_date.strftime("%Y-%m-%d")
+            params["start_date"] = start_date
         if end_date:
-            params["end_date"] = end_date.strftime("%Y-%m-%d")
+            params["end_date"] = end_date
 
         return await self.client.request_async(TREASURY_RATES, **params)
 
@@ -49,11 +49,11 @@ class AsyncEconomicsClient(AsyncEndpointGroup):
         self, start_date: date | None = None, end_date: date | None = None
     ) -> list[EconomicEvent]:
         """Get economic calendar events"""
-        params: dict[str, str] = {}
+        params: dict[str, date] = {}
         if start_date:
-            params["start_date"] = start_date.strftime("%Y-%m-%d")
+            params["start_date"] = start_date
         if end_date:
-            params["end_date"] = end_date.strftime("%Y-%m-%d")
+            params["end_date"] = end_date
 
         return await self.client.request_async(ECONOMIC_CALENDAR, **params)
 
@@ -67,8 +67,8 @@ class AsyncEconomicsClient(AsyncEndpointGroup):
         """Get Commitment of Traders (COT) report data"""
         params = {
             "symbol": symbol,
-            "start_date": start_date.strftime("%Y-%m-%d"),
-            "end_date": end_date.strftime("%Y-%m-%d"),
+            "start_date": start_date,
+            "end_date": end_date,
         }
         return await self.client.request_async(COMMITMENT_OF_TRADERS_REPORT, **params)
 
@@ -78,8 +78,8 @@ class AsyncEconomicsClient(AsyncEndpointGroup):
         """Get Commitment of Traders (COT) analysis data"""
         params = {
             "symbol": symbol,
-            "start_date": start_date.strftime("%Y-%m-%d"),
-            "end_date": end_date.strftime("%Y-%m-%d"),
+            "start_date": start_date,
+            "end_date": end_date,
         }
         return await self.client.request_async(COMMITMENT_OF_TRADERS_ANALYSIS, **params)
 

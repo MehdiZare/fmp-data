@@ -112,10 +112,10 @@ class ParamType(str, Enum):
         return bool(value)
 
     def _convert_to_date(self, value: Any) -> date:
-        if isinstance(value, date):
-            return value
         if isinstance(value, datetime):
             return value.date()
+        if isinstance(value, date):
+            return value
         return datetime.strptime(value, "%Y-%m-%d").date()
 
     def _convert_to_datetime(self, value: Any) -> datetime:

@@ -97,7 +97,7 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         end_date: date | None = None,
         start_key: str = "start_date",
         end_key: str = "end_date",
-    ) -> dict[str, str]:
+    ) -> dict[str, date]:
         """Build date parameters dict from optional date values
 
         Args:
@@ -109,11 +109,11 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         Returns:
             Dictionary with formatted date parameters
         """
-        params: dict[str, str] = {}
+        params: dict[str, date] = {}
         if start_date:
-            params[start_key] = start_date.strftime("%Y-%m-%d")
+            params[start_key] = start_date
         if end_date:
-            params[end_key] = end_date.strftime("%Y-%m-%d")
+            params[end_key] = end_date
         return params
 
     async def get_earnings_calendar(
@@ -196,8 +196,8 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         """Get a list of the latest general news articles"""
         params = {
             "page": page,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": from_date,
+            "end_date": to_date,
             "limit": limit,
         }
         return await self.client.request_async(GENERAL_NEWS_ENDPOINT, **params)
@@ -214,8 +214,8 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         params = {
             "symbol": symbol,
             "page": page,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": from_date,
+            "end_date": to_date,
             "limit": limit,
         }
         return await self.client.request_async(STOCK_SYMBOL_NEWS_ENDPOINT, **params)
@@ -239,8 +239,8 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             )
         params = {
             "page": page,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": from_date,
+            "end_date": to_date,
             "limit": limit,
         }
         return await self.client.request_async(STOCK_NEWS_ENDPOINT, **params)
@@ -273,8 +273,8 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             )
         params = {
             "page": page,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": from_date,
+            "end_date": to_date,
             "limit": limit,
         }
         return await self.client.request_async(FOREX_NEWS_ENDPOINT, **params)
@@ -291,8 +291,8 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         params = {
             "symbol": symbol,
             "page": page,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": from_date,
+            "end_date": to_date,
             "limit": limit,
         }
         return await self.client.request_async(FOREX_SYMBOL_NEWS_ENDPOINT, **params)
@@ -318,8 +318,8 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             )
         params = {
             "page": page,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": from_date,
+            "end_date": to_date,
             "limit": limit,
         }
         return await self.client.request_async(CRYPTO_NEWS_ENDPOINT, **params)
@@ -336,8 +336,8 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         params = {
             "symbol": symbol,
             "page": page,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": from_date,
+            "end_date": to_date,
             "limit": limit,
         }
         return await self.client.request_async(CRYPTO_SYMBOL_NEWS_ENDPOINT, **params)
@@ -352,8 +352,8 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         """Get a list of the latest press releases"""
         params = {
             "page": page,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": from_date,
+            "end_date": to_date,
             "limit": limit,
         }
         return await self.client.request_async(PRESS_RELEASES_ENDPOINT, **params)
@@ -370,8 +370,8 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         params = {
             "symbol": symbol,
             "page": page,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": from_date,
+            "end_date": to_date,
             "limit": limit,
         }
         return await self.client.request_async(

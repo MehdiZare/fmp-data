@@ -42,9 +42,9 @@ class InvestmentClient(EndpointGroup):
         self, symbol: str, holdings_date: date | None = None
     ) -> list[ETFHolding]:
         """Get ETF holdings"""
-        params: dict[str, str] = {"symbol": symbol}
+        params: dict[str, date | str] = {"symbol": symbol}
         if holdings_date is not None:
-            params["date"] = holdings_date.strftime("%Y-%m-%d")
+            params["date"] = holdings_date
         return self.client.request(ETF_HOLDINGS, **params)
 
     def get_etf_holding_dates(self, symbol: str) -> list[date]:
@@ -118,7 +118,7 @@ class InvestmentClient(EndpointGroup):
     ) -> list[MutualFundHolding]:
         """Get mutual fund holdings"""
         return self.client.request(
-            MUTUAL_FUND_HOLDINGS, symbol=symbol, date=holdings_date.strftime("%Y-%m-%d")
+            MUTUAL_FUND_HOLDINGS, symbol=symbol, date=holdings_date
         )
 
     def get_mutual_fund_by_name(self, name: str) -> list[MutualFundHolding]:
