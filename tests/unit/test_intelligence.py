@@ -15,6 +15,7 @@ from fmp_data.intelligence.models import (
     EarningEvent,
     EarningSurprise,
     EquityOffering,
+    EquityOfferingSearchItem,
     ESGBenchmark,
     ESGData,
     ESGRating,
@@ -1013,13 +1014,19 @@ class TestMarketIntelligenceClientFundraising:
 
     def test_search_equity_offering(self, fmp_client, mock_client):
         """Test search_equity_offering"""
-        mock_client.request.return_value = []
+        mock_client.request.return_value = [
+            EquityOfferingSearchItem(
+                cik="0001234567", name="Company Inc", date=datetime(2024, 1, 1)
+            )
+        ]
 
-        _ = fmp_client.intelligence.search_equity_offering("company")
+        result = fmp_client.intelligence.search_equity_offering("company")
 
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args
         assert kwargs["name"] == "company"
+        assert isinstance(result, list)
+        assert isinstance(result[0], EquityOfferingSearchItem)
 
     def test_get_equity_offering_by_cik(self, fmp_client, mock_client):
         """Test get_equity_offering_by_cik"""

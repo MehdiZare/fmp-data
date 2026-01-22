@@ -2311,7 +2311,7 @@ class TestAsyncBatchClient:
         )
 
         async_client = AsyncBatchClient(mock_client)
-        result = await async_client.get_eod_bulk("2024-10-22")
+        result = await async_client.get_eod_bulk(dt_date(2024, 10, 22))
 
         assert result[0].symbol == "EGS745W1C011.CA"
         assert result[0].adj_close == 2.93

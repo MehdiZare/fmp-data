@@ -1,6 +1,7 @@
 # tests/unit/test_batch.py
 """Tests for the batch module endpoints"""
 
+from datetime import date
 from unittest.mock import Mock, patch
 
 import pytest
@@ -475,9 +476,11 @@ class TestBatchClient:
             "EGS745W1C011.CA,2024-10-22,2.67,2.7,2.9,2.93,2.93,920904\n"
         )
         mock_request.return_value = self._mock_csv_response(csv_text)
-        results = fmp_client.batch.get_eod_bulk("2024-10-22")
+        results = fmp_client.batch.get_eod_bulk(date(2024, 10, 22))
         assert results[0].symbol == "EGS745W1C011.CA"
         assert results[0].adj_close == 2.93
+        params = mock_request.call_args.kwargs["params"]
+        assert params["date"] == "2024-10-22"
 
     @patch("httpx.Client.request")
     def test_get_aftermarket_trades(self, mock_request, fmp_client, mock_response):
