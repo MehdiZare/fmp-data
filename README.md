@@ -203,7 +203,7 @@ for query in queries:
     # You can also search endpoints directly
     results = vector_store.search(query)
     print("\nRelevant Endpoints:")
-for result in results:
+    for result in results:
         print(f"Endpoint: {result.name}")
         print(f"Score: {result.score:.2f}")
         print()

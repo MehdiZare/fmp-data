@@ -5,9 +5,9 @@ Use this file as a quick reference for generating correct usage examples for the
 
 ## What this package is
 `fmp-data` is a typed Python client for the Financial Modeling Prep (FMP) API.
-It provides 100% coverage of the FMP stable endpoint catalog and supports
-synchronous and async usage, rate limiting, retries, and optional LangChain and
-MCP integrations.
+It aims to cover the FMP stable endpoint catalog as of this guide's last update
+and supports synchronous and async usage, rate limiting, retries, and optional
+LangChain and MCP integrations. Coverage is maintained as the catalog evolves.
 
 ## Setup
 - Install: `pip install fmp-data` (or `uv pip install fmp-data`)
