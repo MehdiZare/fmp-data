@@ -208,6 +208,8 @@ class EndpointVectorStore:
                     dimension=dimension,
                 )
         except Exception as e:
+            if isinstance(e, ConfigError):
+                raise
             raise RuntimeError(f"Failed to initialize vector store: {e!s}") from e
 
     def _get_embedding_dimension(self) -> int:
