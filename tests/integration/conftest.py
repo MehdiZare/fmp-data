@@ -6,10 +6,13 @@ from pathlib import Path
 import re
 import time
 
+from dotenv import load_dotenv
 import pytest
 import vcr
+from vcr.errors import CassetteDecodeError, CassetteNotFoundError
+from vcr.persisters.filesystem import FilesystemPersister
 from vcr.request import Request
-from dotenv import load_dotenv
+from vcr.serialize import deserialize
 
 from fmp_data import ClientConfig, FMPDataClient, RateLimitConfig
 
@@ -33,6 +36,31 @@ if VCR_RECORD_MODE not in {"none", "once", "new_episodes", "all"}:
     VCR_RECORD_MODE = "new_episodes"
 
 
+class SafeFilesystemPersister(FilesystemPersister):
+    """Treat empty or invalid cassettes like missing ones for replay."""
+
+    @classmethod
+    def load_cassette(cls, cassette_path: str | Path, serializer):  # type: ignore[override]
+        cassette_path = Path(cassette_path)
+        if not cassette_path.is_file():
+            raise CassetteNotFoundError()
+        try:
+            with cassette_path.open() as f:
+                data = f.read()
+        except UnicodeDecodeError as err:
+            raise CassetteDecodeError(
+                "Can't read Cassette, Encoding is broken"
+            ) from err
+        if not data.strip():
+            raise CassetteDecodeError("Cassette is empty")
+        try:
+            return deserialize(data, serializer)
+        except Exception as err:
+            raise CassetteDecodeError(
+                "Can't read Cassette, unable to deserialize"
+            ) from err
+
+
 def drop_unauthorized_response(response: dict | None) -> dict | None:
     """Skip replaying stale 401 responses so they get re-recorded."""
     if response and response.get("status", {}).get("code") == 401:
@@ -50,9 +78,7 @@ def scrub_api_key(request: Request) -> Request:
         scrubbed_uri = re.sub(r"apikey=([^&]+)", "apikey=DUMMY_API_KEY", scrubbed_uri)
 
     scrubbed_headers = {
-        key: value
-        for key, value in request.headers.items()
-        if key.lower() != "apikey"
+        key: value for key, value in request.headers.items() if key.lower() != "apikey"
     }
 
     return Request(
@@ -82,6 +108,7 @@ vcr_config = vcr.VCR(
     filter_query_parameters=["apikey"],  # Add this to filter out apikey from matching
     path_transformer=lambda path: str(CASSETTES_PATH / path),
 )
+vcr_config.register_persister(SafeFilesystemPersister)
 vcr_config.before_playback_response = drop_unauthorized_response
 
 logger.debug(f"VCR cassettes will be saved to: {CASSETTES_PATH}")
