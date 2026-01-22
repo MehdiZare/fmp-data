@@ -254,6 +254,25 @@ def test_handle_http_status_error_404_empty_payloads(base_client):
     assert base_client._handle_http_status_error(dict_error) == {}
 
 
+def test_handle_http_status_error_uses_retry_after_header(base_client):
+    """Test 429 handling uses Retry-After header when present."""
+    request = httpx.Request("GET", "https://example.com")
+    response = httpx.Response(
+        429,
+        request=request,
+        headers={"Retry-After": "12"},
+        json={"message": "Rate limit exceeded"},
+    )
+    error = httpx.HTTPStatusError(
+        "Too many requests", request=request, response=response
+    )
+
+    with pytest.raises(RateLimitError) as exc_info:
+        base_client._handle_http_status_error(error)
+
+    assert exc_info.value.retry_after == 12.0
+
+
 @pytest.mark.parametrize(
     "payload",
     [
@@ -644,4 +663,5 @@ class TestUnwrapSingle:
         """Test unwrapping list with multiple items returns the first."""
         items = [SampleResponse(test="first"), SampleResponse(test="second")]
         result = EndpointGroup._unwrap_single(items, SampleResponse)
+        assert isinstance(result, SampleResponse)
         assert result.test == "first"

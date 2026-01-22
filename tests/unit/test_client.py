@@ -113,12 +113,20 @@ class TestFMPDataClientInitialization:
         assert hasattr(client, "_investment")
         assert hasattr(client, "_alternative")
         assert hasattr(client, "_economics")
+        assert hasattr(client, "_batch")
+        assert hasattr(client, "_transcripts")
+        assert hasattr(client, "_sec")
+        assert hasattr(client, "_index")
 
         # Check initial state
         assert client._initialized is True
         assert client._logger is not None
         assert client._company is None  # Lazy loaded
         assert client._market is None  # Lazy loaded
+        assert client._batch is None  # Lazy loaded
+        assert client._transcripts is None  # Lazy loaded
+        assert client._sec is None  # Lazy loaded
+        assert client._index is None  # Lazy loaded
 
         client.close()
 
@@ -353,6 +361,38 @@ class TestFMPDataClientProperties:
         assert economics is not None
         assert client._economics is economics
 
+    def test_batch_property(self, client):
+        """Test batch property lazy loading"""
+        assert client._batch is None
+
+        batch = client.batch
+        assert batch is not None
+        assert client._batch is batch
+
+    def test_transcripts_property(self, client):
+        """Test transcripts property lazy loading"""
+        assert client._transcripts is None
+
+        transcripts = client.transcripts
+        assert transcripts is not None
+        assert client._transcripts is transcripts
+
+    def test_sec_property(self, client):
+        """Test sec property lazy loading"""
+        assert client._sec is None
+
+        sec = client.sec
+        assert sec is not None
+        assert client._sec is sec
+
+    def test_index_property(self, client):
+        """Test index property lazy loading"""
+        assert client._index is None
+
+        index = client.index
+        assert index is not None
+        assert client._index is index
+
     def test_all_properties_when_not_initialized(self):
         """Test all properties raise error when client not initialized"""
         client = FMPDataClient(api_key="test_key")
@@ -368,6 +408,10 @@ class TestFMPDataClientProperties:
             "investment",
             "alternative",
             "economics",
+            "batch",
+            "transcripts",
+            "sec",
+            "index",
         ]
 
         for prop_name in properties:
@@ -519,25 +563,27 @@ class TestFMPDataClientCleanup:
         async_client.is_closed = False
         client._async_client = async_client
         client.client = Mock()
-        client._logger = Mock()
+        logger_mock = Mock()
+        client._logger = logger_mock
 
         await client.aclose()
 
         async_client.aclose.assert_awaited_once()
         client.client.close.assert_called_once()
-        client._logger.info.assert_called_once_with("FMP Data client closed")
+        logger_mock.info.assert_called_once_with("FMP Data client closed")
 
     @pytest.mark.asyncio
     async def test_async_exit_logs_error(self):
         """Test async exit logs errors."""
         client = FMPDataClient(api_key="test_key")
         client.client = Mock()
-        client._logger = Mock()
+        logger_mock = Mock()
+        client._logger = logger_mock
         client.aclose = AsyncMock()
 
         await client.__aexit__(ValueError, ValueError("boom"), None)
 
-        client._logger.error.assert_called_once()
+        logger_mock.error.assert_called_once()
 
 
 class TestFMPDataClientEdgeCases:

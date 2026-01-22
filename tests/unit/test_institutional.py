@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -241,6 +241,28 @@ class TestInstitutionalClient:
         assert filing[0].cik == "0001067983"
         assert filing[0].value == 776611184.0
 
+    def test_get_form_13f_returns_empty_on_error(self, fmp_client):
+        """Test get_form_13f returns empty list when request fails."""
+        fmp_client._logger = Mock()
+        with patch.object(fmp_client, "request", side_effect=Exception("boom")):
+            result = fmp_client.institutional.get_form_13f(
+                "0001067983", report_date=date(2024, 1, 5)
+            )
+
+        assert result == []
+        fmp_client._logger.warning.assert_called_once()
+        assert "0001067983" in fmp_client._logger.warning.call_args[0][0]
+
+    def test_get_form_13f_dates_returns_empty_on_error(self, fmp_client):
+        """Test get_form_13f_dates returns empty list when request fails."""
+        fmp_client._logger = Mock()
+        with patch.object(fmp_client, "request", side_effect=Exception("boom")):
+            result = fmp_client.institutional.get_form_13f_dates("0001067983")
+
+        assert result == []
+        fmp_client._logger.warning.assert_called_once()
+        assert "0001067983" in fmp_client._logger.warning.call_args[0][0]
+
     @patch("httpx.Client.request")
     def test_get_insider_trades(
         self, mock_request, fmp_client, mock_response, mock_insider_trade
@@ -290,6 +312,36 @@ class TestInstitutionalClient:
         assert holdings[0].symbol == "AAPL"
         assert holdings[0].investors_holding == 5181
         assert holdings[0].total_invested == 1988382372981.0
+
+    def test_search_cik_by_name_filters_results(self, fmp_client):
+        """Test search_cik_by_name filters results case-insensitively."""
+        mapping_match = CIKMapping(
+            reporting_cik="0001758386",
+            reporting_name="Acme Capital Partners",
+        )
+        mapping_other = CIKMapping(
+            reporting_cik="0000000001",
+            reporting_name="Other Holdings",
+        )
+
+        with patch.object(
+            fmp_client, "request", return_value=[mapping_match, mapping_other]
+        ):
+            results = fmp_client.institutional.search_cik_by_name("acme")
+
+        assert results == [mapping_match]
+
+    def test_search_cik_by_name_wraps_single_result(self, fmp_client):
+        """Test search_cik_by_name handles non-list responses."""
+        mapping = CIKMapping(
+            reporting_cik="0001758386",
+            reporting_name="Acme Capital Partners",
+        )
+
+        with patch.object(fmp_client, "request", return_value=mapping):
+            results = fmp_client.institutional.search_cik_by_name("ACME")
+
+        assert results == [mapping]
 
 
 class TestInstitutionalClientEnhanced:
