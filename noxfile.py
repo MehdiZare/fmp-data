@@ -177,8 +177,8 @@ def coverage_report(session: Session) -> None:
     session.run("coverage", "xml")
     session.run("coverage", "html")
 
-    # Apply the 80% threshold to combined coverage
-    session.run("coverage", "report", "--fail-under=80")
+    # Apply the configured coverage threshold from pyproject.toml
+    session.run("coverage", "report")
 
     session.log("Coverage reports generated: coverage.xml and htmlcov/")
 
@@ -270,7 +270,7 @@ cov.save()
     session.run("coverage", "combine")
     session.run("coverage", "xml")
     session.run("coverage", "html")
-    session.run("coverage", "report", "--fail-under=80")
+    session.run("coverage", "report")
 
 
 @nox.session(python=DEFAULT_PYTHON, tags=["test-local"])
@@ -296,7 +296,6 @@ def test_local(session: Session) -> None:
         "--cov-report=term-missing",
         "--cov-report=xml",
         "--cov-report=html",
-        "--fail-under=80",
     )
 
 
