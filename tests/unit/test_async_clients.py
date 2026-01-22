@@ -289,8 +289,8 @@ class TestAsyncCompanyClient:
         result = await async_client.get_intraday_prices(
             "AAPL",
             interval="1min",
-            from_date="2025-02-01",
-            to_date="2025-02-04",
+            from_date=dt_date(2025, 2, 1),
+            to_date=dt_date(2025, 2, 4),
             nonadjusted=True,
         )
 
@@ -349,7 +349,7 @@ class TestAsyncCompanyClient:
 
         async_client = AsyncCompanyClient(mock_client)
         result = await async_client.get_historical_prices(
-            "AAPL", from_date="2024-01-01", to_date="2024-01-31"
+            "AAPL", from_date=dt_date(2024, 1, 1), to_date=dt_date(2024, 1, 31)
         )
 
         assert result.symbol == "AAPL"
@@ -395,8 +395,8 @@ class TestAsyncCompanyClient:
         method = getattr(async_client, method_name)
         result = await method(
             "AAPL",
-            from_date="2024-01-01",
-            to_date="2024-01-10",
+            from_date=dt_date(2024, 1, 1),
+            to_date=dt_date(2024, 1, 10),
         )
 
         assert result.symbol == "AAPL"
@@ -482,8 +482,8 @@ class TestAsyncCompanyClient:
         method = getattr(async_client, method_name)
         result = await method(
             "AAPL",
-            from_date="2024-01-01",
-            to_date="2024-02-01",
+            from_date=dt_date(2024, 1, 1),
+            to_date=dt_date(2024, 2, 1),
             limit=3,
         )
 
@@ -1425,7 +1425,9 @@ class TestAsyncInstitutionalClient:
         from fmp_data.institutional.async_client import AsyncInstitutionalClient
 
         mock_client.logger = MagicMock()
-        mock_client.request_async.side_effect = RuntimeError("boom")
+        from fmp_data.exceptions import FMPError
+
+        mock_client.request_async.side_effect = FMPError("boom")
 
         async_client = AsyncInstitutionalClient(mock_client)
         report_date = dt_date(2024, 6, 30)

@@ -1,5 +1,6 @@
 """Additional tests for company client to improve coverage"""
 
+from datetime import date
 from unittest.mock import patch
 
 import pytest
@@ -299,8 +300,8 @@ class TestCompanyClientCoverage:
         result = fmp_client.company.get_intraday_prices(
             "AAPL",
             interval="1min",
-            from_date="2025-02-01",
-            to_date="2025-02-04",
+            from_date=date(2025, 2, 1),
+            to_date=date(2025, 2, 4),
             nonadjusted=True,
         )
 

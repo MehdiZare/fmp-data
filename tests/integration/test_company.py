@@ -88,8 +88,8 @@ class TestCompanyEndpoints(BaseTestCase):
             prices = self._handle_rate_limit(
                 fmp_client.company.get_historical_prices,
                 "AAPL",
-                from_date="2023-01-01",
-                to_date="2023-01-31",
+                from_date=date(2023, 1, 1),
+                to_date=date(2023, 1, 31),
             )
 
             assert isinstance(prices, HistoricalData)
@@ -517,14 +517,14 @@ class TestCompanyAdditionalEndpoints(BaseTestCase):
             (
                 "get_dividends",
                 "company/dividends.yaml",
-                {"from_date": "2023-01-01", "to_date": "2023-12-31"},
+                {"from_date": date(2023, 1, 1), "to_date": date(2023, 12, 31)},
                 DividendEvent,
             ),
             ("get_earnings", "company/earnings.yaml", {"limit": 5}, EarningEvent),
             (
                 "get_stock_splits",
                 "company/stock_splits.yaml",
-                {"from_date": "2020-01-01", "to_date": "2023-12-31"},
+                {"from_date": date(2020, 1, 1), "to_date": date(2023, 12, 31)},
                 StockSplitEvent,
             ),
             (
@@ -694,7 +694,10 @@ class TestCompanyAdditionalEndpoints(BaseTestCase):
         with vcr_instance.use_cassette(cassette):
             method = getattr(fmp_client.company, method_name)
             data = self._handle_rate_limit(
-                method, self.TEST_SYMBOL, from_date="2023-01-01", to_date="2023-02-01"
+                method,
+                self.TEST_SYMBOL,
+                from_date=date(2023, 1, 1),
+                to_date=date(2023, 2, 1),
             )
             assert isinstance(data, HistoricalData)
             assert isinstance(data.historical, list)

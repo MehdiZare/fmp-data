@@ -150,12 +150,12 @@ class FMPDataClient(BaseClient):
                 self.client.close()
             if hasattr(self, "_initialized") and self._initialized:
                 logger = getattr(self, "_logger", None)
-                if logger is not None:
+                if logger is not None and not self._has_closed_log_handlers(logger):
                     logger.info("FMP Data client closed")
         except Exception as e:
             # Log if possible, but don't raise
             logger = getattr(self, "_logger", None)
-            if logger is not None:
+            if logger is not None and not self._has_closed_log_handlers(logger):
                 logger.error(f"Error during cleanup: {e!s}")
 
     async def aclose(self) -> None:
@@ -177,13 +177,31 @@ class FMPDataClient(BaseClient):
                 self.client.close()
             if hasattr(self, "_initialized") and self._initialized:
                 logger = getattr(self, "_logger", None)
-                if logger is not None:
+                if logger is not None and not self._has_closed_log_handlers(logger):
                     logger.info("FMP Data client closed")
         except Exception as e:
             # Log if possible, but don't raise
             logger = getattr(self, "_logger", None)
-            if logger is not None:
+            if logger is not None and not self._has_closed_log_handlers(logger):
                 logger.error(f"Error during async cleanup: {e!s}")
+
+    @staticmethod
+    def _has_closed_log_handlers(logger: logging.Logger) -> bool:
+        current: logging.Logger | None = logger
+        while current is not None:
+            handlers = getattr(current, "handlers", None)
+            if handlers:
+                try:
+                    for handler in handlers:
+                        stream = getattr(handler, "stream", None)
+                        if stream is not None and getattr(stream, "closed", False):
+                            return True
+                except TypeError:
+                    return False
+            if not current.propagate:
+                break
+            current = current.parent
+        return False
 
     async def __aenter__(self) -> "FMPDataClient":
         """Async context manager enter"""

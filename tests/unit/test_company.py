@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from unittest.mock import Mock, patch
 
 import pytest
@@ -346,7 +346,7 @@ class TestCompanySymbol:
         ]
 
         data = fmp_client.get_historical_prices(
-            "AAPL", from_date="2024-01-01", to_date="2024-01-05"
+            "AAPL", from_date=date(2024, 1, 1), to_date=date(2024, 1, 5)
         )
 
         # Verify results
@@ -645,7 +645,7 @@ class TestHistoricalPriceVariants:
         mock_client.request.return_value = [HistoricalPrice(**historical_price_data)]
 
         result = fmp_client.get_historical_prices(
-            symbol="AAPL", from_date="2024-01-01", to_date="2024-01-05"
+            symbol="AAPL", from_date=date(2024, 1, 1), to_date=date(2024, 1, 5)
         )
 
         assert isinstance(result, HistoricalData)
@@ -668,7 +668,7 @@ class TestHistoricalPriceVariants:
         mock_client.request.return_value = [HistoricalPrice(**historical_price_data)]
 
         result = fmp_client.get_historical_prices_light(
-            symbol="AAPL", from_date="2024-01-01", to_date="2024-01-05"
+            symbol="AAPL", from_date=date(2024, 1, 1), to_date=date(2024, 1, 5)
         )
 
         assert isinstance(result, HistoricalData)
@@ -691,7 +691,7 @@ class TestHistoricalPriceVariants:
         mock_client.request.return_value = [HistoricalPrice(**historical_price_data)]
 
         result = fmp_client.get_historical_prices_non_split_adjusted(
-            symbol="AAPL", from_date="2024-01-01", to_date="2024-01-05"
+            symbol="AAPL", from_date=date(2024, 1, 1), to_date=date(2024, 1, 5)
         )
 
         assert isinstance(result, HistoricalData)
@@ -714,7 +714,7 @@ class TestHistoricalPriceVariants:
         mock_client.request.return_value = [HistoricalPrice(**historical_price_data)]
 
         result = fmp_client.get_historical_prices_dividend_adjusted(
-            symbol="AAPL", from_date="2024-01-01", to_date="2024-01-05"
+            symbol="AAPL", from_date=date(2024, 1, 1), to_date=date(2024, 1, 5)
         )
 
         assert isinstance(result, HistoricalData)
@@ -810,7 +810,7 @@ class TestCompanyCalendarEndpoints:
         mock_client.request.return_value = [DividendEvent(**dividend_data)]
 
         result = fmp_client.get_dividends(
-            symbol="AAPL", from_date="2024-01-01", to_date="2024-12-31"
+            symbol="AAPL", from_date=date(2024, 1, 1), to_date=date(2024, 12, 31)
         )
 
         assert len(result) == 1
@@ -892,7 +892,7 @@ class TestCompanyCalendarEndpoints:
         mock_client.request.return_value = [StockSplitEvent(**split_data)]
 
         result = fmp_client.get_stock_splits(
-            symbol="AAPL", from_date="2020-01-01", to_date="2021-12-31"
+            symbol="AAPL", from_date=date(2020, 1, 1), to_date=date(2021, 12, 31)
         )
 
         assert len(result) == 1

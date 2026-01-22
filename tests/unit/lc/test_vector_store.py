@@ -6,6 +6,7 @@ from langchain_core.embeddings import Embeddings  # type: ignore[import-not-foun
 import pytest
 
 from fmp_data.company.mapping import COMPANY_ENDPOINT_MAP, COMPANY_ENDPOINTS_SEMANTICS
+from fmp_data.exceptions import ConfigError
 from fmp_data.lc.models import EndpointInfo
 from fmp_data.lc.registry import EndpointRegistry
 from fmp_data.lc.vector_store import EndpointVectorStore
@@ -187,7 +188,7 @@ def test_load_requires_allow_dangerous_deserialization(
     store.add_endpoints(list(registry_with_endpoints.list_endpoints().keys()))
     store.save()
 
-    with pytest.raises(RuntimeError, match="allow_dangerous_deserialization=False"):
+    with pytest.raises(ConfigError, match="allow_dangerous_deserialization=False"):
         EndpointVectorStore(
             client=client,
             registry=registry_with_endpoints,

@@ -220,7 +220,7 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         self, page: int = 0, limit: int = 100, trade_date: date | None = None
     ) -> list[InsiderTradingLatest]:
         """Get latest insider trading activity"""
-        params: dict[str, int | date] = {"page": page, "limit": limit}
+        params: dict[str, int | str | date] = {"page": page, "limit": limit}
         if trade_date is not None:
             params["date"] = trade_date
         return await self.client.request_async(INSIDER_TRADING_LATEST, **params)

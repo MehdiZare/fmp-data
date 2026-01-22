@@ -1,6 +1,8 @@
 # fmp_data/company/client.py
 from __future__ import annotations
 
+from datetime import date
+
 from fmp_data.base import EndpointGroup
 from fmp_data.company.endpoints import (
     AFTERMARKET_QUOTE,
@@ -105,6 +107,12 @@ from fmp_data.intelligence.models import DividendEvent, EarningEvent, StockSplit
 from fmp_data.models import MarketCapitalization
 
 
+def _format_date(value: date | None) -> str | None:
+    if value is None:
+        return None
+    return value.strftime("%Y-%m-%d")
+
+
 class CompanyClient(EndpointGroup):
     """Client for company-related API endpoints.
 
@@ -171,25 +179,27 @@ class CompanyClient(EndpointGroup):
     def get_historical_prices(
         self,
         symbol: str,
-        from_date: str | None = None,
-        to_date: str | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
     ) -> HistoricalData:
         """Get historical daily price data
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
-            from_date: Start date in YYYY-MM-DD format (optional)
-            to_date: End date in YYYY-MM-DD format (optional)
+            from_date: Start date (optional)
+            to_date: End date (optional)
 
         Returns:
             HistoricalData object containing the price history
         """
         # Build request parameters
         params: dict[str, str | int] = {"symbol": symbol}
-        if from_date:
-            params["start_date"] = from_date
-        if to_date:
-            params["end_date"] = to_date
+        start_date = _format_date(from_date)
+        end_date = _format_date(to_date)
+        if start_date:
+            params["start_date"] = start_date
+        if end_date:
+            params["end_date"] = end_date
 
         # Make request
         # this returns list[HistoricalPrice] due to response_model=HistoricalPrice
@@ -208,8 +218,8 @@ class CompanyClient(EndpointGroup):
         self,
         symbol: str,
         interval: str = "1min",
-        from_date: str | None = None,
-        to_date: str | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
         nonadjusted: bool | None = None,
     ) -> list[IntradayPrice]:
         """Get intraday price data
@@ -217,16 +227,18 @@ class CompanyClient(EndpointGroup):
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
             interval: Time interval (1min, 5min, 15min, 30min, 1hour, 4hour)
-            from_date: Start date in YYYY-MM-DD format (optional)
-            to_date: End date in YYYY-MM-DD format (optional)
+            from_date: Start date (optional)
+            to_date: End date (optional)
             nonadjusted: Use non-adjusted data (optional)
         """
+        start_date = _format_date(from_date)
+        end_date = _format_date(to_date)
         return self.client.request(
             INTRADAY_PRICE,
             symbol=symbol,
             interval=interval,
-            start_date=from_date,
-            end_date=to_date,
+            start_date=start_date,
+            end_date=end_date,
             nonadjusted=nonadjusted,
         )
 
@@ -390,24 +402,26 @@ class CompanyClient(EndpointGroup):
     def get_historical_prices_light(
         self,
         symbol: str,
-        from_date: str | None = None,
-        to_date: str | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
     ) -> HistoricalData:
         """Get lightweight historical daily price data (open, high, low, close only)
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
-            from_date: Start date in YYYY-MM-DD format (optional)
-            to_date: End date in YYYY-MM-DD format (optional)
+            from_date: Start date (optional)
+            to_date: End date (optional)
 
         Returns:
             HistoricalData object containing the price history
         """
         params: dict[str, str | int] = {"symbol": symbol}
-        if from_date:
-            params["start_date"] = from_date
-        if to_date:
-            params["end_date"] = to_date
+        start_date = _format_date(from_date)
+        end_date = _format_date(to_date)
+        if start_date:
+            params["start_date"] = start_date
+        if end_date:
+            params["end_date"] = end_date
 
         result = self.client.request(HISTORICAL_PRICE_LIGHT, **params)
 
@@ -419,24 +433,26 @@ class CompanyClient(EndpointGroup):
     def get_historical_prices_non_split_adjusted(
         self,
         symbol: str,
-        from_date: str | None = None,
-        to_date: str | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
     ) -> HistoricalData:
         """Get historical daily price data without split adjustments
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
-            from_date: Start date in YYYY-MM-DD format (optional)
-            to_date: End date in YYYY-MM-DD format (optional)
+            from_date: Start date (optional)
+            to_date: End date (optional)
 
         Returns:
             HistoricalData object containing the price history without split adjustments
         """
         params: dict[str, str | int] = {"symbol": symbol}
-        if from_date:
-            params["start_date"] = from_date
-        if to_date:
-            params["end_date"] = to_date
+        start_date = _format_date(from_date)
+        end_date = _format_date(to_date)
+        if start_date:
+            params["start_date"] = start_date
+        if end_date:
+            params["end_date"] = end_date
 
         result = self.client.request(HISTORICAL_PRICE_NON_SPLIT_ADJUSTED, **params)
 
@@ -448,24 +464,26 @@ class CompanyClient(EndpointGroup):
     def get_historical_prices_dividend_adjusted(
         self,
         symbol: str,
-        from_date: str | None = None,
-        to_date: str | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
     ) -> HistoricalData:
         """Get historical daily price data adjusted for dividends
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
-            from_date: Start date in YYYY-MM-DD format (optional)
-            to_date: End date in YYYY-MM-DD format (optional)
+            from_date: Start date (optional)
+            to_date: End date (optional)
 
         Returns:
             HistoricalData object containing the dividend-adjusted price history
         """
         params: dict[str, str | int] = {"symbol": symbol}
-        if from_date:
-            params["start_date"] = from_date
-        if to_date:
-            params["end_date"] = to_date
+        start_date = _format_date(from_date)
+        end_date = _format_date(to_date)
+        if start_date:
+            params["start_date"] = start_date
+        if end_date:
+            params["end_date"] = end_date
 
         result = self.client.request(HISTORICAL_PRICE_DIVIDEND_ADJUSTED, **params)
 
@@ -477,26 +495,28 @@ class CompanyClient(EndpointGroup):
     def get_dividends(
         self,
         symbol: str,
-        from_date: str | None = None,
-        to_date: str | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
         limit: int | None = None,
     ) -> list[DividendEvent]:
         """Get historical dividend payments for a specific company
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
-            from_date: Start date in YYYY-MM-DD format (optional)
-            to_date: End date in YYYY-MM-DD format (optional)
+            from_date: Start date (optional)
+            to_date: End date (optional)
             limit: Number of dividend records to return (optional)
 
         Returns:
             List of DividendEvent objects containing dividend history
         """
         params: dict[str, str | int] = {"symbol": symbol}
-        if from_date:
-            params["from_date"] = from_date
-        if to_date:
-            params["to_date"] = to_date
+        start_date = _format_date(from_date)
+        end_date = _format_date(to_date)
+        if start_date:
+            params["from_date"] = start_date
+        if end_date:
+            params["to_date"] = end_date
         if limit is not None:
             params["limit"] = limit
         return self.client.request(COMPANY_DIVIDENDS, **params)
@@ -516,26 +536,28 @@ class CompanyClient(EndpointGroup):
     def get_stock_splits(
         self,
         symbol: str,
-        from_date: str | None = None,
-        to_date: str | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
         limit: int | None = None,
     ) -> list[StockSplitEvent]:
         """Get historical stock split information for a specific company
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
-            from_date: Start date in YYYY-MM-DD format (optional)
-            to_date: End date in YYYY-MM-DD format (optional)
+            from_date: Start date (optional)
+            to_date: End date (optional)
             limit: Number of split records to return (optional)
 
         Returns:
             List of StockSplitEvent objects containing split history
         """
         params: dict[str, str | int] = {"symbol": symbol}
-        if from_date:
-            params["from_date"] = from_date
-        if to_date:
-            params["to_date"] = to_date
+        start_date = _format_date(from_date)
+        end_date = _format_date(to_date)
+        if start_date:
+            params["from_date"] = start_date
+        if end_date:
+            params["to_date"] = end_date
         if limit is not None:
             params["limit"] = limit
         return self.client.request(COMPANY_SPLITS, **params)

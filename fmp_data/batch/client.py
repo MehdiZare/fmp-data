@@ -429,12 +429,8 @@ class BatchClient(EndpointGroup):
         )
         return self._parse_csv_models(raw, FinancialGrowth)
 
-    def get_eod_bulk(self, target_date: date | str) -> list[EODBulk]:
+    def get_eod_bulk(self, target_date: date) -> list[EODBulk]:
         """Get bulk end-of-day prices"""
-        date_param = (
-            target_date.strftime("%Y-%m-%d")
-            if isinstance(target_date, date)
-            else target_date
-        )
+        date_param = target_date.strftime("%Y-%m-%d")
         raw = self._request_csv(EOD_BULK, date=date_param)
         return self._parse_csv_models(raw, EODBulk)

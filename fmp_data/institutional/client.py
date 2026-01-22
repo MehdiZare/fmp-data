@@ -208,9 +208,9 @@ class InstitutionalClient(EndpointGroup):
         self, page: int = 0, limit: int = 100, trade_date: date | None = None
     ) -> list[InsiderTradingLatest]:
         """Get latest insider trading activity"""
-        params: dict[str, int | date] = {"page": page, "limit": limit}
+        params: dict[str, int | str] = {"page": page, "limit": limit}
         if trade_date is not None:
-            params["date"] = trade_date
+            params["date"] = trade_date.strftime("%Y-%m-%d")
         return self.client.request(INSIDER_TRADING_LATEST, **params)
 
     def search_insider_trading(

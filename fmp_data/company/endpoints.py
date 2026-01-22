@@ -925,7 +925,7 @@ UPGRADES_DOWNGRADES_CONSENSUS: Endpoint[UpgradeDowngradeConsensus] = Endpoint(
 )
 
 COMPANY_PEERS: Endpoint = Endpoint(
-    name="stock_peers/{symbol}",
+    name="stock_peers",
     path="stock-peers",
     version=APIVersion.STABLE,
     method=HTTPMethod.GET,
