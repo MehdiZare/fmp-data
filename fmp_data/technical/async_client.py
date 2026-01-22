@@ -72,15 +72,15 @@ class AsyncTechnicalClient(AsyncEndpointGroup):
             List of indicator values
         """
         timeframe = self._normalize_timeframe(timeframe, interval)
-        params: dict[str, str | int | date] = {
+        params: dict[str, str | int] = {
             "symbol": symbol,
             "periodLength": period_length,
             "timeframe": timeframe,
         }
         if start_date:
-            params["from"] = start_date
+            params["from"] = start_date.strftime("%Y-%m-%d")
         if end_date:
-            params["to"] = end_date
+            params["to"] = end_date.strftime("%Y-%m-%d")
         return await self.client.request_async(endpoint, **params)
 
     async def get_sma(

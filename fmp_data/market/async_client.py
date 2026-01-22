@@ -240,13 +240,13 @@ class AsyncMarketClient(AsyncEndpointGroup):
         exchange: str | None = None,
     ) -> list[SectorPerformance]:
         """Get sector performance data"""
-        params: dict[str, dt_date | str] = {}
+        params: dict[str, str] = {}
         if sector is not None:
             params["sector"] = sector
         if exchange is not None:
             params["exchange"] = exchange
         snapshot_date = date or dt_date.today()
-        params["date"] = snapshot_date
+        params["date"] = snapshot_date.strftime("%Y-%m-%d")
         return await self.client.request_async(SECTOR_PERFORMANCE, **params)
 
     async def get_industry_performance_snapshot(
@@ -256,13 +256,13 @@ class AsyncMarketClient(AsyncEndpointGroup):
         exchange: str | None = None,
     ) -> list[IndustryPerformance]:
         """Get industry performance snapshot data"""
-        params: dict[str, dt_date | str] = {}
+        params: dict[str, str] = {}
         if industry is not None:
             params["industry"] = industry
         if exchange is not None:
             params["exchange"] = exchange
         snapshot_date = date or dt_date.today()
-        params["date"] = snapshot_date
+        params["date"] = snapshot_date.strftime("%Y-%m-%d")
         return await self.client.request_async(INDUSTRY_PERFORMANCE_SNAPSHOT, **params)
 
     async def get_historical_sector_performance(
@@ -273,11 +273,11 @@ class AsyncMarketClient(AsyncEndpointGroup):
         exchange: str | None = None,
     ) -> list[SectorPerformance]:
         """Get historical sector performance data"""
-        params: dict[str, dt_date | str] = {"sector": sector}
+        params: dict[str, str] = {"sector": sector}
         if from_date:
-            params["from"] = from_date
+            params["from"] = from_date.strftime("%Y-%m-%d")
         if to_date:
-            params["to"] = to_date
+            params["to"] = to_date.strftime("%Y-%m-%d")
         if exchange:
             params["exchange"] = exchange
         return await self.client.request_async(HISTORICAL_SECTOR_PERFORMANCE, **params)
@@ -290,11 +290,11 @@ class AsyncMarketClient(AsyncEndpointGroup):
         exchange: str | None = None,
     ) -> list[IndustryPerformance]:
         """Get historical industry performance data"""
-        params: dict[str, dt_date | str] = {"industry": industry}
+        params: dict[str, str] = {"industry": industry}
         if from_date:
-            params["from"] = from_date
+            params["from"] = from_date.strftime("%Y-%m-%d")
         if to_date:
-            params["to"] = to_date
+            params["to"] = to_date.strftime("%Y-%m-%d")
         if exchange:
             params["exchange"] = exchange
         return await self.client.request_async(
@@ -308,13 +308,13 @@ class AsyncMarketClient(AsyncEndpointGroup):
         exchange: str | None = None,
     ) -> list[SectorPESnapshot]:
         """Get sector price-to-earnings snapshot data"""
-        params: dict[str, dt_date | str] = {}
+        params: dict[str, str] = {}
         if sector is not None:
             params["sector"] = sector
         if exchange is not None:
             params["exchange"] = exchange
         snapshot_date = date or dt_date.today()
-        params["date"] = snapshot_date
+        params["date"] = snapshot_date.strftime("%Y-%m-%d")
         return await self.client.request_async(SECTOR_PE_SNAPSHOT, **params)
 
     async def get_industry_pe_snapshot(
@@ -324,13 +324,13 @@ class AsyncMarketClient(AsyncEndpointGroup):
         exchange: str | None = None,
     ) -> list[IndustryPESnapshot]:
         """Get industry price-to-earnings snapshot data"""
-        params: dict[str, dt_date | str] = {}
+        params: dict[str, str] = {}
         if industry is not None:
             params["industry"] = industry
         if exchange is not None:
             params["exchange"] = exchange
         snapshot_date = date or dt_date.today()
-        params["date"] = snapshot_date
+        params["date"] = snapshot_date.strftime("%Y-%m-%d")
         return await self.client.request_async(INDUSTRY_PE_SNAPSHOT, **params)
 
     async def get_historical_sector_pe(
@@ -341,11 +341,11 @@ class AsyncMarketClient(AsyncEndpointGroup):
         exchange: str | None = None,
     ) -> list[SectorPESnapshot]:
         """Get historical sector price-to-earnings data"""
-        params: dict[str, dt_date | str] = {"sector": sector}
+        params: dict[str, str] = {"sector": sector}
         if from_date:
-            params["from"] = from_date
+            params["from"] = from_date.strftime("%Y-%m-%d")
         if to_date:
-            params["to"] = to_date
+            params["to"] = to_date.strftime("%Y-%m-%d")
         if exchange:
             params["exchange"] = exchange
         return await self.client.request_async(HISTORICAL_SECTOR_PE, **params)
@@ -358,11 +358,11 @@ class AsyncMarketClient(AsyncEndpointGroup):
         exchange: str | None = None,
     ) -> list[IndustryPESnapshot]:
         """Get historical industry price-to-earnings data"""
-        params: dict[str, dt_date | str] = {"industry": industry}
+        params: dict[str, str] = {"industry": industry}
         if from_date:
-            params["from"] = from_date
+            params["from"] = from_date.strftime("%Y-%m-%d")
         if to_date:
-            params["to"] = to_date
+            params["to"] = to_date.strftime("%Y-%m-%d")
         if exchange:
             params["exchange"] = exchange
         return await self.client.request_async(HISTORICAL_INDUSTRY_PE, **params)
@@ -407,11 +407,11 @@ class AsyncMarketClient(AsyncEndpointGroup):
         Returns:
             List of IPO disclosure information
         """
-        params: dict[str, dt_date | int | str] = {"limit": limit}
+        params: dict[str, str | int] = {"limit": limit}
         if from_date:
-            params["from"] = from_date
+            params["from"] = from_date.strftime("%Y-%m-%d")
         if to_date:
-            params["to"] = to_date
+            params["to"] = to_date.strftime("%Y-%m-%d")
         return await self.client.request_async(IPO_DISCLOSURE, **params)
 
     async def get_ipo_prospectus(
@@ -430,9 +430,9 @@ class AsyncMarketClient(AsyncEndpointGroup):
         Returns:
             List of IPO prospectus information
         """
-        params: dict[str, dt_date | int | str] = {"limit": limit}
+        params: dict[str, str | int] = {"limit": limit}
         if from_date:
-            params["from"] = from_date
+            params["from"] = from_date.strftime("%Y-%m-%d")
         if to_date:
-            params["to"] = to_date
+            params["to"] = to_date.strftime("%Y-%m-%d")
         return await self.client.request_async(IPO_PROSPECTUS, **params)

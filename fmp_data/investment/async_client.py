@@ -44,9 +44,9 @@ class AsyncInvestmentClient(AsyncEndpointGroup):
         self, symbol: str, holdings_date: date | None = None
     ) -> list[ETFHolding]:
         """Get ETF holdings"""
-        params: dict[str, date | str] = {"symbol": symbol}
+        params: dict[str, str] = {"symbol": symbol}
         if holdings_date is not None:
-            params["date"] = holdings_date
+            params["date"] = holdings_date.strftime("%Y-%m-%d")
         return await self.client.request_async(ETF_HOLDINGS, **params)
 
     async def get_etf_holding_dates(self, symbol: str) -> list[date]:
@@ -124,7 +124,9 @@ class AsyncInvestmentClient(AsyncEndpointGroup):
     ) -> list[MutualFundHolding]:
         """Get mutual fund holdings"""
         return await self.client.request_async(
-            MUTUAL_FUND_HOLDINGS, symbol=symbol, date=holdings_date
+            MUTUAL_FUND_HOLDINGS,
+            symbol=symbol,
+            date=holdings_date.strftime("%Y-%m-%d"),
         )
 
     async def get_mutual_fund_by_name(self, name: str) -> list[MutualFundHolding]:

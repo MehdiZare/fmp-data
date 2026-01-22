@@ -74,6 +74,10 @@ logger = logging.getLogger(__name__)
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
+class InvalidResponseType(TypeError):
+    """Raised when a batch response payload has an unexpected type."""
+
+
 class BatchClient(EndpointGroup):
     """Client for batch data endpoints
 
@@ -106,7 +110,8 @@ class BatchClient(EndpointGroup):
         if isinstance(result, bytearray):
             return bytes(result)
         if not isinstance(result, bytes):
-            raise TypeError(f"Expected bytes response for {endpoint.name}")
+            msg = f"Expected bytes response for {endpoint.name}"
+            raise InvalidResponseType(msg)
         return result
 
     @staticmethod
@@ -324,10 +329,15 @@ class BatchClient(EndpointGroup):
         """Get discounted cash flow valuations in bulk"""
         raw = self._request_csv(DCF_BULK)
         rows = self._parse_csv_rows(raw)
+        results: list[DCF] = []
         for row in rows:
             if "Stock Price" in row and "stockPrice" not in row:
                 row["stockPrice"] = row.pop("Stock Price")
-        return [DCF.model_validate(row) for row in rows]
+            try:
+                results.append(DCF.model_validate(row))
+            except PydanticValidationError as exc:
+                logger.warning("Skipping invalid DCF row %s: %s", row, exc)
+        return results
 
     def get_rating_bulk(self) -> list[CompanyRating]:
         """Get stock ratings in bulk"""

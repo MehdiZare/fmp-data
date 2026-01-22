@@ -120,7 +120,9 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
 
     async def get_asset_allocation(self, report_date: date) -> list[AssetAllocation]:
         """Get 13F asset allocation data for a report period end date"""
-        return await self.client.request_async(ASSET_ALLOCATION, date=report_date)
+        return await self.client.request_async(
+            ASSET_ALLOCATION, date=report_date.strftime("%Y-%m-%d")
+        )
 
     async def get_institutional_holders(
         self, page: int = 0, limit: int = 100

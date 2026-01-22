@@ -29,11 +29,11 @@ class EconomicsClient(EndpointGroup):
         self, start_date: date | None = None, end_date: date | None = None
     ) -> list[TreasuryRate]:
         """Get treasury rates"""
-        params: dict[str, date] = {}
+        params: dict[str, str] = {}
         if start_date:
-            params["start_date"] = start_date
+            params["start_date"] = start_date.strftime("%Y-%m-%d")
         if end_date:
-            params["end_date"] = end_date
+            params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         return self.client.request(TREASURY_RATES, **params)
 
@@ -45,11 +45,11 @@ class EconomicsClient(EndpointGroup):
         self, start_date: date | None = None, end_date: date | None = None
     ) -> list[EconomicEvent]:
         """Get economic calendar events"""
-        params: dict[str, date] = {}
+        params: dict[str, str] = {}
         if start_date:
-            params["start_date"] = start_date
+            params["start_date"] = start_date.strftime("%Y-%m-%d")
         if end_date:
-            params["end_date"] = end_date
+            params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         return self.client.request(ECONOMIC_CALENDAR, **params)
 
@@ -63,8 +63,8 @@ class EconomicsClient(EndpointGroup):
         """Get Commitment of Traders (COT) report data"""
         params = {
             "symbol": symbol,
-            "start_date": start_date,
-            "end_date": end_date,
+            "start_date": start_date.strftime("%Y-%m-%d"),
+            "end_date": end_date.strftime("%Y-%m-%d"),
         }
         return self.client.request(COMMITMENT_OF_TRADERS_REPORT, **params)
 
@@ -74,8 +74,8 @@ class EconomicsClient(EndpointGroup):
         """Get Commitment of Traders (COT) analysis data"""
         params = {
             "symbol": symbol,
-            "start_date": start_date,
-            "end_date": end_date,
+            "start_date": start_date.strftime("%Y-%m-%d"),
+            "end_date": end_date.strftime("%Y-%m-%d"),
         }
         return self.client.request(COMMITMENT_OF_TRADERS_ANALYSIS, **params)
 

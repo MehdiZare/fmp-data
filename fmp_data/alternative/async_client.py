@@ -72,11 +72,11 @@ class AsyncAlternativeMarketsClient(AsyncEndpointGroup):
         end_date: date | None = None,
     ) -> CryptoHistoricalData:
         """Get cryptocurrency historical prices"""
-        params: dict[str, date | str] = {"symbol": symbol}
+        params: dict[str, str] = {"symbol": symbol}
         if start_date:
-            params["start_date"] = start_date
+            params["start_date"] = start_date.strftime("%Y-%m-%d")
         if end_date:
-            params["end_date"] = end_date
+            params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         result = await self.client.request_async(CRYPTO_HISTORICAL, **params)
         return self._wrap_history(symbol, result, CryptoHistoricalData)
@@ -110,11 +110,11 @@ class AsyncAlternativeMarketsClient(AsyncEndpointGroup):
         end_date: date | None = None,
     ) -> ForexPriceHistory:
         """Get forex historical prices"""
-        params: dict[str, date | str] = {"symbol": symbol}
+        params: dict[str, str] = {"symbol": symbol}
         if start_date:
-            params["start_date"] = start_date
+            params["start_date"] = start_date.strftime("%Y-%m-%d")
         if end_date:
-            params["end_date"] = end_date
+            params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         result = await self.client.request_async(FOREX_HISTORICAL, **params)
         return self._wrap_history(symbol, result, ForexPriceHistory)
@@ -148,11 +148,11 @@ class AsyncAlternativeMarketsClient(AsyncEndpointGroup):
         end_date: date | None = None,
     ) -> CommodityPriceHistory:
         """Get commodity historical prices"""
-        params: dict[str, date | str] = {"symbol": symbol}
+        params: dict[str, str] = {"symbol": symbol}
         if start_date:
-            params["start_date"] = start_date
+            params["start_date"] = start_date.strftime("%Y-%m-%d")
         if end_date:
-            params["end_date"] = end_date
+            params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         result = await self.client.request_async(COMMODITY_HISTORICAL, **params)
         return self._wrap_history(symbol, result, CommodityPriceHistory)

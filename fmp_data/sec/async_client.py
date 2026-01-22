@@ -63,8 +63,8 @@ class AsyncSECClient(AsyncEndpointGroup):
             page=page,
             limit=limit,
             **{
-                "from": start_date,
-                "to": end_date,
+                "from": start_date.strftime("%Y-%m-%d"),
+                "to": end_date.strftime("%Y-%m-%d"),
             },
         )
 
@@ -93,8 +93,8 @@ class AsyncSECClient(AsyncEndpointGroup):
             page=page,
             limit=limit,
             **{
-                "from": start_date,
-                "to": end_date,
+                "from": start_date.strftime("%Y-%m-%d"),
+                "to": end_date.strftime("%Y-%m-%d"),
             },
         )
 
@@ -124,8 +124,8 @@ class AsyncSECClient(AsyncEndpointGroup):
             page=page,
             limit=limit,
             **{
-                "from": start_date,
-                "to": end_date,
+                "from": start_date.strftime("%Y-%m-%d"),
+                "to": end_date.strftime("%Y-%m-%d"),
             },
         )
 
@@ -155,8 +155,8 @@ class AsyncSECClient(AsyncEndpointGroup):
             page=page,
             limit=limit,
             **{
-                "from": start_date,
-                "to": end_date,
+                "from": start_date.strftime("%Y-%m-%d"),
+                "to": end_date.strftime("%Y-%m-%d"),
             },
         )
 
@@ -186,8 +186,8 @@ class AsyncSECClient(AsyncEndpointGroup):
             page=page,
             limit=limit,
             **{
-                "from": start_date,
-                "to": end_date,
+                "from": start_date.strftime("%Y-%m-%d"),
+                "to": end_date.strftime("%Y-%m-%d"),
             },
         )
 
