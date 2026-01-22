@@ -4,9 +4,9 @@ Connect the FMP Data MCP server to Claude Desktop to enable real-time financial 
 
 ## Prerequisites
 
-- Claude Desktop App: https://claude.ai/download
-- Python 3.10-3.14: https://www.python.org/downloads/
-- FMP API key: https://site.financialmodelingprep.com/pricing-plans?couponCode=mehdi
+- Claude Desktop App: [Claude Desktop App](https://claude.ai/download)
+- Python 3.10-3.14: [Python 3.10-3.14](https://www.python.org/downloads/)
+- FMP API key: [FMP API key](https://site.financialmodelingprep.com/pricing-plans?couponCode=mehdi)
 
 ## Quick Setup (Recommended)
 
@@ -51,14 +51,15 @@ Config location:
 - Linux: `~/.config/Claude/claude_desktop_config.json`
 
 Create or update the file:
-```json
+Note: `FMP_API_KEY` is a secret (pragma: allowlist secret).
+```jsonc
 {
   "mcpServers": {
     "fmp-data": {
       "command": "python",
       "args": ["-m", "fmp_data.mcp"],
       "env": {
-        "FMP_API_KEY": "your_api_key_here"  // pragma: allowlist secret
+        "FMP_API_KEY": "your_api_key_here" // pragma: allowlist secret
       }
     }
   }
@@ -97,14 +98,15 @@ fmp-mcp serve --manifest custom.py
 ## Custom Tool Manifests
 
 To use a predefined or custom tool set, set `FMP_MCP_MANIFEST`:
-```json
+Note: `FMP_API_KEY` is a secret (pragma: allowlist secret).
+```jsonc
 {
   "mcpServers": {
     "fmp-data": {
       "command": "python",
       "args": ["-m", "fmp_data.mcp"],
       "env": {
-        "FMP_API_KEY": "your_api_key_here",  // pragma: allowlist secret
+        "FMP_API_KEY": "your_api_key_here", // pragma: allowlist secret
         "FMP_MCP_MANIFEST": "examples/mcp_configurations/trading_manifest.py"
       }
     }
