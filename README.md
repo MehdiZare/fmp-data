@@ -209,9 +209,11 @@ for query in queries:
         print()
 ```
 
-Note (2.0.0+): Loading cached vector stores now requires
-`EndpointVectorStore.load(..., allow_dangerous_deserialization=True)` and should
-only be used with trusted cache sources.
+Note (2.0.0+): Loading cached vector stores now requires instantiating
+`EndpointVectorStore(client, registry, embeddings, allow_dangerous_deserialization=True)`.
+The `allow_dangerous_deserialization` boolean is passed at construction so cached
+stores load automatically if present and the flag is enabled; use only with
+trusted cache sources.
 
 ### Alternative Setup: Using Configuration
 
