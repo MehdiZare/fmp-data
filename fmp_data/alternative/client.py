@@ -1,6 +1,6 @@
 # fmp_data/alternative/client.py
 from datetime import date
-from typing import TypeVar, cast
+from typing import TypeVar
 
 from pydantic import BaseModel
 
@@ -37,21 +37,17 @@ from fmp_data.alternative.models import (
 )
 from fmp_data.base import EndpointGroup
 
-T = TypeVar("T")
+ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
 class AlternativeMarketsClient(EndpointGroup):
     """Client for alternative markets endpoints"""
 
     @staticmethod
-    def _wrap_history(symbol: str, result: object, model: type[T]) -> T:
+    def _wrap_history(symbol: str, result: object, model: type[ModelT]) -> ModelT:
         if isinstance(result, list):
-            model_type = cast(type[BaseModel], model)
-            return cast(
-                T,
-                model_type.model_validate({"symbol": symbol, "historical": result}),
-            )
-        return cast(T, cast(type[BaseModel], model).model_validate(result))
+            return model.model_validate({"symbol": symbol, "historical": result})
+        return model.model_validate(result)
 
     # Cryptocurrency methods
     def get_crypto_list(self) -> list[CryptoPair]:

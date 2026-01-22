@@ -3,9 +3,9 @@ import csv
 from datetime import date
 import io
 import logging
-from typing import Any, cast, get_args, get_origin
+from typing import Any, TypeVar, cast, get_args, get_origin
 
-from pydantic import AnyHttpUrl, HttpUrl
+from pydantic import AnyHttpUrl, BaseModel, HttpUrl
 from pydantic import ValidationError as PydanticValidationError
 
 from fmp_data.base import EndpointGroup
@@ -70,6 +70,7 @@ from fmp_data.fundamental.models import (
 from fmp_data.investment.models import ETFHolding
 
 logger = logging.getLogger(__name__)
+ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
 class BatchClient(EndpointGroup):
@@ -100,8 +101,8 @@ class BatchClient(EndpointGroup):
         return rows
 
     @staticmethod
-    def _parse_csv_models(raw: bytes, model: type[Any]) -> list[Any]:
-        results: list[Any] = []
+    def _parse_csv_models(raw: bytes, model: type[ModelT]) -> list[ModelT]:
+        results: list[ModelT] = []
         url_fields = BatchClient._get_url_fields(model)
         for row in BatchClient._parse_csv_rows(raw):
             try:
@@ -128,7 +129,7 @@ class BatchClient(EndpointGroup):
         return results
 
     @staticmethod
-    def _get_url_fields(model: type[Any]) -> set[str]:
+    def _get_url_fields(model: type[BaseModel]) -> set[str]:
         url_fields: set[str] = set()
         model_fields = getattr(model, "model_fields", None)
         if not model_fields:
@@ -429,5 +430,10 @@ class BatchClient(EndpointGroup):
 
     def get_eod_bulk(self, target_date: date | str) -> list[EODBulk]:
         """Get bulk end-of-day prices"""
-        raw = cast(bytes, self.client.request(EOD_BULK, date=target_date))
+        date_param = (
+            target_date.strftime("%Y-%m-%d")
+            if isinstance(target_date, date)
+            else target_date
+        )
+        raw = cast(bytes, self.client.request(EOD_BULK, date=date_param))
         return self._parse_csv_models(raw, EODBulk)

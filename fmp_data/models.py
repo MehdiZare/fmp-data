@@ -79,19 +79,18 @@ class ParamType(str, Enum):
             return None
 
         try:
-            match self:
-                case ParamType.STRING:
-                    return self._convert_to_string(value)
-                case ParamType.INTEGER:
-                    return self._convert_to_integer(value)
-                case ParamType.FLOAT:
-                    return self._convert_to_float(value)
-                case ParamType.BOOLEAN:
-                    return self._convert_to_boolean(value)
-                case ParamType.DATE:
-                    return self._convert_to_date(value)
-                case ParamType.DATETIME:
-                    return self._convert_to_datetime(value)
+            if self is ParamType.STRING:
+                return self._convert_to_string(value)
+            if self is ParamType.INTEGER:
+                return self._convert_to_integer(value)
+            if self is ParamType.FLOAT:
+                return self._convert_to_float(value)
+            if self is ParamType.BOOLEAN:
+                return self._convert_to_boolean(value)
+            if self is ParamType.DATE:
+                return self._convert_to_date(value)
+            if self is ParamType.DATETIME:
+                return self._convert_to_datetime(value)
             raise ValueError(f"Unsupported type: {self}")
         except (ValueError, TypeError) as e:
             raise ValueError(
@@ -178,8 +177,9 @@ class Endpoint(BaseModel, Generic[T]):
     mandatory_params: list[EndpointParam]
     optional_params: list[EndpointParam] | None
     response_model: type[T]
+    allow_empty_on_404: bool = True
     arg_model: type[BaseModel] | None = None
-    example_queries: list | None | None = None
+    example_queries: list | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 

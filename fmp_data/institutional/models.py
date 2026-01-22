@@ -292,21 +292,21 @@ class BeneficialOwnership(BaseModel):
     filing_date: datetime = Field(alias="filingDate", description="Filing date")
     accepted_ate: datetime = Field(alias="acceptedDate", description="Acceptance date")
     cusip: str = Field(description="CUSIP number")
-    citizenship_place_org: str | None | None = Field(
+    citizenship_place_org: str | None = Field(
         None,
         alias="citizenshipOrPlaceOfOrganization",
         description="Citizenship or place of organization",
     )
-    sole_voting_power: float | None | None = Field(
+    sole_voting_power: float | None = Field(
         None, alias="soleVotingPower", description="Sole voting power"
     )
-    shared_voting_power: float | None | None = Field(
+    shared_voting_power: float | None = Field(
         None, alias="sharedVotingPower", description="Shared voting power"
     )
-    sole_dispositive_power: float | None | None = Field(
+    sole_dispositive_power: float | None = Field(
         None, alias="soleDispositivePower", description="Sole dispositive power"
     )
-    shared_dispositive_power: float | None | None = Field(
+    shared_dispositive_power: float | None = Field(
         None, alias="sharedDispositivePower", description="Shared dispositive power"
     )
     amount_beneficially_owned: float = Field(

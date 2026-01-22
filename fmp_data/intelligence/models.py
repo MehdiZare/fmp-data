@@ -491,7 +491,7 @@ class CrowdfundingOffering(BaseModel):
     model_config = default_model_config
 
     cik: str = Field(description="Company CIK number")
-    company_name: str | None | None = Field(
+    company_name: str | None = Field(
         None, alias="companyName", description="Company name"
     )
     acceptance_time: datetime | None = Field(
@@ -508,8 +508,8 @@ class CrowdfundingOffering(BaseModel):
         validation_alias=AliasChoices("filingDate", "fillingDate"),
         description="Filing date",
     )
-    date: str | None | None = Field(None, description="Date in MM-DD-YYYY format")
-    name_of_issuer: str | None | None = Field(
+    date: str | None = Field(None, description="Date in MM-DD-YYYY format")
+    name_of_issuer: str | None = Field(
         None, alias="nameOfIssuer", description="Name of issuer"
     )
     legal_status_form: str | None = Field(
@@ -520,43 +520,41 @@ class CrowdfundingOffering(BaseModel):
     )
 
     # Issuer information
-    issuer_street: str | None | None = Field(
+    issuer_street: str | None = Field(
         None, alias="issuerStreet", description="Issuer street address"
     )
-    issuer_city: str | None | None = Field(
-        None, alias="issuerCity", description="Issuer city"
-    )
-    issuer_state_or_country: str | None | None = Field(
+    issuer_city: str | None = Field(None, alias="issuerCity", description="Issuer city")
+    issuer_state_or_country: str | None = Field(
         None, alias="issuerStateOrCountry", description="Issuer state/country"
     )
-    issuer_zip_code: str | None | None = Field(
+    issuer_zip_code: str | None = Field(
         None, alias="issuerZipCode", description="Issuer ZIP code"
     )
-    issuer_website: str | None | None = Field(
+    issuer_website: str | None = Field(
         None, alias="issuerWebsite", description="Issuer website"
     )
 
     # Intermediary information
-    intermediary_company_name: str | None | None = Field(
+    intermediary_company_name: str | None = Field(
         None, alias="intermediaryCompanyName", description="Intermediary company name"
     )
-    intermediary_commission_cik: str | None | None = Field(
+    intermediary_commission_cik: str | None = Field(
         None, alias="intermediaryCommissionCik", description="Intermediary CIK"
     )
-    intermediary_commission_file_number: str | None | None = Field(
+    intermediary_commission_file_number: str | None = Field(
         None,
         alias="intermediaryCommissionFileNumber",
         description="Intermediary file number",
     )
-    compensation_amount: str | None | None = Field(
+    compensation_amount: str | None = Field(
         None, alias="compensationAmount", description="Compensation amount"
     )
-    financial_interest: str | None | None = Field(
+    financial_interest: str | None = Field(
         None, alias="financialInterest", description="Financial interest"
     )
 
     # Offering details
-    security_offered_type: str | None | None = Field(
+    security_offered_type: str | None = Field(
         None, alias="securityOfferedType", description="Type of security offered"
     )
     security_offered_other_description: str | None = Field(
@@ -575,7 +573,7 @@ class CrowdfundingOffering(BaseModel):
     over_subscription_accepted: str = Field(
         alias="overSubscriptionAccepted", description="Over-subscription accepted"
     )
-    over_subscription_allocation_type: str | None | None = Field(
+    over_subscription_allocation_type: str | None = Field(
         None,
         alias="overSubscriptionAllocationType",
         description="Over-subscription allocation type",
@@ -583,7 +581,7 @@ class CrowdfundingOffering(BaseModel):
     maximum_offering_amount: Decimal = Field(
         alias="maximumOfferingAmount", description="Maximum offering amount"
     )
-    offering_deadline_date: str | None | None = Field(
+    offering_deadline_date: str | None = Field(
         None, alias="offeringDeadlineDate", description="Offering deadline"
     )
 
@@ -683,7 +681,7 @@ class EquityOffering(BaseModel):
         validation_alias=AliasChoices("acceptedDate", "acceptanceTime"),
         description="Filing acceptance time",
     )
-    is_amendment: bool | None | None = Field(
+    is_amendment: bool | None = Field(
         None, alias="isAmendment", description="Whether this is an amendment"
     )
 
@@ -761,17 +759,17 @@ class EquityOffering(BaseModel):
     date_of_first_sale: str = Field(
         alias="dateOfFirstSale", description="Date of first sale"
     )
-    duration_of_offering_is_more_than_year: bool | None | None = Field(
+    duration_of_offering_is_more_than_year: bool | None = Field(
         None,
         alias="durationOfOfferingIsMoreThanYear",
         description="Whether offering duration exceeds one year",
     )
-    securities_offered_are_of_equity_type: bool | None | None = Field(
+    securities_offered_are_of_equity_type: bool | None = Field(
         None,
         alias="securitiesOfferedAreOfEquityType",
         description="Whether securities are equity type",
     )
-    is_business_combination_transaction: bool | None | None = Field(
+    is_business_combination_transaction: bool | None = Field(
         None,
         alias="isBusinessCombinationTransaction",
         description="Whether this is a business combination",
@@ -790,7 +788,7 @@ class EquityOffering(BaseModel):
     total_amount_remaining: Decimal = Field(
         alias="totalAmountRemaining", description="Amount remaining"
     )
-    has_non_accredited_investors: bool | None | None = Field(
+    has_non_accredited_investors: bool | None = Field(
         None,
         alias="hasNonAccreditedInvestors",
         description="Has non-accredited investors",

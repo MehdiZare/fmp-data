@@ -77,19 +77,26 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         Returns:
             List of Form13F objects. Empty list if no records found.
         """
+        year, quarter = self._date_to_year_quarter(report_date)
         try:
-            year, quarter = self._date_to_year_quarter(report_date)
             result = await self.client.request_async(
                 FORM_13F, cik=cik, year=year, quarter=quarter
             )
-            # Ensure we always return a list
-            return result if isinstance(result, list) else [result]
-        except Exception as e:
-            # Log the error but return empty list instead of raising
+        except Exception as exc:
             self.client.logger.warning(
-                f"No Form 13F data found for CIK {cik} on {report_date}: {e!s}"
+                f"No Form 13F data found for CIK {cik} on {report_date}: {exc!s}"
             )
             return []
+
+        if isinstance(result, list):
+            if not result:
+                self.client.logger.warning(
+                    "No Form 13F data found for CIK %s on %s.",
+                    cik,
+                    report_date,
+                )
+            return result
+        return [result]
 
     async def get_form_13f_dates(self, cik: str) -> list[Form13F]:
         """

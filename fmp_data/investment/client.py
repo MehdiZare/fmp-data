@@ -42,9 +42,9 @@ class InvestmentClient(EndpointGroup):
         self, symbol: str, holdings_date: date | None = None
     ) -> list[ETFHolding]:
         """Get ETF holdings"""
-        params: dict[str, str | date] = {"symbol": symbol}
+        params: dict[str, str] = {"symbol": symbol}
         if holdings_date is not None:
-            params["date"] = holdings_date
+            params["date"] = holdings_date.strftime("%Y-%m-%d")
         return self.client.request(ETF_HOLDINGS, **params)
 
     def get_etf_holding_dates(self, symbol: str) -> list[date]:

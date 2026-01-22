@@ -48,7 +48,6 @@ from fmp_data.intelligence.endpoints import (
     STOCK_NEWS_SENTIMENTS_ENDPOINT,
     STOCK_SPLITS_CALENDAR,
     STOCK_SYMBOL_NEWS_ENDPOINT,
-    IPOEvent,
 )
 from fmp_data.intelligence.models import (
     CrowdfundingOffering,
@@ -59,6 +58,7 @@ from fmp_data.intelligence.models import (
     EarningEvent,
     EarningSurprise,
     EquityOffering,
+    EquityOfferingSearchItem,
     ESGBenchmark,
     ESGData,
     ESGRating,
@@ -70,6 +70,7 @@ from fmp_data.intelligence.models import (
     HistoricalSocialSentiment,
     HistoricalStockGrade,
     HouseDisclosure,
+    IPOEvent,
     PressRelease,
     PressReleaseBySymbol,
     PriceTargetNews,
@@ -476,7 +477,7 @@ class MarketIntelligenceClient(EndpointGroup):
             params["cik"] = cik
         return self.client.request(EQUITY_OFFERING_RSS, **params)
 
-    def search_equity_offering(self, name: str) -> list[EquityOffering]:
+    def search_equity_offering(self, name: str) -> list[EquityOfferingSearchItem]:
         """Search equity offerings"""
         return self.client.request(EQUITY_OFFERING_SEARCH, name=name)
 

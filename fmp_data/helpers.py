@@ -43,7 +43,7 @@ def deprecated(reason: str = "") -> Callable[[F], F]:
 class RemovedEndpointError(FMPError):
     """Raised when a removed API endpoint is called."""
 
-    def __init__(self, method_name: str, reason: str = ""):
+    def __init__(self, method_name: str, reason: str = "") -> None:
         msg = f"'{method_name}' has been removed from the FMP API."
         if reason:
             msg += f" {reason}"

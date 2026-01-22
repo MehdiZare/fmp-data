@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 from contextvars import ContextVar
+from datetime import date, datetime
 import json
 import logging
 import time
@@ -243,6 +244,8 @@ class BaseClient:
             # Extract query parameters and add API key
             query_params = endpoint.get_query_params(validated_params)
             query_params["apikey"] = self.config.api_key
+            query_params = self._serialize_query_params(query_params)
+            query_params = self._serialize_query_params(query_params)
 
             self.logger.debug(
                 f"Making request to {endpoint.name}",
@@ -264,7 +267,7 @@ class BaseClient:
                     response.raise_for_status()
                     data = response.content
                 else:
-                    data = self.handle_response(response)
+                    data = self.handle_response(endpoint, response)
                 result = self._process_response(endpoint, data)
                 success = True
                 return result
@@ -310,7 +313,11 @@ class BaseClient:
                         extra={"error": str(callback_exc)},
                     )
 
-    def handle_response(self, response: httpx.Response) -> dict[str, Any] | list[Any]:
+    def handle_response(
+        self,
+        endpoint: Endpoint[T] | httpx.Response,
+        response: httpx.Response | None = None,
+    ) -> dict[str, Any] | list[Any]:
         """
         Handle API response and errors, returning dict or list from JSON.
 
@@ -320,11 +327,25 @@ class BaseClient:
             ValidationError: If status is 400
             FMPError: For other 4xx/5xx errors or invalid JSON
         """
+        endpoint_for_error: Endpoint[T] | None = None
+        if response is None:
+            if isinstance(endpoint, httpx.Response) or hasattr(
+                endpoint, "raise_for_status"
+            ):
+                response = cast(httpx.Response, endpoint)
+            else:
+                raise TypeError("handle_response() missing required response argument")
+        else:
+            assert isinstance(endpoint, Endpoint)
+            endpoint_for_error = endpoint
+
+        assert response is not None
+
         try:
             response.raise_for_status()
             return self._parse_json_response(response)
         except httpx.HTTPStatusError as exc:
-            return self._handle_http_status_error(exc)
+            return self._handle_http_status_error(endpoint_for_error, exc)
         except json.JSONDecodeError as exc:
             raise FMPError(
                 f"Invalid JSON response from API: {exc!s}",
@@ -355,14 +376,39 @@ class BaseClient:
             return data
         return {"raw_content": str(data)}
 
+    @staticmethod
+    def _serialize_query_params(params: dict[str, Any]) -> dict[str, Any]:
+        """Normalize query params for transport (e.g., date/datetime to strings)."""
+        serialized: dict[str, Any] = {}
+        for key, value in params.items():
+            if isinstance(value, datetime):
+                serialized[key] = value.isoformat()
+            elif isinstance(value, date):
+                serialized[key] = value.strftime("%Y-%m-%d")
+            else:
+                serialized[key] = value
+        return serialized
+
     def _handle_http_status_error(
         self,
-        error: httpx.HTTPStatusError,
+        endpoint: Endpoint[T] | httpx.HTTPStatusError | None,
+        error: httpx.HTTPStatusError | None = None,
     ) -> dict[str, Any] | list[Any]:
+        if error is None:
+            if isinstance(endpoint, httpx.HTTPStatusError):
+                error = endpoint
+                endpoint = None
+            else:
+                raise TypeError(
+                    "_handle_http_status_error() missing required error argument"
+                )
+
         error_details = self._get_error_details(error.response)
         status_code = error.response.status_code
 
         if status_code == 404:
+            if endpoint is not None and getattr(endpoint, "allow_empty_on_404", False):
+                return []
             if isinstance(error_details, list) and not error_details:
                 return []
             if isinstance(error_details, dict) and not error_details:
@@ -616,7 +662,7 @@ class BaseClient:
                     response.raise_for_status()
                     data = response.content
                 else:
-                    data = self.handle_response(response)
+                    data = self.handle_response(endpoint, response)
                 return self._process_response(endpoint, data)
             finally:
                 await response.aclose()
