@@ -817,7 +817,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         client_name="company",
         method_name="get_stock_price_change",
         natural_description=(
-            "Get percentage price changes across multiple time horizons " "for a stock"
+            "Get percentage price changes across multiple time horizons for a stock"
         ),
         example_queries=[
             "Show AAPL price change over 1D, 1M, and 1Y",

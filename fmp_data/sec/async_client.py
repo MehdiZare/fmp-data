@@ -1,5 +1,6 @@
 # fmp_data/sec/async_client.py
 """Async client for SEC filing and company data endpoints."""
+
 from datetime import date, timedelta
 from typing import cast
 

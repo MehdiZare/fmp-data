@@ -1,5 +1,6 @@
 # fmp_data/economics/async_client.py
 """Async client for economics data endpoints."""
+
 from datetime import date
 
 from fmp_data.base import AsyncEndpointGroup

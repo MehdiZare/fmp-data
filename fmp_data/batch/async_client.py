@@ -1,5 +1,6 @@
 # fmp_data/batch/async_client.py
 """Async client for batch data endpoints."""
+
 import csv
 from datetime import date
 import io

@@ -1,5 +1,6 @@
 # fmp_data/index/async_client.py
 """Async client for market index endpoints."""
+
 from fmp_data.base import AsyncEndpointGroup
 from fmp_data.index.endpoints import (
     DOWJONES_CONSTITUENTS,

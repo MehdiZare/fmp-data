@@ -1,5 +1,6 @@
 # fmp_data/technical/async_client.py
 """Async client for technical analysis endpoints."""
+
 from datetime import date
 from typing import Any, TypeVar
 

@@ -21,6 +21,7 @@ def _get_validation_error() -> type[Exception]:
 
     return ValidationError
 
+
 T = TypeVar("T")
 
 default_model_config = ConfigDict(

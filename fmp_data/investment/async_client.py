@@ -1,5 +1,6 @@
 # fmp_data/investment/async_client.py
 """Async client for investment products endpoints."""
+
 from datetime import date
 import warnings
 

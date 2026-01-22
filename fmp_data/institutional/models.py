@@ -215,9 +215,7 @@ class InsiderStatistic(BaseModel):
     average_disposed: float = Field(
         alias="averageDisposed", description="Average disposed"
     )
-    total_purchases: int = Field(
-        alias="totalPurchases", description="Total purchases"
-    )
+    total_purchases: int = Field(alias="totalPurchases", description="Total purchases")
     total_sales: int = Field(alias="totalSales", description="Total sales")
 
 
@@ -497,9 +495,7 @@ class InsiderTradingStatistics(BaseModel):
     average_disposed: float = Field(
         alias="averageDisposed", description="Average disposed"
     )
-    total_purchases: int = Field(
-        alias="totalPurchases", description="Total purchases"
-    )
+    total_purchases: int = Field(alias="totalPurchases", description="Total purchases")
     total_sales: int = Field(alias="totalSales", description="Total sales")
 
 
@@ -539,9 +535,7 @@ class InstitutionalOwnershipExtract(BaseModel):
     accepted_date: date | None = Field(
         default=None, alias="acceptedDate", description="Accepted date"
     )
-    security_cusip: str = Field(
-        alias="securityCusip", description="Security CUSIP"
-    )
+    security_cusip: str = Field(alias="securityCusip", description="Security CUSIP")
     symbol: str | None = Field(default=None, description="Symbol")
     name_of_issuer: str = Field(alias="nameOfIssuer", description="Issuer name")
     title_of_class: str = Field(alias="titleOfClass", description="Class title")
@@ -705,18 +699,14 @@ class HolderPerformanceSummary(BaseModel):
     report_date: date = Field(description="Filing date", alias="date")
     cik: str = Field(description="Institution CIK")
     investor_name: str = Field(alias="investorName", description="Institution name")
-    portfolio_size: int = Field(
-        alias="portfolioSize", description="Portfolio size"
-    )
+    portfolio_size: int = Field(alias="portfolioSize", description="Portfolio size")
     securities_added: int = Field(
         alias="securitiesAdded", description="Securities added"
     )
     securities_removed: int = Field(
         alias="securitiesRemoved", description="Securities removed"
     )
-    market_value: float = Field(
-        alias="marketValue", description="Market value"
-    )
+    market_value: float = Field(alias="marketValue", description="Market value")
     previous_market_value: float = Field(
         alias="previousMarketValue", description="Previous market value"
     )
@@ -970,9 +960,7 @@ class IndustryPerformanceSummary(BaseModel):
 
     model_config = default_model_config
 
-    industry_title: str = Field(
-        alias="industryTitle", description="Industry sector"
-    )
+    industry_title: str = Field(alias="industryTitle", description="Industry sector")
     industry_value: float = Field(
         alias="industryValue", description="Total industry value"
     )

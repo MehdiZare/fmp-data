@@ -4,6 +4,7 @@
 This is the async counterpart to CompanyClient. All methods are async
 and have the same names as their sync equivalents (no _async suffix).
 """
+
 from __future__ import annotations
 
 from typing import cast

@@ -9,6 +9,7 @@ Example:
         profile = await client.company.get_profile("AAPL")
         quote = await client.company.get_quote("AAPL")
 """
+
 from __future__ import annotations
 
 import logging
@@ -114,7 +115,7 @@ class AsyncFMPDataClient(BaseClient):
             raise
 
     @classmethod
-    def from_env(cls, debug: bool = False) -> "AsyncFMPDataClient":
+    def from_env(cls, debug: bool = False) -> AsyncFMPDataClient:
         """
         Create async client instance from environment variables
 
@@ -129,7 +130,7 @@ class AsyncFMPDataClient(BaseClient):
 
         return cls(config=config)
 
-    async def __aenter__(self) -> "AsyncFMPDataClient":
+    async def __aenter__(self) -> AsyncFMPDataClient:
         """Async context manager enter"""
         if not self._initialized:
             raise RuntimeError("Client not properly initialized")

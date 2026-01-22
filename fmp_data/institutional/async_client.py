@@ -1,5 +1,6 @@
 # fmp_data/institutional/async_client.py
 """Async client for institutional activity endpoints."""
+
 from datetime import date
 from typing import cast
 

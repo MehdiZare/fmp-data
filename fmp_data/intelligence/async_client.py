@@ -1,5 +1,6 @@
 # fmp_data/intelligence/async_client.py
 """Async client for market intelligence endpoints."""
+
 from datetime import date
 from typing import cast
 

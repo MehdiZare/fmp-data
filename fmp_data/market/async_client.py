@@ -1,5 +1,6 @@
 # fmp_data/market/async_client.py
 """Async client for market data endpoints."""
+
 from datetime import date as dt_date
 from typing import cast
 

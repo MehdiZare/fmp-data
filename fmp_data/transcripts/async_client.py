@@ -1,5 +1,6 @@
 # fmp_data/transcripts/async_client.py
 """Async client for earnings transcript endpoints."""
+
 from fmp_data.base import AsyncEndpointGroup
 from fmp_data.transcripts.endpoints import (
     EARNINGS_TRANSCRIPT,
