@@ -94,3 +94,17 @@ jobs:
           files: coverage.xml
           flags: unittests
           fail_ci_if_error: false
+
+  test-matrix-expected:
+    name: Test-MatrixExpected
+    runs-on: ubuntu-latest
+    needs: [tests, coverage]
+    if: ${{ always() }}
+    steps:
+      - name: ✅ Verify matrix results
+        run: |
+          if [[ "${{ needs.tests.result }}" != "success" || "${{ needs.coverage.result }}" != "success" ]]; then
+            echo "Upstream checks failed"
+            exit 1
+          fi
+          echo "All required checks passed"
