@@ -57,7 +57,7 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 | `executives` | Get detailed information about company's key executives including their names, titles, compensation, and tenure. |
 | `geographic_revenue_segmentation` | Get revenue breakdown by geographic regions, showing how company revenue is distributed across different countries and regions |
 | `historical_market_cap` | Retrieve historical market capitalization data to track changes in company value over time |
-| `historical_price` | Retrieve historical daily price data including open, high, low, close, and adjusted prices with volume information . |
+| `historical_price` | Retrieve historical daily price data including open, high, low, close, and adjusted prices with volume information. |
 | `historical_prices` | Retrieve historical price data including OHLCV (Open, High, Low, Close, Volume) information for detailed technical and performance analysis. |
 | `historical_share_float` | Get historical share float data showing how the number of tradable shares has changed over time |
 | `intraday_price` | Get intraday price data at various intervals (1min to 4hour) for detailed analysis of price movements within the trading day |

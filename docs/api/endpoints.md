@@ -196,9 +196,9 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 | `house_disclosure` | `/stable/house-trades` | Get House trading data by symbol |
 | `house_trades_by_name` | `/stable/house-trades-by-name` | Get House trading data by name |
 | `ipo_calendar` | `/stable/ipos-calendar` | Get IPO calendar |
-| `crypto_news_symbol` | `/stable/news/crypto` | Search crypto news articles by trading pair |
+| `crypto_symbol_news` | `/stable/news/crypto` | Search crypto news articles by trading pair |
 | `crypto_news` | `/stable/news/crypto-latest` | Get a list of the latest crypto news articles |
-| `forex_news_symbol` | `/stable/news/forex` | Search forex news articles by currency pair |
+| `forex_symbol_news` | `/stable/news/forex` | Search forex news articles by currency pair |
 | `forex_news` | `/stable/news/forex-latest` | Get a list of the latest forex news articles |
 | `general_news` | `/stable/news/general-latest` | Get a list of the latest general news articles |
 | `press_releases_by_symbol` | `/stable/news/press-releases` | Get a list of the latest press releases for a specific company |
