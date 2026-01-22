@@ -134,8 +134,25 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         quarter: int | None = None,
     ) -> list[InstitutionalHolding]:
         """Get institutional holdings by symbol for a report period end date"""
-        if year is None or quarter is None:
-            year, quarter = self._date_to_year_quarter(report_date)
+        inferred_year, inferred_quarter = self._date_to_year_quarter(report_date)
+        if year is not None and year != inferred_year:
+            self.client.logger.warning(
+                "Provided year %s does not match report_date %s (derived %s).",
+                year,
+                report_date,
+                inferred_year,
+            )
+        if quarter is not None and quarter != inferred_quarter:
+            self.client.logger.warning(
+                "Provided quarter %s does not match report_date %s (derived %s).",
+                quarter,
+                report_date,
+                inferred_quarter,
+            )
+        if year is None:
+            year = inferred_year
+        if quarter is None:
+            quarter = inferred_quarter
         return await self.client.request_async(
             INSTITUTIONAL_HOLDINGS, symbol=symbol, year=year, quarter=quarter
         )
