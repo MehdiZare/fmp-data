@@ -9,8 +9,11 @@ import time
 from dotenv import load_dotenv
 import pytest
 import vcr
-from vcr.errors import CassetteDecodeError, CassetteNotFoundError
-from vcr.persisters.filesystem import FilesystemPersister
+from vcr.persisters.filesystem import (
+    CassetteDecodeError,
+    CassetteNotFoundError,
+    FilesystemPersister,
+)
 from vcr.request import Request
 from vcr.serialize import deserialize
 
@@ -146,7 +149,7 @@ def fmp_client(rate_limit_config: RateLimitConfig) -> Generator[FMPDataClient]:
     config = ClientConfig(
         api_key=api_key,
         base_url=os.getenv("FMP_TEST_BASE_URL", "https://financialmodelingprep.com"),
-        timeout=float(os.getenv("FMP_TEST_TIMEOUT", "10")),
+        timeout=int(float(os.getenv("FMP_TEST_TIMEOUT", "10"))),
         max_retries=2,
         rate_limit=rate_limit_config,
     )

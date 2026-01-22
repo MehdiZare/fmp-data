@@ -4,7 +4,11 @@
 import csv
 from datetime import date
 import io
-from typing import Any, cast
+import logging
+from typing import Any, TypeVar, cast, get_args, get_origin
+
+from pydantic import AnyHttpUrl, BaseModel, HttpUrl
+from pydantic import ValidationError as PydanticValidationError
 
 from fmp_data.base import AsyncEndpointGroup
 from fmp_data.batch.endpoints import (
@@ -67,6 +71,9 @@ from fmp_data.fundamental.models import (
 )
 from fmp_data.investment.models import ETFHolding
 
+logger = logging.getLogger(__name__)
+ModelT = TypeVar("ModelT", bound=BaseModel)
+
 
 class AsyncBatchClient(AsyncEndpointGroup):
     """Async client for batch data endpoints.
@@ -96,10 +103,56 @@ class AsyncBatchClient(AsyncEndpointGroup):
         return rows
 
     @staticmethod
-    def _parse_csv_models(raw: bytes, model: type[Any]) -> list[Any]:
-        return [
-            model.model_validate(row) for row in AsyncBatchClient._parse_csv_rows(raw)
-        ]
+    def _parse_csv_models(raw: bytes, model: type[ModelT]) -> list[ModelT]:
+        results: list[ModelT] = []
+        url_fields = AsyncBatchClient._get_url_fields(model)
+        for row in AsyncBatchClient._parse_csv_rows(raw):
+            try:
+                results.append(model.model_validate(row))
+            except PydanticValidationError as exc:
+                if url_fields:
+                    retry_row = dict(row)
+                    for error in exc.errors():
+                        if not error.get("loc"):
+                            continue
+                        field = error["loc"][0]
+                        if isinstance(field, str) and field in url_fields:
+                            retry_row[field] = None
+                    try:
+                        results.append(model.model_validate(retry_row))
+                        continue
+                    except PydanticValidationError:
+                        pass
+                logger.warning(
+                    "Skipping invalid %s row: %s",
+                    model.__name__,
+                    exc,
+                )
+        return results
+
+    @staticmethod
+    def _get_url_fields(model: type[BaseModel]) -> set[str]:
+        url_fields: set[str] = set()
+        model_fields = getattr(model, "model_fields", None)
+        if not model_fields:
+            return url_fields
+        for name, field in model_fields.items():
+            if AsyncBatchClient._is_url_annotation(field.annotation):
+                url_fields.add(name)
+        return url_fields
+
+    @staticmethod
+    def _is_url_annotation(annotation: Any) -> bool:
+        origin = get_origin(annotation)
+        if origin is None:
+            return annotation in {AnyHttpUrl, HttpUrl}
+        if origin is list:
+            return any(
+                AsyncBatchClient._is_url_annotation(arg) for arg in get_args(annotation)
+            )
+        return any(
+            AsyncBatchClient._is_url_annotation(arg) for arg in get_args(annotation)
+        )
 
     async def get_quotes(self, symbols: list[str]) -> list[BatchQuote]:
         """Get real-time quotes for multiple symbols
@@ -414,5 +467,10 @@ class AsyncBatchClient(AsyncEndpointGroup):
 
     async def get_eod_bulk(self, target_date: date | str) -> list[EODBulk]:
         """Get bulk end-of-day prices"""
-        raw = cast(bytes, await self.client.request_async(EOD_BULK, date=target_date))
+        date_param = (
+            target_date.strftime("%Y-%m-%d")
+            if isinstance(target_date, date)
+            else target_date
+        )
+        raw = cast(bytes, await self.client.request_async(EOD_BULK, date=date_param))
         return self._parse_csv_models(raw, EODBulk)
