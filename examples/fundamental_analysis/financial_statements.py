@@ -31,7 +31,9 @@ def main():
             print(f"Total Assets: ${stmt.total_assets:,.0f}")
             print(f"Total Liabilities: ${stmt.total_liabilities:,.0f}")
             print(f"Total Equity: ${stmt.total_stockholders_equity:,.0f}")
-            print(f"Cash: ${stmt.cash_and_cash_equivalents:,.0f}")
+            print(
+                f"Cash & ST Investments: ${stmt.cash_and_short_term_investments:,.0f}"
+            )
 
         # Get cash flow statements
         print(f"\n\n=== {symbol} Cash Flow (Latest) ===\n")

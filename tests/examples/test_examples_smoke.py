@@ -185,7 +185,7 @@ def create_mock_client():
     balance_sheet.total_assets = 500000000000.0
     balance_sheet.total_liabilities = 300000000000.0
     balance_sheet.total_stockholders_equity = 200000000000.0
-    balance_sheet.cash_and_cash_equivalents = 50000000000.0
+    balance_sheet.cash_and_short_term_investments = 50000000000.0
     mock_client.fundamental.get_balance_sheet.return_value = [balance_sheet]
 
     cash_flow = MagicMock()
