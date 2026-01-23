@@ -326,15 +326,15 @@ class EndpointVectorStore:
         """
         try:
             # Check if the store has vectors
-            if (
-                not hasattr(self.vector_store, "index_to_docstore_id")
-                or not self.vector_store.index_to_docstore_id
-            ):
+            index_to_docstore_id = getattr(
+                self.vector_store, "index_to_docstore_id", None
+            )
+            if not index_to_docstore_id:
                 self.logger.warning("Vector store has no vectors")
                 return False
 
             # Check if we have metadata that matches our registry
-            stored_endpoints = set(self.vector_store.index_to_docstore_id.values())
+            stored_endpoints = set(index_to_docstore_id.values())
             registry_endpoints = set(self.registry.list_endpoints().keys())
 
             if stored_endpoints != registry_endpoints:
@@ -495,6 +495,20 @@ class EndpointVectorStore:
             self.logger.error(f"Search failed: {e!s}")
             raise
 
+    def _serialize_result(self, result: Any) -> dict[str, Any]:
+        """Serialize result, converting Pydantic models to JSON."""
+        if isinstance(result, list):
+            data = []
+            for item in result:
+                dump = getattr(item, "model_dump", None)
+                data.append(dump(mode="json") if callable(dump) else item)
+            return {"status": "success", "data": data}
+        # Single result
+        model_dump = getattr(result, "model_dump", None)
+        if callable(model_dump):
+            return {"status": "success", "data": model_dump(mode="json")}
+        return {"status": "success", "data": result}
+
     def create_tool(self, info: EndpointInfo) -> ToolLike:
         """Create a LangChain tool from endpoint info."""
         if not info:
@@ -509,26 +523,7 @@ class EndpointVectorStore:
             def endpoint_func(**kwargs: Any) -> Any:
                 try:
                     result = self.client.request(endpoint, **kwargs)
-
-                    # Handle successful response
-                    if isinstance(result, list):
-                        return {
-                            "status": "success",
-                            "data": [
-                                (
-                                    item.model_dump(mode="json")
-                                    if hasattr(item, "model_dump")
-                                    else item
-                                )
-                                for item in result
-                            ],
-                        }
-                    elif hasattr(result, "model_dump"):
-                        return {
-                            "status": "success",
-                            "data": result.model_dump(mode="json"),
-                        }
-                    return {"status": "success", "data": result}
+                    return self._serialize_result(result)
 
                 except Exception as e:
                     # Handle different types of errors

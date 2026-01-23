@@ -101,24 +101,7 @@ class TestFMPDataClientInitialization:
         """Test client initialization sets all expected attributes"""
         client = FMPDataClient(api_key="test_key")
 
-        # Check all private attributes are initialized
-        assert hasattr(client, "_initialized")
-        assert hasattr(client, "_logger")
-        assert hasattr(client, "_company")
-        assert hasattr(client, "_market")
-        assert hasattr(client, "_fundamental")
-        assert hasattr(client, "_technical")
-        assert hasattr(client, "_intelligence")
-        assert hasattr(client, "_institutional")
-        assert hasattr(client, "_investment")
-        assert hasattr(client, "_alternative")
-        assert hasattr(client, "_economics")
-        assert hasattr(client, "_batch")
-        assert hasattr(client, "_transcripts")
-        assert hasattr(client, "_sec")
-        assert hasattr(client, "_index")
-
-        # Check initial state
+        # Check initial state - accessing attributes verifies they exist
         assert client._initialized is True
         assert client._logger is not None
         assert client._company is None  # Lazy loaded
@@ -199,7 +182,7 @@ class TestFMPDataClientContextManager:
         with FMPDataClient(api_key="test_key") as client:
             assert client.config.api_key == "test_key"
             assert client._initialized is True
-            assert hasattr(client, "client")
+            assert client.client is not None
             assert not client.client.is_closed
 
     def test_context_manager_returns_self(self):
@@ -444,9 +427,9 @@ class TestFMPDataClientLogger:
         logger = client.logger
 
         assert logger is not None
-        assert hasattr(logger, "debug")
-        assert hasattr(logger, "info")
-        assert hasattr(logger, "error")
+        assert callable(logger.debug)
+        assert callable(logger.info)
+        assert callable(logger.error)
 
         client.close()
 
@@ -620,8 +603,9 @@ class TestFMPDataClientEdgeCases:
             "_economics",
         ]
 
+        # Verify attributes exist by accessing them
         for attr in required_attrs:
-            assert hasattr(client, attr)
+            assert getattr(client, attr, "MISSING") != "MISSING"
 
         client.close()
 
@@ -630,9 +614,9 @@ class TestFMPDataClientEdgeCases:
         client = FMPDataClient(api_key="test_key")
 
         # Should inherit BaseClient functionality
-        assert hasattr(client, "config")
-        assert hasattr(client, "client")  # httpx client
-        assert hasattr(client, "close")
+        assert client.config is not None
+        assert client.client is not None  # httpx client
+        assert callable(client.close)
 
         client.close()
 

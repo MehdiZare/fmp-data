@@ -109,9 +109,11 @@ class AsyncFMPDataClient(BaseClient):
             self._initialized = True
 
         except Exception as e:
-            if not hasattr(self, "_logger") or self._logger is None:
+            logger = getattr(self, "_logger", None)
+            if logger is None:
                 self._logger = FMPLogger().get_logger(__name__)
-            self._logger.error(f"Failed to initialize async client: {e!s}")
+                logger = self._logger
+            logger.error(f"Failed to initialize async client: {e!s}")
             raise
 
     @classmethod
@@ -155,17 +157,15 @@ class AsyncFMPDataClient(BaseClient):
         """Clean up all resources (both async and sync clients)."""
         try:
             # Close async client
-            if (
-                hasattr(self, "_async_client")
-                and self._async_client is not None
-                and not self._async_client.is_closed
-            ):
-                await self._async_client.aclose()
+            async_client = getattr(self, "_async_client", None)
+            if async_client is not None and not async_client.is_closed:
+                await async_client.aclose()
                 self._async_client = None
             # Close sync client (might be used internally)
-            if hasattr(self, "client") and self.client is not None:
-                self.client.close()
-            if hasattr(self, "_initialized") and self._initialized:
+            client = getattr(self, "client", None)
+            if client is not None:
+                client.close()
+            if getattr(self, "_initialized", False):
                 logger = getattr(self, "_logger", None)
                 if logger is not None:
                     logger.info("Async FMP Data client closed")

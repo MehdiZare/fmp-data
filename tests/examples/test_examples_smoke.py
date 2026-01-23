@@ -270,8 +270,9 @@ def test_example_runs_without_error(example_file, capsys):
         # Run the example
         try:
             # Run main function if it exists
-            if hasattr(module, "main"):
-                module.main()
+            main_func = getattr(module, "main", None)
+            if main_func and callable(main_func):
+                main_func()
 
             # Capture output to ensure something was printed
             captured = capsys.readouterr()

@@ -551,8 +551,9 @@ def run_setup(quiet: bool = False) -> int:
         except Exception:
             # Fallback: create temp wizard and copy API key if available
             temp_wizard = SetupWizard(quiet=False)
-            if hasattr(wizard, "api_key"):
-                temp_wizard.api_key = wizard.api_key
+            api_key = getattr(wizard, "api_key", None)
+            if api_key is not None:
+                temp_wizard.api_key = api_key
             temp_wizard.print(f"Setup failed: {e}", "error")
         return 1
 

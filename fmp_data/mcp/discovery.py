@@ -65,10 +65,9 @@ def discover_client_tools(client_name: str) -> list[dict[str, Any]]:
         # Get the semantics table
         semantics_table_name = f"{client_name.upper()}_ENDPOINTS_SEMANTICS"
 
-        if not hasattr(mapping_module, semantics_table_name):
+        semantics_table = getattr(mapping_module, semantics_table_name, None)
+        if semantics_table is None:
             return tools
-
-        semantics_table = getattr(mapping_module, semantics_table_name)
 
     except (ImportError, AttributeError):
         # Module doesn't exist or doesn't have semantics

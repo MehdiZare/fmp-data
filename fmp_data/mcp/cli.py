@@ -223,11 +223,10 @@ def validate_manifest(manifest_path: str | Path) -> bool:
         print(f"Error loading manifest: {e}", file=sys.stderr)
         return False
 
-    if not hasattr(module, "TOOLS"):
+    tools = getattr(module, "TOOLS", None)
+    if tools is None:
         print("Error: Manifest does not define TOOLS variable", file=sys.stderr)
         return False
-
-    tools = module.TOOLS
     if not isinstance(tools, list):
         print("Error: TOOLS must be a list", file=sys.stderr)
         return False
@@ -293,7 +292,7 @@ def setup_command(args: argparse.Namespace) -> int:
     """Run the setup wizard."""
     from fmp_data.mcp.setup import run_setup
 
-    return run_setup(quiet=args.quiet if hasattr(args, "quiet") else False)
+    return run_setup(quiet=getattr(args, "quiet", False))
 
 
 def status_command(args: argparse.Namespace) -> int:
@@ -370,9 +369,8 @@ def test_command(args: argparse.Namespace) -> int:
             from fmp_data.mcp.server import create_app
 
             app = create_app()
-            tool_count = (
-                len(app._tool_manager._tools) if hasattr(app, "_tool_manager") else 0
-            )
+            tool_manager = getattr(app, "_tool_manager", None)
+            tool_count = len(tool_manager._tools) if tool_manager else 0
             print(f"✅ {tool_count} tools registered")
         except Exception as e:
             print(f"⚠️  Could not count tools: {e}")
@@ -459,10 +457,11 @@ def main() -> None:
         tools = list_available_tools()
 
         # Apply client filter if specified
-        if hasattr(args, "client") and args.client:
-            tools = [t for t in tools if t["client"] == args.client]
+        client_filter = getattr(args, "client", None)
+        if client_filter:
+            tools = [t for t in tools if t["client"] == client_filter]
             if not tools:
-                print(f"No tools found for client: {args.client}")
+                print(f"No tools found for client: {client_filter}")
                 sys.exit(1)
 
         print_tools_table(tools, args.format)

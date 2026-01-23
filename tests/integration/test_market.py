@@ -355,7 +355,7 @@ class TestMarketClientEndpoints(BaseTestCase):
             assert len(stocks) > 0
             for stock in stocks:
                 assert isinstance(stock, CompanySymbol)
-                assert hasattr(stock, "symbol")  # Only check required field
+                # Verify symbol attribute exists and is a string
                 assert isinstance(stock.symbol, str)
 
     def test_get_financial_statement_symbol_list(

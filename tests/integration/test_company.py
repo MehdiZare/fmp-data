@@ -168,10 +168,11 @@ class TestCompanyEndpoints(BaseTestCase):
 
             except Exception as e:
                 logger.error(f"Request failed: {e!s}")
-                # Print the actual request details
-                if hasattr(e, "request"):
-                    logger.error(f"Request URL: {e.request.url}")
-                    logger.error(f"Request headers: {e.request.headers}")
+                # Print the actual request details if available
+                request = getattr(e, "request", None)
+                if request:
+                    logger.error(f"Request URL: {request.url}")
+                    logger.error(f"Request headers: {request.headers}")
                 raise
 
     def test_get_core_information(

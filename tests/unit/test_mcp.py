@@ -84,7 +84,7 @@ class TestToolLoader:
 
         result = _resolve_attr(mock_obj, "client.method")
         assert callable(result)
-        assert hasattr(result, "__name__")
+        assert result.__name__ is not None
 
     def test_resolve_attr_missing_attribute(self):
         """Test attribute resolution failure."""
@@ -249,8 +249,8 @@ class TestMCPIntegration:
         try:
             app = create_app(tools=["company.profile"])
             assert app is not None
-            # Check if the app has tools registered (use _tools instead of tools)
-            assert hasattr(app, "_tool_manager")
+            # Check if the app has tools registered
+            assert app._tool_manager is not None
             assert len(app._tool_manager._tools) > 0
         except Exception as e:
             pytest.fail(f"Failed to create MCP app with real client: {e}")
