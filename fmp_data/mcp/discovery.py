@@ -7,21 +7,39 @@ MCP tools from the endpoint semantics defined across all client modules.
 
 from __future__ import annotations
 
+from functools import lru_cache
 import importlib
+from pathlib import Path
+import pkgutil
 from typing import Any
 
-# List of all client modules that have endpoints
-CLIENT_MODULES = [
-    "alternative",
-    "company",
-    "economics",
-    "fundamental",
-    "institutional",
-    "intelligence",
-    "investment",
-    "market",
-    "technical",
-]
+
+@lru_cache(maxsize=1)
+def _get_client_modules() -> list[str]:
+    """
+    Discover client modules that expose MCP semantics mappings.
+
+    Returns
+    -------
+    list[str]
+        Sorted list of client module names.
+    """
+    import fmp_data
+
+    package_path = Path(fmp_data.__file__).resolve().parent
+    modules: list[str] = []
+
+    for module_info in pkgutil.iter_modules([str(package_path)]):
+        if not module_info.ispkg:
+            continue
+        name = module_info.name
+        if name in {"lc", "mcp"}:
+            continue
+        if not (package_path / name / "mapping.py").exists():
+            continue
+        modules.append(name)
+
+    return sorted(modules)
 
 
 def discover_client_tools(client_name: str) -> list[dict[str, Any]]:
@@ -99,7 +117,7 @@ def discover_all_tools() -> list[dict[str, Any]]:
     """
     all_tools = []
 
-    for client_name in CLIENT_MODULES:
+    for client_name in _get_client_modules():
         client_tools = discover_client_tools(client_name)
         all_tools.extend(client_tools)
 
@@ -124,11 +142,11 @@ def get_tool_by_spec(spec: str) -> dict[str, Any] | None:
         Tool definition or None if not found
     """
     try:
-        client_name, key = spec.split(".", 1)
+        client_name, _ = spec.split(".", 1)
     except ValueError:
         return None
 
-    if client_name not in CLIENT_MODULES:
+    if client_name not in _get_client_modules():
         return None
 
     tools = discover_client_tools(client_name)
@@ -154,7 +172,7 @@ def get_tools_by_client(client_name: str) -> list[dict[str, Any]]:
     list[dict[str, Any]]
         List of tools for the specified client
     """
-    if client_name not in CLIENT_MODULES:
+    if client_name not in _get_client_modules():
         return []
 
     return discover_client_tools(client_name)
@@ -208,14 +226,15 @@ def get_recommended_tools() -> list[str]:
         "company.quote",
         "company.historical_price",
         # Market data
-        "market.quote",
         "market.gainers",
         "market.losers",
         "market.most_active",
+        "market.sector_performance",
+        "market.search",
         # Fundamental data
         "fundamental.income_statement",
         "fundamental.balance_sheet",
-        "fundamental.cash_flow_statement",
+        "fundamental.cash_flow",
         "fundamental.key_metrics",
         # Alternative data
         "alternative.crypto_quote",
@@ -227,7 +246,7 @@ def get_recommended_tools() -> list[str]:
         # Technical indicators
         "technical.sma",
         "technical.rsi",
-        "technical.macd",
+        "technical.ema",
         # Economics
         "economics.treasury_rates",
         "economics.economic_calendar",

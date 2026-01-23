@@ -1,10 +1,12 @@
 """Additional tests for base.py to improve coverage"""
 
 from unittest.mock import Mock, patch
+from typing import cast
 
 import pytest
+from tenacity import RetryCallState
 
-from fmp_data.base import BaseClient
+from fmp_data.base import BaseClient, _rate_limit_retry_count
 from fmp_data.config import ClientConfig
 from fmp_data.exceptions import RateLimitError
 
@@ -24,24 +26,24 @@ class TestBaseClientCoverage:
 
     def test_handle_rate_limit_under_retry_limit(self, base_client):
         """Test rate limit handling when under retry limit"""
-        base_client._rate_limit_retry_count = 0
+        _rate_limit_retry_count.set(0)
 
         with patch("time.sleep") as mock_sleep:
             base_client._handle_rate_limit(1.5)
 
-            # Should sleep and increment counter
+            # Should sleep and increment counter (uses context variable)
             mock_sleep.assert_called_once_with(1.5)
-            assert base_client._rate_limit_retry_count == 1
+            assert _rate_limit_retry_count.get() == 1
 
     def test_handle_rate_limit_exceeds_retry_limit(self, base_client):
         """Test rate limit handling when exceeding retry limit"""
-        base_client._rate_limit_retry_count = 2  # Already at limit
+        _rate_limit_retry_count.set(2)  # Already at limit
 
         with pytest.raises(RateLimitError) as exc_info:
             base_client._handle_rate_limit(5.0)
 
-        # Should reset counter and raise error
-        assert base_client._rate_limit_retry_count == 0
+        # Should reset counter and raise error (uses context variable)
+        assert _rate_limit_retry_count.get() == 0
         assert "Rate limit exceeded after 2 retries" in str(exc_info.value)
         assert exc_info.value.retry_after == 5.0
 
@@ -85,6 +87,27 @@ class TestBaseClientCoverage:
         # Verify the retry count is properly managed
         assert base_client._rate_limit_retry_count == 0
 
+    def test_wait_for_retry_uses_retry_after(self, base_client):
+        """Prefer retry_after when RateLimitError is raised"""
+
+        class FakeOutcome:
+            def __init__(self, exc):
+                self._exc = exc
+                self.failed = True
+
+            def exception(self):
+                return self._exc
+
+        class FakeRetryState:
+            def __init__(self, exc):
+                self.outcome = FakeOutcome(exc)
+
+        retry_after = 7.5
+        exc = RateLimitError("rate limited", retry_after=retry_after)
+        retry_state = cast(RetryCallState, cast(object, FakeRetryState(exc)))
+
+        assert base_client._wait_for_retry(retry_state) == retry_after
+
     @patch("fmp_data.base.FMPLogger")
     def test_init_with_custom_max_retries(self, mock_logger):
         """Test initialization with custom max_rate_limit_retries"""
@@ -99,10 +122,10 @@ class TestBaseClientCoverage:
     def test_handle_rate_limit_with_small_wait(self, base_client):
         """Test handling rate limit with a small wait time"""
         with patch("time.sleep") as mock_sleep:
-            # Simulate handling a rate limit with a small wait
-            base_client._rate_limit_retry_count = 0
+            # Simulate handling a rate limit with a small wait (uses context variable)
+            _rate_limit_retry_count.set(0)
             base_client._handle_rate_limit(0.1)
 
             # Should have slept and incremented counter
             mock_sleep.assert_called_once_with(0.1)
-            assert base_client._rate_limit_retry_count == 1
+            assert _rate_limit_retry_count.get() == 1

@@ -1,14 +1,14 @@
 # fmp_data/intelligence/client.py
 from datetime import date
-from typing import cast
 
 from fmp_data.base import EndpointGroup
-from fmp_data.helpers import deprecated
+from fmp_data.helpers import RemovedEndpointError, removed
 from fmp_data.intelligence.endpoints import (
     CROWDFUNDING_BY_CIK,
     CROWDFUNDING_RSS,
     CROWDFUNDING_SEARCH,
     CRYPTO_NEWS_ENDPOINT,
+    CRYPTO_SYMBOL_NEWS_ENDPOINT,
     DIVIDENDS_CALENDAR,
     EARNINGS_CALENDAR,
     EARNINGS_CONFIRMED,
@@ -21,6 +21,7 @@ from fmp_data.intelligence.endpoints import (
     ESG_RATINGS,
     FMP_ARTICLES_ENDPOINT,
     FOREX_NEWS_ENDPOINT,
+    FOREX_SYMBOL_NEWS_ENDPOINT,
     GENERAL_NEWS_ENDPOINT,
     GRADES,
     GRADES_CONSENSUS,
@@ -28,9 +29,9 @@ from fmp_data.intelligence.endpoints import (
     GRADES_LATEST_NEWS,
     GRADES_NEWS,
     HISTORICAL_EARNINGS,
-    HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT,  # deprecated
     HOUSE_DISCLOSURE,
-    HOUSE_DISCLOSURE_RSS,
+    HOUSE_LATEST,
+    HOUSE_TRADES_BY_NAME,
     IPO_CALENDAR,
     PRESS_RELEASES_BY_SYMBOL_ENDPOINT,
     PRESS_RELEASES_ENDPOINT,
@@ -38,24 +39,25 @@ from fmp_data.intelligence.endpoints import (
     PRICE_TARGET_NEWS,
     RATINGS_HISTORICAL,
     RATINGS_SNAPSHOT,
+    SENATE_LATEST,
+    SENATE_TRADES_BY_NAME,
     SENATE_TRADING,
     SENATE_TRADING_RSS,
-    SOCIAL_SENTIMENT_CHANGES_ENDPOINT,  # deprecated
     STOCK_NEWS_ENDPOINT,
     STOCK_NEWS_SENTIMENTS_ENDPOINT,
     STOCK_SPLITS_CALENDAR,
     STOCK_SYMBOL_NEWS_ENDPOINT,
-    TRENDING_SOCIAL_SENTIMENT_ENDPOINT,  # deprecated
-    IPOEvent,
 )
 from fmp_data.intelligence.models import (
     CrowdfundingOffering,
+    CrowdfundingOfferingSearchItem,
     CryptoNewsArticle,
     DividendEvent,
     EarningConfirmed,
     EarningEvent,
     EarningSurprise,
     EquityOffering,
+    EquityOfferingSearchItem,
     ESGBenchmark,
     ESGData,
     ESGRating,
@@ -67,6 +69,7 @@ from fmp_data.intelligence.models import (
     HistoricalSocialSentiment,
     HistoricalStockGrade,
     HouseDisclosure,
+    IPOEvent,
     PressRelease,
     PressReleaseBySymbol,
     PriceTargetNews,
@@ -86,16 +89,46 @@ from fmp_data.intelligence.models import (
 class MarketIntelligenceClient(EndpointGroup):
     """Client for market intelligence endpoints"""
 
+    @staticmethod
+    def _format_date(value: date | None) -> str | None:
+        if value is None:
+            return None
+        return value.strftime("%Y-%m-%d")
+
+    @staticmethod
+    def _build_date_params(
+        start_date: date | None = None,
+        end_date: date | None = None,
+        start_key: str = "start_date",
+        end_key: str = "end_date",
+    ) -> dict[str, str]:
+        """Build date parameters dict from optional date values
+
+        Args:
+            start_date: Start date for the date range
+            end_date: End date for the date range
+            start_key: Parameter key for start date (default: 'start_date')
+            end_key: Parameter key for end date (default: 'end_date')
+
+        Returns:
+            Dictionary with formatted date parameters
+        """
+        params: dict[str, str] = {}
+        if start_date:
+            formatted_start = MarketIntelligenceClient._format_date(start_date)
+            if formatted_start is not None:
+                params[start_key] = formatted_start
+        if end_date:
+            formatted_end = MarketIntelligenceClient._format_date(end_date)
+            if formatted_end is not None:
+                params[end_key] = formatted_end
+        return params
+
     def get_earnings_calendar(
         self, start_date: date | None = None, end_date: date | None = None
     ) -> list[EarningEvent]:
         """Get earnings calendar"""
-        params = {}
-        if start_date:
-            params["start_date"] = start_date.strftime("%Y-%m-%d")
-        if end_date:
-            params["end_date"] = end_date.strftime("%Y-%m-%d")
-
+        params = self._build_date_params(start_date, end_date)
         return self.client.request(EARNINGS_CALENDAR, **params)
 
     def get_historical_earnings(self, symbol: str) -> list[EarningEvent]:
@@ -108,12 +141,7 @@ class MarketIntelligenceClient(EndpointGroup):
         end_date: date | None = None,
     ) -> list[EarningConfirmed]:
         """Get confirmed earnings dates"""
-        params = {}
-        if start_date:
-            params["start_date"] = start_date.strftime("%Y-%m-%d")
-        if end_date:
-            params["end_date"] = end_date.strftime("%Y-%m-%d")
-
+        params = self._build_date_params(start_date, end_date)
         return self.client.request(EARNINGS_CONFIRMED, **params)
 
     def get_earnings_surprises(self, symbol: str) -> list[EarningSurprise]:
@@ -124,51 +152,41 @@ class MarketIntelligenceClient(EndpointGroup):
         self, start_date: date | None = None, end_date: date | None = None
     ) -> list[DividendEvent]:
         """Get dividends calendar"""
-        params = {}
-        if start_date:
-            params["start_date"] = start_date.strftime("%Y-%m-%d")
-        if end_date:
-            params["end_date"] = end_date.strftime("%Y-%m-%d")
-
+        params = self._build_date_params(start_date, end_date)
         return self.client.request(DIVIDENDS_CALENDAR, **params)
 
     def get_stock_splits_calendar(
         self, start_date: date | None = None, end_date: date | None = None
     ) -> list[StockSplitEvent]:
         """Get stock splits calendar"""
-        params = {}
-        if start_date:
-            params["start_date"] = start_date.strftime("%Y-%m-%d")
-        if end_date:
-            params["end_date"] = end_date.strftime("%Y-%m-%d")
-
+        params = self._build_date_params(start_date, end_date)
         return self.client.request(STOCK_SPLITS_CALENDAR, **params)
 
     def get_ipo_calendar(
         self, start_date: date | None = None, end_date: date | None = None
     ) -> list[IPOEvent]:
         """Get IPO calendar"""
-        params = {}
-        if start_date:
-            params["start_date"] = start_date.strftime("%Y-%m-%d")
-        if end_date:
-            params["end_date"] = end_date.strftime("%Y-%m-%d")
-
+        params = self._build_date_params(start_date, end_date)
         return self.client.request(IPO_CALENDAR, **params)
 
-    def get_fmp_articles(self, page: int = 0, size: int = 5) -> list[FMPArticle]:
+    def get_fmp_articles(
+        self, page: int = 0, limit: int = 20, size: int | None = None
+    ) -> list[FMPArticle]:
         """Get a list of the latest FMP articles
 
         Args:
             page: Page number to fetch (default: 0)
-            size: Number of articles per page (default: 5)
+            limit: Number of articles per page (default: 20)
+            size: Deprecated alias for limit (default: None)
 
         Returns:
             list[FMPArticle]: List of FMP articles from the content array
         """
+        if size is not None:
+            limit = size
         params = {
             "page": page,
-            "size": size,
+            "limit": limit,
         }
         response = self.client.request(FMP_ARTICLES_ENDPOINT, **params)
         # Extract articles from the content array in the response
@@ -176,10 +194,19 @@ class MarketIntelligenceClient(EndpointGroup):
             response.content if isinstance(response, FMPArticlesResponse) else response
         )
 
-    def get_general_news(self, page: int = 0) -> list[GeneralNewsArticle]:
+    def get_general_news(
+        self,
+        page: int = 0,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        limit: int = 20,
+    ) -> list[GeneralNewsArticle]:
         """Get a list of the latest general news articles"""
         params = {
             "page": page,
+            "start_date": self._format_date(from_date),
+            "end_date": self._format_date(to_date),
+            "limit": limit,
         }
         return self.client.request(GENERAL_NEWS_ENDPOINT, **params)
 
@@ -189,30 +216,39 @@ class MarketIntelligenceClient(EndpointGroup):
         page: int | None = 0,
         from_date: date | None = None,
         to_date: date | None = None,
-        limit: int = 50,
+        limit: int = 20,
     ) -> list[StockNewsArticle]:
         """Get a list of the latest stock news articles"""
         params = {
-            "symbols": symbol,
+            "symbol": symbol,
             "page": page,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": self._format_date(from_date),
+            "end_date": self._format_date(to_date),
             "limit": limit,
         }
         return self.client.request(STOCK_SYMBOL_NEWS_ENDPOINT, **params)
 
     def get_stock_news(
         self,
+        symbol: str | None = None,
         page: int | None = 0,
         from_date: date | None = None,
         to_date: date | None = None,
-        limit: int = 50,
+        limit: int = 20,
     ) -> list[StockNewsArticle]:
         """Get a list of the latest stock news articles"""
+        if symbol:
+            return self.get_stock_symbol_news(
+                symbol=symbol,
+                page=page,
+                from_date=from_date,
+                to_date=to_date,
+                limit=limit,
+            )
         params = {
             "page": page,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": self._format_date(from_date),
+            "end_date": self._format_date(to_date),
             "limit": limit,
         }
         return self.client.request(STOCK_NEWS_ENDPOINT, **params)
@@ -230,124 +266,206 @@ class MarketIntelligenceClient(EndpointGroup):
         symbol: str | None = None,
         from_date: date | None = None,
         to_date: date | None = None,
-        limit: int | None = 50,
+        limit: int | None = 20,
     ) -> list[ForexNewsArticle]:
-        """Get a list of the latest forex news articles"""
+        """Get a list of the latest forex news articles (or search by symbol)"""
+        if symbol:
+            return self.get_forex_symbol_news(
+                symbol=symbol,
+                page=page,
+                from_date=from_date,
+                to_date=to_date,
+                limit=limit,
+            )
         params = {
             "page": page,
-            "symbol": symbol,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": self._format_date(from_date),
+            "end_date": self._format_date(to_date),
             "limit": limit,
         }
         return self.client.request(FOREX_NEWS_ENDPOINT, **params)
 
+    def get_forex_symbol_news(
+        self,
+        symbol: str,
+        page: int | None = 0,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        limit: int | None = 20,
+    ) -> list[ForexNewsArticle]:
+        """Search forex news articles by symbol"""
+        params = {
+            "symbol": symbol,
+            "page": page,
+            "start_date": self._format_date(from_date),
+            "end_date": self._format_date(to_date),
+            "limit": limit,
+        }
+        return self.client.request(FOREX_SYMBOL_NEWS_ENDPOINT, **params)
+
     def get_crypto_news(
         self,
         page: int = 0,
-        symbol: str | None | None = None,
-        from_date: date | None | None = None,
-        to_date: date | None | None = None,
-        limit: int = 50,
+        symbol: str | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        limit: int = 20,
     ) -> list[CryptoNewsArticle]:
-        """Get a list of the latest crypto news articles"""
+        """Get a list of the latest crypto news articles (or search by symbol)"""
+        if from_date and to_date is None:
+            to_date = date.today()
+        if symbol:
+            return self.get_crypto_symbol_news(
+                symbol=symbol,
+                page=page,
+                from_date=from_date,
+                to_date=to_date,
+                limit=limit,
+            )
         params = {
             "page": page,
-            "symbol": symbol,
-            "start_date": from_date.strftime("%Y-%m-%d") if from_date else None,
-            "end_date": to_date.strftime("%Y-%m-%d") if to_date else None,
+            "start_date": self._format_date(from_date),
+            "end_date": self._format_date(to_date),
             "limit": limit,
         }
         return self.client.request(CRYPTO_NEWS_ENDPOINT, **params)
 
-    def get_press_releases(self, page: int = 0) -> list[PressRelease]:
+    def get_crypto_symbol_news(
+        self,
+        symbol: str,
+        page: int = 0,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        limit: int = 20,
+    ) -> list[CryptoNewsArticle]:
+        """Search crypto news articles by symbol"""
+        params = {
+            "symbol": symbol,
+            "page": page,
+            "start_date": self._format_date(from_date),
+            "end_date": self._format_date(to_date),
+            "limit": limit,
+        }
+        return self.client.request(CRYPTO_SYMBOL_NEWS_ENDPOINT, **params)
+
+    def get_press_releases(
+        self,
+        page: int = 0,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        limit: int = 20,
+    ) -> list[PressRelease]:
         """Get a list of the latest press releases"""
         params = {
             "page": page,
+            "start_date": self._format_date(from_date),
+            "end_date": self._format_date(to_date),
+            "limit": limit,
         }
         return self.client.request(PRESS_RELEASES_ENDPOINT, **params)
 
     def get_press_releases_by_symbol(
-        self, symbol: str, page: int = 0
+        self,
+        symbol: str,
+        page: int = 0,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        limit: int = 20,
     ) -> list[PressReleaseBySymbol]:
         """Get a list of the latest press releases for a specific company"""
         params = {
             "symbol": symbol,
             "page": page,
+            "start_date": self._format_date(from_date),
+            "end_date": self._format_date(to_date),
+            "limit": limit,
         }
         return self.client.request(PRESS_RELEASES_BY_SYMBOL_ENDPOINT, **params)
 
-    @deprecated("This method is deprecated by FMP")
+    @removed("Social sentiment endpoints were discontinued by FMP.")
     def get_historical_social_sentiment(
         self, symbol: str, page: int = 0
     ) -> list[HistoricalSocialSentiment]:
-        """Get historical social sentiment data"""
-        params = {
-            "symbol": symbol,
-            "page": page,
-        }
-        return self.client.request(HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT, **params)
+        """Get historical social sentiment data (REMOVED)"""
+        raise RemovedEndpointError(
+            "get_historical_social_sentiment",
+            "Social sentiment endpoints were discontinued by FMP.",
+        )  # pragma: no cover
 
-    @deprecated("This method is deprecated by FMP")
+    @removed("Social sentiment endpoints were discontinued by FMP.")
     def get_trending_social_sentiment(
         self, type: str, source: str
     ) -> list[TrendingSocialSentiment]:
-        """Get trending social sentiment data"""
-        params = {
-            "type": type,
-            "source": source,
-        }
-        return self.client.request(TRENDING_SOCIAL_SENTIMENT_ENDPOINT, **params)
+        """Get trending social sentiment data (REMOVED)"""
+        raise RemovedEndpointError(
+            "get_trending_social_sentiment",
+            "Social sentiment endpoints were discontinued by FMP.",
+        )  # pragma: no cover
 
-    @deprecated("This method is deprecated by FMP")
+    @removed("Social sentiment endpoints were discontinued by FMP.")
     def get_social_sentiment_changes(
         self, type: str, source: str
     ) -> list[SocialSentimentChanges]:
-        """Get changes in social sentiment data"""
-        params = {
-            "type": type,
-            "source": source,
-        }
-        return self.client.request(SOCIAL_SENTIMENT_CHANGES_ENDPOINT, **params)
+        """Get changes in social sentiment data (REMOVED)"""
+        raise RemovedEndpointError(
+            "get_social_sentiment_changes",
+            "Social sentiment endpoints were discontinued by FMP.",
+        )  # pragma: no cover
 
     # ESG methods
-    def get_esg_data(self, symbol: str) -> ESGData:
+    def get_esg_data(self, symbol: str) -> ESGData | None:
         """Get ESG data for a company"""
         result = self.client.request(ESG_DATA, symbol=symbol)
-        return cast(ESGData, result[0] if isinstance(result, list) else result)
+        return self._unwrap_single(result, ESGData, allow_none=True)
 
-    def get_esg_ratings(self, symbol: str) -> ESGRating:
+    def get_esg_ratings(self, symbol: str) -> ESGRating | None:
         """Get ESG ratings for a company"""
         result = self.client.request(ESG_RATINGS, symbol=symbol)
-        return cast(ESGRating, result[0] if isinstance(result, list) else result)
+        return self._unwrap_single(result, ESGRating, allow_none=True)
 
-    def get_esg_benchmark(self, year: int) -> list[ESGBenchmark]:
-        """Get ESG sector benchmark data"""
-        return self.client.request(ESG_BENCHMARK, year=year)
+    def get_esg_benchmark(self) -> list[ESGBenchmark]:
+        """Get ESG benchmark data"""
+        return self.client.request(ESG_BENCHMARK)
 
     # Government trading methods
+    def get_senate_latest(self, page: int = 0, limit: int = 100) -> list[SenateTrade]:
+        """Get latest Senate financial disclosures"""
+        return self.client.request(SENATE_LATEST, page=page, limit=limit)
+
     def get_senate_trading(self, symbol: str) -> list[SenateTrade]:
         """Get Senate trading data"""
         return self.client.request(SENATE_TRADING, symbol=symbol)
+
+    def get_senate_trades_by_name(self, name: str) -> list[SenateTrade]:
+        """Get Senate trading data by name"""
+        return self.client.request(SENATE_TRADES_BY_NAME, name=name)
 
     def get_senate_trading_rss(self, page: int = 0) -> list[SenateTrade]:
         """Get Senate trading RSS feed"""
         return self.client.request(SENATE_TRADING_RSS, page=page)
 
+    def get_house_latest(
+        self, page: int = 0, limit: int = 100
+    ) -> list[HouseDisclosure]:
+        """Get latest House financial disclosures"""
+        return self.client.request(HOUSE_LATEST, page=page, limit=limit)
+
     def get_house_disclosure(self, symbol: str) -> list[HouseDisclosure]:
         """Get House disclosure data"""
         return self.client.request(HOUSE_DISCLOSURE, symbol=symbol)
 
-    def get_house_disclosure_rss(self, page: int = 0) -> list[HouseDisclosure]:
-        """Get House disclosure RSS feed"""
-        return self.client.request(HOUSE_DISCLOSURE_RSS, page=page)
+    def get_house_trades_by_name(self, name: str) -> list[HouseDisclosure]:
+        """Get House trading data by name"""
+        return self.client.request(HOUSE_TRADES_BY_NAME, name=name)
 
     # Fundraising methods
-    def get_crowdfunding_rss(self, page: int = 0) -> list[CrowdfundingOffering]:
-        """Get crowdfunding offerings RSS feed"""
-        return self.client.request(CROWDFUNDING_RSS, page=page)
+    def get_crowdfunding_rss(
+        self, page: int = 0, limit: int = 100
+    ) -> list[CrowdfundingOffering]:
+        """Get latest crowdfunding offerings"""
+        return self.client.request(CROWDFUNDING_RSS, page=page, limit=limit)
 
-    def search_crowdfunding(self, name: str) -> list[CrowdfundingOffering]:
+    def search_crowdfunding(self, name: str) -> list[CrowdfundingOfferingSearchItem]:
         """Search crowdfunding offerings"""
         return self.client.request(CROWDFUNDING_SEARCH, name=name)
 
@@ -355,11 +473,16 @@ class MarketIntelligenceClient(EndpointGroup):
         """Get crowdfunding offerings by CIK"""
         return self.client.request(CROWDFUNDING_BY_CIK, cik=cik)
 
-    def get_equity_offering_rss(self, page: int = 0) -> list[EquityOffering]:
-        """Get equity offering RSS feed"""
-        return self.client.request(EQUITY_OFFERING_RSS, page=page)
+    def get_equity_offering_rss(
+        self, page: int = 0, limit: int = 10, cik: str | None = None
+    ) -> list[EquityOffering]:
+        """Get latest equity offerings"""
+        params: dict[str, int | str] = {"page": page, "limit": limit}
+        if cik is not None:
+            params["cik"] = cik
+        return self.client.request(EQUITY_OFFERING_RSS, **params)
 
-    def search_equity_offering(self, name: str) -> list[EquityOffering]:
+    def search_equity_offering(self, name: str) -> list[EquityOfferingSearchItem]:
         """Search equity offerings"""
         return self.client.request(EQUITY_OFFERING_SEARCH, name=name)
 
@@ -368,10 +491,10 @@ class MarketIntelligenceClient(EndpointGroup):
         return self.client.request(EQUITY_OFFERING_BY_CIK, cik=cik)
 
     # Analyst Ratings and Grades methods
-    def get_ratings_snapshot(self, symbol: str) -> RatingsSnapshot:
+    def get_ratings_snapshot(self, symbol: str) -> RatingsSnapshot | None:
         """Get current analyst ratings snapshot"""
         result = self.client.request(RATINGS_SNAPSHOT, symbol=symbol)
-        return cast(RatingsSnapshot, result[0] if isinstance(result, list) else result)
+        return self._unwrap_single(result, RatingsSnapshot, allow_none=True)
 
     def get_ratings_historical(
         self, symbol: str, limit: int = 100
@@ -399,12 +522,10 @@ class MarketIntelligenceClient(EndpointGroup):
         """Get historical stock grades"""
         return self.client.request(GRADES_HISTORICAL, symbol=symbol, limit=limit)
 
-    def get_grades_consensus(self, symbol: str) -> StockGradesConsensus:
+    def get_grades_consensus(self, symbol: str) -> StockGradesConsensus | None:
         """Get stock grades consensus summary"""
         result = self.client.request(GRADES_CONSENSUS, symbol=symbol)
-        return cast(
-            StockGradesConsensus, result[0] if isinstance(result, list) else result
-        )
+        return self._unwrap_single(result, StockGradesConsensus, allow_none=True)
 
     def get_grades_news(self, symbol: str, page: int = 0) -> list[StockGradeNews]:
         """Get stock grade news"""

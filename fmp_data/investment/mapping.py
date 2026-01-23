@@ -8,6 +8,9 @@ from fmp_data.investment.endpoints import (
     ETF_HOLDINGS,
     ETF_INFO,
     ETF_SECTOR_WEIGHTINGS,
+    FUNDS_DISCLOSURE,
+    FUNDS_DISCLOSURE_HOLDERS_LATEST,
+    FUNDS_DISCLOSURE_HOLDERS_SEARCH,
     MUTUAL_FUND_BY_NAME,
     MUTUAL_FUND_DATES,
     MUTUAL_FUND_HOLDER,
@@ -40,6 +43,20 @@ DATE_HINT = ParameterHint(
     ],
     examples=["2024-01-15", "2023-12-31"],
     context_clues=["date", "as of", "holdings", "portfolio"],
+)
+
+YEAR_HINT = ParameterHint(
+    natural_names=["year", "fiscal year"],
+    extraction_patterns=[r"\b(20\d{2})\b"],
+    examples=["2023", "2024"],
+    context_clues=["year", "fiscal"],
+)
+
+QUARTER_HINT = ParameterHint(
+    natural_names=["quarter", "q"],
+    extraction_patterns=[r"\bQ([1-4])\b", r"\bquarter\s+([1-4])\b"],
+    examples=["Q1", "Q4"],
+    context_clues=["quarter", "q"],
 )
 
 CIK_HINT = ParameterHint(
@@ -131,6 +148,9 @@ INVESTMENT_ENDPOINT_MAP = {
     "get_mutual_fund_holdings": MUTUAL_FUND_HOLDINGS,
     "get_mutual_fund_by_name": MUTUAL_FUND_BY_NAME,
     "get_mutual_fund_holder": MUTUAL_FUND_HOLDER,
+    "get_fund_disclosure_holders_latest": FUNDS_DISCLOSURE_HOLDERS_LATEST,
+    "get_fund_disclosure": FUNDS_DISCLOSURE,
+    "search_fund_disclosure_holders": FUNDS_DISCLOSURE_HOLDERS_SEARCH,
 }
 
 # Complete semantic definitions
@@ -653,6 +673,134 @@ INVESTMENT_ENDPOINTS_SEMANTICS = {
             "Risk assessment",
             "Position monitoring",
             "Fund comparison",
+        ],
+    ),
+    "fund_disclosure_holders_latest": EndpointSemantics(
+        client_name="investment",
+        method_name="get_fund_disclosure_holders_latest",
+        natural_description=(
+            "Retrieve the latest fund disclosure holders for a symbol, "
+            "including holder name, shares, and weight percentage"
+        ),
+        example_queries=[
+            "Latest fund disclosure holders for AAPL",
+            "Show latest fund holders for VWO",
+            "Get disclosure holders for SPY",
+        ],
+        related_terms=[
+            "fund disclosure holders",
+            "latest fund holdings",
+            "mutual fund holders",
+            "ETF disclosure holders",
+        ],
+        category=SemanticCategory.INVESTMENT_PRODUCTS,
+        sub_category="Fund Disclosures",
+        parameter_hints={"symbol": SYMBOL_HINT},
+        response_hints={
+            "holder": ResponseFieldInfo(
+                description="Fund holder name",
+                examples=["Vanguard Fixed Income Securities Funds"],
+                related_terms=["holder", "fund", "disclosure holder"],
+            ),
+            "shares": ResponseFieldInfo(
+                description="Number of shares held",
+                examples=["67030000"],
+                related_terms=["position size", "holding size", "quantity"],
+            ),
+            "weight_percent": ResponseFieldInfo(
+                description="Portfolio weight percentage",
+                examples=["0.0384"],
+                related_terms=["weight", "allocation", "percent of fund"],
+            ),
+        },
+        use_cases=[
+            "Fund ownership analysis",
+            "Disclosure tracking",
+            "Holder monitoring",
+        ],
+    ),
+    "fund_disclosure": EndpointSemantics(
+        client_name="investment",
+        method_name="get_fund_disclosure",
+        natural_description=(
+            "Retrieve detailed fund disclosure holdings for a symbol and reporting "
+            "period, including security metadata and portfolio percentages"
+        ),
+        example_queries=[
+            "Fund disclosure for VWO in 2023 Q4",
+            "Get fund disclosure holdings for SPY 2024 Q1",
+        ],
+        related_terms=[
+            "fund disclosure",
+            "portfolio disclosure",
+            "fund holdings disclosure",
+        ],
+        category=SemanticCategory.INVESTMENT_PRODUCTS,
+        sub_category="Fund Disclosures",
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "year": YEAR_HINT,
+            "quarter": QUARTER_HINT,
+            "cik": CIK_HINT,
+        },
+        response_hints={
+            "symbol": ResponseFieldInfo(
+                description="Holding symbol",
+                examples=["AAPL", "000089.SZ"],
+                related_terms=["security symbol", "holding ticker"],
+            ),
+            "val_usd": ResponseFieldInfo(
+                description="Holding value in USD",
+                examples=["2255873.6"],
+                related_terms=["value", "market value"],
+            ),
+            "pct_val": ResponseFieldInfo(
+                description="Portfolio percentage",
+                examples=["0.00238"],
+                related_terms=["weight", "allocation", "percent"],
+            ),
+        },
+        use_cases=[
+            "Disclosure analysis",
+            "Holdings verification",
+            "Portfolio composition review",
+        ],
+    ),
+    "fund_disclosure_holders_search": EndpointSemantics(
+        client_name="investment",
+        method_name="search_fund_disclosure_holders",
+        natural_description=(
+            "Search fund disclosure holders by name to retrieve fund identifiers "
+            "and entity details"
+        ),
+        example_queries=[
+            "Search fund disclosure holders for Federated Hermes",
+            "Find disclosure holders named Vanguard",
+        ],
+        related_terms=[
+            "fund disclosure search",
+            "disclosure holders search",
+            "fund name lookup",
+        ],
+        category=SemanticCategory.INVESTMENT_PRODUCTS,
+        sub_category="Fund Disclosures",
+        parameter_hints={"name": FUND_NAME_HINT},
+        response_hints={
+            "symbol": ResponseFieldInfo(
+                description="Fund symbol",
+                examples=["FGOAX"],
+                related_terms=["ticker", "symbol", "code"],
+            ),
+            "entity_name": ResponseFieldInfo(
+                description="Entity name",
+                examples=["Federated Hermes Government Income Securities, Inc."],
+                related_terms=["fund name", "entity"],
+            ),
+        },
+        use_cases=[
+            "Fund discovery",
+            "Disclosure lookup",
+            "Entity verification",
         ],
     ),
 }

@@ -1,5 +1,6 @@
 # tests/unit/test_rate_limit.py
 from datetime import date, datetime, timedelta
+import time
 from unittest.mock import patch
 
 import pytest
@@ -393,6 +394,42 @@ class TestFMPRateLimiterHandleResponse:
                 mock_logger.error.assert_called_once_with(
                     f"Rate limit exceeded: {expected_message}"
                 )
+
+
+class TestFMPRateLimiterRetryAfter:
+    """Test retry-after header parsing"""
+
+    @pytest.fixture
+    def limiter(self):
+        return FMPRateLimiter(QuotaConfig(daily_limit=100))
+
+    def test_retry_after_seconds_header(self, limiter):
+        """Use Retry-After seconds when provided."""
+        headers = {"Retry-After": "15"}
+
+        assert limiter.get_retry_after(headers) == 15
+
+    def test_retry_after_prefers_retry_after_over_reset(self, limiter):
+        """Retry-After should win over reset headers."""
+        headers = {"Retry-After": "10", "RateLimit-Reset": "20"}
+
+        assert limiter.get_retry_after(headers) == 10
+
+    def test_retry_after_from_reset_seconds(self, limiter):
+        """Use RateLimit-Reset seconds when Retry-After is absent."""
+        headers = {"RateLimit-Reset": "12"}
+
+        assert limiter.get_retry_after(headers) == 12
+
+    def test_retry_after_from_reset_epoch(self, limiter):
+        """Parse RateLimit-Reset epoch timestamps."""
+        reset_epoch = str(int(time.time()) + 5)
+        headers = {"RateLimit-Reset": reset_epoch}
+
+        retry_after = limiter.get_retry_after(headers)
+
+        assert retry_after is not None
+        assert 0.0 < retry_after <= 5.0
 
 
 class TestFMPRateLimiterGetWaitTime:

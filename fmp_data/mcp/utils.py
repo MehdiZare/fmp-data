@@ -7,6 +7,7 @@ Helper functions for setting up and managing MCP server configuration.
 from __future__ import annotations
 
 from datetime import datetime
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -14,7 +15,7 @@ import platform
 import shutil
 import subprocess
 import sys
-from typing import Any, cast
+from typing import Any
 
 
 def get_claude_config_path() -> Path:
@@ -131,7 +132,10 @@ def load_claude_config() -> dict[str, Any]:
 
     if config_path.exists():
         with open(config_path) as f:
-            return cast(dict[str, Any], json.load(f))
+            data = json.load(f)
+        if not isinstance(data, dict):
+            raise TypeError("Claude config JSON must be an object")
+        return data
 
     return {}
 
@@ -360,6 +364,39 @@ def get_manifest_choices() -> dict[str, str | None]:
             choices[name] = str(manifest_path)
 
     return choices
+
+
+def load_manifest_tools(manifest_path: str | Path | None) -> list[str]:
+    """
+    Load tool specs from a manifest file or return defaults.
+
+    Parameters
+    ----------
+    manifest_path
+        Path to a manifest file that defines ``TOOLS``, or None for defaults.
+
+    Returns
+    -------
+    list[str]
+        Tool specifications from the manifest (or defaults).
+    """
+    if manifest_path is None:
+        from fmp_data.mcp.tools_manifest import DEFAULT_TOOLS
+
+        return list(DEFAULT_TOOLS)
+
+    path = Path(manifest_path).expanduser().resolve()
+    spec = importlib.util.spec_from_file_location("user_manifest", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Cannot import manifest at {path}")
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    if not hasattr(module, "TOOLS"):
+        raise AttributeError(f"{path} does not define a global variable 'TOOLS'")
+
+    return list(module.TOOLS)
 
 
 def restart_claude_desktop_instructions() -> str:

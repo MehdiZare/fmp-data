@@ -1,14 +1,18 @@
 from datetime import date
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-import httpx
 import pytest
 
+from fmp_data.client import FMPDataClient
+from fmp_data.exceptions import RateLimitError
 from fmp_data.investment.models import (
     ETFCountryWeighting,
     ETFHolding,
     ETFInfo,
     ETFSectorWeighting,
+    FundDisclosureHolderLatest,
+    FundDisclosureHolding,
+    FundDisclosureSearchResult,
     MutualFundHolding,
 )
 
@@ -21,29 +25,15 @@ class TestInvestmentClient:
     def etf_holding_data(self):
         """Mock data for ETF holdings"""
         return {
-            "cik": "0000884394",
-            "acceptanceTime": "2023-11-27 17:41:05",
-            "date": "2023-09-30",
-            "symbol": "AAPL",
+            "symbol": "SPY",
+            "asset": "AAPL",
             "name": "Apple Inc",
-            "lei": "XYZ1234567890ABCDEF",
-            "title": "Apple Inc",
-            "cusip": "037833100",
             "isin": "US0378331005",
-            "balance": 1000000,
-            "units": "NS",
-            "cur_cd": "USD",
-            "valUsd": 1000000.0,
-            "pctVal": 0.1,
-            "payoffProfile": "Long",
-            "assetCat": "EC",
-            "issuerCat": "CORP",
-            "invCountry": "US",
-            "isRestrictedSec": "N",
-            "fairValLevel": "1",
-            "isCashCollateral": "N",
-            "isNonCashCollateral": "N",
-            "isLoanByFund": "N",
+            "securityCusip": "037833100",
+            "sharesNumber": 1000000,
+            "weightPercentage": 7.5,
+            "marketValue": 150000000.0,
+            "updatedAt": "2023-11-27 17:41:05",
         }
 
     @pytest.fixture
@@ -53,12 +43,12 @@ class TestInvestmentClient:
             "symbol": "SPY",
             "name": "S&P 500 ETF",
             "expenseRatio": 0.09,
-            "aum": 3500000000.0,
+            "assetsUnderManagement": 3500000000.0,
             "avgVolume": 5000000,
             "description": "Tracks the S&P 500 index.",
             "inceptionDate": "1993-01-29",
             "holdingsCount": 500,
-            "cusip": "123456789",
+            "securityCusip": "123456789",
             "isin": "US1234567890",
             "domicile": "US",
             "etfCompany": "SPDR",
@@ -66,10 +56,8 @@ class TestInvestmentClient:
             "navCurrency": "USD",
             "sectorsList": [
                 {
-                    "sector": "Technology",
-                    "weightPercentage": 27.5,
                     "industry": "Software & Services",
-                    "exposure": 0.3,
+                    "exposure": 27.5,
                 }
             ],
             "website": "https://www.ssga.com",
@@ -101,6 +89,66 @@ class TestInvestmentClient:
             "shares": 1000,
         }
 
+    @pytest.fixture
+    def fund_disclosure_holder_latest_data(self):
+        """Mock data for latest mutual fund/ETF disclosure holders"""
+        return {
+            "cik": "0000106444",
+            "holder": "VANGUARD FIXED INCOME SECURITIES FUNDS",
+            "shares": 67030000,
+            "dateReported": "2024-07-31",
+            "change": 0,
+            "weightPercent": 0.03840197,
+        }
+
+    @pytest.fixture
+    def fund_disclosure_data(self):
+        """Mock data for mutual fund/ETF disclosure holdings"""
+        return {
+            "cik": "0000857489",
+            "date": "2023-10-31",
+            "acceptedDate": "2023-12-28 09:26:13",
+            "symbol": "000089.SZ",
+            "name": "Shenzhen Airport Co Ltd",
+            "lei": "3003009W045RIKRBZI44",
+            "title": "SHENZ AIRPORT-A",
+            "cusip": "N/A",
+            "isin": "CNE000000VK1",
+            "balance": 2438784,
+            "units": "NS",
+            "cur_cd": "CNY",
+            "valUsd": 2255873.6,
+            "pctVal": 0.0023838966,
+            "payoffProfile": "Long",
+            "assetCat": "EC",
+            "issuerCat": "CORP",
+            "invCountry": "CN",
+            "isRestrictedSec": "N",
+            "fairValLevel": "2",
+            "isCashCollateral": "N",
+            "isNonCashCollateral": "N",
+            "isLoanByFund": "N",
+        }
+
+    @pytest.fixture
+    def fund_disclosure_search_result_data(self):
+        """Mock data for mutual fund/ETF disclosure holder search"""
+        return {
+            "symbol": "FGOAX",
+            "cik": "0000355691",
+            "classId": "C000024574",
+            "seriesId": "S000009042",
+            "entityName": "Federated Hermes Government Income Securities, Inc.",
+            "entityOrgType": "30",
+            "seriesName": "Federated Hermes Government Income Securities, Inc.",
+            "className": "Class A Shares",
+            "reportingFileNumber": "811-03266",
+            "address": "4000 ERICSSON DRIVE",
+            "city": "WARRENDALE",
+            "zipCode": "15086-7561",
+            "state": "PA",
+        }
+
     # ETF endpoint tests
     @patch("httpx.Client.request")
     def test_get_etf_holdings(
@@ -110,14 +158,13 @@ class TestInvestmentClient:
         mock_request.return_value = mock_response(
             status_code=200, json_data=[etf_holding_data]
         )
-        result = fmp_client.investment.get_etf_holdings(
-            symbol="SPY", holdings_date=date(2024, 1, 15)
-        )
+        result = fmp_client.investment.get_etf_holdings(symbol="SPY")
         assert len(result) == 1
         holding = result[0]
         assert isinstance(holding, ETFHolding)
-        assert holding.symbol == "AAPL"
-        assert holding.value_usd == 1000000.0
+        assert holding.symbol == "SPY"
+        assert holding.asset == "AAPL"
+        assert holding.market_value == 150000000.0
 
     @patch("httpx.Client.request")
     def test_get_etf_info(self, mock_request, fmp_client, mock_response, etf_info_data):
@@ -143,7 +190,8 @@ class TestInvestmentClient:
         sector = result[0]
         assert isinstance(sector, ETFSectorWeighting)
         assert sector.sector == "Technology"
-        assert sector.weight_percentage == 27.5
+        # Values > 1 are normalized to 0-1 scale (27.5 -> 0.275)
+        assert sector.weight_percentage == 0.275
 
     @patch("httpx.Client.request")
     def test_get_etf_country_weightings(
@@ -180,50 +228,80 @@ class TestInvestmentClient:
         assert holding.market_value == 1000000.0
 
     @patch("httpx.Client.request")
+    def test_get_fund_disclosure_holders_latest(
+        self,
+        mock_request,
+        fmp_client,
+        mock_response,
+        fund_disclosure_holder_latest_data,
+    ):
+        """Test fetching latest fund disclosure holders"""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[fund_disclosure_holder_latest_data]
+        )
+        result = fmp_client.investment.get_fund_disclosure_holders_latest(symbol="AAPL")
+        assert len(result) == 1
+        holder = result[0]
+        assert isinstance(holder, FundDisclosureHolderLatest)
+        assert holder.holder == "VANGUARD FIXED INCOME SECURITIES FUNDS"
+        assert holder.weight_percent == 0.03840197
+
+    @patch("httpx.Client.request")
+    def test_get_fund_disclosure(
+        self, mock_request, fmp_client, mock_response, fund_disclosure_data
+    ):
+        """Test fetching mutual fund/ETF disclosure holdings"""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[fund_disclosure_data]
+        )
+        result = fmp_client.investment.get_fund_disclosure(
+            symbol="VWO", year=2023, quarter=4
+        )
+        assert len(result) == 1
+        holding = result[0]
+        assert isinstance(holding, FundDisclosureHolding)
+        assert holding.symbol == "000089.SZ"
+        assert holding.cur_cd == "CNY"
+        assert holding.val_usd == 2255873.6
+
+    @patch("httpx.Client.request")
+    def test_search_fund_disclosure_holders(
+        self,
+        mock_request,
+        fmp_client,
+        mock_response,
+        fund_disclosure_search_result_data,
+    ):
+        """Test searching fund disclosure holders by name"""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[fund_disclosure_search_result_data]
+        )
+        result = fmp_client.investment.search_fund_disclosure_holders(
+            name="Federated Hermes"
+        )
+        assert len(result) == 1
+        entry = result[0]
+        assert isinstance(entry, FundDisclosureSearchResult)
+        assert entry.symbol == "FGOAX"
+        assert entry.reporting_file_number == "811-03266"
+
+    @patch("httpx.Client.request")
     def test_rate_limit_handling(self, mock_request, fmp_client):
         """Test handling rate limit errors for investment endpoints"""
-        mock_request.side_effect = [
-            httpx.HTTPStatusError(
-                "429 Too Many Requests",
-                request=Mock(),
-                response=Mock(status_code=429),
-            ),
-            Mock(
-                status_code=200,
-                json=lambda: [
-                    {
-                        "cik": "0000884394",
-                        "acceptanceTime": "2023-11-27 17:41:05",
-                        "date": "2023-09-30",
-                        "symbol": "AAPL",
-                        "name": "Apple Inc",
-                        "lei": "XYZ1234567890ABCDEF",
-                        "title": "Apple Inc",
-                        "cusip": "037833100",
-                        "isin": "US0378331005",
-                        "balance": 1000000,
-                        "units": "NS",
-                        "cur_cd": "USD",
-                        "valUsd": 1000000.0,
-                        "pctVal": 0.1,
-                        "payoffProfile": "Long",
-                        "assetCat": "EC",
-                        "issuerCat": "CORP",
-                        "invCountry": "US",
-                        "isRestrictedSec": "N",
-                        "fairValLevel": "1",
-                        "isCashCollateral": "N",
-                        "isNonCashCollateral": "N",
-                        "isLoanByFund": "N",
-                    }
-                ],
-            ),
-        ]
-
-        result = fmp_client.investment.get_etf_holdings(
-            symbol="SPY", holdings_date=date(2024, 1, 15)
+        client = FMPDataClient(
+            config=fmp_client.config.model_copy(update={"max_retries": 2})
         )
-        assert result is not None
-        assert len(result) == 1
-        assert isinstance(result[0], ETFHolding)
-        assert result[0].symbol == "AAPL"
+        with (
+            patch.object(
+                client._rate_limiter, "should_allow_request", return_value=False
+            ),
+            patch.object(client._rate_limiter, "get_wait_time", return_value=0.0),
+            patch.object(
+                client, "_handle_rate_limit", side_effect=RateLimitError("rl")
+            ),
+        ):
+            with pytest.raises(RateLimitError):
+                client.investment.get_etf_holdings(
+                    symbol="SPY", holdings_date=date(2024, 1, 15)
+                )
+        client.close()

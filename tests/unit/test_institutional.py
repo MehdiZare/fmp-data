@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -28,17 +28,17 @@ def mock_13f_filing():
     """Mock 13F filing data"""
     return {
         "date": "2023-09-30",
-        "fillingDate": "2023-11-16",
+        "filingDate": "2023-11-16",
         "acceptedDate": "2023-11-16",
         "cik": "0001067983",
-        "cusip": "G6683N103",
-        "tickercusip": "NU",
+        "securityCusip": "G6683N103",
+        "symbol": "NU",
         "nameOfIssuer": "NU HLDGS LTD",
         "shares": 107118784,
         "titleOfClass": "ORD SHS CL A",
         "value": 776611184.0,
         "link": "https://www.sec.gov/Archives/edgar/data/1067983/000095012323011029/0000950123-23-011029-index.htm",
-        "linkFinal": "https://www.sec.gov/Archives/edgar/data/1067983/000095012323011029/28498.xml",
+        "finalLink": "https://www.sec.gov/Archives/edgar/data/1067983/000095012323011029/28498.xml",
     }
 
 
@@ -100,15 +100,15 @@ def mock_insider_statistic():
         "cik": "0000320193",
         "year": 2024,
         "quarter": 1,
-        "purchases": 5,
-        "sales": 10,
-        "buySellRatio": 0.5,
-        "totalBought": 25000,
-        "totalSold": 75000,
-        "averageBought": 5000.0,
-        "averageSold": 7500.0,
-        "pPurchases": 3,
-        "sSales": 7,
+        "acquiredTransactions": 5,
+        "disposedTransactions": 10,
+        "acquiredDisposedRatio": 0.5,
+        "totalAcquired": 25000,
+        "totalDisposed": 75000,
+        "averageAcquired": 5000.0,
+        "averageDisposed": 7500.0,
+        "totalPurchases": 3,
+        "totalSales": 7,
     }
 
 
@@ -138,7 +138,7 @@ class TestInstitutionalModels:
         assert filing.cik == "0001067983"
         assert isinstance(filing.form_date, date)
         assert filing.cusip == "G6683N103"
-        assert filing.ticker == "NU"
+        assert filing.symbol == "NU"
         assert isinstance(filing.value, float)
         assert filing.shares == 107118784
         assert filing.class_title == "ORD SHS CL A"
@@ -177,10 +177,10 @@ class TestInstitutionalModels:
         assert stats.symbol == "AAPL"
         assert stats.year == 2024
         assert stats.quarter == 1
-        assert isinstance(stats.buy_sell_ratio, float)
-        assert stats.total_bought == 25000
-        assert stats.total_sold == 75000
-        assert isinstance(stats.average_bought, float)
+        assert isinstance(stats.acquired_disposed_ratio, float)
+        assert stats.total_acquired == 25000
+        assert stats.total_disposed == 75000
+        assert isinstance(stats.average_acquired, float)
 
     def test_fail_to_deliver_model(self, mock_fail_to_deliver):
         """Test FailToDeliver model validation"""
@@ -217,6 +217,9 @@ class TestInstitutionalClient:
                     if self.status_code >= 400:
                         raise Exception(f"HTTP {self.status_code}")
 
+                def close(self):
+                    pass
+
             return MockResponse(status_code, json_data)
 
         return create_response
@@ -231,12 +234,34 @@ class TestInstitutionalClient:
         )
 
         filing = fmp_client.institutional.get_form_13f(
-            "0001067983", filing_date=date(2024, 1, 5)
+            "0001067983", report_date=date(2024, 1, 5)
         )
         assert isinstance(filing, list)
         assert isinstance(filing[0], Form13F)
         assert filing[0].cik == "0001067983"
         assert filing[0].value == 776611184.0
+
+    def test_get_form_13f_returns_empty_on_error(self, fmp_client):
+        """Test get_form_13f returns empty list when request fails."""
+        fmp_client._logger = Mock()
+        with patch.object(fmp_client, "request", side_effect=Exception("boom")):
+            result = fmp_client.institutional.get_form_13f(
+                "0001067983", report_date=date(2024, 1, 5)
+            )
+
+        assert result == []
+        fmp_client._logger.warning.assert_called_once()
+        assert "0001067983" in fmp_client._logger.warning.call_args[0][0]
+
+    def test_get_form_13f_dates_returns_empty_on_error(self, fmp_client):
+        """Test get_form_13f_dates returns empty list when request fails."""
+        fmp_client._logger = Mock()
+        with patch.object(fmp_client, "request", side_effect=Exception("boom")):
+            result = fmp_client.institutional.get_form_13f_dates("0001067983")
+
+        assert result == []
+        fmp_client._logger.warning.assert_called_once()
+        assert "0001067983" in fmp_client._logger.warning.call_args[0][0]
 
     @patch("httpx.Client.request")
     def test_get_insider_trades(
@@ -278,7 +303,9 @@ class TestInstitutionalClient:
             status_code=200, json_data=[mock_institutional_holding]
         )
 
-        holdings = fmp_client.institutional.get_institutional_holdings("AAPL")
+        holdings = fmp_client.institutional.get_institutional_holdings(
+            "AAPL", report_date=date(2024, 6, 30)
+        )
         assert isinstance(holdings, list)
         assert len(holdings) == 1
         assert isinstance(holdings[0], InstitutionalHolding)
@@ -286,10 +313,35 @@ class TestInstitutionalClient:
         assert holdings[0].investors_holding == 5181
         assert holdings[0].total_invested == 1988382372981.0
 
-    @patch("httpx.Client.request")
-    def test_get_cik_by_symbol(self, mock_request, fmp_client, mock_response):
-        """Test getting CIK mapping by symbol - method removed"""
-        pytest.skip("Method get_cik_by_symbol was removed from client")
+    def test_search_cik_by_name_filters_results(self, fmp_client):
+        """Test search_cik_by_name filters results case-insensitively."""
+        mapping_match = CIKMapping(
+            reporting_cik="0001758386",
+            reporting_name="Acme Capital Partners",
+        )
+        mapping_other = CIKMapping(
+            reporting_cik="0000000001",
+            reporting_name="Other Holdings",
+        )
+
+        with patch.object(
+            fmp_client, "request", return_value=[mapping_match, mapping_other]
+        ):
+            results = fmp_client.institutional.search_cik_by_name("acme")
+
+        assert results == [mapping_match]
+
+    def test_search_cik_by_name_wraps_single_result(self, fmp_client):
+        """Test search_cik_by_name handles non-list responses."""
+        mapping = CIKMapping(
+            reporting_cik="0001758386",
+            reporting_name="Acme Capital Partners",
+        )
+
+        with patch.object(fmp_client, "request", return_value=mapping):
+            results = fmp_client.institutional.search_cik_by_name("ACME")
+
+        assert results == [mapping]
 
 
 class TestInstitutionalClientEnhanced:
@@ -304,11 +356,17 @@ class TestInstitutionalClientEnhanced:
             status_code=200, json_data=[mock_insider_trade]
         )
 
-        trades = fmp_client.institutional.get_insider_trading_latest()
+        trades = fmp_client.institutional.get_insider_trading_latest(
+            page=0, limit=50, trade_date=date(2024, 1, 5)
+        )
         assert isinstance(trades, list)
         assert len(trades) == 1
         assert isinstance(trades[0], InsiderTradingLatest)
         assert trades[0].symbol == "AAPL"
+        _, kwargs = mock_request.call_args
+        assert kwargs["params"]["page"] == 0
+        assert kwargs["params"]["limit"] == 50
+        assert kwargs["params"]["date"] == date(2024, 1, 5)
 
     @patch("httpx.Client.request")
     def test_search_insider_trading(
@@ -319,11 +377,21 @@ class TestInstitutionalClientEnhanced:
             status_code=200, json_data=[mock_insider_trade]
         )
 
-        trades = fmp_client.institutional.search_insider_trading(symbol="AAPL")
+        trades = fmp_client.institutional.search_insider_trading(
+            symbol="AAPL",
+            reporting_cik="0001214128",
+            company_cik="0000320193",
+            transaction_type="S-Sale",
+        )
         assert isinstance(trades, list)
         assert len(trades) == 1
         assert isinstance(trades[0], InsiderTradingSearch)
         assert trades[0].symbol == "AAPL"
+        _, kwargs = mock_request.call_args
+        assert kwargs["params"]["symbol"] == "AAPL"
+        assert kwargs["params"]["reportingCik"] == "0001214128"
+        assert kwargs["params"]["companyCik"] == "0000320193"
+        assert kwargs["params"]["transactionType"] == "S-Sale"
 
     @patch("httpx.Client.request")
     def test_get_insider_trading_by_name(
@@ -350,15 +418,15 @@ class TestInstitutionalClientEnhanced:
             "cik": "0000320193",
             "year": 2023,
             "quarter": 4,
-            "purchases": 15,
-            "sales": 25,
-            "buySellRatio": 0.6,
-            "totalBought": 50000,
-            "totalSold": 75000,
-            "averageBought": 3333.33,
-            "averageSold": 3000.0,
-            "pPurchases": 10,
-            "sSales": 20,
+            "acquiredTransactions": 15,
+            "disposedTransactions": 25,
+            "acquiredDisposedRatio": 0.6,
+            "totalAcquired": 50000,
+            "totalDisposed": 75000,
+            "averageAcquired": 3333.33,
+            "averageDisposed": 3000.0,
+            "totalPurchases": 10,
+            "totalSales": 20,
         }
         mock_request.return_value = mock_response(
             status_code=200, json_data=[mock_stats]
@@ -367,7 +435,7 @@ class TestInstitutionalClientEnhanced:
         stats = fmp_client.institutional.get_insider_trading_statistics_enhanced("AAPL")
         assert isinstance(stats, InsiderTradingStatistics)
         assert stats.symbol == "AAPL"
-        assert stats.purchases == 15
+        assert stats.acquired_transactions == 15
 
     @patch("httpx.Client.request")
     def test_get_institutional_ownership_latest(
@@ -376,14 +444,13 @@ class TestInstitutionalClientEnhanced:
         """Test getting latest institutional ownership filings"""
         mock_ownership = {
             "cik": "0001067983",
+            "name": "Berkshire Hathaway Inc",
             "date": "2023-09-30",
-            "symbol": "AAPL",
-            "companyName": "Apple Inc",
-            "shares": 1000000,
-            "value": 175000000.0,
-            "weight": 2.5,
-            "change": 50000,
-            "changePercent": 5.0,
+            "filingDate": "2023-11-15T00:00:00",
+            "acceptedDate": "2023-11-15T10:30:00",
+            "formType": "13F-HR",
+            "link": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001067983",
+            "finalLink": "https://www.sec.gov/Archives/edgar/data/1067983/000095012323011029/28498.xml",
         }
         mock_request.return_value = mock_response(
             status_code=200, json_data=[mock_ownership]
@@ -393,8 +460,11 @@ class TestInstitutionalClientEnhanced:
         assert isinstance(ownership, list)
         assert len(ownership) == 1
         assert isinstance(ownership[0], InstitutionalOwnershipLatest)
-        assert ownership[0].symbol == "AAPL"
-        assert ownership[0].filing_date.strftime("%Y-%m-%d") == "2023-09-30"
+        assert ownership[0].cik == "0001067983"
+        assert ownership[0].report_date.strftime("%Y-%m-%d") == "2023-09-30"
+        _, kwargs = mock_request.call_args
+        assert kwargs["params"]["page"] == 0
+        assert kwargs["params"]["limit"] == 100
 
     @patch("httpx.Client.request")
     def test_get_institutional_ownership_extract(
@@ -404,18 +474,18 @@ class TestInstitutionalClientEnhanced:
         mock_extract = {
             "cik": "0001067983",
             "date": "2023-09-30",
+            "filingDate": "2023-11-15",
+            "acceptedDate": "2023-11-15",
+            "securityCusip": "037833100",
+            "symbol": "AAPL",
             "nameOfIssuer": "Apple Inc",
             "titleOfClass": "COM",
-            "cusip": "037833100",
+            "shares": 1000000,
+            "sharesType": "SH",
+            "putCallShare": None,
             "value": 175000000.0,
-            "sharesPrnAmt": 1000000,
-            "sharesPrnType": "SH",
-            "putCall": None,
-            "investmentDiscretion": "SOLE",
-            "otherManager": None,
-            "votingAuthoritySole": 1000000,
-            "votingAuthorityShared": 0,
-            "votingAuthorityNone": 0,
+            "link": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001067983",
+            "finalLink": "https://www.sec.gov/Archives/edgar/data/1067983/000095012323011029/28498.xml",
         }
         mock_request.return_value = mock_response(
             status_code=200, json_data=[mock_extract]
@@ -451,12 +521,39 @@ class TestInstitutionalClientEnhanced:
     ):
         """Test getting holder performance summary"""
         mock_performance = {
+            "date": "2023-09-30",
             "cik": "0001067983",
-            "name": "Berkshire Hathaway Inc",
-            "totalValue": 7500000000.0,
-            "entries": 50,
-            "change": 250000000.0,
-            "changePercent": 3.45,
+            "investorName": "Berkshire Hathaway Inc",
+            "portfolioSize": 50,
+            "securitiesAdded": 5,
+            "securitiesRemoved": 3,
+            "marketValue": 7500000000.0,
+            "previousMarketValue": 7250000000.0,
+            "changeInMarketValue": 250000000.0,
+            "changeInMarketValuePercentage": 3.45,
+            "averageHoldingPeriod": 12,
+            "averageHoldingPeriodTop10": 15,
+            "averageHoldingPeriodTop20": 14,
+            "turnover": 0.05,
+            "turnoverAlternateSell": 0.03,
+            "turnoverAlternateBuy": 0.02,
+            "performance": 500000000.0,
+            "performancePercentage": 7.14,
+            "lastPerformance": 450000000.0,
+            "changeInPerformance": 50000000.0,
+            "performance1year": 800000000.0,
+            "performancePercentage1year": 12.0,
+            "performance3year": 2000000000.0,
+            "performancePercentage3year": 35.0,
+            "performance5year": 3500000000.0,
+            "performancePercentage5year": 60.0,
+            "performanceSinceInception": 5000000000.0,
+            "performanceSinceInceptionPercentage": 100.0,
+            "performanceRelativeToSP500Percentage": 2.5,
+            "performance1yearRelativeToSP500Percentage": 3.0,
+            "performance3yearRelativeToSP500Percentage": 5.0,
+            "performance5yearRelativeToSP500Percentage": 8.0,
+            "performanceSinceInceptionRelativeToSP500Percentage": 15.0,
         }
         mock_request.return_value = mock_response(
             status_code=200, json_data=[mock_performance]
@@ -468,7 +565,9 @@ class TestInstitutionalClientEnhanced:
         assert isinstance(performance, list)
         assert len(performance) == 1
         assert isinstance(performance[0], HolderPerformanceSummary)
-        assert performance[0].name == "Berkshire Hathaway Inc"
+        assert performance[0].investor_name == "Berkshire Hathaway Inc"
+        _, kwargs = mock_request.call_args
+        assert kwargs["params"]["page"] == 0
 
     @patch("httpx.Client.request")
     def test_get_symbol_positions_summary(
@@ -477,18 +576,40 @@ class TestInstitutionalClientEnhanced:
         """Test getting positions summary by symbol"""
         mock_positions = {
             "symbol": "AAPL",
-            "totalPositions": 3500,
-            "totalShares": 15000000000,
-            "totalValue": 2625000000000.0,
-            "avgWeight": 4.2,
-            "change": 500000000,
-            "changePercent": 3.45,
+            "cik": "0000320193",
+            "date": "2024-06-30",
+            "investorsHolding": 5181,
+            "lastInvestorsHolding": 5164,
+            "investorsHoldingChange": 17,
+            "numberOf13Fshares": 9315793861,
+            "lastNumberOf13Fshares": 9133859544,
+            "numberOf13FsharesChange": 181934317,
+            "totalInvested": 1988382372981.0,
+            "lastTotalInvested": 1593047802343.0,
+            "totalInvestedChange": 395334570638.0,
+            "ownershipPercent": 60.4692,
+            "lastOwnershipPercent": 59.2882,
+            "ownershipPercentChange": 1.0199,
+            "newPositions": 50,
+            "lastNewPositions": 45,
+            "newPositionsChange": 5,
+            "increasedPositions": 200,
+            "lastIncreasedPositions": 180,
+            "increasedPositionsChange": 20,
+            "closedPositions": 30,
+            "lastClosedPositions": 25,
+            "closedPositionsChange": 5,
+            "reducedPositions": 100,
+            "lastReducedPositions": 90,
+            "reducedPositionsChange": 10,
         }
         mock_request.return_value = mock_response(
             status_code=200, json_data=[mock_positions]
         )
 
-        positions = fmp_client.institutional.get_symbol_positions_summary("AAPL")
+        positions = fmp_client.institutional.get_symbol_positions_summary(
+            "AAPL", report_date=date(2024, 6, 30)
+        )
         assert isinstance(positions, list)
         assert len(positions) == 1
         assert isinstance(positions[0], SymbolPositionsSummary)

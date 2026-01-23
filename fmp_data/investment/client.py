@@ -11,6 +11,9 @@ from fmp_data.investment.endpoints import (
     ETF_HOLDINGS,
     ETF_INFO,
     ETF_SECTOR_WEIGHTINGS,
+    FUNDS_DISCLOSURE,
+    FUNDS_DISCLOSURE_HOLDERS_LATEST,
+    FUNDS_DISCLOSURE_HOLDERS_SEARCH,
     MUTUAL_FUND_BY_NAME,
     MUTUAL_FUND_DATES,
     MUTUAL_FUND_HOLDER,
@@ -23,6 +26,9 @@ from fmp_data.investment.models import (
     ETFHolding,
     ETFInfo,
     ETFSectorWeighting,
+    FundDisclosureHolderLatest,
+    FundDisclosureHolding,
+    FundDisclosureSearchResult,
     MutualFundHolder,
     MutualFundHolding,
 )
@@ -32,11 +38,14 @@ class InvestmentClient(EndpointGroup):
     """Client for investment products endpoints"""
 
     # ETF methods
-    def get_etf_holdings(self, symbol: str, holdings_date: date) -> list[ETFHolding]:
+    def get_etf_holdings(
+        self, symbol: str, holdings_date: date | None = None
+    ) -> list[ETFHolding]:
         """Get ETF holdings"""
-        return self.client.request(
-            ETF_HOLDINGS, symbol=symbol, date=holdings_date.strftime("%Y-%m-%d")
-        )
+        params: dict[str, str] = {"symbol": symbol}
+        if holdings_date is not None:
+            params["date"] = holdings_date.strftime("%Y-%m-%d")
+        return self.client.request(ETF_HOLDINGS, **params)
 
     def get_etf_holding_dates(self, symbol: str) -> list[date]:
         """Get ETF holding dates"""
@@ -83,16 +92,35 @@ class InvestmentClient(EndpointGroup):
         return self.client.request(ETF_HOLDER, symbol=symbol)
 
     # Mutual Fund methods
-    def get_mutual_fund_dates(self, symbol: str, cik: str) -> list[date]:
-        """Get mutual fund dates"""
-        return self.client.request(MUTUAL_FUND_DATES, symbol=symbol, cik=cik)
+    def get_mutual_fund_dates(self, symbol: str, cik: str | None = None) -> list[date]:
+        """Get mutual fund/ETF disclosure dates
+
+        Args:
+            symbol: Fund or ETF symbol
+            cik: Optional fund CIK
+
+        Returns:
+            List of disclosure dates
+        """
+        params: dict[str, str] = {"symbol": symbol}
+        if cik is not None:
+            params["cik"] = cik
+        return self.client.request(MUTUAL_FUND_DATES, **params)
+
+    def get_fund_disclosure_dates(
+        self, symbol: str, cik: str | None = None
+    ) -> list[date]:
+        """Get mutual fund/ETF disclosure dates"""
+        return self.get_mutual_fund_dates(symbol=symbol, cik=cik)
 
     def get_mutual_fund_holdings(
         self, symbol: str, holdings_date: date
     ) -> list[MutualFundHolding]:
         """Get mutual fund holdings"""
         return self.client.request(
-            MUTUAL_FUND_HOLDINGS, symbol=symbol, date=holdings_date.strftime("%Y-%m-%d")
+            MUTUAL_FUND_HOLDINGS,
+            symbol=symbol,
+            date=holdings_date.strftime("%Y-%m-%d"),
         )
 
     def get_mutual_fund_by_name(self, name: str) -> list[MutualFundHolding]:
@@ -102,3 +130,28 @@ class InvestmentClient(EndpointGroup):
     def get_mutual_fund_holder(self, symbol: str) -> list[MutualFundHolder]:
         """Get mutual fund holder information"""
         return self.client.request(MUTUAL_FUND_HOLDER, symbol=symbol)
+
+    def get_fund_disclosure_holders_latest(
+        self, symbol: str
+    ) -> list[FundDisclosureHolderLatest]:
+        """Get latest mutual fund/ETF disclosure holders"""
+        return self.client.request(FUNDS_DISCLOSURE_HOLDERS_LATEST, symbol=symbol)
+
+    def get_fund_disclosure(
+        self, symbol: str, year: int, quarter: int, cik: str | None = None
+    ) -> list[FundDisclosureHolding]:
+        """Get mutual fund/ETF disclosure holdings"""
+        params: dict[str, str | int] = {
+            "symbol": symbol,
+            "year": year,
+            "quarter": quarter,
+        }
+        if cik is not None:
+            params["cik"] = cik
+        return self.client.request(FUNDS_DISCLOSURE, **params)
+
+    def search_fund_disclosure_holders(
+        self, name: str
+    ) -> list[FundDisclosureSearchResult]:
+        """Search mutual fund/ETF disclosure holders by name"""
+        return self.client.request(FUNDS_DISCLOSURE_HOLDERS_SEARCH, name=name)

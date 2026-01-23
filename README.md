@@ -9,6 +9,8 @@
 
 A Python client for the Financial Modeling Prep (FMP) API with comprehensive logging, rate limiting, and error handling. Built with UV for fast, reliable dependency management and modern Python development practices.
 
+LLM Guide: [LLM.md](./LLM.md)
+
 ## Why UV?
 
 This project uses UV as the primary package management tool for several key benefits:
@@ -29,7 +31,7 @@ This project uses UV as the primary package management tool for several key bene
 - Automatic retries with exponential backoff
 - 85%+ test coverage with comprehensive test suite
 - Secure API key handling
-- Support for all major FMP endpoints
+- 100% coverage of FMP stable endpoints
 - Detailed error messages
 - Configurable retry strategies
 - **Langchain Integration**
@@ -58,6 +60,8 @@ uv pip install "fmp-data[mcp]"
 # With both integrations
 uv pip install "fmp-data[langchain,mcp]"
 ```
+
+LangChain integration requires LangChain v1 (`langchain-core`, `langchain-openai`) and LangGraph v1.
 
 ### Using pip
 
@@ -97,7 +101,7 @@ export FMP_API_KEY=your_api_key_here
 fmp-mcp
 ```
 
-For detailed setup instructions, see [MCP Setup Guide](examples/MCP_SETUP_GUIDE.md).
+For detailed setup instructions, see [docs/mcp/claude_desktop.md](docs/mcp/claude_desktop.md).
 
 ### Available Commands
 
@@ -110,9 +114,8 @@ fmp-mcp list     # List available tools
 
 ### Configuration Profiles
 
-Choose from pre-configured tool sets:
-- **Default** - Complete toolkit
-- **Minimal** - Essential tools only
+Choose from pre-configured tool sets. See [docs/mcp/configurations.md](docs/mcp/configurations.md).
+Full tool list: [docs/mcp/tools.md](docs/mcp/tools.md).
 
 ### Custom Configuration
 
@@ -124,8 +127,8 @@ export FMP_MCP_MANIFEST=/path/to/custom/manifest.py
 # Custom manifest example (manifest.py)
 TOOLS = [
     "company.profile",
-    "company.search",
-    "market.quote",
+    "market.search",
+    "company.quote",
     "fundamental.income_statement",
     "fundamental.balance_sheet"
 ]
@@ -142,7 +145,7 @@ from fmp_data.mcp.server import create_app
 app = create_app()
 
 # Create with custom tools
-app = create_app(tools=["company.profile", "market.quote"])
+app = create_app(tools=["company.profile", "company.quote"])
 
 # Create with manifest file
 app = create_app(tools="/path/to/manifest.py")
@@ -150,12 +153,13 @@ app = create_app(tools="/path/to/manifest.py")
 
 ### Available Tools
 
-The server supports all FMP endpoints through a simple naming convention:
+The MCP server exposes tools for endpoints that have MCP tool semantics.
+For the full MCP catalog, run `fmp-mcp list` or see [docs/mcp/tools.md](docs/mcp/tools.md).
 - `company.profile` - Get company profiles
-- `company.search` - Search companies
-- `market.quote` - Get real-time quotes
+- `market.search` - Search companies
+- `company.quote` - Get real-time quotes
 - `fundamental.income_statement` - Financial statements
-- `technical.indicators` - Technical analysis
+- `technical.rsi` - Technical analysis
 - And many more...
 
 ## Langchain Integration
@@ -205,10 +209,16 @@ for query in queries:
         print()
 ```
 
+Note (2.0.0+): Loading cached vector stores now requires instantiating
+`EndpointVectorStore(client, registry, embeddings, allow_dangerous_deserialization=True)`.
+The `allow_dangerous_deserialization` boolean is passed at construction so cached
+stores load automatically if present and the flag is enabled; use only with
+trusted cache sources.
+
 ### Alternative Setup: Using Configuration
 
 ```python
-from fmp_data import FMPDataClient, ClientConfig
+from fmp_data import FMPDataClient, ClientConfig, create_vector_store
 from fmp_data.lc.config import LangChainConfig
 from fmp_data.lc.embedding import EmbeddingProvider
 
@@ -223,8 +233,14 @@ config = LangChainConfig(
 # Create client with LangChain config
 client = FMPDataClient(config=config)
 
-# Create vector store using the client
-vector_store = client.create_vector_store()
+# Create vector store using the config
+vector_store = create_vector_store(
+    fmp_api_key=config.api_key,  # pragma: allowlist secret
+    openai_api_key=config.embedding_api_key,  # pragma: allowlist secret
+    cache_dir=config.vector_store_path,
+    embedding_provider=config.embedding_provider,
+    embedding_model=config.embedding_model,
+)
 
 # Search for relevant endpoints
 results = vector_store.search("show me Tesla's financial metrics")
@@ -256,7 +272,7 @@ export FMP_EMBEDDING_MODEL=text-embedding-3-small
 ```
 
 ### Features
-- Semantic search across all FMP endpoints
+- Semantic search across the full FMP endpoint catalog
 - Auto-conversion to LangChain tools
 - Query endpoints using natural language
 - Relevance scoring for search results
@@ -295,7 +311,7 @@ with FMPDataClient(api_key="your_api_key_here") as client: # pragma: allowlist s
         print(f"Market Cap: ${profile.mkt_cap:,.2f}")
 
         # Search companies
-        results = client.company.search("Tesla", limit=5)
+        results = client.market.search_company("Tesla", limit=5)
         for company in results:
             print(f"{company.symbol}: {company.name}")
 
@@ -311,22 +327,31 @@ with FMPDataClient(api_key="your_api_key_here") as client: # pragma: allowlist s
 
 ## Available Client Modules
 
-The FMP Data Client provides access to all FMP API endpoints through specialized client modules:
+The FMP Data Client provides access to all FMP API endpoints (100% stable coverage)
+through specialized client modules:
 
-- **company**: Company profiles, executives, employee counts, peers
-- **market**: Real-time quotes, historical prices, market hours
+- **company**: Company profiles, quotes, historical prices, executives, peers
+- **market**: Market movers, sector performance, market hours, listings/search
 - **fundamental**: Financial statements (income, balance sheet, cash flow)
 - **technical**: Technical indicators (SMA, EMA, RSI, MACD, etc.)
-- **intelligence**: Market news, SEC filings, press releases
+- **intelligence**: Market news, press releases, analyst ratings
 - **institutional**: Institutional holdings, insider trading
 - **investment**: ETF and mutual fund data
 - **alternative**: Crypto, forex, and commodity data
 - **economics**: Economic indicators and calendar data
+- **batch**: Batch quotes for multiple symbols or entire asset classes
+- **transcripts**: Earnings call transcripts
+- **sec**: SEC filings, company profiles, and SIC codes
+- **index**: Market index constituents (S&P 500, NASDAQ, Dow Jones)
+
+Full endpoint catalog: [docs/api/endpoints.md](docs/api/endpoints.md)
 
 ## Key Components
 
 ### 1. Company Information
 ```python
+from datetime import date
+
 from fmp_data import FMPDataClient
 
 with FMPDataClient.from_env() as client:
@@ -336,8 +361,8 @@ with FMPDataClient.from_env() as client:
     # Get company executives
     executives = client.company.get_executives("AAPL")
 
-    # Search companies
-    results = client.company.search_ticker("apple", limit=5)
+    # Search companies (market lookup)
+    results = client.market.search_company("apple", limit=5)
 
     # Get employee count history
     employees = client.company.get_employee_count("AAPL")
@@ -365,30 +390,28 @@ with FMPDataClient.from_env() as client:
     )
 
     # Get cash flow statements
-    cash_flow = client.fundamental.get_cash_flow_statement("AAPL")
+    cash_flow = client.fundamental.get_cash_flow("AAPL")
 ```
 
 ### 3. Market Data
 ```python
 from fmp_data import FMPDataClient
-from datetime import date
 
 with FMPDataClient.from_env() as client:
     # Get real-time quote
     quote = client.company.get_quote("TSLA")
 
     # Get historical prices
-    history = client.company.get_historical_price(
-        "TSLA",
-        start_date=date(2023, 1, 1),
-        end_date=date(2023, 12, 31)
+    history = client.company.get_historical_prices(
+        symbol="TSLA",
+        from_date=date(2023, 1, 1),
+        to_date=date(2023, 12, 31)
     )
 
     # Get intraday prices
-    intraday = client.company.get_historical_price_intraday(
+    intraday = client.company.get_intraday_prices(
         "TSLA",
-        interval="5min",
-        start_date=date(2024, 1, 1)
+        interval="5min"
     )
 ```
 
@@ -450,12 +473,106 @@ with FMPDataClient.from_env() as client:
     # Market news
     news = client.intelligence.get_stock_news("TSLA", limit=10)
 
-    # SEC filings
-    filings = client.intelligence.get_sec_filings("AAPL", type="10-K")
+    # Analyst grades
+    grades = client.intelligence.get_grades("AAPL")
 ```
 
-### 7. Async Support (Coming Soon)
-Note: Async support is currently under development and will be available in a future release.
+### 7. Batch Data
+```python
+from fmp_data import FMPDataClient
+
+with FMPDataClient.from_env() as client:
+    # Get quotes for multiple symbols at once
+    quotes = client.batch.get_quotes(["AAPL", "MSFT", "GOOGL"])
+
+    # Get all ETF quotes
+    etf_quotes = client.batch.get_etf_quotes()
+
+    # Get all crypto quotes
+    crypto_quotes = client.batch.get_crypto_quotes()
+
+    # Get market caps for multiple symbols
+    market_caps = client.batch.get_market_caps(["AAPL", "MSFT"])
+```
+
+### 8. Earnings Transcripts
+```python
+from fmp_data import FMPDataClient
+
+with FMPDataClient.from_env() as client:
+    # Get latest earnings call transcripts
+    latest = client.transcripts.get_latest(limit=10)
+
+    # Get transcript for specific company and quarter
+    transcript = client.transcripts.get_transcript("AAPL", year=2024, quarter=4)
+
+    # Get available transcript dates
+    dates = client.transcripts.get_available_dates("AAPL")
+```
+
+### 9. SEC Filings
+```python
+from fmp_data import FMPDataClient
+
+with FMPDataClient.from_env() as client:
+    # Get latest 8-K filings
+    filings_8k = client.sec.get_latest_8k(limit=10)
+
+    # Search filings by symbol
+    filings = client.sec.search_by_symbol("AAPL")
+
+    # Get SEC company profile (may return None if not found)
+    profile = client.sec.get_profile("AAPL")
+
+    # Get SIC codes
+    sic_codes = client.sec.get_sic_codes()
+```
+
+### 10. Market Index Constituents
+```python
+from fmp_data import FMPDataClient
+
+with FMPDataClient.from_env() as client:
+    # Get S&P 500 constituents
+    sp500 = client.index.get_sp500_constituents()
+
+    # Get NASDAQ constituents
+    nasdaq = client.index.get_nasdaq_constituents()
+
+    # Get Dow Jones constituents
+    dowjones = client.index.get_dowjones_constituents()
+
+    # Get historical changes
+    changes = client.index.get_historical_sp500()
+```
+
+### 11. Async Support
+Async support is available via `AsyncFMPDataClient` and the async endpoint
+clients (e.g., `AsyncCompanyClient`, `AsyncMarketClient`, and more). For a full
+walkthrough, see the async usage guide in `docs/index.md#async-usage` and the
+API reference in `docs/api/reference.md#async-client-usage`.
+
+```python
+from fmp_data import AsyncFMPDataClient
+import asyncio
+
+async def main():
+    async with AsyncFMPDataClient.from_env() as client:
+        # All endpoint methods are async
+        profile = await client.company.get_profile("AAPL")
+        print(f"Company: {profile.company_name}")
+
+        # Concurrent requests
+        profiles = await asyncio.gather(
+            client.company.get_profile("AAPL"),
+            client.company.get_profile("MSFT"),
+            client.company.get_profile("GOOGL"),
+        )
+        for p in profiles:
+            print(f"{p.symbol}: {p.company_name}")
+
+asyncio.run(main())
+```
 
 ## Configuration
 
@@ -560,7 +677,7 @@ except FMPError as e:
 ## Development Setup
 
 ### Prerequisites
-- Python 3.10+
+- Python 3.10-3.14
 - UV (install with `curl -LsSf https://astral.sh/uv/install.sh | sh`)
 
 ### Setup
@@ -624,9 +741,8 @@ make test-all    # Run all tests for all Python versions
 ### Development Commands
 
 ```bash
-# Format code with ruff and black
+# Format code with ruff
 ruff format fmp_data tests
-black fmp_data tests
 
 # Lint with ruff
 ruff check fmp_data tests --fix
@@ -728,7 +844,6 @@ git checkout -b feature/your-feature-name
 ```bash
 # Format code
 ruff format fmp_data tests
-black fmp_data tests
 
 # Fix linting issues
 ruff check fmp_data tests --fix
@@ -756,7 +871,7 @@ git commit -m "feat: add your feature description"
 
 Please ensure your contributions meet these requirements:
 - Tests pass: `pytest` or `make test`
-- Code is formatted: `ruff format` and `black` or `make fix`
+- Code is formatted: `ruff format` or `make fix`
 - Code passes linting: `ruff check` or `make lint`
 - Type hints are included for all functions
 - Documentation is updated for new features
@@ -777,7 +892,7 @@ make test-cov   # Run tests with coverage
 
 # Or run individual checks
 ruff check fmp_data tests
-black --check fmp_data tests
+ruff format --check fmp_data tests
 mypy fmp_data
 pytest --cov=fmp_data
 ```

@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections.abc import Callable
 import importlib
 import inspect
+import os
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
@@ -40,6 +41,67 @@ def _load_semantics(client_slug: str, key: str) -> Any:
     return table[key]  # EndpointSemantics instance
 
 
+def _get_tool_name_style() -> str:
+    style = os.getenv("FMP_MCP_TOOL_NAME_STYLE", "key").strip().lower()
+    if style not in {"key", "spec"}:
+        return "key"
+    return style
+
+
+def _build_key_to_spec(all_tools: list[dict[str, str]]) -> dict[str, list[str]]:
+    key_to_spec: dict[str, list[str]] = {}
+    for tool in all_tools:
+        key = tool["key"]
+        spec = tool["spec"]
+        if key not in key_to_spec:
+            key_to_spec[key] = []
+        key_to_spec[key].append(spec)
+    return key_to_spec
+
+
+def _resolve_tool_spec(
+    spec: str, key_to_spec: dict[str, list[str]]
+) -> tuple[str, str, str]:
+    if "." in spec:
+        # Full format: "<client>.<semantics_key>"
+        try:
+            client_slug, sem_key = spec.split(".", 1)
+        except ValueError:
+            raise ERR(f"'{spec}' is not in '<client>.<endpoint>' format") from None
+        return spec, client_slug, sem_key
+
+    if spec not in key_to_spec:
+        raise ERR(f"Tool key '{spec}' not found in available tools") from None
+
+    specs_for_key = key_to_spec[spec]
+    if len(specs_for_key) > 1:
+        specs_list = ", ".join(sorted(specs_for_key))
+        raise ERR(
+            f"Tool key '{spec}' is ambiguous; matches multiple tools: {specs_list}"
+        ) from None
+
+    full_spec = specs_for_key[0]
+    client_slug, sem_key = full_spec.split(".", 1)
+    return full_spec, client_slug, sem_key
+
+
+def _validate_tool_names(
+    resolved_specs: list[tuple[str, str, str]], name_style: str
+) -> None:
+    if name_style != "key":
+        return
+    name_counts: dict[str, int] = {}
+    for _, _, sem_key in resolved_specs:
+        name_counts[sem_key] = name_counts.get(sem_key, 0) + 1
+    duplicates = [name for name, count in name_counts.items() if count > 1]
+    if duplicates:
+        dup_list = ", ".join(sorted(duplicates))
+        raise ERR(
+            "Duplicate tool keys detected for MCP tool names: "
+            f"{dup_list}. Set FMP_MCP_TOOL_NAME_STYLE=spec or remove duplicates."
+        ) from None
+
+
 def register_from_manifest(
     mcp: FastMCP,
     fmp_client: FMPDataClient,
@@ -62,38 +124,16 @@ def register_from_manifest(
 
     # Build a map from keys to full specs for auto-discovery
     all_tools = discover_all_tools()
-    key_to_spec: dict[str, list[str]] = {}
-    for tool in all_tools:
-        key = tool["key"]
-        spec = tool["spec"]
-        if key not in key_to_spec:
-            key_to_spec[key] = []
-        key_to_spec[key].append(spec)
+    key_to_spec = _build_key_to_spec(all_tools)
 
+    resolved_specs: list[tuple[str, str, str]] = []
     for spec in tool_specs:
-        # Handle both formats
-        if "." in spec:
-            # Full format: "<client>.<semantics_key>"
-            try:
-                client_slug, sem_key = spec.split(".", 1)
-            except ValueError:
-                raise ERR(f"'{spec}' is not in '<client>.<endpoint>' format") from None
-        else:
-            # Key-only format: look up the full spec
-            if spec not in key_to_spec:
-                raise ERR(f"Tool key '{spec}' not found in available tools") from None
+        resolved_specs.append(_resolve_tool_spec(spec, key_to_spec))
 
-            specs_for_key = key_to_spec[spec]
-            if len(specs_for_key) > 1:
-                specs_list = ", ".join(sorted(specs_for_key))
-                raise ERR(
-                    f"Tool key '{spec}' is ambiguous; "
-                    f"matches multiple tools: {specs_list}"
-                ) from None
+    name_style = _get_tool_name_style()
+    _validate_tool_names(resolved_specs, name_style)
 
-            full_spec = specs_for_key[0]
-            client_slug, sem_key = full_spec.split(".", 1)
-
+    for full_spec, client_slug, sem_key in resolved_specs:
         sem = _load_semantics(client_slug, sem_key)
 
         # dotted path to real method on the live client object
@@ -104,8 +144,5 @@ def register_from_manifest(
         description = sem.natural_description or inspect.getdoc(func) or ""
 
         # Attach as MCP tool
-        mcp.add_tool(
-            func,
-            name=sem_key,  # tool name shown to LLM
-            description=description,
-        )
+        tool_name = sem_key if name_style == "key" else full_spec
+        mcp.add_tool(func, name=tool_name, description=description)

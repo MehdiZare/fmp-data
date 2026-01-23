@@ -1,7 +1,6 @@
-from datetime import datetime
+from datetime import date, datetime
 from unittest.mock import Mock, patch
 
-from pydantic import ValidationError
 import pytest
 
 from fmp_data.company import CompanyClient
@@ -15,6 +14,7 @@ from fmp_data.company.models import (
     MergerAcquisition,
     PriceTarget,
     PriceTargetSummary,
+    Quote,
 )
 from fmp_data.intelligence.models import DividendEvent, EarningEvent, StockSplitEvent
 from fmp_data.models import CompanySymbol
@@ -58,13 +58,13 @@ def price_target_data():
 def price_target_summary_data():
     return {
         "symbol": "AAPL",
-        "lastMonth": 10,
+        "lastMonthCount": 10,
         "lastMonthAvgPriceTarget": 190.0,
-        "lastQuarter": 30,
+        "lastQuarterCount": 30,
         "lastQuarterAvgPriceTarget": 185.0,
-        "lastYear": 100,
+        "lastYearCount": 100,
         "lastYearAvgPriceTarget": 180.0,
-        "allTime": 300,
+        "allTimeCount": 300,
         "allTimeAvgPriceTarget": 175.0,
         "publishers": '["Example News", "Tech Daily"]',
     }
@@ -214,9 +214,16 @@ class TestCompanyProfile:
 
     def test_model_validation_invalid_website(self, profile_data):
         """Test CompanyProfile model with invalid website URL"""
-        profile_data["website"] = "not-a-url"
-        with pytest.raises(ValidationError):
-            CompanyProfile.model_validate(profile_data)
+        # Use a URL with protocol but invalid hostname (no TLD) to trigger validation
+        profile_data["website"] = "https://invalid"
+        profile = CompanyProfile.model_validate(profile_data)
+        assert profile.website is None
+
+    def test_model_validation_invalid_website_ipv6(self, profile_data):
+        """Test CompanyProfile model with malformed URL that breaks urlparse"""
+        profile_data["website"] = "ttps://www.tradretfs.com["
+        profile = CompanyProfile.model_validate(profile_data)
+        assert profile.website is None
 
     @patch("httpx.Client.request")
     def test_get_company_profile(
@@ -339,7 +346,7 @@ class TestCompanySymbol:
         ]
 
         data = fmp_client.get_historical_prices(
-            "AAPL", from_date="2024-01-01", to_date="2024-01-05"
+            "AAPL", from_date=date(2024, 1, 1), to_date=date(2024, 1, 5)
         )
 
         # Verify results
@@ -376,11 +383,19 @@ def test_get_price_target_summary(fmp_client, mock_client, price_target_summary_
 def test_get_analyst_estimates(fmp_client, mock_client, analyst_estimates_data):
     """Test fetching analyst estimates"""
     mock_client.request.return_value = [AnalystEstimate(**analyst_estimates_data[0])]
-    result = fmp_client.get_analyst_estimates(symbol="AAPL")
+    result = fmp_client.get_analyst_estimates(
+        symbol="AAPL", period="annual", page=0, limit=10
+    )
     assert isinstance(result, list)
     assert isinstance(result[0], AnalystEstimate)
     assert result[0].symbol == "AAPL"
     assert result[0].estimated_revenue_avg == 52500000.0
+
+    call_args = mock_client.request.call_args
+    assert call_args[1]["symbol"] == "AAPL"
+    assert call_args[1]["period"] == "annual"
+    assert call_args[1]["page"] == 0
+    assert call_args[1]["limit"] == 10
 
 
 class TestMergersAcquisitions:
@@ -499,6 +514,112 @@ class TestExecutiveCompensationBenchmark:
         assert call_args[1]["year"] == 2023
 
 
+class TestCompanyClientAsync:
+    """Tests for async methods in CompanyClient"""
+
+    @pytest.fixture
+    def profile_data(self):
+        """Mock company profile data"""
+        return {
+            "symbol": "AAPL",
+            "price": 150.0,
+            "beta": 1.2,
+            "volAvg": 82034567,
+            "mktCap": 2500000000000,
+            "lastDiv": 0.88,
+            "range": "120-180",
+            "changes": 2.5,
+            "companyName": "Apple Inc.",
+            "currency": "USD",
+            "cik": "0000320193",
+            "isin": "US0378331005",
+            "cusip": "037833100",
+            "exchange": "NASDAQ",
+            "exchangeShortName": "NASDAQ",
+            "industry": "Consumer Electronics",
+            "website": "https://apple.com",
+            "description": "Apple Inc. designs, manufactures, and markets smartphones.",
+            "ceo": "Tim Cook",
+            "sector": "Technology",
+            "country": "US",
+            "fullTimeEmployees": "164000",
+            "phone": "408-996-1010",
+            "address": "One Apple Park Way",
+            "city": "Cupertino",
+            "state": "CA",
+            "zip": "95014",
+            "dcfDiff": 10.5,
+            "dcf": 160.5,
+            "image": "https://example.com/AAPL.png",
+            "ipoDate": "1980-12-12",
+            "defaultImage": False,
+            "isEtf": False,
+            "isActivelyTrading": True,
+            "isAdr": False,
+            "isFund": False,
+        }
+
+    @pytest.mark.asyncio
+    async def test_async_company_get_profile(self, mock_client, profile_data):
+        """Test AsyncCompanyClient get_profile method"""
+        from unittest.mock import AsyncMock
+
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        mock_client.request_async = AsyncMock(
+            return_value=[CompanyProfile(**profile_data)]
+        )
+
+        async_client = AsyncCompanyClient(mock_client)
+        result = await async_client.get_profile("AAPL")
+
+        assert isinstance(result, CompanyProfile)
+        assert result.symbol == "AAPL"
+        assert result.company_name == "Apple Inc."
+        mock_client.request_async.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_async_company_get_quote(self, mock_client):
+        """Test AsyncCompanyClient get_quote method"""
+        from unittest.mock import AsyncMock
+
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        quote_data = {
+            "symbol": "AAPL",
+            "name": "Apple Inc.",
+            "price": 150.0,
+            "changePercentage": 1.5,
+            "change": 2.25,
+            "dayLow": 148.0,
+            "dayHigh": 151.0,
+            "yearHigh": 180.0,
+            "yearLow": 120.0,
+            "marketCap": 2500000000000,
+            "priceAvg50": 145.0,
+            "priceAvg200": 140.0,
+            "volume": 82034567,
+            "avgVolume": 80000000,
+            "exchange": "NASDAQ",
+            "open": 149.0,
+            "previousClose": 147.75,
+            "eps": 6.05,
+            "pe": 24.79,
+            "earningsAnnouncement": "2024-01-25T16:30:00.000+0000",
+            "sharesOutstanding": 16700000000,
+            "timestamp": 1706198400,
+        }
+
+        mock_client.request_async = AsyncMock(return_value=[Quote(**quote_data)])
+
+        async_client = AsyncCompanyClient(mock_client)
+        result = await async_client.get_quote("AAPL")
+
+        assert isinstance(result, Quote)
+        assert result.symbol == "AAPL"
+        assert result.price == 150.0
+
+
 class TestHistoricalPriceVariants:
     """Tests for different historical price endpoint variants"""
 
@@ -517,6 +638,29 @@ class TestHistoricalPriceVariants:
             "vwap": 149.92,
         }
 
+    def test_get_historical_prices_passes_dates(
+        self, fmp_client, mock_client, historical_price_data
+    ):
+        """Test that get_historical_prices passes correct date parameter names."""
+        mock_client.request.return_value = [HistoricalPrice(**historical_price_data)]
+
+        result = fmp_client.get_historical_prices(
+            symbol="AAPL", from_date=date(2024, 1, 1), to_date=date(2024, 1, 5)
+        )
+
+        assert isinstance(result, HistoricalData)
+
+        # Verify the request was made with start_date and end_date keys
+        mock_client.request.assert_called_once()
+        call_args = mock_client.request.call_args
+        assert call_args[1]["symbol"] == "AAPL"
+        # These should be start_date and end_date, not from_ and to
+        assert call_args[1]["start_date"] == "2024-01-01"
+        assert call_args[1]["end_date"] == "2024-01-05"
+        # Ensure the old incorrect keys are not used
+        assert "from_" not in call_args[1]
+        assert "to" not in call_args[1]
+
     def test_get_historical_prices_light(
         self, fmp_client, mock_client, historical_price_data
     ):
@@ -524,7 +668,7 @@ class TestHistoricalPriceVariants:
         mock_client.request.return_value = [HistoricalPrice(**historical_price_data)]
 
         result = fmp_client.get_historical_prices_light(
-            symbol="AAPL", from_date="2024-01-01", to_date="2024-01-05"
+            symbol="AAPL", from_date=date(2024, 1, 1), to_date=date(2024, 1, 5)
         )
 
         assert isinstance(result, HistoricalData)
@@ -547,7 +691,7 @@ class TestHistoricalPriceVariants:
         mock_client.request.return_value = [HistoricalPrice(**historical_price_data)]
 
         result = fmp_client.get_historical_prices_non_split_adjusted(
-            symbol="AAPL", from_date="2024-01-01", to_date="2024-01-05"
+            symbol="AAPL", from_date=date(2024, 1, 1), to_date=date(2024, 1, 5)
         )
 
         assert isinstance(result, HistoricalData)
@@ -570,7 +714,7 @@ class TestHistoricalPriceVariants:
         mock_client.request.return_value = [HistoricalPrice(**historical_price_data)]
 
         result = fmp_client.get_historical_prices_dividend_adjusted(
-            symbol="AAPL", from_date="2024-01-01", to_date="2024-01-05"
+            symbol="AAPL", from_date=date(2024, 1, 1), to_date=date(2024, 1, 5)
         )
 
         assert isinstance(result, HistoricalData)
@@ -666,7 +810,7 @@ class TestCompanyCalendarEndpoints:
         mock_client.request.return_value = [DividendEvent(**dividend_data)]
 
         result = fmp_client.get_dividends(
-            symbol="AAPL", from_date="2024-01-01", to_date="2024-12-31"
+            symbol="AAPL", from_date=date(2024, 1, 1), to_date=date(2024, 12, 31)
         )
 
         assert len(result) == 1
@@ -698,6 +842,17 @@ class TestCompanyCalendarEndpoints:
         assert call_args[1]["symbol"] == "AAPL"
         assert "from_date" not in call_args[1]
         assert "to_date" not in call_args[1]
+
+    def test_get_dividends_with_limit(self, fmp_client, mock_client, dividend_data):
+        """Test fetching dividend history with limit"""
+        mock_client.request.return_value = [DividendEvent(**dividend_data)]
+
+        result = fmp_client.get_dividends(symbol="AAPL", limit=5)
+
+        assert len(result) == 1
+        call_args = mock_client.request.call_args
+        assert call_args[1]["symbol"] == "AAPL"
+        assert call_args[1]["limit"] == 5
 
     def test_get_earnings(self, fmp_client, mock_client, earnings_data):
         """Test fetching earnings history"""
@@ -737,7 +892,7 @@ class TestCompanyCalendarEndpoints:
         mock_client.request.return_value = [StockSplitEvent(**split_data)]
 
         result = fmp_client.get_stock_splits(
-            symbol="AAPL", from_date="2020-01-01", to_date="2021-12-31"
+            symbol="AAPL", from_date=date(2020, 1, 1), to_date=date(2021, 12, 31)
         )
 
         assert len(result) == 1
@@ -769,6 +924,17 @@ class TestCompanyCalendarEndpoints:
         assert call_args[1]["symbol"] == "AAPL"
         assert "from_date" not in call_args[1]
         assert "to_date" not in call_args[1]
+
+    def test_get_stock_splits_with_limit(self, fmp_client, mock_client, split_data):
+        """Test fetching stock splits with limit"""
+        mock_client.request.return_value = [StockSplitEvent(**split_data)]
+
+        result = fmp_client.get_stock_splits(symbol="AAPL", limit=5)
+
+        assert len(result) == 1
+        call_args = mock_client.request.call_args
+        assert call_args[1]["symbol"] == "AAPL"
+        assert call_args[1]["limit"] == 5
 
     def test_multiple_dividends(self, fmp_client, mock_client):
         """Test handling multiple dividend events"""

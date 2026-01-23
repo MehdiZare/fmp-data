@@ -1,3 +1,5 @@
+from datetime import date
+
 from fmp_data import FMPDataClient
 
 # Initialize client
@@ -8,7 +10,7 @@ quote = client.company.get_quote("AAPL")
 
 # Get historical prices
 historical_prices = client.company.get_historical_prices(
-    symbol="AAPL", from_date="2024-01-01", to_date="2024-03-01"
+    symbol="AAPL", from_date=date(2024, 1, 1), to_date=date(2024, 3, 1)
 )
 
 # Get market gainers

@@ -3,8 +3,11 @@ import logging
 
 import pytest
 
-from fmp_data import FMPDataClient
+from fmp_data import FMPDataClient, ValidationError
 from fmp_data.economics.models import (
+    CommitmentOfTradersAnalysis,
+    CommitmentOfTradersListItem,
+    CommitmentOfTradersReport,
     EconomicEvent,
     EconomicIndicator,
     MarketRiskPremium,
@@ -123,20 +126,65 @@ class TestEconomicsEndpoints(BaseTestCase):
                     premium.total_equity_risk_premium, float
                 ), "total_equity_risk_premium is not float"
 
+    def test_get_commitment_of_traders_report(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting Commitment of Traders report data"""
+        with vcr_instance.use_cassette("economics/commitment_of_traders_report.yaml"):
+            reports = self._handle_rate_limit(
+                fmp_client.economics.get_commitment_of_traders_report,
+                "KC",
+                date(2024, 1, 1),
+                date(2024, 3, 1),
+            )
+
+            assert isinstance(reports, list)
+            if reports:
+                assert isinstance(reports[0], CommitmentOfTradersReport)
+                assert reports[0].symbol
+                assert reports[0].date
+
+    def test_get_commitment_of_traders_analysis(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting Commitment of Traders analysis data"""
+        with vcr_instance.use_cassette("economics/commitment_of_traders_analysis.yaml"):
+            analysis = self._handle_rate_limit(
+                fmp_client.economics.get_commitment_of_traders_analysis,
+                "B6",
+                date(2024, 1, 1),
+                date(2024, 3, 1),
+            )
+
+            assert isinstance(analysis, list)
+            if analysis:
+                assert isinstance(analysis[0], CommitmentOfTradersAnalysis)
+                assert analysis[0].symbol
+                assert analysis[0].market_situation
+
+    def test_get_commitment_of_traders_list(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting Commitment of Traders list data"""
+        with vcr_instance.use_cassette("economics/commitment_of_traders_list.yaml"):
+            items = self._handle_rate_limit(
+                fmp_client.economics.get_commitment_of_traders_list
+            )
+
+            assert isinstance(items, list)
+            if items:
+                assert isinstance(items[0], CommitmentOfTradersListItem)
+                assert items[0].symbol
+
     def test_error_handling(self, fmp_client: FMPDataClient, vcr_instance):
         """Test error handling for invalid inputs"""
         with vcr_instance.use_cassette("economics/error_handling.yaml"):
-            # Test with invalid indicator - should raise ValueError
-            with pytest.raises(ValueError) as exc_info:
-                # Use _handle_rate_limit but preserve the ValueError
-                try:
-                    self._handle_rate_limit(
-                        fmp_client.economics.get_economic_indicators,
-                        indicator_name="INVALID_INDICATOR",
-                    )
-                except ValueError as e:
-                    # Re-raise ValueError to be caught by pytest.raises
-                    raise ValueError(str(e)) from e
+            # Test with invalid indicator - should raise ValidationError
+            with pytest.raises(ValidationError) as exc_info:
+                self._handle_rate_limit(
+                    fmp_client.economics.get_economic_indicators,
+                    indicator_name="INVALID_INDICATOR",
+                )
 
             error_msg = str(exc_info.value)
             assert "Invalid value for name" in error_msg

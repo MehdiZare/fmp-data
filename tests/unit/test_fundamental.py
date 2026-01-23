@@ -2,12 +2,20 @@ import unittest
 from unittest.mock import MagicMock
 
 from fmp_data.fundamental.client import FundamentalClient
-from fmp_data.fundamental.endpoints import FINANCIAL_REPORTS_DATES, INCOME_STATEMENT
+from fmp_data.fundamental.endpoints import (
+    FINANCIAL_REPORTS_DATES,
+    INCOME_STATEMENT,
+    KEY_METRICS,
+    LATEST_FINANCIAL_STATEMENTS,
+    OWNER_EARNINGS,
+)
 from fmp_data.fundamental.models import (
     FinancialRatios,
     FinancialReportDate,
     FinancialStatementFull,
     IncomeStatement,
+    LatestFinancialStatement,
+    OwnerEarnings,
 )
 
 
@@ -98,8 +106,8 @@ class TestFundamentalEndpoints(unittest.TestCase):
                 "symbol": "AAPL",
                 "date": "2024",
                 "period": "Q4",
-                "linkXlsx": "https://fmpcloud.io/api/v4/financial-reports-xlsx?symbol=AAPL&year=2024&period=Q4",
-                "linkJson": "https://fmpcloud.io/api/v4/financial-reports-json?symbol=AAPL&year=2024&period=Q4",
+                "linkXlsx": "https://fmpcloud.io/stable/financial-reports-xlsx?symbol=AAPL&year=2024&period=Q4",
+                "linkJson": "https://fmpcloud.io/stable/financial-reports-json?symbol=AAPL&year=2024&period=Q4",
             }
         ]
 
@@ -111,6 +119,19 @@ class TestFundamentalEndpoints(unittest.TestCase):
             "revenuefromcontractwithcustomerexcludingassessedtax": 391035000000,
             "costofgoodsandservicessold": 210352000000,
             "grossprofit": 180683000000,
+        }
+        self.sample_latest_financial_statement = {
+            "symbol": "FGFI",
+            "calendarYear": 2024,
+            "period": "Q4",
+            "date": "2024-12-31",
+            "dateAdded": "2025-03-13 17:03:59",
+        }
+        self.sample_owner_earnings = {
+            "date": "2024-12-28",
+            "symbol": "AAPL",
+            "ownersEarnings": 27655035250,
+            "ownersEarningsPerShare": 1.83,
         }
 
     def test_get_income_statement(self):
@@ -163,6 +184,20 @@ class TestFundamentalEndpoints(unittest.TestCase):
         self.assertEqual(income_stmt.symbol, self.symbol)
         self.assertEqual(income_stmt.fiscal_year, "2024")
 
+    def test_income_statement_period_validation(self):
+        """Test period validation for income statements"""
+        params = INCOME_STATEMENT.validate_params(
+            {"symbol": self.symbol, "period": "Q1", "limit": 5}
+        )
+        self.assertEqual(params["period"], "Q1")
+
+    def test_key_metrics_period_validation(self):
+        """Test period validation for key metrics"""
+        params = KEY_METRICS.validate_params(
+            {"symbol": self.symbol, "period": "FY", "limit": 5}
+        )
+        self.assertEqual(params["period"], "FY")
+
     def test_income_statement_field_validation(self):
         """Test that income statement validates all required fields correctly"""
         # Test with minimal required data (base fields only)
@@ -184,6 +219,23 @@ class TestFundamentalEndpoints(unittest.TestCase):
         self.assertIsNone(income_stmt.revenue)  # Optional field should be None
         self.assertIsNone(income_stmt.cost_of_revenue)
         self.assertIsNone(income_stmt.operating_income)
+
+    def test_get_latest_financial_statements(self):
+        """Test getting latest financial statements metadata"""
+        mock_response = dict_to_model(
+            LatestFinancialStatement, self.sample_latest_financial_statement
+        )
+        self.mock_client.request.return_value = [mock_response]
+
+        result = self.fundamental_client.get_latest_financial_statements(
+            page=0, limit=250
+        )
+
+        self.mock_client.request.assert_called_once_with(
+            LATEST_FINANCIAL_STATEMENTS, page=0, limit=250
+        )
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], LatestFinancialStatement)
 
     def test_get_financial_ratios(self):
         """Test getting financial ratios"""
@@ -223,6 +275,19 @@ class TestFundamentalEndpoints(unittest.TestCase):
         self.assertIsInstance(report_date, FinancialReportDate)
         self.assertEqual(report_date.symbol, self.symbol)
         self.assertEqual(report_date.period, "Q4")
+
+    def test_get_owner_earnings_with_limit(self):
+        """Test getting owner earnings with limit"""
+        mock_response = dict_to_model(OwnerEarnings, self.sample_owner_earnings)
+        self.mock_client.request.return_value = [mock_response]
+
+        result = self.fundamental_client.get_owner_earnings(symbol=self.symbol, limit=5)
+
+        self.mock_client.request.assert_called_once_with(
+            OWNER_EARNINGS, symbol=self.symbol, limit=5
+        )
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], OwnerEarnings)
 
     def test_get_full_financial_statement(self):
         """Test getting full financial statements"""
@@ -325,7 +390,7 @@ class TestFundamentalEndpoints(unittest.TestCase):
             self.mock_client.request.side_effect = ValueError(
                 "Missing required parameter: symbol"
             )
-            self.fundamental_client.get_income_statement(symbol=None)
+            self.fundamental_client.get_income_statement(symbol=None)  # type: ignore[arg-type]
         self.assertIn("Missing required parameter", str(context.exception))
 
     def tearDown(self):

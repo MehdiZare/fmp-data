@@ -18,7 +18,7 @@ maintainers = [
     { name = "Mehdi Zare", email = "mehdizare@users.noreply.github.com" },
 ]
 readme = "README.md"
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.10,<3.15"
 keywords = [
     "fmp",
     "financial",
@@ -40,20 +40,15 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Framework :: AsyncIO",
     "Topic :: Office/Business :: Financial",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
     "httpx>=0.28.1",
-    "pydantic>=2.11.7",
-    "pydantic-settings>=2.10.1",
-    "python-dotenv>=1.1.1",
+    "pydantic>=2.12.5",
     "tenacity>=9.1.2",
-    "tqdm>=4.67.1",
-    "cachetools>=6.1.0",
-    "structlog>=25.4.0",
-    "pandas>=2.3.1",
 ]
 
 [project.license]
@@ -69,82 +64,80 @@ fmp-mcp = "fmp_data.mcp.cli:main"
 
 [project.optional-dependencies]
 mcp = [
-    "mcp[cli]>=1.12.4",
-    "pyyaml>=6.0.2",
+    "mcp[cli]>=1.25.0",
+    "pyyaml>=6.0.3",
 ]
 langchain = [
-    "faiss-cpu>=1.11.0.post1",
-    "langchain-core>=0.3.74",
-    "langchain-community>=0.3.27",
-    "langchain-openai>=0.3.29",
-    "langgraph>=0.6.4",
-    "openai>=1.99.5",
-    "tiktoken>=0.10.0",
+    "faiss-cpu>=1.13.2",
+    "langchain-core>=1.2.7",
+    "langchain-community>=0.4.1",
+    "langchain-openai>=1.1.7",
+    "langgraph>=1.0.6",
+    "openai>=2.15.0",
+    "tiktoken>=0.12.0",
 ]
 dev = [
-    "ruff>=0.12.8",
-    "black>=25.1.0",
-    "mypy>=1.17.1",
-    "types-cachetools>=6.1.0.20250717",
-    "bandit[toml]>=1.8.6",
-    "pip-audit>=2.9.0",
-    "pytest>=8.4.1",
-    "pytest-asyncio>=1.1.0",
-    "pytest-cov>=6.2.1",
-    "pytest-mock>=3.14.1",
-    "freezegun>=1.5.4",
+    "ruff>=0.14.13",
+    "mypy>=1.19.1",
+    "bandit[toml]>=1.9.3",
+    "pip-audit>=2.10.0",
+    "python-dotenv>=1.1.1",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.0.0",
+    "pytest-mock>=3.15.1",
+    "freezegun>=1.5.5",
     "responses>=0.25.8",
-    "vcrpy>=7.0.0",
-    "coverage>=7.10.2",
-    "pre-commit>=4.2.0",
-    "rich>=14.1.0",
-    "twine>=6.1.0",
-    "nox>=2025.5.1",
+    "vcrpy>=8.1.1",
+    "coverage>=7.13.1",
+    "pre-commit>=4.5.1",
+    "rich>=14.2.0",
+    "twine>=6.2.0",
+    "nox>=2025.11.12",
 ]
 docs = [
     "mkdocs>=1.6.1",
-    "mkdocs-material>=9.6.16",
-    "mkdocstrings-python>=1.16.12",
+    "mkdocs-material>=9.7.1",
+    "mkdocstrings-python>=2.0.1",
 ]
 
 [dependency-groups]
 dev = [
-    "ruff>=0.12.8",
-    "black>=25.1.0",
-    "mypy>=1.17.1",
-    "types-cachetools>=6.1.0.20250717",
-    "bandit[toml]>=1.8.6",
-    "pip-audit>=2.9.0",
-    "pytest>=8.4.1",
-    "pytest-asyncio>=1.1.0",
-    "pytest-cov>=6.2.1",
-    "pytest-mock>=3.14.1",
-    "freezegun>=1.5.4",
+    "ruff>=0.14.13",
+    "mypy>=1.19.1",
+    "bandit[toml]>=1.9.3",
+    "pip-audit>=2.10.0",
+    "python-dotenv>=1.1.1",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.0.0",
+    "pytest-mock>=3.15.1",
+    "freezegun>=1.5.5",
     "responses>=0.25.8",
-    "vcrpy>=7.0.0",
-    "coverage>=7.10.2",
-    "pre-commit>=4.2.0",
-    "rich>=14.1.0",
-    "twine>=6.1.0",
-    "nox>=2025.5.1",
+    "vcrpy>=8.1.1",
+    "coverage>=7.13.1",
+    "pre-commit>=4.5.1",
+    "rich>=14.2.0",
+    "twine>=6.2.0",
+    "nox>=2025.11.12",
 ]
 docs = [
     "mkdocs>=1.6.1",
-    "mkdocs-material>=9.6.16",
-    "mkdocstrings-python>=1.16.12",
+    "mkdocs-material>=9.7.1",
+    "mkdocstrings-python>=2.0.1",
 ]
 langchain = [
-    "faiss-cpu>=1.11.0.post1",
-    "langchain-core>=0.3.74",
-    "langchain-community>=0.3.27",
-    "langchain-openai>=0.3.29",
-    "langgraph>=0.6.4",
-    "openai>=1.99.5",
-    "tiktoken>=0.10.0",
+    "faiss-cpu>=1.13.2",
+    "langchain-core>=1.2.7",
+    "langchain-community>=0.4.1",
+    "langchain-openai>=1.1.7",
+    "langgraph>=1.0.6",
+    "openai>=2.15.0",
+    "tiktoken>=0.12.0",
 ]
 mcp = [
-    "mcp[cli]>=1.12.4",
-    "pyyaml>=6.0.2",
+    "mcp[cli]>=1.25.0",
+    "pyyaml>=6.0.3",
 ]
 
 [tool.hatch.version]
@@ -163,16 +156,6 @@ include = [
     "/LICENSE",
     "/pyproject.toml",
 ]
-
-[tool.black]
-line-length = 88
-target-version = [
-    "py310",
-    "py311",
-    "py312",
-    "py313",
-]
-include = "\\.pyi?$"
 
 [tool.ruff]
 target-version = "py310"
@@ -345,7 +328,10 @@ markers = [
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
     "asyncio: marks tests as asyncio tests",
+    "mcp: marks tests as MCP-specific tests",
 ]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.coverage.run]
 source = [
