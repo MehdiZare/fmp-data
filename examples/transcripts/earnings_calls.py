@@ -20,8 +20,11 @@ def main():
         # Get transcript for specific company and quarter
         print("\n=== Apple Q4 2024 Transcript ===\n")
         try:
-            transcript = client.transcripts.get_transcript("AAPL", year=2024, quarter=4)
-            if transcript:
+            transcripts = client.transcripts.get_transcript(
+                "AAPL", year=2024, quarter=4
+            )
+            if transcripts:
+                transcript = transcripts[0]  # Get first result
                 print(f"Symbol: {transcript.symbol}")
                 print(f"Quarter: Q{transcript.quarter} {transcript.year}")
                 print(f"Date: {transcript.date}")

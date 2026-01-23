@@ -8,7 +8,6 @@ from fmp_data import FMPDataClient
 
 def main():
     with FMPDataClient.from_env() as client:
-        client.market.search_by_cik()
         # Get S&P 500 constituents
         print("\n=== S&P 500 Constituents (Sample) ===\n")
         sp500 = client.index.get_sp500_constituents()

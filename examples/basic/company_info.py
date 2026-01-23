@@ -30,14 +30,15 @@ def main():
         # Get company peers
         print(f"\n\n=== {symbol} Company Peers ===\n")
         peers = client.company.get_company_peers(symbol)
-        if peers and hasattr(peers, "peers_list"):
-            print(f"Peers: {', '.join(peers.peers_list[:10])}")
+        if peers:
+            peer_symbols = [peer.symbol for peer in peers[:10]]
+            print(f"Peers: {', '.join(peer_symbols)}")
 
         # Get employee count history
         print(f"\n\n=== {symbol} Employee Count History ===\n")
         employees = client.company.get_employee_count(symbol)
-        for record in employees[:5]:  # Show first 5 years
-            print(f"{record.year}: {record.employee_count:,} employees")
+        for record in employees[:5]:  # Show first 5 records
+            print(f"{record.period_of_report}: {record.employee_count:,} employees")
 
 
 if __name__ == "__main__":

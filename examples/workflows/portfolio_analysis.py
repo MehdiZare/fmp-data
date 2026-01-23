@@ -29,7 +29,7 @@ def analyze_portfolio(client, portfolio):
         holding_info = {
             "symbol": quote.symbol,
             "price": quote.price,
-            "change": quote.change_percentage,
+            "change": quote.changes_percentage,
             "market_cap": quote.market_cap,
             "sector": sector,
         }
@@ -37,7 +37,7 @@ def analyze_portfolio(client, portfolio):
 
         print(
             f"{quote.symbol:6} | ${quote.price:8.2f} | "
-            f"{quote.change_percentage:+6.2f}% | {sector}"
+            f"{quote.changes_percentage:+6.2f}% | {sector}"
         )
 
     # Sector allocation

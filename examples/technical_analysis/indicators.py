@@ -1,6 +1,6 @@
 """
 Example demonstrating technical analysis indicators.
-Shows how to calculate and use RSI, MACD, SMA, and EMA indicators.
+Shows how to calculate and use RSI, SMA, and EMA indicators.
 """
 
 from fmp_data import FMPDataClient
@@ -16,18 +16,6 @@ def main():
         if rsi:
             for indicator in rsi[:5]:  # Show first 5
                 print(f"Date: {indicator.date} | RSI: {indicator.rsi:.2f}")
-
-        # Get MACD (Moving Average Convergence Divergence)
-        print(f"\n\n=== {symbol} MACD ===\n")
-        macd = client.technical.get_macd(
-            symbol, fast_period=12, slow_period=26, signal_period=9
-        )
-        if macd:
-            for indicator in macd[:5]:  # Show first 5
-                print(f"Date: {indicator.date}")
-                print(f"  MACD: {indicator.macd:.4f}")
-                print(f"  Signal: {indicator.signal:.4f}")
-                print(f"  Histogram: {indicator.histogram:.4f}")
 
         # Get SMA (Simple Moving Average)
         print(f"\n\n=== {symbol} SMA (50-day) ===\n")

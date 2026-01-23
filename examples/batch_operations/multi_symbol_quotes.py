@@ -16,7 +16,7 @@ def main():
         for quote in quotes:
             print(
                 f"{quote.symbol:6} | ${quote.price:8.2f} | "
-                f"{quote.change_percentage:+6.2f}% | Vol: {quote.volume:,}"
+                f"{quote.changes_percentage:+6.2f}% | Vol: {quote.volume:,}"
             )
 
         # Get all ETF quotes
@@ -24,7 +24,7 @@ def main():
         etf_quotes = client.batch.get_etf_quotes()
         for etf in etf_quotes[:10]:  # Show first 10
             print(
-                f"{etf.symbol:6} | ${etf.price:8.2f} | {etf.change_percentage:+6.2f}%"
+                f"{etf.symbol:6} | ${etf.price:8.2f} | {etf.changes_percentage:+6.2f}%"
             )
 
         # Get market caps for portfolio

@@ -13,7 +13,7 @@ def main():
         filings_8k = client.sec.get_latest_8k(limit=5)
         for filing in filings_8k:
             print(f"{filing.symbol} - {filing.form_type}")
-            print(f"Date: {filing.filing_date}")
+            print(f"Date: {filing.filed_date}")
             print(f"URL: {filing.final_link}")
             print()
 
@@ -21,8 +21,8 @@ def main():
         print("\n=== Apple SEC Filings ===\n")
         filings = client.sec.search_by_symbol("AAPL", limit=10)
         for filing in filings[:5]:  # Show first 5
-            print(f"{filing.form_type} - {filing.filing_date}")
-            print(f"Description: {filing.type}")
+            print(f"{filing.form_type} - {filing.filed_date}")
+            print(f"Link: {filing.link}")
             print()
 
         # Get SEC company profile
@@ -32,7 +32,7 @@ def main():
             print(f"CIK: {profile.cik}")
             print(f"Company: {profile.company_name}")
             print(f"SIC Code: {profile.sic_code}")
-            print(f"Industry: {profile.industry}")
+            print(f"SIC Description: {profile.sic_description}")
 
         # Get SIC codes list
         print("\n=== Sample SIC Codes ===\n")
