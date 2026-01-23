@@ -9,10 +9,8 @@ from fmp_data import FMPDataClient
 
 
 def main():
-    # Initialize client with your API key using context manager
-    with FMPDataClient(
-        api_key="your_api_key_here"
-    ) as client:  # pragma: allowlist secret
+    # Initialize client from environment variable (FMP_API_KEY)
+    with FMPDataClient.from_env() as client:
         # Example stock symbol
         symbol = "AAPL"
 

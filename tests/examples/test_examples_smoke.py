@@ -172,33 +172,29 @@ def create_mock_client():
         ),
     ]
 
-    # Mock fundamental client
-    mock_client.fundamental.get_income_statement.return_value = [
-        MagicMock(
-            fiscal_year="2024",
-            revenue=400000000000,
-            net_income=100000000000,
-            eps=6.0,
-        ),
-    ]
-    mock_client.fundamental.get_balance_sheet.return_value = [
-        MagicMock(
-            fiscal_year="2024",
-            total_assets=500000000000,
-            total_liabilities=300000000000,
-            total_stockholders_equity=200000000000,
-            cash_and_cash_equivalents=50000000000,
-        ),
-    ]
-    mock_client.fundamental.get_cash_flow.return_value = [
-        MagicMock(
-            fiscal_year="2024",
-            operating_cash_flow=120000000000,
-            net_cash_used_for_investing_activities=-10000000000,
-            net_cash_used_provided_by_financing_activities=-90000000000,
-            free_cash_flow=110000000000,
-        ),
-    ]
+    # Mock fundamental client with actual numeric values
+    income_stmt = MagicMock()
+    income_stmt.fiscal_year = "2024"
+    income_stmt.revenue = 400000000000.0
+    income_stmt.net_income = 100000000000.0
+    income_stmt.eps = 6.0
+    mock_client.fundamental.get_income_statement.return_value = [income_stmt]
+
+    balance_sheet = MagicMock()
+    balance_sheet.fiscal_year = "2024"
+    balance_sheet.total_assets = 500000000000.0
+    balance_sheet.total_liabilities = 300000000000.0
+    balance_sheet.total_stockholders_equity = 200000000000.0
+    balance_sheet.cash_and_cash_equivalents = 50000000000.0
+    mock_client.fundamental.get_balance_sheet.return_value = [balance_sheet]
+
+    cash_flow = MagicMock()
+    cash_flow.fiscal_year = "2024"
+    cash_flow.operating_cash_flow = 120000000000.0
+    cash_flow.net_cash_used_for_investing_activities = -10000000000.0
+    cash_flow.net_cash_used_provided_by_financing_activities = -90000000000.0
+    cash_flow.free_cash_flow = 110000000000.0
+    mock_client.fundamental.get_cash_flow.return_value = [cash_flow]
 
     # Mock technical client
     mock_client.technical.get_rsi.return_value = [
@@ -246,15 +242,19 @@ def test_example_runs_without_error(example_file, capsys):
     # Create mock client
     mock_client = create_mock_client()
 
-    # Mock FMPDataClient.from_env() to return our mock
-    with patch("fmp_data.FMPDataClient.from_env") as mock_from_env:
-        mock_from_env.return_value.__enter__.return_value = mock_client
-        mock_from_env.return_value.__exit__.return_value = None
+    # Load the module first
+    module = load_module_from_path(example_path)
 
-        # Load and run the example
+    # Mock both FMPDataClient() and FMPDataClient.from_env() in the loaded module
+    with (patch.object(module, "FMPDataClient") as mock_client_class,):
+        # Mock the context manager
+        mock_client_class.from_env.return_value.__enter__.return_value = mock_client
+        mock_client_class.from_env.return_value.__exit__.return_value = None
+        mock_client_class.return_value.__enter__.return_value = mock_client
+        mock_client_class.return_value.__exit__.return_value = None
+
+        # Run the example
         try:
-            module = load_module_from_path(example_path)
-
             # Run main function if it exists
             if hasattr(module, "main"):
                 module.main()
