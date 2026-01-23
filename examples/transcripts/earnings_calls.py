@@ -14,7 +14,10 @@ def main():
         for transcript in latest:
             print(f"{transcript.symbol} - Q{transcript.quarter} {transcript.year}")
             print(f"Date: {transcript.date}")
-            print(f"Content: {transcript.content[:200]}...")
+            if transcript.content:
+                print(f"Content: {transcript.content[:200]}...")
+            else:
+                print("Content: [Not available]")
             print()
 
         # Get transcript for specific company and quarter
@@ -28,8 +31,11 @@ def main():
                 print(f"Symbol: {transcript.symbol}")
                 print(f"Quarter: Q{transcript.quarter} {transcript.year}")
                 print(f"Date: {transcript.date}")
-                print(f"Content length: {len(transcript.content)} characters")
-                print(f"Preview: {transcript.content[:300]}...")
+                if transcript.content:
+                    print(f"Content length: {len(transcript.content)} characters")
+                    print(f"Preview: {transcript.content[:300]}...")
+                else:
+                    print("Content: [Not available]")
         except Exception as e:
             print(f"Transcript not available: {e}")
 
