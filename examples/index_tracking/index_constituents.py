@@ -6,7 +6,7 @@ Shows how to track S&P 500, NASDAQ, and Dow Jones constituents.
 from fmp_data import FMPDataClient
 
 
-def main():
+def main() -> None:
     with FMPDataClient.from_env() as client:
         # Get S&P 500 constituents
         print("\n=== S&P 500 Constituents (Sample) ===\n")

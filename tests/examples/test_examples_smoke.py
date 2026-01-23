@@ -28,6 +28,14 @@ EXAMPLE_FILES = [
 ]
 
 
+class ModuleLoadError(Exception):
+    """Raised when a test module cannot be loaded from file path."""
+
+    def __init__(self, file_path: Path) -> None:
+        super().__init__(f"Could not load spec from {file_path}")
+        self.file_path = file_path
+
+
 def create_mock_client():
     """Create a mock FMPDataClient with all necessary methods."""
     mock_client = MagicMock()
@@ -54,8 +62,8 @@ def create_mock_client():
     )
     mock_client.company.get_historical_prices.return_value = MagicMock(
         historical=[
-            MagicMock(date=MagicMock(strftime=lambda x: "2024-01-01"), close=150.0),
-            MagicMock(date=MagicMock(strftime=lambda x: "2024-01-02"), close=151.0),
+            MagicMock(date=MagicMock(strftime=lambda _: "2024-01-01"), close=150.0),
+            MagicMock(date=MagicMock(strftime=lambda _: "2024-01-02"), close=151.0),
         ]
     )
     mock_client.company.get_executives.return_value = [
@@ -237,7 +245,7 @@ def load_module_from_path(file_path: Path):
     """Load a Python module from file path."""
     spec = importlib.util.spec_from_file_location("test_module", file_path)
     if spec is None or spec.loader is None:
-        raise ImportError(f"Could not load spec from {file_path}")
+        raise ModuleLoadError(file_path)
 
     module = importlib.util.module_from_spec(spec)
     sys.modules["test_module"] = module

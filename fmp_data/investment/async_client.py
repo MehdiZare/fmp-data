@@ -2,9 +2,11 @@
 """Async client for investment products endpoints."""
 
 from datetime import date
+import logging
 import warnings
 
 from fmp_data.base import AsyncEndpointGroup
+from fmp_data.exceptions import FMPError, ValidationError
 from fmp_data.investment.endpoints import (
     ETF_COUNTRY_WEIGHTINGS,
     ETF_EXPOSURE,
@@ -34,6 +36,8 @@ from fmp_data.investment.models import (
     MutualFundHolder,
     MutualFundHolding,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class AsyncInvestmentClient(AsyncEndpointGroup):
@@ -73,9 +77,12 @@ class AsyncInvestmentClient(AsyncEndpointGroup):
                 f"Unexpected result type from ETF_INFO: {type(result)}", stacklevel=2
             )
             return None
-        except Exception as e:
+        except (FMPError, ValidationError) as e:
             warnings.warn(f"Error in get_etf_info: {e!s}", stacklevel=2)
             return None
+        except Exception:
+            logger.exception("Unexpected error in get_etf_info for symbol %s", symbol)
+            raise
 
     async def get_etf_sector_weightings(self, symbol: str) -> list[ETFSectorWeighting]:
         """Get ETF sector weightings"""

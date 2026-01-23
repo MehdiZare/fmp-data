@@ -22,7 +22,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 
 ## Company
 
-**58 endpoints**
+### 58 endpoints
 
 | Endpoint | Path | Description |
 |----------|------|-------------|
@@ -87,7 +87,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 
 ## Market
 
-**36 endpoints**
+### 36 endpoints
 
 | Endpoint | Path | Description |
 |----------|------|-------------|
@@ -130,7 +130,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 
 ## Fundamental
 
-**14 endpoints**
+### 14 endpoints
 
 | Endpoint | Path | Description |
 |----------|------|-------------|
@@ -151,7 +151,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 
 ## Technical
 
-**9 endpoints**
+### 9 endpoints
 
 | Endpoint | Path | Description |
 |----------|------|-------------|
@@ -167,7 +167,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 
 ## Market Intelligence
 
-**47 endpoints**
+### 47 endpoints
 
 | Endpoint | Path | Description |
 |----------|------|-------------|
@@ -220,7 +220,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 
 ## Institutional
 
-**25 endpoints**
+### 25 endpoints
 
 | Endpoint | Path | Description |
 |----------|------|-------------|
@@ -252,7 +252,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 
 ## Investment
 
-**14 endpoints**
+### 14 endpoints
 
 | Endpoint | Path | Description |
 |----------|------|-------------|
@@ -273,7 +273,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 
 ## Alternative Markets
 
-**15 endpoints**
+### 15 endpoints
 
 | Endpoint | Path | Description |
 |----------|------|-------------|
@@ -295,7 +295,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 
 ## Economics
 
-**7 endpoints**
+### 7 endpoints
 
 | Endpoint | Path | Description |
 |----------|------|-------------|
@@ -309,7 +309,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 
 ## Batch
 
-**30 endpoints**
+### 30 endpoints
 
 | Endpoint | Path | Description |
 |----------|------|-------------|
@@ -346,7 +346,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 
 ## Transcripts
 
-**4 endpoints**
+### 4 endpoints
 
 | Endpoint | Path | Description |
 |----------|------|-------------|
@@ -357,7 +357,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 
 ## SEC
 
-**12 endpoints**
+### 12 endpoints
 
 | Endpoint | Path | Description |
 |----------|------|-------------|
@@ -376,7 +376,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 
 ## Index
 
-**6 endpoints**
+### 6 endpoints
 
 | Endpoint | Path | Description |
 |----------|------|-------------|

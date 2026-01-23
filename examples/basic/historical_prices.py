@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from fmp_data import FMPDataClient
 
 
-def main():
+def main() -> None:
     # Initialize client from environment variable (FMP_API_KEY)
     with FMPDataClient.from_env() as client:
         # Example stock symbol

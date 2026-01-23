@@ -55,6 +55,7 @@ from fmp_data.company.models import (
     PriceTargetSummary,
     UpgradeDowngradeConsensus,
 )
+from fmp_data.exceptions import InvalidResponseTypeError
 from fmp_data.fundamental.models import (
     DCF,
     BalanceSheet,
@@ -73,10 +74,6 @@ logger = logging.getLogger(__name__)
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
-class InvalidResponseType(TypeError):
-    """Raised when a batch response payload has an unexpected type."""
-
-
 class BatchClient(EndpointGroup):
     """Client for batch data endpoints
 
@@ -89,8 +86,11 @@ class BatchClient(EndpointGroup):
         if isinstance(result, bytearray):
             return bytes(result)
         if not isinstance(result, bytes):
-            msg = f"Expected bytes response for {endpoint.name}"
-            raise InvalidResponseType(msg)
+            raise InvalidResponseTypeError(
+                endpoint_name=endpoint.name,
+                expected_type="bytes",
+                actual_type=type(result).__name__,
+            )
         return result
 
     def get_quotes(self, symbols: list[str]) -> list[BatchQuote]:

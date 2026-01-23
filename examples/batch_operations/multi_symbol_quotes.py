@@ -6,7 +6,7 @@ Shows how to efficiently fetch quotes for multiple stocks at once.
 from fmp_data import FMPDataClient
 
 
-def main():
+def main() -> None:
     with FMPDataClient.from_env() as client:
         # Get quotes for multiple symbols at once
         symbols = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"]

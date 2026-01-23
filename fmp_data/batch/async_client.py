@@ -6,6 +6,7 @@ import logging
 from typing import Any, TypeVar
 
 from pydantic import BaseModel
+from pydantic import ValidationError as PydanticValidationError
 
 from fmp_data.base import AsyncEndpointGroup
 from fmp_data.batch._csv_utils import parse_csv_models, parse_csv_rows
@@ -56,6 +57,7 @@ from fmp_data.company.models import (
     PriceTargetSummary,
     UpgradeDowngradeConsensus,
 )
+from fmp_data.exceptions import InvalidResponseTypeError
 from fmp_data.fundamental.models import (
     DCF,
     BalanceSheet,
@@ -86,7 +88,11 @@ class AsyncBatchClient(AsyncEndpointGroup):
         if isinstance(result, bytearray):
             return bytes(result)
         if not isinstance(result, bytes):
-            raise TypeError(f"Expected bytes response for {endpoint.name}")
+            raise InvalidResponseTypeError(
+                endpoint_name=endpoint.name,
+                expected_type="bytes",
+                actual_type=type(result).__name__,
+            )
         return result
 
     async def get_quotes(self, symbols: list[str]) -> list[BatchQuote]:
@@ -268,10 +274,15 @@ class AsyncBatchClient(AsyncEndpointGroup):
         """Get discounted cash flow valuations in bulk"""
         raw = await self._request_csv(DCF_BULK)
         rows = parse_csv_rows(raw)
+        results: list[DCF] = []
         for row in rows:
             if "Stock Price" in row and "stockPrice" not in row:
                 row["stockPrice"] = row.pop("Stock Price")
-        return [DCF.model_validate(row) for row in rows]
+            try:
+                results.append(DCF.model_validate(row))
+            except PydanticValidationError as exc:
+                logger.warning("Skipping invalid DCF row %s: %s", row, exc)
+        return results
 
     async def get_rating_bulk(self) -> list[CompanyRating]:
         """Get stock ratings in bulk"""

@@ -6,7 +6,7 @@ Shows how to fetch and analyze income statements, balance sheets, and cash flow.
 from fmp_data import FMPDataClient
 
 
-def main():
+def main() -> None:
     with FMPDataClient.from_env() as client:
         symbol = "AAPL"
 

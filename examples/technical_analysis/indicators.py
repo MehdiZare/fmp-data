@@ -6,7 +6,7 @@ Shows how to calculate and use RSI, SMA, and EMA indicators.
 from fmp_data import FMPDataClient
 
 
-def main():
+def main() -> None:
     with FMPDataClient.from_env() as client:
         symbol = "AAPL"
 

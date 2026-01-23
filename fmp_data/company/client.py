@@ -89,7 +89,7 @@ from fmp_data.company.models import (
     UpgradeDowngrade,
     UpgradeDowngradeConsensus,
 )
-from fmp_data.exceptions import FMPError
+from fmp_data.exceptions import FMPError, InvalidResponseTypeError, InvalidSymbolError
 from fmp_data.fundamental.models import (
     AsReportedBalanceSheet,
     AsReportedCashFlowStatement,
@@ -147,7 +147,7 @@ class CompanyClient(EndpointGroup):
     def get_company_logo_url(self, symbol: str) -> str:
         """Get the company logo URL"""
         if not symbol or not symbol.strip():
-            raise ValueError("Symbol is required for company logo URL")
+            raise InvalidSymbolError("Symbol is required for company logo URL")
         base_url = self.client.config.base_url.rstrip("/")
         return f"{base_url}/image-stock/{symbol}.png"
 
@@ -743,7 +743,11 @@ class CompanyClient(EndpointGroup):
         }
         result = self.client.request(FINANCIAL_REPORTS_JSON, **params)
         if not isinstance(result, dict):
-            raise TypeError("Expected dict response for financial_reports_json")
+            raise InvalidResponseTypeError(
+                endpoint_name="financial_reports_json",
+                expected_type="dict",
+                actual_type=type(result).__name__,
+            )
         return result
 
     def get_financial_reports_xlsx(
@@ -766,7 +770,11 @@ class CompanyClient(EndpointGroup):
         }
         result = self.client.request(FINANCIAL_REPORTS_XLSX, **params)
         if not isinstance(result, bytes | bytearray):
-            raise TypeError("Expected bytes response for financial_reports_xlsx")
+            raise InvalidResponseTypeError(
+                endpoint_name="financial_reports_xlsx",
+                expected_type="bytes",
+                actual_type=type(result).__name__,
+            )
         return bytes(result)
 
     def get_income_statement_as_reported(

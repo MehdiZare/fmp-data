@@ -6,7 +6,7 @@ Shows how to search and analyze SEC filings (8-K, 10-K, 10-Q).
 from fmp_data import FMPDataClient
 
 
-def main():
+def main() -> None:
     with FMPDataClient.from_env() as client:
         # Get latest 8-K filings (material events)
         print("\n=== Latest 8-K Filings ===\n")

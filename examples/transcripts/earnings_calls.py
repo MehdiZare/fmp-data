@@ -6,7 +6,7 @@ Shows how to fetch and analyze earnings call transcripts.
 from fmp_data import FMPDataClient
 
 
-def main():
+def main() -> None:
     with FMPDataClient.from_env() as client:
         # Get latest earnings call transcripts
         print("\n=== Latest Earnings Call Transcripts ===\n")

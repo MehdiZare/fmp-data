@@ -7,14 +7,14 @@ import inspect
 import os
 from typing import Any
 
+from fmp_data.exceptions import DependencyError
+
 try:
     from mcp.server.fastmcp import FastMCP
 except ImportError as e:
-    msg = (
-        "MCP dependencies are not installed. "
-        "Install them with: pip install fmp-data[mcp]"
-    )
-    raise ImportError(msg) from e
+    raise DependencyError(
+        feature="MCP server", install_command="pip install fmp-data[mcp]"
+    ) from e
 
 from fmp_data.client import FMPDataClient
 

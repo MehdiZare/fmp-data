@@ -6,7 +6,7 @@ Demonstrates how to analyze a portfolio of stocks using various endpoints.
 from fmp_data import FMPDataClient
 
 
-def analyze_portfolio(client, portfolio):
+def analyze_portfolio(client: FMPDataClient, portfolio: dict[str, float]) -> None:
     """Analyze a portfolio of stocks."""
     print("\n" + "=" * 80)
     print("PORTFOLIO ANALYSIS REPORT")
@@ -75,7 +75,7 @@ def analyze_portfolio(client, portfolio):
             print(f"{symbol}: Technical data unavailable - {e}")
 
 
-def main():
+def main() -> None:
     # Example portfolio
     portfolio = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA", "META"]
 

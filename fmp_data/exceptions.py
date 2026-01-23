@@ -53,3 +53,38 @@ class ConfigError(FMPError):
     """Raised when there's a configuration error"""
 
     pass
+
+
+class InvalidSymbolError(ValidationError):
+    """Raised when a required symbol is missing or blank."""
+
+    def __init__(self, message: str = "Symbol is required and cannot be blank"):
+        super().__init__(message)
+
+
+class InvalidResponseTypeError(FMPError):
+    """Raised when an API response has an unexpected type."""
+
+    def __init__(
+        self,
+        endpoint_name: str,
+        expected_type: str,
+        actual_type: str | None = None,
+    ):
+        msg = f"Invalid response type for {endpoint_name}: expected {expected_type}"
+        if actual_type:
+            msg += f", got {actual_type}"
+        super().__init__(msg)
+
+
+class DependencyError(ConfigError):
+    """Raised when a required optional dependency is not installed."""
+
+    def __init__(self, feature: str, install_command: str):
+        msg = (
+            f"{feature} dependencies are not installed. "
+            f"Install them with: {install_command}"
+        )
+        super().__init__(msg)
+        self.feature = feature
+        self.install_command = install_command

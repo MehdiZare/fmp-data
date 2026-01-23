@@ -6,7 +6,7 @@ Shows company profile, executives, peers, and key metrics.
 from fmp_data import FMPDataClient
 
 
-def main():
+def main() -> None:
     with FMPDataClient.from_env() as client:
         symbol = "AAPL"
 

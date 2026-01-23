@@ -8,7 +8,7 @@ from datetime import date
 from fmp_data import FMPDataClient
 
 
-def main():
+def main() -> None:
     # Initialize client with context manager
     with FMPDataClient.from_env() as client:
         # Get real-time quote

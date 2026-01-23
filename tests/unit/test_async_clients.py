@@ -19,6 +19,7 @@ from fmp_data.company.models import (
     StockPriceChange,
 )
 from fmp_data.economics.models import TreasuryRate
+from fmp_data.exceptions import InvalidSymbolError
 from fmp_data.fundamental.models import BalanceSheet, IncomeStatement, OwnerEarnings
 from fmp_data.index.models import IndexConstituent
 from fmp_data.institutional.models import CIKMapping, InsiderTrade
@@ -323,7 +324,7 @@ class TestAsyncCompanyClient:
         mock_client.config = MagicMock(base_url="https://example.com/")
         async_client = AsyncCompanyClient(mock_client)
 
-        with pytest.raises(ValueError, match="Symbol is required"):
+        with pytest.raises(InvalidSymbolError, match="Symbol is required"):
             async_client.get_company_logo_url(" ")
 
     @pytest.mark.asyncio
@@ -1818,10 +1819,22 @@ class TestAsyncInvestmentClient:
 
     @pytest.mark.asyncio
     async def test_get_etf_info_warns_on_exception(self, mock_client):
-        """Test get_etf_info warns when request raises."""
+        """Test get_etf_info re-raises unexpected exceptions."""
         from fmp_data.investment.async_client import AsyncInvestmentClient
 
         mock_client.request_async.side_effect = RuntimeError("boom")
+
+        async_client = AsyncInvestmentClient(mock_client)
+        with pytest.raises(RuntimeError, match="boom"):
+            await async_client.get_etf_info("SPY")
+
+    @pytest.mark.asyncio
+    async def test_get_etf_info_warns_on_fmp_error(self, mock_client):
+        """Test get_etf_info warns and returns None for FMPError/ValidationError."""
+        from fmp_data.exceptions import FMPError
+        from fmp_data.investment.async_client import AsyncInvestmentClient
+
+        mock_client.request_async.side_effect = FMPError("API error")
 
         async_client = AsyncInvestmentClient(mock_client)
         with pytest.warns(UserWarning, match="Error in get_etf_info"):

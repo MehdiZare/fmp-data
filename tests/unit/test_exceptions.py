@@ -6,7 +6,10 @@ import pytest
 from fmp_data.exceptions import (
     AuthenticationError,
     ConfigError,
+    DependencyError,
     FMPError,
+    InvalidResponseTypeError,
+    InvalidSymbolError,
     RateLimitError,
     ValidationError,
 )
@@ -208,3 +211,63 @@ class TestExceptionHierarchy:
             raise_rate_limit()
         except FMPError as e:
             assert "Too fast" in str(e)
+
+
+class TestInvalidSymbolError:
+    """Tests for InvalidSymbolError"""
+
+    def test_inherits_from_validation_error(self):
+        assert issubclass(InvalidSymbolError, ValidationError)
+        assert issubclass(InvalidSymbolError, FMPError)
+
+    def test_default_message(self):
+        error = InvalidSymbolError()
+        assert "Symbol is required" in str(error)
+
+    def test_custom_message(self):
+        error = InvalidSymbolError("Custom symbol error")
+        assert "Custom symbol error" == str(error)
+
+
+class TestInvalidResponseTypeError:
+    """Tests for InvalidResponseTypeError"""
+
+    def test_inherits_from_fmp_error(self):
+        assert issubclass(InvalidResponseTypeError, FMPError)
+
+    def test_error_message_with_types(self):
+        error = InvalidResponseTypeError(
+            endpoint_name="test_endpoint", expected_type="dict", actual_type="list"
+        )
+        assert "test_endpoint" in str(error)
+        assert "expected dict" in str(error)
+        assert "got list" in str(error)
+
+    def test_error_message_without_actual_type(self):
+        error = InvalidResponseTypeError(
+            endpoint_name="test_endpoint", expected_type="dict"
+        )
+        assert "test_endpoint" in str(error)
+        assert "expected dict" in str(error)
+
+
+class TestDependencyError:
+    """Tests for DependencyError"""
+
+    def test_inherits_from_config_error(self):
+        assert issubclass(DependencyError, ConfigError)
+        assert issubclass(DependencyError, FMPError)
+
+    def test_error_message_format(self):
+        error = DependencyError(
+            feature="MCP server", install_command="pip install fmp-data[mcp]"
+        )
+        assert "MCP server" in str(error)
+        assert "pip install fmp-data[mcp]" in str(error)
+
+    def test_attributes(self):
+        error = DependencyError(
+            feature="Test feature", install_command="pip install test"
+        )
+        assert error.feature == "Test feature"
+        assert error.install_command == "pip install test"
