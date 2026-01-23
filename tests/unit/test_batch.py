@@ -258,7 +258,7 @@ class TestBatchClient:
 
         csv_text = "symbol,value\nAAPL,not-a-number\n"
 
-        with caplog.at_level(logging.WARNING, logger="fmp_data.batch.client"):
+        with caplog.at_level(logging.WARNING, logger="fmp_data.batch._csv_utils"):
             results = parse_csv_models(
                 csv_text.encode("utf-8"),
                 SimpleRow,
