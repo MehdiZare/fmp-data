@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from fmp_data.alternative.models import CryptoQuote, ForexQuote
+from fmp_data.batch._csv_utils import parse_csv_rows
 from fmp_data.batch.models import BatchQuote, BatchQuoteShort
 from fmp_data.company.models import (
     AftermarketQuote,
@@ -2241,16 +2242,14 @@ class TestAsyncBatchClient:
 
     def test_parse_csv_rows_empty(self):
         """Test parsing empty CSV data returns no rows."""
-        from fmp_data.batch.async_client import AsyncBatchClient
 
-        assert AsyncBatchClient._parse_csv_rows(b"") == []
+        assert parse_csv_rows(b"") == []
 
     def test_parse_csv_rows_skips_blank_rows(self):
         """Test CSV parsing skips blank rows and strips whitespace."""
-        from fmp_data.batch.async_client import AsyncBatchClient
 
         raw = b"symbol,name\nAAPL, Apple Inc. \n, \n"
-        rows = AsyncBatchClient._parse_csv_rows(raw)
+        rows = parse_csv_rows(raw)
 
         assert rows == [{"symbol": "AAPL", "name": "Apple Inc."}]
 

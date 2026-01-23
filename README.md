@@ -249,16 +249,6 @@ for result in results:
     print(f"Relevance score: {result.score:.2f}")
 ```
 
-### Interactive Example
-Try out the LangChain integration in our interactive Colab notebook:
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](link-to-your-colab-notebook)
-
-This notebook demonstrates how to:
-- Build an intelligent financial agent using fmp-data and LangChain
-- Access real-time market data through natural language queries
-- Use semantic search to select relevant financial tools
-- Create multi-turn conversations about financial data
-
 ### Environment Variables
 You can also configure the integration using environment variables:
 ```bash
