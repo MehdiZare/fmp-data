@@ -144,7 +144,7 @@ def fmp_client(rate_limit_config: RateLimitConfig) -> Generator[FMPDataClient]:
             "FMP_TEST_API_KEY appears to be invalid. Please set a valid API key."
         )
 
-    logger.info(f"Using API key starting with: {api_key[:4]}***")
+    logger.debug("FMP_TEST_API_KEY configured")
 
     config = ClientConfig(
         api_key=api_key,

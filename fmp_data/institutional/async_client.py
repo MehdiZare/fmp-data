@@ -36,6 +36,7 @@ from fmp_data.institutional.models import (
     CIKMapping,
     FailToDeliver,
     Form13F,
+    Form13FDate,
     HolderIndustryBreakdown,
     HolderPerformanceSummary,
     IndustryPerformanceSummary,
@@ -97,7 +98,7 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
             return result
         return [result]
 
-    async def get_form_13f_dates(self, cik: str) -> list[Form13F]:
+    async def get_form_13f_dates(self, cik: str) -> list[Form13FDate]:
         """
         Get Form 13F filing dates
 
@@ -105,7 +106,8 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
             cik: Central Index Key (CIK)
 
         Returns:
-            List of Form13F objects with filing dates. Empty list if no records found.
+            List of Form13FDate objects with filing dates. Empty list if no
+            records found.
         """
         try:
             result = await self.client.request_async(FORM_13F_DATES, cik=cik)

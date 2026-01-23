@@ -854,7 +854,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         parameter_hints={
             "name": ParameterHint(
                 natural_names=["name", "representative", "member"],
-                extraction_patterns=[r"(?i)name[:\\s]+([A-Za-z\\s]+)"],
+                extraction_patterns=[r"(?i)name[:\s]+([A-Za-z\s]+)"],
                 examples=["James", "Nancy Pelosi"],
                 context_clues=["representative", "member", "congress"],
             )
@@ -1672,7 +1672,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         parameter_hints={
             "name": ParameterHint(
                 natural_names=["name", "senator", "member"],
-                extraction_patterns=[r"(?i)name[:\\s]+([A-Za-z\\s]+)"],
+                extraction_patterns=[r"(?i)name[:\s]+([A-Za-z\s]+)"],
                 examples=["Jerry", "Sheldon Whitehouse"],
                 context_clues=["senator", "member", "congress"],
             )

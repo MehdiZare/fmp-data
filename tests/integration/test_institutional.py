@@ -259,7 +259,7 @@ class TestBeneficialOwnershipEndpoints(BaseTestCase):
                 sample_ownership = ownership[0]
                 assert sample_ownership.symbol == "AAPL"
                 assert isinstance(sample_ownership.filing_date, datetime)
-                assert isinstance(sample_ownership.accepted_ate, datetime)
+                assert isinstance(sample_ownership.accepted_date, datetime)
                 assert isinstance(sample_ownership.citizenship_place_org, str)
                 assert isinstance(sample_ownership.type_of_reporting_person, str)
                 assert isinstance(sample_ownership.shared_voting_power, float)

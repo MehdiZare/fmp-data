@@ -47,7 +47,9 @@ class Form13FDate(BaseModel):
 
     model_config = default_model_config
 
-    form_date: date = Field(description="Date of form 13F filing", alias="date")
+    form_date: date | None = Field(
+        default=None, description="Date of form 13F filing", alias="date"
+    )
     year: int | None = Field(default=None, description="Filing year")
     quarter: int | None = Field(default=None, description="Filing quarter")
 
@@ -290,7 +292,7 @@ class BeneficialOwnership(BaseModel):
 
     symbol: str = Field(description="Company symbol")
     filing_date: datetime = Field(alias="filingDate", description="Filing date")
-    accepted_ate: datetime = Field(alias="acceptedDate", description="Acceptance date")
+    accepted_date: datetime = Field(alias="acceptedDate", description="Acceptance date")
     cusip: str = Field(description="CUSIP number")
     citizenship_place_org: str | None = Field(
         None,

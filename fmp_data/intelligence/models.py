@@ -558,6 +558,7 @@ class CrowdfundingOffering(BaseModel):
         None, alias="securityOfferedType", description="Type of security offered"
     )
     security_offered_other_description: str | None = Field(
+        default=None,
         alias="securityOfferedOtherDescription",
         description="Other security description",
     )
@@ -706,7 +707,9 @@ class EquityOffering(BaseModel):
     industry_group_type: str = Field(
         alias="industryGroupType", description="Industry group"
     )
-    revenue_range: str | None = Field(alias="revenueRange", description="Revenue range")
+    revenue_range: str | None = Field(
+        default=None, alias="revenueRange", description="Revenue range"
+    )
 
     # Issuer address
     issuer_street: str = Field(

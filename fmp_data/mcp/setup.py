@@ -277,17 +277,24 @@ class SetupWizard:
         """Show instructions for saving API key to environment."""
         import platform
 
+        # Show redacted version for security
+        redacted_key = (
+            f"{api_key[:4]}...{api_key[-4:]}" if len(api_key) > 8 else "[YOUR_API_KEY]"
+        )
+
         system = platform.system()
         if system == "Windows":
             self.print(
                 "\nTo save permanently on Windows, run in Command Prompt as "
                 "Administrator:"
             )
-            self.print(f'  setx FMP_API_KEY "{api_key}"')
+            self.print(f'  setx FMP_API_KEY "{redacted_key}"')
+            self.print("\n💡 Replace the redacted portion with your actual API key")
         else:
             shell_file = "~/.zshrc" if system == "Darwin" else "~/.bashrc"
             self.print(f"\nAdd this line to your {shell_file}:")
-            self.print(f'  export FMP_API_KEY="{api_key}"')
+            self.print(f'  export FMP_API_KEY="{redacted_key}"')
+            self.print("\n💡 Replace the redacted portion with your actual API key")
             self.print(f"\nThen reload with: source {shell_file}")
 
     def choose_configuration(self) -> bool:
