@@ -97,6 +97,20 @@ def create_mock_client():
             volume=50000000,
             market_cap=2500000000000,
         ),
+        MagicMock(
+            symbol="MSFT",
+            price=380.0,
+            changes_percentage=0.8,
+            volume=30000000,
+            market_cap=2800000000000,
+        ),
+        MagicMock(
+            symbol="GOOGL",
+            price=140.0,
+            changes_percentage=-0.5,
+            volume=25000000,
+            market_cap=1800000000000,
+        ),
     ]
     mock_client.batch.get_etf_quotes.return_value = [
         MagicMock(symbol="SPY", price=450.0, changes_percentage=0.5),

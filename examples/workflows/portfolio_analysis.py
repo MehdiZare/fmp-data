@@ -35,10 +35,14 @@ def analyze_portfolio(client, portfolio):
         }
         portfolio_data.append(holding_info)
 
-        print(
-            f"{quote.symbol:6} | ${quote.price:8.2f} | "
-            f"{quote.changes_percentage:+6.2f}% | {sector}"
+        # Handle None values in quote data
+        price_str = f"${quote.price:8.2f}" if quote.price is not None else "     N/A"
+        change_str = (
+            f"{quote.changes_percentage:+6.2f}%"
+            if quote.changes_percentage is not None
+            else "   N/A"
         )
+        print(f"{quote.symbol:6} | {price_str} | {change_str} | {sector}")
 
     # Sector allocation
     print("\n--- Sector Allocation ---\n")
