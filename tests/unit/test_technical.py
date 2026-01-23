@@ -1,10 +1,9 @@
 from datetime import date, datetime
-from unittest.mock import Mock, patch
-
-import httpx
+from unittest.mock import patch
 import pytest
-from tenacity import RetryError
 
+from fmp_data.client import FMPDataClient
+from fmp_data.exceptions import RateLimitError
 from fmp_data.technical.models import EMAIndicator, RSIIndicator, SMAIndicator
 
 
@@ -133,22 +132,21 @@ class TestTechnicalClient:
     @patch("httpx.Client.request")
     def test_rate_limit_handling(mock_request, fmp_client):
         """Test handling rate limit errors from the API with retries"""
-        # Simulate retries by making the first few calls raise HTTPStatusError
-        mock_request.side_effect = [
-            httpx.HTTPStatusError(
-                "429 Too Many Requests",
-                request=Mock(),
-                response=Mock(status_code=429),
-            )
-        ] * 3  # Simulate 3 retries
-
-        with pytest.raises(RetryError):
-            fmp_client.technical.get_sma(
-                symbol="AAPL",
-                period_length=20,
-                start_date=date(2024, 1, 1),
-                end_date=date(2024, 1, 31),
-            )
-
-        # Assert that the request was retried 3 times
-        assert mock_request.call_count == 3
+        client = FMPDataClient(
+            config=fmp_client.config.model_copy(update={"max_retries": 3})
+        )
+        with (
+            patch.object(
+                client._rate_limiter, "should_allow_request", return_value=False
+            ),
+            patch.object(client._rate_limiter, "get_wait_time", return_value=0.0),
+            patch.object(client, "_handle_rate_limit", side_effect=RateLimitError("rl")),
+        ):
+            with pytest.raises(RateLimitError):
+                client.technical.get_sma(
+                    symbol="AAPL",
+                    period_length=20,
+                    start_date=date(2024, 1, 1),
+                    end_date=date(2024, 1, 31),
+                )
+        client.close()

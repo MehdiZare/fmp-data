@@ -1,12 +1,16 @@
 # tests/lc/test_vector_store.py
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from langchain_core.embeddings import Embeddings
+from langchain_core.embeddings import Embeddings  # type: ignore[import-not-found]
 import pytest
 
+from fmp_data.company.mapping import COMPANY_ENDPOINT_MAP, COMPANY_ENDPOINTS_SEMANTICS
+from fmp_data.exceptions import ConfigError
 from fmp_data.lc.models import EndpointInfo
 from fmp_data.lc.registry import EndpointRegistry
 from fmp_data.lc.vector_store import EndpointVectorStore
+from fmp_data.market.mapping import MARKET_ENDPOINT_MAP, MARKET_ENDPOINTS_SEMANTICS
 
 
 @pytest.fixture
@@ -19,6 +23,48 @@ def mock_embeddings():
             return [[0.1] * 768 for _ in texts]
 
     return MockEmbeddings()
+
+
+@pytest.fixture
+def fake_embeddings():
+    class FakeEmbeddings(Embeddings):
+        def _vector_for(self, text: str) -> list[float]:
+            text = text.lower()
+            if "profile" in text:
+                return [1.0, 0.0, 0.0]
+            if "gainers" in text:
+                return [0.0, 1.0, 0.0]
+            return [0.0, 0.0, 1.0]
+
+        def embed_query(self, text: str) -> list[float]:
+            return self._vector_for(text)
+
+        def embed_documents(self, texts: list[str]) -> list[list[float]]:
+            return [self._vector_for(text) for text in texts]
+
+    return FakeEmbeddings()
+
+
+@pytest.fixture
+def registry_with_endpoints():
+    registry = EndpointRegistry()
+
+    profile_sem = COMPANY_ENDPOINTS_SEMANTICS["profile"]
+    gainers_sem = MARKET_ENDPOINTS_SEMANTICS["gainers"]
+
+    endpoints = {
+        profile_sem.method_name: (
+            COMPANY_ENDPOINT_MAP[profile_sem.method_name],
+            profile_sem,
+        ),
+        gainers_sem.method_name: (
+            MARKET_ENDPOINT_MAP[gainers_sem.method_name],
+            gainers_sem,
+        ),
+    }
+
+    registry.register_batch(endpoints)
+    return registry
 
 
 @pytest.fixture
@@ -97,3 +143,66 @@ def test_save_load(vector_store, tmp_path):
     # Verify files exist
     assert (tmp_path / "vector_stores/default/faiss_store").exists()
     assert (tmp_path / "vector_stores/default/metadata.json").exists()
+
+
+def test_search_and_get_tools_with_faiss(
+    registry_with_endpoints, fake_embeddings, tmp_path
+):
+    client = SimpleNamespace(request=Mock())
+    store = EndpointVectorStore(
+        client=client,
+        registry=registry_with_endpoints,
+        embeddings=fake_embeddings,
+        cache_dir=str(tmp_path),
+        store_name="lc-test",
+    )
+
+    store.add_endpoints(list(registry_with_endpoints.list_endpoints().keys()))
+
+    results = store.search("company profile", k=2, threshold=0.8)
+    assert results
+    assert results[0].name == "get_profile"
+
+    tools = store.get_tools(query="company profile", k=1, threshold=0.8)
+    assert tools
+    assert tools[0].name == "get_profile"
+    assert "symbol" in tools[0].args_schema.model_fields
+
+    anthropic_tools = store.get_tools(
+        query="company profile", k=1, threshold=0.8, provider="anthropic"
+    )
+    assert anthropic_tools[0]["name"] == "get_profile"
+
+
+def test_load_requires_allow_dangerous_deserialization(
+    registry_with_endpoints, fake_embeddings, tmp_path
+):
+    client = SimpleNamespace(request=Mock())
+    store = EndpointVectorStore(
+        client=client,
+        registry=registry_with_endpoints,
+        embeddings=fake_embeddings,
+        cache_dir=str(tmp_path),
+        store_name="lc-cache",
+    )
+    store.add_endpoints(list(registry_with_endpoints.list_endpoints().keys()))
+    store.save()
+
+    with pytest.raises(ConfigError, match="allow_dangerous_deserialization=False"):
+        EndpointVectorStore(
+            client=client,
+            registry=registry_with_endpoints,
+            embeddings=fake_embeddings,
+            cache_dir=str(tmp_path),
+            store_name="lc-cache",
+        )
+
+    loaded = EndpointVectorStore(
+        client=client,
+        registry=registry_with_endpoints,
+        embeddings=fake_embeddings,
+        cache_dir=str(tmp_path),
+        store_name="lc-cache",
+        allow_dangerous_deserialization=True,
+    )
+    assert loaded.metadata.num_vectors > 0

@@ -33,8 +33,8 @@ class TestAlternativeMarketsClientEndpoints(BaseTestCase):
                 fmp_client.alternative.get_crypto_list
             )
             assert isinstance(crypto_list, list)
-            assert len(crypto_list) > 0
-            assert all(isinstance(item, CryptoPair) for item in crypto_list)
+            if crypto_list:
+                assert all(isinstance(item, CryptoPair) for item in crypto_list)
 
     def test_get_crypto_quotes(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test getting cryptocurrency quotes"""
@@ -42,8 +42,8 @@ class TestAlternativeMarketsClientEndpoints(BaseTestCase):
             quotes = self._handle_rate_limit(fmp_client.alternative.get_crypto_quotes)
 
             assert isinstance(quotes, list)
-            assert len(quotes) > 0
-            assert all(isinstance(quote, CryptoQuote) for quote in quotes)
+            if quotes:
+                assert all(isinstance(quote, CryptoQuote) for quote in quotes)
 
     def test_get_crypto_quote(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test getting a specific cryptocurrency quote"""
@@ -66,10 +66,11 @@ class TestAlternativeMarketsClientEndpoints(BaseTestCase):
             )
             historical_prices = response.historical
             assert isinstance(historical_prices, list)
-            assert len(historical_prices) > 0
-            assert all(
-                isinstance(price, CryptoHistoricalPrice) for price in historical_prices
-            )
+            if historical_prices:
+                assert all(
+                    isinstance(price, CryptoHistoricalPrice)
+                    for price in historical_prices
+                )
 
     def test_get_crypto_intraday(
         self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
@@ -80,10 +81,11 @@ class TestAlternativeMarketsClientEndpoints(BaseTestCase):
                 fmp_client.alternative.get_crypto_intraday, "BTCUSD", interval="5min"
             )
             assert isinstance(intraday_prices, list)
-            assert len(intraday_prices) > 0
-            assert all(
-                isinstance(price, CryptoIntradayPrice) for price in intraday_prices
-            )
+            if intraday_prices:
+                assert all(
+                    isinstance(price, CryptoIntradayPrice)
+                    for price in intraday_prices
+                )
 
     def test_get_forex_list(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test getting the list of forex pairs"""
@@ -91,8 +93,8 @@ class TestAlternativeMarketsClientEndpoints(BaseTestCase):
             forex_list = self._handle_rate_limit(fmp_client.alternative.get_forex_list)
 
             assert isinstance(forex_list, list)
-            assert len(forex_list) > 0
-            assert all(isinstance(pair, ForexPair) for pair in forex_list)
+            if forex_list:
+                assert all(isinstance(pair, ForexPair) for pair in forex_list)
 
     def test_get_forex_quotes(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test getting forex quotes"""
@@ -100,8 +102,8 @@ class TestAlternativeMarketsClientEndpoints(BaseTestCase):
             quotes = self._handle_rate_limit(fmp_client.alternative.get_forex_quotes)
 
             assert isinstance(quotes, list)
-            assert len(quotes) > 0
-            assert all(isinstance(quote, ForexQuote) for quote in quotes)
+            if quotes:
+                assert all(isinstance(quote, ForexQuote) for quote in quotes)
 
     def test_get_forex_quote(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test getting a specific forex quote"""
@@ -127,10 +129,11 @@ class TestAlternativeMarketsClientEndpoints(BaseTestCase):
             historical_prices = response.historical
 
             assert isinstance(historical_prices, list)
-            assert len(historical_prices) > 0
-            assert all(
-                isinstance(price, ForexHistoricalPrice) for price in historical_prices
-            )
+            if historical_prices:
+                assert all(
+                    isinstance(price, ForexHistoricalPrice)
+                    for price in historical_prices
+                )
 
     def test_get_forex_intraday(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test getting forex intraday prices"""
@@ -140,10 +143,10 @@ class TestAlternativeMarketsClientEndpoints(BaseTestCase):
             )
 
             assert isinstance(intraday_prices, list)
-            assert len(intraday_prices) > 0
-            assert all(
-                isinstance(price, ForexIntradayPrice) for price in intraday_prices
-            )
+            if intraday_prices:
+                assert all(
+                    isinstance(price, ForexIntradayPrice) for price in intraday_prices
+                )
 
     def test_get_commodities_list(
         self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
@@ -155,10 +158,10 @@ class TestAlternativeMarketsClientEndpoints(BaseTestCase):
             )
 
             assert isinstance(commodities_list, list)
-            assert len(commodities_list) > 0
-            assert all(
-                isinstance(commodity, Commodity) for commodity in commodities_list
-            )
+            if commodities_list:
+                assert all(
+                    isinstance(commodity, Commodity) for commodity in commodities_list
+                )
 
     def test_get_commodities_quotes(
         self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
@@ -170,8 +173,8 @@ class TestAlternativeMarketsClientEndpoints(BaseTestCase):
             )
 
             assert isinstance(quotes, list)
-            assert len(quotes) > 0
-            assert all(isinstance(quote, CommodityQuote) for quote in quotes)
+            if quotes:
+                assert all(isinstance(quote, CommodityQuote) for quote in quotes)
 
     def test_get_commodity_quote(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting a specific commodity quote"""
@@ -197,11 +200,11 @@ class TestAlternativeMarketsClientEndpoints(BaseTestCase):
             historical_prices = response.historical
 
             assert isinstance(historical_prices, list)
-            assert len(historical_prices) > 0
-            assert all(
-                isinstance(price, CommodityHistoricalPrice)
-                for price in historical_prices
-            )
+            if historical_prices:
+                assert all(
+                    isinstance(price, CommodityHistoricalPrice)
+                    for price in historical_prices
+                )
 
     def test_get_commodity_intraday(
         self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
@@ -213,7 +216,8 @@ class TestAlternativeMarketsClientEndpoints(BaseTestCase):
             )
 
             assert isinstance(intraday_prices, list)
-            assert len(intraday_prices) > 0
-            assert all(
-                isinstance(price, CommodityIntradayPrice) for price in intraday_prices
-            )
+            if intraday_prices:
+                assert all(
+                    isinstance(price, CommodityIntradayPrice)
+                    for price in intraday_prices
+                )

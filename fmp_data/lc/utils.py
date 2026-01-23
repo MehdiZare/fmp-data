@@ -10,7 +10,10 @@ class DependencyError(Exception):
 
 def is_langchain_available() -> bool:
     """Check if LangChain is available."""
-    return importlib.util.find_spec("langchain") is not None
+    return (
+        importlib.util.find_spec("langchain_core") is not None
+        and importlib.util.find_spec("langchain_community") is not None
+    )
 
 
 def check_package_dependency(package: str, provider: str) -> None:

@@ -1,6 +1,5 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
-import warnings
 
 import pytest
 import tenacity
@@ -9,15 +8,22 @@ import vcr
 from fmp_data import FMPDataClient
 from fmp_data.market.models import (
     AvailableIndex,
+    CIKListEntry,
     CIKResult,
     CompanySearchResult,
     CUSIPResult,
     ExchangeSymbol,
+    IndustryPerformance,
+    IndustryPESnapshot,
+    IPODisclosure,
+    IPOProspectus,
     ISINResult,
+    MarketHoliday,
     MarketHours,
     MarketMover,
     PrePostMarketQuote,
     SectorPerformance,
+    SectorPESnapshot,
 )
 from fmp_data.models import CompanySymbol, ShareFloat
 from tests.integration.base import BaseTestCase
@@ -33,13 +39,40 @@ class TestMarketClientEndpoints(BaseTestCase):
                 fmp_client.market.get_market_hours,
             )
             assert isinstance(hours, MarketHours)
-            assert hours.stockExchangeName
-            assert hours.stockMarketHours
-            assert isinstance(hours.stockMarketHolidays, list)
-            assert isinstance(hours.isTheStockMarketOpen, bool)
-            assert isinstance(hours.isTheEuronextMarketOpen, bool)
-            assert isinstance(hours.isTheForexMarketOpen, bool)
-            assert isinstance(hours.isTheCryptoMarketOpen, bool)
+            assert hours.exchange
+            assert hours.name
+            assert hours.opening_hour
+            assert hours.closing_hour
+            assert hours.timezone
+            assert isinstance(hours.is_market_open, bool)
+
+    def test_get_all_exchange_market_hours(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting market hours for all exchanges"""
+        with vcr_instance.use_cassette("market/all_exchange_market_hours.yaml"):
+            hours = self._handle_rate_limit(
+                fmp_client.market.get_all_exchange_market_hours,
+            )
+            assert isinstance(hours, list)
+            assert len(hours) > 0
+            assert isinstance(hours[0], MarketHours)
+            assert hours[0].exchange
+            assert hours[0].opening_hour
+            assert hours[0].closing_hour
+
+    def test_get_holidays_by_exchange(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting market holidays for an exchange"""
+        with vcr_instance.use_cassette("market/holidays_by_exchange.yaml"):
+            holidays = self._handle_rate_limit(
+                fmp_client.market.get_holidays_by_exchange,
+                "NYSE",
+            )
+            assert isinstance(holidays, list)
+            if holidays:
+                assert isinstance(holidays[0], MarketHoliday)
+                assert holidays[0].exchange
+                assert holidays[0].holiday or holidays[0].date
 
     def test_get_gainers(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting market gainers"""
@@ -118,7 +151,11 @@ class TestMarketClientEndpoints(BaseTestCase):
     def test_get_sector_performance(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting sector performance data"""
         with vcr_instance.use_cassette("market/sector_performance.yaml"):
-            sectors = self._handle_rate_limit(fmp_client.market.get_sector_performance)
+            sectors = self._handle_rate_limit(
+                fmp_client.market.get_sector_performance,
+                date=date(2024, 2, 1),
+                exchange="NASDAQ",
+            )
 
             assert isinstance(sectors, list)
             assert len(sectors) > 0
@@ -126,6 +163,135 @@ class TestMarketClientEndpoints(BaseTestCase):
             for sector in sectors:
                 assert isinstance(sector, SectorPerformance)
                 assert isinstance(sector.change_percentage, float)
+
+    def test_get_industry_performance_snapshot(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting industry performance snapshot data"""
+        with vcr_instance.use_cassette("market/industry_performance_snapshot.yaml"):
+            industries = self._handle_rate_limit(
+                fmp_client.market.get_industry_performance_snapshot,
+                date=date(2024, 2, 1),
+                industry="Biotechnology",
+                exchange="NASDAQ",
+            )
+
+            assert isinstance(industries, list)
+            assert len(industries) > 0
+
+            for industry in industries:
+                assert isinstance(industry, IndustryPerformance)
+                assert isinstance(industry.change_percentage, float)
+
+    def test_get_historical_sector_performance(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting historical sector performance data"""
+        with vcr_instance.use_cassette("market/historical_sector_performance.yaml"):
+            sectors = self._handle_rate_limit(
+                fmp_client.market.get_historical_sector_performance,
+                sector="Energy",
+                from_date=date(2024, 2, 1),
+                to_date=date(2024, 3, 1),
+                exchange="NASDAQ",
+            )
+
+            assert isinstance(sectors, list)
+            assert len(sectors) > 0
+
+            for sector in sectors:
+                assert isinstance(sector, SectorPerformance)
+                assert isinstance(sector.change_percentage, float)
+
+    def test_get_historical_industry_performance(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test getting historical industry performance data"""
+        with vcr_instance.use_cassette("market/historical_industry_performance.yaml"):
+            industries = self._handle_rate_limit(
+                fmp_client.market.get_historical_industry_performance,
+                industry="Biotechnology",
+                from_date=date(2024, 2, 1),
+                to_date=date(2024, 3, 1),
+                exchange="NASDAQ",
+            )
+
+            assert isinstance(industries, list)
+            assert len(industries) > 0
+
+            for industry in industries:
+                assert isinstance(industry, IndustryPerformance)
+                assert isinstance(industry.change_percentage, float)
+
+    def test_get_sector_pe_snapshot(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting sector PE snapshot data"""
+        with vcr_instance.use_cassette("market/sector_pe_snapshot.yaml"):
+            sectors = self._handle_rate_limit(
+                fmp_client.market.get_sector_pe_snapshot,
+                date=date(2024, 2, 1),
+                sector="Energy",
+                exchange="NASDAQ",
+            )
+
+            assert isinstance(sectors, list)
+            assert len(sectors) > 0
+
+            for sector in sectors:
+                assert isinstance(sector, SectorPESnapshot)
+                assert isinstance(sector.pe, float)
+
+    def test_get_industry_pe_snapshot(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting industry PE snapshot data"""
+        with vcr_instance.use_cassette("market/industry_pe_snapshot.yaml"):
+            industries = self._handle_rate_limit(
+                fmp_client.market.get_industry_pe_snapshot,
+                date=date(2024, 2, 1),
+                industry="Biotechnology",
+                exchange="NASDAQ",
+            )
+
+            assert isinstance(industries, list)
+            assert len(industries) > 0
+
+            for industry in industries:
+                assert isinstance(industry, IndustryPESnapshot)
+                assert isinstance(industry.pe, float)
+
+    def test_get_historical_sector_pe(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting historical sector PE data"""
+        with vcr_instance.use_cassette("market/historical_sector_pe.yaml"):
+            sectors = self._handle_rate_limit(
+                fmp_client.market.get_historical_sector_pe,
+                sector="Energy",
+                from_date=date(2024, 2, 1),
+                to_date=date(2024, 3, 1),
+                exchange="NASDAQ",
+            )
+
+            assert isinstance(sectors, list)
+            assert len(sectors) > 0
+
+            for sector in sectors:
+                assert isinstance(sector, SectorPESnapshot)
+                assert isinstance(sector.pe, float)
+
+    def test_get_historical_industry_pe(self, fmp_client: FMPDataClient, vcr_instance):
+        """Test getting historical industry PE data"""
+        with vcr_instance.use_cassette("market/historical_industry_pe.yaml"):
+            industries = self._handle_rate_limit(
+                fmp_client.market.get_historical_industry_pe,
+                industry="Biotechnology",
+                from_date=date(2024, 2, 1),
+                to_date=date(2024, 3, 1),
+                exchange="NASDAQ",
+            )
+
+            assert isinstance(industries, list)
+            assert len(industries) > 0
+
+            for industry in industries:
+                assert isinstance(industry, IndustryPESnapshot)
+                assert isinstance(industry.pe, float)
 
     def test_get_pre_post_market(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting pre/post market data"""
@@ -153,10 +319,32 @@ class TestMarketClientEndpoints(BaseTestCase):
         """Test company search"""
         with vcr_instance.use_cassette("market/search.yaml"):
             results = self._handle_rate_limit(
-                fmp_client.market.search, "Apple", limit=5
+                fmp_client.market.search_company, "Apple", limit=5
             )
             assert isinstance(results, list)
             assert len(results) <= 5
+            assert all(isinstance(r, CompanySearchResult) for r in results)
+
+    def test_search_symbol(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
+        """Test symbol search"""
+        with vcr_instance.use_cassette("market/search_symbol.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.market.search_symbol, "Apple", limit=5
+            )
+            assert isinstance(results, list)
+            assert len(results) <= 5
+            assert all(isinstance(r, CompanySearchResult) for r in results)
+
+    def test_search_exchange_variants(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
+    ):
+        """Test exchange variants search"""
+        with vcr_instance.use_cassette("market/search_exchange_variants.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.market.search_exchange_variants, "Apple"
+            )
+            assert isinstance(results, list)
+            assert len(results) > 0
             assert all(isinstance(r, CompanySearchResult) for r in results)
 
     def test_get_stock_list(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
@@ -169,6 +357,64 @@ class TestMarketClientEndpoints(BaseTestCase):
                 assert isinstance(stock, CompanySymbol)
                 assert hasattr(stock, "symbol")  # Only check required field
                 assert isinstance(stock.symbol, str)
+
+    def test_get_financial_statement_symbol_list(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
+    ):
+        """Test getting financial statement symbol list"""
+        with vcr_instance.use_cassette("market/financial_statement_symbol_list.yaml"):
+            symbols = self._handle_rate_limit(
+                fmp_client.market.get_financial_statement_symbol_list
+            )
+            assert isinstance(symbols, list)
+            assert len(symbols) > 0
+            assert all(isinstance(symbol, CompanySymbol) for symbol in symbols)
+
+    def test_get_actively_trading_list(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
+    ):
+        """Test getting actively trading list"""
+        with vcr_instance.use_cassette("market/actively_trading_list.yaml"):
+            symbols = self._handle_rate_limit(
+                fmp_client.market.get_actively_trading_list
+            )
+            assert isinstance(symbols, list)
+            assert len(symbols) > 0
+            assert all(isinstance(symbol, CompanySymbol) for symbol in symbols)
+
+    def test_get_tradable_list(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
+        """Test getting tradable list"""
+        with vcr_instance.use_cassette("market/tradable_list.yaml"):
+            symbols = self._handle_rate_limit(
+                fmp_client.market.get_tradable_list, limit=5, offset=0
+            )
+            assert isinstance(symbols, list)
+            if symbols:
+                assert all(isinstance(symbol, CompanySymbol) for symbol in symbols)
+
+    def test_get_cik_list(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
+        """Test getting CIK list"""
+        with vcr_instance.use_cassette("market/cik_list.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.market.get_cik_list, page=0, limit=10
+            )
+            assert isinstance(results, list)
+            assert len(results) > 0
+            assert all(isinstance(r, CIKListEntry) for r in results)
+
+    def test_get_company_screener(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
+    ):
+        """Test getting company screener results"""
+        with vcr_instance.use_cassette("market/company_screener.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.market.get_company_screener,
+                sector="Technology",
+                limit=5,
+            )
+            assert isinstance(results, list)
+            assert len(results) > 0
+            assert all(isinstance(r, CompanySearchResult) for r in results)
 
     def test_get_etf_list(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
         """Test getting ETF list"""
@@ -190,42 +436,78 @@ class TestMarketClientEndpoints(BaseTestCase):
             assert all(isinstance(i, AvailableIndex) for i in indexes)
             assert any(i.symbol == "^GSPC" for i in indexes)
 
-    def test_get_exchange_symbols(
+    def test_get_available_exchanges(
         self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
     ):
-        """Test getting exchange symbols"""
-        with vcr_instance.use_cassette("market/exchange_symbols.yaml"):
-            # Capture warnings during test
-            with warnings.catch_warnings(record=True) as w:
-                warnings.simplefilter("always")
+        """Test getting available exchanges"""
+        with vcr_instance.use_cassette("market/available_exchanges.yaml"):
+            exchanges = self._handle_rate_limit(
+                fmp_client.market.get_available_exchanges
+            )
 
-                symbols = self._handle_rate_limit(
-                    fmp_client.market.get_exchange_symbols, "NASDAQ"
-                )
+            assert isinstance(exchanges, list)
+            assert len(exchanges) > 0
+            assert all(isinstance(e, ExchangeSymbol) for e in exchanges)
 
-                # Basic validation
-                assert isinstance(symbols, list)
-                assert len(symbols) > 0
+    def test_get_available_sectors(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
+    ):
+        """Test getting available sectors"""
+        with vcr_instance.use_cassette("market/available_sectors.yaml"):
+            sectors = self._handle_rate_limit(fmp_client.market.get_available_sectors)
+            assert isinstance(sectors, list)
+            assert len(sectors) > 0
+            assert all(isinstance(s, str) for s in sectors)
 
-                # Test symbol attributes
-                for symbol in symbols:
-                    assert isinstance(symbol, ExchangeSymbol)
-                    # Only check presence of attributes, not values
-                    assert hasattr(symbol, "name")
-                    assert hasattr(symbol, "price")
-                    assert hasattr(symbol, "exchange")
+    def test_get_available_industries(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
+    ):
+        """Test getting available industries"""
+        with vcr_instance.use_cassette("market/available_industries.yaml"):
+            industries = self._handle_rate_limit(
+                fmp_client.market.get_available_industries
+            )
+            assert isinstance(industries, list)
+            assert len(industries) > 0
+            assert all(isinstance(i, str) for i in industries)
 
-                # Verify we got some data
-                valid_symbols = [
-                    s for s in symbols if s.name is not None and s.price is not None
-                ]
-                assert len(valid_symbols) > 0
+    def test_get_available_countries(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
+    ):
+        """Test getting available countries"""
+        with vcr_instance.use_cassette("market/available_countries.yaml"):
+            countries = self._handle_rate_limit(
+                fmp_client.market.get_available_countries
+            )
+            assert isinstance(countries, list)
+            assert len(countries) > 0
+            assert all(isinstance(c, str) for c in countries)
 
-                # Log warnings if any
-                if len(w) > 0:
-                    print(f"\nCaptured {len(w)} validation warnings:")
-                    for warning in w:
-                        print(f"  - {warning.message}")
+    def test_get_ipo_disclosure(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
+        """Test getting IPO disclosure data"""
+        with vcr_instance.use_cassette("market/ipo_disclosure.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.market.get_ipo_disclosure,
+                from_date=date(2023, 1, 1),
+                to_date=date(2023, 1, 31),
+                limit=5,
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], IPODisclosure)
+
+    def test_get_ipo_prospectus(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
+        """Test getting IPO prospectus data"""
+        with vcr_instance.use_cassette("market/ipo_prospectus.yaml"):
+            results = self._handle_rate_limit(
+                fmp_client.market.get_ipo_prospectus,
+                from_date=date(2023, 1, 1),
+                to_date=date(2023, 1, 31),
+                limit=5,
+            )
+            assert isinstance(results, list)
+            if results:
+                assert isinstance(results[0], IPOProspectus)
 
     @pytest.mark.parametrize(
         "search_type,method,model,test_value",

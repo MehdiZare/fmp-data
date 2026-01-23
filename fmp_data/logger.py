@@ -10,11 +10,12 @@ from logging.handlers import RotatingFileHandler
 import os
 from pathlib import Path
 import re
-from typing import Any, ClassVar, Optional, TypeVar
+from typing import Any, ClassVar, Optional, ParamSpec, TypeVar
 
 from fmp_data.config import LoggingConfig, LogHandlerConfig
 
-T = TypeVar("T")
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
 class SensitiveDataFilter(logging.Filter):
@@ -283,6 +284,7 @@ class FMPLogger:
             return
 
         self._initialized: bool = True
+        self._configured: bool = False  # Track if configure() has been called
         self._logger = logging.getLogger("fmp_data")
         self._logger.setLevel(logging.INFO)
         self._handlers: dict[str, logging.Handler] = {}
@@ -319,8 +321,23 @@ class FMPLogger:
         self._logger.addHandler(handler)
         self._handlers["console"] = handler
 
-    def configure(self, config: LoggingConfig) -> None:
-        """Configure logger with the given configuration"""
+    def configure(self, config: LoggingConfig, *, _force: bool = False) -> None:
+        """Configure logger with the given configuration.
+
+        Note: This method only applies configuration on the first call.
+        Subsequent calls are ignored to prevent multiple clients from
+        overwriting each other's logging configuration.
+
+        Args:
+            config: The logging configuration to apply.
+            _force: Internal flag for testing purposes. If True, forces
+                reconfiguration even if already configured. Do not use
+                in production code.
+        """
+        if self._configured and not _force:
+            return  # Skip reconfiguration; first client's config wins
+
+        self._configured = True
         self._logger.setLevel(getattr(logging, config.level))
 
         # Remove existing handlers
@@ -362,8 +379,11 @@ class FMPLogger:
         # Use handler_kwargs instead of kwargs
         kwargs = config.handler_kwargs.copy()
 
+        # Prepend log_path only if filename is not already absolute
         if "filename" in kwargs and log_path:
-            kwargs["filename"] = log_path / kwargs["filename"]
+            filename = Path(kwargs["filename"])
+            if not filename.is_absolute():
+                kwargs["filename"] = log_path / kwargs["filename"]
 
         # Create handler
         if config.class_name == "StreamHandler":
@@ -385,7 +405,7 @@ class FMPLogger:
 def log_api_call(
     logger: logging.Logger | None = None,
     exclude_args: bool = False,
-) -> Callable[[Callable[..., T]], Callable[..., T]]:
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """
     Decorator to log API calls with sensitive data filtering
 
@@ -397,9 +417,9 @@ def log_api_call(
         Decorated function
     """
 
-    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> T:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             nonlocal logger
             if logger is None:
                 logger = FMPLogger().get_logger()

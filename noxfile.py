@@ -1,7 +1,7 @@
 """
 Nox configuration for *fmp-data*
 
-▪ test matrix      : 3.10 ─ 3.12 (3.13 when available)
+▪ test matrix      : 3.10 ─ 3.14
 ▪ optional groups  : dev, lint, typecheck, security, langchain, mcp-server …
 ▪ package manager  : uv (fast resolver / installer)
 
@@ -25,20 +25,28 @@ from nox.sessions import Session
 #  Globals                                                                    #
 # --------------------------------------------------------------------------- #
 
+
 # Python interpreters used across sessions
-# Use the current Python version in CI, or 3.13 locally if available
+# Use the current Python version in CI, or the newest local version if available
+def _runtime_py_version() -> tuple[int, int]:
+    return (sys.version_info.major, sys.version_info.minor)
+
+
 if os.getenv("CI") == "true":
-    # In CI, use the Python version that's already set up
+    # In CI, use the versions explicitly installed in the matrix
     current_version = f"{sys.version_info.major}.{sys.version_info.minor}"
-    PY_VERSIONS: Sequence[str] = ("3.10", "3.11", "3.12", "3.13")
+    PY_VERSIONS: Sequence[str] = ("3.10", "3.11", "3.12", "3.13", "3.14")
     DEFAULT_PYTHON = current_version
 else:
-    # Locally, prefer 3.13 if available
-    if sys.version_info >= (3, 13):
-        PY_VERSIONS: Sequence[str] = ("3.10", "3.11", "3.12", "3.13")
+    # Locally, prefer the newest available interpreter
+    if _runtime_py_version() >= (3, 14):
+        PY_VERSIONS = ("3.10", "3.11", "3.12", "3.13", "3.14")
+        DEFAULT_PYTHON = "3.14"
+    elif _runtime_py_version() >= (3, 13):
+        PY_VERSIONS = ("3.10", "3.11", "3.12", "3.13")
         DEFAULT_PYTHON = "3.13"
     else:
-        PY_VERSIONS: Sequence[str] = ("3.10", "3.11", "3.12")
+        PY_VERSIONS = ("3.10", "3.11", "3.12")
         DEFAULT_PYTHON = "3.12"
 
 # Feature-flag groups that map to [project.optional-dependencies]
@@ -96,11 +104,10 @@ def _sync_with_uv(session: Session, extras: Iterable[str] = ()) -> None:
                 "responses>=0.25.3",
                 "vcrpy>=6.0.2",
                 "ruff>=0.12.2",
-                "black>=24.10.0",
                 "mypy>=1.13.0",
-                "types-cachetools>=6.0.0.20250525",
                 "bandit[toml]>=1.7.10",
                 "pip-audit>=2.7.0",
+                "python-dotenv>=1.2.1",
             )
         elif extra in ["langchain", "mcp", "mcp-server"]:
             # Handle actual extras from [project.optional-dependencies]
@@ -121,10 +128,7 @@ def _sync_with_uv(session: Session, extras: Iterable[str] = ()) -> None:
 @nox.parametrize("feature_group", FEATURE_GROUPS, ids=FEATURE_IDS)
 def tests(session: Session, feature_group: str | None) -> None:
     """
-    Run *pytest* with coverage.
-
-    Individual coverage files are generated for each session.
-    Use the 'coverage_report' session to combine and check thresholds.
+    Run *pytest* without coverage.
     """
     extras: list[str] = ["dev"]  # dev extra contains pytest + pytest-cov
     if feature_group:
@@ -132,23 +136,7 @@ def tests(session: Session, feature_group: str | None) -> None:
 
     _sync_with_uv(session, extras)
 
-    # Use unique coverage file names to avoid conflicts in parallel runs
-    # Ensure coverage files are created in the repo root
-    coverage_file = REPO_ROOT / f".coverage.{session.python}.{feature_group or 'core'}"
-
-    # Base pytest args - no coverage threshold during individual runs
-    pytest_args = [
-        "-q",
-        "--cov",
-        PACKAGE_NAME,
-        "--cov-append",
-        "--cov-config=pyproject.toml",
-        "--cov-report=term-missing",
-        "--cov-fail-under=0",  # No threshold during individual sessions
-    ]
-
-    # Set environment variable for coverage file with absolute path
-    env = {"COVERAGE_FILE": str(coverage_file)}
+    pytest_args = ["-q"]
 
     if feature_group == "mcp-server":
         # Check if mcp tests exist and handle gracefully
@@ -161,43 +149,13 @@ def tests(session: Session, feature_group: str | None) -> None:
                 "tests/unit/test_mcp.py",
                 "-m",
                 "not integration",
-                env=env,
                 success_codes=[0, 5],  # 0=success, 5=no tests collected
             )
         else:
             session.log("Skipping mcp-server tests - test_mcp.py not found")
-            # Create minimal coverage file for this feature group
-            session.run(
-                "python",
-                "-c",
-                f"""
-import coverage
-cov = coverage.Coverage(data_file='{coverage_file}')
-cov.start()
-cov.stop()
-cov.save()
-""",
-            )
     else:
         # For core and langchain, run all tests
-        session.run("pytest", *pytest_args, env=env, success_codes=[0, 5])
-
-    # Verify coverage file was created
-    if not coverage_file.exists():
-        session.log(f"Creating fallback coverage file: {coverage_file}")
-        session.run(
-            "python",
-            "-c",
-            f"""
-import coverage
-cov = coverage.Coverage(data_file='{coverage_file}')
-cov.start()
-cov.stop()
-cov.save()
-""",
-        )
-
-    session.log(f"Coverage data saved to {coverage_file}")
+        session.run("pytest", *pytest_args, success_codes=[0, 5])
 
 
 @nox.session(python=DEFAULT_PYTHON, tags=["coverage"])
@@ -219,8 +177,8 @@ def coverage_report(session: Session) -> None:
     session.run("coverage", "xml")
     session.run("coverage", "html")
 
-    # Apply the 80% threshold to combined coverage
-    session.run("coverage", "report", "--fail-under=80")
+    # Apply the configured coverage threshold from pyproject.toml
+    session.run("coverage", "report")
 
     session.log("Coverage reports generated: coverage.xml and htmlcov/")
 
@@ -312,7 +270,7 @@ cov.save()
     session.run("coverage", "combine")
     session.run("coverage", "xml")
     session.run("coverage", "html")
-    session.run("coverage", "report", "--fail-under=80")
+    session.run("coverage", "report")
 
 
 @nox.session(python=DEFAULT_PYTHON, tags=["test-local"])
@@ -338,16 +296,15 @@ def test_local(session: Session) -> None:
         "--cov-report=term-missing",
         "--cov-report=xml",
         "--cov-report=html",
-        "--fail-under=80",
     )
 
 
 @nox.session(python=DEFAULT_PYTHON, tags=["lint"])
 def lint(session: Session) -> None:
-    """Static style checks (ruff, black - no code execution)."""
+    """Static style checks (ruff check and format - no code execution)."""
     _sync_with_uv(session, extras=["dev"])
     session.run("ruff", "check", ".", "--output-format=concise")
-    session.run("black", "--check", ".")
+    session.run("ruff", "format", "--check", ".")
 
 
 @nox.session(python=DEFAULT_PYTHON, tags=["typecheck"])

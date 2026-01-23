@@ -22,7 +22,6 @@ share/python-wheels/
 *.egg
 
 # Virtual Environment
-.env
 .venv
 env/
 venv/
@@ -51,16 +50,33 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+.mypy_cache/
+.ruff_cache/
+tests/integration/vcr_cassettes/**/*.yaml
 
 # Build
 *.manifest
 *.spec
 pip-log.txt
 pip-delete-this-directory.txt
+site/
+
+# Documentation build
+site/
+
+# Security reports
+reports/
+
+# Test fixtures (can be regenerated)
+tests/integration/vcr_cassettes/
 
 # Misc
 .DS_Store
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+
+# Environment files (keep .env.example)
+.env
+.env.*
+!.env.example
+
+# Firecrawl example outputs
+examples/firecrawl_app/outputs/

@@ -9,6 +9,7 @@ on:
 permissions:
   id-token: write              # OIDC → Trusted Publishing
   contents: read               # Read repository contents
+  pull-requests: read          # Read PR labels for version calculation
 
 jobs:
   dev-release:
@@ -37,6 +38,38 @@ jobs:
         run: |
           uv pip install --system build hatch
 
+      - name: 🔍  Check for PR with release labels
+        id: pr_labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Find open PR from dev to main
+          PR_JSON=$(gh pr list --head dev --base main --state open --json number,labels --limit 1)
+
+          if [ "$PR_JSON" = "[]" ]; then
+            echo "No open PR from dev to main found"
+            echo "RELEASE_TYPE=minor" >> $GITHUB_OUTPUT
+          else
+            PR_NUMBER=$(echo "$PR_JSON" | jq -r '.[0].number')
+            LABELS=$(echo "$PR_JSON" | jq -r '.[0].labels[].name' 2>/dev/null || echo "")
+
+            echo "Found PR #$PR_NUMBER with labels: $LABELS"
+
+            if echo "$LABELS" | grep -q "release:major"; then
+              echo "RELEASE_TYPE=major" >> $GITHUB_OUTPUT
+              echo "🏷️ Release type: MAJOR"
+            elif echo "$LABELS" | grep -q "release:minor"; then
+              echo "RELEASE_TYPE=minor" >> $GITHUB_OUTPUT
+              echo "🏷️ Release type: MINOR"
+            elif echo "$LABELS" | grep -q "release:patch"; then
+              echo "RELEASE_TYPE=patch" >> $GITHUB_OUTPUT
+              echo "🏷️ Release type: PATCH"
+            else
+              echo "RELEASE_TYPE=minor" >> $GITHUB_OUTPUT
+              echo "🏷️ Release type: minor (default)"
+            fi
+          fi
+
       - name: 🏷️  Calculate dev version
         id: version
         run: |
@@ -49,15 +82,24 @@ jobs:
 
           # Create dev version with commit count since last tag
           COMMIT_COUNT=$(git rev-list --count ${LATEST_TAG}..HEAD 2>/dev/null || echo "1")
-          SHORT_SHA=$(git rev-parse --short HEAD)
 
-          # Next minor version for dev (PyPI-compatible, no local version identifier)
-          DEV_VERSION="${MAJOR}.$((MINOR + 1)).0.dev${COMMIT_COUNT}"
+          # Calculate version based on release type from PR labels
+          RELEASE_TYPE="${{ steps.pr_labels.outputs.RELEASE_TYPE }}"
+
+          if [ "$RELEASE_TYPE" = "major" ]; then
+            DEV_VERSION="$((MAJOR + 1)).0.0.dev${COMMIT_COUNT}"
+          elif [ "$RELEASE_TYPE" = "patch" ]; then
+            DEV_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1)).dev${COMMIT_COUNT}"
+          else
+            # Default to minor
+            DEV_VERSION="${MAJOR}.$((MINOR + 1)).0.dev${COMMIT_COUNT}"
+          fi
+
           DEV_TAG="v${DEV_VERSION}"
 
           echo "DEV_VERSION=$DEV_VERSION" >> $GITHUB_OUTPUT
           echo "DEV_TAG=$DEV_TAG" >> $GITHUB_OUTPUT
-          echo "📦 Dev version: $DEV_VERSION"
+          echo "📦 Dev version: $DEV_VERSION (based on $RELEASE_TYPE release)"
 
           # Create a temporary tag for hatch-vcs
           git config user.name github-actions

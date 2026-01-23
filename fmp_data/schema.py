@@ -49,6 +49,11 @@ class ReportingPeriodEnum(BaseEnum):
 
     ANNUAL = "annual"
     QUARTER = "quarter"
+    FY = "FY"
+    Q1 = "Q1"
+    Q2 = "Q2"
+    Q3 = "Q3"
+    Q4 = "Q4"
 
 
 class StructureTypeEnum(BaseEnum):
@@ -147,7 +152,9 @@ class FinancialStatementBaseArg(SymbolArg):
     period: ReportingPeriodEnum = Field(
         default=ReportingPeriodEnum.ANNUAL, description="Reporting period"
     )
-    limit: int | None = Field(default=40, ge=1, le=100, description="Number of periods")
+    limit: int | None = Field(
+        default=40, ge=1, le=1000, description="Number of periods"
+    )
 
 
 class TimeSeriesBaseArg(SymbolArg, DateRangeArg):

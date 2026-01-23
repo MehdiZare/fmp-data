@@ -4,9 +4,20 @@ from datetime import date, datetime
 from decimal import Decimal
 import json
 from typing import Any
+from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
 
-from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, HttpUrl
+from pydantic import (
+    AliasChoices,
+    AnyHttpUrl,
+    BaseModel,
+    ConfigDict,
+    Field,
+    HttpUrl,
+    TypeAdapter,
+    ValidationError,
+    field_validator,
+)
 from pydantic.alias_generators import to_camel
 
 from fmp_data.models import ShareFloat
@@ -28,8 +39,8 @@ class CompanyProfile(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol (ticker)")
-    price: float = Field(description="Current stock price")
-    beta: float = Field(description="Beta value")
+    price: float | None = Field(None, description="Current stock price")
+    beta: float | None = Field(None, description="Beta value")
     vol_avg: int | None = Field(None, description="Average volume")
     mkt_cap: float | None = Field(None, description="Market capitalization")
     last_div: float | None = Field(None, description="Last dividend payment")
@@ -37,28 +48,28 @@ class CompanyProfile(BaseModel):
     changes: float | None = Field(None, description="Price change")
     company_name: str | None = Field(None, description="Company name")
     currency: str | None = Field(None, description="Trading currency")
-    cik: str = Field(description="CIK number")
-    isin: str = Field(description="ISIN number")
-    cusip: str = Field(description="CUSIP number")
+    cik: str | None = Field(None, description="CIK number")
+    isin: str | None = Field(None, description="ISIN number")
+    cusip: str | None = Field(None, description="CUSIP number")
     exchange: str | None = Field(None, description="Stock exchange")
     exchange_short_name: str | None = Field(None, description="Exchange short name")
     industry: str | None = Field(None, description="Industry classification")
     website: AnyHttpUrl | None = Field(None, description="Company website")
-    description: str = Field(description="Company description")
-    ceo: str = Field(description="CEO name")
-    sector: str = Field(description="Sector classification")
-    country: str = Field(description="Country of incorporation")
+    description: str | None = Field(None, description="Company description")
+    ceo: str | None = Field(None, description="CEO name")
+    sector: str | None = Field(None, description="Sector classification")
+    country: str | None = Field(None, description="Country of incorporation")
     full_time_employees: str | None = Field(
         None, description="Number of full-time employees"
     )
-    phone: str = Field(description="Contact phone number")
-    address: str = Field(description="Company address")
-    city: str = Field(description="City")
-    state: str = Field(description="State")
-    zip: str = Field(description="ZIP/Postal code")
+    phone: str | None = Field(None, description="Contact phone number")
+    address: str | None = Field(None, description="Company address")
+    city: str | None = Field(None, description="City")
+    state: str | None = Field(None, description="State")
+    zip: str | None = Field(None, description="ZIP/Postal code")
     dcf_diff: float | None = Field(None, description="DCF difference")
-    dcf: float = Field(description="Discounted Cash Flow value")
-    image: AnyHttpUrl = Field(description="Company logo URL")
+    dcf: float | None = Field(None, description="Discounted Cash Flow value")
+    image: AnyHttpUrl | None = Field(None, description="Company logo URL")
     ipo_date: datetime | None = Field(None, description="IPO date")
     default_image: bool | None = Field(None, description="Whether using default image")
     is_etf: bool | None = Field(None, description="Whether the symbol is an ETF")
@@ -67,6 +78,38 @@ class CompanyProfile(BaseModel):
     )
     is_adr: bool | None = Field(None, description="Whether is ADR")
     is_fund: bool | None = Field(None, description="Whether is a fund")
+
+    @field_validator("website", mode="before")
+    @classmethod
+    def normalize_website(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        if isinstance(value, str):
+            cleaned = value.strip()
+            if not cleaned:
+                return None
+            if " " in cleaned:
+                cleaned = cleaned.split()[0]
+            cleaned = cleaned.replace("http://www:", "http://www.").replace(
+                "https://www:", "https://www."
+            )
+            if "://" not in cleaned:
+                return f"https://{cleaned}"
+            try:
+                parsed = urlparse(cleaned)
+            except ValueError:
+                return None
+            if not parsed.scheme or not parsed.netloc:
+                return None
+            if not parsed.hostname or "." not in parsed.hostname:
+                return None
+            adapter = TypeAdapter(AnyHttpUrl)
+            try:
+                adapter.validate_python(cleaned)
+            except ValidationError:
+                return None
+            return cleaned
+        return value
 
 
 class CompanyCoreInformation(BaseModel):
@@ -154,7 +197,7 @@ class Quote(BaseModel):
     day_high: float = Field(alias="dayHigh", description="Day high price")
     year_high: float = Field(alias="yearHigh", description="52-week high")
     year_low: float = Field(alias="yearLow", description="52-week low")
-    market_cap: int = Field(alias="marketCap", description="Market capitalization")
+    market_cap: float = Field(alias="marketCap", description="Market capitalization")
     price_avg_50: float = Field(alias="priceAvg50", description="50-day average price")
     price_avg_200: float = Field(
         alias="priceAvg200", description="200-day average price"
@@ -165,12 +208,20 @@ class Quote(BaseModel):
     previous_close: float = Field(
         alias="previousClose", description="Previous close price"
     )
-    timestamp: int = Field(description="Quote timestamp (Unix timestamp)")
+    timestamp: datetime = Field(description="Quote timestamp")
+
+    @field_validator("timestamp", mode="before")
+    @classmethod
+    def parse_timestamp(cls, value: Any) -> datetime:
+        """Parse Unix timestamp to datetime with UTC timezone"""
+        if isinstance(value, datetime):
+            return value
+        return datetime.fromtimestamp(float(value), tz=UTC)
 
     @property
     def quote_datetime(self) -> datetime:
         """Convert Unix timestamp to datetime object"""
-        return datetime.fromtimestamp(self.timestamp, tz=UTC)
+        return self.timestamp
 
 
 class SimpleQuote(BaseModel):
@@ -183,22 +234,92 @@ class SimpleQuote(BaseModel):
     volume: int = Field(description="Trading volume")
 
 
+class AftermarketTrade(BaseModel):
+    """Aftermarket trade data"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Stock symbol")
+    price: float | None = Field(None, description="Trade price")
+    trade_size: int | None = Field(None, alias="tradeSize", description="Trade size")
+    timestamp: int | None = Field(None, description="Trade timestamp")
+
+
+class AftermarketQuote(BaseModel):
+    """Aftermarket quote data"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Stock symbol")
+    bid_size: int | None = Field(None, alias="bidSize", description="Bid size")
+    bid_price: float | None = Field(None, alias="bidPrice", description="Bid price")
+    ask_size: int | None = Field(None, alias="askSize", description="Ask size")
+    ask_price: float | None = Field(None, alias="askPrice", description="Ask price")
+    volume: int | None = Field(None, description="Trading volume")
+    timestamp: int | None = Field(None, description="Quote timestamp")
+
+
+class StockPriceChange(BaseModel):
+    """Stock price change percentages over multiple time horizons"""
+
+    model_config = default_model_config
+
+    symbol: str = Field(description="Stock symbol")
+    one_day: float | None = Field(
+        None, alias="1D", description="1-day price change percentage"
+    )
+    five_day: float | None = Field(
+        None, alias="5D", description="5-day price change percentage"
+    )
+    one_month: float | None = Field(
+        None, alias="1M", description="1-month price change percentage"
+    )
+    three_month: float | None = Field(
+        None, alias="3M", description="3-month price change percentage"
+    )
+    six_month: float | None = Field(
+        None, alias="6M", description="6-month price change percentage"
+    )
+    ytd: float | None = Field(
+        None, alias="ytd", description="Year-to-date price change percentage"
+    )
+    one_year: float | None = Field(
+        None, alias="1Y", description="1-year price change percentage"
+    )
+    three_year: float | None = Field(
+        None, alias="3Y", description="3-year price change percentage"
+    )
+    five_year: float | None = Field(
+        None, alias="5Y", description="5-year price change percentage"
+    )
+    ten_year: float | None = Field(
+        None, alias="10Y", description="10-year price change percentage"
+    )
+    max_change: float | None = Field(
+        None, alias="max", description="Max price change percentage"
+    )
+
+
 class HistoricalPrice(BaseModel):
     """Historical price data point"""
 
     model_config = default_model_config
 
     date: datetime = Field(description="Date of the price data")
-    open: float = Field(description="Opening price")
-    high: float = Field(description="High price")
-    low: float = Field(description="Low price")
-    close: float = Field(description="Closing price")
-    volume: int = Field(description="Trading volume")
-    change: float = Field(description="Price change")
-    change_percent: float = Field(
-        description="Price change percentage", alias="changePercent"
+    open: float | None = Field(None, description="Opening price")
+    high: float | None = Field(None, description="High price")
+    low: float | None = Field(None, description="Low price")
+    close: float | None = Field(None, description="Closing price")
+    price: float | None = Field(None, description="Lightweight closing price")
+    adj_close: float | None = Field(
+        None, alias="adjClose", description="Adjusted closing price"
     )
-    vwap: float = Field(description="Volume weighted average price")
+    volume: int | None = Field(None, description="Trading volume")
+    change: float | None = Field(None, description="Price change")
+    change_percent: float | None = Field(
+        None, alias="changePercent", description="Price change percentage"
+    )
+    vwap: float | None = Field(None, description="Volume weighted average price")
 
 
 class HistoricalData(BaseModel):
@@ -241,22 +362,35 @@ class ExecutiveCompensation(BaseModel):
 
     cik: str = Field(description="SEC CIK number")
     symbol: str = Field(description="Company symbol")
-    company_name: str = Field(description="Company name")
-    industry_title: str = Field(description="Industry classification")
-    filing_date: date = Field(description="SEC filing date")
-    accepted_date: datetime = Field(description="SEC acceptance date")
-    name_and_position: str = Field(description="Executive name and title")
+    company_name: str | None = Field(
+        None, alias="companyName", description="Company name"
+    )
+    industry_title: str | None = Field(
+        None, alias="industryTitle", description="Industry classification"
+    )
+    filing_date: date = Field(alias="filingDate", description="SEC filing date")
+    accepted_date: datetime = Field(
+        alias="acceptedDate", description="SEC acceptance date"
+    )
+    name_and_position: str = Field(
+        alias="nameAndPosition", description="Executive name and title"
+    )
     year: int = Field(description="Compensation year")
     salary: float = Field(description="Base salary")
     bonus: float = Field(description="Annual bonus")
-    stock_award: float = Field(description="Stock awards value")
-    option_award: float | None = Field(None, description="Option awards value")
-    incentive_plan_compensation: float = Field(
-        description="Incentive plan compensation"
+    stock_award: float = Field(alias="stockAward", description="Stock awards value")
+    option_award: float | None = Field(
+        None, alias="optionAward", description="Option awards value"
     )
-    all_other_compensation: float = Field(description="All other compensation")
+    incentive_plan_compensation: float = Field(
+        alias="incentivePlanCompensation",
+        description="Incentive plan compensation",
+    )
+    all_other_compensation: float = Field(
+        alias="allOtherCompensation", description="All other compensation"
+    )
     total: float = Field(description="Total compensation")
-    url: HttpUrl = Field(description="SEC filing URL")
+    url: HttpUrl | None = Field(None, alias="link", description="SEC filing URL")
 
 
 class HistoricalShareFloat(ShareFloat):
@@ -271,7 +405,9 @@ class RevenueSegmentItem(BaseModel):
     model_config = default_model_config
 
     date: str = Field(description="Fiscal year end date")
-    segments: dict[str, float] = Field(description="Segment name to revenue mapping")
+    segments: dict[str, float] = Field(
+        alias="data", description="Segment name to revenue mapping"
+    )
 
     def __init__(self, **data: Any) -> None:
         """Custom init to handle the single-key dictionary structure.
@@ -309,7 +445,7 @@ class SymbolChange(BaseModel):
     change_date: date = Field(
         description="Date when the symbol change occurred", alias="date"
     )
-    name: str = Field(description="Company or security name")
+    name: str = Field(alias="companyName", description="Company or security name")
     old_symbol: str = Field(alias="oldSymbol", description="Previous trading symbol")
     new_symbol: str = Field(alias="newSymbol", description="New trading symbol")
 
@@ -355,27 +491,27 @@ class PriceTargetSummary(BaseModel):
 
     symbol: str = Field(description="Company symbol")
     last_month: int = Field(
-        alias="lastMonth", description="Number of analysts in the last month"
+        alias="lastMonthCount", description="Number of analysts in the last month"
     )
     last_month_avg_price_target: float = Field(
         alias="lastMonthAvgPriceTarget",
         description="Average price target from the last month",
     )
     last_quarter: int = Field(
-        alias="lastQuarter", description="Number of analysts in the last quarter"
+        alias="lastQuarterCount", description="Number of analysts in the last quarter"
     )
     last_quarter_avg_price_target: float = Field(
         alias="lastQuarterAvgPriceTarget",
         description="Average price target from the last quarter",
     )
     last_year: int = Field(
-        alias="lastYear", description="Number of analysts in the last year"
+        alias="lastYearCount", description="Number of analysts in the last year"
     )
     last_year_avg_price_target: float = Field(
         alias="lastYearAvgPriceTarget",
         description="Average price target from the last year",
     )
-    all_time: int = Field(alias="allTime", description="Total number of analysts")
+    all_time: int = Field(alias="allTimeCount", description="Total number of analysts")
     all_time_avg_price_target: float = Field(
         alias="allTimeAvgPriceTarget", description="Average price target of all time"
     )
@@ -421,67 +557,127 @@ class AnalystEstimate(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
-    date: datetime = Field(description="Estimate date")
-    estimated_revenue_low: float = Field(
-        alias="estimatedRevenueLow", description="Lowest estimated revenue"
+    date: datetime | None = Field(None, description="Estimate date")
+    estimated_revenue_low: float | None = Field(
+        None,
+        alias="estimatedRevenueLow",
+        validation_alias=AliasChoices("estimatedRevenueLow", "revenueLow"),
+        description="Lowest estimated revenue",
     )
-    estimated_revenue_high: float = Field(
-        alias="estimatedRevenueHigh", description="Highest estimated revenue"
+    estimated_revenue_high: float | None = Field(
+        None,
+        alias="estimatedRevenueHigh",
+        validation_alias=AliasChoices("estimatedRevenueHigh", "revenueHigh"),
+        description="Highest estimated revenue",
     )
-    estimated_revenue_avg: float = Field(
-        alias="estimatedRevenueAvg", description="Average estimated revenue"
+    estimated_revenue_avg: float | None = Field(
+        None,
+        alias="estimatedRevenueAvg",
+        validation_alias=AliasChoices("estimatedRevenueAvg", "revenueAvg"),
+        description="Average estimated revenue",
     )
-    estimated_ebitda_low: float = Field(
-        alias="estimatedEbitdaLow", description="Lowest estimated EBITDA"
+    estimated_ebitda_low: float | None = Field(
+        None,
+        alias="estimatedEbitdaLow",
+        validation_alias=AliasChoices("estimatedEbitdaLow", "ebitdaLow"),
+        description="Lowest estimated EBITDA",
     )
-    estimated_ebitda_high: float = Field(
-        alias="estimatedEbitdaHigh", description="Highest estimated EBITDA"
+    estimated_ebitda_high: float | None = Field(
+        None,
+        alias="estimatedEbitdaHigh",
+        validation_alias=AliasChoices("estimatedEbitdaHigh", "ebitdaHigh"),
+        description="Highest estimated EBITDA",
     )
-    estimated_ebitda_avg: float = Field(
-        alias="estimatedEbitdaAvg", description="Average estimated EBITDA"
+    estimated_ebitda_avg: float | None = Field(
+        None,
+        alias="estimatedEbitdaAvg",
+        validation_alias=AliasChoices("estimatedEbitdaAvg", "ebitdaAvg"),
+        description="Average estimated EBITDA",
     )
-    estimated_ebit_low: float = Field(
-        alias="estimatedEbitLow", description="Lowest estimated EBIT"
+    estimated_ebit_low: float | None = Field(
+        None,
+        alias="estimatedEbitLow",
+        validation_alias=AliasChoices("estimatedEbitLow", "ebitLow"),
+        description="Lowest estimated EBIT",
     )
-    estimated_ebit_high: float = Field(
-        alias="estimatedEbitHigh", description="Highest estimated EBIT"
+    estimated_ebit_high: float | None = Field(
+        None,
+        alias="estimatedEbitHigh",
+        validation_alias=AliasChoices("estimatedEbitHigh", "ebitHigh"),
+        description="Highest estimated EBIT",
     )
-    estimated_ebit_avg: float = Field(
-        alias="estimatedEbitAvg", description="Average estimated EBIT"
+    estimated_ebit_avg: float | None = Field(
+        None,
+        alias="estimatedEbitAvg",
+        validation_alias=AliasChoices("estimatedEbitAvg", "ebitAvg"),
+        description="Average estimated EBIT",
     )
-    estimated_net_income_low: float = Field(
-        alias="estimatedNetIncomeLow", description="Lowest estimated net income"
+    estimated_net_income_low: float | None = Field(
+        None,
+        alias="estimatedNetIncomeLow",
+        validation_alias=AliasChoices("estimatedNetIncomeLow", "netIncomeLow"),
+        description="Lowest estimated net income",
     )
-    estimated_net_income_high: float = Field(
-        alias="estimatedNetIncomeHigh", description="Highest estimated net income"
+    estimated_net_income_high: float | None = Field(
+        None,
+        alias="estimatedNetIncomeHigh",
+        validation_alias=AliasChoices("estimatedNetIncomeHigh", "netIncomeHigh"),
+        description="Highest estimated net income",
     )
-    estimated_net_income_avg: float = Field(
-        alias="estimatedNetIncomeAvg", description="Average estimated net income"
+    estimated_net_income_avg: float | None = Field(
+        None,
+        alias="estimatedNetIncomeAvg",
+        validation_alias=AliasChoices("estimatedNetIncomeAvg", "netIncomeAvg"),
+        description="Average estimated net income",
     )
-    estimated_sga_expense_low: float = Field(
-        alias="estimatedSgaExpenseLow", description="Lowest estimated SG&A expense"
+    estimated_sga_expense_low: float | None = Field(
+        None,
+        alias="estimatedSgaExpenseLow",
+        validation_alias=AliasChoices("estimatedSgaExpenseLow", "sgaExpenseLow"),
+        description="Lowest estimated SG&A expense",
     )
-    estimated_sga_expense_high: float = Field(
-        alias="estimatedSgaExpenseHigh", description="Highest estimated SG&A expense"
+    estimated_sga_expense_high: float | None = Field(
+        None,
+        alias="estimatedSgaExpenseHigh",
+        validation_alias=AliasChoices("estimatedSgaExpenseHigh", "sgaExpenseHigh"),
+        description="Highest estimated SG&A expense",
     )
-    estimated_sga_expense_avg: float = Field(
-        alias="estimatedSgaExpenseAvg", description="Average estimated SG&A expense"
+    estimated_sga_expense_avg: float | None = Field(
+        None,
+        alias="estimatedSgaExpenseAvg",
+        validation_alias=AliasChoices("estimatedSgaExpenseAvg", "sgaExpenseAvg"),
+        description="Average estimated SG&A expense",
     )
-    estimated_eps_low: float = Field(
-        alias="estimatedEpsLow", description="Lowest estimated EPS"
+    estimated_eps_low: float | None = Field(
+        None,
+        alias="estimatedEpsLow",
+        validation_alias=AliasChoices("estimatedEpsLow", "epsLow"),
+        description="Lowest estimated EPS",
     )
-    estimated_eps_high: float = Field(
-        alias="estimatedEpsHigh", description="Highest estimated EPS"
+    estimated_eps_high: float | None = Field(
+        None,
+        alias="estimatedEpsHigh",
+        validation_alias=AliasChoices("estimatedEpsHigh", "epsHigh"),
+        description="Highest estimated EPS",
     )
-    estimated_eps_avg: float = Field(
-        alias="estimatedEpsAvg", description="Average estimated EPS"
+    estimated_eps_avg: float | None = Field(
+        None,
+        alias="estimatedEpsAvg",
+        validation_alias=AliasChoices("estimatedEpsAvg", "epsAvg"),
+        description="Average estimated EPS",
     )
-    number_analyst_estimated_revenue: int = Field(
+    number_analyst_estimated_revenue: int | None = Field(
+        None,
         alias="numberAnalystEstimatedRevenue",
+        validation_alias=AliasChoices(
+            "numberAnalystEstimatedRevenue", "numAnalystsRevenue"
+        ),
         description="Number of analysts estimating revenue",
     )
-    number_analysts_estimated_eps: int = Field(
+    number_analysts_estimated_eps: int | None = Field(
+        None,
         alias="numberAnalystsEstimatedEps",
+        validation_alias=AliasChoices("numberAnalystsEstimatedEps", "numAnalystsEps"),
         description="Number of analysts estimating EPS",
     )
 
@@ -597,8 +793,21 @@ class ExecutiveCompensationBenchmark(BaseModel):
 
     year: int = Field(description="Year of compensation data")
     industryTitle: str = Field(description="Industry title")
-    marketCapitalization: str = Field(description="Market capitalization range")
-    averageTotalCompensation: float = Field(description="Average total compensation")
-    averageCashCompensation: float = Field(description="Average cash compensation")
-    averageEquityCompensation: float = Field(description="Average equity compensation")
-    averageOtherCompensation: float = Field(description="Average other compensation")
+    marketCapitalization: str | None = Field(
+        None, description="Market capitalization range"
+    )
+    averageCompensation: float | None = Field(
+        None, description="Average compensation for the industry"
+    )
+    averageTotalCompensation: float | None = Field(
+        None, description="Average total compensation"
+    )
+    averageCashCompensation: float | None = Field(
+        None, description="Average cash compensation"
+    )
+    averageEquityCompensation: float | None = Field(
+        None, description="Average equity compensation"
+    )
+    averageOtherCompensation: float | None = Field(
+        None, description="Average other compensation"
+    )

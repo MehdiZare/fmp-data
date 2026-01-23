@@ -196,8 +196,9 @@ def mock_response():
     def _create_response(status_code=200, json_data=None, raise_error=False):
         response = Mock()
         response.status_code = status_code
-        response.json.return_value = json_data or {}
-        response.text = json.dumps(json_data) if json_data else ""
+        payload = {} if json_data is None else json_data
+        response.json.return_value = payload
+        response.text = json.dumps(payload) if payload is not None else ""
 
         if raise_error:
             response.raise_for_status.side_effect = httpx.HTTPStatusError(

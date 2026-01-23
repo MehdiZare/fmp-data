@@ -11,6 +11,7 @@ from fmp_data.fundamental.models import (
     HistoricalRating,
     IncomeStatement,
     KeyMetrics,
+    LatestFinancialStatement,
     LeveredDCF,
     OwnerEarnings,
 )
@@ -20,6 +21,8 @@ from fmp_data.fundamental.schema import (
     FinancialRatiosArgs,
     IncomeStatementArgs,
     KeyMetricsArgs,
+    LatestFinancialStatementsArgs,
+    OwnerEarningsArgs,
     SimpleSymbolArgs,
 )
 from fmp_data.models import (
@@ -53,9 +56,9 @@ INCOME_STATEMENT: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=False,
-            description="Period (annual/quarter)",
+            description="Period (annual, quarter)",
             default="annual",
-            valid_values=["annual", "quarter"],
+            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
         ),
         EndpointParam(
             name="limit",
@@ -101,9 +104,9 @@ BALANCE_SHEET: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=False,
-            description="Period (annual/quarter)",
+            description="Period (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter"],
+            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
         ),
         EndpointParam(
             name="limit",
@@ -148,9 +151,9 @@ CASH_FLOW: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=False,
-            description="Period (annual/quarter)",
+            description="Period (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter"],
+            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
         ),
         EndpointParam(
             name="limit",
@@ -169,6 +172,40 @@ CASH_FLOW: Endpoint = Endpoint(
         "What's Tesla's free cash flow?",
         "Get Google's capital expenditures",
         "Show Amazon's financing activities",
+    ],
+)
+
+LATEST_FINANCIAL_STATEMENTS: Endpoint = Endpoint(
+    name="latest_financial_statements",
+    path="latest-financial-statements",
+    version=APIVersion.STABLE,
+    description=(
+        "Get the latest financial statement publication metadata across symbols, "
+        "including date and reporting period."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Page number (max 100)",
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Records per page (max 250)",
+        ),
+    ],
+    optional_params=[],
+    response_model=LatestFinancialStatement,
+    arg_model=LatestFinancialStatementsArgs,
+    example_queries=[
+        "Get latest financial statements page 0",
+        "Show the newest financial statement entries",
+        "List latest financial statements with limit 100",
     ],
 )
 
@@ -195,9 +232,9 @@ KEY_METRICS: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=False,
-            description="Period (annual/quarter)",
+            description="Period (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter"],
+            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
         ),
         EndpointParam(
             name="limit",
@@ -242,9 +279,9 @@ FINANCIAL_RATIOS: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=False,
-            description="Period (annual/quarter)",
+            description="Period (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter"],
+            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
         ),
         EndpointParam(
             name="limit",
@@ -285,9 +322,9 @@ FULL_FINANCIAL_STATEMENT: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=False,
-            description="Period (annual/quarter)",
+            description="Period (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter"],
+            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
         ),
         EndpointParam(
             name="limit",
@@ -336,9 +373,17 @@ OWNER_EARNINGS: Endpoint = Endpoint(
             description="Stock symbol (ticker)",
         )
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Number of results",
+        ),
+    ],
     response_model=OwnerEarnings,
-    arg_model=SimpleSymbolArgs,
+    arg_model=OwnerEarningsArgs,
     example_queries=[
         "Calculate AAPL owner earnings",
         "Get Microsoft's owner earnings",

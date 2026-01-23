@@ -75,20 +75,19 @@ Run all checks before pushing:
 
 ```bash
 # Formatting
-poetry run black .
-poetry run isort .
+uv run ruff format fmp_data tests
 
 # Linting
-poetry run ruff check .
+uv run ruff check fmp_data tests
 
 # Type checking
-poetry run mypy fmp_data
+uv run mypy fmp_data
 
-# Tests
-poetry run pytest --cov=fmp_data
+# Tests (coverage runs in a dedicated CI job)
+uv run pytest
 
 # Documentation
-poetry run mkdocs build --strict
+uv run mkdocs build --strict
 ```
 
 ### 4. Pull Request Process
@@ -234,23 +233,23 @@ We use automated semantic versioning based on PR labels:
 
 ### Pre-commit Hooks
 
-- **Code Formatting**: Black and isort
+- **Code Formatting**: Ruff format
 - **Linting**: Ruff
 - **Type Checking**: mypy
-- **Security**: Safety checks
+- **Security**: bandit and pip-audit (as configured)
 
 ### Development Dependencies
 
 ```bash
 # Install all development dependencies
-poetry install --with dev,docs,test
+uv sync --group dev --group docs --group langchain --group mcp
 
 # Update dependencies
-poetry update
+uv sync --upgrade
 
 # Add new dependency
-poetry add package-name
-poetry add --group dev package-name  # Development only
+uv add package-name
+uv add --group dev package-name  # Development only
 ```
 
 ## Troubleshooting Common Issues
@@ -259,11 +258,11 @@ poetry add --group dev package-name  # Development only
 
 ```bash
 # Reset environment
-poetry env remove python
-poetry install
+rm -rf .venv
+uv sync --group dev --group docs --group langchain --group mcp
 
 # Clear cache
-poetry cache clear --all .
+uv cache clean
 ```
 
 ### Git Issues
@@ -284,13 +283,13 @@ git reset --hard origin/main
 
 ```bash
 # Run specific tests
-poetry run pytest tests/test_client.py -v
+uv run pytest tests/unit/test_client.py -v
 
 # Debug failing tests
-poetry run pytest tests/test_client.py::test_function_name -s
+uv run pytest tests/unit/test_client.py::test_function_name -s
 
 # Update test snapshots
-poetry run pytest --snapshot-update
+uv run pytest --snapshot-update
 ```
 
 ## Getting Help

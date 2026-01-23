@@ -136,15 +136,18 @@ smoke: ## Run smoke tests (quick validation)
 
 docs: ## Build documentation
 	@echo "$(BOLD)$(BLUE)📚 Building documentation...$(RESET)"
-	uv run nox -s docs
+	uv sync --group docs
+	uv run mkdocs build --strict
 
 docs-serve: ## Serve documentation locally at http://localhost:8000
 	@echo "$(BOLD)$(BLUE)🌐 Serving documentation at http://localhost:8000$(RESET)"
-	uv run nox -s docs_serve
+	uv sync --group docs
+	uv run mkdocs serve
 
 docs-check: ## Check documentation for issues
 	@echo "$(BOLD)$(BLUE)📚 Checking documentation...$(RESET)"
-	uv run nox -s docs_check
+	uv sync --group docs
+	uv run mkdocs build --strict
 
 # ══════════════════════════════════════════════════════════════════════════
 # Dependency and Environment Management

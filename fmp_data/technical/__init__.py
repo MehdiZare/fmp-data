@@ -1,4 +1,5 @@
 # fmp_data/technical/__init__.py
+from fmp_data.technical.async_client import AsyncTechnicalClient
 from fmp_data.technical.client import TechnicalClient
 from fmp_data.technical.models import (
     ADXIndicator,
@@ -15,6 +16,7 @@ from fmp_data.technical.models import (
 
 __all__ = [
     "ADXIndicator",
+    "AsyncTechnicalClient",
     "DEMAIndicator",
     "EMAIndicator",
     "RSIIndicator",

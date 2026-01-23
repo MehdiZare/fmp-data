@@ -1,9 +1,10 @@
 # tests/unit/test_client.py
 import os
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
 from pydantic import ValidationError as PydanticValidationError
+from pydantic_core import InitErrorDetails
 import pytest
 
 from fmp_data.client import FMPDataClient
@@ -77,9 +78,12 @@ class TestFMPDataClientInitialization:
     @patch("fmp_data.client.ClientConfig")
     def test_client_initialization_pydantic_validation_error(self, mock_config):
         """Test client initialization handles pydantic validation errors"""
+        errors: list[InitErrorDetails] = [
+            InitErrorDetails(type="missing", loc=("api_key",), input=None)
+        ]
         mock_config.side_effect = PydanticValidationError.from_exception_data(
             "Invalid config",
-            [{"type": "missing", "loc": ("api_key",), "msg": "Field required"}],
+            errors,
         )
 
         with pytest.raises(ConfigError, match="Invalid client configuration"):
@@ -109,12 +113,20 @@ class TestFMPDataClientInitialization:
         assert hasattr(client, "_investment")
         assert hasattr(client, "_alternative")
         assert hasattr(client, "_economics")
+        assert hasattr(client, "_batch")
+        assert hasattr(client, "_transcripts")
+        assert hasattr(client, "_sec")
+        assert hasattr(client, "_index")
 
         # Check initial state
         assert client._initialized is True
         assert client._logger is not None
         assert client._company is None  # Lazy loaded
         assert client._market is None  # Lazy loaded
+        assert client._batch is None  # Lazy loaded
+        assert client._transcripts is None  # Lazy loaded
+        assert client._sec is None  # Lazy loaded
+        assert client._index is None  # Lazy loaded
 
         client.close()
 
@@ -234,6 +246,29 @@ class TestFMPDataClientContextManager:
         client._initialized = True
         client.close()
 
+    @pytest.mark.asyncio
+    async def test_async_context_manager_usage(self):
+        """Test async context manager on sync client."""
+        client = FMPDataClient(api_key="test_key")
+
+        async with client as async_client:
+            assert async_client is client
+            assert not client.client.is_closed
+
+        assert client.client.is_closed
+
+    @pytest.mark.asyncio
+    async def test_async_context_manager_not_initialized_error(self):
+        """Test async context manager when client not properly initialized."""
+        client = FMPDataClient(api_key="test_key")
+        client._initialized = False
+
+        with pytest.raises(RuntimeError, match="Client not properly initialized"):
+            await client.__aenter__()
+
+        client._initialized = True
+        client.close()
+
 
 class TestFMPDataClientProperties:
     """Test client property accessors"""
@@ -326,6 +361,38 @@ class TestFMPDataClientProperties:
         assert economics is not None
         assert client._economics is economics
 
+    def test_batch_property(self, client):
+        """Test batch property lazy loading"""
+        assert client._batch is None
+
+        batch = client.batch
+        assert batch is not None
+        assert client._batch is batch
+
+    def test_transcripts_property(self, client):
+        """Test transcripts property lazy loading"""
+        assert client._transcripts is None
+
+        transcripts = client.transcripts
+        assert transcripts is not None
+        assert client._transcripts is transcripts
+
+    def test_sec_property(self, client):
+        """Test sec property lazy loading"""
+        assert client._sec is None
+
+        sec = client.sec
+        assert sec is not None
+        assert client._sec is sec
+
+    def test_index_property(self, client):
+        """Test index property lazy loading"""
+        assert client._index is None
+
+        index = client.index
+        assert index is not None
+        assert client._index is index
+
     def test_all_properties_when_not_initialized(self):
         """Test all properties raise error when client not initialized"""
         client = FMPDataClient(api_key="test_key")
@@ -341,6 +408,10 @@ class TestFMPDataClientProperties:
             "investment",
             "alternative",
             "economics",
+            "batch",
+            "transcripts",
+            "sec",
+            "index",
         ]
 
         for prop_name in properties:
@@ -484,6 +555,36 @@ class TestFMPDataClientCleanup:
         # Should not raise any exceptions
         client.close()
 
+    @pytest.mark.asyncio
+    async def test_aclose_closes_async_client(self):
+        """Test aclose handles async clients and sync cleanup."""
+        client = FMPDataClient(api_key="test_key")
+        async_client = AsyncMock()
+        async_client.is_closed = False
+        client._async_client = async_client
+        client.client = Mock()
+        logger_mock = Mock()
+        client._logger = logger_mock
+
+        await client.aclose()
+
+        async_client.aclose.assert_awaited_once()
+        client.client.close.assert_called_once()
+        logger_mock.info.assert_called_once_with("FMP Data client closed")
+
+    @pytest.mark.asyncio
+    async def test_async_exit_logs_error(self):
+        """Test async exit logs errors."""
+        client = FMPDataClient(api_key="test_key")
+        client.client = Mock()
+        logger_mock = Mock()
+        client._logger = logger_mock
+        client.aclose = AsyncMock()
+
+        await client.__aexit__(ValueError, ValueError("boom"), None)
+
+        logger_mock.error.assert_called_once()
+
 
 class TestFMPDataClientEdgeCases:
     """Test edge cases and error scenarios"""
@@ -589,14 +690,19 @@ def test_retry_on_timeout(
     mock_request, fmp_client, mock_response, mock_company_profile
 ):
     """Test retry behavior on timeout"""
+    client = FMPDataClient(
+        config=fmp_client.config.model_copy(update={"max_retries": 2})
+    )
     mock_request.side_effect = [
         httpx.TimeoutException("Connection timeout"),
         mock_response(status_code=200, json_data=[mock_company_profile]),
     ]
 
-    result = fmp_client.company.get_profile("AAPL")
+    with patch("tenacity.nap.sleep", return_value=None):
+        result = client.company.get_profile("AAPL")
     assert result.symbol == "AAPL"
     assert mock_request.call_count == 2
+    client.close()
 
 
 @patch("httpx.Client.request")
