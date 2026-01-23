@@ -89,12 +89,12 @@ class FMPDataClient(BaseClient):
             super().__init__(self._config)
             self._initialized = True
 
-        except Exception as e:
+        except Exception:
             logger = getattr(self, "_logger", None)
             if logger is None:
                 self._logger = FMPLogger().get_logger(__name__)
                 logger = self._logger
-            logger.error(f"Failed to initialize client: {e!s}")
+            logger.exception("Failed to initialize client")
             raise
 
     @classmethod
@@ -155,11 +155,11 @@ class FMPDataClient(BaseClient):
                 logger = getattr(self, "_logger", None)
                 if logger is not None and not self._has_closed_log_handlers(logger):
                     logger.info("FMP Data client closed")
-        except Exception as e:
+        except Exception:
             # Log if possible, but don't raise
             logger = getattr(self, "_logger", None)
             if logger is not None and not self._has_closed_log_handlers(logger):
-                logger.error(f"Error during cleanup: {e!s}")
+                logger.exception("Error during cleanup")
 
     async def aclose(self) -> None:
         """Clean up all resources (both async and sync clients).
@@ -180,11 +180,11 @@ class FMPDataClient(BaseClient):
                 logger = getattr(self, "_logger", None)
                 if logger is not None and not self._has_closed_log_handlers(logger):
                     logger.info("FMP Data client closed")
-        except Exception as e:
+        except Exception:
             # Log if possible, but don't raise
             logger = getattr(self, "_logger", None)
             if logger is not None and not self._has_closed_log_handlers(logger):
-                logger.error(f"Error during async cleanup: {e!s}")
+                logger.exception("Error during async cleanup")
 
     @staticmethod
     def _has_closed_log_handlers(logger: logging.Logger) -> bool:

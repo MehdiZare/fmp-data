@@ -108,12 +108,12 @@ class AsyncFMPDataClient(BaseClient):
             super().__init__(self._config)
             self._initialized = True
 
-        except Exception as e:
+        except Exception:
             logger = getattr(self, "_logger", None)
             if logger is None:
                 self._logger = FMPLogger().get_logger(__name__)
                 logger = self._logger
-            logger.error(f"Failed to initialize async client: {e!s}")
+            logger.exception("Failed to initialize async client")
             raise
 
     @classmethod
@@ -169,10 +169,10 @@ class AsyncFMPDataClient(BaseClient):
                 logger = getattr(self, "_logger", None)
                 if logger is not None:
                     logger.info("Async FMP Data client closed")
-        except Exception as e:
+        except Exception:
             logger = getattr(self, "_logger", None)
             if logger is not None:
-                logger.error(f"Error during async cleanup: {e!s}")
+                logger.exception("Error during async cleanup")
 
     @property
     def logger(self) -> logging.Logger:

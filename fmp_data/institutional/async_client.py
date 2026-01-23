@@ -193,7 +193,20 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         return await self.client.request_async(CIK_MAPPER, page=page, limit=limit)
 
     async def search_cik_by_name(self, name: str, page: int = 0) -> list[CIKMapping]:
-        """Search CIK mappings by name"""
+        """
+        Search CIK mappings by name using client-side filtering.
+
+        Note: The FMP API does not support server-side name filtering for CIK lookups.
+        This method fetches a large batch of records (10,000) and filters them locally,
+        which may impact performance for frequent searches.
+
+        Args:
+            name: Company name to search for (case-insensitive substring match)
+            page: Page number for pagination (default: 0)
+
+        Returns:
+            List of CIK mappings matching the name
+        """
         results = await self.client.request_async(CIK_MAPPER, page=page, limit=10000)
         if not isinstance(results, list):
             results = [results]
