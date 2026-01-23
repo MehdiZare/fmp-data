@@ -911,6 +911,7 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 
 - GitHub Issues: [Create an issue](https://github.com/MehdiZare/fmp-data/issues)
 - Documentation: [Read the docs](./docs)
+- Connect with the author: [LinkedIn](https://www.linkedin.com/in/mehdizare/)
 
 ## Examples
 

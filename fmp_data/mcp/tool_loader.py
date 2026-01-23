@@ -7,7 +7,14 @@ import inspect
 import os
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+try:
+    from mcp.server.fastmcp import FastMCP
+except ImportError as e:
+    msg = (
+        "MCP dependencies are not installed. "
+        "Install them with: pip install fmp-data[mcp]"
+    )
+    raise ImportError(msg) from e
 
 from fmp_data.client import FMPDataClient
 
