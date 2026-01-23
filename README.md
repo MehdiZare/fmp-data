@@ -9,7 +9,7 @@
 
 A Python client for the Financial Modeling Prep (FMP) API with comprehensive logging, rate limiting, and error handling. Built with UV for fast, reliable dependency management and modern Python development practices.
 
-LLM Guide: [LLM.md](./LLM.md)
+For AI/LLM integration guidance, see the [LLM Guide](LLM.md).
 
 ## Why UV?
 
@@ -932,4 +932,4 @@ with FMPDataClient.from_env() as client:
 
 ## Release Notes
 
-See [CHANGELOG.md](./CHANGELOG.md) for a list of changes in each release.
+See [CHANGELOG.md](CHANGELOG.md) for a list of changes in each release.
