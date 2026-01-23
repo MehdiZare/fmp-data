@@ -111,7 +111,7 @@ class SensitiveDataFilter(logging.Filter):
                 if original_args:
                     formatted_msg = str(original_msg) % original_args
                 else:
-                    str(original_msg)
+                    formatted_msg = str(original_msg)
                 masked_msg = self._mask_patterns_in_string(formatted_msg)
 
                 # Replace with masked message and no args to avoid formatting issues
