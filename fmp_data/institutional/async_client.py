@@ -309,8 +309,8 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         params: dict[str, str | int] = {"cik": cik, "page": page}
         if report_date:
             year, quarter = self._date_to_year_quarter(report_date)
-            params["year"] = str(year)
-            params["quarter"] = str(quarter)
+            params["year"] = year
+            params["quarter"] = quarter
         return await self.client.request_async(HOLDER_PERFORMANCE_SUMMARY, **params)
 
     async def get_holder_industry_breakdown(
@@ -318,10 +318,10 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
     ) -> list[HolderIndustryBreakdown]:
         """Get holders industry breakdown for a report period end date"""
         year, quarter = self._date_to_year_quarter(report_date)
-        params: dict[str, str] = {
+        params: dict[str, str | int] = {
             "cik": cik,
-            "year": str(year),
-            "quarter": str(quarter),
+            "year": year,
+            "quarter": quarter,
         }
         return await self.client.request_async(HOLDER_INDUSTRY_BREAKDOWN, **params)
 
@@ -330,10 +330,10 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
     ) -> list[SymbolPositionsSummary]:
         """Get positions summary by symbol for a report period end date"""
         year, quarter = self._date_to_year_quarter(report_date)
-        params: dict[str, str] = {
+        params: dict[str, str | int] = {
             "symbol": symbol,
-            "year": str(year),
-            "quarter": str(quarter),
+            "year": year,
+            "quarter": quarter,
         }
         return await self.client.request_async(SYMBOL_POSITIONS_SUMMARY, **params)
 
@@ -342,5 +342,5 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
     ) -> list[IndustryPerformanceSummary]:
         """Get industry performance summary for a report period end date"""
         year, quarter = self._date_to_year_quarter(report_date)
-        params: dict[str, str] = {"year": str(year), "quarter": str(quarter)}
+        params: dict[str, str | int] = {"year": year, "quarter": quarter}
         return await self.client.request_async(INDUSTRY_PERFORMANCE_SUMMARY, **params)

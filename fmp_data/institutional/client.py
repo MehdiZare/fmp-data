@@ -295,8 +295,8 @@ class InstitutionalClient(EndpointGroup):
         params: dict[str, str | int] = {"cik": cik, "page": page}
         if report_date:
             year, quarter = self._date_to_year_quarter(report_date)
-            params["year"] = str(year)
-            params["quarter"] = str(quarter)
+            params["year"] = year
+            params["quarter"] = quarter
         return self.client.request(HOLDER_PERFORMANCE_SUMMARY, **params)
 
     def get_holder_industry_breakdown(
@@ -304,10 +304,10 @@ class InstitutionalClient(EndpointGroup):
     ) -> list[HolderIndustryBreakdown]:
         """Get holders industry breakdown for a report period end date"""
         year, quarter = self._date_to_year_quarter(report_date)
-        params: dict[str, str] = {
+        params: dict[str, str | int] = {
             "cik": cik,
-            "year": str(year),
-            "quarter": str(quarter),
+            "year": year,
+            "quarter": quarter,
         }
         return self.client.request(HOLDER_INDUSTRY_BREAKDOWN, **params)
 
@@ -316,10 +316,10 @@ class InstitutionalClient(EndpointGroup):
     ) -> list[SymbolPositionsSummary]:
         """Get positions summary by symbol for a report period end date"""
         year, quarter = self._date_to_year_quarter(report_date)
-        params: dict[str, str] = {
+        params: dict[str, str | int] = {
             "symbol": symbol,
-            "year": str(year),
-            "quarter": str(quarter),
+            "year": year,
+            "quarter": quarter,
         }
         return self.client.request(SYMBOL_POSITIONS_SUMMARY, **params)
 
@@ -328,5 +328,5 @@ class InstitutionalClient(EndpointGroup):
     ) -> list[IndustryPerformanceSummary]:
         """Get industry performance summary for a report period end date"""
         year, quarter = self._date_to_year_quarter(report_date)
-        params: dict[str, str] = {"year": str(year), "quarter": str(quarter)}
+        params: dict[str, str | int] = {"year": year, "quarter": quarter}
         return self.client.request(INDUSTRY_PERFORMANCE_SUMMARY, **params)

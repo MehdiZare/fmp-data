@@ -299,7 +299,7 @@ GENERAL_NEWS_ENDPOINT: Endpoint = Endpoint(
 )
 
 STOCK_NEWS_ENDPOINT: Endpoint = Endpoint(
-    name="stock-news",
+    name="stock_news",
     path="news/stock-latest",
     version=APIVersion.STABLE,
     description="Get a list of the latest stock news articles",
@@ -342,7 +342,7 @@ STOCK_NEWS_ENDPOINT: Endpoint = Endpoint(
 )
 
 STOCK_SYMBOL_NEWS_ENDPOINT: Endpoint = Endpoint(
-    name="stock-news-symbol",
+    name="stock_news_symbol",
     path="news/stock",
     version=APIVersion.STABLE,
     description="Get a list of the latest news for a specific stock",

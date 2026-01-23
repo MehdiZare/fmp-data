@@ -203,8 +203,8 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 | `general_news` | `/stable/news/general-latest` | Get a list of the latest general news articles |
 | `press_releases_by_symbol` | `/stable/news/press-releases` | Get a list of the latest press releases for a specific company |
 | `press_releases` | `/stable/news/press-releases-latest` | Get a list of the latest press releases |
-| `stock-news-symbol` | `/stable/news/stock` | Get a list of the latest news for a specific stock |
-| `stock-news` | `/stable/news/stock-latest` | Get a list of the latest stock news articles |
+| `stock_news_symbol` | `/stable/news/stock` | Get a list of the latest news for a specific stock |
+| `stock_news` | `/stable/news/stock-latest` | Get a list of the latest stock news articles |
 | `price_target_latest_news` | `/stable/price-target-latest-news` | Get latest price target news |
 | `price_target_news` | `/stable/price-target-news` | Get price target news |
 | `ratings_historical` | `/stable/ratings-historical` | Get historical analyst ratings |

@@ -1733,8 +1733,8 @@ class TestAsyncInstitutionalClient:
                 {
                     "cik": "0000320193",
                     "page": 1,
-                    "year": "2024",
-                    "quarter": "1",
+                    "year": 2024,
+                    "quarter": 1,
                 },
             ),
             (
@@ -1743,28 +1743,28 @@ class TestAsyncInstitutionalClient:
                 "HOLDER_INDUSTRY_BREAKDOWN",
                 {
                     "cik": "0000320193",
-                    "year": "2024",
-                    "quarter": "1",
+                    "year": 2024,
+                    "quarter": 1,
                 },
             ),
             (
                 "get_symbol_positions_summary",
                 {"symbol": "AAPL", "report_date": dt_date(2024, 3, 31)},
                 "SYMBOL_POSITIONS_SUMMARY",
-                {"symbol": "AAPL", "year": "2024", "quarter": "1"},
+                {"symbol": "AAPL", "year": 2024, "quarter": 1},
             ),
             (
                 "get_industry_performance_summary",
                 {"report_date": dt_date(2024, 3, 31)},
                 "INDUSTRY_PERFORMANCE_SUMMARY",
-                {"year": "2024", "quarter": "1"},
+                {"year": 2024, "quarter": 1},
             ),
         ],
     )
-    async def test_institutional_string_year_quarter_params(
+    async def test_institutional_integer_year_quarter_params(
         self, mock_client, method_name, kwargs, endpoint_name, expected_kwargs
     ):
-        """Test institutional endpoints using year/quarter strings."""
+        """Test institutional endpoints using year/quarter integers."""
         from fmp_data.institutional import endpoints as institutional_endpoints
         from fmp_data.institutional.async_client import AsyncInstitutionalClient
 
