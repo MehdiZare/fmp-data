@@ -6,9 +6,11 @@ Ensures examples run without errors (imports, syntax, basic runtime).
 import importlib.util
 from pathlib import Path
 import sys
+from types import ModuleType
 from unittest.mock import MagicMock, patch
 
 import pytest
+from pytest import CaptureFixture
 
 # Path to examples directory
 EXAMPLES_DIR = Path(__file__).parent.parent.parent / "examples"
@@ -36,7 +38,7 @@ class ModuleLoadError(Exception):
         self.file_path = file_path
 
 
-def create_mock_client():
+def create_mock_client() -> MagicMock:
     """Create a mock FMPDataClient with all necessary methods."""
     mock_client = MagicMock()
 
@@ -241,7 +243,7 @@ def create_mock_client():
     return mock_client
 
 
-def load_module_from_path(file_path: Path):
+def load_module_from_path(file_path: Path) -> ModuleType:
     """Load a Python module from file path."""
     spec = importlib.util.spec_from_file_location("test_module", file_path)
     if spec is None or spec.loader is None:
@@ -254,7 +256,9 @@ def load_module_from_path(file_path: Path):
 
 
 @pytest.mark.parametrize("example_file", EXAMPLE_FILES)
-def test_example_runs_without_error(example_file, capsys):
+def test_example_runs_without_error(
+    example_file: str, capsys: CaptureFixture[str]
+) -> None:
     """Test that each example can be imported and runs without errors."""
     example_path = EXAMPLES_DIR / example_file
 
@@ -276,18 +280,14 @@ def test_example_runs_without_error(example_file, capsys):
         mock_client_class.return_value.__exit__.return_value = None
 
         # Run the example
-        try:
-            # Run main function if it exists
-            main_func = getattr(module, "main", None)
-            if main_func and callable(main_func):
-                main_func()
+        # Run main function if it exists
+        main_func = getattr(module, "main", None)
+        if main_func and callable(main_func):
+            main_func()
 
-            # Capture output to ensure something was printed
-            captured = capsys.readouterr()
-            assert len(captured.out) > 0, f"Example {example_file} produced no output"
-
-        except Exception as e:
-            pytest.fail(f"Example {example_file} failed with error: {e}")
+        # Capture output to ensure something was printed
+        captured = capsys.readouterr()
+        assert captured.out, f"Example {example_file} produced no output"
 
 
 def test_all_examples_have_main_function() -> None:
