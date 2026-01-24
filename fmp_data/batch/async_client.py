@@ -314,8 +314,19 @@ class AsyncBatchClient(AsyncEndpointGroup):
     ) -> list[UpgradeDowngradeConsensus]:
         """Get bulk upgrades/downgrades consensus data"""
         raw = await self._request_csv(UPGRADES_DOWNGRADES_CONSENSUS_BULK)
+        # Filter for rows with symbols before parsing to models
         rows = [row for row in parse_csv_rows(raw) if row.get("symbol")]
-        return [UpgradeDowngradeConsensus.model_validate(row) for row in rows]
+        # Use parse_csv_models pattern for graceful error handling
+        results = []
+        for row in rows:
+            try:
+                results.append(UpgradeDowngradeConsensus.model_validate(row))
+            except Exception as e:
+                symbol = row.get("symbol", "unknown")
+                self.client.logger.warning(
+                    f"Failed to parse upgrade/downgrade row for {symbol}: {e}"
+                )
+        return results
 
     async def get_key_metrics_ttm_bulk(self) -> list[KeyMetricsTTM]:
         """Get bulk trailing twelve month key metrics"""

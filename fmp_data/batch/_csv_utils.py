@@ -117,6 +117,5 @@ def is_url_annotation(annotation: Any) -> bool:
     origin = get_origin(annotation)
     if origin is None:
         return annotation in {AnyHttpUrl, HttpUrl}
-    if origin is list:
-        return any(is_url_annotation(arg) for arg in get_args(annotation))
+    # For list or other generic types, check args recursively
     return any(is_url_annotation(arg) for arg in get_args(annotation))

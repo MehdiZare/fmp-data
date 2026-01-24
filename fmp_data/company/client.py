@@ -147,7 +147,7 @@ class CompanyClient(EndpointGroup):
     def get_company_logo_url(self, symbol: str) -> str:
         """Get the company logo URL"""
         if not symbol or not symbol.strip():
-            raise InvalidSymbolError("Symbol is required for company logo URL")
+            raise InvalidSymbolError()
         base_url = self.client.config.base_url.rstrip("/")
         return f"{base_url}/image-stock/{symbol}.png"
 

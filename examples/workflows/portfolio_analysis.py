@@ -4,9 +4,10 @@ Demonstrates how to analyze a portfolio of stocks using various endpoints.
 """
 
 from fmp_data import FMPDataClient
+from fmp_data.exceptions import FMPError
 
 
-def analyze_portfolio(client: FMPDataClient, portfolio: dict[str, float]) -> None:
+def analyze_portfolio(client: FMPDataClient, portfolio: list[str]) -> None:
     """Analyze a portfolio of stocks."""
     print("\n" + "=" * 80)
     print("PORTFOLIO ANALYSIS REPORT")
@@ -23,7 +24,7 @@ def analyze_portfolio(client: FMPDataClient, portfolio: dict[str, float]) -> Non
         try:
             profile = client.company.get_profile(quote.symbol)
             sector = profile.sector if profile else "N/A"
-        except Exception:
+        except FMPError:
             sector = "N/A"
 
         holding_info = {
@@ -71,7 +72,7 @@ def analyze_portfolio(client: FMPDataClient, portfolio: dict[str, float]) -> Non
                     else "Oversold" if current_rsi < 30 else "Neutral"
                 )
                 print(f"{symbol}: RSI = {current_rsi:.2f} ({signal})")
-        except Exception as e:
+        except FMPError as e:
             print(f"{symbol}: Technical data unavailable - {e}")
 
 

@@ -249,9 +249,9 @@ class TestMCPIntegration:
         try:
             app = create_app(tools=["company.profile"])
             assert app is not None
-            # Check if the app has tools registered
-            assert app._tool_manager is not None
-            assert len(app._tool_manager._tools) > 0
+            # Check if the app has tools registered using public API
+            tools = app.get_tools()
+            assert len(tools) > 0
         except Exception as e:
             pytest.fail(f"Failed to create MCP app with real client: {e}")
 

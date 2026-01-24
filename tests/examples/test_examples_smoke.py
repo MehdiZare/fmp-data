@@ -51,6 +51,7 @@ def create_mock_client() -> MagicMock:
         ceo="Tim Cook",
         website="https://www.apple.com",
         description="Apple Inc. designs, manufactures, and markets smartphones...",
+        mkt_cap=2500000000000.0,
     )
     mock_client.company.get_quote.return_value = MagicMock(
         price=150.0,
@@ -245,12 +246,14 @@ def create_mock_client() -> MagicMock:
 
 def load_module_from_path(file_path: Path) -> ModuleType:
     """Load a Python module from file path."""
-    spec = importlib.util.spec_from_file_location("test_module", file_path)
+    # Use unique module name to avoid collisions
+    module_name = f"test_example_{file_path.stem}_{id(file_path)}"
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
     if spec is None or spec.loader is None:
         raise ModuleLoadError(file_path)
 
     module = importlib.util.module_from_spec(spec)
-    sys.modules["test_module"] = module
+    sys.modules[module_name] = module
     spec.loader.exec_module(module)
     return module
 

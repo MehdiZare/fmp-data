@@ -5,16 +5,10 @@ from collections.abc import Callable
 import importlib
 import inspect
 import os
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from fmp_data.exceptions import DependencyError
-
-try:
+if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
-except ImportError as e:
-    raise DependencyError(
-        feature="MCP server", install_command="pip install fmp-data[mcp]"
-    ) from e
 
 from fmp_data.client import FMPDataClient
 

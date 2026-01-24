@@ -28,4 +28,4 @@ if __name__ == "__main__":
     app.run()
 
 # run it with this
-# FMP_API_KEY=my_api_key mcp dev examples/mcp_server.py
+# FMP_API_KEY=my_api_key mcp dev examples/mcp/server.py

@@ -2,6 +2,7 @@
 from datetime import date
 
 from fmp_data.base import EndpointGroup
+from fmp_data.exceptions import ValidationError
 from fmp_data.institutional.endpoints import (
     ASSET_ALLOCATION,
     BENEFICIAL_OWNERSHIP,
@@ -34,6 +35,7 @@ from fmp_data.institutional.models import (
     CIKMapping,
     FailToDeliver,
     Form13F,
+    Form13FDate,
     HolderIndustryBreakdown,
     HolderPerformanceSummary,
     IndustryPerformanceSummary,
@@ -93,7 +95,7 @@ class InstitutionalClient(EndpointGroup):
             return result
         return [result]
 
-    def get_form_13f_dates(self, cik: str) -> list[Form13F]:
+    def get_form_13f_dates(self, cik: str) -> list[Form13FDate]:
         """
         Get Form 13F filing dates
 
@@ -101,7 +103,8 @@ class InstitutionalClient(EndpointGroup):
             cik: Central Index Key (CIK)
 
         Returns:
-            List of Form13F objects with filing dates. Empty list if no records found.
+            List of Form13FDate objects with filing dates.
+            Empty list if no records found.
         """
         try:
             result = self.client.request(FORM_13F_DATES, cik=cik)
@@ -197,10 +200,13 @@ class InstitutionalClient(EndpointGroup):
         Returns:
             List of CIK mappings matching the name
         """
+        name_upper = name.strip().upper()
+        if not name_upper:
+            raise ValidationError("Name must be non-empty for CIK search")
+
         results = self.client.request(CIK_MAPPER, page=page, limit=10000)
         if not isinstance(results, list):
             results = [results]
-        name_upper = name.strip().upper()
         return [
             item
             for item in results

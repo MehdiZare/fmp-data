@@ -19,7 +19,10 @@ def main() -> None:
         print(f"Sector: {profile.sector}")
         print(f"CEO: {profile.ceo}")
         print(f"Website: {profile.website}")
-        print(f"Description: {profile.description[:200]}...")
+        description = profile.description or ""
+        print(
+            f"Description: {description[:200]}{'...' if len(description) > 200 else ''}"
+        )
 
         # Get company executives
         print(f"\n\n=== {symbol} Executive Team ===\n")
