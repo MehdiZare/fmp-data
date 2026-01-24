@@ -33,7 +33,7 @@ from fmp_data.company.models import (
     UpgradeDowngrade,
     UpgradeDowngradeConsensus,
 )
-from fmp_data.exceptions import FMPError
+from fmp_data.exceptions import FMPError, InvalidSymbolError
 from fmp_data.fundamental.models import (
     AsReportedBalanceSheet,
     AsReportedCashFlowStatement,
@@ -251,7 +251,7 @@ class TestCompanyEndpoints(BaseTestCase):
         assert "api" not in url
 
         # Test error case
-        with pytest.raises(ValueError):
+        with pytest.raises(InvalidSymbolError):
             fmp_client.company.get_company_logo_url("")
 
     def test_rate_limiting(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):
