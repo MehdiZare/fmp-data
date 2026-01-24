@@ -943,7 +943,7 @@ COMPANY_PEERS: Endpoint = Endpoint(
     description="Retrieves a list of peers of a company.",
 )
 
-PROFILE_CIK: Endpoint = Endpoint(
+PROFILE_CIK: Endpoint[CompanyProfile] = Endpoint(
     name="profile_cik",
     path="profile-cik",
     version=APIVersion.STABLE,

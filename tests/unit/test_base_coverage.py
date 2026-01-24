@@ -1,7 +1,7 @@
 """Additional tests for base.py to improve coverage"""
 
-from unittest.mock import Mock, patch
 from typing import cast
+from unittest.mock import Mock, patch
 
 import pytest
 from tenacity import RetryCallState

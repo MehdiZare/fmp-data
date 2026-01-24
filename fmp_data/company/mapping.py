@@ -22,6 +22,7 @@ from fmp_data.company.endpoints import (
     PRICE_TARGET_SUMMARY,
     PRODUCT_REVENUE_SEGMENTATION,
     PROFILE,
+    PROFILE_CIK,
     QUOTE,
     SHARE_FLOAT,
     SIMPLE_QUOTE,
@@ -31,6 +32,7 @@ from fmp_data.company.endpoints import (
     UPGRADES_DOWNGRADES_CONSENSUS,
 )
 from fmp_data.company.hints import (
+    CIK_HINT,
     FLOAT_RESPONSE_HINTS,
     INTERVAL_HINT,
     PROFILE_RESPONSE_HINTS,
@@ -61,6 +63,7 @@ COMPANY_ENDPOINT_MAP = {
     "get_historical_market_cap": HISTORICAL_MARKET_CAP,
     "get_share_float": SHARE_FLOAT,
     "get_profile": PROFILE,
+    "get_profile_cik": PROFILE_CIK,
     "get_core_information": CORE_INFORMATION,
     "get_executives": KEY_EXECUTIVES,
     "get_company_notes": COMPANY_NOTES,
@@ -105,6 +108,40 @@ COMPANY_ENDPOINTS_SEMANTICS = {
             "Company valuation",
             "Industry analysis",
             "Competitor comparison",
+        ],
+    ),
+    "profile_cik": EndpointSemantics(
+        client_name="company",
+        method_name="get_profile_cik",
+        natural_description=(
+            "Get detailed company profile information using CIK number, "
+            "including financial metrics, company description, sector, "
+            "industry, and contact information"
+        ),
+        example_queries=[
+            "Get company profile for CIK 0000320193",
+            "Show me company information for CIK 0001318605",
+            "What company has CIK 0001045810?",
+            "Get profile using CIK number",
+            "Look up company by SEC identifier",
+        ],
+        related_terms=[
+            "CIK lookup",
+            "SEC identifier",
+            "company profile by CIK",
+            "CIK number lookup",
+            "SEC CIK",
+            "central index key",
+        ],
+        category=SemanticCategory.COMPANY_INFO,
+        parameter_hints={"cik": CIK_HINT},
+        response_hints=PROFILE_RESPONSE_HINTS,
+        use_cases=[
+            "SEC filing research",
+            "Company lookup by CIK",
+            "Regulatory compliance",
+            "Cross-referencing SEC data",
+            "Company identification",
         ],
     ),
     "core_information": EndpointSemantics(

@@ -57,6 +57,7 @@ from fmp_data.company.endpoints import (
     PRICE_TARGET_SUMMARY,
     PRODUCT_REVENUE_SEGMENTATION,
     PROFILE,
+    PROFILE_CIK,
     QUOTE,
     SHARE_FLOAT,
     SIMPLE_QUOTE,
@@ -139,6 +140,14 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         profile = self._unwrap_single(result, CompanyProfile, allow_none=True)
         if profile is None:
             raise FMPNotFound(symbol)
+        return profile
+
+    async def get_profile_cik(self, cik: str) -> CompanyProfile:
+        """Get company profile by CIK number"""
+        result = await self.client.request_async(PROFILE_CIK, cik=cik)
+        profile = self._unwrap_single(result, CompanyProfile, allow_none=True)
+        if profile is None:
+            raise FMPNotFound(cik)
         return profile
 
     async def get_core_information(self, symbol: str) -> CompanyCoreInformation | None:

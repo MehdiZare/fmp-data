@@ -8,6 +8,17 @@ STRUCTURE_HINT = ParameterHint(
     context_clues=["structure", "format", "organize", "arrangement"],
 )
 
+CIK_HINT = ParameterHint(
+    natural_names=["CIK", "central index key", "SEC identifier"],
+    extraction_patterns=[
+        r"\b\d{10}\b",  # 10-digit CIK
+        r"\b0{6}\d{4}\b",  # CIK with leading zeros
+        r"CIK\s*:?\s*(\d{10})",  # "CIK: 0000320193" or "CIK 0000320193"
+    ],
+    examples=["0000320193", "0001318605", "0001045810"],
+    context_clues=["CIK", "central index key", "SEC identifier", "CIK number"],
+)
+
 # Common response field hints
 PROFILE_RESPONSE_HINTS = {
     "price": ResponseFieldInfo(

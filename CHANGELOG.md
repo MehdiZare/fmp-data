@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+- **New Company Endpoint** - Added `get_profile_cik()` method to retrieve company profile using CIK (Central Index Key) number
+  - Available in both sync (`CompanyClient`) and async (`AsyncCompanyClient`) clients
+  - Endpoint: `/stable/profile-cik`
+  - MCP semantics key: `company.profile_cik`
+  - Useful for SEC filing research and cross-referencing regulatory data
+
 ## [2.1.0] - 2026-01-23
 
 [Compare changes](https://github.com/MehdiZare/fmp-data/compare/v2.0.0...v2.1.0)

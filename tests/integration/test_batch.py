@@ -1,4 +1,6 @@
 # tests/integration/test_batch.py
+from typing import ClassVar
+
 import pytest
 
 from fmp_data import FMPDataClient
@@ -11,8 +13,8 @@ from fmp_data.batch.models import (
 )
 from fmp_data.company.models import CompanyProfile
 from fmp_data.fundamental.models import (
-    CompanyRating,
     DCF,
+    CompanyRating,
     FinancialRatiosTTM,
     FinancialScore,
 )
@@ -22,7 +24,7 @@ from tests.integration.base import BaseTestCase
 class TestBatchClientEndpoints(BaseTestCase):
     """Integration tests for BatchClient endpoints using VCR"""
 
-    SYMBOLS = ["AAPL", "MSFT"]
+    SYMBOLS: ClassVar[list[str]] = ["AAPL", "MSFT"]
 
     @pytest.mark.parametrize(
         "method_name,cassette,expected_type",

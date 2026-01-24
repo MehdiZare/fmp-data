@@ -1,6 +1,10 @@
 # tests/integration/test_transcripts.py
 from fmp_data import FMPDataClient
-from fmp_data.transcripts.models import EarningsTranscript, TranscriptDate, TranscriptSymbol
+from fmp_data.transcripts.models import (
+    EarningsTranscript,
+    TranscriptDate,
+    TranscriptSymbol,
+)
 from tests.integration.base import BaseTestCase
 
 
@@ -40,7 +44,9 @@ class TestTranscriptsClientEndpoints(BaseTestCase):
     def test_get_available_symbols(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting available transcript symbols"""
         with vcr_instance.use_cassette("transcripts/available_symbols.yaml"):
-            results = self._handle_rate_limit(fmp_client.transcripts.get_available_symbols)
+            results = self._handle_rate_limit(
+                fmp_client.transcripts.get_available_symbols
+            )
             assert isinstance(results, list)
             if results:
                 assert isinstance(results[0], TranscriptSymbol)

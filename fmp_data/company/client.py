@@ -51,6 +51,7 @@ from fmp_data.company.endpoints import (
     PRICE_TARGET_SUMMARY,
     PRODUCT_REVENUE_SEGMENTATION,
     PROFILE,
+    PROFILE_CIK,
     QUOTE,
     SHARE_FLOAT,
     SIMPLE_QUOTE,
@@ -125,6 +126,14 @@ class CompanyClient(EndpointGroup):
         profile = self._unwrap_single(result, CompanyProfile, allow_none=True)
         if profile is None:
             raise FMPError(f"Symbol {symbol} not found")
+        return profile
+
+    def get_profile_cik(self, cik: str) -> CompanyProfile:
+        """Get company profile by CIK number"""
+        result = self.client.request(PROFILE_CIK, cik=cik)
+        profile = self._unwrap_single(result, CompanyProfile, allow_none=True)
+        if profile is None:
+            raise FMPError(f"CIK {cik} not found")
         return profile
 
     def get_core_information(self, symbol: str) -> CompanyCoreInformation | None:

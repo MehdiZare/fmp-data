@@ -83,8 +83,7 @@ class TestAlternativeMarketsClientEndpoints(BaseTestCase):
             assert isinstance(intraday_prices, list)
             if intraday_prices:
                 assert all(
-                    isinstance(price, CryptoIntradayPrice)
-                    for price in intraday_prices
+                    isinstance(price, CryptoIntradayPrice) for price in intraday_prices
                 )
 
     def test_get_forex_list(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):

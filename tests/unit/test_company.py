@@ -238,6 +238,20 @@ class TestCompanyProfile:
         assert isinstance(profile, CompanyProfile)
         assert profile.symbol == "AAPL"
 
+    @patch("httpx.Client.request")
+    def test_get_company_profile_by_cik(
+        self, mock_request, fmp_client, mock_response, profile_data
+    ):
+        """Test getting company profile by CIK through client"""
+        # Set up the mock to return the actual response object
+        mock_client = fmp_client.client
+        mock_client.request.return_value = [CompanyProfile(**profile_data)]
+
+        profile = fmp_client.get_profile_cik("0000320193")
+        assert isinstance(profile, CompanyProfile)
+        assert profile.symbol == "AAPL"
+        assert profile.cik == "0000320193"
+
 
 class TestCompanyExecutive:
     """Tests for CompanyExecutive model and related client functionality"""
@@ -576,6 +590,25 @@ class TestCompanyClientAsync:
         assert isinstance(result, CompanyProfile)
         assert result.symbol == "AAPL"
         assert result.company_name == "Apple Inc."
+        mock_client.request_async.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_async_company_get_profile_cik(self, mock_client, profile_data):
+        """Test AsyncCompanyClient get_profile_cik method"""
+        from unittest.mock import AsyncMock
+
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        mock_client.request_async = AsyncMock(
+            return_value=[CompanyProfile(**profile_data)]
+        )
+
+        async_client = AsyncCompanyClient(mock_client)
+        result = await async_client.get_profile_cik("0000320193")
+
+        assert isinstance(result, CompanyProfile)
+        assert result.symbol == "AAPL"
+        assert result.cik == "0000320193"
         mock_client.request_async.assert_called_once()
 
     @pytest.mark.asyncio
