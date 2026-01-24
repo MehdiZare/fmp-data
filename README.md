@@ -632,18 +632,25 @@ client = FMPDataClient(config=config)
 
 ## Error Handling
 
+The library provides a comprehensive exception hierarchy for robust error handling:
+
 ```python
 from fmp_data import FMPDataClient
 from fmp_data.exceptions import (
-    FMPError,
-    RateLimitError,
-    AuthenticationError,
-    ValidationError,
-    ConfigError
+    FMPError,              # Base exception for all FMP errors
+    RateLimitError,        # API rate limit exceeded
+    AuthenticationError,   # Invalid or missing API key
+    ValidationError,       # Invalid request parameters
+    ConfigError,           # Configuration errors
+    InvalidSymbolError,    # Missing or blank required symbol
+    InvalidResponseTypeError,  # Unexpected API response type
+    DependencyError,       # Missing optional dependency
+    FMPNotFound,          # Symbol or resource not found
 )
+
 try:
     with FMPDataClient.from_env() as client:
-        profile = client.company.get_profile("INVALID")
+        profile = client.company.get_profile("AAPL")
 
 except RateLimitError as e:
     print(f"Rate limit exceeded. Wait {e.retry_after} seconds")
@@ -654,8 +661,18 @@ except AuthenticationError as e:
     print("Invalid API key or authentication failed")
     print(f"Status code: {e.status_code}")
 
+except InvalidSymbolError as e:
+    print(f"Symbol error: {e.message}")
+
 except ValidationError as e:
     print(f"Invalid parameters: {e.message}")
+
+except DependencyError as e:
+    print(f"Missing dependency: {e.feature}")
+    print(f"Install with: {e.install_command}")
+
+except FMPNotFound as e:
+    print(f"Not found: {e.message}")
 
 except ConfigError as e:
     print(f"Configuration error: {e.message}")

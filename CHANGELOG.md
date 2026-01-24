@@ -7,8 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [2.1.0] - 2026-01-23
+
+[Compare changes](https://github.com/MehdiZare/fmp-data/compare/v2.0.0...v2.1.0)
+
+### Added
+- **New Centralized Exception Classes** - Added 4 new exception types to improve error handling:
+  - `InvalidSymbolError(ValidationError)` - For missing or blank required symbols
+  - `InvalidResponseTypeError(FMPError)` - For unexpected API response types with detailed type information
+  - `DependencyError(ConfigError)` - For missing optional dependencies with installation instructions
+  - `FMPNotFound(FMPError)` - For symbol/resource not found errors
+- **Enhanced Error Messages** - All new exceptions provide clear, actionable error messages with context
+- **Comprehensive Test Coverage** - Added 15 new test methods for exception hierarchy and behavior
+
 ### Fixed
-- 429 retry handling now respects `retry_after` wait times to avoid premature retries.
+- **Exception Handling Consistency** (21 issues resolved):
+  - Centralized all local exception classes to `fmp_data/exceptions.py`
+  - Fixed overly broad exception handling in `AsyncInvestmentClient.get_etf_info()` to catch specific errors
+  - Added validation error handling in `AsyncBatchClient.get_dcf_bulk()` with proper row-level error logging
+  - Replaced generic `ValueError`/`TypeError` with specific exception types across company and batch clients
+  - Updated MCP modules to use `DependencyError` with installation instructions
+- **Security** - Fixed API key exposure in integration test logging by redacting sensitive URL params and headers
+- **Code Quality**:
+  - Added return type annotations (`-> None`) to all 11 example `main()` functions and test helper functions
+  - Fixed test lambda parameters to use underscore for unused arguments
+  - Created custom `ModuleLoadError` exception for test module loading failures
+  - Improved logger usage patterns across modules
+- **Documentation** - Fixed markdown formatting in API endpoint counts (changed `**N endpoints**` to `### N endpoints`)
+- **429 Retry Handling** - Now respects `retry_after` wait times to avoid premature retries
+
+### Changed
+- **Breaking**: Removed local exception classes from individual modules - all exceptions now centralized
+- **Improved Exception Hierarchy**: All custom exceptions properly inherit from `FMPError` base class
+- **Better Validation**: Async batch client now validates and logs individual row errors instead of failing entire requests
 
 ## [2.0.0] - 2026-01-19
 
