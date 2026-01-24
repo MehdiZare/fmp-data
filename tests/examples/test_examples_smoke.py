@@ -326,19 +326,16 @@ def test_all_examples_use_context_manager() -> None:
 
 def test_no_hardcoded_api_keys() -> None:
     """Ensure no examples have hardcoded API keys."""
-    dangerous_patterns = [
-        "api_key=",
-        "FMP_API_KEY =",
-    ]
+    import re
+
+    # Match api_key= followed by a quoted string that's not a placeholder
+    key_pattern = re.compile(
+        r'api_key\s*=\s*["\'](?!your_api_key_here|your_test_api_key)[^"\']+["\']'
+    )
 
     for example_file in EXAMPLE_FILES:
         example_path = EXAMPLES_DIR / example_file
         content = example_path.read_text()
 
-        # Check for dangerous patterns (excluding placeholder)
-        for pattern in dangerous_patterns:
-            if pattern in content:
-                # Allow placeholder strings
-                if "your_api_key_here" in content or "your_test_api_key" in content:
-                    continue
-                pytest.fail(f"Example {example_file} may contain hardcoded API key")
+        if key_pattern.search(content):
+            pytest.fail(f"Example {example_file} may contain hardcoded API key")

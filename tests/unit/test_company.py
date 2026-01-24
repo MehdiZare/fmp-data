@@ -254,16 +254,16 @@ class TestCompanyProfile:
 
     @patch("httpx.Client.request")
     def test_get_company_profile_by_cik_not_found(
-        self, mock_request, fmp_client, mock_response
+        self, _mock_request, fmp_client, mock_response
     ):
         """Test getting company profile by CIK when not found"""
-        from fmp_data.exceptions import FMPError
+        from fmp_data.exceptions import FMPNotFound
 
         # Set up the mock to return empty list
         mock_client = fmp_client.client
         mock_client.request.return_value = []
 
-        with pytest.raises(FMPError, match="CIK .* not found"):
+        with pytest.raises(FMPNotFound, match="9999999999"):
             fmp_client.get_profile_cik("9999999999")
 
 

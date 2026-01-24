@@ -27,8 +27,9 @@ env/
 venv/
 ENV/
 
-# Lock files
+# Lock files (not tracked - regenerated from pyproject.toml)
 # uv.lock (878KB) exceeds GitHub's 500KB warning - excluded to avoid noise
+# poetry.lock not used in CI/CD - excluded
 # Users generate locally via: uv sync
 # pyproject.toml contains version constraints for reproducibility
 uv.lock

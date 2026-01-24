@@ -90,7 +90,12 @@ from fmp_data.company.models import (
     UpgradeDowngrade,
     UpgradeDowngradeConsensus,
 )
-from fmp_data.exceptions import FMPError, InvalidResponseTypeError, InvalidSymbolError
+from fmp_data.exceptions import (
+    FMPError,
+    FMPNotFound,
+    InvalidResponseTypeError,
+    InvalidSymbolError,
+)
 from fmp_data.fundamental.models import (
     AsReportedBalanceSheet,
     AsReportedCashFlowStatement,
@@ -133,7 +138,7 @@ class CompanyClient(EndpointGroup):
         result = self.client.request(PROFILE_CIK, cik=cik)
         profile = self._unwrap_single(result, CompanyProfile, allow_none=True)
         if profile is None:
-            raise FMPError(f"CIK {cik} not found")
+            raise FMPNotFound(cik)
         return profile
 
     def get_core_information(self, symbol: str) -> CompanyCoreInformation | None:
