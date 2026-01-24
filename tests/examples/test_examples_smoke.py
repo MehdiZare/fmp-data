@@ -5,6 +5,7 @@ Ensures examples run without errors (imports, syntax, basic runtime).
 
 import importlib.util
 from pathlib import Path
+import re
 import sys
 from types import ModuleType
 from unittest.mock import MagicMock, patch
@@ -51,6 +52,7 @@ def create_mock_client() -> MagicMock:
         ceo="Tim Cook",
         website="https://www.apple.com",
         description="Apple Inc. designs, manufactures, and markets smartphones...",
+        mkt_cap=2500000000000.0,
     )
     mock_client.company.get_quote.return_value = MagicMock(
         price=150.0,
@@ -245,12 +247,14 @@ def create_mock_client() -> MagicMock:
 
 def load_module_from_path(file_path: Path) -> ModuleType:
     """Load a Python module from file path."""
-    spec = importlib.util.spec_from_file_location("test_module", file_path)
+    # Use unique module name to avoid collisions
+    module_name = f"test_example_{file_path.stem}_{id(file_path)}"
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
     if spec is None or spec.loader is None:
         raise ModuleLoadError(file_path)
 
     module = importlib.util.module_from_spec(spec)
-    sys.modules["test_module"] = module
+    sys.modules[module_name] = module
     spec.loader.exec_module(module)
     return module
 
@@ -323,19 +327,21 @@ def test_all_examples_use_context_manager() -> None:
 
 def test_no_hardcoded_api_keys() -> None:
     """Ensure no examples have hardcoded API keys."""
-    dangerous_patterns = [
-        "api_key=",
-        "FMP_API_KEY =",
+    # Match api_key= or FMP_API_KEY= followed by a quoted string
+    # that's not a placeholder
+    key_patterns = [
+        re.compile(
+            r'api_key\s*=\s*["\'](?!your_api_key_here|your_test_api_key)[^"\']+["\']'
+        ),
+        re.compile(
+            r'FMP_API_KEY\s*=\s*["\'](?!your_api_key_here|your_test_api_key)[^"\']+["\']'
+        ),
     ]
 
     for example_file in EXAMPLE_FILES:
         example_path = EXAMPLES_DIR / example_file
         content = example_path.read_text()
 
-        # Check for dangerous patterns (excluding placeholder)
-        for pattern in dangerous_patterns:
-            if pattern in content:
-                # Allow placeholder strings
-                if "your_api_key_here" in content or "your_test_api_key" in content:
-                    continue
+        for pattern in key_patterns:
+            if pattern.search(content):
                 pytest.fail(f"Example {example_file} may contain hardcoded API key")

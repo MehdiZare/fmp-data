@@ -214,7 +214,7 @@ def choose_configuration():
     return manifest_map.get(choice)
 
 
-def main() -> None:
+def main() -> int:
     """Main setup process."""
     print("=" * 60)
     print("🚀 FMP Data MCP Server Setup for Claude Desktop")

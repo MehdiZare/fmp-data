@@ -34,9 +34,7 @@ class TestAsyncRateLimiterLocking:
     """Tests for async rate limiter thread safety."""
 
     @pytest.mark.asyncio
-    async def test_async_lock_prevents_race_conditions(
-        self, quota_config
-    ):
+    async def test_async_lock_prevents_race_conditions(self, quota_config):
         """Test that async lock prevents race conditions in concurrent requests."""
         sync_limiter = FMPRateLimiter(quota_config)
         async_limiter = AsyncFMPRateLimiter(sync_limiter)

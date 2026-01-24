@@ -2,7 +2,7 @@
 """Tests for the batch module endpoints"""
 
 from datetime import date
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -572,3 +572,34 @@ class TestBatchClient:
         assert len(result) == 1
         assert isinstance(result[0], BatchMarketCap)
         assert result[0].market_cap == 2500000000000
+
+
+class TestAsyncBatchClient:
+    """Tests for async batch client validation error handling"""
+
+    @pytest.mark.asyncio
+    async def test_upgrades_downgrades_consensus_bulk_with_invalid_rows(self):
+        """Test async upgrades/downgrades consensus handles validation errors"""
+        from fmp_data.batch.async_client import AsyncBatchClient
+
+        # Create mock client
+        mock_client = Mock()
+        mock_client.logger = Mock()
+
+        # Mock CSV response with one invalid row (invalid number format)
+        csv_text = (
+            "symbol,strongBuy,buy,hold,sell,strongSell,consensus\n"
+            "INVALID,NOT_A_NUMBER,1,1,0,0,Buy\n"  # Invalid: strongBuy should be int
+            "AAPL,1,29,11,4,0,Buy\n"
+        )
+        # Async client expects bytes
+        mock_client.request_async = AsyncMock(return_value=csv_text.encode("utf-8"))
+
+        async_batch = AsyncBatchClient(mock_client)
+        results = await async_batch.get_upgrades_downgrades_consensus_bulk()
+
+        # Should skip invalid row and return only valid one
+        assert len(results) == 1
+        assert results[0].symbol == "AAPL"
+        # Should have logged a warning about the invalid row
+        mock_client.logger.warning.assert_called()

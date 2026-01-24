@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from unittest.mock import patch
+
 import pytest
 
 from fmp_data.client import FMPDataClient
@@ -140,7 +141,9 @@ class TestTechnicalClient:
                 client._rate_limiter, "should_allow_request", return_value=False
             ),
             patch.object(client._rate_limiter, "get_wait_time", return_value=0.0),
-            patch.object(client, "_handle_rate_limit", side_effect=RateLimitError("rl")),
+            patch.object(
+                client, "_handle_rate_limit", side_effect=RateLimitError("rl")
+            ),
         ):
             with pytest.raises(RateLimitError):
                 client.technical.get_sma(

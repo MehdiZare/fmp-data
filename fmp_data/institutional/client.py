@@ -2,6 +2,7 @@
 from datetime import date
 
 from fmp_data.base import EndpointGroup
+from fmp_data.exceptions import FMPError, ValidationError
 from fmp_data.institutional.endpoints import (
     ASSET_ALLOCATION,
     BENEFICIAL_OWNERSHIP,
@@ -34,6 +35,7 @@ from fmp_data.institutional.models import (
     CIKMapping,
     FailToDeliver,
     Form13F,
+    Form13FDate,
     HolderIndustryBreakdown,
     HolderPerformanceSummary,
     IndustryPerformanceSummary,
@@ -77,7 +79,8 @@ class InstitutionalClient(EndpointGroup):
         year, quarter = self._date_to_year_quarter(report_date)
         try:
             result = self.client.request(FORM_13F, cik=cik, year=year, quarter=quarter)
-        except Exception as exc:
+        except (FMPError, ValidationError) as exc:
+            # API errors (404, validation, etc.) return empty list for convenience
             self.client.logger.warning(
                 f"No Form 13F data found for CIK {cik} on {report_date}: {exc!s}"
             )
@@ -93,7 +96,7 @@ class InstitutionalClient(EndpointGroup):
             return result
         return [result]
 
-    def get_form_13f_dates(self, cik: str) -> list[Form13F]:
+    def get_form_13f_dates(self, cik: str) -> list[Form13FDate]:
         """
         Get Form 13F filing dates
 
@@ -101,14 +104,15 @@ class InstitutionalClient(EndpointGroup):
             cik: Central Index Key (CIK)
 
         Returns:
-            List of Form13F objects with filing dates. Empty list if no records found.
+            List of Form13FDate objects with filing dates.
+            Empty list if no records found.
         """
         try:
             result = self.client.request(FORM_13F_DATES, cik=cik)
             # Ensure we always return a list
             return result if isinstance(result, list) else [result]
-        except Exception as e:
-            # Log the error but return empty list instead of raising
+        except (FMPError, ValidationError) as e:
+            # API errors (404, validation, etc.) return empty list for convenience
             self.client.logger.warning(
                 f"No Form 13F filings found for CIK {cik}: {e!s}"
             )
@@ -197,10 +201,13 @@ class InstitutionalClient(EndpointGroup):
         Returns:
             List of CIK mappings matching the name
         """
+        name_upper = name.strip().upper()
+        if not name_upper:
+            raise ValidationError("Name must be non-empty for CIK search")
+
         results = self.client.request(CIK_MAPPER, page=page, limit=10000)
         if not isinstance(results, list):
             results = [results]
-        name_upper = name.strip().upper()
         return [
             item
             for item in results

@@ -43,7 +43,7 @@ class SetupWizard:
         self.manifest_path: str | None = None
         self.config: dict[str, Any] = {}
 
-    def _redact_sensitive(self, message: str) -> str:
+    def _redact_sensitive(self, message: str | None) -> str | None:
         """Redact sensitive information such as API keys from message."""
         if not message:
             return message
@@ -83,7 +83,8 @@ class SetupWizard:
         """Print message unless in quiet mode."""
         if not self.quiet:
             # Redact sensitive info before printing
-            message = self._redact_sensitive(message)
+            redacted = self._redact_sensitive(message)
+            message = redacted if redacted is not None else message
             if style == "header":
                 print(f"\n{'=' * 60}")
                 print(f"🚀 {message}")

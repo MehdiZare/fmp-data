@@ -43,11 +43,10 @@ pre-commit install
 The project includes a comprehensive Makefile for common tasks:
 
 ```bash
-make check       # Run quick validation checks (lint, format, test)
-make fix         # Auto-fix all fixable issues
-make test        # Run tests
-make test-cov    # Run tests with coverage report
-make ci          # Run full CI checks locally (includes typecheck)
+make check                  # Run quick validation checks (lint, format, test)
+make fix                    # Auto-fix all fixable issues
+make test                   # Run tests
+make -f Makefile.dev ci     # Run full CI checks locally (includes typecheck)
 ```
 
 ### Manual Commands

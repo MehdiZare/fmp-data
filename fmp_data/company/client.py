@@ -51,6 +51,7 @@ from fmp_data.company.endpoints import (
     PRICE_TARGET_SUMMARY,
     PRODUCT_REVENUE_SEGMENTATION,
     PROFILE,
+    PROFILE_CIK,
     QUOTE,
     SHARE_FLOAT,
     SIMPLE_QUOTE,
@@ -89,7 +90,12 @@ from fmp_data.company.models import (
     UpgradeDowngrade,
     UpgradeDowngradeConsensus,
 )
-from fmp_data.exceptions import FMPError, InvalidResponseTypeError, InvalidSymbolError
+from fmp_data.exceptions import (
+    FMPError,
+    FMPNotFound,
+    InvalidResponseTypeError,
+    InvalidSymbolError,
+)
 from fmp_data.fundamental.models import (
     AsReportedBalanceSheet,
     AsReportedCashFlowStatement,
@@ -127,6 +133,14 @@ class CompanyClient(EndpointGroup):
             raise FMPError(f"Symbol {symbol} not found")
         return profile
 
+    def get_profile_cik(self, cik: str) -> CompanyProfile:
+        """Get company profile by CIK number"""
+        result = self.client.request(PROFILE_CIK, cik=cik)
+        profile = self._unwrap_single(result, CompanyProfile, allow_none=True)
+        if profile is None:
+            raise FMPNotFound(cik)
+        return profile
+
     def get_core_information(self, symbol: str) -> CompanyCoreInformation | None:
         """Get core company information"""
         result = self.client.request(CORE_INFORMATION, symbol=symbol)
@@ -147,7 +161,7 @@ class CompanyClient(EndpointGroup):
     def get_company_logo_url(self, symbol: str) -> str:
         """Get the company logo URL"""
         if not symbol or not symbol.strip():
-            raise InvalidSymbolError("Symbol is required for company logo URL")
+            raise InvalidSymbolError()
         base_url = self.client.config.base_url.rstrip("/")
         return f"{base_url}/image-stock/{symbol}.png"
 

@@ -4,6 +4,7 @@ Shows how to fetch and analyze earnings call transcripts.
 """
 
 from fmp_data import FMPDataClient
+from fmp_data.exceptions import FMPError
 
 
 def main() -> None:
@@ -36,7 +37,7 @@ def main() -> None:
                     print(f"Preview: {transcript.content[:300]}...")
                 else:
                     print("Content: [Not available]")
-        except Exception as e:
+        except FMPError as e:
             print(f"Transcript not available: {e}")
 
         # Get available transcript dates for a company

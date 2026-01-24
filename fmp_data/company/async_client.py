@@ -57,6 +57,7 @@ from fmp_data.company.endpoints import (
     PRICE_TARGET_SUMMARY,
     PRODUCT_REVENUE_SEGMENTATION,
     PROFILE,
+    PROFILE_CIK,
     QUOTE,
     SHARE_FLOAT,
     SIMPLE_QUOTE,
@@ -141,6 +142,14 @@ class AsyncCompanyClient(AsyncEndpointGroup):
             raise FMPNotFound(symbol)
         return profile
 
+    async def get_profile_cik(self, cik: str) -> CompanyProfile:
+        """Get company profile by CIK number"""
+        result = await self.client.request_async(PROFILE_CIK, cik=cik)
+        profile = self._unwrap_single(result, CompanyProfile, allow_none=True)
+        if profile is None:
+            raise FMPNotFound(cik)
+        return profile
+
     async def get_core_information(self, symbol: str) -> CompanyCoreInformation | None:
         """Get core company information"""
         result = await self.client.request_async(CORE_INFORMATION, symbol=symbol)
@@ -161,7 +170,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
     def get_company_logo_url(self, symbol: str) -> str:
         """Get the company logo URL (sync, no API call needed)"""
         if not symbol or not symbol.strip():
-            raise InvalidSymbolError("Symbol is required for company logo URL")
+            raise InvalidSymbolError()
         base_url = self.client.config.base_url.rstrip("/")
         return f"{base_url}/image-stock/{symbol}.png"
 

@@ -68,9 +68,7 @@ class TestIndexModels:
 
     def test_historical_index_constituent_minimal(self):
         """Test HistoricalIndexConstituent with minimal data"""
-        change = HistoricalIndexConstituent.model_validate(
-            {"date": "2024-01-15"}
-        )
+        change = HistoricalIndexConstituent.model_validate({"date": "2024-01-15"})
         assert change.date is not None
         assert change.added_security is None
         assert change.removed_security is None
@@ -174,9 +172,7 @@ class TestIndexClient:
         assert isinstance(result[0], HistoricalIndexConstituent)
 
     @patch("httpx.Client.request")
-    def test_get_multiple_constituents(
-        self, mock_request, fmp_client, mock_response
-    ):
+    def test_get_multiple_constituents(self, mock_request, fmp_client, mock_response):
         """Test fetching multiple constituents"""
         data = [
             {"symbol": "AAPL", "name": "Apple Inc."},

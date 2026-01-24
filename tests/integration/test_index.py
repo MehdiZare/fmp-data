@@ -10,9 +10,7 @@ class TestIndexClientEndpoints(BaseTestCase):
     def test_get_sp500_constituents(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting S&P 500 constituents"""
         with vcr_instance.use_cassette("index/sp500_constituents.yaml"):
-            results = self._handle_rate_limit(
-                fmp_client.index.get_sp500_constituents
-            )
+            results = self._handle_rate_limit(fmp_client.index.get_sp500_constituents)
             assert isinstance(results, list)
             if results:
                 assert isinstance(results[0], IndexConstituent)
@@ -20,9 +18,7 @@ class TestIndexClientEndpoints(BaseTestCase):
     def test_get_nasdaq_constituents(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting Nasdaq constituents"""
         with vcr_instance.use_cassette("index/nasdaq_constituents.yaml"):
-            results = self._handle_rate_limit(
-                fmp_client.index.get_nasdaq_constituents
-            )
+            results = self._handle_rate_limit(fmp_client.index.get_nasdaq_constituents)
             assert isinstance(results, list)
             if results:
                 assert isinstance(results[0], IndexConstituent)

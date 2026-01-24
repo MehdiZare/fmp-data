@@ -3,6 +3,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from fmp_data.exceptions import FMPError
 from fmp_data.institutional.models import (
     CIKMapping,
     FailToDeliver,
@@ -244,7 +245,7 @@ class TestInstitutionalClient:
     def test_get_form_13f_returns_empty_on_error(self, fmp_client):
         """Test get_form_13f returns empty list when request fails."""
         fmp_client._logger = Mock()
-        with patch.object(fmp_client, "request", side_effect=Exception("boom")):
+        with patch.object(fmp_client, "request", side_effect=FMPError("API error")):
             result = fmp_client.institutional.get_form_13f(
                 "0001067983", report_date=date(2024, 1, 5)
             )
@@ -256,7 +257,7 @@ class TestInstitutionalClient:
     def test_get_form_13f_dates_returns_empty_on_error(self, fmp_client):
         """Test get_form_13f_dates returns empty list when request fails."""
         fmp_client._logger = Mock()
-        with patch.object(fmp_client, "request", side_effect=Exception("boom")):
+        with patch.object(fmp_client, "request", side_effect=FMPError("API error")):
             result = fmp_client.institutional.get_form_13f_dates("0001067983")
 
         assert result == []

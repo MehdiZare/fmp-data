@@ -238,6 +238,30 @@ class TestCompanyProfile:
         assert isinstance(profile, CompanyProfile)
         assert profile.symbol == "AAPL"
 
+    @patch("httpx.Client.request")
+    def test_get_company_profile_by_cik(self, _mock_request, fmp_client, profile_data):
+        """Test getting company profile by CIK through client"""
+        # Set up the mock to return the actual response object
+        mock_client = fmp_client.client
+        mock_client.request.return_value = [CompanyProfile(**profile_data)]
+
+        profile = fmp_client.get_profile_cik("0000320193")
+        assert isinstance(profile, CompanyProfile)
+        assert profile.symbol == "AAPL"
+        assert profile.cik == "0000320193"
+
+    @patch("httpx.Client.request")
+    def test_get_company_profile_by_cik_not_found(self, _mock_request, fmp_client):
+        """Test getting company profile by CIK when not found"""
+        from fmp_data.exceptions import FMPNotFound
+
+        # Set up the mock to return empty list
+        mock_client = fmp_client.client
+        mock_client.request.return_value = []
+
+        with pytest.raises(FMPNotFound, match="9999999999"):
+            fmp_client.get_profile_cik("9999999999")
+
 
 class TestCompanyExecutive:
     """Tests for CompanyExecutive model and related client functionality"""
@@ -338,6 +362,8 @@ class TestCompanySymbol:
                 high=151.00,
                 low=148.50,
                 close=150.25,
+                price=150.25,
+                adjClose=150.25,
                 volume=82034567,
                 change=2.25,
                 changePercent=1.5,
@@ -577,6 +603,40 @@ class TestCompanyClientAsync:
         assert result.symbol == "AAPL"
         assert result.company_name == "Apple Inc."
         mock_client.request_async.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_async_company_get_profile_cik(self, mock_client, profile_data):
+        """Test AsyncCompanyClient get_profile_cik method"""
+        from unittest.mock import AsyncMock
+
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        mock_client.request_async = AsyncMock(
+            return_value=[CompanyProfile(**profile_data)]
+        )
+
+        async_client = AsyncCompanyClient(mock_client)
+        result = await async_client.get_profile_cik("0000320193")
+
+        assert isinstance(result, CompanyProfile)
+        assert result.symbol == "AAPL"
+        assert result.cik == "0000320193"
+        mock_client.request_async.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_async_company_get_profile_cik_not_found(self, mock_client):
+        """Test AsyncCompanyClient get_profile_cik method when not found"""
+        from unittest.mock import AsyncMock
+
+        from fmp_data.company.async_client import AsyncCompanyClient
+        from fmp_data.exceptions import FMPNotFound
+
+        mock_client.request_async = AsyncMock(return_value=[])
+
+        async_client = AsyncCompanyClient(mock_client)
+
+        with pytest.raises(FMPNotFound, match="9999999999"):
+            await async_client.get_profile_cik("9999999999")
 
     @pytest.mark.asyncio
     async def test_async_company_get_quote(self, mock_client):

@@ -4,15 +4,12 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 import os
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from fmp_data.exceptions import DependencyError
 
-try:
+if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
-except ImportError as e:
-    raise DependencyError(
-        feature="MCP server", install_command="pip install fmp-data[mcp]"
-    ) from e
 
 from fmp_data.client import FMPDataClient
 from fmp_data.mcp.tool_loader import register_from_manifest
@@ -65,8 +62,15 @@ def create_app(tools: ToolIterable | None = None) -> FastMCP:
     fmp_client = FMPDataClient.from_env()
 
     # ------------------------------------------------------------------ #
-    # 3) FastMCP skeleton
+    # 3) FastMCP skeleton (lazy import for runtime use)
     # ------------------------------------------------------------------ #
+    try:
+        from mcp.server.fastmcp import FastMCP
+    except ImportError as e:
+        raise DependencyError(
+            feature="MCP server", install_command="pip install fmp-data[mcp]"
+        ) from e
+
     app = FastMCP("fmp-data")
 
     # ------------------------------------------------------------------ #

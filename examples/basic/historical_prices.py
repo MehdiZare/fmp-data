@@ -6,6 +6,7 @@ Shows how to fetch market data, company information, and financial metrics.
 from datetime import datetime, timedelta
 
 from fmp_data import FMPDataClient
+from fmp_data.exceptions import FMPError
 
 
 def main() -> None:
@@ -18,16 +19,24 @@ def main() -> None:
             # Get basic stock quote
             quote = client.company.get_quote(symbol)
             print("\nCurrent Stock Quote:")
-            print(f"Price: ${quote.price:.2f}")
-            print(f"Change: {quote.change_percentage:.2f}%")
-            print(f"Volume: {quote.volume:,}")
+            price = quote.price if quote.price is not None else 0.0
+            change_pct = (
+                quote.changes_percentage
+                if quote.changes_percentage is not None
+                else 0.0
+            )
+            volume = quote.volume if quote.volume is not None else 0
+            print(f"Price: ${price:.2f}")
+            print(f"Change: {change_pct:.2f}%")
+            print(f"Volume: {volume:,}")
 
             # Get company profile
             profile = client.company.get_profile(symbol)
             print("\nCompany Profile:")
             print(f"Name: {profile.company_name}")
             print(f"Industry: {profile.industry}")
-            print(f"Market Cap: ${profile.mkt_cap:,.2f}")
+            mkt_cap = profile.mkt_cap if profile.mkt_cap is not None else 0.0
+            print(f"Market Cap: ${mkt_cap:,.2f}")
 
             # Get historical prices for the last 30 days
             end_date = datetime.now().date()
@@ -35,8 +44,8 @@ def main() -> None:
 
             historical = client.company.get_historical_prices(
                 symbol=symbol,
-                from_date=start_date.strftime("%Y-%m-%d"),
-                to_date=end_date.strftime("%Y-%m-%d"),
+                from_date=start_date,
+                to_date=end_date,
             )
 
             print("\nHistorical Prices (Last 30 Days):")
@@ -62,7 +71,7 @@ def main() -> None:
                 print("\nTechnical Indicators:")
                 print(f"Current RSI (14): {rsi[0].rsi:.2f}")
 
-        except Exception as e:
+        except FMPError as e:
             print(f"Error: {e!s}")
 
     # Client automatically closed after with block

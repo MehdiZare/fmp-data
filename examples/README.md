@@ -4,7 +4,7 @@ This directory contains comprehensive examples demonstrating how to use the FMP 
 
 ## Directory Structure
 
-```
+```text
 examples/
 ├── basic/                    # Basic operations
 │   ├── company_info.py      # Company profiles, executives, peers

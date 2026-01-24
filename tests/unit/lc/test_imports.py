@@ -13,5 +13,5 @@ def test_langchain_import_paths():
     core_embeddings = importlib.import_module("langchain_core.embeddings").Embeddings
     core_tools = importlib.import_module("langchain_core.tools").StructuredTool
 
-    assert getattr(vector_store, "Embeddings") is core_embeddings
-    assert getattr(vector_store, "StructuredTool") is core_tools
+    assert vector_store.Embeddings is core_embeddings
+    assert vector_store.StructuredTool is core_tools
