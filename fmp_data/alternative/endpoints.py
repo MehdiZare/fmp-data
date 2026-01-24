@@ -9,9 +9,9 @@ from fmp_data.alternative.models import (
     CryptoIntradayPrice,
     CryptoPair,
     CryptoQuote,
+    ForexHistoricalPrice,
     ForexIntradayPrice,
     ForexPair,
-    ForexPriceHistory,
     ForexQuote,
 )
 from fmp_data.alternative.schema import (
@@ -317,7 +317,7 @@ FOREX_HISTORICAL: Endpoint = Endpoint(
             alias="to",
         ),
     ],
-    response_model=ForexPriceHistory,
+    response_model=ForexHistoricalPrice,
     arg_model=ForexHistoricalArgs,
     example_queries=[
         "Get historical EURUSD rates",

@@ -452,12 +452,21 @@ class TestMarketIntelligenceClientNews:
     def test_get_stock_news_sentiments(
         self, fmp_client, mock_client, stock_news_sentiment_data
     ):
-        """Test get_stock_news_sentiments"""
+        """Test get_stock_news_sentiments emits deprecation warning"""
+        import warnings
+
         mock_client.request.return_value = [
             StockNewsSentiment(**stock_news_sentiment_data)
         ]
 
-        result = fmp_client.intelligence.get_stock_news_sentiments(page=0)
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = fmp_client.intelligence.get_stock_news_sentiments(page=0)
+
+            # Verify deprecation warning was emitted
+            assert len(w) == 1
+            assert issubclass(w[0].category, DeprecationWarning)
+            assert "no longer supports this endpoint" in str(w[0].message)
 
         mock_client.request.assert_called_once()
         args, kwargs = mock_client.request.call_args

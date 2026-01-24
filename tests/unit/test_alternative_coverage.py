@@ -153,9 +153,10 @@ class TestAlternativeClientCoverage:
             "changeOverTime": 0.0027,
         }
 
+        # The /full endpoint returns a flat list, not nested
         mock_request.return_value = mock_response(
             status_code=200,
-            json_data={"symbol": "EURUSD", "historical": [historical_data]},
+            json_data=[{**historical_data, "symbol": "EURUSD"}],
         )
 
         result = fmp_client.alternative.get_forex_historical(

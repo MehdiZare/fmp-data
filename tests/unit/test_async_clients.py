@@ -2635,3 +2635,27 @@ class TestAsyncFMPDataClient:
         async_client.aclose.assert_awaited_once()
         client.client.close.assert_called_once()
         client._logger.info.assert_called_once_with("Async FMP Data client closed")
+
+
+class TestAsyncMarketIntelligenceClient:
+    """Tests for AsyncMarketIntelligenceClient."""
+
+    @pytest.mark.asyncio
+    async def test_get_stock_news_sentiments_deprecation_warning(self, mock_client):
+        """Test that get_stock_news_sentiments emits deprecation warning."""
+        import warnings
+
+        from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
+
+        mock_client.request_async.return_value = []
+
+        async_client = AsyncMarketIntelligenceClient(mock_client)
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = await async_client.get_stock_news_sentiments(page=0)
+
+            assert len(w) == 1
+            assert issubclass(w[0].category, DeprecationWarning)
+            assert "no longer supports this endpoint" in str(w[0].message)
+            assert isinstance(result, list)
