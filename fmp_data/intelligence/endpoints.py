@@ -396,7 +396,7 @@ STOCK_NEWS_SENTIMENTS_ENDPOINT: Endpoint = Endpoint(
     name="stock_news_sentiments",
     path="stock-news-sentiments-rss-feed",
     version=APIVersion.STABLE,
-    description="Get a list of the latest stock news articles with sentiment analysis",
+    description="[DEPRECATED] This endpoint is no longer available on the FMP API",
     mandatory_params=[
         EndpointParam(
             name="page",

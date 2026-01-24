@@ -258,7 +258,20 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
     async def get_stock_news_sentiments(
         self, page: int = 0
     ) -> list[StockNewsSentiment]:
-        """Get a list of the latest stock news articles with sentiment analysis"""
+        """Get a list of the latest stock news articles with sentiment analysis
+
+        .. deprecated::
+            This endpoint is no longer available on the FMP API and will be removed
+            in a future version. It currently returns an empty list.
+        """
+        import warnings
+
+        warnings.warn(
+            "get_stock_news_sentiments is deprecated and will be removed in a "
+            "future version. The FMP API no longer supports this endpoint.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         params = {
             "page": page,
         }
