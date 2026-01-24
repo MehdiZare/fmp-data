@@ -27,10 +27,8 @@ env/
 venv/
 ENV/
 
-# UV lock file (can be regenerated quickly)
+# Lock files (excluded due to size constraints)
 uv.lock
-
-# Poetry lock file (not used in CI/CD, only uv.lock)
 poetry.lock
 
 # IDE
