@@ -317,11 +317,11 @@ class AsyncBatchClient(AsyncEndpointGroup):
         # Filter for rows with symbols before parsing to models
         rows = [row for row in parse_csv_rows(raw) if row.get("symbol")]
         # Use parse_csv_models pattern for graceful error handling
-        results = []
+        results: list[UpgradeDowngradeConsensus] = []
         for row in rows:
             try:
                 results.append(UpgradeDowngradeConsensus.model_validate(row))
-            except Exception as e:
+            except PydanticValidationError as e:
                 symbol = row.get("symbol", "unknown")
                 self.client.logger.warning(
                     f"Failed to parse upgrade/downgrade row for {symbol}: {e}"

@@ -2,7 +2,7 @@
 from datetime import date
 
 from fmp_data.base import EndpointGroup
-from fmp_data.exceptions import ValidationError
+from fmp_data.exceptions import FMPError, ValidationError
 from fmp_data.institutional.endpoints import (
     ASSET_ALLOCATION,
     BENEFICIAL_OWNERSHIP,
@@ -79,7 +79,8 @@ class InstitutionalClient(EndpointGroup):
         year, quarter = self._date_to_year_quarter(report_date)
         try:
             result = self.client.request(FORM_13F, cik=cik, year=year, quarter=quarter)
-        except Exception as exc:
+        except (FMPError, ValidationError) as exc:
+            # API errors (404, validation, etc.) return empty list for convenience
             self.client.logger.warning(
                 f"No Form 13F data found for CIK {cik} on {report_date}: {exc!s}"
             )
@@ -110,8 +111,8 @@ class InstitutionalClient(EndpointGroup):
             result = self.client.request(FORM_13F_DATES, cik=cik)
             # Ensure we always return a list
             return result if isinstance(result, list) else [result]
-        except Exception as e:
-            # Log the error but return empty list instead of raising
+        except (FMPError, ValidationError) as e:
+            # API errors (404, validation, etc.) return empty list for convenience
             self.client.logger.warning(
                 f"No Form 13F filings found for CIK {cik}: {e!s}"
             )

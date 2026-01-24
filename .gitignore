@@ -27,7 +27,10 @@ env/
 venv/
 ENV/
 
-# Lock files (excluded due to size constraints)
+# Lock files
+# uv.lock (878KB) exceeds GitHub's 500KB warning - excluded to avoid noise
+# Users generate locally via: uv sync
+# pyproject.toml contains version constraints for reproducibility
 uv.lock
 poetry.lock
 
@@ -60,7 +63,6 @@ tests/integration/vcr_cassettes/**/*.yaml
 *.spec
 pip-log.txt
 pip-delete-this-directory.txt
-site/
 
 # Documentation build
 site/
