@@ -30,6 +30,9 @@ ENV/
 # UV lock file (can be regenerated quickly)
 uv.lock
 
+# Poetry lock file (not used in CI/CD, only uv.lock)
+poetry.lock
+
 # IDE
 .idea/
 .vscode/

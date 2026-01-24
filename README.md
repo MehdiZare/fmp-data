@@ -9,7 +9,7 @@
 
 A Python client for the Financial Modeling Prep (FMP) API with comprehensive logging, rate limiting, and error handling. Built with UV for fast, reliable dependency management and modern Python development practices.
 
-For AI/LLM integration guidance, see the [LLM Guide](LLM.md).
+For AI/LLM integration guidance, see the [LLM Guide](https://github.com/MehdiZare/fmp-data/blob/main/LLM.md).
 
 ## Why UV?
 
@@ -101,7 +101,7 @@ export FMP_API_KEY=your_api_key_here
 fmp-mcp
 ```
 
-For detailed setup instructions, see [docs/mcp/claude_desktop.md](docs/mcp/claude_desktop.md).
+For detailed setup instructions, see [docs/mcp/claude_desktop.md](https://github.com/MehdiZare/fmp-data/blob/main/docs/mcp/claude_desktop.md).
 
 ### Available Commands
 
@@ -114,8 +114,8 @@ fmp-mcp list     # List available tools
 
 ### Configuration Profiles
 
-Choose from pre-configured tool sets. See [docs/mcp/configurations.md](docs/mcp/configurations.md).
-Full tool list: [docs/mcp/tools.md](docs/mcp/tools.md).
+Choose from pre-configured tool sets. See [docs/mcp/configurations.md](https://github.com/MehdiZare/fmp-data/blob/main/docs/mcp/configurations.md).
+Full tool list: [docs/mcp/tools.md](https://github.com/MehdiZare/fmp-data/blob/main/docs/mcp/tools.md).
 
 ### Custom Configuration
 
@@ -154,7 +154,7 @@ app = create_app(tools="/path/to/manifest.py")
 ### Available Tools
 
 The MCP server exposes tools for endpoints that have MCP tool semantics.
-For the full MCP catalog, run `fmp-mcp list` or see [docs/mcp/tools.md](docs/mcp/tools.md).
+For the full MCP catalog, run `fmp-mcp list` or see [docs/mcp/tools.md](https://github.com/MehdiZare/fmp-data/blob/main/docs/mcp/tools.md).
 - `company.profile` - Get company profiles
 - `market.search` - Search companies
 - `company.quote` - Get real-time quotes
@@ -334,7 +334,7 @@ through specialized client modules:
 - **sec**: SEC filings, company profiles, and SIC codes
 - **index**: Market index constituents (S&P 500, NASDAQ, Dow Jones)
 
-Full endpoint catalog: [docs/api/endpoints.md](docs/api/endpoints.md)
+Full endpoint catalog: [docs/api/endpoints.md](https://github.com/MehdiZare/fmp-data/blob/main/docs/api/endpoints.md)
 
 ## Key Components
 
@@ -906,7 +906,7 @@ pytest --cov=fmp_data
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/MehdiZare/fmp-data/blob/main/LICENSE) file for details.
 
 ## Acknowledgments
 
@@ -917,14 +917,14 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 ## Support
 
 - GitHub Issues: [Create an issue](https://github.com/MehdiZare/fmp-data/issues)
-- Documentation: [Read the docs](./docs)
+- Documentation: [Read the docs](https://github.com/MehdiZare/fmp-data/tree/main/docs)
 - Connect with the author: [LinkedIn](https://www.linkedin.com/in/mehdizare/)
 
 ## Examples
 
 ### Interactive Notebooks
 - [Financial Agent Tutorial](https://colab.research.google.com/drive/1cSyLX-j9XhyrXyVJ2HwMZJvPy1Lf2CuA?usp=sharing): Build an intelligent financial agent with LangChain integration
-- [Basic Usage Examples](./examples): Simple code examples demonstrating key features
+- [Basic Usage Examples](https://github.com/MehdiZare/fmp-data/tree/main/examples): Simple code examples demonstrating key features
 
 ### Code Examples
 
@@ -940,4 +940,4 @@ with FMPDataClient.from_env() as client:
 
 ## Release Notes
 
-See [CHANGELOG.md](CHANGELOG.md) for a list of changes in each release.
+See [CHANGELOG.md](https://github.com/MehdiZare/fmp-data/blob/main/CHANGELOG.md) for a list of changes in each release.
