@@ -96,7 +96,7 @@ from fmp_data.company.models import (
     UpgradeDowngradeConsensus,
 )
 from fmp_data.exceptions import (
-    FMPError,
+    FMPNotFound,
     InvalidResponseTypeError,
     InvalidSymbolError,
 )
@@ -121,13 +121,6 @@ def _format_date(value: date | None) -> str | None:
     if value is None:
         return None
     return value.strftime("%Y-%m-%d")
-
-
-class FMPNotFound(FMPError):
-    """Raised when a requested symbol cannot be found."""
-
-    def __init__(self, symbol: str) -> None:
-        super().__init__(f"Symbol {symbol} not found")
 
 
 class AsyncCompanyClient(AsyncEndpointGroup):

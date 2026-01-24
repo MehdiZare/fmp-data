@@ -290,7 +290,7 @@ def test_example_runs_without_error(example_file, capsys):
             pytest.fail(f"Example {example_file} failed with error: {e}")
 
 
-def test_all_examples_have_main_function():
+def test_all_examples_have_main_function() -> None:
     """Ensure all example files have a main() function."""
     for example_file in EXAMPLE_FILES:
         example_path = EXAMPLES_DIR / example_file
@@ -307,7 +307,7 @@ def test_all_examples_have_main_function():
         ), f"Example {example_file} missing if __name__ == '__main__' guard"
 
 
-def test_all_examples_use_context_manager():
+def test_all_examples_use_context_manager() -> None:
     """Ensure all examples use context manager pattern."""
     for example_file in EXAMPLE_FILES:
         example_path = EXAMPLES_DIR / example_file
@@ -321,7 +321,7 @@ def test_all_examples_use_context_manager():
         ), f"Example {example_file} not using context manager pattern"
 
 
-def test_no_hardcoded_api_keys():
+def test_no_hardcoded_api_keys() -> None:
     """Ensure no examples have hardcoded API keys."""
     dangerous_patterns = [
         "api_key=",

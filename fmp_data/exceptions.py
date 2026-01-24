@@ -88,3 +88,10 @@ class DependencyError(ConfigError):
         super().__init__(msg)
         self.feature = feature
         self.install_command = install_command
+
+
+class FMPNotFound(FMPError):
+    """Raised when a requested symbol or resource cannot be found."""
+
+    def __init__(self, symbol: str):
+        super().__init__(f"Symbol {symbol} not found")

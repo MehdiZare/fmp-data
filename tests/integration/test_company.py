@@ -168,11 +168,26 @@ class TestCompanyEndpoints(BaseTestCase):
 
             except Exception as e:
                 logger.error(f"Request failed: {e!s}")
-                # Print the actual request details if available
+                # Print the actual request details if available (with redaction)
                 request = getattr(e, "request", None)
                 if request:
-                    logger.error(f"Request URL: {request.url}")
-                    logger.error(f"Request headers: {request.headers}")
+                    # Redact sensitive data from URL (remove query params)
+                    from urllib.parse import urlparse
+
+                    parsed = urlparse(str(request.url))
+                    safe_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+                    logger.error(f"Request URL: {safe_url} [query params redacted]")
+
+                    # Redact sensitive headers
+                    sensitive_keys = {"authorization", "api", "key", "token", "secret"}
+                    safe_headers = {}
+                    for key, value in dict(request.headers).items():
+                        key_lower = key.lower()
+                        if any(sensitive in key_lower for sensitive in sensitive_keys):
+                            safe_headers[key] = "[REDACTED]"
+                        else:
+                            safe_headers[key] = value
+                    logger.error(f"Request headers: {safe_headers}")
                 raise
 
     def test_get_core_information(

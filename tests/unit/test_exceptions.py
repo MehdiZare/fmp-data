@@ -8,6 +8,7 @@ from fmp_data.exceptions import (
     ConfigError,
     DependencyError,
     FMPError,
+    FMPNotFound,
     InvalidResponseTypeError,
     InvalidSymbolError,
     RateLimitError,
@@ -271,3 +272,18 @@ class TestDependencyError:
         )
         assert error.feature == "Test feature"
         assert error.install_command == "pip install test"
+
+
+class TestFMPNotFound:
+    """Tests for FMPNotFound"""
+
+    def test_inherits_from_fmp_error(self):
+        assert issubclass(FMPNotFound, FMPError)
+
+    def test_error_message_with_symbol(self):
+        error = FMPNotFound(symbol="AAPL")
+        assert "Symbol AAPL not found" == str(error)
+
+    def test_can_be_caught_as_fmp_error(self):
+        with pytest.raises(FMPError):
+            raise FMPNotFound("TEST")
