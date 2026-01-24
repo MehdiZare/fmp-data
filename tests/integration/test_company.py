@@ -33,7 +33,7 @@ from fmp_data.company.models import (
     UpgradeDowngrade,
     UpgradeDowngradeConsensus,
 )
-from fmp_data.exceptions import FMPError
+from fmp_data.exceptions import FMPError, InvalidSymbolError
 from fmp_data.fundamental.models import (
     AsReportedBalanceSheet,
     AsReportedCashFlowStatement,
@@ -168,10 +168,26 @@ class TestCompanyEndpoints(BaseTestCase):
 
             except Exception as e:
                 logger.error(f"Request failed: {e!s}")
-                # Print the actual request details
-                if hasattr(e, "request"):
-                    logger.error(f"Request URL: {e.request.url}")
-                    logger.error(f"Request headers: {e.request.headers}")
+                # Print the actual request details if available (with redaction)
+                request = getattr(e, "request", None)
+                if request:
+                    # Redact sensitive data from URL (remove query params)
+                    from urllib.parse import urlparse
+
+                    parsed = urlparse(str(request.url))
+                    safe_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+                    logger.error(f"Request URL: {safe_url} [query params redacted]")
+
+                    # Redact sensitive headers
+                    sensitive_keys = {"authorization", "api", "key", "token", "secret"}
+                    safe_headers = {}
+                    for key, value in dict(request.headers).items():
+                        key_lower = key.lower()
+                        if any(sensitive in key_lower for sensitive in sensitive_keys):
+                            safe_headers[key] = "[REDACTED]"
+                        else:
+                            safe_headers[key] = value
+                    logger.error(f"Request headers: {safe_headers}")
                 raise
 
     def test_get_core_information(
@@ -250,7 +266,7 @@ class TestCompanyEndpoints(BaseTestCase):
         assert "api" not in url
 
         # Test error case
-        with pytest.raises(ValueError):
+        with pytest.raises(InvalidSymbolError):
             fmp_client.company.get_company_logo_url("")
 
     def test_rate_limiting(self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR):

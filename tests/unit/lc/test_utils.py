@@ -3,8 +3,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from fmp_data.exceptions import DependencyError
 from fmp_data.lc.utils import (
-    DependencyError,
     check_embedding_requirements,
     check_package_dependency,
     is_langchain_available,

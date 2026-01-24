@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from fmp_data.batch.client import BatchClient
+from fmp_data.batch._csv_utils import get_url_fields, parse_csv_models, parse_csv_rows
 from fmp_data.batch.models import (
     AftermarketQuote,
     AftermarketTrade,
@@ -214,7 +214,7 @@ class TestBatchClient:
             '"APPX","ttps://www.tradretfs.com[","https://example.com/logo.png"\n'
         )
 
-        results = BatchClient._parse_csv_models(
+        results = parse_csv_models(
             csv_text.encode("utf-8"),
             CompanyProfile,
         )
@@ -225,12 +225,12 @@ class TestBatchClient:
 
     def test_parse_csv_rows_empty(self):
         """Empty CSV input returns no rows."""
-        assert BatchClient._parse_csv_rows(b"") == []
+        assert parse_csv_rows(b"") == []
 
     def test_parse_csv_rows_skips_blank_rows(self):
         """Blank CSV rows should be skipped."""
         csv_text = "symbol,name\nAAPL, Apple Inc. \n, \n"
-        rows = BatchClient._parse_csv_rows(csv_text.encode("utf-8"))
+        rows = parse_csv_rows(csv_text.encode("utf-8"))
 
         assert rows == [{"symbol": "AAPL", "name": "Apple Inc."}]
 
@@ -244,7 +244,7 @@ class TestBatchClient:
             images: list[AnyHttpUrl] | None = None
             name: str | None = None
 
-        assert BatchClient._get_url_fields(URLRow) == {"website", "images"}
+        assert get_url_fields(URLRow) == {"website", "images"}
 
     def test_parse_csv_models_skips_invalid_rows_without_url_fields(self, caplog):
         """Invalid rows without URL fields should be skipped."""
@@ -258,8 +258,8 @@ class TestBatchClient:
 
         csv_text = "symbol,value\nAAPL,not-a-number\n"
 
-        with caplog.at_level(logging.WARNING, logger="fmp_data.batch.client"):
-            results = BatchClient._parse_csv_models(
+        with caplog.at_level(logging.WARNING, logger="fmp_data.batch._csv_utils"):
+            results = parse_csv_models(
                 csv_text.encode("utf-8"),
                 SimpleRow,
             )

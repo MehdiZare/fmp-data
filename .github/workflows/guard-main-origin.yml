@@ -5,6 +5,10 @@ on:
   pull_request:
     branches: [main]            # PRs whose *target* is main only
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   ensure-valid-origin:
     runs-on: ubuntu-latest

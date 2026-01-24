@@ -95,7 +95,11 @@ from fmp_data.company.models import (
     UpgradeDowngrade,
     UpgradeDowngradeConsensus,
 )
-from fmp_data.exceptions import FMPError
+from fmp_data.exceptions import (
+    FMPNotFound,
+    InvalidResponseTypeError,
+    InvalidSymbolError,
+)
 from fmp_data.fundamental.models import (
     AsReportedBalanceSheet,
     AsReportedCashFlowStatement,
@@ -117,27 +121,6 @@ def _format_date(value: date | None) -> str | None:
     if value is None:
         return None
     return value.strftime("%Y-%m-%d")
-
-
-class FMPNotFound(FMPError):
-    """Raised when a requested symbol cannot be found."""
-
-    def __init__(self, symbol: str) -> None:
-        super().__init__(f"Symbol {symbol} not found")
-
-
-class InvalidSymbolError(ValueError):
-    """Raised when a required symbol is missing or blank."""
-
-    def __init__(self) -> None:
-        super().__init__("Symbol is required for company logo URL")
-
-
-class FinancialReportsError(TypeError):
-    """Raised when financial reports responses have unexpected types."""
-
-    def __init__(self) -> None:
-        super().__init__("Unexpected financial reports response type")
 
 
 class AsyncCompanyClient(AsyncEndpointGroup):
@@ -178,7 +161,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
     def get_company_logo_url(self, symbol: str) -> str:
         """Get the company logo URL (sync, no API call needed)"""
         if not symbol or not symbol.strip():
-            raise InvalidSymbolError
+            raise InvalidSymbolError("Symbol is required for company logo URL")
         base_url = self.client.config.base_url.rstrip("/")
         return f"{base_url}/image-stock/{symbol}.png"
 
@@ -793,7 +776,11 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         }
         result = await self.client.request_async(FINANCIAL_REPORTS_JSON, **params)
         if not isinstance(result, dict):
-            raise FinancialReportsError
+            raise InvalidResponseTypeError(
+                endpoint_name="financial_reports_json",
+                expected_type="dict",
+                actual_type=type(result).__name__,
+            )
         return result
 
     async def get_financial_reports_xlsx(
@@ -816,7 +803,11 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         }
         result = await self.client.request_async(FINANCIAL_REPORTS_XLSX, **params)
         if not isinstance(result, bytes | bytearray):
-            raise FinancialReportsError
+            raise InvalidResponseTypeError(
+                endpoint_name="financial_reports_xlsx",
+                expected_type="bytes",
+                actual_type=type(result).__name__,
+            )
         return bytes(result)
 
     async def get_income_statement_as_reported(

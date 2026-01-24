@@ -393,10 +393,11 @@ def load_manifest_tools(manifest_path: str | Path | None) -> list[str]:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
-    if not hasattr(module, "TOOLS"):
+    tools = getattr(module, "TOOLS", None)
+    if tools is None:
         raise AttributeError(f"{path} does not define a global variable 'TOOLS'")
 
-    return list(module.TOOLS)
+    return list(tools)
 
 
 def restart_claude_desktop_instructions() -> str:

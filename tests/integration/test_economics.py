@@ -41,8 +41,9 @@ class TestEconomicsEndpoints(BaseTestCase):
             for rate in rates:
                 assert isinstance(rate, TreasuryRate)
                 assert isinstance(rate.rate_date, date)
-                assert hasattr(rate, "month_1")
-                assert hasattr(rate, "year_10")
+                # Verify attributes exist (accessing them will raise if missing)
+                _ = rate.month_1
+                _ = rate.year_10
 
     def test_get_economic_indicators(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting economic indicators"""
@@ -82,7 +83,8 @@ class TestEconomicsEndpoints(BaseTestCase):
                     assert isinstance(
                         event.event_date, datetime
                     ), "event_date is not datetime"
-                    assert hasattr(event, "country"), "country is missing"
+                    # Verify country attribute exists
+                    _ = event.country
                     assert (
                         isinstance(event.change_percent, float)
                         if event.change_percent is not None

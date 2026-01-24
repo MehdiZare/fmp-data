@@ -1,16 +1,15 @@
 # fmp_data/batch/async_client.py
 """Async client for batch data endpoints."""
 
-import csv
 from datetime import date
-import io
 import logging
-from typing import Any, TypeVar, get_args, get_origin
+from typing import Any, TypeVar
 
-from pydantic import AnyHttpUrl, BaseModel, HttpUrl
+from pydantic import BaseModel
 from pydantic import ValidationError as PydanticValidationError
 
 from fmp_data.base import AsyncEndpointGroup
+from fmp_data.batch._csv_utils import parse_csv_models, parse_csv_rows
 from fmp_data.batch.endpoints import (
     BALANCE_SHEET_STATEMENT_BULK,
     BALANCE_SHEET_STATEMENT_GROWTH_BULK,
@@ -58,6 +57,7 @@ from fmp_data.company.models import (
     PriceTargetSummary,
     UpgradeDowngradeConsensus,
 )
+from fmp_data.exceptions import InvalidResponseTypeError
 from fmp_data.fundamental.models import (
     DCF,
     BalanceSheet,
@@ -83,85 +83,17 @@ class AsyncBatchClient(AsyncEndpointGroup):
     classes in a single API call.
     """
 
-    @staticmethod
-    def _parse_csv_rows(raw: bytes) -> list[dict[str, Any]]:
-        text = raw.decode("utf-8").strip()
-        if not text:
-            return []
-        reader = csv.DictReader(io.StringIO(text))
-        rows: list[dict[str, Any]] = []
-        for row in reader:
-            if not row or all(value in (None, "", " ") for value in row.values()):
-                continue
-            normalized: dict[str, str | None] = {}
-            for key, value in row.items():
-                if value is None:
-                    normalized[key] = None
-                    continue
-                stripped = value.strip()
-                normalized[key] = stripped if stripped else None
-            rows.append(normalized)
-        return rows
-
     async def _request_csv(self, endpoint: Endpoint, **params: Any) -> bytes:
         result = await self.client.request_async(endpoint, **params)
         if isinstance(result, bytearray):
             return bytes(result)
         if not isinstance(result, bytes):
-            raise TypeError(f"Expected bytes response for {endpoint.name}")
-        return result
-
-    @staticmethod
-    def _parse_csv_models(raw: bytes, model: type[ModelT]) -> list[ModelT]:
-        results: list[ModelT] = []
-        url_fields = AsyncBatchClient._get_url_fields(model)
-        for row in AsyncBatchClient._parse_csv_rows(raw):
-            try:
-                results.append(model.model_validate(row))
-            except PydanticValidationError as exc:
-                if url_fields:
-                    retry_row = dict(row)
-                    for error in exc.errors():
-                        if not error.get("loc"):
-                            continue
-                        field = error["loc"][0]
-                        if isinstance(field, str) and field in url_fields:
-                            retry_row[field] = None
-                    try:
-                        results.append(model.model_validate(retry_row))
-                        continue
-                    except PydanticValidationError:
-                        pass
-                logger.warning(
-                    "Skipping invalid %s row: %s",
-                    model.__name__,
-                    exc,
-                )
-        return results
-
-    @staticmethod
-    def _get_url_fields(model: type[BaseModel]) -> set[str]:
-        url_fields: set[str] = set()
-        model_fields = getattr(model, "model_fields", None)
-        if not model_fields:
-            return url_fields
-        for name, field in model_fields.items():
-            if AsyncBatchClient._is_url_annotation(field.annotation):
-                url_fields.add(name)
-        return url_fields
-
-    @staticmethod
-    def _is_url_annotation(annotation: Any) -> bool:
-        origin = get_origin(annotation)
-        if origin is None:
-            return annotation in {AnyHttpUrl, HttpUrl}
-        if origin is list:
-            return any(
-                AsyncBatchClient._is_url_annotation(arg) for arg in get_args(annotation)
+            raise InvalidResponseTypeError(
+                endpoint_name=endpoint.name,
+                expected_type="bytes",
+                actual_type=type(result).__name__,
             )
-        return any(
-            AsyncBatchClient._is_url_annotation(arg) for arg in get_args(annotation)
-        )
+        return result
 
     async def get_quotes(self, symbols: list[str]) -> list[BatchQuote]:
         """Get real-time quotes for multiple symbols
@@ -336,73 +268,78 @@ class AsyncBatchClient(AsyncEndpointGroup):
     async def get_profile_bulk(self, part: str) -> list[CompanyProfile]:
         """Get company profile data in bulk"""
         raw = await self._request_csv(PROFILE_BULK, part=part)
-        return self._parse_csv_models(raw, CompanyProfile)
+        return parse_csv_models(raw, CompanyProfile)
 
     async def get_dcf_bulk(self) -> list[DCF]:
         """Get discounted cash flow valuations in bulk"""
         raw = await self._request_csv(DCF_BULK)
-        rows = self._parse_csv_rows(raw)
+        rows = parse_csv_rows(raw)
+        results: list[DCF] = []
         for row in rows:
             if "Stock Price" in row and "stockPrice" not in row:
                 row["stockPrice"] = row.pop("Stock Price")
-        return [DCF.model_validate(row) for row in rows]
+            try:
+                results.append(DCF.model_validate(row))
+            except PydanticValidationError as exc:
+                logger.warning("Skipping invalid DCF row %s: %s", row, exc)
+        return results
 
     async def get_rating_bulk(self) -> list[CompanyRating]:
         """Get stock ratings in bulk"""
         raw = await self._request_csv(RATING_BULK)
-        return self._parse_csv_models(raw, CompanyRating)
+        return parse_csv_models(raw, CompanyRating)
 
     async def get_scores_bulk(self) -> list[FinancialScore]:
         """Get financial scores in bulk"""
         raw = await self._request_csv(SCORES_BULK)
-        return self._parse_csv_models(raw, FinancialScore)
+        return parse_csv_models(raw, FinancialScore)
 
     async def get_ratios_ttm_bulk(self) -> list[FinancialRatiosTTM]:
         """Get trailing twelve month financial ratios in bulk"""
         raw = await self._request_csv(RATIOS_TTM_BULK)
-        return self._parse_csv_models(raw, FinancialRatiosTTM)
+        return parse_csv_models(raw, FinancialRatiosTTM)
 
     async def get_price_target_summary_bulk(self) -> list[PriceTargetSummary]:
         """Get bulk price target summaries"""
         raw = await self._request_csv(PRICE_TARGET_SUMMARY_BULK)
-        return self._parse_csv_models(raw, PriceTargetSummary)
+        return parse_csv_models(raw, PriceTargetSummary)
 
     async def get_etf_holder_bulk(self, part: str) -> list[ETFHolding]:
         """Get bulk ETF holdings"""
         raw = await self._request_csv(ETF_HOLDER_BULK, part=part)
-        return self._parse_csv_models(raw, ETFHolding)
+        return parse_csv_models(raw, ETFHolding)
 
     async def get_upgrades_downgrades_consensus_bulk(
         self,
     ) -> list[UpgradeDowngradeConsensus]:
         """Get bulk upgrades/downgrades consensus data"""
         raw = await self._request_csv(UPGRADES_DOWNGRADES_CONSENSUS_BULK)
-        rows = [row for row in self._parse_csv_rows(raw) if row.get("symbol")]
+        rows = [row for row in parse_csv_rows(raw) if row.get("symbol")]
         return [UpgradeDowngradeConsensus.model_validate(row) for row in rows]
 
     async def get_key_metrics_ttm_bulk(self) -> list[KeyMetricsTTM]:
         """Get bulk trailing twelve month key metrics"""
         raw = await self._request_csv(KEY_METRICS_TTM_BULK)
-        return self._parse_csv_models(raw, KeyMetricsTTM)
+        return parse_csv_models(raw, KeyMetricsTTM)
 
     async def get_peers_bulk(self) -> list[PeersBulk]:
         """Get bulk peer lists"""
         raw = await self._request_csv(PEERS_BULK)
-        return self._parse_csv_models(raw, PeersBulk)
+        return parse_csv_models(raw, PeersBulk)
 
     async def get_earnings_surprises_bulk(
         self, year: int
     ) -> list[EarningsSurpriseBulk]:
         """Get bulk earnings surprises for a given year"""
         raw = await self._request_csv(EARNINGS_SURPRISES_BULK, year=year)
-        return self._parse_csv_models(raw, EarningsSurpriseBulk)
+        return parse_csv_models(raw, EarningsSurpriseBulk)
 
     async def get_income_statement_bulk(
         self, year: int, period: str
     ) -> list[IncomeStatement]:
         """Get bulk income statements"""
         raw = await self._request_csv(INCOME_STATEMENT_BULK, year=year, period=period)
-        return self._parse_csv_models(raw, IncomeStatement)
+        return parse_csv_models(raw, IncomeStatement)
 
     async def get_income_statement_growth_bulk(
         self, year: int, period: str
@@ -411,7 +348,7 @@ class AsyncBatchClient(AsyncEndpointGroup):
         raw = await self._request_csv(
             INCOME_STATEMENT_GROWTH_BULK, year=year, period=period
         )
-        return self._parse_csv_models(raw, FinancialGrowth)
+        return parse_csv_models(raw, FinancialGrowth)
 
     async def get_balance_sheet_bulk(
         self, year: int, period: str
@@ -420,7 +357,7 @@ class AsyncBatchClient(AsyncEndpointGroup):
         raw = await self._request_csv(
             BALANCE_SHEET_STATEMENT_BULK, year=year, period=period
         )
-        return self._parse_csv_models(raw, BalanceSheet)
+        return parse_csv_models(raw, BalanceSheet)
 
     async def get_balance_sheet_growth_bulk(
         self, year: int, period: str
@@ -429,7 +366,7 @@ class AsyncBatchClient(AsyncEndpointGroup):
         raw = await self._request_csv(
             BALANCE_SHEET_STATEMENT_GROWTH_BULK, year=year, period=period
         )
-        return self._parse_csv_models(raw, FinancialGrowth)
+        return parse_csv_models(raw, FinancialGrowth)
 
     async def get_cash_flow_bulk(
         self, year: int, period: str
@@ -438,7 +375,7 @@ class AsyncBatchClient(AsyncEndpointGroup):
         raw = await self._request_csv(
             CASH_FLOW_STATEMENT_BULK, year=year, period=period
         )
-        return self._parse_csv_models(raw, CashFlowStatement)
+        return parse_csv_models(raw, CashFlowStatement)
 
     async def get_cash_flow_growth_bulk(
         self, year: int, period: str
@@ -447,10 +384,10 @@ class AsyncBatchClient(AsyncEndpointGroup):
         raw = await self._request_csv(
             CASH_FLOW_STATEMENT_GROWTH_BULK, year=year, period=period
         )
-        return self._parse_csv_models(raw, FinancialGrowth)
+        return parse_csv_models(raw, FinancialGrowth)
 
     async def get_eod_bulk(self, target_date: date) -> list[EODBulk]:
         """Get bulk end-of-day prices"""
         date_param = target_date.strftime("%Y-%m-%d")
         raw = await self._request_csv(EOD_BULK, date=date_param)
-        return self._parse_csv_models(raw, EODBulk)
+        return parse_csv_models(raw, EODBulk)

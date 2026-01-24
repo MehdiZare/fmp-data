@@ -1,11 +1,14 @@
 # fmp_data/lc/utils.py
 import importlib.util
 
+from fmp_data.exceptions import DependencyError
 
-class DependencyError(Exception):
-    """Raised when a required dependency is missing"""
-
-    pass
+__all__ = [
+    "DependencyError",
+    "check_embedding_requirements",
+    "check_package_dependency",
+    "is_langchain_available",
+]
 
 
 def is_langchain_available() -> bool:
@@ -20,8 +23,7 @@ def check_package_dependency(package: str, provider: str) -> None:
     """Check if a package is installed."""
     if importlib.util.find_spec(package) is None:
         raise DependencyError(
-            f"Required package '{package}' for {provider} not found. "
-            f"Please install with: pip install {package}"
+            feature=f"{provider} ({package})", install_command=f"pip install {package}"
         )
 
 

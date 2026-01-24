@@ -82,8 +82,8 @@ DATE_HINTS = {
 COT_SYMBOL_HINT = ParameterHint(
     natural_names=["symbol", "cot symbol", "contract", "futures symbol"],
     extraction_patterns=[
-        r"(?i)symbol[:\\s]+([A-Z0-9]{1,10})",
-        r"(?i)contract[:\\s]+([A-Z0-9]{1,10})",
+        r"(?i)symbol[:\s]+([A-Z0-9]{1,10})",
+        r"(?i)contract[:\s]+([A-Z0-9]{1,10})",
     ],
     examples=["KC", "NG", "B6"],
     context_clues=["cot", "commitment of traders", "futures", "commodities"],

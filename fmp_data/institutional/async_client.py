@@ -36,6 +36,7 @@ from fmp_data.institutional.models import (
     CIKMapping,
     FailToDeliver,
     Form13F,
+    Form13FDate,
     HolderIndustryBreakdown,
     HolderPerformanceSummary,
     IndustryPerformanceSummary,
@@ -97,7 +98,7 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
             return result
         return [result]
 
-    async def get_form_13f_dates(self, cik: str) -> list[Form13F]:
+    async def get_form_13f_dates(self, cik: str) -> list[Form13FDate]:
         """
         Get Form 13F filing dates
 
@@ -105,7 +106,8 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
             cik: Central Index Key (CIK)
 
         Returns:
-            List of Form13F objects with filing dates. Empty list if no records found.
+            List of Form13FDate objects with filing dates. Empty list if no
+            records found.
         """
         try:
             result = await self.client.request_async(FORM_13F_DATES, cik=cik)
@@ -191,7 +193,20 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         return await self.client.request_async(CIK_MAPPER, page=page, limit=limit)
 
     async def search_cik_by_name(self, name: str, page: int = 0) -> list[CIKMapping]:
-        """Search CIK mappings by name"""
+        """
+        Search CIK mappings by name using client-side filtering.
+
+        Note: The FMP API does not support server-side name filtering for CIK lookups.
+        This method fetches a large batch of records (10,000) and filters them locally,
+        which may impact performance for frequent searches.
+
+        Args:
+            name: Company name to search for (case-insensitive substring match)
+            page: Page number for pagination (default: 0)
+
+        Returns:
+            List of CIK mappings matching the name
+        """
         results = await self.client.request_async(CIK_MAPPER, page=page, limit=10000)
         if not isinstance(results, list):
             results = [results]

@@ -98,8 +98,9 @@ class SensitiveDataFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         """Filter log record to mask sensitive data"""
         # Process the message itself
-        if hasattr(record, "msg") and record.msg:
-            record.msg = self._mask_patterns_in_string(str(record.msg))
+        msg = getattr(record, "msg", None)
+        if msg:
+            record.msg = self._mask_patterns_in_string(str(msg))
 
         # For args processing, we need to be very careful to not break string formatting
         if record.args:
@@ -110,7 +111,7 @@ class SensitiveDataFilter(logging.Filter):
                 if original_args:
                     formatted_msg = str(original_msg) % original_args
                 else:
-                    str(original_msg)
+                    formatted_msg = str(original_msg)
                 masked_msg = self._mask_patterns_in_string(formatted_msg)
 
                 # Replace with masked message and no args to avoid formatting issues
@@ -280,7 +281,7 @@ class FMPLogger:
 
     def __init__(self) -> None:
         # Check if already initialized
-        if hasattr(self, "_initialized") and self._initialized:
+        if getattr(self, "_initialized", False):
             return
 
         self._initialized: bool = True

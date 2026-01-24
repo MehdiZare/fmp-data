@@ -1,7 +1,6 @@
 # fmp_data/institutional/models.py
 from datetime import date, datetime
 from typing import Any
-import warnings
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
@@ -47,24 +46,30 @@ class Form13FDate(BaseModel):
 
     model_config = default_model_config
 
-    form_date: date = Field(description="Date of form 13F filing", alias="date")
+    form_date: date | None = Field(
+        default=None, description="Date of form 13F filing", alias="date"
+    )
     year: int | None = Field(default=None, description="Filing year")
     quarter: int | None = Field(default=None, description="Filing quarter")
 
     @field_validator("form_date", mode="before")
     def validate_date(cls, value: Any) -> date | None:
         """
-        Validate the date field. If validation fails, log a warning and return None.
+        Validate the date field. Raises exceptions for invalid data to fail fast.
 
         Args:
             value: The value to validate, can be date, string, or any other type
 
         Returns:
-            date | None: Validated date object or None if validation fails
+            date | None: Validated date object or None for None input
+
+        Raises:
+            ValueError: If the date string format is invalid
+            TypeError: If the value type is unexpected
 
         Example:
             >>> "2023-01-01" -> date(2023, 1, 1)
-            >>> "invalid" -> None  # with warning
+            >>> "invalid" -> raises ValueError
             >>> None -> None
         """
         if value is None:
@@ -74,18 +79,14 @@ class Form13FDate(BaseModel):
         if isinstance(value, str):
             try:
                 return datetime.strptime(value, "%Y-%m-%d").date()
-            except ValueError:
-                warnings.warn(
-                    f"Invalid date format: {value}. "
-                    f"Expected format: YYYY-MM-DD. Skipping this value.",
-                    stacklevel=2,
-                )
-                return None
-        warnings.warn(
-            f"Unexpected type for date: {type(value)}. Skipping this value.",
-            stacklevel=2,
+            except ValueError as e:
+                raise ValueError(
+                    f"Invalid date format: {value}. Expected format: YYYY-MM-DD"
+                ) from e
+        raise TypeError(
+            f"Unexpected type for date: {type(value).__name__}. "
+            f"Expected str, date, or None"
         )
-        return None
 
 
 class AssetAllocation(BaseModel):
@@ -290,7 +291,7 @@ class BeneficialOwnership(BaseModel):
 
     symbol: str = Field(description="Company symbol")
     filing_date: datetime = Field(alias="filingDate", description="Filing date")
-    accepted_ate: datetime = Field(alias="acceptedDate", description="Acceptance date")
+    accepted_date: datetime = Field(alias="acceptedDate", description="Acceptance date")
     cusip: str = Field(description="CUSIP number")
     citizenship_place_org: str | None = Field(
         None,

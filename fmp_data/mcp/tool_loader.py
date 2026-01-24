@@ -7,7 +7,14 @@ import inspect
 import os
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from fmp_data.exceptions import DependencyError
+
+try:
+    from mcp.server.fastmcp import FastMCP
+except ImportError as e:
+    raise DependencyError(
+        feature="MCP server", install_command="pip install fmp-data[mcp]"
+    ) from e
 
 from fmp_data.client import FMPDataClient
 
@@ -32,9 +39,9 @@ def _load_semantics(client_slug: str, key: str) -> Any:
         raise ERR(f"No mapping module '{mod_path}'") from e
 
     table_name = f"{client_slug.upper()}_ENDPOINTS_SEMANTICS"
-    if not hasattr(mapping_mod, table_name):
+    table = getattr(mapping_mod, table_name, None)
+    if table is None:
         raise ERR(f"'{mod_path}' lacks {table_name}")
-    table = getattr(mapping_mod, table_name)
 
     if key not in table:
         raise ERR(f"Endpoint semantics '{key}' not found in {table_name}")

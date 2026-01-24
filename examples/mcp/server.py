@@ -1,3 +1,14 @@
+"""
+MCP Server Example - Custom tool selection.
+
+IMPORTANT: This example requires MCP dependencies to be installed:
+    pip install fmp-data[mcp]
+    # or with uv:
+    uv pip install fmp-data[mcp]
+
+For detailed setup instructions, see: examples/mcp/setup_guide.md
+"""
+
 import os
 
 from fmp_data.mcp.server import create_app

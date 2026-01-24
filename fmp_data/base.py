@@ -102,8 +102,9 @@ class BaseClient:
         Note: If you've used async methods, call aclose() instead to properly
         close both sync and async clients.
         """
-        if hasattr(self, "client") and self.client is not None:
-            self.client.close()
+        client = getattr(self, "client", None)
+        if client is not None:
+            client.close()
 
     def _setup_async_client(self) -> httpx.AsyncClient:
         """
@@ -326,8 +327,9 @@ class BaseClient:
         """
         endpoint_for_error: Endpoint[T] | None = None
         if response is None:
-            if isinstance(endpoint, httpx.Response) or hasattr(
-                endpoint, "raise_for_status"
+            # Check if endpoint is a Response or Response-like object (for tests)
+            if isinstance(endpoint, httpx.Response) or getattr(
+                endpoint, "raise_for_status", None
             ):
                 response = cast(httpx.Response, endpoint)
             else:

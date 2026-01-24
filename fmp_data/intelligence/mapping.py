@@ -103,6 +103,17 @@ SYMBOL_HINT = ParameterHint(
     context_clues=["company", "stock", "ticker", "symbol"],
 )
 
+CRYPTO_PAIR_HINT = ParameterHint(
+    natural_names=["crypto pair", "crypto symbol", "digital asset", "cryptocurrency"],
+    extraction_patterns=[
+        r"(?i)for\s+([A-Z]{1,6})",
+        r"(?i)([A-Z]{1,6})(?:'s|'|\s+)",
+        r"(?i)symbol[:\s]+([A-Z]{1,6})",
+    ],
+    examples=["BTCUSD", "ETHUSD", "BNBUSD"],
+    context_clues=["crypto", "cryptocurrency", "bitcoin", "ethereum", "trading pair"],
+)
+
 DATE_HINTS = {
     "start_date": ParameterHint(
         natural_names=["start date", "from date", "beginning", "since", "from"],
@@ -854,7 +865,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         parameter_hints={
             "name": ParameterHint(
                 natural_names=["name", "representative", "member"],
-                extraction_patterns=[r"(?i)name[:\\s]+([A-Za-z\\s]+)"],
+                extraction_patterns=[r"(?i)name[:\s]+([A-Za-z\s]+)"],
                 examples=["James", "Nancy Pelosi"],
                 context_clues=["representative", "member", "congress"],
             )
@@ -1241,7 +1252,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         category=SemanticCategory.INTELLIGENCE,
         sub_category="News & Media",
         parameter_hints={
-            "symbol": SYMBOL_HINT,
+            "symbol": CRYPTO_PAIR_HINT,
             "page": PAGE_HINT,
             "start_date": DATE_HINTS["start_date"],
             "end_date": DATE_HINTS["end_date"],
@@ -1672,7 +1683,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         parameter_hints={
             "name": ParameterHint(
                 natural_names=["name", "senator", "member"],
-                extraction_patterns=[r"(?i)name[:\\s]+([A-Za-z\\s]+)"],
+                extraction_patterns=[r"(?i)name[:\s]+([A-Za-z\s]+)"],
                 examples=["Jerry", "Sheldon Whitehouse"],
                 context_clues=["senator", "member", "congress"],
             )

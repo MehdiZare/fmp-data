@@ -9,7 +9,7 @@
 
 A Python client for the Financial Modeling Prep (FMP) API with comprehensive logging, rate limiting, and error handling. Built with UV for fast, reliable dependency management and modern Python development practices.
 
-LLM Guide: [LLM.md](./LLM.md)
+For AI/LLM integration guidance, see the [LLM Guide](LLM.md).
 
 ## Why UV?
 
@@ -248,16 +248,6 @@ for result in results:
     print(f"Found endpoint: {result.name}")
     print(f"Relevance score: {result.score:.2f}")
 ```
-
-### Interactive Example
-Try out the LangChain integration in our interactive Colab notebook:
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](link-to-your-colab-notebook)
-
-This notebook demonstrates how to:
-- Build an intelligent financial agent using fmp-data and LangChain
-- Access real-time market data through natural language queries
-- Use semantic search to select relevant financial tools
-- Create multi-turn conversations about financial data
 
 ### Environment Variables
 You can also configure the integration using environment variables:
@@ -642,18 +632,25 @@ client = FMPDataClient(config=config)
 
 ## Error Handling
 
+The library provides a comprehensive exception hierarchy for robust error handling:
+
 ```python
 from fmp_data import FMPDataClient
 from fmp_data.exceptions import (
-    FMPError,
-    RateLimitError,
-    AuthenticationError,
-    ValidationError,
-    ConfigError
+    FMPError,              # Base exception for all FMP errors
+    RateLimitError,        # API rate limit exceeded
+    AuthenticationError,   # Invalid or missing API key
+    ValidationError,       # Invalid request parameters
+    ConfigError,           # Configuration errors
+    InvalidSymbolError,    # Missing or blank required symbol
+    InvalidResponseTypeError,  # Unexpected API response type
+    DependencyError,       # Missing optional dependency
+    FMPNotFound,          # Symbol or resource not found
 )
+
 try:
     with FMPDataClient.from_env() as client:
-        profile = client.company.get_profile("INVALID")
+        profile = client.company.get_profile("AAPL")
 
 except RateLimitError as e:
     print(f"Rate limit exceeded. Wait {e.retry_after} seconds")
@@ -664,8 +661,18 @@ except AuthenticationError as e:
     print("Invalid API key or authentication failed")
     print(f"Status code: {e.status_code}")
 
+except InvalidSymbolError as e:
+    print(f"Symbol error: {e.message}")
+
 except ValidationError as e:
     print(f"Invalid parameters: {e.message}")
+
+except DependencyError as e:
+    print(f"Missing dependency: {e.feature}")
+    print(f"Install with: {e.install_command}")
+
+except FMPNotFound as e:
+    print(f"Not found: {e.message}")
 
 except ConfigError as e:
     print(f"Configuration error: {e.message}")
@@ -911,6 +918,7 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 
 - GitHub Issues: [Create an issue](https://github.com/MehdiZare/fmp-data/issues)
 - Documentation: [Read the docs](./docs)
+- Connect with the author: [LinkedIn](https://www.linkedin.com/in/mehdizare/)
 
 ## Examples
 
@@ -932,4 +940,4 @@ with FMPDataClient.from_env() as client:
 
 ## Release Notes
 
-See [CHANGELOG.md](./CHANGELOG.md) for a list of changes in each release.
+See [CHANGELOG.md](CHANGELOG.md) for a list of changes in each release.

@@ -4,7 +4,7 @@
 #
 # For maintainer/developer commands, see Makefile.dev
 
-.PHONY: help install install-dev venv test lint format fix clean update update-dev
+.PHONY: help install install-dev venv test lint format fix check clean update update-dev
 .PHONY: mcp-setup mcp-test mcp-list mcp-status
 
 # Default target
@@ -41,6 +41,7 @@ help: ## Show available commands
 	@echo "  $(GREEN)make lint$(RESET)            Check code quality"
 	@echo "  $(GREEN)make format$(RESET)          Check code formatting"
 	@echo "  $(GREEN)make fix$(RESET)             Auto-fix code issues"
+	@echo "  $(GREEN)make check$(RESET)           Run all validation checks (lint, format, test)"
 	@echo ""
 	@echo "$(BOLD)🧹 Maintenance:$(RESET)"
 	@echo "  $(GREEN)make clean$(RESET)           Clean cache and build files"
@@ -168,6 +169,13 @@ fix: ## Auto-fix code issues
 		. .venv/bin/activate && ruff format fmp_data; \
 	fi
 	@echo "$(GREEN)✅ Auto-fixes applied!$(RESET)"
+
+check: ## Run all quick validation checks (lint, format, test)
+	@echo "$(BOLD)$(BLUE)🔍 Running validation checks...$(RESET)"
+	@$(MAKE) lint
+	@$(MAKE) format
+	@$(MAKE) test
+	@echo "$(GREEN)✅ All checks passed!$(RESET)"
 
 # ══════════════════════════════════════════════════════════════════════════
 # Maintenance

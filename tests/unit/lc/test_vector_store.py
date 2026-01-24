@@ -130,8 +130,9 @@ def test_search(vector_store):
     results = vector_store.search("test query")
     assert isinstance(results, list)
     if results:
-        assert hasattr(results[0], "score")
-        assert hasattr(results[0], "name")
+        # Verify result has required attributes
+        assert results[0].score is not None
+        assert results[0].name is not None
 
 
 def test_save_load(vector_store, tmp_path):
