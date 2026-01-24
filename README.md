@@ -674,6 +674,9 @@ except DependencyError as e:
 except FMPNotFound as e:
     print(f"Not found: {e.message}")
 
+except InvalidResponseTypeError as e:
+    print(f"Unexpected response type: {e.message}")
+
 except ConfigError as e:
     print(f"Configuration error: {e.message}")
 
