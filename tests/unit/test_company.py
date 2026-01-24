@@ -239,9 +239,7 @@ class TestCompanyProfile:
         assert profile.symbol == "AAPL"
 
     @patch("httpx.Client.request")
-    def test_get_company_profile_by_cik(
-        self, mock_request, fmp_client, mock_response, profile_data
-    ):
+    def test_get_company_profile_by_cik(self, _mock_request, fmp_client, profile_data):
         """Test getting company profile by CIK through client"""
         # Set up the mock to return the actual response object
         mock_client = fmp_client.client
@@ -253,9 +251,7 @@ class TestCompanyProfile:
         assert profile.cik == "0000320193"
 
     @patch("httpx.Client.request")
-    def test_get_company_profile_by_cik_not_found(
-        self, _mock_request, fmp_client, mock_response
-    ):
+    def test_get_company_profile_by_cik_not_found(self, _mock_request, fmp_client):
         """Test getting company profile by CIK when not found"""
         from fmp_data.exceptions import FMPNotFound
 
@@ -366,6 +362,8 @@ class TestCompanySymbol:
                 high=151.00,
                 low=148.50,
                 close=150.25,
+                price=150.25,
+                adjClose=150.25,
                 volume=82034567,
                 change=2.25,
                 changePercent=1.5,

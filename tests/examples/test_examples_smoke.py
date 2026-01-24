@@ -5,6 +5,7 @@ Ensures examples run without errors (imports, syntax, basic runtime).
 
 import importlib.util
 from pathlib import Path
+import re
 import sys
 from types import ModuleType
 from unittest.mock import MagicMock, patch
@@ -326,16 +327,21 @@ def test_all_examples_use_context_manager() -> None:
 
 def test_no_hardcoded_api_keys() -> None:
     """Ensure no examples have hardcoded API keys."""
-    import re
-
-    # Match api_key= followed by a quoted string that's not a placeholder
-    key_pattern = re.compile(
-        r'api_key\s*=\s*["\'](?!your_api_key_here|your_test_api_key)[^"\']+["\']'
-    )
+    # Match api_key= or FMP_API_KEY= followed by a quoted string
+    # that's not a placeholder
+    key_patterns = [
+        re.compile(
+            r'api_key\s*=\s*["\'](?!your_api_key_here|your_test_api_key)[^"\']+["\']'
+        ),
+        re.compile(
+            r'FMP_API_KEY\s*=\s*["\'](?!your_api_key_here|your_test_api_key)[^"\']+["\']'
+        ),
+    ]
 
     for example_file in EXAMPLE_FILES:
         example_path = EXAMPLES_DIR / example_file
         content = example_path.read_text()
 
-        if key_pattern.search(content):
-            pytest.fail(f"Example {example_file} may contain hardcoded API key")
+        for pattern in key_patterns:
+            if pattern.search(content):
+                pytest.fail(f"Example {example_file} may contain hardcoded API key")
