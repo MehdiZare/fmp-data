@@ -155,7 +155,7 @@ These are only imported when accessed, preventing import errors if extras aren't
 
 Custom exceptions for error handling (all in `fmp_data/exceptions.py`):
 
-```
+```text
 FMPError                  # Base exception for all FMP API errors
 ├── RateLimitError        # 429 - includes retry_after attribute
 ├── AuthenticationError   # 401 - invalid or missing API key
