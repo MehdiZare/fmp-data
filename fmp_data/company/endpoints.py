@@ -157,7 +157,7 @@ STOCK_PRICE_CHANGE: Endpoint[StockPriceChange] = Endpoint(
 
 HISTORICAL_PRICE: Endpoint = Endpoint(
     name="historical_price",
-    path="historical-price-eod",
+    path="historical-price-eod/full",
     version=APIVersion.STABLE,
     description="Get historical daily price data",
     mandatory_params=[

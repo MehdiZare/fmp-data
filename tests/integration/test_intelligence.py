@@ -35,7 +35,6 @@ from fmp_data.intelligence.models import (
     StockGradeNews,
     StockGradesConsensus,
     StockNewsArticle,
-    StockNewsSentiment,
     StockSplitEvent,
 )
 
@@ -282,24 +281,23 @@ class TestIntelligenceEndpoints(BaseTestCase):
                 assert isinstance(article.url, HttpUrl)
 
     def test_get_stock_news_sentiments(self, fmp_client: FMPDataClient, vcr_instance):
-        """Test getting stock news articles with sentiment"""
-        with vcr_instance.use_cassette("intelligence/stock_news_sentiments.yaml"):
-            articles = self._handle_rate_limit(
-                fmp_client.intelligence.get_stock_news_sentiments,
-                page=0,
-            )
+        """Test getting stock news articles with sentiment
 
+        Note: This endpoint is deprecated and returns empty results.
+        """
+        with vcr_instance.use_cassette("intelligence/stock_news_sentiments.yaml"):
+            # Expect deprecation warning
+            with pytest.warns(
+                DeprecationWarning, match="no longer supports this endpoint"
+            ):
+                articles = self._handle_rate_limit(
+                    fmp_client.intelligence.get_stock_news_sentiments,
+                    page=0,
+                )
+
+            # Endpoint is deprecated - should return empty list
             assert isinstance(articles, list)
-            # API may return empty array if no data available
-            if len(articles) > 0:
-                for article in articles:
-                    assert isinstance(article, StockNewsSentiment)
-                    assert isinstance(article.symbol, str)
-                    assert isinstance(article.publishedDate, datetime)
-                    assert isinstance(article.sentiment, str)
-                    assert isinstance(article.sentimentScore, float)
-                    assert isinstance(article.title, str)
-                    assert isinstance(article.text, str)
+            assert len(articles) == 0, "Deprecated endpoint should return empty list"
 
     def test_get_forex_news(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting forex news articles"""
