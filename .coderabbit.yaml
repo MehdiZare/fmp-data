@@ -1,0 +1,100 @@
+# Language and basic settings
+language: en-US
+early_access: false
+enable_free_tier: true
+
+# Review behavior
+reviews:
+  profile: chill  # Avoid verbose reviews
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: false  # Skip draft PRs
+
+# Chat settings
+chat:
+  auto_reply: true
+
+# Code guidelines - reference CLAUDE.md
+knowledge_base:
+  - "CLAUDE.md"
+  - "README.md"
+  - "CONTRIBUTING.md"
+
+# Path-specific review instructions
+path_instructions:
+  - path: "**/*.py"
+    instructions: |
+      - Follow Python best practices and PEP 8 style guide
+      - Ensure type hints are present for function signatures
+      - Use ruff for linting compliance (enforced in CI)
+      - Check error messages are user-friendly with context
+      - Verify proper exception handling patterns
+
+  - path: "**/test_*.py"
+    instructions: |
+      - Ensure tests follow existing patterns (pytest fixtures, VCR cassettes)
+      - Validate test names are descriptive
+      - Check for proper mocking and assertion patterns
+      - Verify integration tests use VCR for API recording
+      - Ensure coverage targets are maintained (80% threshold)
+
+  - path: "**/endpoints.py"
+    instructions: |
+      - Verify endpoint paths match FMP API documentation
+      - Check response models are correctly specified
+      - Ensure path parameters use correct aliases
+      - Validate endpoint descriptions are clear
+      - Confirm historical endpoints use proper suffixes (/full, /light, etc.)
+
+  - path: "**/models.py"
+    instructions: |
+      - Ensure Pydantic models have proper field types
+      - Check optional fields use | None pattern
+      - Verify field aliases match API response keys
+      - Validate model_config is set appropriately
+      - Check for proper docstrings
+
+  - path: "**/*.md"
+    instructions: |
+      - Verify Markdown formatting is correct
+      - Check links are valid
+      - Ensure code examples are properly formatted
+      - Validate changelog follows Keep a Changelog format
+
+# Files to ignore
+path_filters: |
+  !.nox/**
+  !.venv/**
+  !dist/**
+  !*.lock
+  !**/__pycache__/**
+  !*.pyc
+  !.coverage
+  !htmlcov/**
+  !site/**
+  !tests/integration/vcr_cassettes/**
+
+# Tools configuration - disable most, rely on CI
+tools:
+  ruff:
+    enabled: false  # Run in CI via pre-commit
+  markdownlint:
+    enabled: false
+  gitleaks:
+    enabled: false  # Run in CI
+  semgrep:
+    enabled: false  # Run in CI
+  shellcheck:
+    enabled: false
+
+# Ignore WIP and draft PRs
+ignore:
+  titles:
+    - "WIP"
+    - "Draft"
+  drafts: true
