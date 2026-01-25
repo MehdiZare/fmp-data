@@ -46,7 +46,6 @@ from fmp_data.intelligence.endpoints import (
     SENATE_TRADING,
     SENATE_TRADING_RSS,
     STOCK_NEWS_ENDPOINT,
-    STOCK_NEWS_SENTIMENTS_ENDPOINT,
     STOCK_SPLITS_CALENDAR,
     STOCK_SYMBOL_NEWS_ENDPOINT,
 )
@@ -272,10 +271,7 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             DeprecationWarning,
             stacklevel=2,
         )
-        params = {
-            "page": page,
-        }
-        return await self.client.request_async(STOCK_NEWS_SENTIMENTS_ENDPOINT, **params)
+        return []
 
     async def get_forex_news(
         self,

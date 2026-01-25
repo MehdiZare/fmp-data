@@ -2647,8 +2647,6 @@ class TestAsyncMarketIntelligenceClient:
 
         from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
 
-        mock_client.request_async.return_value = []
-
         async_client = AsyncMarketIntelligenceClient(mock_client)
 
         with warnings.catch_warnings(record=True) as w:
@@ -2658,4 +2656,10 @@ class TestAsyncMarketIntelligenceClient:
             assert len(w) == 1
             assert issubclass(w[0].category, DeprecationWarning)
             assert "no longer supports this endpoint" in str(w[0].message)
-            assert isinstance(result, list)
+
+        # Verify no API call was made
+        mock_client.request_async.assert_not_called()
+
+        # Verify empty result
+        assert result == []
+        assert isinstance(result, list)

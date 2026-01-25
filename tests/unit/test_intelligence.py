@@ -36,7 +36,6 @@ from fmp_data.intelligence.models import (
     StockGradeNews,
     StockGradesConsensus,
     StockNewsArticle,
-    StockNewsSentiment,
     StockSplitEvent,
 )
 
@@ -455,9 +454,7 @@ class TestMarketIntelligenceClientNews:
         """Test get_stock_news_sentiments emits deprecation warning"""
         import warnings
 
-        mock_client.request.return_value = [
-            StockNewsSentiment(**stock_news_sentiment_data)
-        ]
+        # No need to mock request since it won't be called
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
@@ -468,11 +465,12 @@ class TestMarketIntelligenceClientNews:
             assert issubclass(w[0].category, DeprecationWarning)
             assert "no longer supports this endpoint" in str(w[0].message)
 
-        mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
-        assert kwargs["page"] == 0
+        # Verify no API call was made
+        mock_client.request.assert_not_called()
+
+        # Verify empty result
+        assert result == []
         assert isinstance(result, list)
-        assert result[0].sentiment == "Positive"
 
     def test_get_forex_news(self, fmp_client, mock_client):
         """Test get_forex_news"""

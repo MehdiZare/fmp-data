@@ -470,6 +470,7 @@ COMMODITY_HISTORICAL: Endpoint = Endpoint(
             param_type=ParamType.DATE,
             required=False,
             description="Start date for historical data",
+            alias="from",
         ),
         EndpointParam(
             name="end_date",  # Changed from "to"
@@ -477,6 +478,7 @@ COMMODITY_HISTORICAL: Endpoint = Endpoint(
             param_type=ParamType.DATE,
             required=False,
             description="End date for historical data",
+            alias="to",
         ),
     ],
     response_model=CommodityHistoricalPrice,

@@ -5,7 +5,7 @@
 # For maintainer/developer commands, see Makefile.dev
 
 .PHONY: help install install-dev venv test lint format fix check clean update update-dev
-.PHONY: mcp-setup mcp-test mcp-list mcp-status
+.PHONY: mcp-setup mcp-test mcp-list mcp-status ci
 
 # Default target
 .DEFAULT_GOAL := help
@@ -230,3 +230,6 @@ quickstart: install-mcp mcp-setup ## Complete setup for new users
 # ══════════════════════════════════════════════════════════════════════════
 
 setup: quickstart ## Alias for quickstart
+
+ci: ## Run full CI checks locally (delegates to Makefile.dev)
+	@$(MAKE) -f Makefile.dev ci

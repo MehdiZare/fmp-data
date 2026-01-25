@@ -395,7 +395,7 @@ STOCK_SYMBOL_NEWS_ENDPOINT: Endpoint = Endpoint(
 STOCK_NEWS_SENTIMENTS_ENDPOINT: Endpoint = Endpoint(
     name="stock_news_sentiments",
     path="stock-news-sentiments-rss-feed",
-    version=APIVersion.STABLE,
+    version=APIVersion.V4,
     description="[DEPRECATED] This endpoint is no longer available on the FMP API",
     mandatory_params=[
         EndpointParam(
