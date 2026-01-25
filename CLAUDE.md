@@ -155,7 +155,7 @@ These are only imported when accessed, preventing import errors if extras aren't
 
 Custom exceptions for error handling (all in `fmp_data/exceptions.py`):
 
-```python
+```
 FMPError                  # Base exception for all FMP API errors
 ├── RateLimitError        # 429 - includes retry_after attribute
 ├── AuthenticationError   # 401 - invalid or missing API key
@@ -185,9 +185,30 @@ All exceptions include `message`, `status_code`, and `response` attributes.
 ### Testing Strategy
 - Unit tests mock HTTP responses and test business logic
 - Integration tests use VCR.py cassettes to record/replay API calls
+- **CRITICAL**: Integration tests must validate successful responses
+  - Assert non-empty results for data-returning endpoints
+  - VCR cassettes should contain 200 status codes (not 404)
+  - Re-record cassettes after endpoint definition changes
+  - Empty results may indicate incorrect endpoint paths
 - Coverage target is 80% (excluding predefined endpoints)
 - Run `make test` frequently during development
 - Use `make -f Makefile.dev test-all` for comprehensive cross-version testing via nox
+
+### Endpoint Definition Guidelines
+- Always verify endpoint paths against FMP API documentation
+- Historical price endpoints require variant suffixes:
+  - `/full` - Complete historical data with all fields
+  - `/light` - Lightweight OHLC only
+  - `/non-split-adjusted` - Without split adjustments
+  - `/dividend-adjusted` - With dividend adjustments
+- **Never use bare `/historical-price-eod` without a suffix**
+- Test new endpoints by checking VCR cassettes for 200 status
+- A 404 in a cassette indicates incorrect path or deprecated API
+- When FMP deprecates an endpoint:
+  - Add deprecation warning to method docstring
+  - Emit `DeprecationWarning` in method implementation
+  - Update tests to expect empty results
+  - Plan removal in next major version
 
 ### Code Style
 - Uses `ruff` for linting and formatting (replaces black/isort/flake8)

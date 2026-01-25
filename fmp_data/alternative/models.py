@@ -113,10 +113,12 @@ class HistoricalPrice(BaseModel):
     high: float = Field(description="Highest price of the day")
     low: float = Field(description="Lowest price of the day")
     close: float = Field(description="Closing price")
-    adj_close: float = Field(alias="adjClose", description="Adjusted closing price")
+    adj_close: float | None = Field(
+        None, alias="adjClose", description="Adjusted closing price"
+    )
     volume: int = Field(description="Volume traded")
-    unadjusted_volume: int = Field(
-        alias="unadjustedVolume", description="Unadjusted trading volume"
+    unadjusted_volume: int | None = Field(
+        None, alias="unadjustedVolume", description="Unadjusted trading volume"
     )
     change: float = Field(description="Price change")
     change_percent: float | None = Field(

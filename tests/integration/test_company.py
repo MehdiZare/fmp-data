@@ -93,14 +93,24 @@ class TestCompanyEndpoints(BaseTestCase):
             )
 
             assert isinstance(prices, HistoricalData)
+
+            # Validate successful response (not empty from 404)
+            assert len(prices.historical) > 0, (
+                "Expected historical price data but got empty list. "
+                "This may indicate a 404 - check the VCR cassette for status code."
+            )
+
             for price in prices.historical:
                 assert isinstance(price.date, datetime)
                 assert isinstance(price.open, float)
                 assert isinstance(price.high, float)
                 assert isinstance(price.low, float)
                 assert isinstance(price.close, float)
-                assert isinstance(price.adj_close, float)
                 assert isinstance(price.volume, int)
+                # Note: /full endpoint doesn't include adj_close or price fields
+                # Only check if present
+                if price.adj_close is not None:
+                    assert isinstance(price.adj_close, float)
 
     def test_get_intraday_prices(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting intraday price data"""
@@ -717,6 +727,12 @@ class TestCompanyAdditionalEndpoints(BaseTestCase):
             )
             assert isinstance(data, HistoricalData)
             assert isinstance(data.historical, list)
+
+            # Validate non-empty response
+            assert len(data.historical) > 0, (
+                f"{method_name}: Expected price data but got empty list. "
+                "Check VCR cassette for 404 status."
+            )
 
     def test_get_financial_reports_json(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting financial reports JSON"""
