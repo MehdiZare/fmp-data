@@ -21,9 +21,14 @@ chat:
 
 # Code guidelines - reference CLAUDE.md
 knowledge_base:
-  - "CLAUDE.md"
-  - "README.md"
-  - "CONTRIBUTING.md"
+  learnings:
+    scope: global
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "CLAUDE.md"
+      - "README.md"
+      - "CONTRIBUTING.md"
 
 # Path-specific review instructions
 path_instructions:
