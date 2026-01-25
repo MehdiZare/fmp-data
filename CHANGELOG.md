@@ -14,6 +14,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - MCP semantics key: `company.profile_cik`
   - Useful for SEC filing research and cross-referencing regulatory data
 
+### Fixed
+- **Historical Price Endpoints** - Fixed 404 errors on historical price endpoints by correcting endpoint paths:
+  - Updated `HISTORICAL_PRICE` (company), `CRYPTO_HISTORICAL`, `FOREX_HISTORICAL`, and `COMMODITY_HISTORICAL` to use `/full` suffix
+  - Changed paths from `historical-price-eod` to `historical-price-eod/full` to match FMP API specification
+  - All VCR test cassettes re-recorded with correct 200 status codes and actual price data
+  - Updated integration tests to validate non-empty responses and detect future path mismatches
+- **Alternative Markets Models** - Fixed Pydantic validation errors for crypto/forex/commodity historical prices:
+  - Made `adj_close` and `unadjusted_volume` fields optional in `HistoricalPrice` model
+  - Fixed `FOREX_HISTORICAL` endpoint to use correct response model (`ForexHistoricalPrice` instead of `ForexPriceHistory`)
+  - Updated unit test mocks to match actual `/full` endpoint response format (flat list structure)
+- **Test Coverage** - Improved patch coverage to 100% for deprecation warnings:
+  - Added async test for `get_stock_news_sentiments()` deprecation warning
+  - Enhanced sync test to validate `DeprecationWarning` emission
+  - All 866 unit tests now passing with proper coverage of warning code paths
+
+### Deprecated
+- **Stock News Sentiments Endpoint** - Marked `get_stock_news_sentiments()` as deprecated:
+  - FMP API no longer supports the `stock-news-sentiments-rss-feed` endpoint (returns 404)
+  - Both sync and async methods now emit `DeprecationWarning` with clear migration message
+  - Method returns empty list to maintain backward compatibility
+  - Will be removed in a future major version
+
+### Changed
+- **Documentation** - Enhanced `CLAUDE.md` with best practices:
+  - Added critical testing strategy reminders for validating successful API responses
+  - Documented historical price endpoint variants (`/full`, `/light`, `/non-split-adjusted`, `/dividend-adjusted`)
+  - Added endpoint definition guidelines to prevent future 404 errors
+  - Established deprecation handling process for removed FMP endpoints
+
 ## [2.1.0] - 2026-01-23
 
 [Compare changes](https://github.com/MehdiZare/fmp-data/compare/v2.0.0...v2.1.0)
