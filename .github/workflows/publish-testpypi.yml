@@ -42,7 +42,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: 🐍  Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -184,7 +184,7 @@ jobs:
           fetch-depth: 0  # Needed for hatch-vcs versioning
 
       - name: 🐍  Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
