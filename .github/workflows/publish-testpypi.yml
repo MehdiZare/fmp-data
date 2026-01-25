@@ -36,7 +36,7 @@ jobs:
 
     steps:
       - name: 🛎️  Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # Needed for version calculation
           ref: ${{ github.event.pull_request.head.sha }}
@@ -179,7 +179,7 @@ jobs:
 
     steps:
       - name: 🛎️  Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # Needed for hatch-vcs versioning
 
