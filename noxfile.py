@@ -99,6 +99,7 @@ def _sync_with_uv(session: Session, extras: Iterable[str] = ()) -> None:
                 "pytest-asyncio>=0.24.0",
                 "pytest-cov>=6.0.0",
                 "pytest-mock>=3.14.0",
+                "pytest-xdist>=3.6.1",
                 "coverage>=7.6.4",
                 "freezegun>=1.5.1",
                 "responses>=0.25.3",

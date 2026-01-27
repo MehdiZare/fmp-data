@@ -49,7 +49,7 @@ class EconomicEvent(BaseModel):
     model_config = default_model_config
 
     event: str = Field(..., description="Event name")
-    country: str = Field(default="", description="Country code")  # Can be empty string
+    country: str | None = Field(None, description="Country code")
     event_date: datetime = Field(..., alias="date")
     currency: str | None = Field(None, description="Currency code")
     previous: float | None = Field(None, description="Previous value")
@@ -57,7 +57,7 @@ class EconomicEvent(BaseModel):
     actual: float | None = Field(None, description="Actual value")
     change: float | None = Field(None, description="Change value")
     impact: str | None = Field(None, description="Impact level")
-    change_percent: float | None = Field(0, alias="changePercentage")
+    change_percent: float | None = Field(None, alias="changePercentage")
 
 
 class MarketRiskPremium(BaseModel):

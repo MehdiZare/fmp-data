@@ -173,8 +173,8 @@ class TestEconomicEvent:
         event = EconomicEvent.model_validate(data)
         assert event.event == "Test Event"
         assert event.event_date == datetime(2024, 1, 5, 8, 30)
-        assert event.country == ""  # Default value
-        assert event.change_percent == 0  # Default value
+        assert event.country is None
+        assert event.change_percent is None
 
     def test_model_validation_complete(self, event_data):
         """Test EconomicEvent model with all fields"""
