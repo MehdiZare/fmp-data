@@ -107,7 +107,7 @@ mcp-status: ## Check MCP server status
 
 venv: .venv/.installed ## Create .venv and install dev dependencies if missing
 
-.venv/.installed:
+.venv/.installed: pyproject.toml
 	@echo "$(BOLD)$(BLUE)🐍 Preparing .venv...$(RESET)"
 	@if [ ! -d ".venv" ]; then \
 		echo "$(CYAN)Creating virtual environment at .venv...$(RESET)"; \
