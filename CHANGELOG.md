@@ -28,6 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added async test for `get_stock_news_sentiments()` deprecation warning
   - Enhanced sync test to validate `DeprecationWarning` emission
   - All 866 unit tests now passing with proper coverage of warning code paths
+- **Missing Data Defaults** - Normalized economic and intelligence models to keep missing values as `None`:
+  - `EconomicEvent.country` now defaults to `None` instead of empty string
+  - `EconomicEvent.change_percent` now defaults to `None` instead of `0`
+  - Government trading `owner`/`comment` fields now default to `None`
 
 ### Deprecated
 - **Stock News Sentiments Endpoint** - Marked `get_stock_news_sentiments()` as deprecated:
@@ -42,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Documented historical price endpoint variants (`/full`, `/light`, `/non-split-adjusted`, `/dividend-adjusted`)
   - Added endpoint definition guidelines to prevent future 404 errors
   - Established deprecation handling process for removed FMP endpoints
+- **Testing** - Enabled parallel pytest runs for local Makefile/nox usage and added `pytest-xdist` to dev dependencies (CI remains serial to avoid stalls).
+- **Makefile** - `.venv/.installed` now tracks `pyproject.toml` changes to auto-refresh dev deps.
 
 ## [2.1.0] - 2026-01-23
 

@@ -107,8 +107,9 @@ class TestCompanyEndpoints(BaseTestCase):
                 assert isinstance(price.low, float)
                 assert isinstance(price.close, float)
                 assert isinstance(price.volume, int)
-                # Note: /full endpoint doesn't include adj_close or price fields
-                # Only check if present
+                # Note: /full endpoint returns open/high/low/close/volume but may
+                # omit adj_close
+                # Only check adj_close if present
                 if price.adj_close is not None:
                     assert isinstance(price.adj_close, float)
 

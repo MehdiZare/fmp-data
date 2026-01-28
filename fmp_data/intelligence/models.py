@@ -418,7 +418,7 @@ class SenateTrade(BaseModel):
         alias="capitalGainsOver200USD",
         description="Whether capital gains exceeded $200",
     )
-    comment: str | None = Field(default="", description="Additional comments")
+    comment: str | None = Field(default=None, description="Additional comments")
     link: HttpUrl | None = Field(None, description="Link to filing")
 
     @property
@@ -451,14 +451,14 @@ class HouseDisclosure(BaseModel):
     )
     office: str | None = Field(None, description="Representative office")
     district: str | None = Field(None, description="Congressional district")
-    owner: str | None = Field(default="", description="Owner of the asset")
+    owner: str | None = Field(default=None, description="Owner of the asset")
     asset_description: str | None = Field(
         None, alias="assetDescription", description="Description of the asset"
     )
     asset_type: str | None = Field(None, alias="assetType", description="Type of asset")
     type: str | None = Field(None, description="Transaction type")
     amount: str | None = Field(None, description="Transaction amount range")
-    comment: str | None = Field(default="", description="Additional comments")
+    comment: str | None = Field(default=None, description="Additional comments")
     link: HttpUrl | None = Field(None, description="Link to filing")
     capital_gains_over_200usd: bool | None = Field(
         None,
