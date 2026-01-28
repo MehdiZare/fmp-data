@@ -120,6 +120,12 @@ def _sync_with_uv(session: Session, extras: Iterable[str] = ()) -> None:
             session.run("uv", "pip", "install", f"-e.[{extra}]")
 
 
+def _pytest_xdist_args() -> list[str]:
+    if os.getenv("CI") == "true":
+        return []
+    return ["-n", "auto"]
+
+
 # --------------------------------------------------------------------------- #
 #  Sessions                                                                   #
 # --------------------------------------------------------------------------- #
@@ -137,7 +143,7 @@ def tests(session: Session, feature_group: str | None) -> None:
 
     _sync_with_uv(session, extras)
 
-    pytest_args = ["-q"]
+    pytest_args = ["-q", *_pytest_xdist_args()]
 
     if feature_group == "mcp-server":
         # Check if mcp tests exist and handle gracefully
@@ -216,6 +222,7 @@ def coverage_local(session: Session) -> None:
             "--cov-report=term-missing",
             "--cov-fail-under=0",
         ]
+        pytest_args.extend(_pytest_xdist_args())
 
         env = {"COVERAGE_FILE": str(coverage_file)}
 
@@ -297,6 +304,7 @@ def test_local(session: Session) -> None:
         "--cov-report=term-missing",
         "--cov-report=xml",
         "--cov-report=html",
+        *_pytest_xdist_args(),
     )
 
 

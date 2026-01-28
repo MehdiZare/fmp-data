@@ -46,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Documented historical price endpoint variants (`/full`, `/light`, `/non-split-adjusted`, `/dividend-adjusted`)
   - Added endpoint definition guidelines to prevent future 404 errors
   - Established deprecation handling process for removed FMP endpoints
-- **Testing** - Enabled parallel pytest runs (`-n auto`) and added `pytest-xdist` to dev dependencies.
+- **Testing** - Enabled parallel pytest runs for local Makefile/nox usage and added `pytest-xdist` to dev dependencies (CI remains serial to avoid stalls).
 - **Makefile** - `.venv/.installed` now tracks `pyproject.toml` changes to auto-refresh dev deps.
 
 ## [2.1.0] - 2026-01-23

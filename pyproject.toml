@@ -306,8 +306,6 @@ addopts = [
     "--disable-warnings",
     "--strict-markers",
     "--strict-config",
-    "-n",
-    "auto",
 ]
 testpaths = [
     "tests",

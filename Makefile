@@ -18,6 +18,12 @@ BLUE := \033[34m
 CYAN := \033[36m
 RESET := \033[0m
 
+PYTEST_XDIST ?= 1
+PYTEST_XDIST_ARGS :=
+ifeq ($(PYTEST_XDIST),1)
+PYTEST_XDIST_ARGS = -n auto
+endif
+
 # ══════════════════════════════════════════════════════════════════════════
 # Help
 # ══════════════════════════════════════════════════════════════════════════
@@ -121,7 +127,7 @@ test: venv ## Run tests
 	@set -a; [ -f .env ] && . ./.env; set +a; \
 		if [ -z "$$FMP_TEST_API_KEY" ] && [ -n "$$FMP_API_KEY" ]; then export FMP_TEST_API_KEY="$$FMP_API_KEY"; fi; \
 		if [ -z "$$FMP_API_KEY" ] && [ -n "$$FMP_TEST_API_KEY" ]; then export FMP_API_KEY="$$FMP_TEST_API_KEY"; fi; \
-		. .venv/bin/activate && pytest -q
+		. .venv/bin/activate && pytest -q $(PYTEST_XDIST_ARGS)
 
 lint: ## Check code quality with ruff
 	@echo "$(BOLD)$(BLUE)🔍 Checking code quality...$(RESET)"
