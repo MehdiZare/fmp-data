@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Useful for SEC filing research and cross-referencing regulatory data
 
 ### Fixed
+- **Stock News Null Symbol** - Fixed `ValidationError` when FMP API returns `null` for `symbol` field in stock news responses (Issue #62):
+  - Made `StockNewsArticle.symbol` optional (`str | None`)
+  - Made `StockNewsSentiment.symbol` optional for consistency
+  - Added unit and integration tests for null symbol handling
 - **Historical Price Endpoints** - Fixed 404 errors on historical price endpoints by correcting endpoint paths:
   - Updated `HISTORICAL_PRICE` (company), `CRYPTO_HISTORICAL`, `FOREX_HISTORICAL`, and `COMMODITY_HISTORICAL` to use `/full` suffix
   - Changed paths from `historical-price-eod` to `historical-price-eod/full` to match FMP API specification

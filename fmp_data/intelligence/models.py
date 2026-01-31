@@ -192,7 +192,7 @@ class StockNewsArticle(BaseModel):
 
     model_config = default_model_config
 
-    symbol: str
+    symbol: str | None = None
     publishedDate: datetime
     title: str
     image: HttpUrl | None = None
@@ -206,7 +206,7 @@ class StockNewsSentiment(BaseModel):
 
     model_config = default_model_config
 
-    symbol: str
+    symbol: str | None = None
     publishedDate: datetime
     title: str
     image: HttpUrl

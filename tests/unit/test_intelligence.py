@@ -316,6 +316,19 @@ class TestMarketIntelligenceClientCalendar:
 class TestMarketIntelligenceClientNews:
     """Test news functionality"""
 
+    def test_stock_news_article_with_null_symbol(self):
+        """Test StockNewsArticle accepts null symbol (Issue #62)"""
+        data = {
+            "symbol": None,
+            "publishedDate": "2024-01-15T10:00:00",
+            "title": "General Market News",
+            "site": "Example News",
+            "text": "Article content",
+            "url": "https://example.com/article",
+        }
+        article = StockNewsArticle(**data)
+        assert article.symbol is None
+
     def test_get_fmp_articles_default(self, fmp_client, mock_client):
         """Test get_fmp_articles with default parameters"""
         mock_content = [
