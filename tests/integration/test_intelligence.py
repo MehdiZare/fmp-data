@@ -280,6 +280,32 @@ class TestIntelligenceEndpoints(BaseTestCase):
                 assert isinstance(article.text, str)
                 assert isinstance(article.url, HttpUrl)
 
+    def test_get_stock_news_handles_null_symbol(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Test that stock news correctly handles null symbol values (Issue #62)
+
+        When fetching stock news without a symbol filter, the API may return
+        articles where the symbol field is null. This test verifies that the
+        model correctly handles these cases without raising ValidationError.
+        """
+        with vcr_instance.use_cassette("intelligence/stock_news_null_symbol.yaml"):
+            # Fetch stock news without symbol filter - more likely to get null symbols
+            articles = self._handle_rate_limit(
+                fmp_client.intelligence.get_stock_news,
+                page=0,
+                limit=50,
+            )
+
+            assert isinstance(articles, list)
+            # Just verify parsing succeeded - articles may or may not have null symbols
+            for article in articles:
+                assert isinstance(article, StockNewsArticle)
+                # Symbol can be str or None (Issue #62 fix)
+                assert article.symbol is None or isinstance(article.symbol, str)
+                assert isinstance(article.publishedDate, datetime)
+                assert isinstance(article.title, str)
+
     def test_get_stock_news_sentiments(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting stock news articles with sentiment
 
