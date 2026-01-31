@@ -45,6 +45,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Will be removed in a future major version
 
 ### Changed
+- **Dependencies** - Updated all dependencies to latest versions:
+  - `mcp`: 1.25.0 → 1.26.0
+  - `langgraph`: 1.0.6 → 1.0.7
+  - `openai`: 2.15.0 → 2.16.0
+  - `ruff`: 0.14.13 → 0.14.14
+  - `python-dotenv`: 1.1.1 → 1.2.1
+  - `pytest-xdist`: 3.6.1 → 3.8.0
+  - `coverage`: 7.13.1 → 7.13.2
+  - `rich`: 14.2.0 → 14.3.1
 - **Documentation** - Enhanced `CLAUDE.md` with best practices:
   - Added critical testing strategy reminders for validating successful API responses
   - Documented historical price endpoint variants (`/full`, `/light`, `/non-split-adjusted`, `/dividend-adjusted`)
