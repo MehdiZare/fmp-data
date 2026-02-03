@@ -194,6 +194,7 @@ class StockNewsArticle(BaseModel):
 
     symbol: str | None = None
     publishedDate: datetime
+    publisher: str | None = None
     title: str
     image: HttpUrl | None = None
     site: str
@@ -263,9 +264,14 @@ class PressReleaseBySymbol(BaseModel):
     model_config = default_model_config
 
     symbol: str
+    publishedDate: datetime | None = Field(None, alias="publishedDate")
     date: datetime | None = None
+    publisher: str | None = None
     title: str
+    image: HttpUrl | None = None
+    site: str | None = None
     text: str
+    url: HttpUrl | None = None
 
 
 class HistoricalSocialSentiment(BaseModel):

@@ -30,6 +30,10 @@ class SECFiling8K(BaseModel):
         validation_alias=AliasChoices("filedDate", "filingDate"),
         description="Filing date",
     )
+    has_financials: bool | None = Field(
+        None, alias="hasFinancials", description="Whether filing has financials"
+    )
+    link: str | None = Field(None, description="Link to SEC filing index")
     final_link: str | None = Field(
         None, alias="finalLink", description="Link to the filing"
     )
@@ -151,6 +155,10 @@ class SECProfile(BaseModel):
     sic_description: str | None = Field(
         None, alias="sicDescription", description="SIC description"
     )
+    sic_group: str | None = Field(
+        None, alias="sicGroup", description="SIC group category"
+    )
+    isin: str | None = Field(None, description="ISIN identifier")
     state_location: str | None = Field(
         None, alias="stateLocation", description="State of headquarters"
     )
@@ -171,6 +179,45 @@ class SECProfile(BaseModel):
         alias="businessPhone",
         validation_alias=AliasChoices("businessPhone", "phoneNumber"),
         description="Business phone",
+    )
+    postal_code: str | None = Field(None, alias="postalCode", description="Postal code")
+    city: str | None = Field(None, description="City")
+    state: str | None = Field(None, description="State")
+    country: str | None = Field(None, description="Country")
+    description: str | None = Field(None, description="Company description")
+    ceo: str | None = Field(None, description="CEO name")
+    website: str | None = Field(None, description="Company website")
+    ipo_date: str | None = Field(None, alias="ipoDate", description="IPO date")
+    employees: str | None = Field(None, description="Number of employees")
+    sec_filings_url: str | None = Field(
+        None, alias="secFilingsUrl", description="SEC filings URL"
+    )
+    tax_identification_number: str | None = Field(
+        None, alias="taxIdentificationNumber", description="Tax ID number"
+    )
+    fifty_two_week_range: str | None = Field(
+        None, alias="fiftyTwoWeekRange", description="52-week price range"
+    )
+    is_active: bool | None = Field(
+        None, alias="isActive", description="Whether company is active"
+    )
+    asset_type: str | None = Field(None, alias="assetType", description="Asset type")
+    open_figi_composite: str | None = Field(
+        None, alias="openFigiComposite", description="OpenFIGI composite ID"
+    )
+    price_currency: str | None = Field(
+        None, alias="priceCurrency", description="Price currency"
+    )
+    market_sector: str | None = Field(
+        None, alias="marketSector", description="Market sector"
+    )
+    security_type: str | None = Field(
+        None, alias="securityType", description="Security type"
+    )
+    is_etf: bool | None = Field(None, alias="isEtf", description="Whether it's an ETF")
+    is_adr: bool | None = Field(None, alias="isAdr", description="Whether it's an ADR")
+    is_fund: bool | None = Field(
+        None, alias="isFund", description="Whether it's a fund"
     )
 
 
