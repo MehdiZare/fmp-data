@@ -244,6 +244,17 @@ class TestCompanyProfile:
         assert profile.vol_avg is None
         assert profile.volume is None
 
+    def test_model_validation_string_volume(self, profile_data):
+        """Test CompanyProfile handles string volume values (Issue #70).
+
+        When API returns numeric strings, Pydantic coerces them to int.
+        """
+        profile_data["volAvg"] = "50000000"
+        profile_data["volume"] = "25000000"
+        profile = CompanyProfile.model_validate(profile_data)
+        assert profile.vol_avg == 50000000
+        assert profile.volume == 25000000
+
     def test_model_validation_invalid_website(self, profile_data):
         """Test CompanyProfile model with invalid website URL"""
         # Use a URL with protocol but invalid hostname (no TLD) to trigger validation
