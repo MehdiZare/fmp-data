@@ -212,6 +212,49 @@ class TestCompanyProfile:
         assert not profile.is_adr
         assert not profile.is_fund
 
+    def test_model_validation_float_volume(self, profile_data):
+        """Test CompanyProfile handles float averageVolume values (Issue #70).
+
+        The FMP API sometimes returns float values for volume fields
+        (e.g., 18459651.1 for XOM), which should be coerced to int.
+        """
+        profile_data["volAvg"] = 18459651.1
+        profile_data["volume"] = 12345678.9
+        profile = CompanyProfile.model_validate(profile_data)
+        assert profile.vol_avg == 18459651
+        assert profile.volume == 12345678
+        assert isinstance(profile.vol_avg, int)
+        assert isinstance(profile.volume, int)
+
+    def test_model_validation_int_volume(self, profile_data):
+        """Test CompanyProfile handles integer volume values correctly (Issue #70)."""
+        profile_data["volAvg"] = 50000000
+        profile_data["volume"] = 25000000
+        profile = CompanyProfile.model_validate(profile_data)
+        assert profile.vol_avg == 50000000
+        assert profile.volume == 25000000
+        assert isinstance(profile.vol_avg, int)
+        assert isinstance(profile.volume, int)
+
+    def test_model_validation_none_volume(self, profile_data):
+        """Test CompanyProfile handles None volume values (Issue #70)."""
+        profile_data["volAvg"] = None
+        profile_data["volume"] = None
+        profile = CompanyProfile.model_validate(profile_data)
+        assert profile.vol_avg is None
+        assert profile.volume is None
+
+    def test_model_validation_string_volume(self, profile_data):
+        """Test CompanyProfile handles string volume values (Issue #70).
+
+        When API returns numeric strings, Pydantic coerces them to int.
+        """
+        profile_data["volAvg"] = "50000000"
+        profile_data["volume"] = "25000000"
+        profile = CompanyProfile.model_validate(profile_data)
+        assert profile.vol_avg == 50000000
+        assert profile.volume == 25000000
+
     def test_model_validation_invalid_website(self, profile_data):
         """Test CompanyProfile model with invalid website URL"""
         # Use a URL with protocol but invalid hostname (no TLD) to trigger validation
