@@ -212,6 +212,20 @@ class TestCompanyProfile:
         assert not profile.is_adr
         assert not profile.is_fund
 
+    def test_model_validation_float_volume(self, profile_data):
+        """Test CompanyProfile handles float averageVolume values (Issue #70).
+
+        The FMP API sometimes returns float values for volume fields
+        (e.g., 18459651.1 for XOM), which should be coerced to int.
+        """
+        profile_data["volAvg"] = 18459651.1
+        profile_data["volume"] = 12345678.9
+        profile = CompanyProfile.model_validate(profile_data)
+        assert profile.vol_avg == 18459651
+        assert profile.volume == 12345678
+        assert isinstance(profile.vol_avg, int)
+        assert isinstance(profile.volume, int)
+
     def test_model_validation_invalid_website(self, profile_data):
         """Test CompanyProfile model with invalid website URL"""
         # Use a URL with protocol but invalid hostname (no TLD) to trigger validation
