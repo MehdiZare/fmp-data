@@ -572,10 +572,12 @@ class CashFlowStatement(FinancialStatementBase):
 
     @property
     def investing_cash_flow(self) -> float | None:
+        """Net cash provided by investing activities."""
         return self.net_cash_provided_by_investing_activities
 
     @property
     def financing_cash_flow(self) -> float | None:
+        """Net cash provided by financing activities."""
         return self.net_cash_provided_by_financing_activities
 
 

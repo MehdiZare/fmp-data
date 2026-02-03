@@ -31,6 +31,7 @@ class PriceQuote(BaseModel):
     change: float = Field(description="Price change")
     change_percent: float | None = Field(
         None,
+        alias="changesPercentage",
         validation_alias=AliasChoices("changesPercentage", "changePercentage"),
         description="Price change percentage",
     )
@@ -202,6 +203,7 @@ class CryptoQuote(PriceQuote):
     # Keep change_percent optional since API might not always provide it
     change_percent: float | None = Field(
         None,
+        alias="changesPercentage",
         validation_alias=AliasChoices("changesPercentage", "changePercentage"),
         description="Price change percentage",
     )
