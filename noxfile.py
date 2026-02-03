@@ -327,7 +327,9 @@ def typecheck(session: Session) -> None:
 def security(session: Session) -> None:
     """Check dependencies for known CVEs."""
     _sync_with_uv(session, extras=["dev"])
-    session.run("pip-audit")
+    # Ignore CVE-2026-1703 in pip - this is a CI environment issue
+    # that will be resolved when GitHub Actions updates pip to 26.0+
+    session.run("pip-audit", "--ignore-vuln", "CVE-2026-1703")
 
 
 @nox.session(python=DEFAULT_PYTHON, tags=["smoke"])
