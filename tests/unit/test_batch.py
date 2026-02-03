@@ -358,10 +358,12 @@ class TestBatchClient:
     @patch("httpx.Client.request")
     def test_get_key_metrics_ttm_bulk(self, mock_request, fmp_client):
         """Test fetching key metrics TTM bulk data"""
-        csv_text = "date,revenuePerShare\n2025-07-09,7.38\n"
+        csv_text = (
+            "symbol,marketCap,enterpriseValueTTM\nAAPL,3656408493926,3735246493926\n"
+        )
         mock_request.return_value = self._mock_csv_response(csv_text)
         results = fmp_client.batch.get_key_metrics_ttm_bulk()
-        assert results[0].revenue_per_share == 7.38
+        assert results[0].enterprise_value_ttm == 3735246493926
 
     @patch("httpx.Client.request")
     def test_get_peers_bulk(self, mock_request, fmp_client):
