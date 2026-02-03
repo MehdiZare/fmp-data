@@ -69,7 +69,7 @@ mcp = [
 ]
 langchain = [
     "faiss-cpu>=1.13.2",
-    "langchain-core>=1.2.7",
+    "langchain-core>=1.2.8",
     "langchain-community>=0.4.1",
     "langchain-openai>=1.1.7",
     "langgraph>=1.0.6",
@@ -92,7 +92,7 @@ dev = [
     "vcrpy>=8.1.1",
     "coverage>=7.13.1",
     "pre-commit>=4.5.1",
-    "rich>=14.2.0",
+    "rich>=14.3.2",
     "twine>=6.2.0",
     "nox>=2025.11.12",
 ]
@@ -119,7 +119,7 @@ dev = [
     "vcrpy>=8.1.1",
     "coverage>=7.13.1",
     "pre-commit>=4.5.1",
-    "rich>=14.2.0",
+    "rich>=14.3.2",
     "twine>=6.2.0",
     "nox>=2025.11.12",
 ]
@@ -130,7 +130,7 @@ docs = [
 ]
 langchain = [
     "faiss-cpu>=1.13.2",
-    "langchain-core>=1.2.7",
+    "langchain-core>=1.2.8",
     "langchain-community>=0.4.1",
     "langchain-openai>=1.1.7",
     "langgraph>=1.0.6",

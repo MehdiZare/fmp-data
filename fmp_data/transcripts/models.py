@@ -1,7 +1,7 @@
 # fmp_data/transcripts/models.py
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
 
 default_model_config = ConfigDict(
@@ -20,7 +20,11 @@ class EarningsTranscript(BaseModel):
 
     symbol: str = Field(description="Stock symbol")
     quarter: int = Field(alias="period", description="Fiscal quarter (1-4)")
-    year: int = Field(alias="fiscalYear", description="Fiscal year")
+    year: int = Field(
+        alias="fiscalYear",
+        validation_alias=AliasChoices("fiscalYear", "year"),
+        description="Fiscal year",
+    )
     date: datetime | None = Field(None, description="Earnings call date")
     content: str | None = Field(None, description="Full transcript content")
 
@@ -39,7 +43,11 @@ class TranscriptDate(BaseModel):
 
     symbol: str | None = Field(None, description="Stock symbol")
     quarter: int = Field(alias="period", description="Fiscal quarter (1-4)")
-    year: int = Field(alias="fiscalYear", description="Fiscal year")
+    year: int = Field(
+        alias="fiscalYear",
+        validation_alias=AliasChoices("fiscalYear", "year"),
+        description="Fiscal year",
+    )
     date: datetime | None = Field(None, description="Earnings call date")
 
     @field_validator("quarter", mode="before")

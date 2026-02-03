@@ -22,7 +22,9 @@ class IndexConstituent(BaseModel):
     name: str | None = Field(None, description="Company name")
     sector: str | None = Field(None, description="Company sector")
     sub_sector: str | None = Field(None, alias="subSector", description="Sub-sector")
-    headquarter: str | None = Field(None, description="Company headquarters")
+    headquarter: str | None = Field(
+        None, alias="headQuarter", description="Company headquarters"
+    )
     date_first_added: datetime | None = Field(
         None, alias="dateFirstAdded", description="Date added to index"
     )
@@ -37,6 +39,9 @@ class HistoricalIndexConstituent(BaseModel):
 
     date: datetime = Field(description="Date of change")
     symbol: str | None = Field(None, description="Stock symbol")
+    date_added: str | None = Field(
+        None, alias="dateAdded", description="Human-readable date added"
+    )
     added_security: str | None = Field(
         None, alias="addedSecurity", description="Added security symbol"
     )
