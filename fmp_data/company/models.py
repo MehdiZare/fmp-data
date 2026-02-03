@@ -102,6 +102,19 @@ class CompanyProfile(BaseModel):
     is_adr: bool | None = Field(None, description="Whether is ADR")
     is_fund: bool | None = Field(None, description="Whether is a fund")
 
+    @field_validator("vol_avg", "volume", mode="before")
+    @classmethod
+    def coerce_volume_to_int(cls, value: Any) -> Any:
+        """Coerce volume values to int (FMP API may return floats).
+
+        See: https://github.com/MehdiZare/fmp-data/issues/70
+        """
+        if value is None:
+            return None
+        if isinstance(value, int | float):
+            return int(value)
+        return value
+
     @field_validator("website", mode="before")
     @classmethod
     def normalize_website(cls, value: Any) -> Any:
