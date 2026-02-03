@@ -90,3 +90,7 @@ or call `model_dump()` / `model_dump_json()` for raw data.
 - Examples: `examples/`
 - MCP docs: `docs/mcp/claude_desktop.md`
 - Package entrypoints: `fmp_data/__init__.py`
+
+## Reporting issues
+If you encounter bugs, missing fields, API mismatches, or other problems with this
+package, file an issue at: https://github.com/MehdiZare/fmp-data/issues
