@@ -41,17 +41,40 @@ class CompanyProfile(BaseModel):
     symbol: str = Field(description="Stock symbol (ticker)")
     price: float | None = Field(None, description="Current stock price")
     beta: float | None = Field(None, description="Beta value")
-    vol_avg: int | None = Field(None, description="Average volume")
-    mkt_cap: float | None = Field(None, description="Market capitalization")
-    last_div: float | None = Field(None, description="Last dividend payment")
+    vol_avg: int | None = Field(
+        None,
+        validation_alias=AliasChoices("averageVolume", "volAvg"),
+        description="Average volume",
+    )
+    mkt_cap: float | None = Field(
+        None,
+        validation_alias=AliasChoices("marketCap", "mktCap"),
+        description="Market capitalization",
+    )
+    last_div: float | None = Field(
+        None,
+        validation_alias=AliasChoices("lastDividend", "lastDiv"),
+        description="Last dividend payment",
+    )
     range: str | None = Field(None, description="52-week price range")
-    changes: float | None = Field(None, description="Price change")
+    changes: float | None = Field(
+        None,
+        validation_alias=AliasChoices("change", "changes"),
+        description="Price change",
+    )
+    change_percentage: float | None = Field(
+        None, alias="changePercentage", description="Price change percentage"
+    )
+    volume: int | None = Field(None, description="Trading volume")
     company_name: str | None = Field(None, description="Company name")
     currency: str | None = Field(None, description="Trading currency")
     cik: str | None = Field(None, description="CIK number")
     isin: str | None = Field(None, description="ISIN number")
     cusip: str | None = Field(None, description="CUSIP number")
     exchange: str | None = Field(None, description="Stock exchange")
+    exchange_full_name: str | None = Field(
+        None, alias="exchangeFullName", description="Exchange full name"
+    )
     exchange_short_name: str | None = Field(None, description="Exchange short name")
     industry: str | None = Field(None, description="Industry classification")
     website: AnyHttpUrl | None = Field(None, description="Company website")

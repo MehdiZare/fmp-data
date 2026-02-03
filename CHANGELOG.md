@@ -36,6 +36,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `EconomicEvent.country` now defaults to `None` instead of empty string
   - `EconomicEvent.change_percent` now defaults to `None` instead of `0`
   - Government trading `owner`/`comment` fields now default to `None`
+- **Comprehensive Model Field Audit** - Fixed missing fields and incorrect aliases across all Pydantic models to match actual FMP API responses (Issue #66):
+  - **Index models**: Fixed `IndexConstituent.headquarter` alias (`headQuarter`), added `date_added` field to `HistoricalIndexConstituent`
+  - **SEC models**: Added 20+ missing fields to `SECProfile` (sic_group, isin, city, state, country, description, ceo, website, etc.), added `has_financials` and `link` to `SECFiling8K`
+  - **Transcripts models**: Fixed `year` field in `EarningsTranscript` and `TranscriptDate` to accept both `fiscalYear` and `year` via `AliasChoices`
+  - **Intelligence models**: Added `publisher` field to `StockNewsArticle`, added 5 missing fields to `PressReleaseBySymbol` (publishedDate, publisher, image, site, url)
+  - **Market models**: Fixed `ExchangeSymbol` aliases for `priceAvg50`, `priceAvg200`, `avgVolume`, `previousClose`; removed duplicate `IndexConstituent` class
+  - **Company models**: Fixed `CompanyProfile` aliases for `vol_avg`, `mkt_cap`, `last_div`, `changes` using `AliasChoices`; added `change_percentage`, `volume`, `exchange_full_name` fields
+  - **Alternative models**: Fixed `PriceQuote.change_percent` and `CryptoQuote.change_percent` to accept both `changesPercentage` and `changePercentage` variants
+  - **Fundamental models**: Added 36+ fields to `FinancialGrowth`, 30+ fields to `BalanceSheet`, 8 fields to `OwnerEarnings`, 7 fields to `FinancialScore`, 4 fields to `EnterpriseValue`
 
 ### Deprecated
 - **Stock News Sentiments Endpoint** - Marked `get_stock_news_sentiments()` as deprecated:

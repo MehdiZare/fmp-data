@@ -126,12 +126,12 @@ class TestFundamentalEndpoints(BaseTestCase):
             for metric in metrics:
                 assert isinstance(metric, KeyMetrics)
                 assert isinstance(metric.date, datetime)
-                if metric.revenue_per_share is not None:
-                    assert isinstance(metric.revenue_per_share, float)
-                if metric.net_income_per_share is not None:
-                    assert isinstance(metric.net_income_per_share, float)
-                if metric.operating_cash_flow_per_share is not None:
-                    assert isinstance(metric.operating_cash_flow_per_share, float)
+                if metric.market_cap is not None:
+                    assert isinstance(metric.market_cap, float)
+                if metric.enterprise_value is not None:
+                    assert isinstance(metric.enterprise_value, float)
+                if metric.return_on_equity is not None:
+                    assert isinstance(metric.return_on_equity, float)
 
     def test_get_financial_ratios(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting financial ratios"""
@@ -153,8 +153,8 @@ class TestFundamentalEndpoints(BaseTestCase):
                     assert isinstance(ratio.current_ratio, float)
                 if ratio.quick_ratio is not None:
                     assert isinstance(ratio.quick_ratio, float)
-                if ratio.debt_equity_ratio is not None:
-                    assert isinstance(ratio.debt_equity_ratio, float)
+                if ratio.debt_to_equity_ratio is not None:
+                    assert isinstance(ratio.debt_to_equity_ratio, float)
 
     def test_get_full_financial_statement(
         self, fmp_client: FMPDataClient, vcr_instance

@@ -41,13 +41,21 @@ class ExchangeSymbol(BaseModel):
     market_cap: float | None = Field(
         None, alias="marketCap", description="Market capitalization"
     )
-    price_avg_50: float | None = Field(None, description="50-day moving average")
-    price_avg_200: float | None = Field(None, description="200-day moving average")
+    price_avg_50: float | None = Field(
+        None, alias="priceAvg50", description="50-day moving average"
+    )
+    price_avg_200: float | None = Field(
+        None, alias="priceAvg200", description="200-day moving average"
+    )
     exchange: str | None = Field(None, description="Stock exchange")
     volume: float | None = Field(None, description="Trading volume")
-    avg_volume: float | None = Field(None, description="Average volume")
+    avg_volume: float | None = Field(
+        None, alias="avgVolume", description="Average volume"
+    )
     open: float | None = Field(None, description="Opening price")
-    previous_close: float | None = Field(None, description="Previous closing price")
+    previous_close: float | None = Field(
+        None, alias="previousClose", description="Previous closing price"
+    )
     eps: float | None = Field(None, description="Earnings per share")
     pe: float | None = Field(None, description="Price to earnings ratio")
     earnings_announcement: datetime | None = Field(None, alias="earningsAnnouncement")
@@ -493,20 +501,3 @@ class IndexIntraday(BaseModel):
     low: float = Field(description="Low price")
     close: float = Field(description="Closing price")
     volume: int = Field(description="Trading volume")
-
-
-class IndexConstituent(BaseModel):
-    """Index constituent information"""
-
-    model_config = default_model_config
-
-    symbol: str = Field(description="Stock symbol")
-    name: str = Field(description="Company name")
-    sector: str | None = Field(None, description="Company sector")
-    sub_sector: str | None = Field(None, alias="subSector", description="Sub-sector")
-    headquarter: str | None = Field(None, description="Company headquarters")
-    date_first_added: datetime | None = Field(
-        None, alias="dateFirstAdded", description="Date added to index"
-    )
-    cik: str | None = Field(None, description="CIK number")
-    founded: str | None = Field(None, description="Year founded")

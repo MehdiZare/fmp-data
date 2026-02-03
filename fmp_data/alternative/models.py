@@ -5,7 +5,7 @@ from typing import Any
 import warnings
 from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
 
 UTC = ZoneInfo("UTC")
@@ -30,7 +30,10 @@ class PriceQuote(BaseModel):
     price: float = Field(description="Current price")
     change: float = Field(description="Price change")
     change_percent: float | None = Field(
-        None, alias="changesPercentage", description="Price change percentage"
+        None,
+        alias="changesPercentage",
+        validation_alias=AliasChoices("changesPercentage", "changePercentage"),
+        description="Price change percentage",
     )
     timestamp: datetime = Field(description="Quote timestamp")
 
@@ -199,7 +202,10 @@ class CryptoQuote(PriceQuote):
 
     # Keep change_percent optional since API might not always provide it
     change_percent: float | None = Field(
-        None, alias="changesPercentage", description="Price change percentage"
+        None,
+        alias="changesPercentage",
+        validation_alias=AliasChoices("changesPercentage", "changePercentage"),
+        description="Price change percentage",
     )
 
     # Additional crypto-specific fields

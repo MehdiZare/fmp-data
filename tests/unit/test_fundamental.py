@@ -95,10 +95,13 @@ class TestFundamentalEndpoints(unittest.TestCase):
         self.sample_financial_ratios = {
             "symbol": "AAPL",
             "date": "2024-09-28",
+            "fiscalYear": "2024",
+            "period": "FY",
+            "reportedCurrency": "USD",
             "currentRatio": 0.8673125765340832,
             "quickRatio": 0.8260068483831466,
-            "debtEquityRatio": 1.872326602282704,
-            "returnOnEquity": 1.6459350307287095,
+            "debtToEquityRatio": 2.090588235294118,
+            "grossProfitMargin": 0.4620634981523393,
         }
 
         self.sample_financial_reports_dates = [
