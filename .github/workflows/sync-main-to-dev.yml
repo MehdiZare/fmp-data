@@ -1,0 +1,62 @@
+name: Sync-Main-to-Dev
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: sync-main-to-dev
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync-main-to-dev:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Check for differences
+        id: diff
+        run: |
+          git fetch origin dev
+          DIFF=$(git diff origin/dev..main --stat)
+          if [ -z "$DIFF" ]; then
+            echo "No differences to sync"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "Changes detected"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Sync PR
+        if: steps.diff.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: sync/main-to-dev
+          base: dev
+          title: "Sync: main → dev"
+          body: |
+            ## Automatic Sync
+
+            This PR syncs changes from `main` back to `dev` after a release or hotfix.
+
+            ### Why is this needed?
+            - Release tags are created on `main` after merge
+            - Version bumps and release commits need to be in `dev`
+            - Prevents future merge conflicts
+
+            ### Action Required
+            - Review the changes
+            - Resolve any conflicts if present
+            - **Use Squash and Merge** to preserve linear history on `dev`
+          labels: |
+            automated
+            sync
+          delete-branch: false
