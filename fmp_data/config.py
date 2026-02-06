@@ -156,17 +156,18 @@ class RateLimitConfig(BaseModel):
     def from_env(cls) -> RateLimitConfig:
         """Create rate limit config from environment variables"""
 
-        def safe_int(env_var: str, default: str) -> int:
+        def safe_int(env_var: str, default: int) -> int:
             """Safely convert environment variable to int, falling back to default"""
             try:
-                return int(os.getenv(env_var, default))
+                value = int(os.getenv(env_var, str(default)))
+                return value if value > 0 else default
             except (ValueError, TypeError):
-                return int(default)
+                return default
 
         return cls(
-            daily_limit=safe_int("FMP_DAILY_LIMIT", "250"),
-            requests_per_second=safe_int("FMP_REQUESTS_PER_SECOND", "5"),
-            requests_per_minute=safe_int("FMP_REQUESTS_PER_MINUTE", "300"),
+            daily_limit=safe_int("FMP_DAILY_LIMIT", 250),
+            requests_per_second=safe_int("FMP_REQUESTS_PER_SECOND", 5),
+            requests_per_minute=safe_int("FMP_REQUESTS_PER_MINUTE", 300),
         )
 
 
@@ -274,17 +275,18 @@ class ClientConfig(BaseModel):
                 "explicitly or via FMP_API_KEY environment variable"
             )
 
-        def safe_int(env_var: str, default: str) -> int:
+        def safe_int(env_var: str, default: int, *, min_val: int = 0) -> int:
             """Safely convert environment variable to int, falling back to default"""
             try:
-                return int(os.getenv(env_var, default))
+                value = int(os.getenv(env_var, str(default)))
+                return value if value >= min_val else default
             except (ValueError, TypeError):
-                return int(default)
+                return default
 
         config_dict = {
             "api_key": api_key,
-            "timeout": safe_int("FMP_TIMEOUT", "30"),
-            "max_retries": safe_int("FMP_MAX_RETRIES", "3"),
+            "timeout": safe_int("FMP_TIMEOUT", 30, min_val=1),
+            "max_retries": safe_int("FMP_MAX_RETRIES", 3),
             "base_url": os.getenv("FMP_BASE_URL", "https://financialmodelingprep.com"),
             "rate_limit": RateLimitConfig.from_env(),
             "logging": LoggingConfig.from_env(),
