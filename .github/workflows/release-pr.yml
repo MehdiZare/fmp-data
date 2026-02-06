@@ -23,7 +23,7 @@ jobs:
           ref: dev
 
       - name: Create or Update Release PR
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: release/dev-to-main
           base: main
