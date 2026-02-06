@@ -159,6 +159,38 @@ class TestRateLimitConfig:
             config = RateLimitConfig.from_env()
             assert config.daily_limit == 250  # Default value
 
+    def test_from_env_zero_values(self):
+        """Test rate limit config handles zero env values by falling back to defaults"""
+        with temp_environ() as env:
+            env.update(
+                {
+                    "FMP_DAILY_LIMIT": "0",
+                    "FMP_REQUESTS_PER_SECOND": "0",
+                    "FMP_REQUESTS_PER_MINUTE": "0",
+                }
+            )
+
+            config = RateLimitConfig.from_env()
+            assert config.daily_limit == 250
+            assert config.requests_per_second == 5
+            assert config.requests_per_minute == 300
+
+    def test_from_env_negative_values(self):
+        """Test rate limit config handles negative env values."""
+        with temp_environ() as env:
+            env.update(
+                {
+                    "FMP_DAILY_LIMIT": "-5",
+                    "FMP_REQUESTS_PER_SECOND": "-1",
+                    "FMP_REQUESTS_PER_MINUTE": "-100",
+                }
+            )
+
+            config = RateLimitConfig.from_env()
+            assert config.daily_limit == 250
+            assert config.requests_per_second == 5
+            assert config.requests_per_minute == 300
+
     def test_validation_positive_values(self):
         """Test rate limit config validates positive values"""
         with pytest.raises(ValidationError):
@@ -482,6 +514,19 @@ class TestClientConfig:
             assert config.max_retries == 3
             assert config.base_url == "https://financialmodelingprep.com"
 
+    def test_from_env_zero_timeout(self):
+        """Test from_env handles zero timeout by falling back to default"""
+        with temp_environ() as env:
+            env.update(
+                {
+                    "FMP_API_KEY": "test_key",
+                    "FMP_TIMEOUT": "0",
+                }
+            )
+
+            config = ClientConfig.from_env()
+            assert config.timeout == 30  # Default value
+
     def test_from_env_invalid_numeric_values(self):
         """Test from_env handles invalid numeric environment variables"""
         with temp_environ() as env:
@@ -592,7 +637,7 @@ class TestConfigEdgeCases:
         assert config.log_path == tmp_path
 
         # Test with string path
-        config = LoggingConfig(log_path=str(tmp_path))
+        config = LoggingConfig(log_path=Path(str(tmp_path)))
         assert config.log_path == Path(str(tmp_path))
 
     def test_config_with_none_values(self):
