@@ -1,0 +1,54 @@
+name: Release-PR
+
+on:
+  push:
+    branches: [dev]
+
+concurrency:
+  group: release-pr-dev-to-main
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-release-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: dev
+
+      - name: Create or Update Release PR
+        uses: peter-evans/create-pull-request@v8
+        with:
+          branch: release/dev-to-main
+          base: main
+          title: "Release: dev → main"
+          body: |
+            ## Release Checklist
+
+            This is an automated release PR from `dev` to `main`.
+
+            ### Pre-merge Checklist
+            - [ ] All CI checks pass
+            - [ ] Test PyPI validation successful
+            - [ ] Documentation is up to date
+
+            ### Release Type
+            Add one of these labels to determine version bump:
+            - `release:major` - Breaking changes
+            - `release:minor` - New features (backwards compatible)
+            - `release:patch` - Bug fixes
+
+            ### After Merge
+            The release workflow will automatically:
+            1. Create a new git tag
+            2. Build and publish to PyPI
+            3. Create a GitHub Release
+          labels: |
+            automated
+          delete-branch: false

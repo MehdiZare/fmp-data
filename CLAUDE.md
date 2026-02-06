@@ -174,6 +174,9 @@ All exceptions include `message`, `status_code`, and `response` attributes.
 | `FMP_BASE_URL` | No | Override default API base URL |
 | `FMP_TIMEOUT` | No | Request timeout in seconds (default: 30) |
 | `FMP_MAX_RETRIES` | No | Max retry attempts (default: 3) |
+| `FMP_DAILY_LIMIT` | No | Daily API call limit (default: 250) |
+| `FMP_REQUESTS_PER_SECOND` | No | Max requests per second (default: 5) |
+| `FMP_REQUESTS_PER_MINUTE` | No | Max requests per minute (default: 300) |
 
 ## Important Development Notes
 

@@ -1,0 +1,45 @@
+name: Rebase-Reminder
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [dev]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  check-rebase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Fetch base branch
+        run: git fetch origin dev:origin-dev
+
+      - name: Check if behind base
+        id: check
+        run: |
+          BEHIND=$(git rev-list --count HEAD..origin-dev)
+          echo "behind=$BEHIND" >> $GITHUB_OUTPUT
+
+      - name: Comment if behind
+        if: ${{ steps.check.outputs.behind != '0' && github.event.pull_request.head.repo.fork == false }}
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            <!-- rebase-reminder-bot -->
+            ⚠️ This branch is **${{ steps.check.outputs.behind }} commits behind `dev`**.
+
+            Please rebase before merging:
+            ```bash
+            git fetch origin
+            git rebase origin/dev
+            git push --force-with-lease
+            ```
