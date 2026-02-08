@@ -739,8 +739,14 @@ pytest tests/unit/test_client.py
 # Run tests with verbose output
 pytest -v
 
-# Run integration tests (requires API key)
-FMP_TEST_API_KEY=your_test_api_key pytest tests/integration/
+# Run integration tests in replay mode (fast, deterministic)
+FMP_VCR_RECORD=none pytest tests/integration/
+
+# Record/update integration cassettes (requires API key)
+FMP_TEST_API_KEY=your_test_api_key FMP_VCR_RECORD=new_episodes pytest tests/integration/
+
+# Record only a subset while developing
+FMP_TEST_API_KEY=your_test_api_key FMP_VCR_RECORD=new_episodes pytest tests/integration/test_sec.py
 
 # Using make commands (if available)
 make test        # Run unit tests
