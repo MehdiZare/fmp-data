@@ -17,6 +17,7 @@ from pydantic import (
     TypeAdapter,
     ValidationError,
     field_validator,
+    model_validator,
 )
 from pydantic.alias_generators import to_camel
 
@@ -146,6 +147,93 @@ class CompanyProfile(BaseModel):
                 return None
             return cleaned
         return value
+
+
+class CompanyOutlook(BaseModel):
+    """Comprehensive company outlook payload.
+
+    The endpoint returns a heterogeneous object that can include profile,
+    filings, metrics, and other dynamic sections. Known high-value fields are
+    typed while unknown sections are preserved via `extra="allow"`.
+    """
+
+    model_config = default_model_config
+
+    symbol: str | None = Field(None, description="Stock symbol (ticker)")
+    company_name: str | None = Field(None, alias="companyName")
+    profile: CompanyProfile | None = Field(None, description="Embedded profile block")
+
+    @field_validator("profile", mode="before")
+    @classmethod
+    def normalize_profile_block(cls, value: Any) -> Any:
+        if isinstance(value, list):
+            if not value:
+                return None
+            if isinstance(value[0], dict):
+                return value[0]
+        return value
+
+
+class FinancialReportSectionRow(BaseModel):
+    """Single row within a financial report section."""
+
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    row: dict[str, list[Any]]
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_row(cls, value: Any) -> dict[str, Any]:
+        if not isinstance(value, dict):
+            raise ValueError("Financial report section rows must be dictionaries")
+
+        normalized: dict[str, list[Any]] = {}
+        for key, row_value in value.items():
+            if isinstance(row_value, list):
+                normalized[str(key)] = row_value
+            else:
+                normalized[str(key)] = [row_value]
+        return {"row": normalized}
+
+
+class FinancialReportJSON(BaseModel):
+    """Structured JSON response for Form 10-K financial reports."""
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        validate_assignment=True,
+        str_strip_whitespace=True,
+        extra="forbid",
+    )
+
+    symbol: str = Field(description="Stock symbol (ticker)")
+    period: str | None = Field(None, description="Report period")
+    year: int | str | None = Field(None, description="Report year")
+    sections: dict[str, list[FinancialReportSectionRow]] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_sections(cls, value: Any) -> dict[str, Any]:
+        if not isinstance(value, dict):
+            raise ValueError("Financial reports JSON payload must be a dictionary")
+
+        known_keys = {"symbol", "period", "year"}
+        sections: dict[str, Any] = {}
+        normalized: dict[str, Any] = {}
+
+        for key, item in value.items():
+            if key in known_keys:
+                normalized[key] = item
+                continue
+            if isinstance(item, list):
+                sections[key] = item
+            elif isinstance(item, dict):
+                sections[key] = [item]
+            else:
+                sections[key] = [{"value": [item]}]
+
+        normalized["sections"] = sections
+        return normalized
 
 
 class CompanyCoreInformation(BaseModel):

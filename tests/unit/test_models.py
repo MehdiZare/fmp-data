@@ -129,6 +129,25 @@ class TestValidateParams:
                 {"symbol": "AAPL", "unknown_param": "some_value"}, strict=True
             )
 
+    def test_unknown_keys_warn_policy(self, sample_endpoint):
+        """Test warn policy emits warning for unknown keys."""
+        with pytest.warns(UserWarning, match="Unknown parameter 'unknown_param'"):
+            result = sample_endpoint.validate_params(
+                {"symbol": "AAPL", "unknown_param": "some_value"},
+                unknown_param_policy="warn",
+            )
+
+        assert result["symbol"] == "AAPL"
+        assert "unknown_param" not in result
+
+    def test_unknown_keys_error_policy(self, sample_endpoint):
+        """Test explicit error policy raises ValidationError."""
+        with pytest.raises(ValidationError, match="Unknown parameter: unknown_param"):
+            sample_endpoint.validate_params(
+                {"symbol": "AAPL", "unknown_param": "some_value"},
+                unknown_param_policy="error",
+            )
+
     def test_defaults_are_validated(self, sample_endpoint):
         """Test that default values are validated through param.validate_value."""
         result = sample_endpoint.validate_params({"symbol": "AAPL"})

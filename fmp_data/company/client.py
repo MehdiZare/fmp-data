@@ -73,6 +73,7 @@ from fmp_data.company.models import (
     EmployeeCount,
     ExecutiveCompensation,
     ExecutiveCompensationBenchmark,
+    FinancialReportJSON,
     GeographicRevenueSegment,
     HistoricalData,
     HistoricalShareFloat,
@@ -756,10 +757,12 @@ class CompanyClient(EndpointGroup):
             "period": period,
         }
         result = self.client.request(FINANCIAL_REPORTS_JSON, **params)
+        if isinstance(result, FinancialReportJSON):
+            return result.model_dump(mode="json")
         if not isinstance(result, dict):
             raise InvalidResponseTypeError(
                 endpoint_name="financial_reports_json",
-                expected_type="dict",
+                expected_type="dict or FinancialReportJSON",
                 actual_type=type(result).__name__,
             )
         return result

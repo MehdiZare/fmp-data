@@ -378,6 +378,8 @@ class TestClientConfig:
         assert config.timeout == 30
         assert config.max_retries == 3
         assert config.base_url == "https://financialmodelingprep.com"
+        assert config.validation_mode == "warn"
+        assert config.unknown_param_policy == "warn"
         assert isinstance(config.rate_limit, RateLimitConfig)
         assert isinstance(config.logging, LoggingConfig)
 
@@ -486,6 +488,8 @@ class TestClientConfig:
             assert config.base_url == "https://env.api.com"
             assert config.timeout == 45
             assert config.max_retries == 4
+            assert config.validation_mode == "warn"
+            assert config.unknown_param_policy == "warn"
             assert config.rate_limit.daily_limit == 500
             assert config.rate_limit.requests_per_second == 3
             assert config.logging.level == "WARNING"
@@ -513,6 +517,23 @@ class TestClientConfig:
             assert config.timeout == 30
             assert config.max_retries == 3
             assert config.base_url == "https://financialmodelingprep.com"
+            assert config.validation_mode == "warn"
+            assert config.unknown_param_policy == "warn"
+
+    def test_from_env_validation_policies(self):
+        """Test validation and unknown parameter policies from environment."""
+        with temp_environ() as env:
+            env.update(
+                {
+                    "FMP_API_KEY": "test_key",
+                    "FMP_VALIDATION_MODE": "strict",
+                    "FMP_UNKNOWN_PARAM_POLICY": "error",
+                }
+            )
+
+            config = ClientConfig.from_env()
+            assert config.validation_mode == "strict"
+            assert config.unknown_param_policy == "error"
 
     def test_from_env_zero_timeout(self):
         """Test from_env handles zero timeout by falling back to default"""

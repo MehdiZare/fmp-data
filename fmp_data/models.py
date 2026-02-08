@@ -3,7 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar
+import warnings
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
@@ -207,7 +208,10 @@ class Endpoint(BaseModel, Generic[T]):
         return lookup
 
     def validate_params(  # noqa: C901
-        self, provided_params: dict, strict: bool = False
+        self,
+        provided_params: dict[str, Any],
+        strict: bool = False,
+        unknown_param_policy: Literal["ignore", "warn", "error"] | None = None,
     ) -> dict[str, Any]:
         """
         Validate provided parameters against endpoint definition.
@@ -215,6 +219,9 @@ class Endpoint(BaseModel, Generic[T]):
         Args:
             provided_params: Dictionary of parameters provided by the caller
             strict: If True, raise ValidationError on unknown parameter keys
+            unknown_param_policy: Policy for unknown keys ('ignore', 'warn', 'error').
+                If not provided, strict=True maps to 'error' and strict=False to
+                'ignore'.
 
         Returns:
             Dictionary of validated parameters with wire keys (aliases where defined)
@@ -228,13 +235,28 @@ class Endpoint(BaseModel, Generic[T]):
         param_lookup = self._build_param_lookup()
         mandatory_names = {p.name for p in self.mandatory_params}
         seen_params: set[str] = set()
+        policy: Literal["ignore", "warn", "error"]
+        if strict:
+            policy = "error"
+        elif unknown_param_policy is None:
+            policy = "ignore"
+        else:
+            policy = unknown_param_policy
 
         # Process provided parameters
         for key, value in provided_params.items():
             param = param_lookup.get(key)
             if param is None:
-                if strict:
+                if policy == "error":
                     raise ValidationError(f"Unknown parameter: {key}")
+                if policy == "warn":
+                    warnings.warn(
+                        (
+                            f"Unknown parameter '{key}' ignored for endpoint "
+                            f"'{self.name}'."
+                        ),
+                        stacklevel=2,
+                    )
                 continue  # Silently ignore in non-strict mode
 
             # Skip if we've already processed this param (via name or alias)
