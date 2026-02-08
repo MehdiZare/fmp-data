@@ -329,6 +329,7 @@ class ShareFloat(BaseModel):
     outstanding_shares: float | None = Field(
         None, description="Total outstanding shares"
     )
+    source: str | None = Field(None, description="Data source")
 
 
 class MarketCapitalization(BaseModel):

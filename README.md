@@ -30,6 +30,8 @@ This project uses UV as the primary package management tool for several key bene
 - Type hints and validation with Pydantic
 - Automatic retries with exponential backoff
 - 85%+ test coverage with comprehensive test suite
+- VCR cassette-backed integration tests with 100% endpoint contract validation
+- Automated API key leak scanning across all cassettes (pre-commit + CI)
 - Secure API key handling
 - 100% coverage of FMP stable endpoints
 - Detailed error messages
@@ -753,6 +755,19 @@ make test        # Run unit tests
 make test-cov    # Run tests with coverage
 make test-all    # Run all tests for all Python versions
 ```
+
+### Cassette Contract & Security Tests
+
+Every VCR cassette committed to this repository is validated automatically:
+
+- **Contract tests** (`test_cassette_contracts.py`) parse every cassette, match each
+  recorded request to its declared `Endpoint`, and deserialize the response through
+  the same Pydantic model used at runtime. This ensures cassettes stay in sync with
+  endpoint definitions and response schemas.
+- **Leak-guard tests** (`test_vcr_sanitization.py`) scan all cassette YAML files for
+  real API keys, verifying the VCR sanitization hooks are working. The same check runs
+  in CI via `detect-secrets` and in pre-commit hooks.
+- These tests run on every PR alongside the standard unit and integration suites.
 
 ### Development Commands
 

@@ -253,6 +253,16 @@ class ForexPair(BaseModel):
         None, alias="exchangeShortName", description="Exchange short name"
     )
     exchange: str | None = Field(None, description="Exchange identifier")
+    from_currency: str | None = Field(
+        None, alias="fromCurrency", description="Base currency code"
+    )
+    from_name: str | None = Field(
+        None, alias="fromName", description="Base currency name"
+    )
+    to_currency: str | None = Field(
+        None, alias="toCurrency", description="Quote currency code"
+    )
+    to_name: str | None = Field(None, alias="toName", description="Quote currency name")
 
 
 class ForexQuote(PriceQuote):
@@ -318,6 +328,9 @@ class Commodity(BaseModel):
         description="Short name of the exchange category",
     )
     exchange: str | None = Field(None, description="Exchange identifier")
+    trade_month: str | None = Field(
+        None, alias="tradeMonth", description="Trade month identifier"
+    )
 
 
 class CommodityQuote(PriceQuote):

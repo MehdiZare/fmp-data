@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 import yaml
 
 from fmp_data.base import BaseClient
+from fmp_data.fundamental.models import AsReportedFinancialStatementBase
 from fmp_data.models import Endpoint, URLType
 
 
@@ -55,6 +56,7 @@ def test_vcr_cassettes_match_endpoint_models() -> None:  # noqa: C901
 
     unmatched_requests: list[str] = []
     validation_issues: list[str] = []
+    extra_fields_report: list[str] = []
 
     for cassette_path in sorted(cassettes_root.rglob("*.yaml")):
         cassette = yaml.safe_load(cassette_path.read_text())
@@ -108,9 +110,25 @@ def test_vcr_cassettes_match_endpoint_models() -> None:  # noqa: C901
                 continue
 
             try:
-                BaseClient._process_response(
-                    endpoint_match, payload, validation_mode="lenient"
+                result = BaseClient._process_response(
+                    endpoint_match, payload, validation_mode="warn"
                 )
+                # Collect extra fields from parsed models.
+                # AsReported models merge a dynamic SEC "data" payload whose
+                # keys are raw XBRL taxonomy names that vary per company/filing
+                # and cannot be pre-defined -- skip them.
+                items = result if isinstance(result, list) else [result]
+                for item in items:
+                    if isinstance(item, AsReportedFinancialStatementBase):
+                        continue
+                    extra = getattr(item, "__pydantic_extra__", None)
+                    if extra:
+                        extra_fields_report.append(
+                            f"{cassette_path.name}: endpoint={endpoint_match.name} "
+                            f"model={type(item).__name__} "
+                            f"extra_fields={sorted(extra.keys())}"
+                        )
+                        break  # one example per cassette interaction is enough
             except Exception as exc:  # pragma: no cover - failures are asserted below
                 validation_issues.append(
                     f"{cassette_path}: endpoint={endpoint_match.name} "
@@ -122,4 +140,8 @@ def test_vcr_cassettes_match_endpoint_models() -> None:  # noqa: C901
     )
     assert not validation_issues, "Cassette validation issues:\n" + "\n".join(
         validation_issues[:50]
+    )
+    assert not extra_fields_report, (
+        f"Found {len(extra_fields_report)} model(s) with uncaptured fields:\n"
+        + "\n".join(f"  - {r}" for r in extra_fields_report)
     )
