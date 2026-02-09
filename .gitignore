@@ -58,6 +58,9 @@ cover/
 .mypy_cache/
 .ruff_cache/
 
+# VCR cassettes (large recorded API responses, regenerated locally)
+tests/integration/vcr_cassettes/
+
 # Build
 *.manifest
 *.spec
