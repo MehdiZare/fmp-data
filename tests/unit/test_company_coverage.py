@@ -9,11 +9,18 @@ from fmp_data.company.models import (
     AftermarketQuote,
     AftermarketTrade,
     CompanyExecutive,
+    CompanyOutlook,
     CompanyPeer,
     CompanyProfile,
+    FinancialReportJSON,
+    FinancialReportSectionRow,
     GeographicRevenueSegment,
+    HistoricalPrice,
     IntradayPrice,
+    MergerAcquisition,
     Quote,
+    RevenueSegmentItem,
+    SimpleQuote,
     StockPriceChange,
 )
 from fmp_data.market.models import CompanySearchResult
@@ -428,3 +435,243 @@ class TestCompanyClientCoverage:
         assert isinstance(result[0], CompanyPeer)
         assert result[0].symbol == "MSFT"
         assert result[0].name == "Microsoft Corporation"
+
+
+class TestCompanyOutlook:
+    """Tests for CompanyOutlook model and its normalize_profile_block validator."""
+
+    def test_profile_as_dict(self):
+        data = {
+            "symbol": "AAPL",
+            "companyName": "Apple Inc.",
+            "profile": {
+                "symbol": "AAPL",
+                "companyName": "Apple Inc.",
+                "price": 195.0,
+            },
+        }
+        outlook = CompanyOutlook(**data)
+        assert outlook.symbol == "AAPL"
+        assert isinstance(outlook.profile, CompanyProfile)
+
+    def test_profile_as_list_with_single_dict(self):
+        data = {
+            "symbol": "AAPL",
+            "profile": [
+                {"symbol": "AAPL", "companyName": "Apple Inc.", "price": 195.0}
+            ],
+        }
+        outlook = CompanyOutlook(**data)
+        assert isinstance(outlook.profile, CompanyProfile)
+        assert outlook.profile.symbol == "AAPL"
+
+    def test_profile_as_empty_list_returns_none(self):
+        data = {"symbol": "AAPL", "profile": []}
+        outlook = CompanyOutlook(**data)
+        assert outlook.profile is None
+
+    def test_profile_none(self):
+        data = {"symbol": "AAPL"}
+        outlook = CompanyOutlook(**data)
+        assert outlook.profile is None
+
+
+class TestFinancialReportSectionRow:
+    """Tests for FinancialReportSectionRow model validator."""
+
+    def test_dict_with_list_values(self):
+        row = FinancialReportSectionRow(**{"Revenue": [100, 200]})
+        assert row.row == {"Revenue": [100, 200]}
+
+    def test_dict_with_scalar_values_wrapped_in_list(self):
+        row = FinancialReportSectionRow(**{"Revenue": 100})
+        assert row.row == {"Revenue": [100]}
+
+    def test_non_dict_raises_value_error(self):
+        with pytest.raises((ValueError, TypeError)):
+            FinancialReportSectionRow.model_validate("not_a_dict")
+
+
+class TestFinancialReportJSON:
+    """Tests for FinancialReportJSON model and its normalize_sections validator."""
+
+    def test_known_keys_extracted(self):
+        data = {
+            "symbol": "AAPL",
+            "period": "FY",
+            "year": 2024,
+            "income_statement": [{"Revenue": [100]}],
+        }
+        report = FinancialReportJSON.model_validate(data)
+        assert report.symbol == "AAPL"
+        assert report.period == "FY"
+        assert report.year == 2024
+        assert "income_statement" in report.sections
+
+    def test_dict_item_wrapped_in_list(self):
+        data = {
+            "symbol": "AAPL",
+            "balance_sheet": {"Assets": 500},
+        }
+        report = FinancialReportJSON.model_validate(data)
+        assert len(report.sections["balance_sheet"]) == 1
+
+    def test_primitive_wrapped_in_value_list(self):
+        data = {
+            "symbol": "AAPL",
+            "note": "some text",
+        }
+        report = FinancialReportJSON.model_validate(data)
+        section = report.sections["note"]
+        assert len(section) == 1
+        assert section[0].row == {"value": ["some text"]}
+
+    def test_non_dict_input_raises(self):
+        with pytest.raises(Exception, match="dictionary"):
+            FinancialReportJSON.model_validate("not_a_dict")
+
+    def test_model_dump_json(self):
+        data = {
+            "symbol": "AAPL",
+            "period": "FY",
+            "year": 2024,
+            "income": [{"Revenue": [100]}],
+        }
+        report = FinancialReportJSON.model_validate(data)
+        dumped = report.model_dump(mode="json")
+        assert dumped["symbol"] == "AAPL"
+        assert "income" in dumped["sections"]
+
+
+class TestNewModelFields:
+    """Tests for new optional fields added to existing models."""
+
+    def test_simple_quote_change_field(self):
+        q = SimpleQuote(symbol="AAPL", price=195.0, volume=100, change=2.5)
+        assert q.change == 2.5
+
+    def test_simple_quote_change_none(self):
+        q = SimpleQuote(symbol="AAPL", price=195.0, volume=100)
+        assert q.change is None
+
+    def test_historical_price_adj_fields(self):
+        hp = HistoricalPrice.model_validate(
+            {
+                "date": "2024-01-01",
+                "open": 100.0,
+                "high": 105.0,
+                "low": 99.0,
+                "close": 104.0,
+                "adjClose": 103.5,
+                "adjHigh": 104.8,
+                "adjLow": 98.5,
+                "adjOpen": 99.8,
+                "symbol": "AAPL",
+            }
+        )
+        assert hp.adj_high == 104.8
+        assert hp.adj_low == 98.5
+        assert hp.adj_open == 99.8
+        assert hp.symbol == "AAPL"
+
+    def test_revenue_segment_item_metadata_fields(self):
+        item = RevenueSegmentItem.model_validate(
+            {
+                "date": "2024-09-28",
+                "data": {"Segment A": 100.0},
+                "symbol": "AAPL",
+                "fiscalYear": 2024,
+                "period": "FY",
+                "reportedCurrency": "USD",
+            }
+        )
+        assert item.symbol == "AAPL"
+        assert item.fiscal_year == 2024
+        assert item.period == "FY"
+        assert item.reported_currency == "USD"
+
+    def test_merger_acquisition_new_fields(self):
+        ma = MergerAcquisition.model_validate(
+            {
+                "companyName": "Acme Corp",
+                "symbol": "ACME",
+                "cik": "0001234567",
+                "targetedSymbol": "TGT",
+                "targetedCik": "0009876543",
+                "transactionDate": "2024-06-15",
+                "acceptedDate": "2024-06-10",
+                "link": "https://sec.gov/filing/123",
+            }
+        )
+        assert ma.symbol == "ACME"
+        assert ma.cik == "0001234567"
+        assert ma.targeted_symbol == "TGT"
+        assert ma.targeted_cik == "0009876543"
+        assert ma.transaction_date == "2024-06-15"
+        assert ma.accepted_date == "2024-06-10"
+        assert ma.link == "https://sec.gov/filing/123"
+
+
+class TestFinancialReportsJSONClient:
+    """Tests for sync/async financial_reports_json FinancialReportJSON path."""
+
+    @patch("httpx.Client.request")
+    def test_sync_returns_dict_from_financial_report_json(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """Test that FinancialReportJSON is converted to dict via model_dump."""
+        report_data = {
+            "symbol": "AAPL",
+            "period": "FY",
+            "year": 2024,
+            "income": [{"Revenue": [100]}],
+        }
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=report_data
+        )
+        result = fmp_client.company.get_financial_reports_json(
+            "AAPL", 2024, period="FY"
+        )
+        assert isinstance(result, dict)
+        assert result["symbol"] == "AAPL"
+
+    @patch("httpx.Client.request")
+    def test_sync_financial_reports_json_model_dump_path(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """Verify FinancialReportJSON.model_dump is used when model is returned."""
+        from fmp_data.company.models import FinancialReportJSON
+
+        report = FinancialReportJSON.model_validate(
+            {"symbol": "AAPL", "period": "FY", "year": 2024}
+        )
+        with patch.object(fmp_client.company.client, "request", return_value=report):
+            result = fmp_client.company.get_financial_reports_json(
+                "AAPL", 2024, period="FY"
+            )
+        assert isinstance(result, dict)
+        assert result["symbol"] == "AAPL"
+        assert result["sections"] == {}
+
+    @pytest.mark.asyncio
+    async def test_async_financial_reports_json_model_dump_path(self):
+        """Verify async path converts FinancialReportJSON to dict."""
+        from unittest.mock import AsyncMock
+
+        from fmp_data.company.async_client import AsyncCompanyClient
+        from fmp_data.company.models import FinancialReportJSON
+
+        report = FinancialReportJSON.model_validate(
+            {"symbol": "AAPL", "period": "FY", "year": 2024}
+        )
+
+        mock_base = AsyncMock()
+        mock_base.request_async = AsyncMock(return_value=report)
+        async_client = AsyncCompanyClient.__new__(AsyncCompanyClient)
+        async_client._client = mock_base
+
+        result = await async_client.get_financial_reports_json(
+            "AAPL", 2024, period="FY"
+        )
+        assert isinstance(result, dict)
+        assert result["symbol"] == "AAPL"

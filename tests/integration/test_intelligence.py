@@ -44,10 +44,12 @@ from .base import BaseTestCase
 class TestIntelligenceEndpoints(BaseTestCase):
     """Test market intelligence endpoints"""
 
-    def test_get_earnings_calendar(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_get_earnings_calendar(
+        self, fmp_client: FMPDataClient, vcr_instance, frozen_today: date
+    ):
         """Test getting earnings calendar"""
         with vcr_instance.use_cassette("intelligence/earnings_calendar.yaml"):
-            start_date = date.today()
+            start_date = frozen_today
             end_date = start_date + timedelta(days=30)
 
             events = self._handle_rate_limit(
@@ -70,10 +72,12 @@ class TestIntelligenceEndpoints(BaseTestCase):
                 if event.eps_estimated is not None:
                     assert isinstance(event.eps_estimated, float)
 
-    def test_get_earnings_confirmed(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_get_earnings_confirmed(
+        self, fmp_client: FMPDataClient, vcr_instance, frozen_today: date
+    ):
         """Test getting confirmed earnings"""
         with vcr_instance.use_cassette("intelligence/earnings_confirmed.yaml"):
-            start_date = date.today()
+            start_date = frozen_today
             end_date = start_date + timedelta(days=30)
 
             events = self._handle_rate_limit(
@@ -131,10 +135,12 @@ class TestIntelligenceEndpoints(BaseTestCase):
                     assert isinstance(surprise.actual_earning_result, float)
                     assert isinstance(surprise.estimated_earning, float)
 
-    def test_get_dividends_calendar(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_get_dividends_calendar(
+        self, fmp_client: FMPDataClient, vcr_instance, frozen_today: date
+    ):
         """Test getting dividends calendar"""
         with vcr_instance.use_cassette("intelligence/dividends_calendar.yaml"):
-            start_date = date.today()
+            start_date = frozen_today
             end_date = start_date + timedelta(days=30)
 
             events = self._handle_rate_limit(
@@ -158,10 +164,12 @@ class TestIntelligenceEndpoints(BaseTestCase):
                 )
                 assert isinstance(event.ex_dividend_date, date)
 
-    def test_get_stock_splits_calendar(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_get_stock_splits_calendar(
+        self, fmp_client: FMPDataClient, vcr_instance, frozen_today: date
+    ):
         """Test getting stock splits calendar"""
         with vcr_instance.use_cassette("intelligence/stock_splits_calendar.yaml"):
-            start_date = date.today()
+            start_date = frozen_today
             end_date = start_date + timedelta(days=30)
 
             events = self._handle_rate_limit(
@@ -181,10 +189,12 @@ class TestIntelligenceEndpoints(BaseTestCase):
                     assert isinstance(event.numerator, float)
                     assert isinstance(event.denominator, float)
 
-    def test_get_ipo_calendar(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_get_ipo_calendar(
+        self, fmp_client: FMPDataClient, vcr_instance, frozen_today: date
+    ):
         """Test getting IPO calendar"""
         with vcr_instance.use_cassette("intelligence/ipo_calendar.yaml"):
-            start_date = date.today()
+            start_date = frozen_today
             end_date = start_date + timedelta(days=30)
 
             events = self._handle_rate_limit(

@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections.abc import Callable
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -213,6 +213,24 @@ class ClientConfig(BaseModel):
         ),
         exclude=True,  # Don't include in serialization
     )
+    validation_mode: Literal["lenient", "warn", "strict"] = Field(
+        default="warn",
+        description=(
+            "Response validation policy. "
+            "'lenient' ignores unknown fields, "
+            "'warn' logs unknown fields, "
+            "'strict' raises on unknown fields."
+        ),
+    )
+    unknown_param_policy: Literal["ignore", "warn", "error"] = Field(
+        default="warn",
+        description=(
+            "Unknown request parameter handling policy. "
+            "'ignore' drops unknown keys, "
+            "'warn' logs dropped keys, "
+            "'error' raises validation errors."
+        ),
+    )
 
     @field_validator("api_key")
     @classmethod
@@ -279,6 +297,20 @@ class ClientConfig(BaseModel):
                 "explicitly or via FMP_API_KEY environment variable"
             )
 
+        validation_mode = os.getenv("FMP_VALIDATION_MODE", "warn").lower()
+        if validation_mode not in {"lenient", "warn", "strict"}:
+            raise ConfigError(
+                f"FMP_VALIDATION_MODE='{validation_mode}' is invalid. "
+                "Allowed values: lenient, warn, strict"
+            )
+        unknown_param_policy = os.getenv("FMP_UNKNOWN_PARAM_POLICY", "warn").lower()
+        if unknown_param_policy not in {"ignore", "warn", "error"}:
+            raise ConfigError(
+                f"FMP_UNKNOWN_PARAM_POLICY='{unknown_param_policy}' "
+                "is invalid. "
+                "Allowed values: ignore, warn, error"
+            )
+
         config_dict = {
             "api_key": api_key,
             "timeout": _safe_int_from_env("FMP_TIMEOUT", 30, min_val=1),
@@ -286,6 +318,8 @@ class ClientConfig(BaseModel):
             "base_url": os.getenv("FMP_BASE_URL", "https://financialmodelingprep.com"),
             "rate_limit": RateLimitConfig.from_env(),
             "logging": LoggingConfig.from_env(),
+            "validation_mode": validation_mode,
+            "unknown_param_policy": unknown_param_policy,
         }
 
         return cls(**config_dict)

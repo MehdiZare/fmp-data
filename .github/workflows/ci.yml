@@ -95,15 +95,64 @@ jobs:
           flags: unittests
           fail_ci_if_error: false
 
+  secret-scan:
+    name: Secret Scan (cassettes)
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🛎️  Checkout
+        uses: actions/checkout@v6
+
+      - name: 🐍  Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: 🔐 Install detect-secrets
+        run: pip install detect-secrets
+
+      - name: 🔍 Scan cassettes for secrets  # pragma: allowlist secret
+        run: |
+          CASSETTE_DIR="tests/integration/vcr_cassettes"
+
+          # Skip scan when no cassettes are checked in
+          if [ ! -d "$CASSETTE_DIR" ] || [ -z "$(find "$CASSETTE_DIR" -name '*.yaml' 2>/dev/null)" ]; then
+            echo "No cassette YAML files found — skipping secret scan."
+            exit 0
+          fi
+
+          # Scan cassette YAML files, excluding Python test files
+          detect-secrets scan \
+            "$CASSETTE_DIR" \
+            --exclude-files '.*\.py$' \
+            --baseline .secrets.baseline \
+            > /tmp/scan-results.json
+
+          # Compare against baseline — fail only on NEW findings
+          NEW_SECRETS=$(python3 -c "
+          import json, sys
+          with open('/tmp/scan-results.json') as f:
+              results = json.load(f)
+          findings = results.get('results', {})
+          total = sum(len(v) for v in findings.values())
+          if total > 0:
+              for path, secrets in findings.items():
+                  for s in secrets:
+                      line = s.get('line_number', '?')
+                      stype = s.get('type', 'unknown')
+                      print(f'::error file={path},line={line}::Potential secret ({stype}) found in cassette')
+              sys.exit(1)
+          print('No new secrets detected in cassettes')
+          ")
+
   test-matrix-expected:
     name: Test-MatrixExpected
     runs-on: ubuntu-latest
-    needs: [tests, coverage]
+    needs: [tests, coverage, secret-scan]
     if: ${{ always() }}
     steps:
       - name: ✅ Verify matrix results
         run: |
-          if [[ "${{ needs.tests.result }}" != "success" || "${{ needs.coverage.result }}" != "success" ]]; then
+          if [[ "${{ needs.tests.result }}" != "success" || "${{ needs.coverage.result }}" != "success" || "${{ needs.secret-scan.result }}" != "success" ]]; then
             echo "Upstream checks failed"
             exit 1
           fi

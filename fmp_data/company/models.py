@@ -17,6 +17,7 @@ from pydantic import (
     TypeAdapter,
     ValidationError,
     field_validator,
+    model_validator,
 )
 from pydantic.alias_generators import to_camel
 
@@ -148,6 +149,93 @@ class CompanyProfile(BaseModel):
         return value
 
 
+class CompanyOutlook(BaseModel):
+    """Comprehensive company outlook payload.
+
+    The endpoint returns a heterogeneous object that can include profile,
+    filings, metrics, and other dynamic sections. Known high-value fields are
+    typed while unknown sections are preserved via `extra="allow"`.
+    """
+
+    model_config = default_model_config
+
+    symbol: str | None = Field(None, description="Stock symbol (ticker)")
+    company_name: str | None = Field(None, alias="companyName")
+    profile: CompanyProfile | None = Field(None, description="Embedded profile block")
+
+    @field_validator("profile", mode="before")
+    @classmethod
+    def normalize_profile_block(cls, value: Any) -> Any:
+        if isinstance(value, list):
+            if not value:
+                return None
+            if isinstance(value[0], dict):
+                return value[0]
+        return value
+
+
+class FinancialReportSectionRow(BaseModel):
+    """Single row within a financial report section."""
+
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    row: dict[str, list[Any]]
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_row(cls, value: Any) -> dict[str, Any]:
+        if not isinstance(value, dict):
+            raise ValueError("Financial report section rows must be dictionaries")
+
+        normalized: dict[str, list[Any]] = {}
+        for key, row_value in value.items():
+            if isinstance(row_value, list):
+                normalized[str(key)] = row_value
+            else:
+                normalized[str(key)] = [row_value]
+        return {"row": normalized}
+
+
+class FinancialReportJSON(BaseModel):
+    """Structured JSON response for Form 10-K financial reports."""
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        validate_assignment=True,
+        str_strip_whitespace=True,
+        extra="forbid",
+    )
+
+    symbol: str = Field(description="Stock symbol (ticker)")
+    period: str | None = Field(None, description="Report period")
+    year: int | str | None = Field(None, description="Report year")
+    sections: dict[str, list[FinancialReportSectionRow]] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_sections(cls, value: Any) -> dict[str, Any]:
+        if not isinstance(value, dict):
+            raise ValueError("Financial reports JSON payload must be a dictionary")
+
+        known_keys = {"symbol", "period", "year"}
+        sections: dict[str, Any] = {}
+        normalized: dict[str, Any] = {}
+
+        for key, item in value.items():
+            if key in known_keys:
+                normalized[key] = item
+                continue
+            if isinstance(item, list):
+                sections[key] = item
+            elif isinstance(item, dict):
+                sections[key] = [item]
+            else:
+                sections[key] = [{"value": [item]}]
+
+        normalized["sections"] = sections
+        return normalized
+
+
 class CompanyCoreInformation(BaseModel):
     """Core company information."""
 
@@ -268,6 +356,7 @@ class SimpleQuote(BaseModel):
     symbol: str = Field(description="Stock symbol")
     price: float = Field(description="Current price")
     volume: int = Field(description="Trading volume")
+    change: float | None = Field(None, description="Price change")
 
 
 class AftermarketTrade(BaseModel):
@@ -350,12 +439,22 @@ class HistoricalPrice(BaseModel):
     adj_close: float | None = Field(
         None, alias="adjClose", description="Adjusted closing price"
     )
+    adj_high: float | None = Field(
+        None, alias="adjHigh", description="Adjusted high price"
+    )
+    adj_low: float | None = Field(
+        None, alias="adjLow", description="Adjusted low price"
+    )
+    adj_open: float | None = Field(
+        None, alias="adjOpen", description="Adjusted opening price"
+    )
     volume: int | None = Field(None, description="Trading volume")
     change: float | None = Field(None, description="Price change")
     change_percent: float | None = Field(
         None, alias="changePercent", description="Price change percentage"
     )
     vwap: float | None = Field(None, description="Volume weighted average price")
+    symbol: str | None = Field(None, description="Trading symbol")
 
 
 class HistoricalData(BaseModel):
@@ -444,6 +543,12 @@ class RevenueSegmentItem(BaseModel):
     segments: dict[str, float] = Field(
         alias="data", description="Segment name to revenue mapping"
     )
+    symbol: str | None = Field(None, description="Company symbol")
+    fiscal_year: int | None = Field(None, alias="fiscalYear", description="Fiscal year")
+    period: str | None = Field(None, description="Reporting period")
+    reported_currency: str | None = Field(
+        None, alias="reportedCurrency", description="Currency used in reporting"
+    )
 
     def __init__(self, **data: Any) -> None:
         """Custom init to handle the single-key dictionary structure.
@@ -452,6 +557,7 @@ class RevenueSegmentItem(BaseModel):
             **data: Dictionary of initialization parameters where either:
                    - It contains a single key (date) mapping to a dict of segments
                    - It contains 'date' and 'segments' keys directly
+                   - It contains full API response with metadata fields
         """
         if len(data) == 1:
             date_key = next(iter(data))
@@ -820,6 +926,21 @@ class MergerAcquisition(BaseModel):
     dealDate: str | None = Field(None, description="Deal date")
     acceptanceTime: str | None = Field(None, description="Acceptance time")
     url: str | None = Field(None, description="URL to filing")
+    symbol: str | None = Field(None, description="Company symbol")
+    cik: str | None = Field(None, description="Company CIK number")
+    targeted_symbol: str | None = Field(
+        None, alias="targetedSymbol", description="Targeted company symbol"
+    )
+    targeted_cik: str | None = Field(
+        None, alias="targetedCik", description="Targeted company CIK number"
+    )
+    transaction_date: str | None = Field(
+        None, alias="transactionDate", description="Transaction date"
+    )
+    accepted_date: str | None = Field(
+        None, alias="acceptedDate", description="SEC acceptance date"
+    )
+    link: str | None = Field(None, description="Link to SEC filing")
 
 
 class ExecutiveCompensationBenchmark(BaseModel):

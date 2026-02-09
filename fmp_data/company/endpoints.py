@@ -9,11 +9,13 @@ from fmp_data.company.models import (
     CompanyCoreInformation,
     CompanyExecutive,
     CompanyNote,
+    CompanyOutlook,
     CompanyPeer,
     CompanyProfile,
     EmployeeCount,
     ExecutiveCompensation,
     ExecutiveCompensationBenchmark,
+    FinancialReportJSON,
     GeographicRevenueSegment,
     HistoricalPrice,
     HistoricalShareFloat,
@@ -1019,7 +1021,7 @@ COMPANY_OUTLOOK: Endpoint = Endpoint(
         )
     ],
     optional_params=[],
-    response_model=CompanyProfile,  # This would need a more comprehensive model
+    response_model=CompanyOutlook,
 )
 
 STOCK_SCREENER: Endpoint = Endpoint(
@@ -1792,7 +1794,7 @@ FINANCIAL_REPORTS_JSON: Endpoint = Endpoint(
         ),
     ],
     optional_params=[],
-    response_model=dict,  # This would need a proper model
+    response_model=FinancialReportJSON,
 )
 
 FINANCIAL_REPORTS_XLSX: Endpoint = Endpoint(

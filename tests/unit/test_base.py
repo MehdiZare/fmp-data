@@ -2,7 +2,7 @@ import json
 from unittest.mock import MagicMock, Mock, patch
 
 import httpx
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import pytest
 
 from fmp_data.base import BaseClient, EndpointGroup
@@ -315,6 +315,44 @@ def test_process_response_raises_on_error_message():
 
     with pytest.raises(FMPError):
         BaseClient._process_response(endpoint, {"message": "boom"})
+
+
+def test_process_response_strict_mode_rejects_unknown_fields() -> None:
+    """Strict mode should reject unknown fields on extra-allow models."""
+
+    class ExtraAllowModel(BaseModel):
+        model_config = ConfigDict(extra="allow")
+        value: int
+
+    endpoint = Mock()
+    endpoint.name = "extra_allow_endpoint"
+    endpoint.response_model = ExtraAllowModel
+
+    with pytest.raises(ValidationError, match="Unexpected fields in response"):
+        BaseClient._process_response(
+            endpoint, {"value": 1, "unexpected": 2}, validation_mode="strict"
+        )
+
+
+def test_process_response_warn_mode_logs_unknown_fields() -> None:
+    """Warn mode should log unknown fields on extra-allow models."""
+
+    class ExtraAllowModel(BaseModel):
+        model_config = ConfigDict(extra="allow")
+        value: int
+
+    endpoint = Mock()
+    endpoint.name = "warn_extra_endpoint"
+    endpoint.response_model = ExtraAllowModel
+
+    with patch("fmp_data.base.logger.warning") as mock_warning:
+        result = BaseClient._process_response(
+            endpoint, {"value": 1, "unexpected": 2}, validation_mode="warn"
+        )
+
+    assert isinstance(result, ExtraAllowModel)
+    assert result.value == 1
+    mock_warning.assert_called()
 
 
 def test_client_cleanup(base_client):

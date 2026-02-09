@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 
 from fmp_data import FMPDataClient
 from fmp_data.investment.models import (
@@ -266,12 +266,16 @@ class TestInvestmentEndpoints(BaseTestCase):
             )
             assert result is None or (isinstance(result, list) and len(result) == 0)
 
-    def test_error_handling_invalid_date(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_error_handling_invalid_date(
+        self,
+        fmp_client: FMPDataClient,
+        vcr_instance,
+        frozen_future_date: date,
+    ):
         """Test error handling with future date"""
-        future_date = date.today() + timedelta(days=50)
         with vcr_instance.use_cassette("investment/invalid_date.yaml"):
             holdings = self._handle_rate_limit(
-                fmp_client.investment.get_etf_holdings, "SPY", future_date
+                fmp_client.investment.get_etf_holdings, "SPY", frozen_future_date
             )
             assert isinstance(holdings, list)
             # Note: API may return latest holdings when given future date

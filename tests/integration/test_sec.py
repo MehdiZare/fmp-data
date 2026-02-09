@@ -1,5 +1,5 @@
 # tests/integration/test_sec.py
-from datetime import date
+from datetime import date, timedelta
 
 from fmp_data import FMPDataClient
 from fmp_data.sec.models import (
@@ -45,35 +45,59 @@ class TestSECClientEndpoints(BaseTestCase):
             if filings:
                 assert isinstance(filings[0], SECFinancialFiling)
 
-    def test_search_by_form_type(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_search_by_form_type(
+        self, fmp_client: FMPDataClient, vcr_instance, frozen_today: date
+    ):
         """Test searching by form type"""
         with vcr_instance.use_cassette("sec/search_form_type.yaml"):
+            from_date = frozen_today - timedelta(days=30)
             results = self._handle_rate_limit(
-                fmp_client.sec.search_by_form_type, "10-K", page=0, limit=5
+                fmp_client.sec.search_by_form_type,
+                "10-K",
+                page=0,
+                limit=5,
+                from_date=from_date,
+                to_date=frozen_today,
             )
             assert isinstance(results, list)
-            if results:
-                assert isinstance(results[0], SECFilingSearchResult)
+            assert results, "Expected at least one filing for form-type search"
+            assert isinstance(results[0], SECFilingSearchResult)
 
-    def test_search_by_symbol(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_search_by_symbol(
+        self, fmp_client: FMPDataClient, vcr_instance, frozen_today: date
+    ):
         """Test searching filings by symbol"""
         with vcr_instance.use_cassette("sec/search_by_symbol.yaml"):
+            from_date = frozen_today - timedelta(days=30)
             results = self._handle_rate_limit(
-                fmp_client.sec.search_by_symbol, "AAPL", page=0, limit=5
+                fmp_client.sec.search_by_symbol,
+                "AAPL",
+                page=0,
+                limit=5,
+                from_date=from_date,
+                to_date=frozen_today,
             )
             assert isinstance(results, list)
-            if results:
-                assert isinstance(results[0], SECFilingSearchResult)
+            assert results, "Expected at least one filing for symbol search"
+            assert isinstance(results[0], SECFilingSearchResult)
 
-    def test_search_by_cik(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_search_by_cik(
+        self, fmp_client: FMPDataClient, vcr_instance, frozen_today: date
+    ):
         """Test searching filings by CIK"""
         with vcr_instance.use_cassette("sec/search_by_cik.yaml"):
+            from_date = frozen_today - timedelta(days=30)
             results = self._handle_rate_limit(
-                fmp_client.sec.search_by_cik, "0000320193", page=0, limit=5
+                fmp_client.sec.search_by_cik,
+                "0000320193",
+                page=0,
+                limit=5,
+                from_date=from_date,
+                to_date=frozen_today,
             )
             assert isinstance(results, list)
-            if results:
-                assert isinstance(results[0], SECFilingSearchResult)
+            assert results, "Expected at least one filing for CIK search"
+            assert isinstance(results[0], SECFilingSearchResult)
 
     def test_search_company_by_name(self, fmp_client: FMPDataClient, vcr_instance):
         """Test searching companies by name"""

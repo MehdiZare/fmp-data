@@ -111,6 +111,12 @@ class InstitutionalHolder(BaseModel):
 
     cik: str = Field(description="CIK number")
     name: str = Field(description="Institution name")
+    report_date: str | None = Field(default=None, alias="date")
+    filing_date: str | None = Field(default=None)
+    accepted_date: str | None = Field(default=None)
+    form_type: str | None = Field(default=None)
+    link: str | None = Field(default=None)
+    final_link: str | None = Field(default=None)
 
 
 class InstitutionalHolding(BaseModel):
@@ -157,6 +163,27 @@ class InstitutionalHolding(BaseModel):
     ownership_percent_change: float = Field(
         alias="ownershipPercentChange", description="Change in ownership percentage"
     )
+    closed_positions: int | None = Field(default=None)
+    closed_positions_change: int | None = Field(default=None)
+    increased_positions: int | None = Field(default=None)
+    increased_positions_change: int | None = Field(default=None)
+    last_closed_positions: int | None = Field(default=None)
+    last_increased_positions: int | None = Field(default=None)
+    last_new_positions: int | None = Field(default=None)
+    last_put_call_ratio: float | None = Field(default=None)
+    last_reduced_positions: int | None = Field(default=None)
+    last_total_calls: int | None = Field(default=None)
+    last_total_puts: int | None = Field(default=None)
+    new_positions: int | None = Field(default=None)
+    new_positions_change: int | None = Field(default=None)
+    put_call_ratio: float | None = Field(default=None)
+    put_call_ratio_change: float | None = Field(default=None)
+    reduced_positions: int | None = Field(default=None)
+    reduced_positions_change: int | None = Field(default=None)
+    total_calls: int | None = Field(default=None)
+    total_calls_change: int | None = Field(default=None)
+    total_puts: int | None = Field(default=None)
+    total_puts_change: int | None = Field(default=None)
 
 
 class InsiderTransactionType(BaseModel):
@@ -188,6 +215,19 @@ class InsiderRoster(BaseModel):
     type_of_owner: str | None = Field(
         None, alias="typeOfOwner", description="Type of owner/position"
     )
+    symbol: str | None = Field(default=None)
+    filing_date: str | None = Field(default=None)
+    reporting_cik: str | None = Field(default=None)
+    company_cik: str | None = Field(default=None)
+    transaction_type: str | None = Field(default=None)
+    acquisition_or_disposition: str | None = Field(default=None)
+    direct_or_indirect: str | None = Field(default=None)
+    form_type: str | None = Field(default=None)
+    security_name: str | None = Field(default=None)
+    url: str | None = Field(default=None)
+    price: float | None = Field(default=None)
+    securities_owned: float | None = Field(default=None)
+    securities_transacted: float | None = Field(default=None)
 
 
 class InsiderStatistic(BaseModel):
@@ -320,6 +360,8 @@ class BeneficialOwnership(BaseModel):
         alias="typeOfReportingPerson", description="Type of reporting person"
     )
     url: str = Field(description="Name of reporting person")
+    cik: str | None = Field(default=None, description="CIK number")
+    name_of_reporting_person: str | None = Field(default=None)
 
 
 class FailToDeliver(BaseModel):

@@ -177,6 +177,8 @@ All exceptions include `message`, `status_code`, and `response` attributes.
 | `FMP_DAILY_LIMIT` | No | Daily API call limit (default: 250) |
 | `FMP_REQUESTS_PER_SECOND` | No | Max requests per second (default: 5) |
 | `FMP_REQUESTS_PER_MINUTE` | No | Max requests per minute (default: 300) |
+| `FMP_VALIDATION_MODE` | No | Response validation policy: `lenient`, `warn`, or `strict` (default: `warn`) |
+| `FMP_UNKNOWN_PARAM_POLICY` | No | Unknown parameter handling: `ignore`, `warn`, or `error` (default: `warn`) |
 
 ## Important Development Notes
 

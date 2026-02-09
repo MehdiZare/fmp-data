@@ -2,7 +2,7 @@
 from datetime import date as dt_date
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 default_model_config = ConfigDict(
@@ -23,7 +23,10 @@ class BatchQuote(BaseModel):
     name: str | None = Field(None, description="Company name")
     price: float | None = Field(None, description="Current price")
     changes_percentage: float | None = Field(
-        None, alias="changesPercentage", description="Price change percentage"
+        None,
+        validation_alias=AliasChoices("changesPercentage", "changePercentage"),
+        alias="changesPercentage",
+        description="Price change percentage",
     )
     change: float | None = Field(None, description="Price change")
     day_low: float | None = Field(None, alias="dayLow", description="Day low price")
@@ -78,19 +81,32 @@ class AftermarketTrade(BaseModel):
     symbol: str = Field(description="Stock symbol")
     price: float | None = Field(None, description="Trade price")
     size: int | None = Field(None, description="Trade size")
+    trade_size: int | None = Field(
+        None, alias="tradeSize", description="Trade size (alternate field)"
+    )
     timestamp: int | None = Field(None, description="Trade timestamp")
 
 
 class AftermarketQuote(BaseModel):
-    """Aftermarket quote data"""
+    """Aftermarket quote data.
+
+    Note: ask/bid size fields exist in two forms — legacy (aliases ``asize``/
+    ``bsize``) and current (aliases ``askSize``/``bidSize``) — because the API
+    may return either format depending on the endpoint version.
+    """
 
     model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol")
-    ask: float | None = Field(None, description="Ask price")
-    bid: float | None = Field(None, description="Bid price")
-    ask_size: int | None = Field(None, alias="asize", description="Ask size")
-    bid_size: int | None = Field(None, alias="bsize", description="Bid size")
+    ask: float | None = Field(None, description="Ask price (legacy)")
+    bid: float | None = Field(None, description="Bid price (legacy)")
+    ask_size: int | None = Field(None, alias="asize", description="Ask size (legacy)")
+    bid_size: int | None = Field(None, alias="bsize", description="Bid size (legacy)")
+    ask_price: float | None = Field(None, alias="askPrice", description="Ask price")
+    bid_price: float | None = Field(None, alias="bidPrice", description="Bid price")
+    ask_size_v2: int | None = Field(None, alias="askSize", description="Ask size")
+    bid_size_v2: int | None = Field(None, alias="bidSize", description="Bid size")
+    volume: int | None = Field(None, description="Trading volume")
     timestamp: int | None = Field(None, description="Quote timestamp")
 
 

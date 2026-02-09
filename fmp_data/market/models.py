@@ -61,6 +61,10 @@ class ExchangeSymbol(BaseModel):
     earnings_announcement: datetime | None = Field(None, alias="earningsAnnouncement")
     shares_outstanding: float | None = Field(None, description="Shares outstanding")
     timestamp: int | None = Field(None, description="Quote timestamp")
+    country_code: str | None = Field(default=None)
+    country_name: str | None = Field(default=None)
+    delay: str | None = Field(default=None)
+    symbol_suffix: str | None = Field(default=None)
 
     @classmethod
     @model_validator(mode="before")
@@ -132,6 +136,8 @@ class MarketHours(BaseModel):
     is_market_open: bool = Field(
         alias="isMarketOpen", description="Whether the market is currently open"
     )
+    closing_additional: str | None = Field(default=None)
+    opening_additional: str | None = Field(default=None)
 
 
 class MarketHoliday(BaseModel):
@@ -146,6 +152,10 @@ class MarketHoliday(BaseModel):
         validation_alias=AliasChoices("holiday", "name", "description"),
         description="Holiday name",
     )
+    adj_close_time: str | None = Field(default=None)
+    adj_open_time: str | None = Field(default=None)
+    is_closed: bool | None = Field(default=None)
+    is_fully_closed: bool | None = Field(default=None)
 
 
 class MarketMover(BaseModel):
@@ -313,6 +323,7 @@ class ISINResult(BaseModel):
     isin: str = Field(description="ISIN number")
     symbol: str = Field(description="Stock symbol")
     name: str = Field(description="Company name")
+    market_cap: float | None = Field(default=None)
 
 
 class AvailableIndex(BaseModel):
@@ -349,6 +360,42 @@ class CompanySearchResult(BaseModel):
         validation_alias=AliasChoices("stockExchange", "exchange"),
     )
     exchange_short_name: str | None = Field(None, description="Exchange short name")
+    exchange_full_name: str | None = Field(default=None)
+    beta: float | None = Field(default=None)
+    country: str | None = Field(default=None)
+    industry: str | None = Field(default=None)
+    is_actively_trading: bool | None = Field(default=None)
+    is_etf: bool | None = Field(default=None)
+    is_fund: bool | None = Field(default=None)
+    last_annual_dividend: float | None = Field(default=None)
+    market_cap: float | None = Field(default=None)
+    price: float | None = Field(default=None)
+    sector: str | None = Field(default=None)
+    volume: int | None = Field(default=None)
+    # Profile fields from search_exchange_variants
+    address: str | None = Field(default=None)
+    ceo: str | None = Field(default=None)
+    changes: float | None = Field(default=None)
+    cik: str | None = Field(default=None)
+    city: str | None = Field(default=None)
+    cusip: str | None = Field(default=None)
+    dcf: float | None = Field(default=None)
+    dcf_diff: float | None = Field(default=None)
+    default_image: bool | None = Field(default=None)
+    description: str | None = Field(default=None)
+    full_time_employees: str | None = Field(default=None)
+    image: str | None = Field(default=None)
+    ipo_date: str | None = Field(default=None)
+    is_adr: bool | None = Field(default=None)
+    isin: str | None = Field(default=None)
+    last_div: float | None = Field(default=None)
+    mkt_cap: float | None = Field(default=None)
+    phone: str | None = Field(default=None)
+    range: str | None = Field(default=None)
+    state: str | None = Field(default=None)
+    vol_avg: int | None = Field(default=None)
+    website: str | None = Field(default=None)
+    zip: str | None = Field(default=None)
 
 
 class CIKListEntry(BaseModel):

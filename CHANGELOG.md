@@ -45,6 +45,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Company models**: Fixed `CompanyProfile` aliases for `vol_avg`, `mkt_cap`, `last_div`, `changes` using `AliasChoices`; added `change_percentage`, `volume`, `exchange_full_name` fields
   - **Alternative models**: Fixed `PriceQuote.change_percent` and `CryptoQuote.change_percent` to accept both `changesPercentage` and `changePercentage` variants
   - **Fundamental models**: Added 36+ fields to `FinancialGrowth`, 30+ fields to `BalanceSheet`, 8 fields to `OwnerEarnings`, 7 fields to `FinancialScore`, 4 fields to `EnterpriseValue`
+- **Cassette-Driven Model Enhancement** - Added 230+ missing fields across 13 models by validating all VCR cassettes against Pydantic models:
+  - **FinancialGrowth**: Added 110 line-item growth fields for income statement, balance sheet, and cash flow growth endpoints; added `AliasChoices` for `growthAccountPayables`/`growthAccountsPayables` variant
+  - **CommitmentOfTradersReport**: Added 113 fields covering position breakdowns, changes, trader counts, concentration ratios, and percent of open interest
+  - **Company models**: Added `change` to `SimpleQuote`; added `adjHigh`, `adjLow`, `adjOpen`, `symbol` to `HistoricalPrice`; added 7 fields to `MergerAcquisition` (`symbol`, `cik`, `targetedSymbol`, `targetedCik`, `transactionDate`, `acceptedDate`, `link`); added `symbol`, `fiscalYear`, `period`, `reportedCurrency` to `RevenueSegmentItem`
+  - **Alternative models**: Added `fromCurrency`, `fromName`, `toCurrency`, `toName` to `ForexPair`; added `tradeMonth` to `Commodity`
+  - **Batch models**: Added `AliasChoices` for `changePercentage` on `BatchQuote`; added `askPrice`, `bidPrice`, `askSize`, `bidSize`, `volume` to `AftermarketQuote`; added `tradeSize` to `AftermarketTrade`
+  - **Fundamental models**: Added `capitalLeaseObligationsNonCurrent` to `BalanceSheet`; added `reportedCurrency` to `AsReportedFinancialStatementBase`; added `growthTaxPayables` to `FinancialGrowth`
+  - **Economics models**: Added `unit` to `EconomicEvent`
+  - **Other**: Added `source` to `ShareFloat`
+- **AsReported Model Validator** - Fixed decorator ordering on `AsReportedFinancialStatementBase.merge_data_payload` (`@model_validator` must be outermost) so the `data` dict is properly flattened before Pydantic validation
+- **Final Cassette Contract Alignment** - Added missing optional fields to 15 Pydantic models across 7 files so that `test_vcr_cassettes_match_endpoint_models` passes with zero uncaptured fields:
+  - **Fundamental models**: Added `stock_price_display` (alias `Stock Price`) to `DCF`; 40 WACC/DCF component fields to `CustomDCF`; 29 levered DCF component fields to `CustomLeveredDCF`; `data`, `fiscal_year`, `reported_currency` to `FinancialStatementFull`
+  - **Institutional models**: Added 6 filing metadata fields to `InstitutionalHolder`; 21 position/options fields to `InstitutionalHolding`; 13 insider detail fields to `InsiderRoster`; `cik`, `name_of_reporting_person` to `BeneficialOwnership`
+  - **Intelligence models**: Added `daa` to `IPOEvent`; `publisher`, `symbol` to `GeneralNewsArticle`; `publisher` to `ForexNewsArticle`; 5 fields to `PressRelease`; `fiscal_year` to `ESGRating` and `ESGBenchmark`; 7 score fields to both `RatingsSnapshot` and `HistoricalRating`; `date` to `StockGrade`; 6 fields to `HistoricalStockGrade`
+  - **Investment models**: Added `security_cusip` to `FundDisclosureHolderLatest`
+  - **Market models**: Added `closing_additional`, `opening_additional` to `MarketHours`; `adj_close_time`, `adj_open_time`, `is_closed`, `is_fully_closed` to `MarketHoliday`; `country_code`, `country_name`, `delay`, `symbol_suffix` to `ExchangeSymbol`; 34 screener/profile fields to `CompanySearchResult`; `market_cap` to `ISINResult`
+  - **SEC models**: Added `has_financials`, `link` to `SECFinancialFiling`; `link` to `SECFilingSearchResult`
+  - **Base models**: Added `company_name`, `reporting_currency`, `trading_currency` to `CompanySymbol`
+- **Cassette Contract Test** - Enhanced to run in `warn` mode and assert zero uncaptured fields (excluding dynamic SEC XBRL taxonomy keys in AsReported models)
 
 ### Deprecated
 - **Stock News Sentiments Endpoint** - Marked `get_stock_news_sentiments()` as deprecated:
@@ -53,7 +72,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Method returns empty list to maintain backward compatibility
   - Will be removed in a future major version
 
+### Security
+- **VCR Cassette Leak Guard** - Added unit tests that scan all committed VCR cassettes for leaked API keys:
+  - `test_vcr_sanitization.py` verifies the VCR `scrub_api_key` / `scrub_response_secrets` hooks and scans every YAML cassette for real API key values
+  - `test_cassette_contracts.py` validates every cassette response against its declared Pydantic endpoint model, catching schema drift and stale cassettes
+  - Pre-commit `detect-secrets` hook now excludes only Python test files (`tests/.*\.py$`), ensuring cassette YAML files are always scanned
+  - CI `secret-scan` job explicitly targets `tests/integration/vcr_cassettes/` as an additional safety net
+
 ### Changed
+- **VCR Cassettes Excluded from Git** - Cassettes are now gitignored (`tests/integration/vcr_cassettes/`) because they are too large for GitHub (130 MB+ individual files). Developers must record cassettes locally with `FMP_TEST_API_KEY`.
+- **CI Secret Scan** - The `secret-scan` job now gracefully skips when no cassette YAML files are present instead of failing.
+- **Cassette Contract Test** - `test_vcr_cassettes_match_endpoint_models` now skips with a clear message when no cassettes are found, instead of silently passing.
 - **Documentation** - Enhanced `CLAUDE.md` with best practices:
   - Added critical testing strategy reminders for validating successful API responses
   - Documented historical price endpoint variants (`/full`, `/light`, `/non-split-adjusted`, `/dividend-adjusted`)

@@ -57,7 +57,9 @@ coverage.xml
 cover/
 .mypy_cache/
 .ruff_cache/
-tests/integration/vcr_cassettes/**/*.yaml
+
+# VCR cassettes (large recorded API responses, regenerated locally)
+tests/integration/vcr_cassettes/
 
 # Build
 *.manifest
