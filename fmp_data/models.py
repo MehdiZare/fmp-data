@@ -355,3 +355,6 @@ class CompanySymbol(BaseModel):
         None, alias="exchangeShortName", description="Exchange short name"
     )
     type: str | None = Field(None, description="Security type")
+    company_name: str | None = Field(default=None)
+    reporting_currency: str | None = Field(default=None)
+    trading_currency: str | None = Field(default=None)

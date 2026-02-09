@@ -2358,6 +2358,9 @@ class DCF(BaseModel):
     stock_price: float | None = Field(
         None, alias="stockPrice", description="Current stock price"
     )
+    stock_price_display: float | None = Field(
+        default=None, alias="Stock Price", description="Display stock price"
+    )
 
 
 class CustomDCF(BaseModel):
@@ -2452,6 +2455,46 @@ class CustomDCF(BaseModel):
         alias="impliedSharePrice",
         description="Implied share price from DCF",
     )
+    after_tax_cost_of_debt: float | None = Field(default=None)
+    beta: float | None = Field(default=None)
+    capital_expenditure: float | None = Field(default=None)
+    capital_expenditure_percentage: float | None = Field(default=None)
+    cost_of_equity: float | None = Field(default=None)
+    costof_debt: float | None = Field(default=None)
+    debt_weighting: float | None = Field(default=None)
+    depreciation: float | None = Field(default=None)
+    depreciation_percentage: float | None = Field(default=None)
+    diluted_shares_outstanding: float | None = Field(default=None)
+    ebiat: float | None = Field(default=None)
+    ebit: float | None = Field(default=None)
+    ebit_percentage: float | None = Field(default=None)
+    ebitda: float | None = Field(default=None)
+    ebitda_percentage: float | None = Field(default=None)
+    equity_value_per_share: float | None = Field(default=None)
+    equity_weighting: float | None = Field(default=None)
+    free_cash_flow_t1: float | None = Field(default=None)
+    inventories: float | None = Field(default=None)
+    inventories_percentage: float | None = Field(default=None)
+    long_term_growth_rate: float | None = Field(default=None)
+    market_risk_premium: float | None = Field(default=None)
+    payable: float | None = Field(default=None)
+    payable_percentage: float | None = Field(default=None)
+    present_terminal_value: float | None = Field(default=None)
+    price: float | None = Field(default=None)
+    receivables: float | None = Field(default=None)
+    receivables_percentage: float | None = Field(default=None)
+    revenue: float | None = Field(default=None)
+    revenue_percentage: float | None = Field(default=None)
+    risk_free_rate: float | None = Field(default=None)
+    sum_pv_ufcf: float | None = Field(default=None)
+    tax_rate: float | None = Field(default=None)
+    tax_rate_cash: float | None = Field(default=None)
+    total_capital: float | None = Field(default=None)
+    total_cash: float | None = Field(default=None)
+    total_cash_percentage: float | None = Field(default=None)
+    total_debt: float | None = Field(default=None)
+    total_equity: float | None = Field(default=None)
+    ufcf: float | None = Field(default=None)
 
 
 class CustomLeveredDCF(BaseModel):
@@ -2532,6 +2575,35 @@ class CustomLeveredDCF(BaseModel):
         alias="impliedSharePrice",
         description="Implied share price from DCF",
     )
+    after_tax_cost_of_debt: float | None = Field(default=None)
+    beta: float | None = Field(default=None)
+    capital_expenditure: float | None = Field(default=None)
+    capital_expenditure_percentage: float | None = Field(default=None)
+    costof_debt: float | None = Field(default=None)
+    debt_weighting: float | None = Field(default=None)
+    diluted_shares_outstanding: float | None = Field(default=None)
+    enterprise_value: float | None = Field(default=None)
+    equity_value_per_share: float | None = Field(default=None)
+    equity_weighting: float | None = Field(default=None)
+    free_cash_flow: float | None = Field(default=None)
+    free_cash_flow_t1: float | None = Field(default=None)
+    long_term_growth_rate: float | None = Field(default=None)
+    market_risk_premium: float | None = Field(default=None)
+    net_debt: float | None = Field(default=None)
+    operating_cash_flow: float | None = Field(default=None)
+    operating_cash_flow_percentage: float | None = Field(default=None)
+    present_terminal_value: float | None = Field(default=None)
+    price: float | None = Field(default=None)
+    pv_lfcf: float | None = Field(default=None)
+    revenue: float | None = Field(default=None)
+    revenue_percentage: float | None = Field(default=None)
+    risk_free_rate: float | None = Field(default=None)
+    sum_pv_lfcf: float | None = Field(default=None)
+    tax_rate: float | None = Field(default=None)
+    total_capital: float | None = Field(default=None)
+    total_debt: float | None = Field(default=None)
+    total_equity: float | None = Field(default=None)
+    wacc: float | None = Field(default=None)
 
 
 class CompanyRating(BaseModel):
@@ -2746,6 +2818,11 @@ class FinancialStatementFull(BaseModel):
         alias="fullTimeEmployees",
         description="Number of full-time employees",
     )
+    data: dict[str, Any] | None = Field(
+        default=None, description="Dynamic XBRL payload"
+    )
+    fiscal_year: int | None = Field(default=None, description="Fiscal year")
+    reported_currency: str | None = Field(default=None, description="Reported currency")
 
 
 class FinancialReport(BaseModel):
