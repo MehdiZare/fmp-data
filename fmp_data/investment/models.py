@@ -227,6 +227,7 @@ class FundDisclosureHolderLatest(BaseModel):
     weight_percent: float = Field(
         alias="weightPercent", description="Portfolio weight percentage"
     )
+    security_cusip: str | None = Field(default=None)
 
 
 class FundDisclosureHolding(BaseModel):

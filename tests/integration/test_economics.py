@@ -23,10 +23,12 @@ logger = logging.getLogger(__name__)
 class TestEconomicsEndpoints(BaseTestCase):
     """Test economics endpoints"""
 
-    def test_get_treasury_rates(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_get_treasury_rates(
+        self, fmp_client: FMPDataClient, vcr_instance, frozen_today: date
+    ):
         """Test getting treasury rates"""
         with vcr_instance.use_cassette("economics/treasury_rates.yaml"):
-            end_date = date.today()
+            end_date = frozen_today
             start_date = end_date - timedelta(days=30)
 
             rates = self._handle_rate_limit(
@@ -61,10 +63,12 @@ class TestEconomicsEndpoints(BaseTestCase):
                 assert isinstance(indicator.value, float)
                 assert isinstance(indicator.indicator_date, date)
 
-    def test_get_economic_calendar(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_get_economic_calendar(
+        self, fmp_client: FMPDataClient, vcr_instance, frozen_today: date
+    ):
         """Test getting economic calendar events"""
         with vcr_instance.use_cassette("economics/economic_calendar.yaml"):
-            start_date = date.today()
+            start_date = frozen_today
             end_date = start_date + timedelta(days=30)
 
             events = self._handle_rate_limit(
@@ -196,12 +200,14 @@ class TestEconomicsEndpoints(BaseTestCase):
             for indicator in EconomicIndicatorType:
                 assert str(indicator) in error_msg
 
-    def test_rate_limiting(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_rate_limiting(
+        self, fmp_client: FMPDataClient, vcr_instance, frozen_today: date
+    ):
         """Test rate limiting with simple successful request"""
         with vcr_instance.use_cassette("economics/rate_limit.yaml"):
             rates = self._handle_rate_limit(
                 fmp_client.economics.get_treasury_rates,
-                start_date=date.today() - timedelta(days=7),
-                end_date=date.today(),
+                start_date=frozen_today - timedelta(days=7),
+                end_date=frozen_today,
             )
             assert isinstance(rates, list)

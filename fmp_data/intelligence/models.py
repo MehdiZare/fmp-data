@@ -149,6 +149,7 @@ class IPOEvent(BaseModel):
     market_cap: Decimal | None = Field(
         alias="marketCap", description="Expected market cap"
     )
+    daa: str | None = Field(default=None, description="FMP internal field")
 
 
 class FMPArticle(BaseModel):
@@ -185,6 +186,8 @@ class GeneralNewsArticle(BaseModel):
     site: str
     text: str
     url: HttpUrl
+    publisher: str | None = None
+    symbol: str | None = None
 
 
 class StockNewsArticle(BaseModel):
@@ -230,6 +233,7 @@ class ForexNewsArticle(BaseModel):
     text: str = Field(description="Article preview text/summary")
     url: HttpUrl = Field(description="Full article URL")
     symbol: str | None = Field(default=None, description="Forex pair symbol")
+    publisher: str | None = Field(default=None, description="News publisher")
 
 
 class CryptoNewsArticle(BaseModel):
@@ -256,6 +260,11 @@ class PressRelease(BaseModel):
     date: datetime | None = None
     title: str
     text: str
+    image: str | None = None
+    published_date: datetime | None = Field(default=None, alias="publishedDate")
+    publisher: str | None = None
+    site: str | None = None
+    url: str | None = None
 
 
 class PressReleaseBySymbol(BaseModel):
@@ -366,6 +375,7 @@ class ESGRating(BaseModel):
     industry_rank: str | None = Field(
         None, alias="industryRank", description="Industry rank (e.g. '4 out of 5')"
     )
+    fiscal_year: int | None = Field(default=None)
 
 
 class ESGBenchmark(BaseModel):
@@ -387,6 +397,7 @@ class ESGBenchmark(BaseModel):
     average_social_score: float | None = Field(None, alias="averageSocialScore")
     average_governance_score: float | None = Field(None, alias="averageGovernanceScore")
     average_esg_score: float | None = Field(None, alias="averageESGScore")
+    fiscal_year: int | None = Field(default=None)
 
 
 # Government Trading Models
@@ -895,6 +906,13 @@ class RatingsSnapshot(BaseModel):
         alias="ratingDetailsPBRecommendation",
         description="P/B recommendation",
     )
+    debt_to_equity_score: int | None = Field(default=None)
+    discounted_cash_flow_score: int | None = Field(default=None)
+    overall_score: int | None = Field(default=None)
+    price_to_book_score: int | None = Field(default=None)
+    price_to_earnings_score: int | None = Field(default=None)
+    return_on_assets_score: int | None = Field(default=None)
+    return_on_equity_score: int | None = Field(default=None)
 
 
 class HistoricalRating(BaseModel):
@@ -967,6 +985,13 @@ class HistoricalRating(BaseModel):
         alias="ratingDetailsPBRecommendation",
         description="P/B recommendation",
     )
+    debt_to_equity_score: int | None = Field(default=None)
+    discounted_cash_flow_score: int | None = Field(default=None)
+    overall_score: int | None = Field(default=None)
+    price_to_book_score: int | None = Field(default=None)
+    price_to_earnings_score: int | None = Field(default=None)
+    return_on_assets_score: int | None = Field(default=None)
+    return_on_equity_score: int | None = Field(default=None)
 
 
 class PriceTargetNews(BaseModel):
@@ -1029,6 +1054,7 @@ class StockGrade(BaseModel):
         alias="priceWhenPosted",
         description="Stock price when grade was posted",
     )
+    date: datetime | None = Field(default=None)
 
 
 class HistoricalStockGrade(BaseModel):
@@ -1067,6 +1093,12 @@ class HistoricalStockGrade(BaseModel):
         alias="priceWhenPosted",
         description="Stock price when grade was posted",
     )
+    date: datetime | None = Field(default=None)
+    analyst_ratings_buy: int | None = Field(default=None)
+    analyst_ratings_hold: int | None = Field(default=None)
+    analyst_ratings_sell: int | None = Field(default=None)
+    analyst_ratings_strong_buy: int | None = Field(default=None)
+    analyst_ratings_strong_sell: int | None = Field(default=None)
 
 
 class StockGradesConsensus(BaseModel):

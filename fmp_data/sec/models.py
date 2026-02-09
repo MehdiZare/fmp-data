@@ -77,6 +77,8 @@ class SECFinancialFiling(BaseModel):
     link_to_xbrl: str | None = Field(
         None, alias="linkToXbrl", description="Link to XBRL version"
     )
+    has_financials: bool | None = Field(default=None)
+    link: str | None = Field(default=None)
 
 
 class SECFilingSearchResult(BaseModel):
@@ -102,6 +104,7 @@ class SECFilingSearchResult(BaseModel):
     final_link: str | None = Field(
         None, alias="finalLink", description="Link to the filing"
     )
+    link: str | None = Field(default=None)
 
 
 class SECCompanySearchResult(BaseModel):

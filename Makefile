@@ -4,7 +4,7 @@
 #
 # For maintainer/developer commands, see Makefile.dev
 
-.PHONY: help install install-dev venv test lint format fix check clean update update-dev
+.PHONY: help install install-dev venv test test-unit test-integration test-integration-replay test-integration-record lint format fix check clean update update-dev
 .PHONY: mcp-setup mcp-test mcp-list mcp-status ci
 
 # Default target
@@ -44,6 +44,9 @@ help: ## Show available commands
 	@echo ""
 	@echo "$(BOLD)🧪 Testing & Quality:$(RESET)"
 	@echo "  $(GREEN)make test$(RESET)            Run tests"
+	@echo "  $(GREEN)make test-unit$(RESET)       Run unit tests only"
+	@echo "  $(GREEN)make test-integration$(RESET) Run integration tests (replay by default)"
+	@echo "  $(GREEN)make test-integration-record$(RESET) Record/refresh integration cassettes"
 	@echo "  $(GREEN)make lint$(RESET)            Check code quality"
 	@echo "  $(GREEN)make format$(RESET)          Check code formatting"
 	@echo "  $(GREEN)make fix$(RESET)             Auto-fix code issues"
@@ -128,6 +131,29 @@ test: venv ## Run tests
 		if [ -z "$$FMP_TEST_API_KEY" ] && [ -n "$$FMP_API_KEY" ]; then export FMP_TEST_API_KEY="$$FMP_API_KEY"; fi; \
 		if [ -z "$$FMP_API_KEY" ] && [ -n "$$FMP_TEST_API_KEY" ]; then export FMP_API_KEY="$$FMP_TEST_API_KEY"; fi; \
 		. .venv/bin/activate && pytest -q $(PYTEST_XDIST_ARGS)
+
+test-unit: venv ## Run unit tests only
+	@echo "$(BOLD)$(BLUE)🧪 Running unit tests...$(RESET)"
+	@. .venv/bin/activate && pytest -q tests/unit $(PYTEST_XDIST_ARGS)
+
+test-integration: test-integration-replay ## Alias for replay integration tests
+
+test-integration-replay: venv ## Run integration tests using VCR replay mode (fast, deterministic)
+	@echo "$(BOLD)$(BLUE)🧪 Running integration tests (VCR replay)...$(RESET)"
+	@set -a; [ -f .env ] && . ./.env; set +a; \
+		if [ -z "$$FMP_TEST_API_KEY" ] && [ -n "$$FMP_API_KEY" ]; then export FMP_TEST_API_KEY="$$FMP_API_KEY"; fi; \
+		if [ -z "$$FMP_API_KEY" ] && [ -n "$$FMP_TEST_API_KEY" ]; then export FMP_API_KEY="$$FMP_TEST_API_KEY"; fi; \
+		export FMP_VCR_RECORD=none; \
+		. .venv/bin/activate && pytest -q tests/integration $(PYTEST_XDIST_ARGS)
+
+test-integration-record: venv ## Record/update integration VCR cassettes (set TESTS=path/to/test.py for targeted refresh)
+	@echo "$(BOLD)$(YELLOW)🎥 Recording integration cassettes...$(RESET)"
+	@set -a; [ -f .env ] && . ./.env; set +a; \
+		if [ -z "$$FMP_TEST_API_KEY" ] && [ -n "$$FMP_API_KEY" ]; then export FMP_TEST_API_KEY="$$FMP_API_KEY"; fi; \
+		if [ -z "$$FMP_API_KEY" ] && [ -n "$$FMP_TEST_API_KEY" ]; then export FMP_API_KEY="$$FMP_TEST_API_KEY"; fi; \
+		if [ -z "$$FMP_TEST_API_KEY" ]; then echo "$(YELLOW)FMP_TEST_API_KEY is required for recording.$(RESET)" && exit 1; fi; \
+		export FMP_VCR_RECORD=new_episodes; \
+		. .venv/bin/activate && pytest -q $${TESTS:-tests/integration}
 
 lint: ## Check code quality with ruff
 	@echo "$(BOLD)$(BLUE)🔍 Checking code quality...$(RESET)"

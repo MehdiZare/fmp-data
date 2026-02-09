@@ -409,7 +409,7 @@ class TestBatchClient:
         )
         mock_request.return_value = self._mock_csv_response(csv_text)
         results = fmp_client.batch.get_income_statement_growth_bulk(2025, "Q1")
-        assert results[0].model_extra["growthRevenue"] == "0.04159"
+        assert results[0].growth_revenue == 0.04159
 
     @patch("httpx.Client.request")
     def test_get_balance_sheet_bulk(self, mock_request, fmp_client):
@@ -444,7 +444,7 @@ class TestBatchClient:
         )
         mock_request.return_value = self._mock_csv_response(csv_text)
         results = fmp_client.batch.get_balance_sheet_growth_bulk(2025, "Q1")
-        assert results[0].model_extra["growthCashAndCashEquivalents"] == "0.09574482"
+        assert results[0].growth_cash_and_cash_equivalents == 0.09574482
 
     @patch("httpx.Client.request")
     def test_get_cash_flow_bulk(self, mock_request, fmp_client):
@@ -468,7 +468,7 @@ class TestBatchClient:
         )
         mock_request.return_value = self._mock_csv_response(csv_text)
         results = fmp_client.batch.get_cash_flow_growth_bulk(2025, "Q1")
-        assert results[0].model_extra["growthOperatingCashFlow"] == "3.20728"
+        assert results[0].growth_operating_cash_flow == 3.20728
 
     @patch("httpx.Client.request")
     def test_get_eod_bulk(self, mock_request, fmp_client):

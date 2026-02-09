@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections.abc import Callable
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -213,6 +213,24 @@ class ClientConfig(BaseModel):
         ),
         exclude=True,  # Don't include in serialization
     )
+    validation_mode: Literal["lenient", "warn", "strict"] = Field(
+        default="warn",
+        description=(
+            "Response validation policy. "
+            "'lenient' ignores unknown fields, "
+            "'warn' logs unknown fields, "
+            "'strict' raises on unknown fields."
+        ),
+    )
+    unknown_param_policy: Literal["ignore", "warn", "error"] = Field(
+        default="warn",
+        description=(
+            "Unknown request parameter handling policy. "
+            "'ignore' drops unknown keys, "
+            "'warn' logs dropped keys, "
+            "'error' raises validation errors."
+        ),
+    )
 
     @field_validator("api_key")
     @classmethod
@@ -286,6 +304,10 @@ class ClientConfig(BaseModel):
             "base_url": os.getenv("FMP_BASE_URL", "https://financialmodelingprep.com"),
             "rate_limit": RateLimitConfig.from_env(),
             "logging": LoggingConfig.from_env(),
+            "validation_mode": os.getenv("FMP_VALIDATION_MODE", "warn").lower(),
+            "unknown_param_policy": os.getenv(
+                "FMP_UNKNOWN_PARAM_POLICY", "warn"
+            ).lower(),
         }
 
         return cls(**config_dict)

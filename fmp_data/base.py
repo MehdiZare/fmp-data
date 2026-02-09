@@ -34,6 +34,7 @@ from fmp_data.models import Endpoint
 from fmp_data.rate_limit import AsyncFMPRateLimiter, FMPRateLimiter, QuotaConfig
 
 T = TypeVar("T")
+ValidationMode = Literal["lenient", "warn", "strict"]
 
 logger = FMPLogger().get_logger(__name__)
 
@@ -42,6 +43,7 @@ logger = FMPLogger().get_logger(__name__)
 _rate_limit_retry_count: ContextVar[int] = ContextVar(
     "rate_limit_retry_count", default=0
 )
+_extra_field_warnings_seen: set[tuple[str, tuple[str, ...]]] = set()
 
 
 def _is_pydantic_model(model: type[Any]) -> TypeGuard[type[BaseModel]]:
@@ -236,7 +238,10 @@ class BaseClient:
             self._rate_limiter.record_request()
 
             # Validate and process parameters
-            validated_params = endpoint.validate_params(kwargs)
+            validated_params = endpoint.validate_params(
+                kwargs,
+                unknown_param_policy=self.config.unknown_param_policy,
+            )
 
             # Build URL
             url = endpoint.build_url(self.config.base_url, validated_params)
@@ -266,7 +271,11 @@ class BaseClient:
                     data = response.content
                 else:
                     data = self.handle_response(endpoint, response)
-                result = self._process_response(endpoint, data)
+                result = self._process_response(
+                    endpoint,
+                    data,
+                    validation_mode=self.config.validation_mode,
+                )
                 success = True
                 return result
             finally:
@@ -394,10 +403,26 @@ class BaseClient:
 
         if status_code == 404:
             if endpoint is not None and getattr(endpoint, "allow_empty_on_404", False):
+                endpoint_name = (
+                    endpoint.name if isinstance(endpoint, Endpoint) else None
+                )
+                self.logger.warning(
+                    "Received 404 for endpoint configured with allow_empty_on_404; "
+                    "returning empty list.",
+                    extra={"endpoint": endpoint_name, "status_code": status_code},
+                )
                 return []
             if isinstance(error_details, list) and not error_details:
+                self.logger.warning(
+                    "Received 404 with empty list payload; returning empty list.",
+                    extra={"status_code": status_code},
+                )
                 return []
             if isinstance(error_details, dict) and not error_details:
+                self.logger.warning(
+                    "Received 404 with empty object payload; returning empty object.",
+                    extra={"status_code": status_code},
+                )
                 return {}
 
         if status_code == 429:
@@ -453,7 +478,47 @@ class BaseClient:
             raise FMPError(data["error"])
 
     @staticmethod
-    def _validate_single_item(endpoint: Endpoint[T], item: Any) -> T:
+    def _validate_model(
+        endpoint_name: str,
+        model: type[BaseModel],
+        payload: Any,
+        validation_mode: ValidationMode,
+    ) -> BaseModel:
+        parsed = model.model_validate(payload)
+        extra = getattr(parsed, "__pydantic_extra__", None)
+        if not extra:
+            return parsed
+
+        unknown_fields = tuple(sorted(str(key) for key in extra))
+        if validation_mode == "strict":
+            fields_preview = ", ".join(unknown_fields[:10])
+            if len(unknown_fields) > 10:
+                fields_preview += ", ..."
+            raise ValidationError(
+                f"Unexpected fields in response for endpoint "
+                f"'{endpoint_name}': {fields_preview}"
+            )
+
+        if validation_mode == "warn":
+            warning_key = (endpoint_name, unknown_fields)
+            if warning_key not in _extra_field_warnings_seen:
+                _extra_field_warnings_seen.add(warning_key)
+                logger.warning(
+                    "Unknown response fields detected",
+                    extra={
+                        "endpoint": endpoint_name,
+                        "unknown_fields": list(unknown_fields),
+                        "count": len(unknown_fields),
+                    },
+                )
+        return parsed
+
+    @staticmethod
+    def _validate_single_item(
+        endpoint: Endpoint[T],
+        item: Any,
+        validation_mode: ValidationMode = "lenient",
+    ) -> T:
         """Validate a single item against the endpoint's response model.
 
         Args:
@@ -483,14 +548,30 @@ class BaseClient:
 
         if _is_pydantic_model(model):
             if isinstance(item, dict):
-                return cast(T, model.model_validate(item))
+                return cast(
+                    T,
+                    BaseClient._validate_model(
+                        endpoint.name,
+                        model,
+                        item,
+                        validation_mode=validation_mode,
+                    ),
+                )
 
             # Try to feed non-dict value into the first field
             try:
                 first_field = next(iter(model.__annotations__))
                 field_info = model.model_fields[first_field]
                 field_name = field_info.alias or first_field
-                return cast(T, model.model_validate({field_name: item}))
+                return cast(
+                    T,
+                    BaseClient._validate_model(
+                        endpoint.name,
+                        model,
+                        {field_name: item},
+                        validation_mode=validation_mode,
+                    ),
+                )
             except (StopIteration, KeyError, AttributeError) as exc:
                 raise ValueError(
                     f"Invalid model structure for {model.__name__}"
@@ -499,7 +580,11 @@ class BaseClient:
         raise ValueError(f"Unsupported response model: {model!r}")
 
     @staticmethod
-    def _process_list_response(endpoint: Endpoint[T], data: list[Any]) -> list[T]:
+    def _process_list_response(
+        endpoint: Endpoint[T],
+        data: list[Any],
+        validation_mode: ValidationMode = "lenient",
+    ) -> list[T]:
         """Process a list response with validation warnings.
 
         Args:
@@ -513,14 +598,22 @@ class BaseClient:
         for item in data:
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
-                processed_item = BaseClient._validate_single_item(endpoint, item)
+                processed_item = BaseClient._validate_single_item(
+                    endpoint,
+                    item,
+                    validation_mode=validation_mode,
+                )
                 for warning in w:
                     logger.warning(f"Validation warning: {warning.message}")
                 processed_items.append(processed_item)
         return processed_items
 
     @staticmethod
-    def _process_response(endpoint: Endpoint[T], data: Any) -> T | list[T]:
+    def _process_response(
+        endpoint: Endpoint[T],
+        data: Any,
+        validation_mode: ValidationMode = "lenient",
+    ) -> T | list[T]:
         """Process the response data with warnings, returning T or list[T].
 
         Args:
@@ -536,7 +629,11 @@ class BaseClient:
 
         # Process list responses
         if isinstance(data, list):
-            return BaseClient._process_list_response(endpoint, data)
+            return BaseClient._process_list_response(
+                endpoint,
+                data,
+                validation_mode=validation_mode,
+            )
 
         # Process single item responses
         model = endpoint.response_model
@@ -553,7 +650,15 @@ class BaseClient:
         if model is bytes:
             return cast(T, data)
         if _is_pydantic_model(model):
-            return cast(T, model.model_validate(data))
+            return cast(
+                T,
+                BaseClient._validate_model(
+                    endpoint.name,
+                    model,
+                    data,
+                    validation_mode=validation_mode,
+                ),
+            )
         raise ValueError(f"Unsupported response model: {model!r}")
 
     async def request_async(self, endpoint: Endpoint[T], **kwargs: Any) -> T | list[T]:
@@ -619,7 +724,10 @@ class BaseClient:
             await self._async_rate_limiter.record_request()
 
             # Validate and process parameters
-            validated_params = endpoint.validate_params(kwargs)
+            validated_params = endpoint.validate_params(
+                kwargs,
+                unknown_param_policy=self.config.unknown_param_policy,
+            )
 
             # Build URL
             url = endpoint.build_url(self.config.base_url, validated_params)
@@ -649,7 +757,11 @@ class BaseClient:
                     data = response.content
                 else:
                     data = self.handle_response(endpoint, response)
-                return self._process_response(endpoint, data)
+                return self._process_response(
+                    endpoint,
+                    data,
+                    validation_mode=self.config.validation_mode,
+                )
             finally:
                 await response.aclose()
 

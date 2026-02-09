@@ -330,6 +330,11 @@ class BalanceSheet(FinancialStatementBase):
         alias="capitalLeaseObligations",
         description="Capital lease obligations",
     )
+    capital_lease_obligations_non_current: float | None = Field(
+        default=None,
+        alias="capitalLeaseObligationsNonCurrent",
+        description="Non-current capital lease obligations",
+    )
     total_liabilities: float | None = Field(
         default=None, alias="totalLiabilities", description="Total liabilities"
     )
@@ -1772,6 +1777,534 @@ class FinancialGrowth(BaseModel):
         description="3-year bottom line net income growth per share",
     )
 
+    # Income statement line-item growth
+    growth_revenue: float | None = Field(
+        default=None, alias="growthRevenue", description="Revenue growth"
+    )
+    growth_cost_of_revenue: float | None = Field(
+        default=None, alias="growthCostOfRevenue", description="Cost of revenue growth"
+    )
+    growth_gross_profit: float | None = Field(
+        default=None, alias="growthGrossProfit", description="Gross profit growth"
+    )
+    growth_gross_profit_ratio: float | None = Field(
+        default=None,
+        alias="growthGrossProfitRatio",
+        description="Gross profit ratio growth",
+    )
+    growth_research_and_development_expenses: float | None = Field(
+        default=None,
+        alias="growthResearchAndDevelopmentExpenses",
+        description="Research and development expenses growth",
+    )
+    growth_general_and_administrative_expenses: float | None = Field(
+        default=None,
+        alias="growthGeneralAndAdministrativeExpenses",
+        description="General and administrative expenses growth",
+    )
+    growth_selling_and_marketing_expenses: float | None = Field(
+        default=None,
+        alias="growthSellingAndMarketingExpenses",
+        description="Selling and marketing expenses growth",
+    )
+    growth_other_expenses: float | None = Field(
+        default=None,
+        alias="growthOtherExpenses",
+        description="Other expenses growth",
+    )
+    growth_operating_expenses: float | None = Field(
+        default=None,
+        alias="growthOperatingExpenses",
+        description="Operating expenses growth",
+    )
+    growth_operating_income: float | None = Field(
+        default=None,
+        alias="growthOperatingIncome",
+        description="Operating income growth",
+    )
+    growth_cost_and_expenses: float | None = Field(
+        default=None,
+        alias="growthCostAndExpenses",
+        description="Cost and expenses growth",
+    )
+    growth_interest_income: float | None = Field(
+        default=None,
+        alias="growthInterestIncome",
+        description="Interest income growth",
+    )
+    growth_interest_expense: float | None = Field(
+        default=None,
+        alias="growthInterestExpense",
+        description="Interest expense growth",
+    )
+    growth_depreciation_and_amortization: float | None = Field(
+        default=None,
+        alias="growthDepreciationAndAmortization",
+        description="Depreciation and amortization growth",
+    )
+    growth_ebitda: float | None = Field(
+        default=None, alias="growthEBITDA", description="EBITDA growth"
+    )
+    growth_ebit: float | None = Field(
+        default=None, alias="growthEBIT", description="EBIT growth"
+    )
+    growth_net_income: float | None = Field(
+        default=None, alias="growthNetIncome", description="Net income growth"
+    )
+    growth_net_income_deductions: float | None = Field(
+        default=None,
+        alias="growthNetIncomeDeductions",
+        description="Net income deductions growth",
+    )
+    growth_net_income_from_continuing_operations: float | None = Field(
+        default=None,
+        alias="growthNetIncomeFromContinuingOperations",
+        description="Net income from continuing operations growth",
+    )
+    growth_net_interest_income: float | None = Field(
+        default=None,
+        alias="growthNetInterestIncome",
+        description="Net interest income growth",
+    )
+    growth_non_operating_income_excluding_interest: float | None = Field(
+        default=None,
+        alias="growthNonOperatingIncomeExcludingInterest",
+        description="Non-operating income excluding interest growth",
+    )
+    growth_income_before_tax: float | None = Field(
+        default=None,
+        alias="growthIncomeBeforeTax",
+        description="Income before tax growth",
+    )
+    growth_income_tax_expense: float | None = Field(
+        default=None,
+        alias="growthIncomeTaxExpense",
+        description="Income tax expense growth",
+    )
+    growth_eps: float | None = Field(
+        default=None, alias="growthEPS", description="EPS growth"
+    )
+    growth_eps_diluted: float | None = Field(
+        default=None, alias="growthEPSDiluted", description="Diluted EPS growth"
+    )
+    growth_weighted_average_shs_out: float | None = Field(
+        default=None,
+        alias="growthWeightedAverageShsOut",
+        description="Weighted average shares outstanding growth",
+    )
+    growth_weighted_average_shs_out_dil: float | None = Field(
+        default=None,
+        alias="growthWeightedAverageShsOutDil",
+        description="Weighted average diluted shares outstanding growth",
+    )
+    growth_total_other_income_expenses_net: float | None = Field(
+        default=None,
+        alias="growthTotalOtherIncomeExpensesNet",
+        description="Total other income expenses net growth",
+    )
+    growth_other_adjustments_to_net_income: float | None = Field(
+        default=None,
+        alias="growthOtherAdjustmentsToNetIncome",
+        description="Other adjustments to net income growth",
+    )
+
+    # Balance sheet line-item growth
+    growth_cash_and_cash_equivalents: float | None = Field(
+        default=None,
+        alias="growthCashAndCashEquivalents",
+        description="Cash and cash equivalents growth",
+    )
+    growth_cash_and_short_term_investments: float | None = Field(
+        default=None,
+        alias="growthCashAndShortTermInvestments",
+        description="Cash and short-term investments growth",
+    )
+    growth_net_receivables: float | None = Field(
+        default=None,
+        alias="growthNetReceivables",
+        description="Net receivables growth",
+    )
+    growth_inventory: float | None = Field(
+        default=None, alias="growthInventory", description="Inventory growth"
+    )
+    growth_other_current_assets: float | None = Field(
+        default=None,
+        alias="growthOtherCurrentAssets",
+        description="Other current assets growth",
+    )
+    growth_total_current_assets: float | None = Field(
+        default=None,
+        alias="growthTotalCurrentAssets",
+        description="Total current assets growth",
+    )
+    growth_property_plant_equipment_net: float | None = Field(
+        default=None,
+        alias="growthPropertyPlantEquipmentNet",
+        description="Property, plant and equipment net growth",
+    )
+    growth_goodwill: float | None = Field(
+        default=None, alias="growthGoodwill", description="Goodwill growth"
+    )
+    growth_intangible_assets: float | None = Field(
+        default=None,
+        alias="growthIntangibleAssets",
+        description="Intangible assets growth",
+    )
+    growth_goodwill_and_intangible_assets: float | None = Field(
+        default=None,
+        alias="growthGoodwillAndIntangibleAssets",
+        description="Goodwill and intangible assets growth",
+    )
+    growth_long_term_investments: float | None = Field(
+        default=None,
+        alias="growthLongTermInvestments",
+        description="Long-term investments growth",
+    )
+    growth_tax_assets: float | None = Field(
+        default=None, alias="growthTaxAssets", description="Tax assets growth"
+    )
+    growth_tax_payables: float | None = Field(
+        default=None, alias="growthTaxPayables", description="Tax payables growth"
+    )
+    growth_other_non_current_assets: float | None = Field(
+        default=None,
+        alias="growthOtherNonCurrentAssets",
+        description="Other non-current assets growth",
+    )
+    growth_total_non_current_assets: float | None = Field(
+        default=None,
+        alias="growthTotalNonCurrentAssets",
+        description="Total non-current assets growth",
+    )
+    growth_other_assets: float | None = Field(
+        default=None, alias="growthOtherAssets", description="Other assets growth"
+    )
+    growth_total_assets: float | None = Field(
+        default=None, alias="growthTotalAssets", description="Total assets growth"
+    )
+    growth_account_payables: float | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "growthAccountPayables", "growthAccountsPayables"
+        ),
+        alias="growthAccountPayables",
+        description="Account payables growth",
+    )
+    growth_other_payables: float | None = Field(
+        default=None,
+        alias="growthOtherPayables",
+        description="Other payables growth",
+    )
+    growth_total_payables: float | None = Field(
+        default=None,
+        alias="growthTotalPayables",
+        description="Total payables growth",
+    )
+    growth_short_term_debt: float | None = Field(
+        default=None,
+        alias="growthShortTermDebt",
+        description="Short-term debt growth",
+    )
+    growth_deferred_revenue: float | None = Field(
+        default=None,
+        alias="growthDeferredRevenue",
+        description="Deferred revenue growth",
+    )
+    growth_other_current_liabilities: float | None = Field(
+        default=None,
+        alias="growthOtherCurrentLiabilities",
+        description="Other current liabilities growth",
+    )
+    growth_total_current_liabilities: float | None = Field(
+        default=None,
+        alias="growthTotalCurrentLiabilities",
+        description="Total current liabilities growth",
+    )
+    growth_long_term_debt: float | None = Field(
+        default=None,
+        alias="growthLongTermDebt",
+        description="Long-term debt growth",
+    )
+    growth_deferred_revenue_non_current: float | None = Field(
+        default=None,
+        alias="growthDeferredRevenueNonCurrent",
+        description="Deferred revenue non-current growth",
+    )
+    growth_deferred_tax_liabilities_non_current: float | None = Field(
+        default=None,
+        alias="growthDeferredTaxLiabilitiesNonCurrent",
+        description="Deferred tax liabilities non-current growth",
+    )
+    growth_other_non_current_liabilities: float | None = Field(
+        default=None,
+        alias="growthOtherNonCurrentLiabilities",
+        description="Other non-current liabilities growth",
+    )
+    growth_total_non_current_liabilities: float | None = Field(
+        default=None,
+        alias="growthTotalNonCurrentLiabilities",
+        description="Total non-current liabilities growth",
+    )
+    growth_other_liabilities: float | None = Field(
+        default=None,
+        alias="growthOtherLiabilities",
+        description="Other liabilities growth",
+    )
+    growth_capital_lease_obligations_current: float | None = Field(
+        default=None,
+        alias="growthCapitalLeaseObligationsCurrent",
+        description="Capital lease obligations current growth",
+    )
+    growth_total_liabilities: float | None = Field(
+        default=None,
+        alias="growthTotalLiabilities",
+        description="Total liabilities growth",
+    )
+    growth_total_liabilities_and_stockholders_equity: float | None = Field(
+        default=None,
+        alias="growthTotalLiabilitiesAndStockholdersEquity",
+        description="Total liabilities and stockholders equity growth",
+    )
+    growth_common_stock: float | None = Field(
+        default=None,
+        alias="growthCommonStock",
+        description="Common stock growth",
+    )
+    growth_retained_earnings: float | None = Field(
+        default=None,
+        alias="growthRetainedEarnings",
+        description="Retained earnings growth",
+    )
+    growth_accumulated_other_comprehensive_income_loss: float | None = Field(
+        default=None,
+        alias="growthAccumulatedOtherComprehensiveIncomeLoss",
+        description="Accumulated other comprehensive income loss growth",
+    )
+    growth_other_receivables: float | None = Field(
+        default=None,
+        alias="growthOtherReceivables",
+        description="Other receivables growth",
+    )
+    growth_accounts_receivables: float | None = Field(
+        default=None,
+        alias="growthAccountsReceivables",
+        description="Accounts receivables growth",
+    )
+    growth_accrued_expenses: float | None = Field(
+        default=None,
+        alias="growthAccruedExpenses",
+        description="Accrued expenses growth",
+    )
+    growth_additional_paid_in_capital: float | None = Field(
+        default=None,
+        alias="growthAdditionalPaidInCapital",
+        description="Additional paid-in capital growth",
+    )
+    growth_preferred_stock: float | None = Field(
+        default=None,
+        alias="growthPreferredStock",
+        description="Preferred stock growth",
+    )
+    growth_prepaids: float | None = Field(
+        default=None, alias="growthPrepaids", description="Prepaids growth"
+    )
+    growth_short_term_investments: float | None = Field(
+        default=None,
+        alias="growthShortTermInvestments",
+        description="Short-term investments growth",
+    )
+    growth_total_investments: float | None = Field(
+        default=None,
+        alias="growthTotalInvestments",
+        description="Total investments growth",
+    )
+    growth_net_debt: float | None = Field(
+        default=None, alias="growthNetDebt", description="Net debt growth"
+    )
+    growth_total_debt: float | None = Field(
+        default=None, alias="growthTotalDebt", description="Total debt growth"
+    )
+    growth_total_equity: float | None = Field(
+        default=None, alias="growthTotalEquity", description="Total equity growth"
+    )
+    growth_minority_interest: float | None = Field(
+        default=None,
+        alias="growthMinorityInterest",
+        description="Minority interest growth",
+    )
+    growth_treasury_stock: float | None = Field(
+        default=None,
+        alias="growthTreasuryStock",
+        description="Treasury stock growth",
+    )
+    growth_total_stockholders_equity: float | None = Field(
+        default=None,
+        alias="growthTotalStockholdersEquity",
+        description="Total stockholders equity growth",
+    )
+    growth_other_total_stockholders_equity: float | None = Field(
+        default=None,
+        alias="growthOthertotalStockholdersEquity",
+        description="Other total stockholders equity growth",
+    )
+
+    # Cash flow line-item growth
+    growth_stock_based_compensation: float | None = Field(
+        default=None,
+        alias="growthStockBasedCompensation",
+        description="Stock-based compensation growth",
+    )
+    growth_deferred_income_tax: float | None = Field(
+        default=None,
+        alias="growthDeferredIncomeTax",
+        description="Deferred income tax growth",
+    )
+    growth_change_in_working_capital: float | None = Field(
+        default=None,
+        alias="growthChangeInWorkingCapital",
+        description="Change in working capital growth",
+    )
+    growth_other_working_capital: float | None = Field(
+        default=None,
+        alias="growthOtherWorkingCapital",
+        description="Other working capital growth",
+    )
+    growth_other_non_cash_items: float | None = Field(
+        default=None,
+        alias="growthOtherNonCashItems",
+        description="Other non-cash items growth",
+    )
+    growth_operating_cash_flow: float | None = Field(
+        default=None,
+        alias="growthOperatingCashFlow",
+        description="Operating cash flow growth",
+    )
+    growth_investments_in_property_plant_and_equipment: float | None = Field(
+        default=None,
+        alias="growthInvestmentsInPropertyPlantAndEquipment",
+        description="Investments in property, plant and equipment growth",
+    )
+    growth_acquisitions_net: float | None = Field(
+        default=None,
+        alias="growthAcquisitionsNet",
+        description="Acquisitions net growth",
+    )
+    growth_purchases_of_investments: float | None = Field(
+        default=None,
+        alias="growthPurchasesOfInvestments",
+        description="Purchases of investments growth",
+    )
+    growth_sales_maturities_of_investments: float | None = Field(
+        default=None,
+        alias="growthSalesMaturitiesOfInvestments",
+        description="Sales and maturities of investments growth",
+    )
+    growth_other_investing_activites: float | None = Field(
+        default=None,
+        alias="growthOtherInvestingActivites",
+        description="Other investing activities growth",
+    )
+    growth_net_cash_used_for_investing_activites: float | None = Field(
+        default=None,
+        alias="growthNetCashUsedForInvestingActivites",
+        description="Net cash used for investing activities growth",
+    )
+    growth_debt_repayment: float | None = Field(
+        default=None,
+        alias="growthDebtRepayment",
+        description="Debt repayment growth",
+    )
+    growth_common_stock_issued: float | None = Field(
+        default=None,
+        alias="growthCommonStockIssued",
+        description="Common stock issued growth",
+    )
+    growth_common_stock_repurchased: float | None = Field(
+        default=None,
+        alias="growthCommonStockRepurchased",
+        description="Common stock repurchased growth",
+    )
+    growth_dividends_paid: float | None = Field(
+        default=None,
+        alias="growthDividendsPaid",
+        description="Dividends paid growth",
+    )
+    growth_preferred_dividends_paid: float | None = Field(
+        default=None,
+        alias="growthPreferredDividendsPaid",
+        description="Preferred dividends paid growth",
+    )
+    growth_other_financing_activites: float | None = Field(
+        default=None,
+        alias="growthOtherFinancingActivites",
+        description="Other financing activities growth",
+    )
+    growth_net_cash_used_provided_by_financing_activities: float | None = Field(
+        default=None,
+        alias="growthNetCashUsedProvidedByFinancingActivities",
+        description="Net cash used/provided by financing activities growth",
+    )
+    growth_effect_of_forex_changes_on_cash: float | None = Field(
+        default=None,
+        alias="growthEffectOfForexChangesOnCash",
+        description="Effect of forex changes on cash growth",
+    )
+    growth_net_change_in_cash: float | None = Field(
+        default=None,
+        alias="growthNetChangeInCash",
+        description="Net change in cash growth",
+    )
+    growth_cash_at_end_of_period: float | None = Field(
+        default=None,
+        alias="growthCashAtEndOfPeriod",
+        description="Cash at end of period growth",
+    )
+    growth_cash_at_beginning_of_period: float | None = Field(
+        default=None,
+        alias="growthCashAtBeginningOfPeriod",
+        description="Cash at beginning of period growth",
+    )
+    growth_net_cash_provided_by_operating_activites: float | None = Field(
+        default=None,
+        alias="growthNetCashProvidedByOperatingActivites",
+        description="Net cash provided by operating activities growth",
+    )
+    growth_free_cash_flow: float | None = Field(
+        default=None,
+        alias="growthFreeCashFlow",
+        description="Free cash flow growth",
+    )
+    growth_net_debt_issuance: float | None = Field(
+        default=None,
+        alias="growthNetDebtIssuance",
+        description="Net debt issuance growth",
+    )
+    growth_long_term_net_debt_issuance: float | None = Field(
+        default=None,
+        alias="growthLongTermNetDebtIssuance",
+        description="Long-term net debt issuance growth",
+    )
+    growth_short_term_net_debt_issuance: float | None = Field(
+        default=None,
+        alias="growthShortTermNetDebtIssuance",
+        description="Short-term net debt issuance growth",
+    )
+    growth_net_stock_issuance: float | None = Field(
+        default=None,
+        alias="growthNetStockIssuance",
+        description="Net stock issuance growth",
+    )
+    growth_interest_paid: float | None = Field(
+        default=None,
+        alias="growthInterestPaid",
+        description="Interest paid growth",
+    )
+    growth_income_taxes_paid: float | None = Field(
+        default=None,
+        alias="growthIncomeTaxesPaid",
+        description="Income taxes paid growth",
+    )
+
 
 class FinancialScore(BaseModel):
     """Company financial score"""
@@ -1824,6 +2357,9 @@ class DCF(BaseModel):
     dcf: float | None = Field(None, description="DCF value per share")
     stock_price: float | None = Field(
         None, alias="stockPrice", description="Current stock price"
+    )
+    stock_price_display: float | None = Field(
+        default=None, alias="Stock Price", description="Display stock price"
     )
 
 
@@ -1919,6 +2455,46 @@ class CustomDCF(BaseModel):
         alias="impliedSharePrice",
         description="Implied share price from DCF",
     )
+    after_tax_cost_of_debt: float | None = Field(default=None)
+    beta: float | None = Field(default=None)
+    capital_expenditure: float | None = Field(default=None)
+    capital_expenditure_percentage: float | None = Field(default=None)
+    cost_of_equity: float | None = Field(default=None)
+    costof_debt: float | None = Field(default=None)
+    debt_weighting: float | None = Field(default=None)
+    depreciation: float | None = Field(default=None)
+    depreciation_percentage: float | None = Field(default=None)
+    diluted_shares_outstanding: float | None = Field(default=None)
+    ebiat: float | None = Field(default=None)
+    ebit: float | None = Field(default=None)
+    ebit_percentage: float | None = Field(default=None)
+    ebitda: float | None = Field(default=None)
+    ebitda_percentage: float | None = Field(default=None)
+    equity_value_per_share: float | None = Field(default=None)
+    equity_weighting: float | None = Field(default=None)
+    free_cash_flow_t1: float | None = Field(default=None)
+    inventories: float | None = Field(default=None)
+    inventories_percentage: float | None = Field(default=None)
+    long_term_growth_rate: float | None = Field(default=None)
+    market_risk_premium: float | None = Field(default=None)
+    payable: float | None = Field(default=None)
+    payable_percentage: float | None = Field(default=None)
+    present_terminal_value: float | None = Field(default=None)
+    price: float | None = Field(default=None)
+    receivables: float | None = Field(default=None)
+    receivables_percentage: float | None = Field(default=None)
+    revenue: float | None = Field(default=None)
+    revenue_percentage: float | None = Field(default=None)
+    risk_free_rate: float | None = Field(default=None)
+    sum_pv_ufcf: float | None = Field(default=None)
+    tax_rate: float | None = Field(default=None)
+    tax_rate_cash: float | None = Field(default=None)
+    total_capital: float | None = Field(default=None)
+    total_cash: float | None = Field(default=None)
+    total_cash_percentage: float | None = Field(default=None)
+    total_debt: float | None = Field(default=None)
+    total_equity: float | None = Field(default=None)
+    ufcf: float | None = Field(default=None)
 
 
 class CustomLeveredDCF(BaseModel):
@@ -1999,6 +2575,35 @@ class CustomLeveredDCF(BaseModel):
         alias="impliedSharePrice",
         description="Implied share price from DCF",
     )
+    after_tax_cost_of_debt: float | None = Field(default=None)
+    beta: float | None = Field(default=None)
+    capital_expenditure: float | None = Field(default=None)
+    capital_expenditure_percentage: float | None = Field(default=None)
+    costof_debt: float | None = Field(default=None)
+    debt_weighting: float | None = Field(default=None)
+    diluted_shares_outstanding: float | None = Field(default=None)
+    enterprise_value: float | None = Field(default=None)
+    equity_value_per_share: float | None = Field(default=None)
+    equity_weighting: float | None = Field(default=None)
+    free_cash_flow: float | None = Field(default=None)
+    free_cash_flow_t1: float | None = Field(default=None)
+    long_term_growth_rate: float | None = Field(default=None)
+    market_risk_premium: float | None = Field(default=None)
+    net_debt: float | None = Field(default=None)
+    operating_cash_flow: float | None = Field(default=None)
+    operating_cash_flow_percentage: float | None = Field(default=None)
+    present_terminal_value: float | None = Field(default=None)
+    price: float | None = Field(default=None)
+    pv_lfcf: float | None = Field(default=None)
+    revenue: float | None = Field(default=None)
+    revenue_percentage: float | None = Field(default=None)
+    risk_free_rate: float | None = Field(default=None)
+    sum_pv_lfcf: float | None = Field(default=None)
+    tax_rate: float | None = Field(default=None)
+    total_capital: float | None = Field(default=None)
+    total_debt: float | None = Field(default=None)
+    total_equity: float | None = Field(default=None)
+    wacc: float | None = Field(default=None)
 
 
 class CompanyRating(BaseModel):
@@ -2213,6 +2818,11 @@ class FinancialStatementFull(BaseModel):
         alias="fullTimeEmployees",
         description="Number of full-time employees",
     )
+    data: dict[str, Any] | None = Field(
+        default=None, description="Dynamic XBRL payload"
+    )
+    fiscal_year: int | None = Field(default=None, description="Fiscal year")
+    reported_currency: str | None = Field(default=None, description="Reported currency")
 
 
 class FinancialReport(BaseModel):
@@ -2342,6 +2952,9 @@ class AsReportedFinancialStatementBase(BaseModel):
         None, alias="fiscalPeriod", description="Fiscal period"
     )
     units: str | None = Field(None, description="Currency units")
+    reported_currency: str | None = Field(
+        None, alias="reportedCurrency", description="Reported currency code"
+    )
     audited: bool | None = Field(None, description="Whether statement is audited")
     original_filing_url: str | None = Field(
         None, alias="originalFilingUrl", description="Original SEC filing URL"
@@ -2350,8 +2963,8 @@ class AsReportedFinancialStatementBase(BaseModel):
         None, alias="filingDateTime", description="Exact filing date and time"
     )
 
-    @classmethod
     @model_validator(mode="before")
+    @classmethod
     def merge_data_payload(cls, values: dict[str, Any]) -> dict[str, Any]:
         if isinstance(values, dict) and "data" in values:
             data = values.get("data") or {}

@@ -3,12 +3,18 @@
 from typing import cast
 from unittest.mock import Mock, patch
 
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
 import pytest
 from tenacity import RetryCallState
 
-from fmp_data.base import BaseClient, _rate_limit_retry_count
+from fmp_data.base import (
+    BaseClient,
+    _extra_field_warnings_seen,
+    _rate_limit_retry_count,
+)
 from fmp_data.config import ClientConfig
-from fmp_data.exceptions import RateLimitError
+from fmp_data.exceptions import RateLimitError, ValidationError
 
 
 class TestBaseClientCoverage:
@@ -129,3 +135,53 @@ class TestBaseClientCoverage:
             # Should have slept and incremented counter
             mock_sleep.assert_called_once_with(0.1)
             assert _rate_limit_retry_count.get() == 1
+
+
+class _SampleModel(BaseModel):
+    model_config = ConfigDict(
+        extra="allow", alias_generator=to_camel, populate_by_name=True
+    )
+    name: str = Field(description="Name")
+    value: int = Field(description="Value")
+
+
+class TestValidateModel:
+    """Tests for BaseClient._validate_model validation modes."""
+
+    def test_lenient_ignores_extra_fields(self):
+        payload = {"name": "x", "value": 1, "extraField": "ignored"}
+        result = BaseClient._validate_model("test_ep", _SampleModel, payload, "lenient")
+        assert result.name == "x"
+        assert result.value == 1
+        assert result.__pydantic_extra__["extraField"] == "ignored"
+
+    def test_strict_raises_on_extra_fields(self):
+        payload = {"name": "x", "value": 1, "unexpected": 99}
+        with pytest.raises(ValidationError, match="Unexpected fields"):
+            BaseClient._validate_model("test_ep", _SampleModel, payload, "strict")
+
+    def test_strict_shows_truncated_field_list(self):
+        payload = {"name": "x", "value": 1}
+        payload.update({f"field{i}": i for i in range(15)})
+        with pytest.raises(ValidationError, match=r"\.\.\.$"):
+            BaseClient._validate_model("test_ep", _SampleModel, payload, "strict")
+
+    def test_warn_logs_once_per_endpoint(self):
+        _extra_field_warnings_seen.discard(("dedup_ep", ("bonus",)))
+        payload = {"name": "x", "value": 1, "bonus": True}
+
+        with patch("fmp_data.base.logger") as mock_logger:
+            BaseClient._validate_model("dedup_ep", _SampleModel, payload, "warn")
+            assert mock_logger.warning.call_count == 1
+
+            # Second call with same endpoint+fields should NOT log again
+            BaseClient._validate_model("dedup_ep", _SampleModel, payload, "warn")
+            assert mock_logger.warning.call_count == 1
+
+        # Cleanup
+        _extra_field_warnings_seen.discard(("dedup_ep", ("bonus",)))
+
+    def test_no_extra_fields_returns_parsed(self):
+        payload = {"name": "x", "value": 1}
+        result = BaseClient._validate_model("test_ep", _SampleModel, payload, "strict")
+        assert result.name == "x"

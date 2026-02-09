@@ -1,10 +1,12 @@
 # tests/integration/conftest.py
 from collections.abc import Generator
+from datetime import date, timedelta
 import logging
 import os
 from pathlib import Path
 import re
 import time
+from typing import Any
 
 from dotenv import load_dotenv
 import pytest
@@ -31,7 +33,7 @@ if not os.getenv("FMP_TEST_API_KEY") and os.getenv("FMP_API_KEY"):
 if not os.getenv("FMP_API_KEY") and os.getenv("FMP_TEST_API_KEY"):
     os.environ["FMP_API_KEY"] = os.environ["FMP_TEST_API_KEY"]
 
-VCR_RECORD_MODE = os.getenv("FMP_VCR_RECORD", "new_episodes")
+VCR_RECORD_MODE = os.getenv("FMP_VCR_RECORD", "none")
 if VCR_RECORD_MODE not in {"none", "once", "new_episodes", "all"}:
     logger.warning(
         "Invalid FMP_VCR_RECORD=%s; falling back to new_episodes", VCR_RECORD_MODE
@@ -92,6 +94,96 @@ def scrub_api_key(request: Request) -> Request:
     )
 
 
+def _candidate_api_keys() -> set[str]:
+    """Collect key-like values that should always be scrubbed."""
+    candidates = {
+        os.getenv("FMP_TEST_API_KEY", "").strip(),
+        os.getenv("FMP_API_KEY", "").strip(),
+    }
+    return {c for c in candidates if c}
+
+
+def _sanitize_secret_text(value: str) -> str:
+    """Sanitize API keys from arbitrary response text."""
+    scrubbed = value
+
+    # Replace known key values from env with a stable placeholder.
+    for key in _candidate_api_keys():
+        scrubbed = scrubbed.replace(key, "DUMMY_API_KEY")
+
+    # Scrub query-string and URL-encoded API key parameters.
+    scrubbed = re.sub(
+        r"(?i)(apikey=)([^&\"'\s]+)",
+        r"\1DUMMY_API_KEY",
+        scrubbed,
+    )
+    scrubbed = re.sub(
+        r"(?i)(apikey%3D)([^%&\"'\s]+)",
+        r"\1DUMMY_API_KEY",
+        scrubbed,
+    )
+
+    # Scrub JSON / JSON-like key fields.
+    scrubbed = re.sub(
+        r'(?i)("apikey"\s*:\s*")([^"]+)(")',
+        r"\1DUMMY_API_KEY\3",
+        scrubbed,
+    )
+    scrubbed = re.sub(
+        r"(?i)('apikey'\s*:\s*')([^']+)(')",
+        r"\1DUMMY_API_KEY\3",
+        scrubbed,
+    )
+
+    return scrubbed
+
+
+def scrub_response_secrets(  # noqa: C901
+    response: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Sanitize sensitive values in responses before writing cassette files."""
+    if response is None:
+        return None
+    if VCR_RECORD_MODE == "none":
+        # Keep replay mode untouched so existing cassette serialization semantics
+        # are preserved.
+        return response
+
+    headers = response.get("headers")
+    if isinstance(headers, dict):
+        for header_name in list(headers.keys()):
+            lower_name = str(header_name).lower()
+            if lower_name in {"authorization", "x-api-key", "apikey"}:
+                header_values = headers.get(header_name)
+                if isinstance(header_values, list):
+                    sanitized_values = []
+                    for value in header_values:
+                        text = str(value)
+                        if lower_name == "authorization" and text.lower().startswith(
+                            "bearer "
+                        ):
+                            sanitized_values.append("Bearer DUMMY_API_KEY")
+                        else:
+                            sanitized_values.append("DUMMY_API_KEY")
+                    headers[header_name] = sanitized_values
+                else:
+                    headers[header_name] = "DUMMY_API_KEY"
+
+    body = response.get("body")
+    if isinstance(body, dict) and "string" in body:
+        body_str = body.get("string")
+        if isinstance(body_str, bytes):
+            try:
+                decoded = body_str.decode()
+            except UnicodeDecodeError:
+                decoded = body_str.decode(errors="ignore")
+            body["string"] = _sanitize_secret_text(decoded)
+        elif isinstance(body_str, str):
+            body["string"] = _sanitize_secret_text(body_str)
+
+    return response
+
+
 # Create cassettes directory
 CASSETTES_PATH = (Path(__file__).parent / "vcr_cassettes").resolve()
 CASSETTES_PATH.mkdir(exist_ok=True)
@@ -107,6 +199,7 @@ vcr_config = vcr.VCR(
     ],  # Match on query with apikey filtered for stable replays
     filter_headers=["authorization", "x-api-key", "apikey"],
     before_record_request=scrub_api_key,
+    before_record_response=scrub_response_secrets,
     decode_compressed_response=True,
     filter_query_parameters=["apikey"],  # Add this to filter out apikey from matching
     path_transformer=lambda path: str(CASSETTES_PATH / path),
@@ -115,6 +208,10 @@ vcr_config.register_persister(SafeFilesystemPersister)
 vcr_config.before_playback_response = drop_unauthorized_response
 
 logger.debug(f"VCR cassettes will be saved to: {CASSETTES_PATH}")
+
+# Anchored date used by date-sensitive integration tests. This must match
+# date windows already present in committed cassettes for deterministic replay.
+VCR_ANCHORED_TODAY = date(2026, 2, 6)
 
 
 @pytest.fixture(scope="session")
@@ -134,12 +231,23 @@ def rate_limit_config() -> RateLimitConfig:
 @pytest.fixture(scope="session")
 def fmp_client(rate_limit_config: RateLimitConfig) -> Generator[FMPDataClient]:
     """Create FMP client for testing"""
+    if VCR_RECORD_MODE == "none" and not any(CASSETTES_PATH.rglob("*.yaml")):
+        pytest.skip(
+            "No VCR cassettes found for replay mode. "
+            "Record with FMP_VCR_RECORD=new_episodes first."
+        )
+
     api_key = os.getenv("FMP_TEST_API_KEY")
+    if not api_key and VCR_RECORD_MODE == "none":
+        # Replay mode never hits the network. A dummy key keeps tests runnable
+        # on fresh environments that only have checked-in cassettes.
+        api_key = "DUMMY_API_KEY"
+
     if not api_key:
         pytest.skip("FMP_TEST_API_KEY environment variable not set")
 
     # Verify we have a real API key
-    if len(api_key.strip()) < 10:  # Adjust minimum length as needed
+    if VCR_RECORD_MODE != "none" and len(api_key.strip()) < 10:
         pytest.fail(
             "FMP_TEST_API_KEY appears to be invalid. Please set a valid API key."
         )
@@ -169,13 +277,27 @@ def fmp_client(rate_limit_config: RateLimitConfig) -> Generator[FMPDataClient]:
 def rate_limit_sleep() -> Generator:
     """Add small delay between tests to avoid rate limiting"""
     yield
-    time.sleep(0.5)  # 500ms delay between tests
+    # Replay mode does not call the API and should be as fast as possible.
+    if VCR_RECORD_MODE != "none":
+        time.sleep(0.5)  # 500ms delay between tests
 
 
 @pytest.fixture
 def test_symbol() -> str:
     """Provide test symbol for all tests"""
     return "AAPL"
+
+
+@pytest.fixture(scope="session")
+def frozen_today() -> date:
+    """Provide a deterministic 'today' for VCR-matched date range tests."""
+    return VCR_ANCHORED_TODAY
+
+
+@pytest.fixture(scope="session")
+def frozen_future_date(frozen_today: date) -> date:
+    """Provide deterministic future date used by invalid-date tests."""
+    return frozen_today + timedelta(days=50)
 
 
 # Additional fixtures for test data
