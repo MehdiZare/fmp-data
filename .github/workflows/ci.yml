@@ -110,11 +110,19 @@ jobs:
       - name: 🔐 Install detect-secrets
         run: pip install detect-secrets
 
-      - name: 🔍 Scan cassettes for secrets
+      - name: 🔍 Scan cassettes for secrets  # pragma: allowlist secret
         run: |
+          CASSETTE_DIR="tests/integration/vcr_cassettes"
+
+          # Skip scan when no cassettes are checked in
+          if [ ! -d "$CASSETTE_DIR" ] || [ -z "$(find "$CASSETTE_DIR" -name '*.yaml' 2>/dev/null)" ]; then
+            echo "No cassette YAML files found — skipping secret scan."
+            exit 0
+          fi
+
           # Scan cassette YAML files, excluding Python test files
           detect-secrets scan \
-            tests/integration/vcr_cassettes/ \
+            "$CASSETTE_DIR" \
             --exclude-files '.*\.py$' \
             --baseline .secrets.baseline \
             > /tmp/scan-results.json

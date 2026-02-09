@@ -8,6 +8,7 @@ import pkgutil
 import re
 from urllib.parse import urlparse
 
+import pytest
 import yaml
 
 from fmp_data.base import BaseClient
@@ -52,13 +53,20 @@ def test_vcr_cassettes_match_endpoint_models() -> None:  # noqa: C901
     assert endpoints, "No endpoints discovered for cassette contract validation."
 
     cassettes_root = Path("tests/integration/vcr_cassettes")
-    assert cassettes_root.exists(), "Cassette directory does not exist."
+    cassette_files = (
+        sorted(cassettes_root.rglob("*.yaml")) if cassettes_root.exists() else []
+    )
+    if not cassette_files:
+        pytest.skip(
+            "No VCR cassette YAML files found — "
+            "record cassettes first to enable contract validation."
+        )
 
     unmatched_requests: list[str] = []
     validation_issues: list[str] = []
     extra_fields_report: list[str] = []
 
-    for cassette_path in sorted(cassettes_root.rglob("*.yaml")):
+    for cassette_path in cassette_files:
         cassette = yaml.safe_load(cassette_path.read_text())
         interactions = (
             cassette.get("interactions", []) if isinstance(cassette, dict) else []
