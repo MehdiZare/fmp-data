@@ -745,10 +745,10 @@ pytest -v
 FMP_VCR_RECORD=none pytest tests/integration/
 
 # Record/update integration cassettes (requires API key)
-FMP_TEST_API_KEY=your_test_api_key FMP_VCR_RECORD=new_episodes pytest tests/integration/
+FMP_TEST_API_KEY=your_test_api_key FMP_VCR_RECORD=new_episodes pytest tests/integration/  # pragma: allowlist secret
 
 # Record only a subset while developing
-FMP_TEST_API_KEY=your_test_api_key FMP_VCR_RECORD=new_episodes pytest tests/integration/test_sec.py
+FMP_TEST_API_KEY=your_test_api_key FMP_VCR_RECORD=new_episodes pytest tests/integration/test_sec.py  # pragma: allowlist secret
 
 # Using make commands (if available)
 make test        # Run unit tests

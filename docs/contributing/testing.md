@@ -25,12 +25,12 @@ FMP_VCR_RECORD=none uv run pytest tests/integration/
 
 5. Record or refresh VCR cassettes (live API, slower):
 ```bash
-FMP_TEST_API_KEY=your_test_api_key FMP_VCR_RECORD=new_episodes uv run pytest tests/integration/
+FMP_TEST_API_KEY=your_test_api_key FMP_VCR_RECORD=new_episodes uv run pytest tests/integration/  # pragma: allowlist secret
 ```
 
 6. Record only the tests you're touching:
 ```bash
-FMP_TEST_API_KEY=your_test_api_key FMP_VCR_RECORD=new_episodes uv run pytest tests/integration/test_sec.py
+FMP_TEST_API_KEY=your_test_api_key FMP_VCR_RECORD=new_episodes uv run pytest tests/integration/test_sec.py  # pragma: allowlist secret
 ```
 
 ## Test Structure
