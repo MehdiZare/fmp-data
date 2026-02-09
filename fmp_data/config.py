@@ -297,6 +297,20 @@ class ClientConfig(BaseModel):
                 "explicitly or via FMP_API_KEY environment variable"
             )
 
+        validation_mode = os.getenv("FMP_VALIDATION_MODE", "warn").lower()
+        if validation_mode not in {"lenient", "warn", "strict"}:
+            raise ConfigError(
+                f"FMP_VALIDATION_MODE='{validation_mode}' is invalid. "
+                "Allowed values: lenient, warn, strict"
+            )
+        unknown_param_policy = os.getenv("FMP_UNKNOWN_PARAM_POLICY", "warn").lower()
+        if unknown_param_policy not in {"ignore", "warn", "error"}:
+            raise ConfigError(
+                f"FMP_UNKNOWN_PARAM_POLICY='{unknown_param_policy}' "
+                "is invalid. "
+                "Allowed values: ignore, warn, error"
+            )
+
         config_dict = {
             "api_key": api_key,
             "timeout": _safe_int_from_env("FMP_TIMEOUT", 30, min_val=1),
@@ -304,10 +318,8 @@ class ClientConfig(BaseModel):
             "base_url": os.getenv("FMP_BASE_URL", "https://financialmodelingprep.com"),
             "rate_limit": RateLimitConfig.from_env(),
             "logging": LoggingConfig.from_env(),
-            "validation_mode": os.getenv("FMP_VALIDATION_MODE", "warn").lower(),
-            "unknown_param_policy": os.getenv(
-                "FMP_UNKNOWN_PARAM_POLICY", "warn"
-            ).lower(),
+            "validation_mode": validation_mode,
+            "unknown_param_policy": unknown_param_policy,
         }
 
         return cls(**config_dict)

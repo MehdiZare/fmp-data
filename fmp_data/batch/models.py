@@ -88,7 +88,12 @@ class AftermarketTrade(BaseModel):
 
 
 class AftermarketQuote(BaseModel):
-    """Aftermarket quote data"""
+    """Aftermarket quote data.
+
+    Note: ask/bid size fields exist in two forms — legacy (aliases ``asize``/
+    ``bsize``) and current (aliases ``askSize``/``bidSize``) — because the API
+    may return either format depending on the endpoint version.
+    """
 
     model_config = default_model_config
 

@@ -317,7 +317,7 @@ def test_process_response_raises_on_error_message():
         BaseClient._process_response(endpoint, {"message": "boom"})
 
 
-def test_process_response_strict_mode_rejects_unknown_fields():
+def test_process_response_strict_mode_rejects_unknown_fields() -> None:
     """Strict mode should reject unknown fields on extra-allow models."""
 
     class ExtraAllowModel(BaseModel):
@@ -334,7 +334,7 @@ def test_process_response_strict_mode_rejects_unknown_fields():
         )
 
 
-def test_process_response_warn_mode_logs_unknown_fields():
+def test_process_response_warn_mode_logs_unknown_fields() -> None:
     """Warn mode should log unknown fields on extra-allow models."""
 
     class ExtraAllowModel(BaseModel):

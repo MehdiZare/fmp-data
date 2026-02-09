@@ -60,8 +60,8 @@ class TestSECClientEndpoints(BaseTestCase):
                 to_date=frozen_today,
             )
             assert isinstance(results, list)
-            if results:
-                assert isinstance(results[0], SECFilingSearchResult)
+            assert results, "Expected at least one filing for form-type search"
+            assert isinstance(results[0], SECFilingSearchResult)
 
     def test_search_by_symbol(
         self, fmp_client: FMPDataClient, vcr_instance, frozen_today: date
@@ -78,8 +78,8 @@ class TestSECClientEndpoints(BaseTestCase):
                 to_date=frozen_today,
             )
             assert isinstance(results, list)
-            if results:
-                assert isinstance(results[0], SECFilingSearchResult)
+            assert results, "Expected at least one filing for symbol search"
+            assert isinstance(results[0], SECFilingSearchResult)
 
     def test_search_by_cik(
         self, fmp_client: FMPDataClient, vcr_instance, frozen_today: date
@@ -96,8 +96,8 @@ class TestSECClientEndpoints(BaseTestCase):
                 to_date=frozen_today,
             )
             assert isinstance(results, list)
-            if results:
-                assert isinstance(results[0], SECFilingSearchResult)
+            assert results, "Expected at least one filing for CIK search"
+            assert isinstance(results[0], SECFilingSearchResult)
 
     def test_search_company_by_name(self, fmp_client: FMPDataClient, vcr_instance):
         """Test searching companies by name"""

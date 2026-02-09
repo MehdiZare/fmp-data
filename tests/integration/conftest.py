@@ -176,7 +176,7 @@ def scrub_response_secrets(  # noqa: C901
             try:
                 decoded = body_str.decode()
             except UnicodeDecodeError:
-                decoded = body_str.decode(errors="ignore")
+                decoded = body_str.decode(errors="replace")
             body["string"] = _sanitize_secret_text(decoded)
         elif isinstance(body_str, str):
             body["string"] = _sanitize_secret_text(body_str)

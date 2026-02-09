@@ -78,22 +78,20 @@ class TestEconomicsEndpoints(BaseTestCase):
             )
 
             assert isinstance(events, list)
-            if len(events) > 0:
-                for event in events:
-                    assert isinstance(
-                        event, EconomicEvent
-                    ), "event is not EconomicEvent"
-                    assert event.event, "event is empty string"
-                    assert isinstance(
-                        event.event_date, datetime
-                    ), "event_date is not datetime"
-                    # Verify country attribute exists
-                    _ = event.country
-                    assert (
-                        isinstance(event.change_percent, float)
-                        if event.change_percent is not None
-                        else True
-                    ), "change_percent is not float"
+            assert len(events) > 0, "Expected non-empty economic calendar response"
+            for event in events:
+                assert isinstance(event, EconomicEvent), "event is not EconomicEvent"
+                assert event.event, "event is empty string"
+                assert isinstance(
+                    event.event_date, datetime
+                ), "event_date is not datetime"
+                # Verify country attribute exists
+                _ = event.country
+                assert (
+                    isinstance(event.change_percent, float)
+                    if event.change_percent is not None
+                    else True
+                ), "change_percent is not float"
 
     def test_get_market_risk_premium(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting market risk premium data"""
