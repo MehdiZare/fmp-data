@@ -15,6 +15,8 @@ LangChain and MCP integrations. Coverage is maintained as the catalog evolves.
 - Optional env vars: `FMP_TIMEOUT`, `FMP_MAX_RETRIES`, `FMP_BASE_URL`
 - Rate limits: `FMP_DAILY_LIMIT`, `FMP_REQUESTS_PER_SECOND`,
   `FMP_REQUESTS_PER_MINUTE`
+- Validation: `FMP_VALIDATION_MODE` (lenient/warn/strict),
+  `FMP_UNKNOWN_PARAM_POLICY` (ignore/warn/error)
 
 ## Quickstart (sync)
 ```python

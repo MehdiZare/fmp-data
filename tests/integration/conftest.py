@@ -113,12 +113,12 @@ def _sanitize_secret_text(value: str) -> str:
 
     # Scrub query-string and URL-encoded API key parameters.
     scrubbed = re.sub(
-        r"(?i)(apikey=)([^&\"'\\s]+)",
+        r"(?i)(apikey=)([^&\"'\s]+)",
         r"\1DUMMY_API_KEY",
         scrubbed,
     )
     scrubbed = re.sub(
-        r"(?i)(apikey%3D)([^%&\"'\\s]+)",
+        r"(?i)(apikey%3D)([^%&\"'\s]+)",
         r"\1DUMMY_API_KEY",
         scrubbed,
     )
