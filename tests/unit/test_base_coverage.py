@@ -151,6 +151,7 @@ class TestValidateModel:
     def test_lenient_ignores_extra_fields(self):
         payload = {"name": "x", "value": 1, "extraField": "ignored"}
         result = BaseClient._validate_model("test_ep", _SampleModel, payload, "lenient")
+        assert isinstance(result, _SampleModel)
         assert result.name == "x"
         assert result.value == 1
         assert result.__pydantic_extra__["extraField"] == "ignored"
@@ -184,4 +185,5 @@ class TestValidateModel:
     def test_no_extra_fields_returns_parsed(self):
         payload = {"name": "x", "value": 1}
         result = BaseClient._validate_model("test_ep", _SampleModel, payload, "strict")
+        assert isinstance(result, _SampleModel)
         assert result.name == "x"
