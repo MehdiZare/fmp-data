@@ -22,6 +22,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from fmp_data.cache.base import CacheBackend
 from fmp_data.config import ClientConfig
 from fmp_data.exceptions import (
     AuthenticationError,
@@ -83,6 +84,22 @@ class BaseClient:
         # Async client (lazily initialized)
         self._async_client: httpx.AsyncClient | None = None
 
+        # Response cache (optional)
+        self._cache: CacheBackend | None = None
+        cache_cfg = getattr(config, "cache", None)
+        if cache_cfg is not None and getattr(cache_cfg, "enabled", False) is True:
+            from fmp_data.cache import create_backend
+            from fmp_data.cache.config import CacheConfig
+
+            if isinstance(cache_cfg, CacheConfig):
+                self._cache = create_backend(cache_cfg)
+                self._cache_ttl_overrides = cache_cfg.ttl_overrides
+                self._cache_default_ttl = cache_cfg.default_ttl
+                self.logger.info(
+                    "Response caching enabled (backend=%s)",
+                    cache_cfg.backend,
+                )
+
     def _setup_http_client(self) -> None:
         """
         Setup HTTP client with default configuration.
@@ -136,6 +153,25 @@ class BaseClient:
             self._async_client = None
         # Also close sync client
         self.close()
+
+    @staticmethod
+    def _build_cache_key(endpoint_name: str, params: dict[str, Any]) -> str:
+        """Build a deterministic cache key from endpoint name and params.
+
+        Excludes 'apikey' to avoid leaking secrets in keys.
+        """
+        import hashlib
+
+        filtered = {k: v for k, v in sorted(params.items()) if k != "apikey"}
+        params_str = "&".join(f"{k}={v}" for k, v in filtered.items())
+        params_hash = hashlib.sha256(params_str.encode()).hexdigest()[:16]
+        return f"{endpoint_name}:{params_hash}"
+
+    def _get_cache_ttl(self, endpoint_name: str) -> int:
+        """Get TTL for a given endpoint, checking overrides first."""
+        if not hasattr(self, "_cache_ttl_overrides"):
+            return 300
+        return self._cache_ttl_overrides.get(endpoint_name, self._cache_default_ttl)
 
     def _handle_rate_limit(self, wait_time: float) -> None:
         """
@@ -250,6 +286,29 @@ class BaseClient:
             query_params = endpoint.get_query_params(validated_params)
             query_params["apikey"] = self.config.api_key
 
+            # Check cache before making HTTP request
+            cache_key: str | None = None
+            force_refresh = kwargs.pop("force_refresh", False)
+            if (
+                self._cache is not None
+                and not force_refresh
+                and endpoint.response_model is not bytes
+            ):
+                cache_key = self._build_cache_key(endpoint.name, query_params)
+                cached = self._cache.get(cache_key)
+                if cached is not None:
+                    self.logger.debug(
+                        "Cache hit for %s",
+                        endpoint.name,
+                        extra={"endpoint": endpoint.name, "cache_key": cache_key},
+                    )
+                    success = True
+                    return self._process_response(
+                        endpoint,
+                        cached,
+                        validation_mode=self.config.validation_mode,
+                    )
+
             self.logger.debug(
                 f"Making request to {endpoint.name}",
                 extra={
@@ -277,6 +336,12 @@ class BaseClient:
                     validation_mode=self.config.validation_mode,
                 )
                 success = True
+
+                # Store in cache
+                if self._cache is not None and cache_key is not None:
+                    ttl = self._get_cache_ttl(endpoint.name)
+                    self._cache.set(cache_key, data, ttl)
+
                 return result
             finally:
                 response.close()
@@ -736,6 +801,28 @@ class BaseClient:
             query_params = endpoint.get_query_params(validated_params)
             query_params["apikey"] = self.config.api_key
 
+            # Check cache before making HTTP request
+            cache_key: str | None = None
+            force_refresh = kwargs.pop("force_refresh", False)
+            if (
+                self._cache is not None
+                and not force_refresh
+                and endpoint.response_model is not bytes
+            ):
+                cache_key = self._build_cache_key(endpoint.name, query_params)
+                cached = await self._cache.aget(cache_key)
+                if cached is not None:
+                    self.logger.debug(
+                        "Cache hit for %s",
+                        endpoint.name,
+                        extra={"endpoint": endpoint.name, "cache_key": cache_key},
+                    )
+                    return self._process_response(
+                        endpoint,
+                        cached,
+                        validation_mode=self.config.validation_mode,
+                    )
+
             self.logger.debug(
                 f"Making async request to {endpoint.name}",
                 extra={
@@ -757,11 +844,18 @@ class BaseClient:
                     data = response.content
                 else:
                     data = self.handle_response(endpoint, response)
-                return self._process_response(
+                result = self._process_response(
                     endpoint,
                     data,
                     validation_mode=self.config.validation_mode,
                 )
+
+                # Store in cache
+                if self._cache is not None and cache_key is not None:
+                    ttl = self._get_cache_ttl(endpoint.name)
+                    await self._cache.aset(cache_key, data, ttl)
+
+                return result
             finally:
                 await response.aclose()
 
