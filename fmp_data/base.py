@@ -269,6 +269,7 @@ class BaseClient:
         request_start = time.perf_counter()
         status_code = 0
         success = False
+        force_refresh = kwargs.pop("force_refresh", False)
 
         try:
             self._rate_limiter.record_request()
@@ -288,7 +289,6 @@ class BaseClient:
 
             # Check cache before making HTTP request
             cache_key: str | None = None
-            force_refresh = kwargs.pop("force_refresh", False)
             if (
                 self._cache is not None
                 and not force_refresh
@@ -785,6 +785,8 @@ class BaseClient:
             )
             await asyncio.sleep(wait_time)
 
+        force_refresh = kwargs.pop("force_refresh", False)
+
         try:
             await self._async_rate_limiter.record_request()
 
@@ -803,7 +805,6 @@ class BaseClient:
 
             # Check cache before making HTTP request
             cache_key: str | None = None
-            force_refresh = kwargs.pop("force_refresh", False)
             if (
                 self._cache is not None
                 and not force_refresh
