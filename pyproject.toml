@@ -363,6 +363,7 @@ omit = [
     "*/endpoints.py",
     "fmp_data/lc/*",
     "fmp_data/mcp/*",
+    "fmp_data/cache/redis_backend.py",
 ]
 
 [tool.coverage.paths]

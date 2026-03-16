@@ -118,6 +118,16 @@ class TestFileCache:
         assert cache.get("key") == "value"
         assert cache_dir.exists()
 
+    def test_write_error_does_not_raise(self, tmp_path: Path):
+        cache = FileCache(cache_dir=tmp_path)
+        # Make directory read-only to trigger OSError on write
+        cache_dir = tmp_path
+        cache_dir.chmod(0o444)
+        try:
+            cache.set("key", "value")  # Should not raise
+        finally:
+            cache_dir.chmod(0o755)
+
     def test_corrupted_file_returns_none(self, tmp_path: Path):
         cache = FileCache(cache_dir=tmp_path)
         cache.set("key", "value")
@@ -168,6 +178,52 @@ class TestCacheConfig:
         assert config.backend == "file"
         assert config.default_ttl == 600
         assert config.cache_dir == Path(cache_dir)
+
+    def test_from_env_invalid_ttl_defaults(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("FMP_CACHE_ENABLED", "true")
+        monkeypatch.setenv("FMP_CACHE_TTL", "not_a_number")
+        config = CacheConfig.from_env()
+        assert config is not None
+        assert config.default_ttl == 300
+
+    def test_from_env_invalid_backend_defaults(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("FMP_CACHE_ENABLED", "true")
+        monkeypatch.setenv("FMP_CACHE_BACKEND", "unknown")
+        config = CacheConfig.from_env()
+        assert config is not None
+        assert config.backend == "memory"
+
+
+class TestAsyncCacheBackendDefaults:
+    """Tests for async method defaults on CacheBackend."""
+
+    @pytest.mark.asyncio
+    async def test_async_get_delegates_to_sync(self):
+        cache = MemoryCache(default_ttl=60)
+        cache.set("k", "v")
+        result = await cache.aget("k")
+        assert result == "v"
+
+    @pytest.mark.asyncio
+    async def test_async_set_delegates_to_sync(self):
+        cache = MemoryCache(default_ttl=60)
+        await cache.aset("k", "v")
+        assert cache.get("k") == "v"
+
+    @pytest.mark.asyncio
+    async def test_async_delete_delegates_to_sync(self):
+        cache = MemoryCache(default_ttl=60)
+        cache.set("k", "v")
+        await cache.adelete("k")
+        assert cache.get("k") is None
+
+    @pytest.mark.asyncio
+    async def test_async_clear_delegates_to_sync(self):
+        cache = MemoryCache(default_ttl=60)
+        cache.set("a", 1)
+        cache.set("b", 2)
+        await cache.aclear()
+        assert cache.size == 0
 
 
 class TestCreateBackend:
