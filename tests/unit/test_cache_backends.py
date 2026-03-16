@@ -119,14 +119,11 @@ class TestFileCache:
         assert cache_dir.exists()
 
     def test_write_error_does_not_raise(self, tmp_path: Path):
+        from unittest.mock import patch
+
         cache = FileCache(cache_dir=tmp_path)
-        # Make directory read-only to trigger OSError on write
-        cache_dir = tmp_path
-        cache_dir.chmod(0o444)
-        try:
+        with patch.object(Path, "write_text", side_effect=OSError("disk full")):
             cache.set("key", "value")  # Should not raise
-        finally:
-            cache_dir.chmod(0o755)
 
     def test_corrupted_file_returns_none(self, tmp_path: Path):
         cache = FileCache(cache_dir=tmp_path)

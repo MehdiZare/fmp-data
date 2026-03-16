@@ -34,7 +34,7 @@ def _make_endpoint(name: str = "test_ep") -> Endpoint:
     ep.response_model = _FakeModel
     ep.validate_params.side_effect = lambda kw, **_: kw
     ep.build_url.return_value = "https://example.com/api/v3/test"
-    ep.get_query_params.return_value = {"symbol": "AAPL"}
+    ep.get_query_params.side_effect = lambda params: dict(params)
     ep.allow_empty_on_404 = False
     return ep
 
@@ -263,7 +263,7 @@ class TestCacheHitPath:
 
         # Verify result was stored in cache
         cache_key = BaseClient._build_cache_key(
-            ep.name, {"symbol": "AAPL", "apikey": "test-key-12345"}
+            ep.name, {"symbol": "GOOG", "apikey": "test-key-12345"}
         )
         cached = base_client._cache.get(cache_key)
         assert cached == response_payload
