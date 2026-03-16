@@ -402,6 +402,25 @@ class TestQuoteModel:
         assert quote.volume == 82034567
         assert isinstance(quote.volume, int)
 
+    def test_quote_volume_validator_none(self):
+        """Test Quote volume validator handles None input."""
+        assert Quote.coerce_volume_to_int(None) is None
+
+    def test_quote_volume_validator_string(self):
+        """Test Quote volume validator passes non-numeric values through."""
+        assert Quote.coerce_volume_to_int("not_a_number") == "not_a_number"
+
+    def test_quote_datetime_timestamp(self, full_quote_data):
+        """Test Quote handles pre-parsed datetime timestamp."""
+        full_quote_data["timestamp"] = datetime(2024, 1, 25, 12, 0, 0)
+        quote = Quote.model_validate(full_quote_data)
+        assert quote.timestamp == datetime(2024, 1, 25, 12, 0, 0)
+
+    def test_quote_datetime_property(self, full_quote_data):
+        """Test Quote.quote_datetime property returns timestamp."""
+        quote = Quote.model_validate(full_quote_data)
+        assert quote.quote_datetime == quote.timestamp
+
 
 class TestSimpleQuoteModel:
     """Tests for SimpleQuote volume coercion"""
@@ -412,6 +431,14 @@ class TestSimpleQuoteModel:
         quote = SimpleQuote.model_validate(data)
         assert quote.volume == 1234567
         assert isinstance(quote.volume, int)
+
+    def test_simple_quote_volume_validator_none(self):
+        """Test SimpleQuote volume validator handles None."""
+        assert SimpleQuote.coerce_volume_to_int(None) is None
+
+    def test_simple_quote_volume_validator_string(self):
+        """Test SimpleQuote volume validator passes non-numeric values."""
+        assert SimpleQuote.coerce_volume_to_int("abc") == "abc"
 
 
 class TestCompanyProfileMarketCap:
