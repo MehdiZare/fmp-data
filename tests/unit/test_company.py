@@ -15,6 +15,7 @@ from fmp_data.company.models import (
     PriceTarget,
     PriceTargetSummary,
     Quote,
+    SimpleQuote,
 )
 from fmp_data.intelligence.models import DividendEvent, EarningEvent, StockSplitEvent
 from fmp_data.models import CompanySymbol
@@ -304,6 +305,134 @@ class TestCompanyProfile:
 
         with pytest.raises(FMPNotFound, match="9999999999"):
             fmp_client.get_profile_cik("9999999999")
+
+
+class TestQuoteModel:
+    """Tests for Quote model nullable fields and volume coercion (Issues #82-84)"""
+
+    @pytest.fixture
+    def full_quote_data(self):
+        """Complete quote data with all fields populated"""
+        return {
+            "symbol": "AAPL",
+            "name": "Apple Inc.",
+            "price": 150.0,
+            "changePercentage": 1.5,
+            "change": 2.25,
+            "dayLow": 148.0,
+            "dayHigh": 151.0,
+            "yearHigh": 180.0,
+            "yearLow": 120.0,
+            "marketCap": 2500000000000,
+            "priceAvg50": 145.0,
+            "priceAvg200": 140.0,
+            "volume": 82034567,
+            "exchange": "NASDAQ",
+            "open": 149.0,
+            "previousClose": 147.75,
+            "timestamp": 1706198400,
+        }
+
+    def test_quote_with_all_fields(self, full_quote_data):
+        """Test Quote parses successfully with all fields populated"""
+        quote = Quote.model_validate(full_quote_data)
+        assert quote.symbol == "AAPL"
+        assert quote.year_high == 180.0
+        assert quote.year_low == 120.0
+        assert quote.market_cap == 2500000000000
+        assert quote.price_avg_50 == 145.0
+        assert quote.price_avg_200 == 140.0
+        assert quote.open_price == 149.0
+        assert quote.previous_close == 147.75
+        assert quote.volume == 82034567
+
+    def test_quote_with_null_fields(self, full_quote_data):
+        """Test Quote parses successfully when FMP returns null for sparse fields
+        (Issues #82, #84)"""
+        full_quote_data["yearHigh"] = None
+        full_quote_data["yearLow"] = None
+        full_quote_data["marketCap"] = None
+        full_quote_data["priceAvg50"] = None
+        full_quote_data["priceAvg200"] = None
+        full_quote_data["open"] = None
+        full_quote_data["previousClose"] = None
+        quote = Quote.model_validate(full_quote_data)
+        assert quote.year_high is None
+        assert quote.year_low is None
+        assert quote.market_cap is None
+        assert quote.price_avg_50 is None
+        assert quote.price_avg_200 is None
+        assert quote.open_price is None
+        assert quote.previous_close is None
+
+    def test_quote_with_missing_fields(self):
+        """Test Quote parses when optional fields are absent from response"""
+        data = {
+            "symbol": "DELISTED",
+            "name": "Delisted Corp",
+            "price": 0.0,
+            "changePercentage": 0.0,
+            "change": 0.0,
+            "dayLow": 0.0,
+            "dayHigh": 0.0,
+            "volume": 0,
+            "exchange": "OTC",
+            "timestamp": 1706198400,
+        }
+        quote = Quote.model_validate(data)
+        assert quote.year_high is None
+        assert quote.year_low is None
+        assert quote.market_cap is None
+        assert quote.price_avg_50 is None
+        assert quote.price_avg_200 is None
+        assert quote.open_price is None
+        assert quote.previous_close is None
+
+    def test_quote_float_volume_coerced_to_int(self, full_quote_data):
+        """Test Quote coerces float volume to int (Issue #83)"""
+        full_quote_data["volume"] = 9549117.83028
+        quote = Quote.model_validate(full_quote_data)
+        assert quote.volume == 9549117
+        assert isinstance(quote.volume, int)
+
+    def test_quote_int_volume_unchanged(self, full_quote_data):
+        """Test Quote preserves int volume values"""
+        full_quote_data["volume"] = 82034567
+        quote = Quote.model_validate(full_quote_data)
+        assert quote.volume == 82034567
+        assert isinstance(quote.volume, int)
+
+
+class TestSimpleQuoteModel:
+    """Tests for SimpleQuote volume coercion"""
+
+    def test_simple_quote_float_volume(self):
+        """Test SimpleQuote coerces float volume to int"""
+        data = {"symbol": "AAPL", "price": 150.0, "volume": 1234567.89}
+        quote = SimpleQuote.model_validate(data)
+        assert quote.volume == 1234567
+        assert isinstance(quote.volume, int)
+
+
+class TestCompanyProfileMarketCap:
+    """Tests for CompanyProfile.market_cap property (Issue #82)"""
+
+    def test_market_cap_property(self):
+        """Test CompanyProfile.market_cap returns same as mkt_cap"""
+        data = {
+            "symbol": "AAPL",
+            "mktCap": 2500000000000,
+        }
+        profile = CompanyProfile.model_validate(data)
+        assert profile.market_cap == profile.mkt_cap
+        assert profile.market_cap == 2500000000000
+
+    def test_market_cap_property_none(self):
+        """Test CompanyProfile.market_cap returns None when mkt_cap is None"""
+        data = {"symbol": "AAPL"}
+        profile = CompanyProfile.model_validate(data)
+        assert profile.market_cap is None
+        assert profile.mkt_cap is None
 
 
 class TestCompanyExecutive:

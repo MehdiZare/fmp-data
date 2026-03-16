@@ -103,6 +103,11 @@ class CompanyProfile(BaseModel):
     is_adr: bool | None = Field(None, description="Whether is ADR")
     is_fund: bool | None = Field(None, description="Whether is a fund")
 
+    @property
+    def market_cap(self) -> float | None:
+        """Alias for mkt_cap, consistent with Quote.market_cap."""
+        return self.mkt_cap
+
     @field_validator("vol_avg", "volume", mode="before")
     @classmethod
     def coerce_volume_to_int(cls, value: Any) -> Any:
@@ -319,20 +324,34 @@ class Quote(BaseModel):
     change: float = Field(description="Price change")
     day_low: float = Field(alias="dayLow", description="Day low price")
     day_high: float = Field(alias="dayHigh", description="Day high price")
-    year_high: float = Field(alias="yearHigh", description="52-week high")
-    year_low: float = Field(alias="yearLow", description="52-week low")
-    market_cap: float = Field(alias="marketCap", description="Market capitalization")
-    price_avg_50: float = Field(alias="priceAvg50", description="50-day average price")
-    price_avg_200: float = Field(
-        alias="priceAvg200", description="200-day average price"
+    year_high: float | None = Field(None, alias="yearHigh", description="52-week high")
+    year_low: float | None = Field(None, alias="yearLow", description="52-week low")
+    market_cap: float | None = Field(
+        None, alias="marketCap", description="Market capitalization"
+    )
+    price_avg_50: float | None = Field(
+        None, alias="priceAvg50", description="50-day average price"
+    )
+    price_avg_200: float | None = Field(
+        None, alias="priceAvg200", description="200-day average price"
     )
     volume: int = Field(description="Trading volume")
     exchange: str = Field(description="Stock exchange")
-    open_price: float = Field(alias="open", description="Opening price")
-    previous_close: float = Field(
-        alias="previousClose", description="Previous close price"
+    open_price: float | None = Field(None, alias="open", description="Opening price")
+    previous_close: float | None = Field(
+        None, alias="previousClose", description="Previous close price"
     )
     timestamp: datetime = Field(description="Quote timestamp")
+
+    @field_validator("volume", mode="before")
+    @classmethod
+    def coerce_volume_to_int(cls, value: Any) -> Any:
+        """Coerce volume to int (FMP API may return floats)."""
+        if value is None:
+            return None
+        if isinstance(value, int | float):
+            return int(value)
+        return value
 
     @field_validator("timestamp", mode="before")
     @classmethod
@@ -357,6 +376,16 @@ class SimpleQuote(BaseModel):
     price: float = Field(description="Current price")
     volume: int = Field(description="Trading volume")
     change: float | None = Field(None, description="Price change")
+
+    @field_validator("volume", mode="before")
+    @classmethod
+    def coerce_volume_to_int(cls, value: Any) -> Any:
+        """Coerce volume to int (FMP API may return floats)."""
+        if value is None:
+            return None
+        if isinstance(value, int | float):
+            return int(value)
+        return value
 
 
 class AftermarketTrade(BaseModel):
