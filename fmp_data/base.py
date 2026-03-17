@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 from contextvars import ContextVar
+import copy
 import json
 import logging
 import time
@@ -167,6 +168,9 @@ class BaseClient:
 
         filtered = {k: v for k, v in sorted(params.items()) if k != "apikey"}
         params_str = urllib.parse.urlencode(filtered, doseq=True)
+
+        # codeql[py/weak-sensitive-data-hashing]
+        # This hash is only used to shorten cache keys, not for credential storage.
         params_hash = hashlib.sha256(
             params_str.encode(), usedforsecurity=False
         ).hexdigest()[:16]
@@ -184,7 +188,8 @@ class BaseClient:
         """Read from cache, returning None on any failure."""
         assert self._cache is not None
         try:
-            return self._cache.get(cache_key)
+            cached = self._cache.get(cache_key)
+            return None if cached is None else copy.deepcopy(cached)
         except Exception:
             self.logger.warning(
                 "Cache read failed for %s", endpoint_name, exc_info=True
@@ -197,7 +202,8 @@ class BaseClient:
         """Async read from cache, returning None on any failure."""
         assert self._cache is not None
         try:
-            return await self._cache.aget(cache_key)
+            cached = await self._cache.aget(cache_key)
+            return None if cached is None else copy.deepcopy(cached)
         except Exception:
             self.logger.warning(
                 "Cache read failed for %s", endpoint_name, exc_info=True
@@ -210,7 +216,7 @@ class BaseClient:
         """Write to cache, logging on failure."""
         assert self._cache is not None
         try:
-            self._cache.set(cache_key, data, ttl)
+            self._cache.set(cache_key, copy.deepcopy(data), ttl)
         except Exception:
             self.logger.warning(
                 "Cache write failed for %s", endpoint_name, exc_info=True
@@ -222,7 +228,7 @@ class BaseClient:
         """Async write to cache, logging on failure."""
         assert self._cache is not None
         try:
-            await self._cache.aset(cache_key, data, ttl)
+            await self._cache.aset(cache_key, copy.deepcopy(data), ttl)
         except Exception:
             self.logger.warning(
                 "Cache write failed for %s", endpoint_name, exc_info=True

@@ -344,7 +344,7 @@ class Quote(BaseModel):
     price_avg_200: float | None = Field(
         None, alias="priceAvg200", description="200-day average price"
     )
-    volume: int = Field(description="Trading volume")
+    volume: int | None = Field(None, description="Trading volume")
     exchange: str = Field(description="Stock exchange")
     open_price: float | None = Field(None, alias="open", description="Opening price")
     previous_close: float | None = Field(
@@ -379,7 +379,7 @@ class SimpleQuote(BaseModel):
 
     symbol: str = Field(description="Stock symbol")
     price: float = Field(description="Current price")
-    volume: int = Field(description="Trading volume")
+    volume: int | None = Field(None, description="Trading volume")
     change: float | None = Field(None, description="Price change")
 
     @field_validator("volume", mode="before")

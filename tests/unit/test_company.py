@@ -354,6 +354,7 @@ class TestQuoteModel:
         full_quote_data["marketCap"] = None
         full_quote_data["priceAvg50"] = None
         full_quote_data["priceAvg200"] = None
+        full_quote_data["volume"] = None
         full_quote_data["open"] = None
         full_quote_data["previousClose"] = None
         quote = Quote.model_validate(full_quote_data)
@@ -364,6 +365,7 @@ class TestQuoteModel:
         assert quote.price_avg_200 is None
         assert quote.open_price is None
         assert quote.previous_close is None
+        assert quote.volume is None
 
     def test_quote_with_missing_fields(self):
         """Test Quote parses when optional fields are absent from response"""
@@ -431,6 +433,12 @@ class TestSimpleQuoteModel:
         quote = SimpleQuote.model_validate(data)
         assert quote.volume == 1234567
         assert isinstance(quote.volume, int)
+
+    def test_simple_quote_none_volume(self):
+        """Test SimpleQuote accepts null volume from the API."""
+        data = {"symbol": "AAPL", "price": 150.0, "volume": None}
+        quote = SimpleQuote.model_validate(data)
+        assert quote.volume is None
 
     def test_simple_quote_volume_validator_none(self):
         """Test SimpleQuote volume validator handles None."""

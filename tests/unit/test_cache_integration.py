@@ -184,6 +184,22 @@ class TestCacheHitPath:
         # Verify HTTP was never called
         base_client.client.request.assert_not_called()
 
+    def test_cache_hit_returns_isolated_copy(self, base_client):
+        """Cache hits should not expose the stored object by reference."""
+        ep = _make_endpoint()
+        cached_payload = [{"symbol": "AAPL", "price": 150.0}]
+        cache_key = BaseClient._build_cache_key(
+            ep.name, {"symbol": "AAPL", "apikey": "test-key-12345"}
+        )
+        base_client._cache.set(cache_key, cached_payload)
+
+        result = base_client._execute_request(ep, symbol="AAPL")
+        result[0].price = 999.0
+
+        cached_again = base_client._cache.get(cache_key)
+        assert cached_again == cached_payload
+        assert cached_again[0]["price"] == 150.0
+
     def test_force_refresh_bypasses_cache(self, base_client):
         """force_refresh=True should skip cache and make HTTP request."""
         ep = _make_endpoint()
@@ -267,3 +283,20 @@ class TestCacheHitPath:
         )
         cached = base_client._cache.get(cache_key)
         assert cached == response_payload
+
+    @pytest.mark.asyncio
+    async def test_async_cache_hit_returns_isolated_copy(self, base_client):
+        """Async cache hits should not expose the stored object by reference."""
+        ep = _make_endpoint()
+        cached_payload = [{"symbol": "AAPL", "price": 150.0}]
+        cache_key = BaseClient._build_cache_key(
+            ep.name, {"symbol": "AAPL", "apikey": "test-key-12345"}
+        )
+        base_client._cache.set(cache_key, cached_payload)
+
+        result = await base_client._execute_request_async(ep, symbol="AAPL")
+        result[0].price = 999.0
+
+        cached_again = base_client._cache.get(cache_key)
+        assert cached_again == cached_payload
+        assert cached_again[0]["price"] == 150.0
