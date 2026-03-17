@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 from contextvars import ContextVar
+import copy
 import json
 import logging
 import time
@@ -22,6 +23,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from fmp_data.cache.base import CacheBackend
 from fmp_data.config import ClientConfig
 from fmp_data.exceptions import (
     AuthenticationError,
@@ -83,6 +85,22 @@ class BaseClient:
         # Async client (lazily initialized)
         self._async_client: httpx.AsyncClient | None = None
 
+        # Response cache (optional)
+        self._cache: CacheBackend | None = None
+        cache_cfg = getattr(config, "cache", None)
+        if cache_cfg is not None and getattr(cache_cfg, "enabled", False) is True:
+            from fmp_data.cache import create_backend
+            from fmp_data.cache.config import CacheConfig
+
+            if isinstance(cache_cfg, CacheConfig):
+                self._cache = create_backend(cache_cfg)
+                self._cache_ttl_overrides = cache_cfg.ttl_overrides
+                self._cache_default_ttl = cache_cfg.default_ttl
+                self.logger.info(
+                    "Response caching enabled (backend=%s)",
+                    cache_cfg.backend,
+                )
+
     def _setup_http_client(self) -> None:
         """
         Setup HTTP client with default configuration.
@@ -136,6 +154,85 @@ class BaseClient:
             self._async_client = None
         # Also close sync client
         self.close()
+
+    @staticmethod
+    def _build_cache_key(endpoint_name: str, params: dict[str, Any]) -> str:
+        """Build a deterministic cache key from endpoint name and params.
+
+        Excludes 'apikey' to avoid leaking secrets in keys.
+        Uses urllib.parse.urlencode to properly escape special characters
+        and prevent key collisions from values containing '&' or '='.
+        """
+        import hashlib
+        import urllib.parse
+
+        filtered = {k: v for k, v in sorted(params.items()) if k != "apikey"}
+        params_str = urllib.parse.urlencode(filtered, doseq=True)
+
+        # codeql[py/weak-sensitive-data-hashing]
+        # This hash is only used to shorten cache keys, not for credential storage.
+        params_hash = hashlib.sha256(
+            params_str.encode(), usedforsecurity=False
+        ).hexdigest()[:16]
+        return f"{endpoint_name}:{params_hash}"
+
+    def _get_cache_ttl(self, endpoint_name: str) -> int:
+        """Get TTL for a given endpoint, checking overrides first."""
+        if not hasattr(self, "_cache_ttl_overrides"):
+            return 300
+        return self._cache_ttl_overrides.get(endpoint_name, self._cache_default_ttl)
+
+    def _cache_get(
+        self, endpoint_name: str, cache_key: str
+    ) -> dict[str, Any] | list[Any] | None:
+        """Read from cache, returning None on any failure."""
+        assert self._cache is not None
+        try:
+            cached = self._cache.get(cache_key)
+            return None if cached is None else copy.deepcopy(cached)
+        except Exception:
+            self.logger.warning(
+                "Cache read failed for %s", endpoint_name, exc_info=True
+            )
+            return None
+
+    async def _cache_aget(
+        self, endpoint_name: str, cache_key: str
+    ) -> dict[str, Any] | list[Any] | None:
+        """Async read from cache, returning None on any failure."""
+        assert self._cache is not None
+        try:
+            cached = await self._cache.aget(cache_key)
+            return None if cached is None else copy.deepcopy(cached)
+        except Exception:
+            self.logger.warning(
+                "Cache read failed for %s", endpoint_name, exc_info=True
+            )
+            return None
+
+    def _cache_set(
+        self, endpoint_name: str, cache_key: str, data: Any, ttl: int
+    ) -> None:
+        """Write to cache, logging on failure."""
+        assert self._cache is not None
+        try:
+            self._cache.set(cache_key, copy.deepcopy(data), ttl)
+        except Exception:
+            self.logger.warning(
+                "Cache write failed for %s", endpoint_name, exc_info=True
+            )
+
+    async def _cache_aset(
+        self, endpoint_name: str, cache_key: str, data: Any, ttl: int
+    ) -> None:
+        """Async write to cache, logging on failure."""
+        assert self._cache is not None
+        try:
+            await self._cache.aset(cache_key, copy.deepcopy(data), ttl)
+        except Exception:
+            self.logger.warning(
+                "Cache write failed for %s", endpoint_name, exc_info=True
+            )
 
     def _handle_rate_limit(self, wait_time: float) -> None:
         """
@@ -225,18 +322,12 @@ class BaseClient:
         Returns:
             Either a single Pydantic model of type T or a list of T.
         """
-        # Check rate limit before making request
-        if not self._rate_limiter.should_allow_request():
-            wait_time = self._rate_limiter.get_wait_time()
-            self._handle_rate_limit(wait_time)
-
         request_start = time.perf_counter()
         status_code = 0
         success = False
+        force_refresh = kwargs.pop("force_refresh", False)
 
         try:
-            self._rate_limiter.record_request()
-
             # Validate and process parameters
             validated_params = endpoint.validate_params(
                 kwargs,
@@ -249,6 +340,35 @@ class BaseClient:
             # Extract query parameters and add API key
             query_params = endpoint.get_query_params(validated_params)
             query_params["apikey"] = self.config.api_key
+
+            # Check cache before rate limiting — cache hits are free
+            cache_key: str | None = None
+            if (
+                self._cache is not None
+                and not force_refresh
+                and endpoint.response_model is not bytes
+            ):
+                cache_key = self._build_cache_key(endpoint.name, query_params)
+                cached = self._cache_get(endpoint.name, cache_key)
+                if cached is not None:
+                    self.logger.debug(
+                        "Cache hit for %s",
+                        endpoint.name,
+                        extra={"endpoint": endpoint.name, "cache_key": cache_key},
+                    )
+                    success = True
+                    return self._process_response(
+                        endpoint,
+                        cached,
+                        validation_mode=self.config.validation_mode,
+                    )
+
+            # Check rate limit only when making an actual HTTP request
+            if not self._rate_limiter.should_allow_request():
+                wait_time = self._rate_limiter.get_wait_time()
+                self._handle_rate_limit(wait_time)
+
+            self._rate_limiter.record_request()
 
             self.logger.debug(
                 f"Making request to {endpoint.name}",
@@ -277,6 +397,12 @@ class BaseClient:
                     validation_mode=self.config.validation_mode,
                 )
                 success = True
+
+                # Store in cache
+                if self._cache is not None and cache_key is not None:
+                    ttl = self._get_cache_ttl(endpoint.name)
+                    self._cache_set(endpoint.name, cache_key, data, ttl)
+
                 return result
             finally:
                 response.close()
@@ -697,32 +823,9 @@ class BaseClient:
         Returns:
             Either a single Pydantic model of type T or a list of T.
         """
-        # Check rate limit using async rate limiter (concurrency-safe)
-        if not await self._async_rate_limiter.should_allow_request():
-            wait_time = self._async_rate_limiter.get_wait_time()
-            current_count = _rate_limit_retry_count.get() + 1
-            _rate_limit_retry_count.set(current_count)
-
-            if current_count > self.max_rate_limit_retries:
-                _rate_limit_retry_count.set(0)
-                raise RateLimitError(
-                    f"Rate limit exceeded after "
-                    f"{self.max_rate_limit_retries} retries. "
-                    f"Please wait {wait_time:.1f} seconds",
-                    retry_after=wait_time,
-                )
-
-            self.logger.warning(
-                f"Rate limit reached "
-                f"(attempt {current_count}/"
-                f"{self.max_rate_limit_retries}), "
-                f"waiting {wait_time:.1f} seconds before retrying"
-            )
-            await asyncio.sleep(wait_time)
+        force_refresh = kwargs.pop("force_refresh", False)
 
         try:
-            await self._async_rate_limiter.record_request()
-
             # Validate and process parameters
             validated_params = endpoint.validate_params(
                 kwargs,
@@ -735,6 +838,52 @@ class BaseClient:
             # Extract query parameters and add API key
             query_params = endpoint.get_query_params(validated_params)
             query_params["apikey"] = self.config.api_key
+
+            # Check cache before rate limiting — cache hits are free
+            cache_key: str | None = None
+            if (
+                self._cache is not None
+                and not force_refresh
+                and endpoint.response_model is not bytes
+            ):
+                cache_key = self._build_cache_key(endpoint.name, query_params)
+                cached = await self._cache_aget(endpoint.name, cache_key)
+                if cached is not None:
+                    self.logger.debug(
+                        "Cache hit for %s",
+                        endpoint.name,
+                        extra={"endpoint": endpoint.name, "cache_key": cache_key},
+                    )
+                    return self._process_response(
+                        endpoint,
+                        cached,
+                        validation_mode=self.config.validation_mode,
+                    )
+
+            # Check rate limit only when making an actual HTTP request
+            if not await self._async_rate_limiter.should_allow_request():
+                wait_time = self._async_rate_limiter.get_wait_time()
+                current_count = _rate_limit_retry_count.get() + 1
+                _rate_limit_retry_count.set(current_count)
+
+                if current_count > self.max_rate_limit_retries:
+                    _rate_limit_retry_count.set(0)
+                    raise RateLimitError(
+                        f"Rate limit exceeded after "
+                        f"{self.max_rate_limit_retries} retries. "
+                        f"Please wait {wait_time:.1f} seconds",
+                        retry_after=wait_time,
+                    )
+
+                self.logger.warning(
+                    f"Rate limit reached "
+                    f"(attempt {current_count}/"
+                    f"{self.max_rate_limit_retries}), "
+                    f"waiting {wait_time:.1f} seconds before retrying"
+                )
+                await asyncio.sleep(wait_time)
+
+            await self._async_rate_limiter.record_request()
 
             self.logger.debug(
                 f"Making async request to {endpoint.name}",
@@ -757,11 +906,18 @@ class BaseClient:
                     data = response.content
                 else:
                     data = self.handle_response(endpoint, response)
-                return self._process_response(
+                result = self._process_response(
                     endpoint,
                     data,
                     validation_mode=self.config.validation_mode,
                 )
+
+                # Store in cache
+                if self._cache is not None and cache_key is not None:
+                    ttl = self._get_cache_ttl(endpoint.name)
+                    await self._cache_aset(endpoint.name, cache_key, data, ttl)
+
+                return result
             finally:
                 await response.aclose()
 

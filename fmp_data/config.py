@@ -17,6 +17,7 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from fmp_data.cache.config import CacheConfig
 from fmp_data.exceptions import ConfigError
 
 
@@ -231,6 +232,13 @@ class ClientConfig(BaseModel):
             "'error' raises validation errors."
         ),
     )
+    cache: CacheConfig | None = Field(
+        default=None,
+        description=(
+            "Optional response cache configuration. "
+            "Set to enable caching of API responses."
+        ),
+    )
 
     @field_validator("api_key")
     @classmethod
@@ -311,7 +319,7 @@ class ClientConfig(BaseModel):
                 "Allowed values: ignore, warn, error"
             )
 
-        config_dict = {
+        config_dict: dict[str, Any] = {
             "api_key": api_key,
             "timeout": _safe_int_from_env("FMP_TIMEOUT", 30, min_val=1),
             "max_retries": _safe_int_from_env("FMP_MAX_RETRIES", 3),
@@ -321,5 +329,9 @@ class ClientConfig(BaseModel):
             "validation_mode": validation_mode,
             "unknown_param_policy": unknown_param_policy,
         }
+
+        cache_config = CacheConfig.from_env()
+        if cache_config is not None:
+            config_dict["cache"] = cache_config
 
         return cls(**config_dict)

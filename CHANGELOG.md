@@ -13,8 +13,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Endpoint: `/stable/profile-cik`
   - MCP semantics key: `company.profile_cik`
   - Useful for SEC filing research and cross-referencing regulatory data
+- **Opt-in Response Caching** - Added a pluggable response caching subsystem for sync and async clients:
+  - New `CacheConfig` model is exported from `fmp_data` and supported on `ClientConfig`
+  - Added in-memory, file-based, and Redis cache backends under `fmp_data.cache`
+  - Added environment-based cache configuration via `FMP_CACHE_ENABLED`, `FMP_CACHE_BACKEND`, `FMP_CACHE_TTL`, `FMP_CACHE_DIR`, and `FMP_CACHE_REDIS_URL`
+  - Added per-endpoint TTL overrides, deterministic cache keys, and `force_refresh=True` support to bypass cache reads on demand
+  - Added optional `cache-redis` extra for Redis-backed caching
 
 ### Fixed
+- **Cache Payload Isolation** - Prevented mutable cached payloads from being shared by reference:
+  - `BaseClient` now deep-copies cache payloads on both cache read and write paths
+  - Added sync and async regression coverage to prevent future cache aliasing regressions
+- **Quote Volume Nullability** - Fixed quote models to accept `null` volume values from the API:
+  - `Quote.volume` and `SimpleQuote.volume` now use `int | None`
+  - Added regression coverage for `volume=None` model validation
 - **Stock News Null Symbol** - Fixed `ValidationError` when FMP API returns `null` for `symbol` field in stock news responses (Issue #62):
   - Made `StockNewsArticle.symbol` optional (`str | None`)
   - Made `StockNewsSentiment.symbol` optional for consistency

@@ -27,6 +27,7 @@ This project uses UV as the primary package management tool for several key bene
 - Built-in rate limiting
 - Comprehensive logging
 - Async support
+- Opt-in response caching with memory, file, and Redis backends
 - Type hints and validation with Pydantic
 - Automatic retries with exponential backoff
 - 85%+ test coverage with comprehensive test suite
@@ -53,6 +54,9 @@ To use this library, you'll need an API key from Financial Modeling Prep (FMP). 
 # Basic installation
 uv pip install fmp-data
 
+# With Redis cache backend support
+uv pip install "fmp-data[cache-redis]"
+
 # With Langchain integration
 uv pip install "fmp-data[langchain]"
 
@@ -71,10 +75,50 @@ LangChain integration requires LangChain v1 (`langchain-core`, `langchain-openai
 # Basic installation
 pip install fmp-data
 
+# With Redis cache backend support
+pip install "fmp-data[cache-redis]"
+
 # With extras
 pip install fmp-data[langchain]
 pip install fmp-data[mcp]
 pip install fmp-data[langchain,mcp]
+```
+
+## Response Caching
+
+Response caching is optional and works for both sync and async clients.
+
+```python
+from fmp_data import CacheConfig, ClientConfig, FMPDataClient
+
+config = ClientConfig(
+    api_key="YOUR_FMP_API_KEY",  # pragma: allowlist secret
+    cache=CacheConfig(
+        backend="memory",
+        default_ttl=300,
+        ttl_overrides={"get_quote": 30},
+    ),
+)
+
+with FMPDataClient(config=config) as client:
+    quote = client.company.get_quote("AAPL")
+    fresh_quote = client.company.get_quote("AAPL", force_refresh=True)
+```
+
+You can also configure caching from the environment:
+
+```bash
+export FMP_CACHE_ENABLED=true
+export FMP_CACHE_BACKEND=file
+export FMP_CACHE_TTL=300
+export FMP_CACHE_DIR=.cache/fmp-data
+```
+
+For Redis-backed caching, install the optional extra and set:
+
+```bash
+export FMP_CACHE_BACKEND=redis
+export FMP_CACHE_REDIS_URL=redis://localhost:6379/0
 ```
 
 ## MCP Server (Claude Desktop Integration)
