@@ -30,6 +30,12 @@ options:
 show_root_heading: true
 show_source: false
 
+::: fmp_data.cache.config.CacheConfig
+handler: python
+options:
+show_root_heading: true
+show_source: false
+
 ::: fmp_data.config.LoggingConfig
 handler: python
 options:

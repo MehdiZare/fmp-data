@@ -10,6 +10,7 @@ Now with 100% coverage of the FMP stable endpoint catalog.
 - Retry strategies for failed requests
 - Comprehensive error handling
 - Async/await support
+- Opt-in response caching with memory, file, and Redis backends
 - Full type hints with Pydantic validation
 
 🏢 **API Coverage**
@@ -41,6 +42,12 @@ Now with 100% coverage of the FMP stable endpoint catalog.
 
 ```bash
 pip install fmp-data
+```
+
+For Redis-backed caching:
+
+```bash
+pip install "fmp-data[cache-redis]"
 ```
 
 For LangChain integration:
@@ -94,6 +101,26 @@ async def main():
 asyncio.run(main())
 ```
 
+### Response Caching
+
+```python
+from fmp_data import CacheConfig, ClientConfig, FMPDataClient
+
+config = ClientConfig(
+    api_key="YOUR_FMP_API_KEY",  # pragma: allowlist secret
+    cache=CacheConfig(
+        backend="file",
+        default_ttl=300,
+        cache_dir=".cache/fmp-data",
+        ttl_overrides={"get_quote": 30},
+    ),
+)
+
+with FMPDataClient(config=config) as client:
+    quote = client.company.get_quote("AAPL")
+    fresh_quote = client.company.get_quote("AAPL", force_refresh=True)
+```
+
 ### Environment Configuration
 
 Create a `.env` file in your project root:
@@ -104,7 +131,12 @@ FMP_TIMEOUT=30
 FMP_MAX_RETRIES=3
 # Note: Do NOT include /api in the base URL - it's added automatically
 FMP_BASE_URL=https://financialmodelingprep.com
+FMP_CACHE_ENABLED=true
+FMP_CACHE_BACKEND=memory
+FMP_CACHE_TTL=300
 ```
+
+Use `FMP_CACHE_DIR` for the file backend and `FMP_CACHE_REDIS_URL` for the Redis backend.
 
 ### Error Handling
 
