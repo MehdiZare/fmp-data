@@ -67,6 +67,9 @@ mcp = [
     "mcp[cli]>=1.25.0",
     "pyyaml>=6.0.3",
 ]
+cache-redis = [
+    "redis>=5.0.0",
+]
 langchain = [
     "faiss-cpu>=1.13.2",
     "langchain-core>=1.2.8",
@@ -263,6 +266,8 @@ module = [
     "tiktoken",
     "openai.*",
     "openai",
+    "redis.*",
+    "redis",
     "yaml.*",
     "yaml",
     "rich.*",
@@ -358,6 +363,7 @@ omit = [
     "*/endpoints.py",
     "fmp_data/lc/*",
     "fmp_data/mcp/*",
+    "fmp_data/cache/redis_backend.py",
 ]
 
 [tool.coverage.paths]

@@ -19,6 +19,7 @@ import types as _types
 from typing import Any
 
 from fmp_data.async_client import AsyncFMPDataClient
+from fmp_data.cache.config import CacheConfig
 from fmp_data.client import FMPDataClient
 from fmp_data.config import (
     ClientConfig,
@@ -48,6 +49,7 @@ except ImportError:
 __all__ = [
     "AsyncFMPDataClient",
     "AuthenticationError",
+    "CacheConfig",
     "ClientConfig",
     "ConfigError",
     "FMPDataClient",
