@@ -143,26 +143,31 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: 🚀 Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.VERSION }}
-          name: Release ${{ steps.version.outputs.VERSION }}
-          body: |
-            ## 🎉 Release ${{ steps.version.outputs.VERSION }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.version.outputs.VERSION }}
+          RELEASE_VERSION: ${{ steps.version.outputs.VERSION_NUMBER }}
+        run: |
+          cat > release-notes.md <<'EOF'
+          ## 🎉 Release ${{ steps.version.outputs.VERSION }}
 
-            ${{ steps.release_notes.outputs.NOTES }}
+          ${{ steps.release_notes.outputs.NOTES }}
 
-            ### 📦 Installation
-            ```bash
-            pip install fmp-data==${{ steps.version.outputs.VERSION_NUMBER }}
-            ```
+          ### 📦 Installation
+          ```bash
+          pip install fmp-data==${{ steps.version.outputs.VERSION_NUMBER }}
+          ```
 
-            ### 🔗 Links
-            - [PyPI Package](https://pypi.org/project/fmp-data/${{ steps.version.outputs.VERSION_NUMBER }}/)
-            - [Documentation](https://mehdizare.github.io/fmp-data/)
-          files: dist/*
-          prerelease: false
-          generate_release_notes: true
+          ### 🔗 Links
+          - [PyPI Package](https://pypi.org/project/fmp-data/${{ steps.version.outputs.VERSION_NUMBER }}/)
+          - [Documentation](https://mehdizare.github.io/fmp-data/)
+          EOF
+
+          gh release create "$RELEASE_TAG" dist/* \
+            --verify-tag \
+            --title "Release $RELEASE_TAG" \
+            --notes-file release-notes.md \
+            --generate-notes
 
       - name: 🚀 Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.13.0
