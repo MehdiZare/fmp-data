@@ -23,6 +23,19 @@ from pydantic.alias_generators import to_camel
 
 from fmp_data.models import ShareFloat
 
+
+def coerce_volume_value(value: Any) -> Any:
+    """Coerce volume values to int (FMP API may return floats).
+
+    See: https://github.com/MehdiZare/fmp-data/issues/70
+    """
+    if value is None:
+        return None
+    if isinstance(value, int | float):
+        return int(value)
+    return value
+
+
 default_model_config = ConfigDict(
     populate_by_name=True,
     validate_assignment=True,
@@ -115,11 +128,7 @@ class CompanyProfile(BaseModel):
 
         See: https://github.com/MehdiZare/fmp-data/issues/70
         """
-        if value is None:
-            return None
-        if isinstance(value, int | float):
-            return int(value)
-        return value
+        return coerce_volume_value(value)
 
     @field_validator("website", mode="before")
     @classmethod
@@ -347,11 +356,7 @@ class Quote(BaseModel):
     @classmethod
     def coerce_volume_to_int(cls, value: Any) -> Any:
         """Coerce volume to int (FMP API may return floats)."""
-        if value is None:
-            return None
-        if isinstance(value, int | float):
-            return int(value)
-        return value
+        return coerce_volume_value(value)
 
     @field_validator("timestamp", mode="before")
     @classmethod
@@ -381,11 +386,7 @@ class SimpleQuote(BaseModel):
     @classmethod
     def coerce_volume_to_int(cls, value: Any) -> Any:
         """Coerce volume to int (FMP API may return floats)."""
-        if value is None:
-            return None
-        if isinstance(value, int | float):
-            return int(value)
-        return value
+        return coerce_volume_value(value)
 
 
 class AftermarketTrade(BaseModel):

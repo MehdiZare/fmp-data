@@ -5,7 +5,9 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 from pathlib import Path
+import tempfile
 import time
 from typing import Any
 
@@ -54,10 +56,23 @@ class FileCache(CacheBackend):
             "value": value,
             "expires_at": time.time() + effective_ttl,
         }
+        fd = None
+        tmp_path = None
         try:
-            path.write_text(json.dumps(payload, default=str), encoding="utf-8")
+            fd, tmp_path = tempfile.mkstemp(dir=self._cache_dir, suffix=".tmp")
+            os.write(fd, json.dumps(payload, default=str).encode("utf-8"))
+            os.close(fd)
+            fd = None
+            os.replace(tmp_path, path)
         except OSError as exc:
             logger.warning("Cache write error for key %s: %s", key, exc)
+            if fd is not None:
+                os.close(fd)
+            if tmp_path is not None:
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
 
     def delete(self, key: str) -> None:
         path = self._key_to_path(key)

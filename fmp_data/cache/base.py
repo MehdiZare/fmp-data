@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import asyncio
 from typing import Any
 
 
@@ -39,17 +40,17 @@ class CacheBackend(ABC):
         """Remove all entries from the cache."""
 
     async def aget(self, key: str) -> Any | None:
-        """Async variant of get. Defaults to sync implementation."""
-        return self.get(key)
+        """Async variant of get. Offloads to a thread by default."""
+        return await asyncio.to_thread(self.get, key)
 
     async def aset(self, key: str, value: Any, ttl: int | None = None) -> None:
-        """Async variant of set. Defaults to sync implementation."""
-        self.set(key, value, ttl)
+        """Async variant of set. Offloads to a thread by default."""
+        await asyncio.to_thread(self.set, key, value, ttl)
 
     async def adelete(self, key: str) -> None:
-        """Async variant of delete. Defaults to sync implementation."""
-        self.delete(key)
+        """Async variant of delete. Offloads to a thread by default."""
+        await asyncio.to_thread(self.delete, key)
 
     async def aclear(self) -> None:
-        """Async variant of clear. Defaults to sync implementation."""
-        self.clear()
+        """Async variant of clear. Offloads to a thread by default."""
+        await asyncio.to_thread(self.clear)

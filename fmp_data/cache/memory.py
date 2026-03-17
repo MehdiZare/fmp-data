@@ -45,6 +45,22 @@ class MemoryCache(CacheBackend):
         with self._lock:
             self._store.clear()
 
+    async def aget(self, key: str) -> Any | None:
+        """Override to avoid thread overhead for in-memory ops."""
+        return self.get(key)
+
+    async def aset(self, key: str, value: Any, ttl: int | None = None) -> None:
+        """Override to avoid thread overhead for in-memory ops."""
+        self.set(key, value, ttl)
+
+    async def adelete(self, key: str) -> None:
+        """Override to avoid thread overhead for in-memory ops."""
+        self.delete(key)
+
+    async def aclear(self) -> None:
+        """Override to avoid thread overhead for in-memory ops."""
+        self.clear()
+
     @property
     def size(self) -> int:
         """Return number of entries (including expired)."""

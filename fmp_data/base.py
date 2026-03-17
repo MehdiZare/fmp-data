@@ -167,7 +167,9 @@ class BaseClient:
 
         filtered = {k: v for k, v in sorted(params.items()) if k != "apikey"}
         params_str = urllib.parse.urlencode(filtered, doseq=True)
-        params_hash = hashlib.sha256(params_str.encode()).hexdigest()[:16]
+        params_hash = hashlib.sha256(
+            params_str.encode(), usedforsecurity=False
+        ).hexdigest()[:16]
         return f"{endpoint_name}:{params_hash}"
 
     def _get_cache_ttl(self, endpoint_name: str) -> int:
