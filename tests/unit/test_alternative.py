@@ -9,6 +9,9 @@ from fmp_data.alternative.models import (
     CryptoQuote,
     ForexQuote,
 )
+from fmp_data.alternative.models import (
+    HistoricalPrice as AlternativeHistoricalPrice,
+)
 
 
 @pytest.fixture
@@ -159,3 +162,15 @@ def test_crypto_historical_price_model(mock_crypto_historical):
     assert price.change == 1250.00
     assert price.change_percent == 2.85
     assert price.vwap == 44500.00
+
+
+def test_alternative_historical_price_accepts_float_volume(mock_crypto_historical):
+    """Test alternative historical price models accept float volume values."""
+    historical_data = dict(mock_crypto_historical["historical"][0])
+    historical_data["volume"] = 25000000000.75
+    historical_data["unadjustedVolume"] = 24999999999.25
+
+    price = AlternativeHistoricalPrice.model_validate(historical_data)
+
+    assert price.volume == pytest.approx(25000000000.75)
+    assert price.unadjusted_volume == pytest.approx(24999999999.25)

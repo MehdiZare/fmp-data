@@ -11,6 +11,7 @@ from fmp_data.company.models import (
     ExecutiveCompensationBenchmark,
     HistoricalData,
     HistoricalPrice,
+    IntradayPrice,
     MergerAcquisition,
     PriceTarget,
     PriceTargetSummary,
@@ -443,6 +444,26 @@ class TestSimpleQuoteModel:
     def test_simple_quote_volume_validator_none(self):
         """Test SimpleQuote volume validator handles None."""
         assert SimpleQuote.coerce_volume_to_int(None) is None
+
+
+class TestIntradayPriceModel:
+    """Tests for intraday price model validation"""
+
+    def test_intraday_price_accepts_float_volume(self):
+        """Test intraday prices accept float volume values from the API."""
+        data = {
+            "date": "2024-01-05T16:00:00",
+            "open": 149.00,
+            "low": 148.50,
+            "high": 151.00,
+            "close": 150.25,
+            "volume": 28541.004200000316,
+        }
+
+        price = IntradayPrice.model_validate(data)
+
+        assert price.volume == pytest.approx(28541.004200000316)
+        assert isinstance(price.volume, float)
 
     def test_simple_quote_volume_validator_string(self):
         """Test SimpleQuote volume validator passes non-numeric values."""

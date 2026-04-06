@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Cache Payload Isolation** - Prevented mutable cached payloads from being shared by reference:
   - `BaseClient` now deep-copies cache payloads on both cache read and write paths
   - Added sync and async regression coverage to prevent future cache aliasing regressions
+- **Float Volume Handling** - Fixed price models that failed when FMP returned fractional volume values:
+  - `alternative.HistoricalPrice.volume` and `alternative.HistoricalPrice.unadjusted_volume` now accept floats
+  - `company.IntradayPrice.volume` now accepts floats
+  - Added regression tests for both float-volume validation paths
 - **Quote Volume Nullability** - Fixed quote models to accept `null` volume values from the API:
   - `Quote.volume` and `SimpleQuote.volume` now use `int | None`
   - Added regression coverage for `volume=None` model validation
@@ -92,6 +96,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - CI `secret-scan` job explicitly targets `tests/integration/vcr_cassettes/` as an additional safety net
 
 ### Changed
+- **GitHub Actions Maintenance** - Updated workflow actions to current upstream releases:
+  - Bumped `actions/deploy-pages` from `v4` to `v5` in the documentation workflow
+  - Bumped `codecov/codecov-action` from `v5` to `v6` in CI coverage uploads
 - **VCR Cassettes Excluded from Git** - Cassettes are now gitignored (`tests/integration/vcr_cassettes/`) because they are too large for GitHub (130 MB+ individual files). Developers must record cassettes locally with `FMP_TEST_API_KEY`.
 - **CI Secret Scan** - The `secret-scan` job now gracefully skips when no cassette YAML files are present instead of failing.
 - **Cassette Contract Test** - `test_vcr_cassettes_match_endpoint_models` now skips with a clear message when no cassettes are found, instead of silently passing.
