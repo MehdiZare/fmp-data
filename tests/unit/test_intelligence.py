@@ -188,7 +188,7 @@ class TestMarketIntelligenceClientCalendar:
         result = fmp_client.intelligence.get_earnings_calendar()
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert len(kwargs) == 0  # No date parameters when None
         assert isinstance(result, list)
         assert len(result) == 1
@@ -207,8 +207,7 @@ class TestMarketIntelligenceClientCalendar:
         )
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
-        print(kwargs)
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["start_date"] == "2024-01-01"
         assert kwargs["end_date"] == "2024-01-31"
         assert isinstance(result, list)
@@ -222,7 +221,7 @@ class TestMarketIntelligenceClientCalendar:
         result = fmp_client.intelligence.get_historical_earnings("AAPL")
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "AAPL"
         assert isinstance(result, list)
 
@@ -237,7 +236,7 @@ class TestMarketIntelligenceClientCalendar:
         )
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["start_date"] == "2024-01-01"
         assert kwargs["end_date"] == "2024-01-31"
         assert isinstance(result, list)
@@ -255,7 +254,7 @@ class TestMarketIntelligenceClientCalendar:
         result = fmp_client.intelligence.get_earnings_surprises("AAPL")
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "AAPL"
         assert isinstance(result, list)
 
@@ -270,7 +269,7 @@ class TestMarketIntelligenceClientCalendar:
         )
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["start_date"] == "2024-01-01"
         assert kwargs["end_date"] == "2024-01-31"
         assert isinstance(result, list)
@@ -292,7 +291,7 @@ class TestMarketIntelligenceClientCalendar:
         )
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["start_date"] == "2024-01-01"
         assert kwargs["end_date"] == "2024-01-31"
         assert isinstance(result, list)
@@ -306,7 +305,7 @@ class TestMarketIntelligenceClientCalendar:
         )
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["start_date"] == "2024-01-01"
         assert kwargs["end_date"] == "2024-01-31"
         assert isinstance(result, list)
@@ -349,7 +348,7 @@ class TestMarketIntelligenceClientNews:
         result = fmp_client.intelligence.get_fmp_articles()
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 0
         assert kwargs["limit"] == 20
         assert isinstance(result, list)
@@ -362,7 +361,7 @@ class TestMarketIntelligenceClientNews:
         _ = fmp_client.intelligence.get_fmp_articles(page=1, limit=10)
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 1
         assert kwargs["limit"] == 10
 
@@ -401,7 +400,7 @@ class TestMarketIntelligenceClientNews:
         result = fmp_client.intelligence.get_general_news(page=0)
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 0
         assert kwargs["limit"] == 20
         assert isinstance(result, list)
@@ -426,7 +425,7 @@ class TestMarketIntelligenceClientNews:
         )
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 1
         assert kwargs["start_date"] == "2024-01-01"
         assert kwargs["end_date"] == "2024-01-31"
@@ -444,7 +443,7 @@ class TestMarketIntelligenceClientNews:
         )
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 1
         assert kwargs["start_date"] == "2024-01-01"
         assert kwargs["end_date"] == "2024-01-31"
@@ -457,7 +456,7 @@ class TestMarketIntelligenceClientNews:
         _ = fmp_client.intelligence.get_stock_news("AAPL")
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["start_date"] is None
         assert kwargs["end_date"] is None
 
@@ -506,7 +505,7 @@ class TestMarketIntelligenceClientNews:
         )
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["start_date"] == "2024-01-01"
         assert kwargs["end_date"] == "2024-01-31"
         assert kwargs["limit"] == 25
@@ -533,7 +532,7 @@ class TestMarketIntelligenceClientNews:
         )
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "EURUSD"
         assert kwargs["start_date"] == "2024-01-01"
         assert kwargs["end_date"] == "2024-01-31"
@@ -560,7 +559,7 @@ class TestMarketIntelligenceClientNews:
         )
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["start_date"] == "2024-01-01"
         assert kwargs["end_date"] == "2024-01-31"
         assert kwargs["limit"] == 20
@@ -587,7 +586,7 @@ class TestMarketIntelligenceClientNews:
         )
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "BTCUSD"
         assert kwargs["start_date"] == "2024-01-01"
         assert kwargs["end_date"] == "2024-01-31"
@@ -615,7 +614,7 @@ class TestMarketIntelligenceClientPressReleases:
         )
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 0
         assert kwargs["start_date"] == "2024-01-01"
         assert kwargs["end_date"] == "2024-01-31"
@@ -640,7 +639,7 @@ class TestMarketIntelligenceClientPressReleases:
         )
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "AAPL"
         assert kwargs["page"] == 1
         assert kwargs["start_date"] == "2024-01-01"
@@ -690,7 +689,7 @@ class TestMarketIntelligenceClientSocialSentiment:
         result = fmp_client.intelligence.get_esg_benchmark()
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert "year" not in kwargs
         assert isinstance(result, list)
         assert len(result) == 1
@@ -709,7 +708,7 @@ class TestMarketIntelligenceClientESG:
         result = fmp_client.intelligence.get_esg_data("AAPL")
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "AAPL"
         assert isinstance(result, ESGData)
         assert result.symbol == "AAPL"
@@ -732,7 +731,7 @@ class TestMarketIntelligenceClientESG:
         result = fmp_client.intelligence.get_esg_ratings("AAPL")
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "AAPL"
         assert isinstance(result, ESGRating)
 
@@ -752,7 +751,7 @@ class TestMarketIntelligenceClientESG:
         _ = fmp_client.intelligence.get_esg_benchmark()
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert "year" not in kwargs
 
 
@@ -783,7 +782,7 @@ class TestMarketIntelligenceClientGovernment:
         _ = fmp_client.intelligence.get_senate_latest(page=0, limit=100)
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 0
         assert kwargs["limit"] == 100
 
@@ -809,7 +808,7 @@ class TestMarketIntelligenceClientGovernment:
         _ = fmp_client.intelligence.get_senate_trading("AAPL")
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "AAPL"
 
     def test_get_senate_trades_by_name(self, fmp_client, mock_client):
@@ -819,7 +818,7 @@ class TestMarketIntelligenceClientGovernment:
         _ = fmp_client.intelligence.get_senate_trades_by_name("Jerry")
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["name"] == "Jerry"
 
     def test_get_senate_trading_rss(self, fmp_client, mock_client):
@@ -829,7 +828,7 @@ class TestMarketIntelligenceClientGovernment:
         _ = fmp_client.intelligence.get_senate_trading_rss(page=0)
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 0
 
     def test_get_house_latest(self, fmp_client, mock_client):
@@ -856,7 +855,7 @@ class TestMarketIntelligenceClientGovernment:
         _ = fmp_client.intelligence.get_house_latest(page=0, limit=100)
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 0
         assert kwargs["limit"] == 100
 
@@ -882,7 +881,7 @@ class TestMarketIntelligenceClientGovernment:
         _ = fmp_client.intelligence.get_house_disclosure("AAPL")
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "AAPL"
 
     def test_get_house_trades_by_name(self, fmp_client, mock_client):
@@ -892,7 +891,7 @@ class TestMarketIntelligenceClientGovernment:
         _ = fmp_client.intelligence.get_house_trades_by_name("James")
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["name"] == "James"
 
 
@@ -943,7 +942,7 @@ class TestMarketIntelligenceClientFundraising:
         result = fmp_client.intelligence.get_crowdfunding_rss(page=0, limit=100)
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 0
         assert kwargs["limit"] == 100
         assert isinstance(result, list)
@@ -961,7 +960,7 @@ class TestMarketIntelligenceClientFundraising:
         result = fmp_client.intelligence.search_crowdfunding("startup")
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["name"] == "startup"
         assert isinstance(result, list)
         assert isinstance(result[0], CrowdfundingOfferingSearchItem)
@@ -973,7 +972,7 @@ class TestMarketIntelligenceClientFundraising:
         _ = fmp_client.intelligence.get_crowdfunding_by_cik("0001234567")
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["cik"] == "0001234567"
 
     def test_get_equity_offering_rss(self, fmp_client, mock_client):
@@ -1024,7 +1023,7 @@ class TestMarketIntelligenceClientFundraising:
         result = fmp_client.intelligence.get_equity_offering_rss(page=0, limit=10)
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 0
         assert kwargs["limit"] == 10
         assert isinstance(result, list)
@@ -1043,7 +1042,7 @@ class TestMarketIntelligenceClientFundraising:
         result = fmp_client.intelligence.search_equity_offering("company")
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["name"] == "company"
         assert isinstance(result, list)
         assert isinstance(result[0], EquityOfferingSearchItem)
@@ -1055,7 +1054,7 @@ class TestMarketIntelligenceClientFundraising:
         _ = fmp_client.intelligence.get_equity_offering_by_cik("0001234567")
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["cik"] == "0001234567"
 
 
@@ -1080,7 +1079,7 @@ class TestMarketIntelligenceClientEdgeCases:
         fmp_client.intelligence.get_stock_news("AAPL", from_date=None, to_date=None)
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["start_date"] is None
         assert kwargs["end_date"] is None
 
@@ -1107,7 +1106,7 @@ class TestMarketIntelligenceClientEdgeCases:
         )
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["start_date"] == "2024-12-31"
         assert kwargs["end_date"] == "2024-01-01"
 
@@ -1133,7 +1132,7 @@ class TestMarketIntelligenceClientEdgeCases:
         )
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["page"] is None
         assert kwargs["start_date"] is None
         assert kwargs["end_date"] is None
@@ -1170,7 +1169,7 @@ class TestMarketIntelligenceClientAnalyst:
         result = fmp_client.intelligence.get_ratings_snapshot("AAPL")
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "AAPL"
         assert isinstance(result, RatingsSnapshot)
         assert result.symbol == "AAPL"
@@ -1231,7 +1230,7 @@ class TestMarketIntelligenceClientAnalyst:
         result = fmp_client.intelligence.get_ratings_historical("AAPL", limit=50)
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "AAPL"
         assert kwargs["limit"] == 50
         assert isinstance(result, list)
@@ -1258,7 +1257,7 @@ class TestMarketIntelligenceClientAnalyst:
         result = fmp_client.intelligence.get_price_target_news("AAPL", page=1)
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "AAPL"
         assert kwargs["page"] == 1
         assert isinstance(result, list)
@@ -1284,7 +1283,7 @@ class TestMarketIntelligenceClientAnalyst:
         result = fmp_client.intelligence.get_price_target_latest_news(page=0)
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 0
         assert isinstance(result, list)
 
@@ -1308,7 +1307,7 @@ class TestMarketIntelligenceClientAnalyst:
         result = fmp_client.intelligence.get_grades("AAPL", page=2)
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "AAPL"
         assert kwargs["page"] == 2
         assert isinstance(result, list)
@@ -1334,7 +1333,7 @@ class TestMarketIntelligenceClientAnalyst:
         result = fmp_client.intelligence.get_grades_historical("AAPL", limit=200)
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "AAPL"
         assert kwargs["limit"] == 200
         assert isinstance(result, list)
@@ -1356,7 +1355,7 @@ class TestMarketIntelligenceClientAnalyst:
         result = fmp_client.intelligence.get_grades_consensus("AAPL")
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "AAPL"
         assert isinstance(result, StockGradesConsensus)
         assert result.consensus == "Buy"
@@ -1400,7 +1399,7 @@ class TestMarketIntelligenceClientAnalyst:
         result = fmp_client.intelligence.get_grades_news("AAPL", page=1)
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "AAPL"
         assert kwargs["page"] == 1
         assert isinstance(result, list)
@@ -1426,7 +1425,7 @@ class TestMarketIntelligenceClientAnalyst:
         result = fmp_client.intelligence.get_grades_latest_news(page=0)
 
         mock_client.request.assert_called_once()
-        args, kwargs = mock_client.request.call_args
+        _args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 0
         assert isinstance(result, list)
         assert result[0].symbol == "MSFT"

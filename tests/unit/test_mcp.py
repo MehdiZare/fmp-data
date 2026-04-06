@@ -100,7 +100,7 @@ class TestToolLoader:
         # Ensure the attribute really doesn't exist
         del test_obj.client.missing_method
 
-        with pytest.raises(RuntimeError, match="Attribute chain .* failed"):
+        with pytest.raises(RuntimeError, match=r"Attribute chain .* failed"):
             _resolve_attr(test_obj, "client.missing_method")
 
     def test_resolve_attr_not_callable(self):
@@ -110,7 +110,7 @@ class TestToolLoader:
         mock_obj = Mock()
         mock_obj.client.data = "not_callable"
 
-        with pytest.raises(RuntimeError, match=".* is not callable"):
+        with pytest.raises(RuntimeError, match=r".* is not callable"):
             _resolve_attr(mock_obj, "client.data")
 
     @patch("fmp_data.mcp.tool_loader.importlib.import_module")
@@ -132,7 +132,7 @@ class TestToolLoader:
         mock_module = Mock(spec=[])  # Empty spec means no attributes
         mock_import.return_value = mock_module
 
-        with pytest.raises(RuntimeError, match="lacks.*ENDPOINTS_SEMANTICS"):
+        with pytest.raises(RuntimeError, match=r"lacks.*ENDPOINTS_SEMANTICS"):
             _load_semantics("company", "profile")
 
     def test_register_from_manifest_duplicate_keys_raises(self):

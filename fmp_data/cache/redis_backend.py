@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any
+from typing import Any, cast
 
 from fmp_data.cache.base import CacheBackend
 
@@ -44,7 +44,7 @@ class RedisCache(CacheBackend):
 
     def get(self, key: str) -> Any | None:
         try:
-            raw = self._client.get(self._prefixed(key))
+            raw = cast(str | None, self._client.get(self._prefixed(key)))
         except Exception:
             logger.warning("Redis get error for key %s", key, exc_info=True)
             return None
@@ -74,7 +74,10 @@ class RedisCache(CacheBackend):
         cursor: int = 0
         try:
             while True:
-                cursor, keys = self._client.scan(cursor, match=pattern, count=100)
+                cursor, keys = cast(
+                    tuple[int, list[str]],
+                    self._client.scan(cursor, match=pattern, count=100),
+                )
                 if keys:
                     self._client.delete(*keys)
                 if cursor == 0:
