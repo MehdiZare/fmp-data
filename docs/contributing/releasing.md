@@ -13,7 +13,7 @@ MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
 ```
 
 - **MAJOR**: Breaking changes that require user action
-- **MINOR**: New features that are backward compatible
+- **MINOR**: New features and intentional public API/schema changes that remain source-compatible
 - **PATCH**: Bug fixes and minor improvements
 - **PRERELEASE**: Alpha, beta, or release candidate versions
 - **BUILD**: Build metadata (not used in our releases)
@@ -22,11 +22,11 @@ MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
 
 | Change Type | PR Label | Version Bump | Example |
 |-------------|----------|--------------|---------|
-| Breaking Changes | `major` | MAJOR | 1.0.0 → 2.0.0 |
-| New Features | `minor` | MINOR | 1.0.0 → 1.1.0 |
-| Bug Fixes | `patch` | PATCH | 1.0.0 → 1.0.1 |
-| Documentation | `patch` | PATCH | 1.0.0 → 1.0.1 |
-| Chores | `patch` | PATCH | 1.0.0 → 1.0.1 |
+| Breaking Changes | `release:major` | MAJOR | 1.0.0 → 2.0.0 |
+| New Features / Public type changes | `release:minor` | MINOR | 1.0.0 → 1.1.0 |
+| Bug Fixes | `release:patch` | PATCH | 1.0.0 → 1.0.1 |
+| Documentation | `release:patch` | PATCH | 1.0.0 → 1.0.1 |
+| Chores | `release:patch` | PATCH | 1.0.0 → 1.0.1 |
 
 ## Automated Release Process
 
@@ -45,9 +45,9 @@ Our release process is fully automated using GitHub Actions:
 ### Required PR Labels
 
 **Version Bump Labels** (exactly one required):
-- `major`: For breaking changes
-- `minor`: For new features
-- `patch`: For bug fixes and minor changes
+- `release:major`: For breaking changes
+- `release:minor`: For new features and intentional public type/schema changes
+- `release:patch`: For bug fixes and minor changes
 
 **Additional Labels** (optional):
 - `dependencies`: Dependency updates
@@ -63,29 +63,36 @@ Our release process is fully automated using GitHub Actions:
 name: Release
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches: [ main ]
 
 jobs:
   release:
+    if: |
+      github.event.pull_request.merged == true &&
+      (contains(github.event.pull_request.labels.*.name, 'release:major') ||
+       contains(github.event.pull_request.labels.*.name, 'release:minor') ||
+       contains(github.event.pull_request.labels.*.name, 'release:patch'))
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6.2.0
         with:
           python-version: '3.14'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v8.0.0
 
       - name: Build distribution
         run: python -m build --wheel --sdist
 
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.12.4
+        uses: pypa/gh-action-pypi-publish@v1.13.0
         with:
           packages-dir: dist/
+          skip-existing: true
 ```
 
 ## Manual Release Process
@@ -137,7 +144,7 @@ For emergency releases or when automation fails:
 
 6. **Create Release PR**
    - Create PR from release branch to main
-   - Add appropriate version label
+   - Add exactly one version label: `release:major`, `release:minor`, or `release:patch`
    - Include release notes in description
 
 7. **Merge and Tag**

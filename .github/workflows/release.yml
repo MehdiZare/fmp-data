@@ -26,18 +26,18 @@ jobs:
 
     steps:
       - name: 🛎️ Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0  # Fetch all history for proper versioning
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 🐍 Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v6.2.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: ⚡ Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v8.0.0
         with:
           enable-cache: true
 
@@ -98,11 +98,14 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
 
-          # Create annotated tag
-          git tag -a "${{ steps.version.outputs.VERSION }}" -m "Release ${{ steps.version.outputs.VERSION }}"
+          RELEASE_TAG="${{ steps.version.outputs.VERSION }}"
 
-          # Push tag
-          git push origin "${{ steps.version.outputs.VERSION }}"
+          if git rev-parse -q --verify "refs/tags/${RELEASE_TAG}" > /dev/null; then
+            echo "Tag ${RELEASE_TAG} already exists, skipping creation"
+          else
+            git tag -a "$RELEASE_TAG" -m "Release $RELEASE_TAG"
+            git push origin "$RELEASE_TAG"
+          fi
 
       - name: 📦 Build distribution
         run: |
@@ -143,29 +146,41 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: 🚀 Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.VERSION }}
-          name: Release ${{ steps.version.outputs.VERSION }}
-          body: |
-            ## 🎉 Release ${{ steps.version.outputs.VERSION }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.version.outputs.VERSION }}
+          RELEASE_VERSION: ${{ steps.version.outputs.VERSION_NUMBER }}
+        run: |
+          cat > release-notes.md <<'EOF'
+          ## 🎉 Release ${{ steps.version.outputs.VERSION }}
 
-            ${{ steps.release_notes.outputs.NOTES }}
+          ${{ steps.release_notes.outputs.NOTES }}
 
-            ### 📦 Installation
-            ```bash
-            pip install fmp-data==${{ steps.version.outputs.VERSION_NUMBER }}
-            ```
+          ### 📦 Installation
+          ```bash
+          pip install fmp-data==${{ steps.version.outputs.VERSION_NUMBER }}
+          ```
 
-            ### 🔗 Links
-            - [PyPI Package](https://pypi.org/project/fmp-data/${{ steps.version.outputs.VERSION_NUMBER }}/)
-            - [Documentation](https://mehdizare.github.io/fmp-data/)
-          files: dist/*
-          prerelease: false
-          generate_release_notes: true
+          ### 🔗 Links
+          - [PyPI Package](https://pypi.org/project/fmp-data/${{ steps.version.outputs.VERSION_NUMBER }}/)
+          - [Documentation](https://mehdizare.github.io/fmp-data/)
+          EOF
+
+          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists, updating notes and assets"
+            gh release upload "$RELEASE_TAG" dist/* --clobber
+            gh release edit "$RELEASE_TAG" \
+              --title "Release $RELEASE_TAG" \
+              --notes-file release-notes.md
+          else
+            gh release create "$RELEASE_TAG" dist/* \
+              --verify-tag \
+              --title "Release $RELEASE_TAG" \
+              --notes-file release-notes.md
+          fi
 
       - name: 🚀 Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.13.0
         with:
           packages-dir: dist/
-          skip-existing: false
+          skip-existing: true

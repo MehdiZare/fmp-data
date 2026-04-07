@@ -130,7 +130,7 @@ class TestCompanyEndpoints(BaseTestCase):
                 assert isinstance(price.high, float)
                 assert isinstance(price.low, float)
                 assert isinstance(price.close, float)
-                assert isinstance(price.volume, int)
+                assert isinstance(price.volume, float)
 
     def test_get_market_cap(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting market capitalization data"""

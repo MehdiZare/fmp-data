@@ -517,7 +517,7 @@ class IntradayPrice(BaseModel):
     low: float = Field(description="Low price")
     high: float = Field(description="High price")
     close: float = Field(description="Closing price")
-    volume: int = Field(description="Trading volume")
+    volume: float = Field(description="Trading volume")
 
 
 class ExecutiveCompensation(BaseModel):

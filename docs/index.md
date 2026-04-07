@@ -38,6 +38,12 @@ Now with 100% coverage of the FMP stable endpoint catalog.
 
 ## Quick Start
 
+### Launch Notes
+
+- Price-history volume fields now normalize to `float` for a single stable return type when FMP mixes whole-number and fractional payloads.
+- This affects `alternative.HistoricalPrice.volume`, `alternative.HistoricalPrice.unadjusted_volume`, and `company.IntradayPrice.volume`.
+- If your code previously type-checked these values as integers, expect whole-number payloads to deserialize as values like `123.0`.
+
 ### Installation
 
 ```bash
