@@ -189,9 +189,9 @@ chore(deps): update httpx to latest version
 
 We use automated semantic versioning based on PR labels:
 
-- **major**: Breaking changes (v1.0.0 → v2.0.0)
-- **minor**: New features (v1.0.0 → v1.1.0)
-- **patch**: Bug fixes (v1.0.0 → v1.0.1)
+- **release:major**: Breaking changes (v1.0.0 → v2.0.0)
+- **release:minor**: New features and intentional public type/schema changes (v1.0.0 → v1.1.0)
+- **release:patch**: Bug fixes (v1.0.0 → v1.0.1)
 
 ### Release Process
 

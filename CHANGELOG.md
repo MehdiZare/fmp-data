@@ -20,13 +20,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added per-endpoint TTL overrides, deterministic cache keys, and `force_refresh=True` support to bypass cache reads on demand
   - Added optional `cache-redis` extra for Redis-backed caching
 
+### Changed
+- **Volume Type Normalization** - Normalized price-model volume fields to always deserialize as `float`:
+  - `alternative.HistoricalPrice.volume` and `alternative.HistoricalPrice.unadjusted_volume` now normalize whole-number payloads such as `123` to `123.0`
+  - `company.IntradayPrice.volume` now normalizes whole-number payloads to `float` as well
+  - This keeps a single return type for price-volume fields when FMP mixes integer and fractional responses
+  - Release impact: treat this as a minor release because the runtime type and generated schema change from integer to number for these fields
+
 ### Fixed
 - **Cache Payload Isolation** - Prevented mutable cached payloads from being shared by reference:
   - `BaseClient` now deep-copies cache payloads on both cache read and write paths
   - Added sync and async regression coverage to prevent future cache aliasing regressions
 - **Float Volume Handling** - Fixed price models that failed when FMP returned fractional volume values:
-  - `alternative.HistoricalPrice.volume` and `alternative.HistoricalPrice.unadjusted_volume` now accept floats
-  - `company.IntradayPrice.volume` now accepts floats
+  - `alternative.HistoricalPrice.volume` and `alternative.HistoricalPrice.unadjusted_volume` now validate fractional inputs without raising
+  - `company.IntradayPrice.volume` now validates fractional inputs without raising
   - Added regression tests for both float-volume validation paths
 - **Quote Volume Nullability** - Fixed quote models to accept `null` volume values from the API:
   - `Quote.volume` and `SimpleQuote.volume` now use `int | None`

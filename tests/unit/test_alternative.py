@@ -158,7 +158,8 @@ def test_crypto_historical_price_model(mock_crypto_historical):
     assert price.low == 43500.00
     assert price.close == 45000.00
     assert price.adj_close == 45000.00
-    assert price.volume == 25000000000
+    assert price.volume == pytest.approx(25000000000.0)
+    assert isinstance(price.volume, float)
     assert price.change == 1250.00
     assert price.change_percent == 2.85
     assert price.vwap == 44500.00
@@ -174,3 +175,19 @@ def test_alternative_historical_price_accepts_float_volume(mock_crypto_historica
 
     assert price.volume == pytest.approx(25000000000.75)
     assert price.unadjusted_volume == pytest.approx(24999999999.25)
+
+
+def test_alternative_historical_price_normalizes_integer_volume_to_float(
+    mock_crypto_historical,
+):
+    """Test integer volume payloads normalize to float for a single API shape."""
+    historical_data = dict(mock_crypto_historical["historical"][0])
+    historical_data["volume"] = 123456789
+    historical_data["unadjustedVolume"] = 123456700
+
+    price = AlternativeHistoricalPrice.model_validate(historical_data)
+
+    assert price.volume == pytest.approx(123456789.0)
+    assert isinstance(price.volume, float)
+    assert price.unadjusted_volume == pytest.approx(123456700.0)
+    assert isinstance(price.unadjusted_volume, float)

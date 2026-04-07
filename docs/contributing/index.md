@@ -195,9 +195,9 @@ Use conventional commit format for PR titles:
 
 Add appropriate labels for semantic versioning:
 
-- `major`: Breaking changes (bumps major version)
-- `minor`: New features (bumps minor version)
-- `patch`: Bug fixes (bumps patch version)
+- `release:major`: Breaking changes (bumps major version)
+- `release:minor`: New features and intentional public type/schema changes (bumps minor version)
+- `release:patch`: Bug fixes (bumps patch version)
 
 ### PR Description Template
 

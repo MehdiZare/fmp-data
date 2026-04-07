@@ -13,7 +13,7 @@ MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
 ```
 
 - **MAJOR**: Breaking changes that require user action
-- **MINOR**: New features that are backward compatible
+- **MINOR**: New features and intentional public API/schema changes that remain source-compatible
 - **PATCH**: Bug fixes and minor improvements
 - **PRERELEASE**: Alpha, beta, or release candidate versions
 - **BUILD**: Build metadata (not used in our releases)
@@ -22,11 +22,11 @@ MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
 
 | Change Type | PR Label | Version Bump | Example |
 |-------------|----------|--------------|---------|
-| Breaking Changes | `major` | MAJOR | 1.0.0 → 2.0.0 |
-| New Features | `minor` | MINOR | 1.0.0 → 1.1.0 |
-| Bug Fixes | `patch` | PATCH | 1.0.0 → 1.0.1 |
-| Documentation | `patch` | PATCH | 1.0.0 → 1.0.1 |
-| Chores | `patch` | PATCH | 1.0.0 → 1.0.1 |
+| Breaking Changes | `release:major` | MAJOR | 1.0.0 → 2.0.0 |
+| New Features / Public type changes | `release:minor` | MINOR | 1.0.0 → 1.1.0 |
+| Bug Fixes | `release:patch` | PATCH | 1.0.0 → 1.0.1 |
+| Documentation | `release:patch` | PATCH | 1.0.0 → 1.0.1 |
+| Chores | `release:patch` | PATCH | 1.0.0 → 1.0.1 |
 
 ## Automated Release Process
 
@@ -45,9 +45,9 @@ Our release process is fully automated using GitHub Actions:
 ### Required PR Labels
 
 **Version Bump Labels** (exactly one required):
-- `major`: For breaking changes
-- `minor`: For new features
-- `patch`: For bug fixes and minor changes
+- `release:major`: For breaking changes
+- `release:minor`: For new features and intentional public type/schema changes
+- `release:patch`: For bug fixes and minor changes
 
 **Additional Labels** (optional):
 - `dependencies`: Dependency updates

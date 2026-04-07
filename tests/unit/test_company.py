@@ -465,6 +465,22 @@ class TestIntradayPriceModel:
         assert price.volume == pytest.approx(28541.004200000316)
         assert isinstance(price.volume, float)
 
+    def test_intraday_price_normalizes_integer_volume_to_float(self):
+        """Test integer intraday volume payloads normalize to float."""
+        data = {
+            "date": "2024-01-05T16:00:00",
+            "open": 149.00,
+            "low": 148.50,
+            "high": 151.00,
+            "close": 150.25,
+            "volume": 28541,
+        }
+
+        price = IntradayPrice.model_validate(data)
+
+        assert price.volume == pytest.approx(28541.0)
+        assert isinstance(price.volume, float)
+
     def test_simple_quote_volume_validator_string(self):
         """Test SimpleQuote volume validator passes non-numeric values."""
         assert SimpleQuote.coerce_volume_to_int("abc") == "abc"

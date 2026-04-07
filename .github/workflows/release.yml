@@ -98,11 +98,14 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
 
-          # Create annotated tag
-          git tag -a "${{ steps.version.outputs.VERSION }}" -m "Release ${{ steps.version.outputs.VERSION }}"
+          RELEASE_TAG="${{ steps.version.outputs.VERSION }}"
 
-          # Push tag
-          git push origin "${{ steps.version.outputs.VERSION }}"
+          if git rev-parse -q --verify "refs/tags/${RELEASE_TAG}" > /dev/null; then
+            echo "Tag ${RELEASE_TAG} already exists, skipping creation"
+          else
+            git tag -a "$RELEASE_TAG" -m "Release $RELEASE_TAG"
+            git push origin "$RELEASE_TAG"
+          fi
 
       - name: 📦 Build distribution
         run: |
@@ -163,14 +166,21 @@ jobs:
           - [Documentation](https://mehdizare.github.io/fmp-data/)
           EOF
 
-          gh release create "$RELEASE_TAG" dist/* \
-            --verify-tag \
-            --title "Release $RELEASE_TAG" \
-            --notes-file release-notes.md \
-            --generate-notes
+          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists, updating notes and assets"
+            gh release upload "$RELEASE_TAG" dist/* --clobber
+            gh release edit "$RELEASE_TAG" \
+              --title "Release $RELEASE_TAG" \
+              --notes-file release-notes.md
+          else
+            gh release create "$RELEASE_TAG" dist/* \
+              --verify-tag \
+              --title "Release $RELEASE_TAG" \
+              --notes-file release-notes.md
+          fi
 
       - name: 🚀 Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.13.0
         with:
           packages-dir: dist/
-          skip-existing: false
+          skip-existing: true
