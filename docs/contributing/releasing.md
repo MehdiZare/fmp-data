@@ -63,29 +63,36 @@ Our release process is fully automated using GitHub Actions:
 name: Release
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches: [ main ]
 
 jobs:
   release:
+    if: |
+      github.event.pull_request.merged == true &&
+      (contains(github.event.pull_request.labels.*.name, 'release:major') ||
+       contains(github.event.pull_request.labels.*.name, 'release:minor') ||
+       contains(github.event.pull_request.labels.*.name, 'release:patch'))
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6.2.0
         with:
           python-version: '3.14'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v8.0.0
 
       - name: Build distribution
         run: python -m build --wheel --sdist
 
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.12.4
+        uses: pypa/gh-action-pypi-publish@v1.13.0
         with:
           packages-dir: dist/
+          skip-existing: true
 ```
 
 ## Manual Release Process
@@ -137,7 +144,7 @@ For emergency releases or when automation fails:
 
 6. **Create Release PR**
    - Create PR from release branch to main
-   - Add appropriate version label
+   - Add exactly one version label: `release:major`, `release:minor`, or `release:patch`
    - Include release notes in description
 
 7. **Merge and Tag**

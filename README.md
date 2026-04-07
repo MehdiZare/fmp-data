@@ -48,6 +48,12 @@ To use this library, you'll need an API key from Financial Modeling Prep (FMP). 
 
 ## Installation
 
+## Launch Notes
+
+- Price-history volume fields now normalize to `float` so integer and fractional FMP payloads share one stable return type.
+- This affects `alternative.HistoricalPrice.volume`, `alternative.HistoricalPrice.unadjusted_volume`, and `company.IntradayPrice.volume`.
+- Whole-number payloads for those models now deserialize as values like `123.0`, which is why this ships as a minor release instead of a patch.
+
 ### Using UV (Recommended)
 
 ```bash
