@@ -1,4 +1,5 @@
 import json
+import traceback
 from unittest.mock import MagicMock, Mock, patch
 
 import httpx
@@ -271,6 +272,33 @@ def test_handle_http_status_error_uses_retry_after_header(base_client):
         base_client._handle_http_status_error(error)
 
     assert exc_info.value.retry_after == 12.0
+
+
+def test_handle_http_status_error_redacts_chained_apikey_traceback(base_client):
+    """Test 429 tracebacks do not expose the API key query parameter."""
+    marker = "TRACEBACK_REDACTION_SENTINEL"
+    request = httpx.Request(
+        "GET",
+        f"https://financialmodelingprep.com/stable/quote?symbol=AAPL&apikey={marker}",
+    )
+    response = httpx.Response(
+        429,
+        request=request,
+        json={"message": "Rate limit exceeded"},
+    )
+
+    try:
+        base_client.handle_response(response)
+    except RateLimitError as exc:
+        formatted_traceback = traceback.format_exc()
+        assert "apikey=" not in formatted_traceback
+        assert marker not in formatted_traceback
+        assert "apikey=" not in str(exc)
+        assert marker not in str(exc)
+        assert exc.__cause__ is None
+        assert exc.__suppress_context__ is True
+    else:
+        pytest.fail("Expected RateLimitError")
 
 
 @pytest.mark.parametrize(
