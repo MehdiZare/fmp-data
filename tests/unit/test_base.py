@@ -284,7 +284,7 @@ def test_handle_http_status_error_uses_retry_after_header(base_client):
     ],
 )
 def test_handle_http_status_error_redacts_chained_apikey_traceback(
-    base_client,
+    base_client: BaseClient,
     status_code: int,
     expected_exception: type[FMPError],
 ) -> None:
