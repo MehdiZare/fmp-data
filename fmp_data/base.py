@@ -6,8 +6,9 @@ from contextvars import ContextVar
 import copy
 import json
 import logging
+import re
 import time
-from typing import Any, Literal, TypeGuard, TypeVar, cast, overload
+from typing import Any, Literal, NoReturn, TypeGuard, TypeVar, cast, overload
 import warnings
 
 import httpx
@@ -46,10 +47,48 @@ _rate_limit_retry_count: ContextVar[int] = ContextVar(
     "rate_limit_retry_count", default=0
 )
 _extra_field_warnings_seen: set[tuple[str, tuple[str, ...]]] = set()
+_API_KEY_ASSIGNMENT_RE = re.compile(
+    r"([\"']?api_?key[\"']?\s*[=:]\s*[\"']?)([^&\s\"'<>]+)([\"']?)",
+    re.IGNORECASE,
+)
+_API_KEY_ENCODED_RE = re.compile(r"(apikey%3[Dd])([^&\s\"'<>]+)", re.IGNORECASE)
 
 
 def _is_pydantic_model(model: type[Any]) -> TypeGuard[type[BaseModel]]:
     return isinstance(model, type) and issubclass(model, BaseModel)
+
+
+def _redact_api_keys(text: str) -> str:
+    """Redact API key values in common URL, encoded URL, and JSON forms."""
+    redacted = _API_KEY_ASSIGNMENT_RE.sub(r"\1[REDACTED]\3", text)
+    return _API_KEY_ENCODED_RE.sub(r"\1[REDACTED]", redacted)
+
+
+def _sanitize_error_details(
+    value: dict[str, Any] | list[Any] | str,
+) -> dict[str, Any] | list[Any] | str:
+    if isinstance(value, str):
+        return _redact_api_keys(value)
+    if isinstance(value, list):
+        return [_sanitize_error_value(item) for item in value]
+    return {
+        key: (
+            "[REDACTED]"
+            if key.lower() in {"apikey", "api_key", "api-key"}
+            else _sanitize_error_value(item)
+        )
+        for key, item in value.items()
+    }
+
+
+def _sanitize_error_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return _sanitize_error_details(value)
+    if isinstance(value, list):
+        return [_sanitize_error_value(item) for item in value]
+    if isinstance(value, str):
+        return _redact_api_keys(value)
+    return value
 
 
 class BaseClient:
@@ -387,7 +426,7 @@ class BaseClient:
             try:
                 data: bytes | dict[str, Any] | list[Any]
                 if endpoint.response_model is bytes:
-                    response.raise_for_status()
+                    self._raise_response_for_status(response)
                     data = response.content
                 else:
                     data = self.handle_response(endpoint, response)
@@ -498,6 +537,16 @@ class BaseClient:
             )
         return cast(dict[str, Any] | list[Any], data)
 
+    def _raise_response_for_status(self, response: httpx.Response) -> None:
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            self._raise_fmp_http_error(
+                exc,
+                self._get_error_details(exc.response),
+                exc.response.status_code,
+            )
+
     @staticmethod
     def _get_error_details(
         response: httpx.Response,
@@ -505,10 +554,10 @@ class BaseClient:
         try:
             data = response.json()
         except json.JSONDecodeError:
-            return {"raw_content": response.content.decode()}
+            return {"raw_content": _redact_api_keys(response.content.decode())}
         if isinstance(data, dict | list):
-            return data
-        return {"raw_content": str(data)}
+            return cast(dict[str, Any] | list[Any], _sanitize_error_details(data))
+        return {"raw_content": _redact_api_keys(str(data))}
 
     def _handle_http_status_error(
         self,
@@ -551,6 +600,14 @@ class BaseClient:
                 )
                 return {}
 
+        self._raise_fmp_http_error(error, error_details, status_code)
+
+    def _raise_fmp_http_error(
+        self,
+        error: httpx.HTTPStatusError,
+        error_details: dict[str, Any] | list[Any],
+        status_code: int,
+    ) -> NoReturn:
         if status_code == 429:
             self._rate_limiter.handle_response(status_code, error.response.text)
             retry_after = self._rate_limiter.get_retry_after(error.response.headers)
@@ -564,27 +621,27 @@ class BaseClient:
                 status_code=429,
                 response=error_details,
                 retry_after=wait_time,
-            ) from error
+            ) from None
 
         if status_code == 401:
             raise AuthenticationError(
                 "Invalid API key or authentication failed",
                 status_code=401,
                 response=error_details,
-            ) from error
+            ) from None
 
         if status_code == 400:
             raise ValidationError(
                 f"Invalid request parameters: {error_details}",
                 status_code=400,
                 response=error_details,
-            ) from error
+            ) from None
 
         raise FMPError(
             f"HTTP {status_code} error occurred: {error_details}",
             status_code=status_code,
             response=error_details,
-        ) from error
+        ) from None
 
     @staticmethod
     def _check_error_response(data: dict[str, Any]) -> None:
@@ -902,7 +959,7 @@ class BaseClient:
             try:
                 data: bytes | dict[str, Any] | list[Any]
                 if endpoint.response_model is bytes:
-                    response.raise_for_status()
+                    self._raise_response_for_status(response)
                     data = response.content
                 else:
                     data = self.handle_response(endpoint, response)
