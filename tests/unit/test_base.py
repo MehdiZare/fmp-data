@@ -1,4 +1,5 @@
 import json
+import traceback
 from unittest.mock import MagicMock, Mock, patch
 
 import httpx
@@ -238,6 +239,24 @@ def test_get_error_details_json_decode_error():
     assert details == {"raw_content": "not json"}
 
 
+def test_get_error_details_redacts_api_keys():
+    """Error details should not preserve reflected API keys."""
+    fake_key_value = "SECRET_FMP_KEY"
+    response = Mock()
+    response.json.return_value = {
+        "url": f"https://example.test/path?apikey={fake_key_value}&symbol=AAPL",
+        "encoded": f"apikey%3D{fake_key_value}%26symbol%3DAAPL",
+        "apikey": fake_key_value,
+        "nested": [{"message": f'apikey="{fake_key_value}"'}],
+    }
+
+    details = BaseClient._get_error_details(response)
+
+    rendered = repr(details)
+    assert fake_key_value not in rendered
+    assert "[REDACTED]" in rendered
+
+
 def test_handle_http_status_error_404_empty_payloads(base_client):
     """Test 404 errors return empty payloads without raising."""
     request = httpx.Request("GET", "https://example.com")
@@ -271,6 +290,64 @@ def test_handle_http_status_error_uses_retry_after_header(base_client):
         base_client._handle_http_status_error(error)
 
     assert exc_info.value.retry_after == 12.0
+
+
+def test_handle_response_error_traceback_redacts_httpx_request_url(base_client):
+    """HTTP error handling should not chain tracebacks that expose API keys."""
+    fake_key_value = "SECRET_FMP_KEY"
+    request = httpx.Request(
+        "GET",
+        f"https://financialmodelingprep.com/stable/profile?apikey={fake_key_value}&symbol=AAPL",
+    )
+    response = httpx.Response(
+        401,
+        request=request,
+        json={"message": "Invalid API key"},
+    )
+
+    with pytest.raises(AuthenticationError) as exc_info:
+        base_client.handle_response(response)
+
+    exc = exc_info.value
+    rendered = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    assert exc.__cause__ is None
+    assert exc.__suppress_context__ is True
+    assert fake_key_value not in rendered
+    assert "HTTPStatusError" not in rendered
+
+
+def test_bytes_response_http_error_uses_redacted_fmp_exception(
+    base_client, mock_endpoint
+):
+    """Binary endpoints should not re-raise raw httpx status errors."""
+    fake_key_value = "SECRET_FMP_KEY"
+    request = httpx.Request(
+        "GET",
+        f"https://financialmodelingprep.com/stable/download?apikey={fake_key_value}",
+    )
+    response = httpx.Response(
+        401,
+        request=request,
+        json={"message": "Invalid API key"},
+    )
+    mock_endpoint.method.value = "GET"
+    mock_endpoint.build_url.return_value = (
+        "https://financialmodelingprep.com/stable/download"
+    )
+    mock_endpoint.response_model = bytes
+
+    with (
+        patch.object(base_client.client, "request", return_value=response),
+        pytest.raises(AuthenticationError) as exc_info,
+    ):
+        base_client._execute_request(mock_endpoint)
+
+    exc = exc_info.value
+    rendered = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    assert exc.__cause__ is None
+    assert exc.__suppress_context__ is True
+    assert fake_key_value not in rendered
+    assert "HTTPStatusError" not in rendered
 
 
 @pytest.mark.parametrize(
