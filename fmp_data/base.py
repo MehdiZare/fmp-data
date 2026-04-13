@@ -564,27 +564,27 @@ class BaseClient:
                 status_code=429,
                 response=error_details,
                 retry_after=wait_time,
-            ) from error
+            ) from None
 
         if status_code == 401:
             raise AuthenticationError(
                 "Invalid API key or authentication failed",
                 status_code=401,
                 response=error_details,
-            ) from error
+            ) from None
 
         if status_code == 400:
             raise ValidationError(
                 f"Invalid request parameters: {error_details}",
                 status_code=400,
                 response=error_details,
-            ) from error
+            ) from None
 
         raise FMPError(
             f"HTTP {status_code} error occurred: {error_details}",
             status_code=status_code,
             response=error_details,
-        ) from error
+        ) from None
 
     @staticmethod
     def _check_error_response(data: dict[str, Any]) -> None:
