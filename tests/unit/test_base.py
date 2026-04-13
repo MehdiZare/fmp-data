@@ -274,7 +274,7 @@ def test_handle_http_status_error_uses_retry_after_header(base_client):
     assert exc_info.value.retry_after == 12.0
 
 
-def test_handle_http_status_error_redacts_chained_apikey_traceback(base_client):
+def test_handle_http_status_error_redacts_chained_apikey_traceback(base_client) -> None:
     """Test 429 tracebacks do not expose the API key query parameter."""
     marker = "TRACEBACK_REDACTION_SENTINEL"
     request = httpx.Request(
