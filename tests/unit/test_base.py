@@ -351,6 +351,47 @@ def test_bytes_response_http_error_uses_redacted_fmp_exception(
 
 
 @pytest.mark.parametrize(
+    ("status_code", "expected_exception"),
+    [
+        (429, RateLimitError),
+        (401, AuthenticationError),
+        (400, ValidationError),
+        (500, FMPError),
+    ],
+)
+def test_handle_http_status_error_redacts_chained_apikey_traceback(
+    base_client: BaseClient,
+    status_code: int,
+    expected_exception: type[FMPError],
+) -> None:
+    """Test HTTP error tracebacks do not expose the API key query parameter."""
+    marker = "TRACEBACK_REDACTION_SENTINEL"
+    request = httpx.Request(
+        "GET",
+        f"https://financialmodelingprep.com/stable/quote?symbol=AAPL&apikey={marker}",
+    )
+    response = httpx.Response(
+        status_code,
+        request=request,
+        json={"message": "Rate limit exceeded"},
+    )
+
+    try:
+        base_client.handle_response(response)
+    except FMPError as exc:
+        assert isinstance(exc, expected_exception)
+        formatted_traceback = traceback.format_exc()
+        assert "apikey=" not in formatted_traceback
+        assert marker not in formatted_traceback
+        assert "apikey=" not in str(exc)
+        assert marker not in str(exc)
+        assert exc.__cause__ is None
+        assert exc.__suppress_context__ is True
+    else:
+        pytest.fail(f"Expected {expected_exception.__name__}")
+
+
+@pytest.mark.parametrize(
     "payload",
     [
         {"Error Message": "boom"},

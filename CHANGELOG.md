@@ -96,6 +96,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Will be removed in a future major version
 
 ### Security
+- **HTTP Error Traceback Redaction** - Suppressed exception chaining for HTTP status errors so formatted tracebacks do not expose API key query parameters:
+  - Updated rate limit, authentication, validation, and fallback HTTP error paths to raise sanitized package exceptions without chaining the raw `httpx.HTTPStatusError`
+  - Added regression coverage for API key redaction in formatted tracebacks and exception messages
 - **VCR Cassette Leak Guard** - Added unit tests that scan all committed VCR cassettes for leaked API keys:
   - `test_vcr_sanitization.py` verifies the VCR `scrub_api_key` / `scrub_response_secrets` hooks and scans every YAML cassette for real API key values
   - `test_cassette_contracts.py` validates every cassette response against its declared Pydantic endpoint model, catching schema drift and stale cassettes
@@ -106,6 +109,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **GitHub Actions Maintenance** - Updated workflow actions to current upstream releases:
   - Bumped `actions/deploy-pages` from `v4` to `v5` in the documentation workflow
   - Bumped `codecov/codecov-action` from `v5` to `v6` in CI coverage uploads
+  - Bumped `actions/github-script` from `v8` to `v9` in the TestPyPI publishing workflow
+  - Bumped `pypa/gh-action-pypi-publish` from `v1.13.0` to `v1.14.0` in publishing workflows
 - **VCR Cassettes Excluded from Git** - Cassettes are now gitignored (`tests/integration/vcr_cassettes/`) because they are too large for GitHub (130 MB+ individual files). Developers must record cassettes locally with `FMP_TEST_API_KEY`.
 - **CI Secret Scan** - The `secret-scan` job now gracefully skips when no cassette YAML files are present instead of failing.
 - **Cassette Contract Test** - `test_vcr_cassettes_match_endpoint_models` now skips with a clear message when no cassettes are found, instead of silently passing.
