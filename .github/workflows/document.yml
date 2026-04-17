@@ -94,7 +94,7 @@ jobs:
           PACKAGE_VERSION="${{ steps.version.outputs.VERSION }}" uv run mkdocs build --strict
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v4.0.0
+        uses: actions/upload-pages-artifact@v5.0.0
         with:
           path: site
 
