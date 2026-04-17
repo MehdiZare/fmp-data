@@ -47,7 +47,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: ⚡  Install uv (with cache)
-        uses: astral-sh/setup-uv@v8.0.0
+        uses: astral-sh/setup-uv@v8.1.0
         with:
           enable-cache: true
 
@@ -189,7 +189,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: ⚡  Install uv (with cache)
-        uses: astral-sh/setup-uv@v8.0.0
+        uses: astral-sh/setup-uv@v8.1.0
         with:
           enable-cache: true
 
