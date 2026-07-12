@@ -257,6 +257,27 @@ class TestCompanyProfile:
         assert profile.vol_avg == 50000000
         assert profile.volume == 25000000
 
+    def test_model_validation_fractional_string_volume(self, profile_data):
+        """Bulk CSV endpoints (e.g. profile-bulk) return volume as a fractional
+        STRING such as "475.9"; it must coerce to int instead of failing the
+        ``int`` field and silently dropping the whole parsed row (Issue #70)."""
+        profile_data["volAvg"] = "7155681.59509"
+        profile_data["volume"] = "475.9"
+        profile = CompanyProfile.model_validate(profile_data)
+        assert profile.vol_avg == 7155681
+        assert profile.volume == 475
+        assert isinstance(profile.vol_avg, int)
+        assert isinstance(profile.volume, int)
+
+    def test_model_validation_empty_string_volume(self, profile_data):
+        """An empty/whitespace volume cell (common in CSV rows) coerces to None,
+        not a validation error."""
+        profile_data["volAvg"] = ""
+        profile_data["volume"] = "   "
+        profile = CompanyProfile.model_validate(profile_data)
+        assert profile.vol_avg is None
+        assert profile.volume is None
+
     def test_model_validation_invalid_website(self, profile_data):
         """Test CompanyProfile model with invalid website URL"""
         # Use a URL with protocol but invalid hostname (no TLD) to trigger validation

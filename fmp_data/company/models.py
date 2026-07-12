@@ -25,7 +25,14 @@ from fmp_data.models import ShareFloat
 
 
 def coerce_volume_value(value: Any) -> Any:
-    """Coerce volume values to int (FMP API may return floats).
+    """Coerce volume values to int (FMP may return floats or numeric strings).
+
+    JSON endpoints return volume as a number, but the bulk CSV endpoints (e.g.
+    ``profile-bulk``) return a possibly-fractional string such as ``"475.9"``.
+    Both must land as ``int`` so a fractional value doesn't fail the ``int``
+    field and silently drop the whole parsed row. Empty strings become ``None``;
+    genuinely non-numeric strings are passed through unchanged so they surface as
+    a validation error instead of being masked.
 
     See: https://github.com/MehdiZare/fmp-data/issues/70
     """
@@ -33,6 +40,14 @@ def coerce_volume_value(value: Any) -> Any:
         return None
     if isinstance(value, int | float):
         return int(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return None
+        try:
+            return int(float(stripped))
+        except ValueError:
+            return value
     return value
 
 
