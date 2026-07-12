@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 import json
+import math
 from typing import Any
 from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
@@ -29,25 +30,34 @@ def coerce_volume_value(value: Any) -> Any:
 
     JSON endpoints return volume as a number, but the bulk CSV endpoints (e.g.
     ``profile-bulk``) return a possibly-fractional string such as ``"475.9"``.
-    Both must land as ``int`` so a fractional value doesn't fail the ``int``
-    field and silently drop the whole parsed row. Empty strings become ``None``;
-    genuinely non-numeric strings are passed through unchanged so they surface as
-    a validation error instead of being masked.
+    Both must land as ``int`` (truncating toward zero) so a fractional value
+    doesn't fail the ``int`` field and silently drop the whole parsed row.
+    Empty strings become ``None``; non-numeric and non-finite values (``nan``,
+    ``inf``) are passed through unchanged so they surface as a validation error
+    instead of raising ``OverflowError`` or masking bad data.
 
     See: https://github.com/MehdiZare/fmp-data/issues/70
     """
     if value is None:
         return None
     if isinstance(value, int | float):
+        # bool is a subclass of int; int(True)==1 would mask bad payloads.
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, float) and not math.isfinite(value):
+            return value
         return int(value)
     if isinstance(value, str):
         stripped = value.strip()
         if not stripped:
             return None
         try:
-            return int(float(stripped))
+            number = float(stripped)
         except ValueError:
             return value
+        if not math.isfinite(number):
+            return value
+        return int(number)
     return value
 
 

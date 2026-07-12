@@ -278,6 +278,20 @@ class TestCompanyProfile:
         assert profile.vol_avg is None
         assert profile.volume is None
 
+    def test_model_validation_non_finite_volume_raises(self, profile_data):
+        """Non-finite volume must not raise OverflowError; it surfaces as
+        ValidationError so bulk parsers can skip a single row safely."""
+        from pydantic import ValidationError
+
+        from fmp_data.company.models import coerce_volume_value
+
+        for bad in ("inf", "-inf", "nan", "NaN", float("inf"), float("nan")):
+            # Pass-through (no OverflowError); Pydantic then rejects the value.
+            assert coerce_volume_value(bad) is bad
+            profile_data["volume"] = bad
+            with pytest.raises(ValidationError):
+                CompanyProfile.model_validate(profile_data)
+
     def test_model_validation_invalid_website(self, profile_data):
         """Test CompanyProfile model with invalid website URL"""
         # Use a URL with protocol but invalid hostname (no TLD) to trigger validation
