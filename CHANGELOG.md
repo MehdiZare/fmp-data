@@ -28,6 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Release impact: treat this as a minor release because the runtime type and generated schema change from integer to number for these fields
 
 ### Fixed
+- **Bulk CSV Volume String Coercion** (#104) - Fixed silent bulk row drops when FMP sends volume as a fractional numeric string:
+  - `coerce_volume_value` now coerces numeric strings such as `"475.9"` via `int(float(...))` for `CompanyProfile` / `Quote` volume fields
+  - Empty/whitespace volume cells become `None`; non-numeric strings still surface as validation errors
+  - Addresses ~9.7% row loss on `profile-bulk` (and other bulk CSV endpoints that use the same helper). Refs #70
 - **Cache Payload Isolation** - Prevented mutable cached payloads from being shared by reference:
   - `BaseClient` now deep-copies cache payloads on both cache read and write paths
   - Added sync and async regression coverage to prevent future cache aliasing regressions
@@ -99,6 +103,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **HTTP Error Traceback Redaction** - Suppressed exception chaining for HTTP status errors so formatted tracebacks do not expose API key query parameters:
   - Updated rate limit, authentication, validation, and fallback HTTP error paths to raise sanitized package exceptions without chaining the raw `httpx.HTTPStatusError`
   - Added regression coverage for API key redaction in formatted tracebacks and exception messages
+- **HTTP Error Payload & Binary Path Redaction** (#97) - Expanded API-key redaction beyond traceback cause suppression:
+  - Redact reflected keys in HTTP error detail payloads (query-string, percent-encoded, nested JSON, and known key names)
+  - Route binary (`response_model is bytes`) status failures through the same typed FMP error mapper
+  - Safely decode non-UTF-8 error bodies, redact 429 bodies before rate-limiter logging, and keep mapped 5xx `FMPError`s retryable
+  - Added regression coverage for sync/async binary paths, non-UTF-8 bodies, and message embedding of error details
 - **VCR Cassette Leak Guard** - Added unit tests that scan all committed VCR cassettes for leaked API keys:
   - `test_vcr_sanitization.py` verifies the VCR `scrub_api_key` / `scrub_response_secrets` hooks and scans every YAML cassette for real API key values
   - `test_cassette_contracts.py` validates every cassette response against its declared Pydantic endpoint model, catching schema drift and stale cassettes
@@ -111,6 +120,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Bumped `codecov/codecov-action` from `v5` to `v6` in CI coverage uploads
   - Bumped `actions/github-script` from `v8` to `v9` in the TestPyPI publishing workflow
   - Bumped `pypa/gh-action-pypi-publish` from `v1.13.0` to `v1.14.0` in publishing workflows
+- **Dependency Refresh** (#105) - Raised GitHub Actions and Python package floors to current stable releases:
+  - Actions: `checkout` 7, `setup-python` 6.3, `setup-uv` 8.3.2, `cache` 6.1, `codecov-action` 7, and related workflow pins
+  - Python: pydantic 2.13, redis 8 (cache-redis extra), mypy 2.x, rich 15, langchain/openai/mcp stack bumps, ruff/pytest/nox updates
+  - Set mypy `python_version` to 3.12 for numpy 2.x stubs while keeping runtime support on 3.10+
 - **VCR Cassettes Excluded from Git** - Cassettes are now gitignored (`tests/integration/vcr_cassettes/`) because they are too large for GitHub (130 MB+ individual files). Developers must record cassettes locally with `FMP_TEST_API_KEY`.
 - **CI Secret Scan** - The `secret-scan` job now gracefully skips when no cassette YAML files are present instead of failing.
 - **Cassette Contract Test** - `test_vcr_cassettes_match_endpoint_models` now skips with a clear message when no cassettes are found, instead of silently passing.

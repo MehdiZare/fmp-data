@@ -6,8 +6,9 @@ from contextvars import ContextVar
 import copy
 import json
 import logging
+import re
 import time
-from typing import Any, Literal, TypeGuard, TypeVar, cast, overload
+from typing import Any, Literal, NoReturn, TypeGuard, TypeVar, cast, overload
 import warnings
 
 import httpx
@@ -46,10 +47,55 @@ _rate_limit_retry_count: ContextVar[int] = ContextVar(
     "rate_limit_retry_count", default=0
 )
 _extra_field_warnings_seen: set[tuple[str, tuple[str, ...]]] = set()
+_API_KEY_ASSIGNMENT_RE = re.compile(
+    r"([\"']?api_?key[\"']?\s*[=:]\s*[\"']?)([^&\s\"'<>]+)([\"']?)",
+    re.IGNORECASE,
+)
+_API_KEY_ENCODED_RE = re.compile(r"(apikey%3[Dd])([^&\s\"'<>]+)", re.IGNORECASE)
 
 
 def _is_pydantic_model(model: type[Any]) -> TypeGuard[type[BaseModel]]:
     return isinstance(model, type) and issubclass(model, BaseModel)
+
+
+def _redact_api_keys(text: str) -> str:
+    """Redact apikey/api_key values embedded in free-form strings.
+
+    Handles common query-string, percent-encoded (``apikey%3D``), and
+    assignment/JSON-text patterns. For structured dict payloads, use
+    :func:`_sanitize_error_details` (also redacts ``api-key`` keys by name).
+    """
+    redacted = _API_KEY_ASSIGNMENT_RE.sub(r"\1[REDACTED]\3", text)
+    return _API_KEY_ENCODED_RE.sub(r"\1[REDACTED]", redacted)
+
+
+def _sanitize_error_details(
+    value: dict[str, Any] | list[Any] | str,
+) -> dict[str, Any] | list[Any] | str:
+    """Recursively redact API keys from error payloads that may reflect them."""
+    if isinstance(value, str):
+        return _redact_api_keys(value)
+    if isinstance(value, list):
+        return [_sanitize_error_value(item) for item in value]
+    return {
+        key: (
+            "[REDACTED]"
+            if key.lower() in {"apikey", "api_key", "api-key"}
+            else _sanitize_error_value(item)
+        )
+        for key, item in value.items()
+    }
+
+
+def _sanitize_error_value(value: Any) -> Any:
+    """Sanitize a single error-payload value (dict, list, string, or other)."""
+    if isinstance(value, dict):
+        return _sanitize_error_details(value)
+    if isinstance(value, list):
+        return [_sanitize_error_value(item) for item in value]
+    if isinstance(value, str):
+        return _redact_api_keys(value)
+    return value
 
 
 class BaseClient:
@@ -267,14 +313,22 @@ class BaseClient:
         if outcome is not None and outcome.failed:
             exc = outcome.exception()
             if isinstance(exc, RateLimitError) and exc.retry_after is not None:
-                return exc.retry_after
-        return wait_exponential(multiplier=1, min=4, max=10)(retry_state)
+                return float(exc.retry_after)
+        wait = wait_exponential(multiplier=1, min=4, max=10)(retry_state)
+        return float(wait)
 
     @staticmethod
     def _is_retryable_error(exc: BaseException) -> bool:
         if isinstance(exc, httpx.TimeoutException | httpx.NetworkError):
             return True
         if isinstance(exc, RateLimitError):
+            return True
+        # Mapped FMP errors from status conversion (incl. binary endpoints).
+        if (
+            isinstance(exc, FMPError)
+            and exc.status_code is not None
+            and exc.status_code >= 500
+        ):
             return True
         if isinstance(exc, httpx.HTTPStatusError):
             return exc.response.status_code >= 500
@@ -387,7 +441,7 @@ class BaseClient:
             try:
                 data: bytes | dict[str, Any] | list[Any]
                 if endpoint.response_model is bytes:
-                    response.raise_for_status()
+                    self._raise_response_for_status(response)
                     data = response.content
                 else:
                     data = self.handle_response(endpoint, response)
@@ -498,17 +552,45 @@ class BaseClient:
             )
         return cast(dict[str, Any] | list[Any], data)
 
+    def _raise_response_for_status(self, response: httpx.Response) -> None:
+        """Raise typed FMP errors for non-success binary responses.
+
+        Binary endpoints must not re-raise raw ``httpx.HTTPStatusError``:
+        that type stringifies the request URL, which often includes ``apikey``.
+        """
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            self._raise_fmp_http_error(
+                exc,
+                self._safe_error_details(exc.response),
+                exc.response.status_code,
+            )
+
     @staticmethod
     def _get_error_details(
         response: httpx.Response,
     ) -> dict[str, Any] | list[Any]:
+        """Return response body for error reporting with API keys redacted."""
         try:
             data = response.json()
-        except json.JSONDecodeError:
-            return {"raw_content": response.content.decode()}
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+            raw = response.content.decode("utf-8", errors="replace")
+            return {"raw_content": _redact_api_keys(raw)}
         if isinstance(data, dict | list):
-            return data
-        return {"raw_content": str(data)}
+            return cast(dict[str, Any] | list[Any], _sanitize_error_details(data))
+        return {"raw_content": _redact_api_keys(str(data))}
+
+    @classmethod
+    def _safe_error_details(
+        cls,
+        response: httpx.Response,
+    ) -> dict[str, Any] | list[Any]:
+        """Best-effort error details; never fail open to unreadable bodies."""
+        try:
+            return cls._get_error_details(response)
+        except Exception:
+            return {"raw_content": "[unreadable error body]"}
 
     def _handle_http_status_error(
         self,
@@ -524,7 +606,7 @@ class BaseClient:
                     "_handle_http_status_error() missing required error argument"
                 )
 
-        error_details = self._get_error_details(error.response)
+        error_details = self._safe_error_details(error.response)
         status_code = error.response.status_code
 
         if status_code == 404:
@@ -551,8 +633,24 @@ class BaseClient:
                 )
                 return {}
 
+        self._raise_fmp_http_error(error, error_details, status_code)
+
+    def _raise_fmp_http_error(
+        self,
+        error: httpx.HTTPStatusError,
+        error_details: dict[str, Any] | list[Any],
+        status_code: int,
+    ) -> NoReturn:
+        """Map HTTP status errors to FMP exceptions without chaining httpx.
+
+        ``from None`` is intentional: ``httpx.HTTPStatusError`` stringifies the
+        request URL (often including ``apikey``), so chaining would leak keys
+        into formatted tracebacks.
+        """
         if status_code == 429:
-            self._rate_limiter.handle_response(status_code, error.response.text)
+            self._rate_limiter.handle_response(
+                status_code, _redact_api_keys(error.response.text)
+            )
             retry_after = self._rate_limiter.get_retry_after(error.response.headers)
             wait_time = (
                 retry_after
@@ -902,7 +1000,7 @@ class BaseClient:
             try:
                 data: bytes | dict[str, Any] | list[Any]
                 if endpoint.response_model is bytes:
-                    response.raise_for_status()
+                    self._raise_response_for_status(response)
                     data = response.content
                 else:
                     data = self.handle_response(endpoint, response)
