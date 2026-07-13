@@ -292,6 +292,21 @@ class TestCompanyProfile:
             with pytest.raises(ValidationError):
                 CompanyProfile.model_validate(profile_data)
 
+    def test_coerce_volume_value_passthrough_edges(self):
+        """Cover defensive pass-through arms Codecov flags on the patch.
+
+        - bool is a subclass of int; must not become 0/1
+        - non-numeric strings pass through for later ValidationError
+        - unknown types fall through unchanged
+        """
+        from fmp_data.company.models import coerce_volume_value
+
+        assert coerce_volume_value(True) is True
+        assert coerce_volume_value(False) is False
+        assert coerce_volume_value("not_a_number") == "not_a_number"
+        assert coerce_volume_value([1]) == [1]
+        assert coerce_volume_value({"v": 1}) == {"v": 1}
+
     def test_model_validation_invalid_website(self, profile_data):
         """Test CompanyProfile model with invalid website URL"""
         # Use a URL with protocol but invalid hostname (no TLD) to trigger validation
