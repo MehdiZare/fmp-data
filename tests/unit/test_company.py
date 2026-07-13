@@ -257,6 +257,56 @@ class TestCompanyProfile:
         assert profile.vol_avg == 50000000
         assert profile.volume == 25000000
 
+    def test_model_validation_fractional_string_volume(self, profile_data):
+        """Bulk CSV endpoints (e.g. profile-bulk) return volume as a fractional
+        STRING such as "475.9"; it must coerce to int instead of failing the
+        ``int`` field and silently dropping the whole parsed row (Issue #70)."""
+        profile_data["volAvg"] = "7155681.59509"
+        profile_data["volume"] = "475.9"
+        profile = CompanyProfile.model_validate(profile_data)
+        assert profile.vol_avg == 7155681
+        assert profile.volume == 475
+        assert isinstance(profile.vol_avg, int)
+        assert isinstance(profile.volume, int)
+
+    def test_model_validation_empty_string_volume(self, profile_data):
+        """An empty/whitespace volume cell (common in CSV rows) coerces to None,
+        not a validation error."""
+        profile_data["volAvg"] = ""
+        profile_data["volume"] = "   "
+        profile = CompanyProfile.model_validate(profile_data)
+        assert profile.vol_avg is None
+        assert profile.volume is None
+
+    def test_model_validation_non_finite_volume_raises(self, profile_data):
+        """Non-finite volume must not raise OverflowError; it surfaces as
+        ValidationError so bulk parsers can skip a single row safely."""
+        from pydantic import ValidationError
+
+        from fmp_data.company.models import coerce_volume_value
+
+        for bad in ("inf", "-inf", "nan", "NaN", float("inf"), float("nan")):
+            # Pass-through (no OverflowError); Pydantic then rejects the value.
+            assert coerce_volume_value(bad) is bad
+            profile_data["volume"] = bad
+            with pytest.raises(ValidationError):
+                CompanyProfile.model_validate(profile_data)
+
+    def test_coerce_volume_value_passthrough_edges(self):
+        """Cover defensive pass-through arms Codecov flags on the patch.
+
+        - bool is a subclass of int; must not become 0/1
+        - non-numeric strings pass through for later ValidationError
+        - unknown types fall through unchanged
+        """
+        from fmp_data.company.models import coerce_volume_value
+
+        assert coerce_volume_value(True) is True
+        assert coerce_volume_value(False) is False
+        assert coerce_volume_value("not_a_number") == "not_a_number"
+        assert coerce_volume_value([1]) == [1]
+        assert coerce_volume_value({"v": 1}) == {"v": 1}
+
     def test_model_validation_invalid_website(self, profile_data):
         """Test CompanyProfile model with invalid website URL"""
         # Use a URL with protocol but invalid hostname (no TLD) to trigger validation
