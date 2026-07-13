@@ -257,6 +257,44 @@ def test_get_error_details_redacts_api_keys():
     assert "[REDACTED]" in rendered
 
 
+def test_get_error_details_redacts_api_keys_in_raw_content():
+    """Non-JSON error bodies should still redact reflected API keys."""
+    fake_key_value = "SECRET_FMP_KEY"
+    response = Mock()
+    response.json.side_effect = json.JSONDecodeError("bad", "doc", 0)
+    response.content = (
+        f"Error at https://api.example/path?apikey={fake_key_value}".encode()
+    )
+
+    details = BaseClient._get_error_details(response)
+
+    assert fake_key_value not in repr(details)
+    assert details["raw_content"].count("[REDACTED]") >= 1
+
+
+def test_get_error_details_redacts_api_keys_in_scalar_json():
+    """Scalar JSON error bodies should redact embedded API keys."""
+    fake_key_value = "SECRET_FMP_KEY"
+    response = Mock()
+    response.json.return_value = f"apikey={fake_key_value}"
+
+    details = BaseClient._get_error_details(response)
+
+    assert fake_key_value not in repr(details)
+    assert "[REDACTED]" in details["raw_content"]
+
+
+def test_get_error_details_handles_non_utf8_body():
+    """Non-UTF-8 error bodies should not raise while extracting details."""
+    request = httpx.Request("GET", "https://example.com")
+    response = httpx.Response(401, request=request, content=b"\xff\xfe binary body")
+
+    details = BaseClient._get_error_details(response)
+
+    assert "raw_content" in details
+    assert isinstance(details["raw_content"], str)
+
+
 def test_handle_http_status_error_404_empty_payloads(base_client):
     """Test 404 errors return empty payloads without raising."""
     request = httpx.Request("GET", "https://example.com")
@@ -292,7 +330,34 @@ def test_handle_http_status_error_uses_retry_after_header(base_client):
     assert exc_info.value.retry_after == 12.0
 
 
-def test_handle_response_error_traceback_redacts_httpx_request_url(base_client):
+def test_rate_limit_handler_receives_redacted_response_body(base_client):
+    """429 handling should not pass raw API keys into the rate limiter."""
+    fake_key_value = "SECRET_FMP_KEY"
+    request = httpx.Request("GET", "https://example.com")
+    response = httpx.Response(
+        429,
+        request=request,
+        headers={"Retry-After": "5"},
+        text=f"Rate limited for https://api.example/?apikey={fake_key_value}",
+    )
+    error = httpx.HTTPStatusError(
+        "Too many requests", request=request, response=response
+    )
+
+    with (
+        patch.object(base_client._rate_limiter, "handle_response") as handle_response,
+        patch.object(base_client._rate_limiter, "get_retry_after", return_value=5.0),
+        pytest.raises(RateLimitError),
+    ):
+        base_client._handle_http_status_error(error)
+
+    handle_response.assert_called_once()
+    body = handle_response.call_args.args[1]
+    assert fake_key_value not in body
+    assert "[REDACTED]" in body
+
+
+def test_handle_response_error_traceback_suppresses_httpx_request_url(base_client):
     """HTTP error handling should not chain tracebacks that expose API keys."""
     fake_key_value = "SECRET_FMP_KEY"
     request = httpx.Request(
@@ -314,12 +379,11 @@ def test_handle_response_error_traceback_redacts_httpx_request_url(base_client):
     assert exc.__suppress_context__ is True
     assert fake_key_value not in rendered
     assert "HTTPStatusError" not in rendered
+    assert fake_key_value not in repr(exc.response)
 
 
-def test_bytes_response_http_error_uses_redacted_fmp_exception(
-    base_client, mock_endpoint
-):
-    """Binary endpoints should not re-raise raw httpx status errors."""
+def test_bytes_response_http_error_uses_typed_fmp_exception(base_client, mock_endpoint):
+    """Binary endpoints map httpx status errors to FMP exceptions without chaining."""
     fake_key_value = "SECRET_FMP_KEY"
     request = httpx.Request(
         "GET",
@@ -348,6 +412,121 @@ def test_bytes_response_http_error_uses_redacted_fmp_exception(
     assert exc.__suppress_context__ is True
     assert fake_key_value not in rendered
     assert "HTTPStatusError" not in rendered
+    assert fake_key_value not in repr(exc.response)
+
+
+def test_bytes_response_non_utf8_error_body_uses_typed_fmp_exception(
+    base_client, mock_endpoint
+):
+    """Binary non-UTF-8 error bodies still raise typed FMP exceptions safely."""
+    fake_key_value = "SECRET_FMP_KEY"
+    request = httpx.Request(
+        "GET",
+        f"https://financialmodelingprep.com/stable/download?apikey={fake_key_value}",
+    )
+    response = httpx.Response(
+        401,
+        request=request,
+        content=b"\xff\xfe binary error body",
+    )
+    mock_endpoint.method.value = "GET"
+    mock_endpoint.build_url.return_value = (
+        "https://financialmodelingprep.com/stable/download"
+    )
+    mock_endpoint.response_model = bytes
+
+    with (
+        patch.object(base_client.client, "request", return_value=response),
+        pytest.raises(AuthenticationError) as exc_info,
+    ):
+        base_client._execute_request(mock_endpoint)
+
+    exc = exc_info.value
+    rendered = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    assert exc.__cause__ is None
+    assert exc.__suppress_context__ is True
+    assert fake_key_value not in rendered
+    assert "HTTPStatusError" not in rendered
+    assert fake_key_value not in repr(exc.response)
+
+
+@pytest.mark.asyncio
+async def test_async_bytes_response_http_error_uses_typed_fmp_exception(
+    base_client, mock_endpoint
+):
+    """Async binary endpoints map status errors without chaining httpx."""
+    from unittest.mock import AsyncMock
+
+    fake_key_value = "SECRET_FMP_KEY"
+    request = httpx.Request(
+        "GET",
+        f"https://financialmodelingprep.com/stable/download?apikey={fake_key_value}",
+    )
+    response = httpx.Response(
+        401,
+        request=request,
+        json={"message": "Invalid API key"},
+    )
+    mock_endpoint.method = MagicMock()
+    mock_endpoint.method.value = "GET"
+    mock_endpoint.validate_params.return_value = {}
+    mock_endpoint.build_url.return_value = (
+        "https://financialmodelingprep.com/stable/download"
+    )
+    mock_endpoint.get_query_params.return_value = {}
+    mock_endpoint.response_model = bytes
+
+    mock_async_client = AsyncMock()
+    mock_async_client.request = AsyncMock(return_value=response)
+
+    with (
+        patch.object(
+            base_client, "_setup_async_client", return_value=mock_async_client
+        ),
+        pytest.raises(AuthenticationError) as exc_info,
+    ):
+        await base_client._execute_request_async(mock_endpoint)
+
+    exc = exc_info.value
+    rendered = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    assert exc.__cause__ is None
+    assert exc.__suppress_context__ is True
+    assert fake_key_value not in rendered
+    assert "HTTPStatusError" not in rendered
+    assert fake_key_value not in repr(exc.response)
+
+
+@pytest.mark.parametrize(
+    ("status_code", "expected_exception"),
+    [
+        (400, ValidationError),
+        (500, FMPError),
+    ],
+)
+def test_handle_http_status_error_redacts_key_in_exception_message(
+    base_client: BaseClient,
+    status_code: int,
+    expected_exception: type[FMPError],
+) -> None:
+    """400/500 messages embed error details and must redact reflected keys."""
+    fake_key_value = "SECRET_FMP_KEY"
+    request = httpx.Request("GET", "https://example.com")
+    response = httpx.Response(
+        status_code,
+        request=request,
+        json={
+            "message": f"Failed for https://api.example/?apikey={fake_key_value}",
+            "apikey": fake_key_value,
+        },
+    )
+
+    with pytest.raises(expected_exception) as exc_info:
+        base_client.handle_response(response)
+
+    exc = exc_info.value
+    assert fake_key_value not in str(exc)
+    assert fake_key_value not in repr(exc.response)
+    assert "[REDACTED]" in str(exc)
 
 
 @pytest.mark.parametrize(
@@ -389,6 +568,17 @@ def test_handle_http_status_error_redacts_chained_apikey_traceback(
         assert exc.__suppress_context__ is True
     else:
         pytest.fail(f"Expected {expected_exception.__name__}")
+
+
+def test_is_retryable_error_includes_mapped_5xx_fmp_errors():
+    """Mapped FMP 5xx errors from status conversion should still be retried."""
+    assert BaseClient._is_retryable_error(FMPError("server", status_code=500)) is True
+    assert BaseClient._is_retryable_error(FMPError("server", status_code=503)) is True
+    assert (
+        BaseClient._is_retryable_error(AuthenticationError("auth", status_code=401))
+        is False
+    )
+    assert BaseClient._is_retryable_error(FMPError("client", status_code=400)) is False
 
 
 @pytest.mark.parametrize(
