@@ -313,8 +313,9 @@ class BaseClient:
         if outcome is not None and outcome.failed:
             exc = outcome.exception()
             if isinstance(exc, RateLimitError) and exc.retry_after is not None:
-                return exc.retry_after
-        return wait_exponential(multiplier=1, min=4, max=10)(retry_state)
+                return float(exc.retry_after)
+        wait = wait_exponential(multiplier=1, min=4, max=10)(retry_state)
+        return float(wait)
 
     @staticmethod
     def _is_retryable_error(exc: BaseException) -> bool:
