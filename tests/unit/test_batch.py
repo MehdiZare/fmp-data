@@ -267,6 +267,53 @@ class TestBatchClient:
         assert results == []
         assert "Skipping invalid SimpleRow row" in caplog.text
 
+    def test_parse_csv_models_keeps_fractional_string_volume(self):
+        """profile-bulk CSV volumes are fractional strings; rows must not drop.
+
+        Regression for Issue #70 / PR #104: coerce_volume_value used to pass
+        strings through, so ``"475.9"`` failed the strict ``int`` field and
+        ``parse_csv_models`` silently skipped the whole row.
+        """
+        csv_text = (
+            "symbol,companyName,currency,exchange,exchangeFullName,"
+            "industry,sector,country,isEtf,isActivelyTrading,isAdr,isFund,"
+            "volume,averageVolume\n"
+            "AAPL,Apple Inc.,USD,NASDAQ,NASDAQ Global Select,"
+            "Consumer Electronics,Technology,US,false,true,false,false,"
+            "475.9,7155681.59509\n"
+        )
+        results = parse_csv_models(csv_text.encode("utf-8"), CompanyProfile)
+
+        assert len(results) == 1
+        assert results[0].symbol == "AAPL"
+        assert results[0].volume == 475
+        assert results[0].vol_avg == 7155681
+        assert isinstance(results[0].volume, int)
+        assert isinstance(results[0].vol_avg, int)
+
+    def test_parse_csv_models_non_finite_volume_skips_row_not_abort(self, caplog):
+        """A single non-finite volume must skip that row, not crash the bulk parse."""
+        import logging
+
+        csv_text = (
+            "symbol,companyName,currency,exchange,exchangeFullName,"
+            "industry,sector,country,isEtf,isActivelyTrading,isAdr,isFund,"
+            "volume,averageVolume\n"
+            "BAD,Bad Co,USD,NASDAQ,NASDAQ,"
+            "Tech,Technology,US,false,true,false,false,"
+            "inf,100\n"
+            "GOOD,Good Co,USD,NASDAQ,NASDAQ,"
+            "Tech,Technology,US,false,true,false,false,"
+            "1000,2000\n"
+        )
+        with caplog.at_level(logging.WARNING, logger="fmp_data.batch._csv_utils"):
+            results = parse_csv_models(csv_text.encode("utf-8"), CompanyProfile)
+
+        assert len(results) == 1
+        assert results[0].symbol == "GOOD"
+        assert results[0].volume == 1000
+        assert "Skipping invalid CompanyProfile row" in caplog.text
+
     @patch("httpx.Client.request")
     def test_get_quotes(
         self, mock_request, fmp_client, mock_response, batch_quote_data
