@@ -6,7 +6,12 @@ import httpx
 from pydantic import BaseModel, ConfigDict
 import pytest
 
-from fmp_data.base import BaseClient, EndpointGroup
+from fmp_data.base import (
+    BaseClient,
+    EndpointGroup,
+    _sanitize_error_details,
+    _sanitize_error_value,
+)
 from fmp_data.config import ClientConfig
 from fmp_data.exceptions import (
     AuthenticationError,
@@ -295,6 +300,50 @@ def test_get_error_details_handles_non_utf8_body():
     assert isinstance(details["raw_content"], str)
 
 
+def test_sanitize_error_details_top_level_string_and_list():
+    """Sanitize helpers should handle top-level string and list payloads."""
+    fake_key_value = "SECRET_FMP_KEY"
+    redacted_str = _sanitize_error_details(f"apikey={fake_key_value}")
+    assert fake_key_value not in redacted_str
+    assert "[REDACTED]" in redacted_str
+
+    redacted_list = _sanitize_error_details(
+        [f"apikey={fake_key_value}", {"count": 1, "api-key": fake_key_value}]
+    )
+    assert fake_key_value not in repr(redacted_list)
+    assert redacted_list[1]["count"] == 1
+    assert redacted_list[1]["api-key"] == "[REDACTED]"
+
+
+def test_sanitize_error_value_preserves_non_string_scalars():
+    """Non-string scalar values should pass through sanitization unchanged."""
+    assert _sanitize_error_value(42) == 42
+    assert _sanitize_error_value(None) is None
+    assert _sanitize_error_value(True) is True
+    assert _sanitize_error_value(3.14) == 3.14
+
+    nested = _sanitize_error_details(
+        {"code": 401, "ok": False, "retries": None, "items": [1, True, None]}
+    )
+    assert nested == {
+        "code": 401,
+        "ok": False,
+        "retries": None,
+        "items": [1, True, None],
+    }
+
+
+def test_safe_error_details_fallback_when_extraction_raises():
+    """Unreadable bodies should fall back without propagating extraction errors."""
+    response = Mock()
+    with patch.object(
+        BaseClient, "_get_error_details", side_effect=RuntimeError("boom")
+    ):
+        details = BaseClient._safe_error_details(response)
+
+    assert details == {"raw_content": "[unreadable error body]"}
+
+
 def test_handle_http_status_error_404_empty_payloads(base_client):
     """Test 404 errors return empty payloads without raising."""
     request = httpx.Request("GET", "https://example.com")
@@ -309,6 +358,38 @@ def test_handle_http_status_error_404_empty_payloads(base_client):
         "Not found", request=request, response=dict_response
     )
     assert base_client._handle_http_status_error(dict_error) == {}
+
+
+def test_handle_http_status_error_allow_empty_on_404(base_client, mock_endpoint):
+    """Endpoints with allow_empty_on_404 should return [] on 404."""
+    request = httpx.Request("GET", "https://example.com")
+    response = httpx.Response(404, request=request, json={"message": "missing"})
+    error = httpx.HTTPStatusError("Not found", request=request, response=response)
+    mock_endpoint.allow_empty_on_404 = True
+    mock_endpoint.name = "sample-endpoint"
+
+    result = base_client._handle_http_status_error(mock_endpoint, error)
+
+    assert result == []
+
+
+def test_handle_http_status_error_404_non_empty_raises(base_client):
+    """404 with a non-empty payload should raise a typed FMP error."""
+    request = httpx.Request("GET", "https://example.com")
+    response = httpx.Response(404, request=request, json={"message": "missing"})
+    error = httpx.HTTPStatusError("Not found", request=request, response=response)
+
+    with pytest.raises(FMPError) as exc_info:
+        base_client._handle_http_status_error(error)
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.__cause__ is None
+
+
+def test_handle_http_status_error_requires_error_argument(base_client):
+    """Missing error argument should raise TypeError."""
+    with pytest.raises(TypeError, match="missing required error argument"):
+        base_client._handle_http_status_error(None)
 
 
 def test_handle_http_status_error_uses_retry_after_header(base_client):
@@ -579,6 +660,18 @@ def test_is_retryable_error_includes_mapped_5xx_fmp_errors():
         is False
     )
     assert BaseClient._is_retryable_error(FMPError("client", status_code=400)) is False
+    assert BaseClient._is_retryable_error(FMPError("no status")) is False
+    assert BaseClient._is_retryable_error(RateLimitError("limited", retry_after=1.0))
+    request = httpx.Request("GET", "https://example.com")
+    response_5xx = httpx.Response(503, request=request)
+    response_4xx = httpx.Response(404, request=request)
+    assert BaseClient._is_retryable_error(
+        httpx.HTTPStatusError("server", request=request, response=response_5xx)
+    )
+    assert not BaseClient._is_retryable_error(
+        httpx.HTTPStatusError("not found", request=request, response=response_4xx)
+    )
+    assert not BaseClient._is_retryable_error(ValueError("other"))
 
 
 @pytest.mark.parametrize(
