@@ -124,7 +124,7 @@ jobs:
           fi
 
       - name: 🧪  Upload to Test PyPI
-        uses: pypa/gh-action-pypi-publish@v1.14.0
+        uses: pypa/gh-action-pypi-publish@v1.14.1
         with:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: dist
