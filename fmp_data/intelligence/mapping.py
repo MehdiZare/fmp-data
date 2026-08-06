@@ -636,10 +636,8 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         client_name="intelligence",
         method_name="get_earnings_confirmed",
         natural_description=(
-            "DEPRECATED: FMP no longer serves this endpoint; the client returns "
-            "an empty list. Prefer get_earnings_calendar with "
-            "include_report_times=True and read confirmed plus session time "
-            "(bmo/amc)."
+            "DEPRECATED: empty list. Prefer earnings_calendar with "
+            "include_report_times=True (confirmed + bmo/amc time)."
         ),
         example_queries=[
             "Show confirmed earnings dates",
@@ -1302,9 +1300,8 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         client_name="intelligence",
         method_name="get_earnings_surprises",
         natural_description=(
-            "DEPRECATED: FMP no longer serves this endpoint; the client returns "
-            "an empty list. Prefer get_historical_earnings and compare eps "
-            "against eps_estimated (compute surprise percentage yourself)."
+            "DEPRECATED: empty list. Prefer historical_earnings and "
+            "compare eps vs eps_estimated."
         ),
         example_queries=[
             "Get earnings surprises for AAPL",
@@ -1345,9 +1342,8 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         client_name="intelligence",
         method_name="get_historical_earnings",
         natural_description=(
-            "Access historical and upcoming earnings reports for a symbol "
-            "including revenue, EPS, dates, and optional report-time metadata "
-            "when include_report_times is set"
+            "Historical/upcoming earnings for a symbol, with optional "
+            "limit and include_report_times metadata."
         ),
         example_queries=[
             "Show historical earnings for AAPL",
