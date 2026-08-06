@@ -227,15 +227,15 @@ from fmp_data import create_vector_store
 
 # Initialize the vector store
 vector_store = create_vector_store(
-    fmp_api_key="YOUR_FMP_API_KEY",       # pragma: allowlist secret
-    openai_api_key="YOUR_OPENAI_API_KEY"  # pragma: allowlist secret
+    fmp_api_key="YOUR_FMP_API_KEY",  # pragma: allowlist secret
+    openai_api_key="YOUR_OPENAI_API_KEY",  # pragma: allowlist secret
 )
 
 # Example queries
 queries = [
     "what is the price of Apple stock?",
     "what was the revenue of Tesla last year?",
-    "what's new in the market?"
+    "what's new in the market?",
 ]
 
 # Search for relevant endpoints and tools
@@ -249,7 +249,7 @@ for query in queries:
     for tool in tools:
         print(f"Name: {tool.get('name')}")
         print(f"Description: {tool.get('description')}")
-        print("Parameters:", tool.get('parameters'))
+        print("Parameters:", tool.get("parameters"))
         print()
 
     # You can also search endpoints directly
@@ -276,10 +276,10 @@ from fmp_data.lc.embedding import EmbeddingProvider
 
 # Configure with LangChain support
 config = LangChainConfig(
-    api_key="YOUR_FMP_API_KEY",           # pragma: allowlist secret
+    api_key="YOUR_FMP_API_KEY",  # pragma: allowlist secret
     embedding_provider=EmbeddingProvider.OPENAI,
-    embedding_api_key="YOUR_OPENAI_API_KEY", # pragma: allowlist secret
-    embedding_model="text-embedding-3-small"
+    embedding_api_key="YOUR_OPENAI_API_KEY",  # pragma: allowlist secret
+    embedding_model="text-embedding-3-small",
 )
 
 # Create client with LangChain config
@@ -328,23 +328,23 @@ from fmp_data import FMPDataClient, ClientConfig, LoggingConfig
 from fmp_data.exceptions import FMPError, RateLimitError, AuthenticationError
 
 # Method 1: Initialize with direct API key
-client = FMPDataClient(api_key="your_api_key_here") # pragma: allowlist secret
+client = FMPDataClient(api_key="your_api_key_here")  # pragma: allowlist secret
 
 # Method 2: Initialize from environment variable (FMP_API_KEY)
 client = FMPDataClient.from_env()
 
 # Method 3: Initialize with custom configuration
 config = ClientConfig(
-    api_key="your_api_key_here", #pragma: allowlist secret
+    api_key="your_api_key_here",  # pragma: allowlist secret
     timeout=30,
     max_retries=3,
     base_url="https://financialmodelingprep.com",
-    logging=LoggingConfig(level="INFO")
+    logging=LoggingConfig(level="INFO"),
 )
 client = FMPDataClient(config=config)
 
 # Using with context manager (recommended)
-with FMPDataClient(api_key="your_api_key_here") as client: # pragma: allowlist secret
+with FMPDataClient(api_key="your_api_key_here") as client:  # pragma: allowlist secret
     try:
         # Get company profile
         profile = client.company.get_profile("AAPL")
@@ -422,14 +422,11 @@ with FMPDataClient.from_env() as client:
     income_stmt = client.fundamental.get_income_statement(
         "AAPL",
         period="quarter",  # or "annual"
-        limit=4
+        limit=4,
     )
 
     # Get balance sheets
-    balance_sheet = client.fundamental.get_balance_sheet(
-        "AAPL",
-        period="annual"
-    )
+    balance_sheet = client.fundamental.get_balance_sheet("AAPL", period="annual")
 
     # Get cash flow statements
     cash_flow = client.fundamental.get_cash_flow("AAPL")
@@ -445,16 +442,11 @@ with FMPDataClient.from_env() as client:
 
     # Get historical prices
     history = client.company.get_historical_prices(
-        symbol="TSLA",
-        from_date=date(2023, 1, 1),
-        to_date=date(2023, 12, 31)
+        symbol="TSLA", from_date=date(2023, 1, 1), to_date=date(2023, 12, 31)
     )
 
     # Get intraday prices
-    intraday = client.company.get_intraday_prices(
-        "TSLA",
-        interval="5min"
-    )
+    intraday = client.company.get_intraday_prices("TSLA", interval="5min")
 ```
 
 ### 4. Technical Indicators
@@ -464,25 +456,14 @@ from datetime import date
 
 with FMPDataClient.from_env() as client:
     # Simple Moving Average
-    sma = client.technical.get_sma(
-        "AAPL",
-        period_length=20,
-        timeframe="1day"
-    )
+    sma = client.technical.get_sma("AAPL", period_length=20, timeframe="1day")
 
     # RSI (Relative Strength Index)
-    rsi = client.technical.get_rsi(
-        "AAPL",
-        period_length=14,
-        timeframe="1day"
-    )
+    rsi = client.technical.get_rsi("AAPL", period_length=14, timeframe="1day")
 
     # MACD
     macd = client.technical.get_macd(
-        "AAPL",
-        fast_period=12,
-        slow_period=26,
-        signal_period=9
+        "AAPL", fast_period=12, slow_period=26, signal_period=9
     )
 ```
 
@@ -598,6 +579,7 @@ API reference in `docs/api/reference.md#async-client-usage`.
 from fmp_data import AsyncFMPDataClient
 import asyncio
 
+
 async def main():
     async with AsyncFMPDataClient.from_env() as client:
         # All endpoint methods are async
@@ -612,6 +594,7 @@ async def main():
         )
         for p in profiles:
             print(f"{p.symbol}: {p.company_name}")
+
 
 asyncio.run(main())
 ```
@@ -645,7 +628,13 @@ FMP_MCP_MANIFEST=/path/to/custom/manifest.py
 
 ### Custom Configuration
 ```python
-from fmp_data import FMPDataClient, ClientConfig, LoggingConfig, RateLimitConfig, LogHandlerConfig
+from fmp_data import (
+    FMPDataClient,
+    ClientConfig,
+    LoggingConfig,
+    RateLimitConfig,
+    LogHandlerConfig,
+)
 
 config = ClientConfig(
     api_key="your_api_key_here",  # pragma: allowlist secret
@@ -653,9 +642,7 @@ config = ClientConfig(
     max_retries=3,
     base_url="https://financialmodelingprep.com",
     rate_limit=RateLimitConfig(
-        daily_limit=250,
-        requests_per_second=10,
-        requests_per_minute=300
+        daily_limit=250, requests_per_second=10, requests_per_minute=300
     ),
     logging=LoggingConfig(
         level="DEBUG",
@@ -663,7 +650,7 @@ config = ClientConfig(
             "console": LogHandlerConfig(
                 class_name="StreamHandler",
                 level="INFO",
-                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             ),
             "file": LogHandlerConfig(
                 class_name="RotatingFileHandler",
@@ -672,11 +659,11 @@ config = ClientConfig(
                 handler_kwargs={
                     "filename": "fmp.log",
                     "maxBytes": 10485760,
-                    "backupCount": 5
-                }
-            )
-        }
-    )
+                    "backupCount": 5,
+                },
+            ),
+        },
+    ),
 )
 
 client = FMPDataClient(config=config)
@@ -689,15 +676,15 @@ The library provides a comprehensive exception hierarchy for robust error handli
 ```python
 from fmp_data import FMPDataClient
 from fmp_data.exceptions import (
-    FMPError,              # Base exception for all FMP errors
-    RateLimitError,        # API rate limit exceeded
-    AuthenticationError,   # Invalid or missing API key
-    ValidationError,       # Invalid request parameters
-    ConfigError,           # Configuration errors
-    InvalidSymbolError,    # Missing or blank required symbol
+    FMPError,  # Base exception for all FMP errors
+    RateLimitError,  # API rate limit exceeded
+    AuthenticationError,  # Invalid or missing API key
+    ValidationError,  # Invalid request parameters
+    ConfigError,  # Configuration errors
+    InvalidSymbolError,  # Missing or blank required symbol
     InvalidResponseTypeError,  # Unexpected API response type
-    DependencyError,       # Missing optional dependency
-    FMPNotFound,          # Symbol or resource not found
+    DependencyError,  # Missing optional dependency
+    FMPNotFound,  # Symbol or resource not found
 )
 
 try:

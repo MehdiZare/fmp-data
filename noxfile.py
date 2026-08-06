@@ -327,10 +327,12 @@ def typecheck(session: Session) -> None:
 def security(session: Session) -> None:
     """Check dependencies for known CVEs."""
     _sync_with_uv(session, extras=["dev"])
-    # TODO: Remove --ignore-vuln once GitHub Actions updates to pip 26.0+
-    # CVE-2026-1703 is a low-severity path traversal in pip <26.0 (fixed Jan 31, 2026)
-    # This is a CI environment issue, not a project dependency vulnerability
-    session.run("pip-audit", "--ignore-vuln", "CVE-2026-1703")
+    # virtualenv seeds this session with whatever pip it bundles, which lags
+    # behind the current release and drags its own CVEs into the audit. Upgrade
+    # it first so the report covers project dependencies rather than the
+    # scaffolding around them.
+    session.run("python", "-m", "pip", "install", "--upgrade", "pip")
+    session.run("pip-audit")
 
 
 @nox.session(python=DEFAULT_PYTHON, tags=["smoke"])

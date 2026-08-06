@@ -68,6 +68,17 @@ EARNINGS_CALENDAR: Endpoint = Endpoint(
             description="End date",
             alias="to",
         ),
+        EndpointParam(
+            name="include_report_times",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            required=False,
+            description=(
+                "Include report time, fiscal period and confirmation fields "
+                "in the response"
+            ),
+            alias="includeReportTimes",
+        ),
     ],
     response_model=EarningEvent,
 )
@@ -123,11 +134,11 @@ EARNINGS_SURPRISES: Endpoint = Endpoint(
 
 HISTORICAL_EARNINGS: Endpoint = Endpoint(
     name="historical_earnings",
-    path="historical/earning-calendar",
+    path="earnings",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get historical earnings",
+    description="Get historical and upcoming earnings reports for a symbol",
     mandatory_params=[
         EndpointParam(
             name="symbol",
@@ -137,7 +148,26 @@ HISTORICAL_EARNINGS: Endpoint = Endpoint(
             description="Stock symbol",
         )
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=False,
+            description="Maximum number of reports to return",
+        ),
+        EndpointParam(
+            name="include_report_times",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            required=False,
+            description=(
+                "Include report time, fiscal period and confirmation fields "
+                "in the response"
+            ),
+            alias="includeReportTimes",
+        ),
+    ],
     response_model=EarningEvent,
 )
 

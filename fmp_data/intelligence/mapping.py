@@ -103,6 +103,29 @@ SYMBOL_HINT = ParameterHint(
     context_clues=["company", "stock", "ticker", "symbol"],
 )
 
+INCLUDE_REPORT_TIMES_HINT = ParameterHint(
+    natural_names=[
+        "report time",
+        "announcement time",
+        "confirmed",
+        "before/after hours",
+    ],
+    extraction_patterns=[
+        r"(?i)(before|after)\s+(the\s+)?(market|bell|hours)",
+        r"(?i)\b(bmo|amc)\b",
+        r"(?i)confirmed\s+(earnings|dates?)",
+    ],
+    examples=["true", "false"],
+    context_clues=[
+        "report time",
+        "before market open",
+        "after market close",
+        "confirmed",
+        "fiscal period",
+    ],
+    required=False,
+)
+
 CRYPTO_PAIR_HINT = ParameterHint(
     natural_names=["crypto pair", "crypto symbol", "digital asset", "cryptocurrency"],
     extraction_patterns=[
@@ -218,6 +241,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         parameter_hints={
             "start_date": DATE_HINTS["start_date"],
             "end_date": DATE_HINTS["end_date"],
+            "include_report_times": INCLUDE_REPORT_TIMES_HINT,
         },
         response_hints={
             "date": ResponseFieldInfo(
@@ -1340,7 +1364,10 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INTELLIGENCE,
         sub_category="Calendar Events",
-        parameter_hints={"symbol": SYMBOL_HINT},
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "include_report_times": INCLUDE_REPORT_TIMES_HINT,
+        },
         response_hints={
             "date": ResponseFieldInfo(
                 description="Earnings report date",

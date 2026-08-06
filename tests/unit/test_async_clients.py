@@ -1162,6 +1162,42 @@ class TestAsyncIntelligenceClient:
             end_date="2024-01-15",
         )
 
+    @pytest.mark.asyncio
+    async def test_get_earnings_calendar_include_report_times(self, mock_client):
+        """Test earnings calendar forwards include_report_times."""
+        from fmp_data.intelligence import endpoints as intelligence_endpoints
+        from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncMarketIntelligenceClient(mock_client)
+
+        await async_client.get_earnings_calendar(include_report_times=True)
+
+        mock_client.request_async.assert_called_once_with(
+            intelligence_endpoints.EARNINGS_CALENDAR,
+            include_report_times=True,
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_historical_earnings_optional_params(self, mock_client):
+        """Test historical earnings forwards limit and include_report_times."""
+        from fmp_data.intelligence import endpoints as intelligence_endpoints
+        from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncMarketIntelligenceClient(mock_client)
+
+        await async_client.get_historical_earnings(
+            "AAPL", limit=5, include_report_times=True
+        )
+
+        mock_client.request_async.assert_called_once_with(
+            intelligence_endpoints.HISTORICAL_EARNINGS,
+            symbol="AAPL",
+            limit=5,
+            include_report_times=True,
+        )
+
     def test_build_date_params_custom_keys(self):
         """Test _build_date_params supports custom keys."""
         from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient

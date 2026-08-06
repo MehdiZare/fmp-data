@@ -41,12 +41,51 @@ class EarningEvent(BaseModel):
     eps_estimated: float | None = Field(
         alias="epsEstimated", default=None, description="Estimated earnings per share"
     )
-    time: str | None = Field(default=None, description="Time of day (amc/bmo)")
+    time: str | None = Field(
+        default=None,
+        description=(
+            "Time of day the report is released ('bmo' before market open, "
+            "'amc' after market close). Only returned when the request is made "
+            "with include_report_times=True."
+        ),
+    )
     revenue: float | None = Field(
         default=None, alias="revenueActual", description="Actual revenue"
     )
     revenue_estimated: float | None = Field(
         alias="revenueEstimated", default=None, description="Estimated revenue"
+    )
+    period_ending: date | None = Field(
+        None,
+        alias="periodEnding",
+        description=(
+            "Fiscal period end date. Only returned when the request is made "
+            "with include_report_times=True."
+        ),
+    )
+    fiscal_period: str | None = Field(
+        None,
+        alias="fiscalPeriod",
+        description=(
+            "Fiscal period the report covers (e.g. 'Q3'). Only returned when "
+            "the request is made with include_report_times=True."
+        ),
+    )
+    fiscal_year: int | None = Field(
+        None,
+        alias="fiscalYear",
+        description=(
+            "Fiscal year the report covers. Only returned when the request is "
+            "made with include_report_times=True."
+        ),
+    )
+    confirmed: bool | None = Field(
+        None,
+        description=(
+            "Whether the reporting date has been confirmed by the company. "
+            "Only returned when the request is made with "
+            "include_report_times=True."
+        ),
     )
     fiscal_date_ending: date | None = Field(
         None, alias="fiscalDateEnding", description="Fiscal period end date"

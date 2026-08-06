@@ -1,7 +1,7 @@
 repos:
   # ───────── Core utility hooks ───────────────────────────────────────────
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -15,23 +15,20 @@ repos:
       - id: check-merge-conflict
       - id: check-docstring-first
 
-  # ───────── Black code formatter ─────────────────────────────────────────
-  - repo: https://github.com/psf/black
-    rev: 24.10.0
-    hooks:
-      - id: black
-        language_version: python3
-
-  # ───────── Ruff (lint / fix) ─────────────────────────────────────────────
+  # ───────── Ruff (lint / fix / format) ────────────────────────────────────
+  # Ruff replaces black here: black 24.x and ruff's formatter disagree on
+  # assert-with-message wrapping, so running both fights over the same lines.
+  # Keep this rev in sync with the ruff pin in uv.lock.
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.2
+    rev: v0.16.1
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
 
   # ───────── Bandit security scanner ──────────────────────────────────────
   - repo: https://github.com/PyCQA/bandit
-    rev: 1.8.5
+    rev: 1.9.4
     hooks:
       - id: bandit
         name: bandit

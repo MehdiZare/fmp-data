@@ -113,8 +113,7 @@ def test_no_api_key_leaks_in_cassettes() -> None:
                         f"{relative}:{lineno}  apikey={value} (JSON body)"
                     )
 
-    assert (
-        not violations
-    ), f"Found {len(violations)} API key leak(s) in VCR cassettes:\n" + "\n".join(
-        f"  - {v}" for v in violations
+    assert not violations, (
+        f"Found {len(violations)} API key leak(s) in VCR cassettes:\n"
+        + "\n".join(f"  - {v}" for v in violations)
     )

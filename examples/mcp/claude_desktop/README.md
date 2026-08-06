@@ -118,7 +118,6 @@ TOOLS = [
     "company.profile",
     "company.quote",
     "market.quote",
-
     # Add more tools as needed
     "fundamental.income_statement",
     "intelligence.stock_news",

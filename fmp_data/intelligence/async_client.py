@@ -2,9 +2,10 @@
 """Async client for market intelligence endpoints."""
 
 from datetime import date
+from typing import Any
 
 from fmp_data.base import AsyncEndpointGroup
-from fmp_data.helpers import RemovedEndpointError, removed
+from fmp_data.helpers import RemovedEndpointError, deprecated, removed
 from fmp_data.intelligence.endpoints import (
     CROWDFUNDING_BY_CIK,
     CROWDFUNDING_RSS,
@@ -126,27 +127,87 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         return params
 
     async def get_earnings_calendar(
-        self, start_date: date | None = None, end_date: date | None = None
+        self,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        include_report_times: bool | None = None,
     ) -> list[EarningEvent]:
-        """Get earnings calendar"""
-        params = self._build_date_params(start_date, end_date)
+        """Get earnings calendar
+
+        Args:
+            start_date: Earliest reporting date to include
+            end_date: Latest reporting date to include
+            include_report_times: When True, each event also carries ``time``
+                ('bmo'/'amc'), ``period_ending``, ``fiscal_period``,
+                ``fiscal_year`` and ``confirmed``
+
+        Returns:
+            list[EarningEvent]: Earnings events in the requested window
+        """
+        params: dict[str, Any] = self._build_date_params(start_date, end_date)
+        if include_report_times is not None:
+            params["include_report_times"] = include_report_times
         return await self.client.request_async(EARNINGS_CALENDAR, **params)
 
-    async def get_historical_earnings(self, symbol: str) -> list[EarningEvent]:
-        """Get historical earnings"""
-        return await self.client.request_async(HISTORICAL_EARNINGS, symbol=symbol)
+    async def get_historical_earnings(
+        self,
+        symbol: str,
+        limit: int | None = None,
+        include_report_times: bool | None = None,
+    ) -> list[EarningEvent]:
+        """Get historical and upcoming earnings reports for a symbol
 
+        Args:
+            symbol: Stock symbol
+            limit: Maximum number of reports to return
+            include_report_times: When True, each report also carries ``time``
+                ('bmo'/'amc'), ``period_ending``, ``fiscal_period``,
+                ``fiscal_year`` and ``confirmed``
+
+        Returns:
+            list[EarningEvent]: Earnings reports for the symbol
+        """
+        params: dict[str, Any] = {"symbol": symbol}
+        if limit is not None:
+            params["limit"] = limit
+        if include_report_times is not None:
+            params["include_report_times"] = include_report_times
+        return await self.client.request_async(HISTORICAL_EARNINGS, **params)
+
+    @deprecated(
+        "The FMP API no longer serves the confirmed earnings calendar. Use "
+        "get_earnings_calendar(include_report_times=True) and read the "
+        "`confirmed` and `time` fields instead."
+    )
     async def get_earnings_confirmed(
         self,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[EarningConfirmed]:
-        """Get confirmed earnings dates"""
+        """Get confirmed earnings dates
+
+        .. deprecated::
+            This endpoint is no longer available on the FMP API and will be
+            removed in a future version. Use
+            :meth:`get_earnings_calendar` with ``include_report_times=True``
+            and read the ``confirmed`` and ``time`` fields instead.
+        """
         params = self._build_date_params(start_date, end_date)
         return await self.client.request_async(EARNINGS_CONFIRMED, **params)
 
+    @deprecated(
+        "The FMP API no longer serves earnings surprises. Use "
+        "get_historical_earnings() and compare `eps` against `eps_estimated` "
+        "instead."
+    )
     async def get_earnings_surprises(self, symbol: str) -> list[EarningSurprise]:
-        """Get earnings surprises"""
+        """Get earnings surprises
+
+        .. deprecated::
+            This endpoint is no longer available on the FMP API and will be
+            removed in a future version. Use :meth:`get_historical_earnings`
+            and compare ``eps`` against ``eps_estimated`` instead.
+        """
         return await self.client.request_async(EARNINGS_SURPRISES, symbol=symbol)
 
     async def get_dividends_calendar(

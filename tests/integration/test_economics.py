@@ -82,9 +82,9 @@ class TestEconomicsEndpoints(BaseTestCase):
             for event in events:
                 assert isinstance(event, EconomicEvent), "event is not EconomicEvent"
                 assert event.event, "event is empty string"
-                assert isinstance(
-                    event.event_date, datetime
-                ), "event_date is not datetime"
+                assert isinstance(event.event_date, datetime), (
+                    "event_date is not datetime"
+                )
                 # Verify country attribute exists
                 _ = event.country
                 assert (
@@ -106,18 +106,18 @@ class TestEconomicsEndpoints(BaseTestCase):
             # Test specific example from response
             example = next(p for p in premiums if p.country == "Germany")
             assert isinstance(example.continent, str), "continent is not string"
-            assert isinstance(
-                example.country_risk_premium, float
-            ), "country_risk_premium is not float"
-            assert isinstance(
-                example.total_equity_risk_premium, float
-            ), "total_equity_risk_premium is not float"
+            assert isinstance(example.country_risk_premium, float), (
+                "country_risk_premium is not float"
+            )
+            assert isinstance(example.total_equity_risk_premium, float), (
+                "total_equity_risk_premium is not float"
+            )
 
             # Test general structure
             for premium in premiums:
-                assert isinstance(
-                    premium, MarketRiskPremium
-                ), "premium is not MarketRiskPremium"
+                assert isinstance(premium, MarketRiskPremium), (
+                    "premium is not MarketRiskPremium"
+                )
                 assert isinstance(premium.country, str), "country is not string"
                 assert premium.continent is None or isinstance(
                     premium.continent, str

@@ -49,13 +49,16 @@ tests/
 ```python
 import pytest
 
+
 @pytest.fixture
 def api_key():
     return "test_api_key"
 
+
 @pytest.fixture
 def client(api_key):
     from fmp_data import FMPDataClient
+
     return FMPDataClient(api_key=api_key)
 ```
 
@@ -65,11 +68,10 @@ from unittest.mock import Mock
 
 from fmp_data.company.models import CompanyProfile
 
+
 def test_get_company_profile(client):
     """Test retrieving company profile."""
-    client.company.client.request = Mock(
-        return_value=[CompanyProfile(symbol="AAPL")]
-    )
+    client.company.client.request = Mock(return_value=[CompanyProfile(symbol="AAPL")])
     profile = client.company.get_profile("AAPL")
     assert profile.symbol == "AAPL"
 ```
@@ -83,11 +85,10 @@ from unittest.mock import Mock
 
 from fmp_data.company.models import CompanyProfile
 
+
 def test_api_call(client):
     # Mock API response at the client request layer
-    client.company.client.request = Mock(
-        return_value=[CompanyProfile(symbol="AAPL")]
-    )
+    client.company.client.request = Mock(return_value=[CompanyProfile(symbol="AAPL")])
 
     # Make request through business logic
     result = client.company.get_profile("AAPL")

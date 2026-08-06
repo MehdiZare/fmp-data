@@ -89,17 +89,17 @@ class TestIntelligenceEndpoints(BaseTestCase):
             assert isinstance(events, list), "events is not a list"
             if len(events) > 0:
                 for event in events:
-                    assert isinstance(
-                        event, EarningConfirmed
-                    ), "event tpye is not Earning Confirmed"
+                    assert isinstance(event, EarningConfirmed), (
+                        "event tpye is not Earning Confirmed"
+                    )
                     if event.time is not None:
-                        assert isinstance(
-                            event.time, str
-                        ), "event time is not of type string, it"
+                        assert isinstance(event.time, str), (
+                            "event time is not of type string, it"
+                        )
                     if event.event_date is not None:
-                        assert isinstance(
-                            event.event_date, datetime
-                        ), "event date is not of datetime type"
+                        assert isinstance(event.event_date, datetime), (
+                            "event date is not of datetime type"
+                        )
 
     def test_get_historical_earnings(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting historical earnings"""
@@ -109,14 +109,60 @@ class TestIntelligenceEndpoints(BaseTestCase):
             )
 
             assert isinstance(events, list)
-            # API may return empty array if no historical data available
-            if len(events) > 0:
-                for event in events:
-                    assert isinstance(event, EarningEvent)
-                    assert event.symbol == "AAPL"
-                    assert isinstance(event.event_date, date)
-                    if event.time is not None:
-                        assert isinstance(event.time, str)
+            assert len(events) > 0
+            for event in events:
+                assert isinstance(event, EarningEvent)
+                assert event.symbol == "AAPL"
+                assert isinstance(event.event_date, date)
+                if event.time is not None:
+                    assert isinstance(event.time, str)
+
+    def test_get_historical_earnings_with_report_times(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        """Report time fields are populated when include_report_times is set"""
+        with vcr_instance.use_cassette(
+            "intelligence/historical_earnings_report_times.yaml"
+        ):
+            events = self._handle_rate_limit(
+                fmp_client.intelligence.get_historical_earnings,
+                "AAPL",
+                include_report_times=True,
+            )
+
+            assert isinstance(events, list)
+            assert len(events) > 0
+            # At least one report carries the extra fields the flag unlocks
+            assert any(event.time in {"bmo", "amc"} for event in events)
+            assert any(event.confirmed is not None for event in events)
+            assert any(event.fiscal_period is not None for event in events)
+            for event in events:
+                if event.period_ending is not None:
+                    assert isinstance(event.period_ending, date)
+                if event.fiscal_year is not None:
+                    assert isinstance(event.fiscal_year, int)
+
+    def test_get_earnings_calendar_with_report_times(
+        self, fmp_client: FMPDataClient, vcr_instance, frozen_today: date
+    ):
+        """Earnings calendar exposes report times when the flag is set"""
+        with vcr_instance.use_cassette(
+            "intelligence/earnings_calendar_report_times.yaml"
+        ):
+            events = self._handle_rate_limit(
+                fmp_client.intelligence.get_earnings_calendar,
+                start_date=frozen_today,
+                end_date=frozen_today + timedelta(days=30),
+                include_report_times=True,
+            )
+
+            assert isinstance(events, list)
+            assert len(events) > 0
+            assert any(event.confirmed is not None for event in events)
+            for event in events:
+                assert isinstance(event, EarningEvent)
+                if event.time is not None:
+                    assert event.time in {"bmo", "amc"}
 
     def test_get_earnings_surprises(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting earnings surprises"""

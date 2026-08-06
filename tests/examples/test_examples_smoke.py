@@ -276,7 +276,9 @@ def test_example_runs_without_error(
     module = load_module_from_path(example_path)
 
     # Mock both FMPDataClient() and FMPDataClient.from_env() in the loaded module
-    with (patch.object(module, "FMPDataClient") as mock_client_class,):
+    with (
+        patch.object(module, "FMPDataClient") as mock_client_class,
+    ):
         # Mock the context manager
         mock_client_class.from_env.return_value.__enter__.return_value = mock_client
         mock_client_class.from_env.return_value.__exit__.return_value = None
@@ -306,9 +308,9 @@ def test_all_examples_have_main_function() -> None:
         assert "def main(" in content, f"Example {example_file} missing main() function"
 
         # Check for if __name__ == "__main__"
-        assert (
-            'if __name__ == "__main__"' in content
-        ), f"Example {example_file} missing if __name__ == '__main__' guard"
+        assert 'if __name__ == "__main__"' in content, (
+            f"Example {example_file} missing if __name__ == '__main__' guard"
+        )
 
 
 def test_all_examples_use_context_manager() -> None:
@@ -320,9 +322,9 @@ def test_all_examples_use_context_manager() -> None:
         content = example_path.read_text()
 
         # Check for context manager usage
-        assert (
-            "with FMPDataClient" in content
-        ), f"Example {example_file} not using context manager pattern"
+        assert "with FMPDataClient" in content, (
+            f"Example {example_file} not using context manager pattern"
+        )
 
 
 def test_no_hardcoded_api_keys() -> None:

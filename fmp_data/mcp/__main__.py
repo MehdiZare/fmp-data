@@ -15,9 +15,9 @@ import os
 from pathlib import Path
 import sys
 
-try:
-    import mcp.server.fastmcp  # noqa: F401
-except ImportError:
+from fmp_data.mcp._compat import mcp_server_available
+
+if not mcp_server_available():
     print(
         "Error: MCP dependencies not installed.\n"
         "Please install with: uv pip install 'fmp-data[mcp]'",
