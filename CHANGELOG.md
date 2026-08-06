@@ -35,7 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Notable bumps: `mcp` 1.28.1 → 2.0.0, `ruff` 0.15.21 → 0.16.1, `mypy` 2.2.0 → 2.3.0, `cryptography` 49 → 50, `twine` 6.2.0 → 7.0.0
   - Actions: `checkout` v7.0.1, `setup-python` v7.0.0, `setup-uv` v9.0.0, `gh-action-pypi-publish` v1.14.1 (closes #107, #108, #109, #110)
   - Dropped the `black` pre-commit hook: black 24.x and ruff 0.16's formatter disagree on assert-message wrapping, and ruff already formats this project
-  - Reformatted the tree with ruff 0.16 (formatting only, no behavior change)
+  - Reformatted the tree with ruff 0.16 (formatting only, no behavior change); 0.16 also formats Python blocks inside Markdown, hence the docs churn
+  - The `nox -s security` session now upgrades pip before auditing instead of suppressing `CVE-2026-1703`, so the report covers project dependencies rather than the virtualenv's bundled pip
 - **Volume Type Normalization** - Normalized price-model volume fields to always deserialize as `float`:
   - `alternative.HistoricalPrice.volume` and `alternative.HistoricalPrice.unadjusted_volume` now normalize whole-number payloads such as `123` to `123.0`
   - `company.IntradayPrice.volume` now normalizes whole-number payloads to `float` as well
