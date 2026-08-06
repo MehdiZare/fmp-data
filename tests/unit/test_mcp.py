@@ -239,8 +239,15 @@ class TestSemanticsMethodResolution:
         from fmp_data.mcp.discovery import discover_all_tools
         from fmp_data.mcp.tool_loader import _resolve_attr
 
+        tools = discover_all_tools()
+        assert tools, (
+            "discover_all_tools() returned no tools — semantics modules failed to "
+            "import (check that fmp_data.lc.models is importable without the "
+            "langchain extra)"
+        )
+
         failures = []
-        for tool in discover_all_tools():
+        for tool in tools:
             dotted = f"{tool['client']}.{tool['method']}"
             try:
                 _resolve_attr(live_client, dotted)
@@ -250,6 +257,49 @@ class TestSemanticsMethodResolution:
         assert not failures, "Unresolvable semantics method names:\n" + "\n".join(
             failures
         )
+
+    def test_search_method_names_pair_with_semantics(self):
+        """Endpoint-map keys that are not get_* must still pair with semantics.
+
+        Renaming map keys to real client methods (search_crowdfunding, etc.)
+        broke the old get_-prefix-only LC join heuristic. Pairing must also
+        match EndpointSemantics.method_name.
+        """
+        from fmp_data.institutional.mapping import INSTITUTIONAL_ENDPOINTS_SEMANTICS
+        from fmp_data.intelligence.mapping import INTELLIGENCE_ENDPOINTS_SEMANTICS
+        from fmp_data.lc import resolve_semantics_for_endpoint
+        from fmp_data.market.mapping import MARKET_ENDPOINTS_SEMANTICS
+
+        cases = [
+            (
+                "search_crowdfunding",
+                INTELLIGENCE_ENDPOINTS_SEMANTICS,
+                "crowdfunding_search",
+            ),
+            (
+                "search_equity_offering",
+                INTELLIGENCE_ENDPOINTS_SEMANTICS,
+                "equity_offering_search",
+            ),
+            (
+                "search_cik_by_name",
+                INSTITUTIONAL_ENDPOINTS_SEMANTICS,
+                "cik_mapper_by_name",
+            ),
+            ("get_cik_mappings", INSTITUTIONAL_ENDPOINTS_SEMANTICS, "cik_mappings"),
+            ("search_company", MARKET_ENDPOINTS_SEMANTICS, "search"),
+            (
+                "get_ratings_snapshot",
+                INTELLIGENCE_ENDPOINTS_SEMANTICS,
+                "ratings_snapshot",
+            ),
+        ]
+        for endpoint_name, semantics_map, expected_key in cases:
+            sem = resolve_semantics_for_endpoint(endpoint_name, semantics_map)
+            assert sem is not None, f"No semantics for {endpoint_name}"
+            assert sem.method_name == endpoint_name
+            # Confirm we found the expected alias entry (key may differ)
+            assert semantics_map[expected_key] is sem
 
     def test_intelligence_semantics_resolve_on_intelligence_client(self, live_client):
         """Intelligence semantics must only advertise intelligence methods."""

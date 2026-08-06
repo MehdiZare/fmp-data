@@ -226,8 +226,8 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 |----------|------|-------------|
 | `asset_allocation` | `/stable/13f-asset-allocation` | Get 13F asset allocation data |
 | `beneficial_ownership` | `/stable/acquisition-of-beneficial-ownership` | Get beneficial ownership data |
-| `cik_mapper` | `/stable/cik-list` | Get CIK to name mappings |
-| `cik_mapper_by_name` | `/stable/cik-list` | Search CIK mappings by name |
+| `cik_mapper` (client `get_cik_mappings`, MCP `cik_mappings`) | `/stable/cik-list` | Get CIK to name mappings |
+| `cik_mapper_by_name` (client `search_cik_by_name`) | `/stable/cik-list` | Search CIK mappings by name |
 | `fail_to_deliver` | `/stable/fail_to_deliver` | Get fail to deliver data |
 | `transaction_types` | `/stable/insider-trading-transaction-type` | Get insider transaction types |
 | `insider_trading_latest` | `/stable/insider-trading/latest` | Get latest insider trading activity |
