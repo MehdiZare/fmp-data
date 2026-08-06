@@ -90,7 +90,7 @@ DEFAULT_TOOLS: list[str] = [
     "institutional.insider_trades",
     "institutional.institutional_holdings",
     "institutional.transaction_types",
-    # Intelligence (39 tools) - News, Market Events, Analyst Ratings and Grades
+    # Intelligence (39 tools) - news, events, grades/ratings (#116)
     # Dead/deprecated FMP endpoints intentionally omitted from defaults:
     # earnings_confirmed, earnings_surprises, stock_news_sentiments,
     # historical_social_sentiment, trending_social_sentiment,
