@@ -8,12 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
-- **Earnings Report Times** (#111) - Added the `includeReportTimes` parameter to the earnings endpoints:
-  - `get_earnings_calendar(include_report_times=True)` and `get_historical_earnings(include_report_times=True)` on both sync and async clients
-  - Python kwarg `include_report_times=True` maps to query `includeReportTimes=true`
-  - When set, events may include `time` (`"bmo"` / `"amc"`), `period_ending`, `fiscal_period`, `fiscal_year` and `confirmed` (per-row optional)
-  - Fields are optional on the model; without the flag the API typically omits the confirmation/fiscal extras (`periodEnding`, `fiscalPeriod`, `fiscalYear`, `confirmed`). Session `time` can still appear on base `/earnings` payloads
-  - `get_historical_earnings()` also accepts `limit` now
+- **Earnings Report Times** (#111) - Exposed FMP's `includeReportTimes` flag on the intelligence earnings endpoints:
+  - `get_earnings_calendar(..., include_report_times=...)` and `get_historical_earnings(..., include_report_times=...)` on both sync and async clients
+  - Python kwarg `include_report_times` maps to query `includeReportTimes` when not `None` (explicit `True`/`False` are forwarded; unset omits the param)
+  - When true, responses may populate session `time` (`"bmo"` / `"amc"`), `period_ending`, `fiscal_period`, `fiscal_year`, and `confirmed` (per-row optional)
+  - New `EarningEvent` fields are optional and default to `None`; without the flag the API typically omits confirmation/fiscal extras. Session `time` can still appear on base `/earnings` payloads (including company `get_earnings()`)
+  - `get_historical_earnings()` also accepts optional `limit`
   - Thanks to @joshuatz for the report
 - **New Company Endpoint** - Added `get_profile_cik()` method to retrieve company profile using CIK (Central Index Key) number
   - Available in both sync (`CompanyClient`) and async (`AsyncCompanyClient`) clients
@@ -32,12 +32,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - MCP SDK 2.0 renamed `mcp.server.fastmcp.FastMCP` to `mcp.server.MCPServer`
   - Added `fmp_data.mcp._compat` to resolve whichever class the installed SDK provides
   - The `mcp` extra floor stays at `>=1.28.1`, so no forced SDK upgrade for existing installs
-- **Dependency Refresh** - Upgraded all locked dependencies and GitHub Actions to their latest releases:
-  - Notable bumps: `mcp` 1.28.1 → 2.0.0, `ruff` 0.15.21 → 0.16.1, `mypy` 2.2.0 → 2.3.0, `cryptography` 49 → 50, `twine` 6.2.0 → 7.0.0
-  - Actions: `checkout` v7.0.1, `setup-python` v7.0.0, `setup-uv` v9.0.0, `gh-action-pypi-publish` v1.14.1 (closes #107, #108, #109, #110)
-  - Dropped the `black` pre-commit hook: black 24.x and ruff 0.16's formatter disagree on assert-message wrapping, and ruff already formats this project
-  - Reformatted the tree with ruff 0.16 (formatting only, no behavior change); 0.16 also formats Python blocks inside Markdown, hence the docs churn
-  - The `nox -s security` session now upgrades pip before auditing instead of suppressing `CVE-2026-1703`, so the report covers project dependencies rather than the virtualenv's bundled pip
+- **CI / Tooling Refresh** (#112, closes #107, #108, #109, #110) - Updated GitHub Actions, pre-commit hooks, and the security session:
+  - Actions: `checkout` → v7.0.1, `setup-python` → v7.0.0, `setup-uv` → v9.0.0, `gh-action-pypi-publish` → v1.14.1
+  - Pre-commit: `ruff` + `ruff-format` at v0.16.1 (replaces the black 24.x hook, which fought ruff on assert-message wrapping); `pre-commit-hooks` v6.0.0; `bandit` 1.9.4
+  - Reformatted the tree with ruff 0.16 (formatting only, including Python blocks inside Markdown — hence the docs churn)
+  - `nox -s security` upgrades pip before `pip-audit` instead of suppressing `CVE-2026-1703`, so the report covers project dependencies rather than the virtualenv's bundled pip
+  - Package floors in `pyproject.toml` for `mcp` / `ruff` / `mypy` are unchanged; `uv.lock` remains gitignored and is not part of the published artifact
+- **MCP default toolset hygiene** - Removed dead/deprecated intelligence tools from `DEFAULT_TOOLS` so the default MCP server no longer registers tools that always fail or return empty:
+  - Dropped: `intelligence.earnings_confirmed`, `intelligence.earnings_surprises`, `intelligence.stock_news_sentiments`, `intelligence.historical_social_sentiment`, `intelligence.trending_social_sentiment`, `intelligence.social_sentiment_changes`
+  - Client methods remain importable; custom manifests can still opt in explicitly
 - **Volume Type Normalization** - Normalized price-model volume fields to always deserialize as `float`:
   - `alternative.HistoricalPrice.volume` and `alternative.HistoricalPrice.unadjusted_volume` now normalize whole-number payloads such as `123` to `123.0`
   - `company.IntradayPrice.volume` now normalizes whole-number payloads to `float` as well
@@ -47,14 +50,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Historical Earnings 404** (#111) - Fixed `get_historical_earnings()` returning nothing:
   - The endpoint pointed at the legacy `historical/earning-calendar` path, which 404s on `/stable`
-  - Now uses the stable `/earnings` path; re-record the local VCR cassette so path regressions fail with a non-empty assertion
-  - Integration test now asserts a non-empty response so a future path break fails loudly
-- **Dead earnings endpoints soft-fail** - `get_earnings_confirmed()` and `get_earnings_surprises()` now warn and return `[]` instead of calling 404 FMP paths (same pattern as `get_stock_news_sentiments`)
-- **MCP default toolset hygiene** - Removed dead/deprecated intelligence tools from `DEFAULT_TOOLS` (`earnings_confirmed`, `earnings_surprises`, `stock_news_sentiments`, social-sentiment trio) so the default server no longer advertises tools that always fail or return empty
-- **Bulk CSV Volume String Coercion** (#104) - Fixed silent bulk row drops when FMP sends volume as a fractional numeric string:
-  - `coerce_volume_value` now coerces numeric strings such as `"475.9"` via `int(float(...))` for `CompanyProfile` / `Quote` volume fields
-  - Empty/whitespace volume cells become `None`; non-numeric strings still surface as validation errors
-  - Addresses ~9.7% row loss on `profile-bulk` (and other bulk CSV endpoints that use the same helper). Refs #70
+  - Now uses the stable `/earnings` path (same family as company earnings)
+  - Integration test asserts a non-empty response so a future path break fails loudly (re-record local VCR cassettes after path changes; cassettes are gitignored)
+- **Dead earnings endpoints soft-fail** (#111) - `get_earnings_confirmed()` and `get_earnings_surprises()` (sync and async) now emit `DeprecationWarning` and return `[]` without calling the upstream 404 paths (same soft-fail pattern as `get_stock_news_sentiments`)
 - **Cache Payload Isolation** - Prevented mutable cached payloads from being shared by reference:
   - `BaseClient` now deep-copies cache payloads on both cache read and write paths
   - Added sync and async regression coverage to prevent future cache aliasing regressions
@@ -78,10 +76,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Made `adj_close` and `unadjusted_volume` fields optional in `HistoricalPrice` model
   - Fixed `FOREX_HISTORICAL` endpoint to use correct response model (`ForexHistoricalPrice` instead of `ForexPriceHistory`)
   - Updated unit test mocks to match actual `/full` endpoint response format (flat list structure)
-- **Test Coverage** - Improved patch coverage to 100% for deprecation warnings:
+- **Test Coverage** - Improved patch coverage for deprecation warnings:
   - Added async test for `get_stock_news_sentiments()` deprecation warning
   - Enhanced sync test to validate `DeprecationWarning` emission
-  - All 866 unit tests now passing with proper coverage of warning code paths
 - **Missing Data Defaults** - Normalized economic and intelligence models to keep missing values as `None`:
   - `EconomicEvent.country` now defaults to `None` instead of empty string
   - `EconomicEvent.change_percent` now defaults to `None` instead of `0`
@@ -116,12 +113,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Cassette Contract Test** - Enhanced to run in `warn` mode and assert zero uncaptured fields (excluding dynamic SEC XBRL taxonomy keys in AsReported models)
 
 ### Deprecated
-- **Confirmed Earnings & Earnings Surprises Endpoints** (#111) - Marked `get_earnings_confirmed()` and `get_earnings_surprises()` as deprecated:
-  - FMP no longer serves `earning-calendar-confirmed` or `earnings-surprises` on `/stable` (both return 404)
-  - Both sync and async methods now emit `DeprecationWarning` naming the replacement
-  - Replace `get_earnings_confirmed()` with `get_earnings_calendar(include_report_times=True)` and read `confirmed` / `time`
-  - Replace `get_earnings_surprises()` with `get_historical_earnings()` and compare `eps` against `eps_estimated`
-  - The `EarningConfirmed` and `EarningSurprise` models are retained for now; removal is planned for the next major version
+- **Confirmed Earnings & Earnings Surprises Endpoints** (#111) - Marked `get_earnings_confirmed()` and `get_earnings_surprises()` as deprecated on sync and async clients:
+  - Upstream paths `earning-calendar-confirmed` and `earnings-surprises` 404 on `/stable`
+  - Methods emit `DeprecationWarning` and return `[]` without making an HTTP call (soft-fail; see Fixed above)
+  - Prefer `get_earnings_calendar(include_report_times=True)` and read `confirmed` plus session `time` (`"bmo"` / `"amc"` — not a drop-in for the old HH:MM clock string on `EarningConfirmed`)
+  - Prefer `get_historical_earnings()` and compare `eps` vs `eps_estimated` (old surprise model used `actual_earning_result` / `estimated_earning`)
+  - `EarningConfirmed` and `EarningSurprise` models remain importable; removal planned for the next major version
 - **Stock News Sentiments Endpoint** - Marked `get_stock_news_sentiments()` as deprecated:
   - FMP API no longer supports the `stock-news-sentiments-rss-feed` endpoint (returns 404)
   - Both sync and async methods now emit `DeprecationWarning` with clear migration message
@@ -132,11 +129,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **HTTP Error Traceback Redaction** - Suppressed exception chaining for HTTP status errors so formatted tracebacks do not expose API key query parameters:
   - Updated rate limit, authentication, validation, and fallback HTTP error paths to raise sanitized package exceptions without chaining the raw `httpx.HTTPStatusError`
   - Added regression coverage for API key redaction in formatted tracebacks and exception messages
-- **HTTP Error Payload & Binary Path Redaction** (#97) - Expanded API-key redaction beyond traceback cause suppression:
-  - Redact reflected keys in HTTP error detail payloads (query-string, percent-encoded, nested JSON, and known key names)
-  - Route binary (`response_model is bytes`) status failures through the same typed FMP error mapper
-  - Safely decode non-UTF-8 error bodies, redact 429 bodies before rate-limiter logging, and keep mapped 5xx `FMPError`s retryable
-  - Added regression coverage for sync/async binary paths, non-UTF-8 bodies, and message embedding of error details
+
 - **VCR Cassette Leak Guard** - Added unit tests that scan all committed VCR cassettes for leaked API keys:
   - `test_vcr_sanitization.py` verifies the VCR `scrub_api_key` / `scrub_response_secrets` hooks and scans every YAML cassette for real API key values
   - `test_cassette_contracts.py` validates every cassette response against its declared Pydantic endpoint model, catching schema drift and stale cassettes
@@ -149,10 +142,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Bumped `codecov/codecov-action` from `v5` to `v6` in CI coverage uploads
   - Bumped `actions/github-script` from `v8` to `v9` in the TestPyPI publishing workflow
   - Bumped `pypa/gh-action-pypi-publish` from `v1.13.0` to `v1.14.0` in publishing workflows
-- **Dependency Refresh** (#105) - Raised GitHub Actions and Python package floors to current stable releases:
-  - Actions: `checkout` 7, `setup-python` 6.3, `setup-uv` 8.3.2, `cache` 6.1, `codecov-action` 7, and related workflow pins
-  - Python: pydantic 2.13, redis 8 (cache-redis extra), mypy 2.x, rich 15, langchain/openai/mcp stack bumps, ruff/pytest/nox updates
-  - Set mypy `python_version` to 3.12 for numpy 2.x stubs while keeping runtime support on 3.10+
+
 - **VCR Cassettes Excluded from Git** - Cassettes are now gitignored (`tests/integration/vcr_cassettes/`) because they are too large for GitHub (130 MB+ individual files). Developers must record cassettes locally with `FMP_TEST_API_KEY`.
 - **CI Secret Scan** - The `secret-scan` job now gracefully skips when no cassette YAML files are present instead of failing.
 - **Cassette Contract Test** - `test_vcr_cassettes_match_endpoint_models` now skips with a clear message when no cassettes are found, instead of silently passing.
@@ -163,6 +153,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Established deprecation handling process for removed FMP endpoints
 - **Testing** - Enabled parallel pytest runs for local Makefile/nox usage and added `pytest-xdist` to dev dependencies (CI remains serial to avoid stalls).
 - **Makefile** - `.venv/.installed` now tracks `pyproject.toml` changes to auto-refresh dev deps.
+
+## [2.4.0] - 2026-07-13
+
+Released from `dev` via #106 (HTTP redaction, bulk volume fix, dependency refresh).
+
+### Fixed
+- **Bulk CSV Volume String Coercion** (#104) - Fixed silent bulk row drops when FMP sends volume as a fractional numeric string:
+  - `coerce_volume_value` now coerces numeric strings such as `"475.9"` via `int(float(...))` for `CompanyProfile` / `Quote` volume fields
+  - Empty/whitespace volume cells become `None`; non-numeric strings still surface as validation errors
+  - Addresses ~9.7% row loss on `profile-bulk` (and other bulk CSV endpoints that use the same helper). Refs #70
+
+### Security
+- **HTTP Error Payload & Binary Path Redaction** (#97) - Expanded API-key redaction beyond traceback cause suppression:
+  - Redact reflected keys in HTTP error detail payloads (query-string, percent-encoded, nested JSON, and known key names)
+  - Route binary (`response_model is bytes`) status failures through the same typed FMP error mapper
+  - Safely decode non-UTF-8 error bodies, redact 429 bodies before rate-limiter logging, and keep mapped 5xx `FMPError`s retryable
+  - Added regression coverage for sync/async binary paths, non-UTF-8 bodies, and message embedding of error details
+
+### Changed
+- **Dependency Refresh** (#105) - Raised GitHub Actions and Python package floors to current stable releases:
+  - Actions: `checkout` 7, `setup-python` 6.3, `setup-uv` 8.3.2, `cache` 6.1, `codecov-action` 7, and related workflow pins
+  - Python: pydantic 2.13, redis 8 (cache-redis extra), mypy 2.x, rich 15, langchain/openai/mcp stack bumps, ruff/pytest/nox updates
+  - Set mypy `python_version` to 3.12 for numpy 2.x stubs while keeping runtime support on 3.10+
 
 ## [2.1.0] - 2026-01-23
 
