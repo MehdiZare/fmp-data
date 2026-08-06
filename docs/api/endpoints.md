@@ -175,9 +175,9 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 | `crowdfunding_rss` | `/stable/crowdfunding-offerings-latest` | Get latest crowdfunding offerings |
 | `crowdfunding_search` | `/stable/crowdfunding-offerings-search` | Search crowdfunding offerings |
 | `dividends_calendar` | `/stable/dividends-calendar` | Get dividends calendar |
-| `earnings_confirmed` | `/stable/earning-calendar-confirmed` | **Deprecated** — returns `[]`; use `earnings_calendar` with `includeReportTimes` |
-| `earnings_calendar` | `/stable/earnings-calendar` | Get earnings calendar |
-| `earnings_surprises` | `/stable/earnings-surprises` | **Deprecated** — returns `[]`; use `historical_earnings` and compare eps |
+| `earnings_confirmed` | `/stable/earning-calendar-confirmed` | **Deprecated** — client returns `[]` without calling this removed path; use `earnings_calendar` with `includeReportTimes` |
+| `earnings_calendar` | `/stable/earnings-calendar` | Get earnings calendar (`includeReportTimes`) |
+| `earnings_surprises` | `/stable/earnings-surprises` | **Deprecated** — client returns `[]` without calling this removed path; use `historical_earnings` and compare `eps` with `eps_estimated` |
 | `esg_benchmark` | `/stable/esg-benchmark` | Get ESG benchmark data |
 | `esg_data` | `/stable/esg-disclosures` | Get ESG data for a company |
 | `esg_ratings` | `/stable/esg-ratings` | Get ESG ratings for a company |
