@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from pydantic import HttpUrl
 import pytest
+import vcr
 
 from fmp_data import FMPDataClient
 from fmp_data.helpers import RemovedEndpointError
@@ -72,7 +73,7 @@ class TestIntelligenceEndpoints(BaseTestCase):
 
     def test_get_earnings_confirmed(
         self, fmp_client: FMPDataClient, frozen_today: date
-    ):
+    ) -> None:
         """Deprecated confirmed calendar soft-fails with empty list (no HTTP)."""
         start_date = frozen_today
         end_date = start_date + timedelta(days=30)
@@ -86,7 +87,9 @@ class TestIntelligenceEndpoints(BaseTestCase):
         assert isinstance(events, list)
         assert events == [], "Deprecated endpoint should return empty list"
 
-    def test_get_historical_earnings(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_get_historical_earnings(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
+    ) -> None:
         """Test getting historical earnings"""
         with vcr_instance.use_cassette("intelligence/historical_earnings.yaml"):
             events = self._handle_rate_limit(
@@ -103,8 +106,8 @@ class TestIntelligenceEndpoints(BaseTestCase):
                     assert isinstance(event.time, str)
 
     def test_get_historical_earnings_with_report_times(
-        self, fmp_client: FMPDataClient, vcr_instance
-    ):
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
+    ) -> None:
         """Report time fields are populated when include_report_times is set"""
         with vcr_instance.use_cassette(
             "intelligence/historical_earnings_report_times.yaml"
@@ -128,8 +131,8 @@ class TestIntelligenceEndpoints(BaseTestCase):
                     assert isinstance(event.fiscal_year, int)
 
     def test_get_earnings_calendar_with_report_times(
-        self, fmp_client: FMPDataClient, vcr_instance, frozen_today: date
-    ):
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR, frozen_today: date
+    ) -> None:
         """Earnings calendar exposes report times when the flag is set"""
         with vcr_instance.use_cassette(
             "intelligence/earnings_calendar_report_times.yaml"
@@ -149,7 +152,7 @@ class TestIntelligenceEndpoints(BaseTestCase):
                 if event.time is not None:
                     assert event.time in {"bmo", "amc"}
 
-    def test_get_earnings_surprises(self, fmp_client: FMPDataClient):
+    def test_get_earnings_surprises(self, fmp_client: FMPDataClient) -> None:
         """Deprecated surprises endpoint soft-fails with empty list (no HTTP)."""
         with pytest.warns(DeprecationWarning, match="get_earnings_surprises"):
             surprises = fmp_client.intelligence.get_earnings_surprises("AAPL")

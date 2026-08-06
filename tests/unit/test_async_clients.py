@@ -1163,7 +1163,9 @@ class TestAsyncIntelligenceClient:
         )
 
     @pytest.mark.asyncio
-    async def test_get_earnings_calendar_include_report_times(self, mock_client):
+    async def test_get_earnings_calendar_include_report_times(
+        self, mock_client: MagicMock
+    ) -> None:
         """Test earnings calendar forwards include_report_times."""
         from fmp_data.intelligence import endpoints as intelligence_endpoints
         from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
@@ -1179,7 +1181,9 @@ class TestAsyncIntelligenceClient:
         )
 
     @pytest.mark.asyncio
-    async def test_get_historical_earnings_optional_params(self, mock_client):
+    async def test_get_historical_earnings_optional_params(
+        self, mock_client: MagicMock
+    ) -> None:
         """Test historical earnings forwards limit and include_report_times."""
         from fmp_data.intelligence import endpoints as intelligence_endpoints
         from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
@@ -1199,7 +1203,9 @@ class TestAsyncIntelligenceClient:
         )
 
     @pytest.mark.asyncio
-    async def test_get_historical_earnings_omits_optional_params(self, mock_client):
+    async def test_get_historical_earnings_omits_optional_params(
+        self, mock_client: MagicMock
+    ) -> None:
         """Default historical call must not send limit/include_report_times."""
         from fmp_data.intelligence import endpoints as intelligence_endpoints
         from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
@@ -1218,7 +1224,9 @@ class TestAsyncIntelligenceClient:
         assert "include_report_times" not in kwargs
 
     @pytest.mark.asyncio
-    async def test_include_report_times_false_is_forwarded_async(self, mock_client):
+    async def test_include_report_times_false_is_forwarded_async(
+        self, mock_client: MagicMock
+    ) -> None:
         """Explicit False is sent on async calendar and historical paths."""
         from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
 
@@ -1244,8 +1252,12 @@ class TestAsyncIntelligenceClient:
         ],
     )
     async def test_dead_earnings_endpoints_warn_async(
-        self, mock_client, method_name, args, hint
-    ):
+        self,
+        mock_client: MagicMock,
+        method_name: str,
+        args: tuple[str, ...],
+        hint: str,
+    ) -> None:
         """Async dead earnings endpoints warn and soft-fail without HTTP."""
         import inspect
 
