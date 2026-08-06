@@ -383,10 +383,10 @@ with FMPDataClient.from_env() as client:
 
 # Manual initialization
 client = FMPDataClient(
-    api_key="your_api_key", # pragma: allowlist secret
+    api_key="your_api_key",  # pragma: allowlist secret
     timeout=30,
     max_retries=3,
-    debug=True
+    debug=True,
 )
 ```
 
@@ -396,6 +396,7 @@ client = FMPDataClient(
 import asyncio
 from fmp_data import AsyncFMPDataClient
 
+
 async def main():
     # Initialize from environment
     async with AsyncFMPDataClient.from_env() as client:
@@ -404,16 +405,17 @@ async def main():
 
     # Manual initialization
     client = AsyncFMPDataClient(
-        api_key="your_api_key", # pragma: allowlist secret
+        api_key="your_api_key",  # pragma: allowlist secret
         timeout=30,
         max_retries=3,
-        debug=True
+        debug=True,
     )
     try:
         quote = await client.company.get_quote("AAPL")
         print(f"Price: ${quote.price}")
     finally:
         await client.aclose()
+
 
 asyncio.run(main())
 ```
@@ -424,6 +426,7 @@ asyncio.run(main())
 import asyncio
 from fmp_data import AsyncFMPDataClient
 
+
 async def fetch_multiple_profiles(symbols: list[str]):
     async with AsyncFMPDataClient.from_env() as client:
         # Fetch all profiles concurrently
@@ -432,6 +435,7 @@ async def fetch_multiple_profiles(symbols: list[str]):
 
         for profile in profiles:
             print(f"{profile.symbol}: {profile.company_name}")
+
 
 asyncio.run(fetch_multiple_profiles(["AAPL", "MSFT", "GOOGL"]))
 ```
@@ -443,7 +447,7 @@ from fmp_data import FMPDataClient, ClientConfig, LoggingConfig, LogHandlerConfi
 
 # Custom configuration
 config = ClientConfig(
-    api_key="your_api_key", # pragma: allowlist secret
+    api_key="your_api_key",  # pragma: allowlist secret
     base_url="https://financialmodelingprep.com",
     timeout=60,
     max_retries=5,
@@ -453,10 +457,10 @@ config = ClientConfig(
             "console": LogHandlerConfig(
                 class_name="StreamHandler",
                 level="INFO",
-                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             )
-        }
-    )
+        },
+    ),
 )
 
 client = FMPDataClient(config=config)
@@ -470,7 +474,7 @@ from fmp_data.exceptions import (
     FMPError,
     RateLimitError,
     AuthenticationError,
-    ValidationError
+    ValidationError,
 )
 
 try:
@@ -503,15 +507,15 @@ logging_config = LoggingConfig(
         "console": LogHandlerConfig(
             class_name="StreamHandler",
             level="INFO",
-            format="%(levelname)s - %(message)s"
-        )
-    }
+            format="%(levelname)s - %(message)s",
+        ),
+    },
 )
 
 client = FMPDataClient(
     config=ClientConfig(
         api_key="your_api_key",  # pragma: allowlist secret
-        logging=logging_config
+        logging=logging_config,
     )
 )
 ```

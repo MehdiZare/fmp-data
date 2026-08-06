@@ -14,7 +14,11 @@ from unittest.mock import Mock, patch
 import pytest
 
 pytest.importorskip("mcp", reason="MCP dependencies not installed")
-pytest.importorskip("mcp.server.fastmcp", reason="FastMCP not available")
+
+from fmp_data.mcp._compat import mcp_server_available
+
+if not mcp_server_available():
+    pytest.skip("No supported MCP server class available", allow_module_level=True)
 
 
 class TestMCPServer:
@@ -34,7 +38,7 @@ class TestMCPServer:
 
         assert app is not None
         assert app.name == "fmp-data"
-        # FastMCP doesn't have a description attribute, just check basic functionality
+        # The server class has no description attribute; check basic wiring only
         mock_client_class.from_env.assert_called_once()
         mock_register.assert_called_once()
 
@@ -205,9 +209,9 @@ class TestToolsManifest:
         ]
 
         for tool in expected_tools:
-            assert (
-                tool in DEFAULT_TOOLS
-            ), f"Expected tool {tool} not found in DEFAULT_TOOLS"
+            assert tool in DEFAULT_TOOLS, (
+                f"Expected tool {tool} not found in DEFAULT_TOOLS"
+            )
 
 
 class TestMCPManifestLoading:
@@ -429,3 +433,43 @@ class TestMCPSetupSecurity:
         assert "secret123" not in output
         assert "[REDACTED]" in output or "Setup failed" in output
         assert result == 1  # Should return error code
+
+
+class TestMCPCompat:
+    """Test suite for the MCP SDK compatibility shim."""
+
+    def test_import_mcp_server_class_returns_usable_class(self):
+        """The resolved class exposes the surface create_app relies on."""
+        from fmp_data.mcp._compat import import_mcp_server_class
+
+        server_cls = import_mcp_server_class()
+
+        assert isinstance(server_cls, type)
+        assert server_cls.__name__ in {"MCPServer", "FastMCP"}
+        for attr in ("add_tool", "run"):
+            assert callable(getattr(server_cls, attr))
+
+    def test_prefers_v2_server_class(self):
+        """MCPServer wins when the 2.x SDK is importable."""
+        import sys
+
+        from fmp_data.mcp._compat import import_mcp_server_class
+
+        if "mcp.server" not in sys.modules:
+            import mcp.server  # noqa: F401
+
+        import mcp.server as mcp_server
+
+        if not hasattr(mcp_server, "MCPServer"):
+            pytest.skip("MCP SDK 1.x installed")
+
+        assert import_mcp_server_class() is mcp_server.MCPServer
+
+    def test_mcp_server_available_false_without_sdk(self):
+        """Availability check reports False when neither SDK import works."""
+        from fmp_data.mcp import _compat
+
+        with patch.object(
+            _compat, "import_mcp_server_class", side_effect=ImportError("no sdk")
+        ):
+            assert _compat.mcp_server_available() is False

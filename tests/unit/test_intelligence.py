@@ -76,6 +76,25 @@ def earnings_calendar_data():
 
 
 @pytest.fixture
+def earnings_report_times_data():
+    """Earnings payload as returned with includeReportTimes=true"""
+    return {
+        "symbol": "AAPL",
+        "date": "2026-07-30",
+        "epsActual": 2.02,
+        "epsEstimated": 1.89,
+        "revenueActual": 109417000000,
+        "revenueEstimated": 109038900000,
+        "time": "amc",
+        "periodEnding": "2026-06-27",
+        "fiscalPeriod": "Q3",
+        "fiscalYear": 2026,
+        "confirmed": True,
+        "lastUpdated": "2026-08-01",
+    }
+
+
+@pytest.fixture
 def earnings_confirmed_data():
     return {
         "symbol": "AAPL",
@@ -212,6 +231,36 @@ class TestMarketIntelligenceClientCalendar:
         assert kwargs["end_date"] == "2024-01-31"
         assert isinstance(result, list)
 
+    def test_get_earnings_calendar_with_report_times(
+        self, fmp_client, mock_client, earnings_report_times_data
+    ):
+        """include_report_times is forwarded and its extra fields parse"""
+        mock_client.request.return_value = [EarningEvent(**earnings_report_times_data)]
+
+        result = fmp_client.intelligence.get_earnings_calendar(
+            include_report_times=True
+        )
+
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["include_report_times"] is True
+        event = result[0]
+        assert event.time == "amc"
+        assert event.confirmed is True
+        assert event.period_ending == date(2026, 6, 27)
+        assert event.fiscal_period == "Q3"
+        assert event.fiscal_year == 2026
+
+    def test_get_earnings_calendar_omits_report_times_when_unset(
+        self, fmp_client, mock_client, earnings_calendar_data
+    ):
+        """The flag is left off the request entirely when not supplied"""
+        mock_client.request.return_value = [EarningEvent(**earnings_calendar_data)]
+
+        fmp_client.intelligence.get_earnings_calendar()
+
+        _args, kwargs = mock_client.request.call_args
+        assert "include_report_times" not in kwargs
+
     def test_get_historical_earnings(
         self, fmp_client, mock_client, earnings_calendar_data
     ):
@@ -223,7 +272,24 @@ class TestMarketIntelligenceClientCalendar:
         mock_client.request.assert_called_once()
         _args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "AAPL"
+        assert "limit" not in kwargs
+        assert "include_report_times" not in kwargs
         assert isinstance(result, list)
+
+    def test_get_historical_earnings_with_optional_params(
+        self, fmp_client, mock_client, earnings_report_times_data
+    ):
+        """limit and include_report_times are forwarded when supplied"""
+        mock_client.request.return_value = [EarningEvent(**earnings_report_times_data)]
+
+        fmp_client.intelligence.get_historical_earnings(
+            "AAPL", limit=5, include_report_times=True
+        )
+
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["symbol"] == "AAPL"
+        assert kwargs["limit"] == 5
+        assert kwargs["include_report_times"] is True
 
     def test_get_earnings_confirmed(
         self, fmp_client, mock_client, earnings_confirmed_data
@@ -257,6 +323,22 @@ class TestMarketIntelligenceClientCalendar:
         _args, kwargs = mock_client.request.call_args
         assert kwargs["symbol"] == "AAPL"
         assert isinstance(result, list)
+
+    @pytest.mark.parametrize(
+        ("method_name", "args"),
+        [
+            ("get_earnings_confirmed", ()),
+            ("get_earnings_surprises", ("AAPL",)),
+        ],
+    )
+    def test_dead_earnings_endpoints_warn(
+        self, fmp_client, mock_client, method_name, args
+    ):
+        """Endpoints FMP no longer serves emit a DeprecationWarning"""
+        mock_client.request.return_value = []
+
+        with pytest.warns(DeprecationWarning, match=method_name):
+            getattr(fmp_client.intelligence, method_name)(*args)
 
     def test_get_dividends_calendar(
         self, fmp_client, mock_client, dividends_calendar_data

@@ -40,11 +40,13 @@ with FMPDataClient.from_env() as client:
 import asyncio
 from fmp_data import AsyncFMPDataClient
 
+
 async def main():
     async with AsyncFMPDataClient.from_env() as client:
         quote = await client.company.get_quote("AAPL")
         rsi = await client.technical.get_rsi("AAPL", period_length=14)
         return quote, rsi
+
 
 asyncio.run(main())
 ```

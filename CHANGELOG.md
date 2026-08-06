@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+- **Earnings Report Times** (#111) - Added the `includeReportTimes` parameter to the earnings endpoints:
+  - `get_earnings_calendar(include_report_times=True)` and `get_historical_earnings(include_report_times=True)` on both sync and async clients
+  - When set, `EarningEvent` carries `time` (`"bmo"` / `"amc"`), `period_ending`, `fiscal_period`, `fiscal_year` and `confirmed`
+  - These five fields are `None` when the flag is omitted, so existing calls are unaffected
+  - `get_historical_earnings()` also accepts `limit` now
+  - Thanks to @joshuatz for the report
 - **New Company Endpoint** - Added `get_profile_cik()` method to retrieve company profile using CIK (Central Index Key) number
   - Available in both sync (`CompanyClient`) and async (`AsyncCompanyClient`) clients
   - Endpoint: `/stable/profile-cik`
@@ -21,6 +27,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added optional `cache-redis` extra for Redis-backed caching
 
 ### Changed
+- **MCP SDK 2.x Support** - The MCP server now works against both MCP SDK 1.x and 2.x:
+  - MCP SDK 2.0 renamed `mcp.server.fastmcp.FastMCP` to `mcp.server.MCPServer`
+  - Added `fmp_data.mcp._compat` to resolve whichever class the installed SDK provides
+  - The `mcp` extra floor stays at `>=1.28.1`, so no forced SDK upgrade for existing installs
+- **Dependency Refresh** - Upgraded all locked dependencies and GitHub Actions to their latest releases:
+  - Notable bumps: `mcp` 1.28.1 → 2.0.0, `ruff` 0.15.21 → 0.16.1, `mypy` 2.2.0 → 2.3.0, `cryptography` 49 → 50, `twine` 6.2.0 → 7.0.0
+  - Actions: `checkout` v7.0.1, `setup-python` v7.0.0, `setup-uv` v9.0.0, `gh-action-pypi-publish` v1.14.1 (closes #107, #108, #109, #110)
+  - Dropped the `black` pre-commit hook: black 24.x and ruff 0.16's formatter disagree on assert-message wrapping, and ruff already formats this project
+  - Reformatted the tree with ruff 0.16 (formatting only, no behavior change)
 - **Volume Type Normalization** - Normalized price-model volume fields to always deserialize as `float`:
   - `alternative.HistoricalPrice.volume` and `alternative.HistoricalPrice.unadjusted_volume` now normalize whole-number payloads such as `123` to `123.0`
   - `company.IntradayPrice.volume` now normalizes whole-number payloads to `float` as well
@@ -28,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Release impact: treat this as a minor release because the runtime type and generated schema change from integer to number for these fields
 
 ### Fixed
+- **Historical Earnings 404** (#111) - Fixed `get_historical_earnings()` returning nothing:
+  - The endpoint pointed at the legacy `historical/earning-calendar` path, which 404s on `/stable`
+  - Now uses the stable `/earnings` path; the VCR cassette records a 200 with real data
+  - Integration test now asserts a non-empty response so a future path break fails loudly
 - **Bulk CSV Volume String Coercion** (#104) - Fixed silent bulk row drops when FMP sends volume as a fractional numeric string:
   - `coerce_volume_value` now coerces numeric strings such as `"475.9"` via `int(float(...))` for `CompanyProfile` / `Quote` volume fields
   - Empty/whitespace volume cells become `None`; non-numeric strings still surface as validation errors
@@ -93,6 +112,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Cassette Contract Test** - Enhanced to run in `warn` mode and assert zero uncaptured fields (excluding dynamic SEC XBRL taxonomy keys in AsReported models)
 
 ### Deprecated
+- **Confirmed Earnings & Earnings Surprises Endpoints** (#111) - Marked `get_earnings_confirmed()` and `get_earnings_surprises()` as deprecated:
+  - FMP no longer serves `earning-calendar-confirmed` or `earnings-surprises` on `/stable` (both return 404)
+  - Both sync and async methods now emit `DeprecationWarning` naming the replacement
+  - Replace `get_earnings_confirmed()` with `get_earnings_calendar(include_report_times=True)` and read `confirmed` / `time`
+  - Replace `get_earnings_surprises()` with `get_historical_earnings()` and compare `eps` against `eps_estimated`
+  - The `EarningConfirmed` and `EarningSurprise` models are retained for now; removal is planned for the next major version
 - **Stock News Sentiments Endpoint** - Marked `get_stock_news_sentiments()` as deprecated:
   - FMP API no longer supports the `stock-news-sentiments-rss-feed` endpoint (returns 404)
   - Both sync and async methods now emit `DeprecationWarning` with clear migration message
@@ -246,7 +271,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   # New (2.0.0+)
   vector_store = EndpointVectorStore.load(
       cache_dir,
-      allow_dangerous_deserialization=True  # Only if you trust the cache source
+      allow_dangerous_deserialization=True,  # Only if you trust the cache source
   )
   ```
 

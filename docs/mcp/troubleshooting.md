@@ -121,9 +121,10 @@ Update your config with the correct path:
 ```python
 # Check your current limits
 import requests
+
 response = requests.get(
     "https://financialmodelingprep.com/stable/profile?symbol=AAPL",
-    params={"apikey": "YOUR_KEY"}
+    params={"apikey": "YOUR_KEY"},
 )
 print(f"Remaining calls: {response.headers.get('X-Rate-Limit-Remaining', 'Unknown')}")
 print(f"Limit: {response.headers.get('X-Rate-Limit-Limit', 'Unknown')}")
@@ -220,6 +221,7 @@ except json.JSONDecodeError as e:
 ```python
 # test_mcp.py
 import os
+
 os.environ["FMP_API_KEY"] = "your_key_here"
 
 from fmp_data.mcp.server import create_app
@@ -230,6 +232,7 @@ try:
 
     # Test a simple tool
     from fmp_data import FMPDataClient
+
     client = FMPDataClient.from_env()
     quote = client.company.get_quote("AAPL")
     print(f"✅ API working - AAPL price: ${quote.price}")

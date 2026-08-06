@@ -195,12 +195,11 @@ class SetupWizard:
             return False
 
         # Check if MCP dependencies are installed
-        try:
-            import mcp  # noqa: F401
-            from mcp.server.fastmcp import FastMCP  # noqa: F401
+        from fmp_data.mcp._compat import mcp_server_available
 
+        if mcp_server_available():
             self.print("MCP dependencies are installed", "success")
-        except ImportError:
+        else:
             self.print("MCP dependencies not installed", "error")
             self.print("Install with: pip install fmp-data[mcp]", "info")
             return False

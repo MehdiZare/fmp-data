@@ -5,12 +5,10 @@ from collections.abc import Callable
 import importlib
 import inspect
 import os
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from mcp.server.fastmcp import FastMCP
+from typing import Any
 
 from fmp_data.client import FMPDataClient
+from fmp_data.mcp._compat import MCPServerType
 
 ERR = RuntimeError  # shorten
 
@@ -104,7 +102,7 @@ def _validate_tool_names(
 
 
 def register_from_manifest(
-    mcp: FastMCP,
+    mcp: MCPServerType,
     fmp_client: FMPDataClient,
     tool_specs: list[str],
 ) -> None:
