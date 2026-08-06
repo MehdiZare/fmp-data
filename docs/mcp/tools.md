@@ -12,7 +12,7 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 - [Economics (7 tools)](#economics)
 - [Fundamental (14 tools)](#fundamental)
 - [Institutional (13 tools)](#institutional)
-- [Intelligence (39 tools)](#intelligence)
+- [Intelligence (45 tools)](#intelligence)
 - [Investment (14 tools)](#investment)
 - [Market (23 tools)](#market)
 - [Technical (9 tools)](#technical)
@@ -120,8 +120,8 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 |----------|-------------|
 | `asset_allocation` | Analyze asset allocation data from 13F filings |
 | `beneficial_ownership` | Retrieve beneficial ownership information including voting rights and dispositive power for major shareholders of a company. |
-| `cik_mapper` | Get a comprehensive mapping between CIK numbers and company/institution names. |
 | `cik_mapper_by_name` | Search for CIK numbers by company or institution name. |
+| `cik_mappings` | Get a comprehensive mapping between CIK numbers and company/institution names. |
 | `fail_to_deliver` | Get data on failed trade settlements (FTDs) for a security. |
 | `form_13f` | Retrieve Form 13F filings data for institutional investment managers, including detailed holdings information, share quantities, and market values. |
 | `form_13f_dates` | Get a list of available Form 13F filing dates for a specific institutional investment manager, helping track their reporting history and timeline. |
@@ -134,7 +134,7 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 
 ## Intelligence
 
-**39 tools** for news, sentiment, and market events.
+**45 tools** for news, sentiment, market events, and analyst ratings/grades.
 
 | Tool Key | Description |
 |----------|-------------|
@@ -157,6 +157,11 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 | `forex_news` | Retrieve forex market news including currency pair updates, exchange rate movements, and international market developments |
 | `forex_symbol_news` | Search forex news for a specific currency pair to monitor pair-specific developments and analysis |
 | `general_news` | Retrieve general financial news and market updates from various sources covering markets, economy, and business |
+| `grades` | Get analyst grade actions for a company, including upgrades, downgrades and the firms behind them |
+| `grades_consensus` | Get the current analyst grade consensus for a company, summarizing buy, hold and sell counts and the overall consensus |
+| `grades_historical` | Retrieve the historical distribution of analyst grades for a company across buy, hold and sell buckets over time |
+| `grades_latest_news` | Get the latest analyst grade news across all companies, covering recent upgrades and downgrades market-wide |
+| `grades_news` | Get news articles covering analyst grade changes for a specific company, with previous and new grades |
 | `historical_earnings` | Historical/upcoming earnings for a symbol (optional `limit`, `include_report_times`) |
 | `historical_social_sentiment` | **Removed / not in DEFAULT_TOOLS** — raises `RemovedEndpointError` |
 | `house_disclosure` | Access House of Representatives trading disclosures including transaction details, filing information, and trade specifics |
@@ -165,6 +170,10 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 | `ipo_calendar` | Retrieve upcoming and recent IPO events including pricing details, offering sizes, and listing dates |
 | `press_releases` | Retrieve corporate press releases and official company announcements with detailed content and publication information |
 | `press_releases_by_symbol` | Retrieve company-specific press releases and official announcements including corporate events and updates |
+| `price_target_latest_news` | Get the latest price target news across all companies, covering recent analyst target changes market-wide |
+| `price_target_news` | Get news articles covering analyst price target changes for a specific company, with the new and prior targets |
+| `ratings_historical` | Retrieve historical analyst ratings for a company to track how the rating and its component scores changed over time |
+| `ratings_snapshot` | Get the current analyst rating snapshot for a company, including the overall rating and component scores |
 | `senate_latest` | Get the latest Senate financial disclosures with transaction details |
 | `senate_trades_by_name` | Get Senate trading data filtered by senator name |
 | `senate_trading` | Access Senate trading activity and disclosures including stock trades, transaction details, and filing information |

@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+- **Analyst Grades & Ratings via MCP/LangChain** (#116) - Wired the intelligence grades/ratings surface into the mapping layer so it is discoverable and callable:
+  - New `INTELLIGENCE_ENDPOINT_MAP` entries and `INTELLIGENCE_ENDPOINTS_SEMANTICS` for `ratings_snapshot`, `ratings_historical`, `price_target_news`, `price_target_latest_news`, `grades`, `grades_historical`, `grades_consensus`, `grades_news`, `grades_latest_news`
+  - All nine added to `DEFAULT_TOOLS`, along with the now-working `intelligence.crowdfunding_search` and `intelligence.equity_offering_search`
+  - `docs/mcp/tools.md` updated: Intelligence now lists 45 tools; Institutional `cik_mapper` renamed to `cik_mappings`
 - **Earnings Report Times** (#111) - Exposed FMP's `includeReportTimes` flag on the intelligence earnings endpoints:
   - `get_earnings_calendar(..., include_report_times=...)` and `get_historical_earnings(..., include_report_times=...)` on both sync and async clients
   - Python kwarg `include_report_times` maps to query `includeReportTimes` when not `None` (explicit `True`/`False` are forwarded; unset omits the param)
@@ -26,6 +30,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added environment-based cache configuration via `FMP_CACHE_ENABLED`, `FMP_CACHE_BACKEND`, `FMP_CACHE_TTL`, `FMP_CACHE_DIR`, and `FMP_CACHE_REDIS_URL`
   - Added per-endpoint TTL overrides, deterministic cache keys, and `force_refresh=True` support to bypass cache reads on demand
   - Added optional `cache-redis` extra for Redis-backed caching
+
+### Fixed
+- **Mapping drift between semantics and client methods** (#114) - Corrected `method_name` values that no client method implemented, which made `register_from_manifest` fail for tools that discovery advertised:
+  - `intelligence.crowdfunding_search` → `search_crowdfunding`, `intelligence.equity_offering_search` → `search_equity_offering` (endpoint-map keys renamed to match)
+  - Same class of drift fixed in neighbouring clients found by the new guard test: `market.search` → `search_company`, `institutional.cik_mapper` → `get_cik_mappings` (semantics key renamed to `cik_mappings`), `institutional.cik_mapper_by_name` → `search_cik_by_name`
+  - New unit tests assert every discovered tool's `method_name` resolves on a live client via `_resolve_attr`
+- **Ghost intelligence semantics** (#115) - Removed `intelligence.institutional_holders` and `intelligence.financial_reports_dates`, which advertised methods owned by the institutional and fundamental clients:
+  - They could never register, and their key-only tool names collided with the real `institutional.institutional_holders` / `fundamental.financial_reports_dates` tools
+  - The real tools remain available on their owning clients
 
 ### Changed
 - **MCP SDK 2.x Support** - The MCP server now works against both MCP SDK 1.x and 2.x:

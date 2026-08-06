@@ -186,7 +186,7 @@ MARKET_TIME_PERIODS = {
 MARKET_ENDPOINTS_SEMANTICS = {
     "search": EndpointSemantics(
         client_name="market",
-        method_name="search",
+        method_name="search_company",
         natural_description=(
             "Search for companies by name, ticker, or other identifiers."
         ),

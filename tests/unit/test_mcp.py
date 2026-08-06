@@ -214,6 +214,154 @@ class TestToolsManifest:
             )
 
 
+@pytest.fixture(scope="module")
+def live_client():
+    """A real (unauthenticated) client used only for attribute resolution."""
+    from fmp_data.client import FMPDataClient
+
+    client = FMPDataClient(api_key="dummy-key-for-attribute-resolution")
+    try:
+        yield client
+    finally:
+        client.close()
+
+
+class TestSemanticsMethodResolution:
+    """Guard against mapping drift between semantics and client methods."""
+
+    def test_every_semantics_method_resolves_on_client(self, live_client):
+        """Every discovered tool must resolve to a callable on the client.
+
+        Mapping drift (a ``method_name`` that no client method implements)
+        makes ``register_from_manifest`` fail at runtime even though the tool
+        shows up in discovery. See issues #114 and #115.
+        """
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tool_loader import _resolve_attr
+
+        failures = []
+        for tool in discover_all_tools():
+            dotted = f"{tool['client']}.{tool['method']}"
+            try:
+                _resolve_attr(live_client, dotted)
+            except RuntimeError as exc:
+                failures.append(f"{tool['spec']} -> {dotted}: {exc}")
+
+        assert not failures, "Unresolvable semantics method names:\n" + "\n".join(
+            failures
+        )
+
+    def test_intelligence_semantics_resolve_on_intelligence_client(self, live_client):
+        """Intelligence semantics must only advertise intelligence methods."""
+        from fmp_data.intelligence.mapping import INTELLIGENCE_ENDPOINTS_SEMANTICS
+        from fmp_data.mcp.tool_loader import _resolve_attr
+
+        failures = []
+        for key, sem in INTELLIGENCE_ENDPOINTS_SEMANTICS.items():
+            assert sem.client_name == "intelligence", (
+                f"Semantics '{key}' declares client_name={sem.client_name!r}"
+            )
+            try:
+                _resolve_attr(live_client, f"intelligence.{sem.method_name}")
+            except RuntimeError as exc:
+                failures.append(f"{key} -> {sem.method_name}: {exc}")
+
+        assert not failures, "Ghost intelligence semantics:\n" + "\n".join(failures)
+
+    def test_no_ghost_intelligence_semantics(self):
+        """Methods owned by other clients must not be re-declared here."""
+        from fmp_data.intelligence.mapping import INTELLIGENCE_ENDPOINTS_SEMANTICS
+
+        ghosts = {"institutional_holders", "financial_reports_dates"}
+        overlap = ghosts & set(INTELLIGENCE_ENDPOINTS_SEMANTICS)
+        assert not overlap, (
+            f"Intelligence semantics re-declare other clients' tools: {sorted(overlap)}"
+        )
+
+    def test_endpoint_map_keys_match_semantics_method_names(self):
+        """Intelligence endpoint-map keys are method names, not aliases."""
+        from fmp_data.intelligence.mapping import (
+            INTELLIGENCE_ENDPOINT_MAP,
+            INTELLIGENCE_ENDPOINTS_SEMANTICS,
+        )
+
+        missing = [
+            f"{key} -> {sem.method_name}"
+            for key, sem in INTELLIGENCE_ENDPOINTS_SEMANTICS.items()
+            if sem.method_name not in INTELLIGENCE_ENDPOINT_MAP
+        ]
+        assert not missing, (
+            "Semantics without an INTELLIGENCE_ENDPOINT_MAP entry:\n"
+            + "\n".join(missing)
+        )
+
+    def test_discovered_tool_keys_are_unambiguous_in_default_tools(self):
+        """Key-style MCP tool names derived from DEFAULT_TOOLS must be unique."""
+        from fmp_data.mcp.tools_manifest import DEFAULT_TOOLS
+
+        seen: dict[str, str] = {}
+        duplicates = []
+        for spec in DEFAULT_TOOLS:
+            key = spec.split(".", 1)[1]
+            if key in seen:
+                duplicates.append(f"{key}: {seen[key]} vs {spec}")
+            seen[key] = spec
+
+        assert not duplicates, "Ambiguous key-style tool names:\n" + "\n".join(
+            duplicates
+        )
+
+
+class TestIntelligenceGradesAndRatingsTools:
+    """Grades/ratings surface must be discoverable via MCP (issue #116)."""
+
+    GRADES_AND_RATINGS = (
+        "ratings_snapshot",
+        "ratings_historical",
+        "price_target_news",
+        "price_target_latest_news",
+        "grades",
+        "grades_historical",
+        "grades_consensus",
+        "grades_news",
+        "grades_latest_news",
+    )
+
+    def test_semantics_defined(self):
+        from fmp_data.intelligence.mapping import INTELLIGENCE_ENDPOINTS_SEMANTICS
+
+        missing = [
+            k
+            for k in self.GRADES_AND_RATINGS
+            if k not in INTELLIGENCE_ENDPOINTS_SEMANTICS
+        ]
+        assert not missing, f"Missing intelligence semantics: {missing}"
+
+    def test_endpoints_mapped(self):
+        from fmp_data.intelligence.mapping import (
+            INTELLIGENCE_ENDPOINT_MAP,
+            INTELLIGENCE_ENDPOINTS_SEMANTICS,
+        )
+
+        missing = [
+            k
+            for k in self.GRADES_AND_RATINGS
+            if INTELLIGENCE_ENDPOINTS_SEMANTICS[k].method_name
+            not in INTELLIGENCE_ENDPOINT_MAP
+        ]
+        assert not missing, f"Missing INTELLIGENCE_ENDPOINT_MAP entries: {missing}"
+
+    def test_present_in_default_tools(self):
+        from fmp_data.mcp.tools_manifest import DEFAULT_TOOLS
+
+        missing = [
+            f"intelligence.{k}"
+            for k in self.GRADES_AND_RATINGS
+            if f"intelligence.{k}" not in DEFAULT_TOOLS
+        ]
+        assert not missing, f"Missing DEFAULT_TOOLS entries: {missing}"
+
+
 class TestMCPManifestLoading:
     """Test suite for manifest loading utilities."""
 

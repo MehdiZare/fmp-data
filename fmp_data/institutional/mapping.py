@@ -127,8 +127,8 @@ INSTITUTIONAL_ENDPOINT_MAP = {
     "get_transaction_types": TRANSACTION_TYPES,
     "get_insider_roster": INSIDER_ROSTER,
     "get_insider_statistics": INSIDER_STATISTICS,
-    "get_cik_mapper": CIK_MAPPER,
-    "get_cik_mapper_by_name": CIK_MAPPER_BY_NAME,
+    "get_cik_mappings": CIK_MAPPER,
+    "search_cik_by_name": CIK_MAPPER_BY_NAME,
     "get_beneficial_ownership": BENEFICIAL_OWNERSHIP,
     "get_fail_to_deliver": FAIL_TO_DELIVER,
 }
@@ -485,9 +485,9 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
             "Risk assessment",
         ],
     ),
-    "cik_mapper": EndpointSemantics(
+    "cik_mappings": EndpointSemantics(
         client_name="institutional",
-        method_name="get_cik_mapper",
+        method_name="get_cik_mappings",
         natural_description=(
             "Get a comprehensive mapping between "
             "CIK numbers and company/institution names."
@@ -528,7 +528,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
     ),
     "cik_mapper_by_name": EndpointSemantics(
         client_name="institutional",
-        method_name="get_cik_mapper_by_name",
+        method_name="search_cik_by_name",
         natural_description=("Search for CIK numbers by company or institution name."),
         example_queries=[
             "Find CIK for Apple",
