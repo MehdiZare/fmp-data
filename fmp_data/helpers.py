@@ -1,6 +1,7 @@
 # src/helpers.py
 from collections.abc import Callable
 import functools
+import inspect
 from typing import Any, TypeVar
 import warnings
 
@@ -18,6 +19,8 @@ def deprecated(reason: str = "") -> Callable[[F], F]:
 
     Returns:
         A decorator that emits a DeprecationWarning when the function is called.
+        Coroutine functions are wrapped with an async wrapper so
+        ``inspect.iscoroutinefunction`` remains True.
 
     Example:
         >>> @deprecated("Use `new_method` instead.")
@@ -29,6 +32,15 @@ def deprecated(reason: str = "") -> Callable[[F], F]:
         msg = f"{func.__name__} is deprecated."
         if reason:
             msg += f" {reason}"
+
+        if inspect.iscoroutinefunction(func):
+
+            @functools.wraps(func)
+            async def async_wrapped(*args: Any, **kwargs: Any) -> Any:
+                warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
+                return await func(*args, **kwargs)
+
+            return async_wrapped  # type: ignore[return-value]
 
         @functools.wraps(func)
         def wrapped(*args: Any, **kwargs: Any) -> Any:

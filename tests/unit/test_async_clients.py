@@ -1247,11 +1247,15 @@ class TestAsyncIntelligenceClient:
         self, mock_client, method_name, args, hint
     ):
         """Async dead earnings endpoints warn and soft-fail without HTTP."""
+        import inspect
+
         from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
 
         async_client = AsyncMarketIntelligenceClient(mock_client)
+        method = getattr(async_client, method_name)
+        assert inspect.iscoroutinefunction(method)
         with pytest.warns(DeprecationWarning, match=method_name) as record:
-            result = await getattr(async_client, method_name)(*args)
+            result = await method(*args)
 
         assert result == []
         mock_client.request_async.assert_not_called()
