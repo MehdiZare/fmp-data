@@ -175,9 +175,9 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 | `crowdfunding_rss` | `/stable/crowdfunding-offerings-latest` | Get latest crowdfunding offerings |
 | `crowdfunding_search` | `/stable/crowdfunding-offerings-search` | Search crowdfunding offerings |
 | `dividends_calendar` | `/stable/dividends-calendar` | Get dividends calendar |
-| `earnings_confirmed` | `/stable/earning-calendar-confirmed` | Get confirmed earnings dates |
+| `earnings_confirmed` | `/stable/earning-calendar-confirmed` | **Deprecated** — returns `[]`; use `earnings_calendar` with `includeReportTimes` |
 | `earnings_calendar` | `/stable/earnings-calendar` | Get earnings calendar |
-| `earnings_surprises` | `/stable/earnings-surprises` | Get earnings surprises |
+| `earnings_surprises` | `/stable/earnings-surprises` | **Deprecated** — returns `[]`; use `historical_earnings` and compare eps |
 | `esg_benchmark` | `/stable/esg-benchmark` | Get ESG benchmark data |
 | `esg_data` | `/stable/esg-disclosures` | Get ESG data for a company |
 | `esg_ratings` | `/stable/esg-ratings` | Get ESG ratings for a company |
@@ -190,8 +190,8 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 | `grades_historical` | `/stable/grades-historical` | Get historical stock grades |
 | `grades_latest_news` | `/stable/grades-latest-news` | Get latest stock grade news |
 | `grades_news` | `/stable/grades-news` | Get stock grade news |
-| `historical_earnings` | `/stable/historical/earning-calendar` | Get historical earnings |
-| `historical_social_sentiment` | `/stable/historical/social-sentiment` | Get historical social sentiment data |
+| `historical_earnings` | `/stable/earnings` | Get historical/upcoming earnings for a symbol (`limit`, `includeReportTimes`) |
+| `historical_social_sentiment` | `/stable/historical/social-sentiment` | **Removed** — raises `RemovedEndpointError` |
 | `house_latest` | `/stable/house-latest` | Get latest House financial disclosures |
 | `house_disclosure` | `/stable/house-trades` | Get House trading data by symbol |
 | `house_trades_by_name` | `/stable/house-trades-by-name` | Get House trading data by name |

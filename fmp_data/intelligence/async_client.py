@@ -14,8 +14,6 @@ from fmp_data.intelligence.endpoints import (
     CRYPTO_SYMBOL_NEWS_ENDPOINT,
     DIVIDENDS_CALENDAR,
     EARNINGS_CALENDAR,
-    EARNINGS_CONFIRMED,
-    EARNINGS_SURPRISES,
     EQUITY_OFFERING_BY_CIK,
     EQUITY_OFFERING_RSS,
     EQUITY_OFFERING_SEARCH,
@@ -137,9 +135,10 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         Args:
             start_date: Earliest reporting date to include
             end_date: Latest reporting date to include
-            include_report_times: When True, each event also carries ``time``
-                ('bmo'/'amc'), ``period_ending``, ``fiscal_period``,
-                ``fiscal_year`` and ``confirmed``
+            include_report_times: When True, the API may include session
+                ``time`` ('bmo'/'amc'), ``period_ending``, ``fiscal_period``,
+                ``fiscal_year`` and ``confirmed`` on events (per-row optional).
+                Omitted from the query when unset; explicit True/False is sent.
 
         Returns:
             list[EarningEvent]: Earnings events in the requested window
@@ -160,9 +159,10 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         Args:
             symbol: Stock symbol
             limit: Maximum number of reports to return
-            include_report_times: When True, each report also carries ``time``
-                ('bmo'/'amc'), ``period_ending``, ``fiscal_period``,
-                ``fiscal_year`` and ``confirmed``
+            include_report_times: When True, the API may include session
+                ``time`` ('bmo'/'amc'), ``period_ending``, ``fiscal_period``,
+                ``fiscal_year`` and ``confirmed`` on reports (per-row optional).
+                Omitted from the query when unset; explicit True/False is sent.
 
         Returns:
             list[EarningEvent]: Earnings reports for the symbol
@@ -177,7 +177,7 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
     @deprecated(
         "The FMP API no longer serves the confirmed earnings calendar. Use "
         "get_earnings_calendar(include_report_times=True) and read the "
-        "`confirmed` and `time` fields instead."
+        "`confirmed` field (and `time` as 'bmo'/'amc', not HH:MM) instead."
     )
     async def get_earnings_confirmed(
         self,
@@ -188,12 +188,12 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
 
         .. deprecated::
             This endpoint is no longer available on the FMP API and will be
-            removed in a future version. Use
-            :meth:`get_earnings_calendar` with ``include_report_times=True``
-            and read the ``confirmed`` and ``time`` fields instead.
+            removed in a future version. It currently returns an empty list.
+            Use :meth:`get_earnings_calendar` with ``include_report_times=True``
+            and read ``confirmed`` plus session ``time`` (``bmo``/``amc``),
+            which is not a drop-in for the old clock-time field.
         """
-        params = self._build_date_params(start_date, end_date)
-        return await self.client.request_async(EARNINGS_CONFIRMED, **params)
+        return []
 
     @deprecated(
         "The FMP API no longer serves earnings surprises. Use "
@@ -205,10 +205,12 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
 
         .. deprecated::
             This endpoint is no longer available on the FMP API and will be
-            removed in a future version. Use :meth:`get_historical_earnings`
-            and compare ``eps`` against ``eps_estimated`` instead.
+            removed in a future version. It currently returns an empty list.
+            Use :meth:`get_historical_earnings` and compare ``eps`` against
+            ``eps_estimated`` (old model used ``actual_earning_result`` /
+            ``estimated_earning``).
         """
-        return await self.client.request_async(EARNINGS_SURPRISES, symbol=symbol)
+        return []
 
     async def get_dividends_calendar(
         self, start_date: date | None = None, end_date: date | None = None

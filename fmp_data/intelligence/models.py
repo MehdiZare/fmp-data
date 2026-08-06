@@ -44,9 +44,9 @@ class EarningEvent(BaseModel):
     time: str | None = Field(
         default=None,
         description=(
-            "Time of day the report is released ('bmo' before market open, "
-            "'amc' after market close). Only returned when the request is made "
-            "with include_report_times=True."
+            "Session bucket for the report ('bmo' before market open, "
+            "'amc' after market close). Often present on /earnings payloads; "
+            "calendar extras are more complete with include_report_times=True."
         ),
     )
     revenue: float | None = Field(
@@ -59,36 +59,43 @@ class EarningEvent(BaseModel):
         None,
         alias="periodEnding",
         description=(
-            "Fiscal period end date. Only returned when the request is made "
-            "with include_report_times=True."
+            "Fiscal period end date from includeReportTimes-style payloads "
+            "(wire key periodEnding). Prefer this when set; base calendar "
+            "payloads more often use fiscal_date_ending instead."
         ),
     )
     fiscal_period: str | None = Field(
         None,
         alias="fiscalPeriod",
         description=(
-            "Fiscal period the report covers (e.g. 'Q3'). Only returned when "
-            "the request is made with include_report_times=True."
+            "Fiscal period label (e.g. 'Q3'). Primarily returned when the "
+            "request includes include_report_times=True."
         ),
     )
     fiscal_year: int | None = Field(
         None,
         alias="fiscalYear",
         description=(
-            "Fiscal year the report covers. Only returned when the request is "
-            "made with include_report_times=True."
+            "Fiscal year for the report. Primarily returned when the request "
+            "includes include_report_times=True."
         ),
     )
     confirmed: bool | None = Field(
         None,
         description=(
             "Whether the reporting date has been confirmed by the company. "
-            "Only returned when the request is made with "
+            "Primarily returned when the request includes "
             "include_report_times=True."
         ),
     )
     fiscal_date_ending: date | None = Field(
-        None, alias="fiscalDateEnding", description="Fiscal period end date"
+        None,
+        alias="fiscalDateEnding",
+        description=(
+            "Fiscal period end date from base calendar/earnings payloads "
+            "(wire key fiscalDateEnding). Same concept as period_ending under "
+            "a different response shape."
+        ),
     )
     updated_from_date: date | None = Field(
         None, alias="updatedFromDate", description="Last update date"

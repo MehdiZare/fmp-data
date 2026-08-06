@@ -473,3 +473,34 @@ class TestMCPCompat:
             _compat, "import_mcp_server_class", side_effect=ImportError("no sdk")
         ):
             assert _compat.mcp_server_available() is False
+
+    def test_falls_back_to_fastmcp_on_v1_sdk(self):
+        """When MCPServer is missing, FastMCP from 1.x is used."""
+        import sys
+        import types
+
+        from fmp_data.mcp import _compat
+
+        class _FastMCP:
+            def add_tool(self, *args, **kwargs):
+                return None
+
+            def run(self, *args, **kwargs):
+                return None
+
+        fake_server = types.ModuleType("mcp.server")
+        fake_fastmcp = types.ModuleType("mcp.server.fastmcp")
+        fake_fastmcp.FastMCP = _FastMCP
+        # Parent package stubs so nested imports resolve
+        fake_mcp = types.ModuleType("mcp")
+        fake_mcp.server = fake_server
+
+        modules = {
+            "mcp": fake_mcp,
+            "mcp.server": fake_server,
+            "mcp.server.fastmcp": fake_fastmcp,
+        }
+        with patch.dict(sys.modules, modules, clear=False):
+            cls = _compat.import_mcp_server_class()
+
+        assert cls is _FastMCP

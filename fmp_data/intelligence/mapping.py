@@ -636,8 +636,8 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         client_name="intelligence",
         method_name="get_earnings_confirmed",
         natural_description=(
-            "Access confirmed earnings dates and times for companies including "
-            "timing details and publication information"
+            "DEPRECATED: empty list. Prefer earnings_calendar with "
+            "include_report_times=True (confirmed + bmo/amc time)."
         ),
         example_queries=[
             "Show confirmed earnings dates",
@@ -1300,10 +1300,8 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         client_name="intelligence",
         method_name="get_earnings_surprises",
         natural_description=(
-            "Retrieve historical earnings "
-            "surprises including actual vs "
-            "estimated earnings, "
-            "surprise percentages, and earnings dates"
+            "DEPRECATED: empty list. Prefer historical_earnings and "
+            "compare eps vs eps_estimated."
         ),
         example_queries=[
             "Get earnings surprises for AAPL",
@@ -1344,10 +1342,8 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         client_name="intelligence",
         method_name="get_historical_earnings",
         natural_description=(
-            "Access historical earnings "
-            "reports including revenue, "
-            "EPS, and dates for "
-            "past quarters and fiscal years"
+            "Historical/upcoming earnings for a symbol, with optional "
+            "limit and include_report_times metadata."
         ),
         example_queries=[
             "Show historical earnings for AAPL",
@@ -1366,6 +1362,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         sub_category="Calendar Events",
         parameter_hints={
             "symbol": SYMBOL_HINT,
+            "limit": LIMIT_HINT,
             "include_report_times": INCLUDE_REPORT_TIMES_HINT,
         },
         response_hints={

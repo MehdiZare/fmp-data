@@ -11,9 +11,7 @@ from fmp_data.intelligence.models import (
     CrowdfundingOfferingSearchItem,
     CryptoNewsArticle,
     DividendEvent,
-    EarningConfirmed,
     EarningEvent,
-    EarningSurprise,
     EquityOffering,
     EquityOfferingSearchItem,
     ESGBenchmark,
@@ -91,20 +89,6 @@ def earnings_report_times_data():
         "fiscalYear": 2026,
         "confirmed": True,
         "lastUpdated": "2026-08-01",
-    }
-
-
-@pytest.fixture
-def earnings_confirmed_data():
-    return {
-        "symbol": "AAPL",
-        "exchange": "NASDAQ",
-        "time": "16:30",
-        "when": "post market",
-        "date": "2024-01-15T16:30:00",
-        "publicationDate": "2024-01-01T10:00:00",
-        "title": "Apple Q1 2024 Earnings",
-        "url": "https://example.com",
     }
 
 
@@ -249,6 +233,11 @@ class TestMarketIntelligenceClientCalendar:
         assert event.period_ending == date(2026, 6, 27)
         assert event.fiscal_period == "Q3"
         assert event.fiscal_year == 2026
+        assert event.eps == 2.02
+        assert event.revenue == 109_417_000_000
+        assert event.eps_estimated == 1.89
+        assert event.revenue_estimated == 109_038_900_000
+        assert event.last_updated == date(2026, 8, 1)
 
     def test_get_earnings_calendar_omits_report_times_when_unset(
         self, fmp_client, mock_client, earnings_calendar_data
@@ -291,54 +280,72 @@ class TestMarketIntelligenceClientCalendar:
         assert kwargs["limit"] == 5
         assert kwargs["include_report_times"] is True
 
-    def test_get_earnings_confirmed(
-        self, fmp_client, mock_client, earnings_confirmed_data
-    ):
-        """Test get_earnings_confirmed"""
-        mock_client.request.return_value = [EarningConfirmed(**earnings_confirmed_data)]
+    def test_get_earnings_confirmed_soft_fails(self, fmp_client, mock_client):
+        """Deprecated confirmed calendar warns and returns [] without HTTP"""
+        with pytest.warns(DeprecationWarning, match="get_earnings_confirmed"):
+            result = fmp_client.intelligence.get_earnings_confirmed(
+                start_date=date(2024, 1, 1), end_date=date(2024, 1, 31)
+            )
 
-        result = fmp_client.intelligence.get_earnings_confirmed(
-            start_date=date(2024, 1, 1), end_date=date(2024, 1, 31)
-        )
+        assert result == []
+        mock_client.request.assert_not_called()
 
-        mock_client.request.assert_called_once()
-        _args, kwargs = mock_client.request.call_args
-        assert kwargs["start_date"] == "2024-01-01"
-        assert kwargs["end_date"] == "2024-01-31"
-        assert isinstance(result, list)
+    def test_get_earnings_surprises_soft_fails(self, fmp_client, mock_client):
+        """Deprecated surprises endpoint warns and returns [] without HTTP"""
+        with pytest.warns(DeprecationWarning, match="get_earnings_surprises"):
+            result = fmp_client.intelligence.get_earnings_surprises("AAPL")
 
-    def test_get_earnings_surprises(self, fmp_client, mock_client):
-        """Test get_earnings_surprises"""
-        mock_data = {
-            "symbol": "AAPL",
-            "date": "2024-01-15",
-            "actualEarningResult": 1.25,
-            "estimatedEarning": 1.20,
-        }
-        mock_client.request.return_value = [EarningSurprise(**mock_data)]
-
-        result = fmp_client.intelligence.get_earnings_surprises("AAPL")
-
-        mock_client.request.assert_called_once()
-        _args, kwargs = mock_client.request.call_args
-        assert kwargs["symbol"] == "AAPL"
-        assert isinstance(result, list)
+        assert result == []
+        mock_client.request.assert_not_called()
 
     @pytest.mark.parametrize(
-        ("method_name", "args"),
+        ("method_name", "args", "hint"),
         [
-            ("get_earnings_confirmed", ()),
-            ("get_earnings_surprises", ("AAPL",)),
+            ("get_earnings_confirmed", (), "include_report_times"),
+            ("get_earnings_surprises", ("AAPL",), "eps_estimated"),
         ],
     )
     def test_dead_earnings_endpoints_warn(
-        self, fmp_client, mock_client, method_name, args
+        self, fmp_client, mock_client, method_name, args, hint
     ):
         """Endpoints FMP no longer serves emit a DeprecationWarning"""
+        with pytest.warns(DeprecationWarning, match=method_name) as record:
+            result = getattr(fmp_client.intelligence, method_name)(*args)
+
+        assert result == []
+        mock_client.request.assert_not_called()
+        assert hint in str(record[0].message)
+
+    def test_include_report_times_false_is_forwarded(self, fmp_client, mock_client):
+        """Explicit False is sent, not treated as omit"""
         mock_client.request.return_value = []
 
-        with pytest.warns(DeprecationWarning, match=method_name):
-            getattr(fmp_client.intelligence, method_name)(*args)
+        fmp_client.intelligence.get_earnings_calendar(include_report_times=False)
+        assert mock_client.request.call_args.kwargs["include_report_times"] is False
+
+        fmp_client.intelligence.get_historical_earnings(
+            "AAPL", include_report_times=False
+        )
+        assert mock_client.request.call_args.kwargs["include_report_times"] is False
+
+    def test_historical_earnings_uses_stable_earnings_path(self):
+        """Unit guard against reverting the dead historical/earning-calendar path"""
+        from fmp_data.intelligence.endpoints import HISTORICAL_EARNINGS
+
+        assert HISTORICAL_EARNINGS.path == "earnings"
+        assert "historical/earning-calendar" not in HISTORICAL_EARNINGS.path
+
+    def test_earning_event_accepts_legacy_and_report_times_field_names(self):
+        """eps/revenue aliases accept both legacy and epsActual/revenueActual keys"""
+        legacy = EarningEvent(date="2024-01-15", symbol="AAPL", eps=1.2, revenue=1e9)
+        modern = EarningEvent(
+            date="2024-01-15",
+            symbol="AAPL",
+            epsActual=1.2,
+            revenueActual=1e9,
+        )
+        assert legacy.eps == modern.eps == 1.2
+        assert legacy.revenue == modern.revenue == 1e9
 
     def test_get_dividends_calendar(
         self, fmp_client, mock_client, dividends_calendar_data

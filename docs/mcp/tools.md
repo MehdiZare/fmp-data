@@ -145,8 +145,8 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 | `crypto_symbol_news` | Search cryptocurrency news for a specific trading pair to track asset-specific developments |
 | `dividends_calendar` | Get upcoming and historical dividend events including ex-dividend dates, payment dates, and dividend amounts |
 | `earnings_calendar` | Access comprehensive earnings calendar showing upcoming earnings releases, estimated and actual results, and historical earnings data |
-| `earnings_confirmed` | Access confirmed earnings dates and times for companies including timing details and publication information |
-| `earnings_surprises` | Retrieve historical earnings surprises including actual vs estimated earnings, surprise percentages, and earnings dates |
+| `earnings_confirmed` | **Deprecated / not in DEFAULT_TOOLS** — client returns `[]`; prefer `earnings_calendar` + `include_report_times` |
+| `earnings_surprises` | **Deprecated / not in DEFAULT_TOOLS** — client returns `[]`; prefer `historical_earnings` and compare eps |
 | `equity_offering_by_cik` | Retrieve equity offerings for a specific company using CIK number including historical and current offerings |
 | `equity_offering_rss` | Get latest equity offerings including new issues, follow-on offerings, and capital raising events |
 | `equity_offering_search` | Search for equity offerings including public and private placements, with detailed offering terms and company information |
@@ -157,8 +157,8 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 | `forex_news` | Retrieve forex market news including currency pair updates, exchange rate movements, and international market developments |
 | `forex_symbol_news` | Search forex news for a specific currency pair to monitor pair-specific developments and analysis |
 | `general_news` | Retrieve general financial news and market updates from various sources covering markets, economy, and business |
-| `historical_earnings` | Access historical earnings reports including revenue, EPS, and dates for past quarters and fiscal years |
-| `historical_social_sentiment` | Retrieve historical social media sentiment data including sentiment scores, engagement metrics, and trend analysis |
+| `historical_earnings` | Historical/upcoming earnings for a symbol (optional `limit`, `include_report_times`) |
+| `historical_social_sentiment` | **Removed / not in DEFAULT_TOOLS** — raises `RemovedEndpointError` |
 | `house_disclosure` | Access House of Representatives trading disclosures including transaction details, filing information, and trade specifics |
 | `house_latest` | Get the latest House financial disclosures with transaction details |
 | `house_trades_by_name` | Get House trading data filtered by representative name |
@@ -169,11 +169,11 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 | `senate_trades_by_name` | Get Senate trading data filtered by senator name |
 | `senate_trading` | Access Senate trading activity and disclosures including stock trades, transaction details, and filing information |
 | `senate_trading_rss` | Get real-time RSS feed of Senate trading disclosures including new filings and transaction updates |
-| `social_sentiment_changes` | Track changes in social media sentiment including sentiment shifts, momentum changes, and trend developments |
+| `social_sentiment_changes` | **Removed / not in DEFAULT_TOOLS** — raises `RemovedEndpointError` |
 | `stock_news` | Access stock-specific news and updates including company events, market moves, and corporate developments |
-| `stock_news_sentiments` | Get stock news with sentiment analysis including positive/negative sentiment scores and market impact assessment |
+| `stock_news_sentiments` | **Deprecated / not in DEFAULT_TOOLS** — client returns `[]` |
 | `stock_splits_calendar` | Access upcoming and historical stock split events including split ratios, dates, and affected securities |
-| `trending_social_sentiment` | Get current trending social media sentiment data including most discussed stocks and sentiment rankings |
+| `trending_social_sentiment` | **Removed / not in DEFAULT_TOOLS** — raises `RemovedEndpointError` |
 
 ## Investment
 
