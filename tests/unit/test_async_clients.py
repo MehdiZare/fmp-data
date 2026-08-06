@@ -1198,6 +1198,65 @@ class TestAsyncIntelligenceClient:
             include_report_times=True,
         )
 
+    @pytest.mark.asyncio
+    async def test_get_historical_earnings_omits_optional_params(self, mock_client):
+        """Default historical call must not send limit/include_report_times."""
+        from fmp_data.intelligence import endpoints as intelligence_endpoints
+        from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncMarketIntelligenceClient(mock_client)
+
+        await async_client.get_historical_earnings("AAPL")
+
+        mock_client.request_async.assert_called_once_with(
+            intelligence_endpoints.HISTORICAL_EARNINGS,
+            symbol="AAPL",
+        )
+        kwargs = mock_client.request_async.call_args.kwargs
+        assert "limit" not in kwargs
+        assert "include_report_times" not in kwargs
+
+    @pytest.mark.asyncio
+    async def test_include_report_times_false_is_forwarded_async(self, mock_client):
+        """Explicit False is sent on async calendar and historical paths."""
+        from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncMarketIntelligenceClient(mock_client)
+
+        await async_client.get_earnings_calendar(include_report_times=False)
+        assert (
+            mock_client.request_async.call_args.kwargs["include_report_times"] is False
+        )
+
+        await async_client.get_historical_earnings("AAPL", include_report_times=False)
+        assert (
+            mock_client.request_async.call_args.kwargs["include_report_times"] is False
+        )
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("method_name", "args", "hint"),
+        [
+            ("get_earnings_confirmed", (), "include_report_times"),
+            ("get_earnings_surprises", ("AAPL",), "eps_estimated"),
+        ],
+    )
+    async def test_dead_earnings_endpoints_warn_async(
+        self, mock_client, method_name, args, hint
+    ):
+        """Async dead earnings endpoints warn and soft-fail without HTTP."""
+        from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
+
+        async_client = AsyncMarketIntelligenceClient(mock_client)
+        with pytest.warns(DeprecationWarning, match=method_name) as record:
+            result = await getattr(async_client, method_name)(*args)
+
+        assert result == []
+        mock_client.request_async.assert_not_called()
+        assert hint in str(record[0].message)
+
     def test_build_date_params_custom_keys(self):
         """Test _build_date_params supports custom keys."""
         from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient

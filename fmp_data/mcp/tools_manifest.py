@@ -90,15 +90,17 @@ DEFAULT_TOOLS: list[str] = [
     "institutional.insider_trades",
     "institutional.institutional_holdings",
     "institutional.transaction_types",
-    # Intelligence (34 tools) - News, Sentiment, and Market Events
+    # Intelligence (28 tools) - News and Market Events
+    # Dead/deprecated FMP endpoints intentionally omitted from defaults:
+    # earnings_confirmed, earnings_surprises, stock_news_sentiments,
+    # historical_social_sentiment, trending_social_sentiment,
+    # social_sentiment_changes (still importable on the client).
     "intelligence.crowdfunding_by_cik",
     "intelligence.crowdfunding_rss",
     "intelligence.crypto_news",
     "intelligence.crypto_symbol_news",
     "intelligence.dividends_calendar",
     "intelligence.earnings_calendar",
-    "intelligence.earnings_confirmed",
-    "intelligence.earnings_surprises",
     "intelligence.equity_offering_by_cik",
     "intelligence.equity_offering_rss",
     "intelligence.esg_benchmark",
@@ -109,7 +111,6 @@ DEFAULT_TOOLS: list[str] = [
     "intelligence.forex_symbol_news",
     "intelligence.general_news",
     "intelligence.historical_earnings",
-    "intelligence.historical_social_sentiment",
     "intelligence.house_disclosure",
     "intelligence.house_latest",
     "intelligence.house_trades_by_name",
@@ -120,11 +121,8 @@ DEFAULT_TOOLS: list[str] = [
     "intelligence.senate_trading_rss",
     "intelligence.senate_latest",
     "intelligence.senate_trades_by_name",
-    "intelligence.social_sentiment_changes",
     "intelligence.stock_news",
-    "intelligence.stock_news_sentiments",
     "intelligence.stock_splits_calendar",
-    "intelligence.trending_social_sentiment",
     # Investment (11 tools) - ETFs and Mutual Funds
     "investment.etf_country_weightings",
     "investment.etf_exposure",

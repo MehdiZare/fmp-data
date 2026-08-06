@@ -636,8 +636,10 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         client_name="intelligence",
         method_name="get_earnings_confirmed",
         natural_description=(
-            "Access confirmed earnings dates and times for companies including "
-            "timing details and publication information"
+            "DEPRECATED: FMP no longer serves this endpoint; the client returns "
+            "an empty list. Prefer get_earnings_calendar with "
+            "include_report_times=True and read confirmed plus session time "
+            "(bmo/amc)."
         ),
         example_queries=[
             "Show confirmed earnings dates",
@@ -1300,10 +1302,9 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         client_name="intelligence",
         method_name="get_earnings_surprises",
         natural_description=(
-            "Retrieve historical earnings "
-            "surprises including actual vs "
-            "estimated earnings, "
-            "surprise percentages, and earnings dates"
+            "DEPRECATED: FMP no longer serves this endpoint; the client returns "
+            "an empty list. Prefer get_historical_earnings and compare eps "
+            "against eps_estimated (compute surprise percentage yourself)."
         ),
         example_queries=[
             "Get earnings surprises for AAPL",
@@ -1344,10 +1345,9 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         client_name="intelligence",
         method_name="get_historical_earnings",
         natural_description=(
-            "Access historical earnings "
-            "reports including revenue, "
-            "EPS, and dates for "
-            "past quarters and fiscal years"
+            "Access historical and upcoming earnings reports for a symbol "
+            "including revenue, EPS, dates, and optional report-time metadata "
+            "when include_report_times is set"
         ),
         example_queries=[
             "Show historical earnings for AAPL",
@@ -1366,6 +1366,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         sub_category="Calendar Events",
         parameter_hints={
             "symbol": SYMBOL_HINT,
+            "limit": LIMIT_HINT,
             "include_report_times": INCLUDE_REPORT_TIMES_HINT,
         },
         response_hints={

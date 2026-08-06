@@ -10,8 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Earnings Report Times** (#111) - Added the `includeReportTimes` parameter to the earnings endpoints:
   - `get_earnings_calendar(include_report_times=True)` and `get_historical_earnings(include_report_times=True)` on both sync and async clients
-  - When set, `EarningEvent` carries `time` (`"bmo"` / `"amc"`), `period_ending`, `fiscal_period`, `fiscal_year` and `confirmed`
-  - These five fields are `None` when the flag is omitted, so existing calls are unaffected
+  - Python kwarg `include_report_times=True` maps to query `includeReportTimes=true`
+  - When set, events may include `time` (`"bmo"` / `"amc"`), `period_ending`, `fiscal_period`, `fiscal_year` and `confirmed` (per-row optional)
+  - Fields are optional on the model; without the flag the API typically omits the confirmation/fiscal extras (`periodEnding`, `fiscalPeriod`, `fiscalYear`, `confirmed`). Session `time` can still appear on base `/earnings` payloads
   - `get_historical_earnings()` also accepts `limit` now
   - Thanks to @joshuatz for the report
 - **New Company Endpoint** - Added `get_profile_cik()` method to retrieve company profile using CIK (Central Index Key) number
@@ -46,8 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Historical Earnings 404** (#111) - Fixed `get_historical_earnings()` returning nothing:
   - The endpoint pointed at the legacy `historical/earning-calendar` path, which 404s on `/stable`
-  - Now uses the stable `/earnings` path; the VCR cassette records a 200 with real data
+  - Now uses the stable `/earnings` path; re-record the local VCR cassette so path regressions fail with a non-empty assertion
   - Integration test now asserts a non-empty response so a future path break fails loudly
+- **Dead earnings endpoints soft-fail** - `get_earnings_confirmed()` and `get_earnings_surprises()` now warn and return `[]` instead of calling 404 FMP paths (same pattern as `get_stock_news_sentiments`)
+- **MCP default toolset hygiene** - Removed dead/deprecated intelligence tools from `DEFAULT_TOOLS` (`earnings_confirmed`, `earnings_surprises`, `stock_news_sentiments`, social-sentiment trio) so the default server no longer advertises tools that always fail or return empty
 - **Bulk CSV Volume String Coercion** (#104) - Fixed silent bulk row drops when FMP sends volume as a fractional numeric string:
   - `coerce_volume_value` now coerces numeric strings such as `"475.9"` via `int(float(...))` for `CompanyProfile` / `Quote` volume fields
   - Empty/whitespace volume cells become `None`; non-numeric strings still surface as validation errors
