@@ -2209,10 +2209,10 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
                 examples=["Buy", "Neutral"],
                 related_terms=["rating", "recommendation"],
             ),
-            "publisher": ResponseFieldInfo(
+            "news_publisher": ResponseFieldInfo(
                 description="News publisher",
                 examples=["Benzinga", "MarketWatch"],
-                related_terms=["source", "outlet"],
+                related_terms=["source", "outlet", "publisher"],
             ),
         },
         use_cases=[
