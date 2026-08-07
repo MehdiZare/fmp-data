@@ -5,7 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from fmp_data import FMPDataClient
+from fmp_data import ClientConfig, FMPDataClient
 from fmp_data.helpers import RemovedEndpointError
 from fmp_data.intelligence.client import MarketIntelligenceClient
 from fmp_data.intelligence.models import (
@@ -49,8 +49,6 @@ def mock_client() -> Mock:
 @pytest.fixture
 def fmp_client(mock_client: Mock) -> FMPDataClient:
     """Create FMP client with mocked intelligence client"""
-    from fmp_data import ClientConfig
-
     client = FMPDataClient(config=ClientConfig(api_key="dummy"))
     # Replace the intelligence client with our properly mocked one
     mock_base_client = Mock()
