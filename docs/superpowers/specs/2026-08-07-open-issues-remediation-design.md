@@ -80,8 +80,8 @@ defensive coercer rather than treating the probe as a proof of impossibility.
 
 | # | Decision | Chosen |
 |---|---|---|
-| D1 | MCP tool-key namespace policy (#126, #130, #136) | One key per `(client, method)`; deprecate aliases over 2.5 → 3.0 |
-| D2 | `create_vector_store` error contract (#133) | Dedicated `VectorStoreCreationError`, raised in 2.5, no `None` path |
+| D1 | MCP tool-key namespace policy (#126, #130, #136) | One key per `(client, method)`; deprecate aliases over 2.6 → 3.0 |
+| D2 | `create_vector_store` error contract (#133) | Dedicated `VectorStoreCreationError`, raised in 2.6, no `None` path |
 | D3 | Verify #130/#131 against the live API | Yes — done, see §2 |
 | D4 | Delivery shape | Four themed PRs |
 | D5 | Int CIK coercion form (#131) | Zero-pad to 10 digits; ints only, strings untouched |
@@ -216,7 +216,7 @@ The one PR with a public surface change. Establishes the invariant: **one tool k
 | Deprecate → 3.0 | `executives` → `key_executives` | #136 |
 | Deprecate → 3.0 | key-only `crypto_quotes`, `forex_quotes` | #126 — require `alternative.*` / `batch.*` |
 
-Catalog: 224 → 223 in 2.5, → 218 in 3.0.
+Catalog: 224 → 223 in 2.6, → 218 in 3.0.
 
 `cik_mapper_by_name` is removed outright rather than deprecated because it is not a second name
 for a working tool — it is a tool that cannot express the operation it claims. The sync/async
@@ -297,7 +297,20 @@ PR4 lands last: #135 touches every mapping module, and #133 changes a public sig
 - No re-litigating #127's decisions; this builds on them.
 - No unrelated refactoring in touched files.
 
-## 6. Risks
+## 6. Release targeting
+
+The CHANGELOG's `## [2.5.0] - 2026-08-07` section was cut while this design was being written
+(`525a0bb`), so 2.5.0 is closed to new entries. All four PRs land under `## Unreleased`, which
+becomes **2.6.0**. Deprecations introduced by PR3 and the breaking change in PR4 are therefore
+announced in 2.6.0 with removal in 3.0.
+
+**Pre-existing version drift, not this pass's to fix:** the newest git tag is `v2.4.0` while
+the CHANGELOG documents 2.5.0. Since `[tool.hatch.version]` derives the package version from
+tags, a build from `dev` today reports a `2.4.x`-series dev version rather than 2.5.0. This
+does not block any of the four PRs — they only append to `## Unreleased` — but 2.5.0 needs
+tagging before 2.6.0 can be cut, or the two releases will collapse into one.
+
+## 7. Risks
 
 | Risk | Mitigation |
 |---|---|
