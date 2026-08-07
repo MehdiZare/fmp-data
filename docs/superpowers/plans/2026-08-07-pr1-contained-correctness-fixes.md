@@ -4,7 +4,7 @@
 
 **Goal:** Fix the uncompilable enum regex in `EndpointBasedRule._get_type_pattern` (#134) and make every `cik` model field accept an integer CIK by coercing it to the canonical 10-digit zero-padded string (#131).
 
-**Architecture:** Two independent fixes sharing one PR because both are contained, low-blast-radius corrections with no public API change. #134 is a two-character fix to one f-string plus an enum-value unwrap, guarded by a test that compiles every pattern the registry can emit. #131 introduces one shared `Annotated` type in `fmp_data/models.py` and swaps 46 `cik: str` annotations to use it, rather than adding 46 separate field validators.
+**Architecture:** Two independent fixes sharing one PR because both are contained, low-blast-radius corrections with no public API change. #134 is a two-character fix to one f-string plus an enum-value unwrap, guarded by a test that compiles every pattern the registry can emit. #131 introduces one shared `Annotated` type in `fmp_data/models.py` and swaps 45 `cik: str` annotations to use it, rather than adding 45 separate field validators.
 
 **Tech Stack:** Python 3.10+, pydantic v2 (`BeforeValidator`, `Annotated`), pytest, mypy, ruff.
 
@@ -354,9 +354,9 @@ joining on cik across endpoints get one spelling. Strings pass through."
 
 ---
 
-### Task 4: Apply the CIK type to all 46 `cik` fields
+### Task 4: Apply the CIK type to all 45 `cik` fields
 
-46 `cik` fields across 9 modules currently declare bare `str`, so each one rejects an integer regardless of `validation_mode` — `BaseClient._validate_model` calls `model_validate` before any mode branching. This task is mechanical: swap the annotation, leave `Field(...)` untouched.
+45 `cik` fields across 8 modules currently declare bare `str`, so each one rejects an integer regardless of `validation_mode` — `BaseClient._validate_model` calls `model_validate` before any mode branching. This task is mechanical: swap the annotation, leave `Field(...)` untouched.
 
 **Files:**
 - Modify: `fmp_data/fundamental/models.py` (lines 27, 2834)
@@ -447,7 +447,7 @@ def _field_uses_cik_coercer(field: Any) -> bool:
 
 Run: `python3 -m pytest tests/unit/test_models.py::TestCIKCoercion::test_no_model_declares_a_bare_str_cik -v`
 
-Expected: FAIL listing ~46 model names.
+Expected: FAIL listing ~45 model names.
 
 Get the authoritative file/line list:
 
@@ -589,7 +589,7 @@ Under `## Unreleased`, add a `### Fixed` section. Do not touch `## [2.5.0]`.
   - Enum members now contribute their `.value` rather than their repr, so `economics.get_economic_indicators` matches `realGDP` instead of `EconomicIndicatorType.REAL_GDP`
   - Alternatives are `re.escape`d, since `valid_values` is endpoint-declared data
   - **Behaviour change:** these patterns previously always raised on use and now actually validate, so a value that used to slip through unvalidated may now be rejected
-- **Integer CIK values rejected regardless of `validation_mode`** (#131) - `cik` fields were declared as bare `str`, and `BaseClient._validate_model` calls `model_validate` before any `validation_mode` branching, so an integer CIK raised a `ValidationError` under every mode. All 46 `cik` fields now use the new `fmp_data.models.CIK` type, which coerces an integer to its canonical 10-digit zero-padded form (`320193` → `"0000320193"`). Strings pass through untouched.
+- **Integer CIK values rejected regardless of `validation_mode`** (#131) - `cik` fields were declared as bare `str`, and `BaseClient._validate_model` calls `model_validate` before any `validation_mode` branching, so an integer CIK raised a `ValidationError` under every mode. All 45 `cik` fields now use the new `fmp_data.models.CIK` type, which coerces an integer to its canonical 10-digit zero-padded form (`320193` → `"0000320193"`). Strings pass through untouched.
 ```
 
 - [ ] **Step 2: Run the full check suite**
@@ -622,7 +622,7 @@ Expected: the middle command FAILS. If it passes, the guard is vacuous — stop 
 
 This one has a specific trap. Pydantic surfaces `Annotated` metadata on `field.metadata` only
 for *required* fields; for `CIK | None` the metadata list is empty. A guard that checks only
-`field.metadata` therefore passes vacuously for every optional `cik` — and 15 of the 46 are
+`field.metadata` therefore passes vacuously for every optional `cik` — and 15 of the 45 are
 optional. Prove the guard catches a reverted optional field, not just a required one:
 
 ```bash
@@ -684,7 +684,7 @@ Live probe (2026-08-07) found `institutional-ownership/dates` returns no
 `sec-filings-search/cik`) it is consistently a 10-digit zero-padded string.
 
 New `fmp_data.models.CIK` type coerces int -> `"%010d"` and leaves strings
-alone; applied to all 46 `cik` fields. Padding rather than bare `str()` so
+alone; applied to all 45 `cik` fields. Padding rather than bare `str()` so
 a caller joining on `cik` across two endpoints gets one spelling.
 
 ## Tests
