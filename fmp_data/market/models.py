@@ -13,6 +13,8 @@ from pydantic import (
 )
 from pydantic.alias_generators import to_camel
 
+from fmp_data.models import CIK
+
 default_model_config = ConfigDict(
     populate_by_name=True,
     validate_assignment=True,
@@ -294,7 +296,7 @@ class CIKResult(BaseModel):
 
     model_config = default_model_config
 
-    cik: str = Field(description="CIK number")
+    cik: CIK = Field(description="CIK number")
     symbol: str = Field(description="Stock symbol")
     company_name: str = Field(alias="companyName", description="Company name")
     exchange_full_name: str | None = Field(
@@ -376,7 +378,7 @@ class CompanySearchResult(BaseModel):
     address: str | None = Field(default=None)
     ceo: str | None = Field(default=None)
     changes: float | None = Field(default=None)
-    cik: str | None = Field(default=None)
+    cik: CIK | None = Field(default=None)
     city: str | None = Field(default=None)
     cusip: str | None = Field(default=None)
     dcf: float | None = Field(default=None)
@@ -403,7 +405,7 @@ class CIKListEntry(BaseModel):
 
     model_config = default_model_config
 
-    cik: str = Field(description="CIK number")
+    cik: CIK = Field(description="CIK number")
     company_name: str | None = Field(None, description="Company name")
     symbol: str | None = Field(None, description="Stock symbol")
 
@@ -423,7 +425,7 @@ class IPODisclosure(BaseModel):
     effectiveness_date: datetime | None = Field(
         None, alias="effectivenessDate", description="Effectiveness date"
     )
-    cik: str | None = Field(None, description="CIK number")
+    cik: CIK | None = Field(None, description="CIK number")
     form: str | None = Field(None, description="SEC form type")
     url: str | None = Field(None, description="Disclosure document URL")
 
@@ -441,7 +443,7 @@ class IPOProspectus(BaseModel):
         None, alias="filingDate", description="Filing date"
     )
     ipo_date: datetime | None = Field(alias="ipoDate", description="IPO date")
-    cik: str | None = Field(None, description="CIK number")
+    cik: CIK | None = Field(None, description="CIK number")
     price_public_per_share: float | None = Field(
         None, alias="pricePublicPerShare", description="Public price per share"
     )
