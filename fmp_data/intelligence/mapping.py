@@ -514,12 +514,13 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         client_name="intelligence",
         method_name="get_stock_news",
         natural_description=(
-            "Access stock-specific news and updates including company events, "
-            "market moves, and corporate developments"
+            "Market-wide stock news feed of company events and corporate "
+            "developments. Not filterable by symbol; narrow it by date range "
+            "or page"
         ),
         example_queries=[
-            "Get stock news for AAPL",
-            "Show company updates",
+            "Show the latest stock news",
+            "Recent market headlines",
             "Latest stock headlines",
             "Company news feed",
         ],
@@ -560,21 +561,17 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         client_name="intelligence",
         method_name="get_stock_news_sentiments",
         natural_description=(
-            "Get stock news with sentiment analysis "
-            "including positive/negative sentiment "
-            "scores and market impact assessment"
+            "DEPRECATED and non-functional: FMP no longer serves this "
+            "endpoint, so it always returns an empty list. Do not select it "
+            "for sentiment queries"
         ),
         example_queries=[
-            "Show news sentiment analysis",
-            "Get stock news with sentiment",
-            "News sentiment scores",
-            "Market sentiment data",
+            "Deprecated: stock news sentiment endpoint (returns no data)",
         ],
         related_terms=[
-            "sentiment analysis",
-            "news sentiment",
-            "market mood",
-            "news impact",
+            "deprecated",
+            "removed endpoint",
+            "unavailable",
         ],
         category=SemanticCategory.INTELLIGENCE,
         sub_category="News & Media",
