@@ -269,7 +269,7 @@ class EndpointBasedRule(ValidationRule):
         match param_type:
             case "string":
                 if valid_values:
-                    return [f"^({'|'.join(map(str, valid_values))}))$"]
+                    return [f"^({'|'.join(map(str, valid_values))})$"]
                 return [r"^.+$"]
             case "integer":
                 return [r"^\d+$"]

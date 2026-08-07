@@ -1,9 +1,14 @@
+import re
 from typing import Any
 
 import pytest
 
 from fmp_data.lc.models import SemanticCategory
-from fmp_data.lc.registry import EndpointBasedRule, ValidationRuleRegistry
+from fmp_data.lc.registry import (
+    EndpointBasedRule,
+    ValidationRuleRegistry,
+    get_endpoint_groups,
+)
 from fmp_data.models import APIVersion, Endpoint, HTTPMethod, URLType
 
 
@@ -207,3 +212,26 @@ class TestValidationRuleRegistry:
             registry.get_expected_category("get_market_data_feed")
             == SemanticCategory.ALTERNATIVE_DATA
         )
+
+
+def test_every_emitted_pattern_compiles() -> None:
+    """Every regex the registry can emit must compile.
+
+    Patterns from this family are consumed by an uncaught ``re.match`` in
+    ``fmp_data/lc/validation.py``, so an uncompilable pattern is a crash
+    waiting for the first caller that reaches it.
+    """
+    uncompilable: list[tuple[str, str, str]] = []
+    for group_name, config in get_endpoint_groups().items():
+        rule = EndpointBasedRule(config["endpoint_map"], config["category"])
+        for method_name in config["endpoint_map"]:
+            requirements = rule.get_parameter_requirements(method_name) or {}
+            for param_name, patterns in requirements.items():
+                for pattern in patterns:
+                    try:
+                        re.compile(pattern)
+                    except re.error as exc:
+                        uncompilable.append(
+                            (f"{group_name}.{method_name}", param_name, str(exc))
+                        )
+    assert not uncompilable, f"uncompilable patterns: {uncompilable}"
