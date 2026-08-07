@@ -222,6 +222,7 @@ def test_every_emitted_pattern_compiles() -> None:
     waiting for the first caller that reaches it.
     """
     uncompilable: list[tuple[str, str, str]] = []
+    checked = 0
     for group_name, config in get_endpoint_groups().items():
         rule = EndpointBasedRule(config["endpoint_map"], config["category"])
         for method_name in config["endpoint_map"]:
@@ -230,8 +231,38 @@ def test_every_emitted_pattern_compiles() -> None:
                 for pattern in patterns:
                     try:
                         re.compile(pattern)
+                        checked += 1
                     except re.error as exc:
                         uncompilable.append(
                             (f"{group_name}.{method_name}", param_name, str(exc))
                         )
     assert not uncompilable, f"uncompilable patterns: {uncompilable}"
+    assert checked > 100, (
+        f"guard checked only {checked} patterns — is it still reaching the registry?"
+    )
+
+
+def test_enum_valid_values_use_wire_value_not_repr() -> None:
+    """Enum members must contribute their .value, not their repr.
+
+    ``economics.get_economic_indicators`` declares valid_values as
+    EconomicIndicatorType members. ``str(member)`` yields
+    'EconomicIndicatorType.GDP', so the pattern would compile and then
+    reject the very values it is supposed to accept.
+    """
+    from fmp_data.economics.endpoints import ECONOMIC_INDICATORS
+    from fmp_data.economics.schema import EconomicIndicatorType
+
+    rule = EndpointBasedRule(
+        {"get_economic_indicators": ECONOMIC_INDICATORS},
+        SemanticCategory.ECONOMIC,
+    )
+    requirements = rule.get_parameter_requirements("get_economic_indicators")
+    assert requirements is not None
+    patterns = requirements["name"]
+
+    assert "EconomicIndicatorType." not in patterns[0]
+    for member in EconomicIndicatorType:
+        assert any(re.match(pattern, member.value) for pattern in patterns), (
+            f"{member.value!r} rejected by {patterns}"
+        )

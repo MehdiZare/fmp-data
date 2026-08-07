@@ -7,6 +7,7 @@ lazy imports to avoid circular dependencies.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from enum import Enum
 from logging import Logger
 import re
 from typing import TYPE_CHECKING, Any, TypedDict
@@ -269,7 +270,13 @@ class EndpointBasedRule(ValidationRule):
         match param_type:
             case "string":
                 if valid_values:
-                    return [f"^({'|'.join(map(str, valid_values))})$"]
+                    alternatives = "|".join(
+                        re.escape(
+                            value.value if isinstance(value, Enum) else str(value)
+                        )
+                        for value in valid_values
+                    )
+                    return [f"^({alternatives})$"]
                 return [r"^.+$"]
             case "integer":
                 return [r"^\d+$"]
