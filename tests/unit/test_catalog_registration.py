@@ -100,6 +100,39 @@ def _selected_semantics_keys(
     return selected
 
 
+# Semantics entries that legitimately have no endpoint: client-side methods
+# that build a result without calling the API.
+CLIENT_SIDE_METHODS = {"company.company_logo_url"}
+
+
+def _orphan_semantics() -> set[str]:
+    """Semantics entries whose ``method_name`` has no endpoint behind it."""
+    return {
+        f"{group}.{key}"
+        for group, (endpoint_map, semantics_map) in _catalog().items()
+        for key, semantics in semantics_map.items()
+        if semantics.method_name
+        not in _endpoints_by_method(endpoint_map, semantics_map)
+    }
+
+
+def test_every_semantics_entry_has_an_endpoint() -> None:
+    """Deleting an endpoint from a client's map must fail, not go unnoticed.
+
+    Every other guard here iterates the endpoint map, so removing an entry from
+    it just shrinks the universe they check -- the catalog silently gets smaller
+    and the whole suite stays green. That is the #121 regression class this file
+    exists to catch, so it needs an assertion that looks the other way, from
+    semantics to endpoints.
+    """
+    assert _orphan_semantics() == CLIENT_SIDE_METHODS, (
+        "Semantics entries with no endpoint behind them. A new name here "
+        "usually means an endpoint map lost an entry, which drops it from the "
+        "LC registry silently; add it to CLIENT_SIDE_METHODS only if the "
+        "method genuinely makes no API call."
+    )
+
+
 def test_alias_semantics_match_their_endpoint() -> None:
     """Alias semantics entries must hint the same params as their endpoint.
 
@@ -126,6 +159,9 @@ def test_alias_semantics_match_their_endpoint() -> None:
             semantics = semantics_map[key]
             endpoint = by_method.get(semantics.method_name)
             if endpoint is None:
+                # Only client-side methods may land here; anything else means
+                # an endpoint map lost an entry, which
+                # test_every_semantics_entry_has_an_endpoint asserts exactly.
                 continue
 
             params = {param.name for param in endpoint.mandatory_params}
@@ -135,6 +171,23 @@ def test_alias_semantics_match_their_endpoint() -> None:
             if params != hints:
                 drift[f"{group}.{key}"] = (
                     f"missing={sorted(params - hints)} extra={sorted(hints - params)}"
+                )
+
+            # Aliases are live MCP tools, so their category has to track the
+            # entry that selects the same endpoint -- validation never sees an
+            # unselected alias, so nothing else would catch a wrong one.
+            selected = next(
+                (
+                    other
+                    for other_key, other in semantics_map.items()
+                    if other_key != key and other.method_name == semantics.method_name
+                ),
+                None,
+            )
+            if selected is not None and selected.category != semantics.category:
+                drift[f"{group}.{key}"] = (
+                    f"category={semantics.category} but the endpoint's selected "
+                    f"semantics declares {selected.category}"
                 )
 
     assert drift == {}, f"Alias semantics drifted from their endpoint: {drift}"

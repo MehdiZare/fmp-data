@@ -99,6 +99,23 @@ def test_no_documented_tool_is_stale() -> None:
     assert stale == [], f"{DOC_PATH.name} documents tools that do not exist: {stale}"
 
 
+def test_default_tools_all_exist_in_the_catalog() -> None:
+    """Every DEFAULT_TOOLS entry must name a real tool.
+
+    The per-section counts below compare DEFAULT_TOOLS against the doc, so a
+    manifest entry naming a tool that does not exist shows up only as an
+    off-by-one the doc appears to be wrong about -- and "fixing" the doc count
+    makes the suite green while the MCP server still fails to start on it.
+    """
+    catalog = {tool["spec"] for tool in discover_all_tools()}
+
+    phantom = sorted(set(DEFAULT_TOOLS) - catalog)
+
+    assert phantom == [], (
+        f"DEFAULT_TOOLS names tools that do not exist in the catalog: {phantom}"
+    )
+
+
 def test_no_duplicate_rows() -> None:
     """The same tool must not be listed twice under one client."""
     duplicated = sorted(

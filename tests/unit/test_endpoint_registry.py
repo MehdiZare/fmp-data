@@ -79,3 +79,53 @@ class TestRegisterBatch:
         valid_name, valid_pair = valid_entry
 
         assert registry.register_batch({valid_name: valid_pair}) == {}
+
+    def test_empty_batch_is_a_no_op(self) -> None:
+        registry = EndpointRegistry()
+
+        assert registry.register_batch({}) == {}
+        assert registry.list_endpoints() == {}
+
+    def test_a_structurally_malformed_pair_is_a_skip_not_a_crash(
+        self, valid_entry: tuple[str, BatchEntry]
+    ) -> None:
+        """pydantic's ValidationError subclasses ValueError, so it is tolerated.
+
+        Worth pinning explicitly: it means "never raises on validation" covers
+        structurally malformed pairs too, not just drifted hints, and the rest
+        of the batch still registers.
+        """
+        registry = EndpointRegistry()
+        valid_name, valid_pair = valid_entry
+        endpoint, _ = valid_pair
+
+        failures = registry.register_batch(
+            {
+                "malformed": (endpoint, object()),  # type: ignore[dict-item]
+                valid_name: valid_pair,
+            }
+        )
+
+        assert list(failures) == ["malformed"]
+        assert registry.get_endpoint(valid_name) is not None
+
+    def test_non_value_errors_still_abort_the_batch(
+        self, valid_entry: tuple[str, BatchEntry], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Only ValueError is tolerated; anything else stays loud.
+
+        register_batch catches ValueError so drifted endpoints degrade to a
+        skip. A non-validation failure -- in production, an ImportError while
+        register() lazily builds the validation rules -- must propagate, or a
+        whole client group could vanish while reporting no failures at all.
+        """
+        registry = EndpointRegistry()
+        valid_name, valid_pair = valid_entry
+
+        def boom(*args: object, **kwargs: object) -> tuple[bool, str]:
+            raise RuntimeError("validation rules failed to load")
+
+        monkeypatch.setattr(registry, "validate_endpoint", boom)
+
+        with pytest.raises(RuntimeError, match="validation rules failed to load"):
+            registry.register_batch({valid_name: valid_pair})
