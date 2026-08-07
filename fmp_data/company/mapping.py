@@ -1052,6 +1052,9 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         parameter_hints={
             "symbol": SYMBOL_HINT,
             "interval": INTERVAL_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+            "nonadjusted": NONADJUSTED_HINT,
         },
         response_hints={
             "date": ResponseFieldInfo(

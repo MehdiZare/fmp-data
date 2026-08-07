@@ -40,13 +40,20 @@ def test_every_endpoint_has_semantics() -> None:
 
 
 def test_every_endpoint_passes_registry_validation() -> None:
-    """Every paired endpoint must survive EndpointRegistry validation."""
+    """Every paired endpoint must survive EndpointRegistry validation.
+
+    Uses a single shared registry across all groups, mirroring
+    ``setup_registry``. A per-group registry would hide a cross-group endpoint
+    name collision, which in production silently overwrites the first entry.
+    """
     failures: dict[str, str] = {}
+    registry = EndpointRegistry()
+    total = 0
 
     for group, (endpoint_map, semantics_map) in _catalog().items():
-        registry = EndpointRegistry()
         batch = {}
         for endpoint_name, endpoint in endpoint_map.items():
+            total += 1
             semantics = _semantics_for(endpoint_name, semantics_map)
             if semantics is not None:
                 batch[endpoint_name] = (endpoint, semantics)
@@ -55,3 +62,75 @@ def test_every_endpoint_passes_registry_validation() -> None:
             failures[f"{group}.{name}"] = error
 
     assert failures == {}, f"Endpoints failing validation: {failures}"
+    assert len(registry.list_endpoints()) == total, (
+        "Endpoint name collision across client groups: "
+        f"{total} endpoints registered but only "
+        f"{len(registry.list_endpoints())} survived on a shared registry"
+    )
+
+
+def _endpoints_by_method(
+    endpoint_map: dict[str, Endpoint[Any]], semantics_map: dict[str, Any]
+) -> dict[str, Endpoint[Any]]:
+    """Map each endpoint to the ``method_name`` its resolved semantics declares."""
+    by_method: dict[str, Endpoint[Any]] = {}
+    for endpoint_name, endpoint in endpoint_map.items():
+        semantics = _semantics_for(endpoint_name, semantics_map)
+        if semantics is not None:
+            by_method[semantics.method_name] = endpoint
+    return by_method
+
+
+def _selected_semantics_keys(
+    endpoint_map: dict[str, Endpoint[Any]], semantics_map: dict[str, Any]
+) -> set[str]:
+    """Semantics keys that some endpoint-map key actually resolves to."""
+    selected: set[str] = set()
+    for endpoint_name in endpoint_map:
+        resolved = _semantics_for(endpoint_name, semantics_map)
+        if resolved is None:
+            continue
+        selected.update(
+            key for key, value in semantics_map.items() if value is resolved
+        )
+    return selected
+
+
+def test_alias_semantics_match_their_endpoint() -> None:
+    """Alias semantics entries must hint the same params as their endpoint.
+
+    ``test_every_endpoint_passes_registry_validation`` iterates endpoint-map
+    first, so a semantics entry that no endpoint key selects is never
+    validated. Those aliases are still live MCP tools -- ``company``'s
+    ``intraday_price`` sits in ``DEFAULT_TOOLS`` alongside the
+    ``intraday_prices`` entry that shadows it -- so their hints have to track
+    the endpoint too.
+
+    Entries whose ``method_name`` has no endpoint at all are skipped: those are
+    client-side methods such as ``get_company_logo_url``, which builds a URL
+    without calling the API.
+    """
+    drift: dict[str, str] = {}
+
+    for group, (endpoint_map, semantics_map) in _catalog().items():
+        by_method = _endpoints_by_method(endpoint_map, semantics_map)
+        unselected = set(semantics_map) - _selected_semantics_keys(
+            endpoint_map, semantics_map
+        )
+
+        for key in sorted(unselected):
+            semantics = semantics_map[key]
+            endpoint = by_method.get(semantics.method_name)
+            if endpoint is None:
+                continue
+
+            params = {param.name for param in endpoint.mandatory_params}
+            params.update(param.name for param in endpoint.optional_params or [])
+            hints = set(semantics.parameter_hints)
+
+            if params != hints:
+                drift[f"{group}.{key}"] = (
+                    f"missing={sorted(params - hints)} extra={sorted(hints - params)}"
+                )
+
+    assert drift == {}, f"Alias semantics drifted from their endpoint: {drift}"
