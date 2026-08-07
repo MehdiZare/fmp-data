@@ -100,6 +100,43 @@ class TestValidationRuleRegistry:
         assert not is_valid
         assert "No matching rule found" in message
 
+    def test_validate_category_prefers_longest_prefix(
+        self, market_endpoints, alternative_endpoints
+    ) -> None:
+        """A more specific prefix wins over a shorter one registered earlier.
+
+        Endpoint-map keys are method names, so the owning group always supplies
+        an exact match. Scanning for the *first* prefix hit instead lets an
+        unrelated group with a shorter prefix claim the endpoint — the defect
+        behind issue #122, where company's ``get_price_target`` swallowed
+        intelligence's ``get_price_target_news``.
+        """
+        registry = ValidationRuleRegistry()
+        # Shorter, unrelated prefix registered first.
+        registry.register_rule(
+            EndpointBasedRule(
+                {"get_market": market_endpoints["get_market_data"]},
+                SemanticCategory.MARKET_DATA,
+            )
+        )
+        registry.register_rule(
+            EndpointBasedRule(
+                {"get_market_data_feed": market_endpoints["get_market_data"]},
+                SemanticCategory.ALTERNATIVE_DATA,
+            )
+        )
+
+        is_valid, message = registry.validate_category(
+            "get_market_data_feed", SemanticCategory.ALTERNATIVE_DATA
+        )
+        assert is_valid, message
+
+        is_valid, message = registry.validate_category(
+            "get_market_data_feed", SemanticCategory.MARKET_DATA
+        )
+        assert not is_valid
+        assert "Category mismatch" in message
+
     def test_get_parameter_requirements(self, registry: ValidationRuleRegistry) -> None:
         """Test getting parameter requirements."""
         # Test endpoint with no parameters - should return None
