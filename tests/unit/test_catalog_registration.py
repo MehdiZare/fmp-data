@@ -48,23 +48,27 @@ def test_every_endpoint_passes_registry_validation() -> None:
     """
     failures: dict[str, str] = {}
     registry = EndpointRegistry()
-    total = 0
+    paired = 0
 
     for group, (endpoint_map, semantics_map) in _catalog().items():
         batch = {}
         for endpoint_name, endpoint in endpoint_map.items():
-            total += 1
             semantics = _semantics_for(endpoint_name, semantics_map)
             if semantics is not None:
                 batch[endpoint_name] = (endpoint, semantics)
+
+        # Count what was actually handed to the registry. Counting every
+        # endpoint-map key instead would make a *missing semantics* entry
+        # surface below as a bogus "name collision".
+        paired += len(batch)
 
         for name, error in registry.register_batch(batch).items():
             failures[f"{group}.{name}"] = error
 
     assert failures == {}, f"Endpoints failing validation: {failures}"
-    assert len(registry.list_endpoints()) == total, (
+    assert len(registry.list_endpoints()) == paired, (
         "Endpoint name collision across client groups: "
-        f"{total} endpoints registered but only "
+        f"{paired} endpoints registered but only "
         f"{len(registry.list_endpoints())} survived on a shared registry"
     )
 
@@ -152,3 +156,35 @@ def test_client_name_matches_owning_group() -> None:
     }
 
     assert mismatches == {}, f"client_name does not match owning group: {mismatches}"
+
+
+# Client modules that MCP discovery exposes but the LangChain registry does not
+# enroll. Tracked in #129 -- registering them means filling 33 missing parameter
+# hints at the same time, or the guards above go red in between.
+LC_EXCLUDED_CLIENTS = {"batch", "index", "sec", "transcripts"}
+
+
+def test_lc_registry_covers_every_client_except_declared_exclusions() -> None:
+    """A whole client module must not fall out of the LC registry unnoticed.
+
+    Every guard in this file derives its universe from ``get_endpoint_groups()``,
+    so none of them can see a module that is absent from it entirely -- the same
+    silent-disappearance shape as #121, one level up. Pinning the difference
+    against MCP discovery means dropping a 10th group, or adding a 14th client
+    without enrolling it, fails here instead of going unnoticed.
+    """
+    from fmp_data.mcp.discovery import discover_all_tools
+
+    discovered = {tool["client"] for tool in discover_all_tools()}
+    registered = set(get_endpoint_groups())
+
+    assert discovered - registered == LC_EXCLUDED_CLIENTS, (
+        "LC registry coverage changed. Clients known to MCP but missing from "
+        f"the registry: {sorted(discovered - registered)}; expected exactly "
+        f"{sorted(LC_EXCLUDED_CLIENTS)}. Update LC_EXCLUDED_CLIENTS only when "
+        "the exclusion is deliberate."
+    )
+    assert registered - discovered == set(), (
+        "Registry has client groups MCP discovery does not know about: "
+        f"{sorted(registered - discovered)}"
+    )

@@ -65,7 +65,11 @@ def registry_with_endpoints():
         ),
     }
 
-    registry.register_batch(endpoints)
+    # register_batch no longer raises, so an unchecked call would leave this
+    # fixture empty and fail the dependent tests with a confusing symptom
+    # rather than at the source.
+    failures = registry.register_batch(endpoints)
+    assert failures == {}, f"fixture endpoints failed to register: {failures}"
     return registry
 
 
