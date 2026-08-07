@@ -2458,12 +2458,17 @@ class TestAsyncTranscriptsClient:
         from fmp_data.transcripts.async_client import AsyncTranscriptsClient
 
         mock_client.request_async.return_value = [
-            EarningsTranscript(  # type: ignore[call-arg]  # populated by field name
-                symbol="AAPL",
-                quarter=1,
-                year=2024,
-                date="2024-01-01",
-                content="This is a test transcript content.",
+            # model_validate rather than a keyword call: the model aliases to
+            # camelCase, so a field-name call needs a blanket
+            # `type: ignore[call-arg]` that would also hide a misspelled field.
+            EarningsTranscript.model_validate(
+                {
+                    "symbol": "AAPL",
+                    "quarter": 1,
+                    "year": 2024,
+                    "date": "2024-01-01",
+                    "content": "This is a test transcript content.",
+                }
             )
         ]
 
