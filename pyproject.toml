@@ -308,7 +308,6 @@ disable_error_code = [
 [[tool.mypy.overrides]]
 module = [
     "tests.*",
-    "conftest",
 ]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
