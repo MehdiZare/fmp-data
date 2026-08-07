@@ -35,10 +35,17 @@ from fmp_data.company.hints import (
     CIK_HINT,
     FLOAT_RESPONSE_HINTS,
     INTERVAL_HINT,
+    NONADJUSTED_HINT,
     PROFILE_RESPONSE_HINTS,
     STRUCTURE_HINT,
 )
-from fmp_data.lc.hints import DATE_HINTS, PERIOD_HINT, SYMBOL_HINT
+from fmp_data.lc.hints import (
+    DATE_HINTS,
+    LIMIT_HINT,
+    PAGE_HINT,
+    PERIOD_HINT,
+    SYMBOL_HINT,
+)
 from fmp_data.lc.models import EndpointSemantics, ResponseFieldInfo, SemanticCategory
 
 # Company endpoints mapping
@@ -283,7 +290,11 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.COMPANY_INFO,
         sub_category="Revenue",
-        parameter_hints={"symbol": SYMBOL_HINT, "structure": STRUCTURE_HINT},
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "structure": STRUCTURE_HINT,
+            "period": PERIOD_HINT,
+        },
         response_hints={
             "segments": ResponseFieldInfo(
                 description="Revenue by region",
@@ -414,7 +425,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
             "employment figures",
         ],
         category=SemanticCategory.COMPANY_INFO,
-        parameter_hints={"symbol": SYMBOL_HINT},
+        parameter_hints={"symbol": SYMBOL_HINT, "limit": LIMIT_HINT},
         response_hints={
             "count": ResponseFieldInfo(
                 description="Number of employees",
@@ -773,7 +784,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
             "post-market trade",
             "extended hours trade",
         ],
-        category=SemanticCategory.MARKET_DATA,
+        category=SemanticCategory.COMPANY_INFO,
         sub_category="Aftermarket Data",
         parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
@@ -819,7 +830,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
             "post-market quote",
             "extended hours quote",
         ],
-        category=SemanticCategory.MARKET_DATA,
+        category=SemanticCategory.COMPANY_INFO,
         sub_category="Aftermarket Data",
         parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
@@ -869,7 +880,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
             "return",
             "timeframe change",
         ],
-        category=SemanticCategory.MARKET_DATA,
+        category=SemanticCategory.COMPANY_INFO,
         sub_category="Price Performance",
         parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
@@ -920,6 +931,9 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         parameter_hints={
             "symbol": SYMBOL_HINT,
             "interval": INTERVAL_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+            "nonadjusted": NONADJUSTED_HINT,
         },
         response_hints={
             "datetime": ResponseFieldInfo(
@@ -1270,7 +1284,12 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.COMPANY_INFO,
         sub_category="Analyst Research",
-        parameter_hints={"symbol": SYMBOL_HINT},
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "period": PERIOD_HINT,
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
         response_hints={
             "estimated_revenue_avg": ResponseFieldInfo(
                 description="Average estimated revenue",

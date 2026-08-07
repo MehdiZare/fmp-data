@@ -47,6 +47,7 @@ from fmp_data.intelligence.endpoints import (
     STOCK_SPLITS_CALENDAR,
     TRENDING_SOCIAL_SENTIMENT_ENDPOINT,
 )
+from fmp_data.lc.hints import CIK_HINT
 from fmp_data.lc.models import (
     EndpointSemantics,
     ParameterHint,
@@ -346,7 +347,11 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INTELLIGENCE,
         sub_category="Fundraising",
-        parameter_hints={"page": PAGE_HINT, "limit": LIMIT_HINT},
+        parameter_hints={
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+            "cik": CIK_HINT,
+        },
         response_hints={
             "offering_type": ResponseFieldInfo(
                 description="Type of equity offering",
@@ -527,12 +532,6 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         category=SemanticCategory.INTELLIGENCE,
         sub_category="News & Media",
         parameter_hints={
-            "tickers": ParameterHint(
-                natural_names=["symbols", "stocks", "tickers"],
-                extraction_patterns=[r"[A-Z,\s]+"],
-                examples=["AAPL", "AAPL,MSFT,GOOGL"],
-                context_clues=["stocks", "symbols", "companies"],
-            ),
             "page": PAGE_HINT,
             "start_date": DATE_HINTS["start_date"],
             "end_date": DATE_HINTS["end_date"],
@@ -579,12 +578,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INTELLIGENCE,
         sub_category="News & Media",
-        parameter_hints={
-            "page": PAGE_HINT,
-            "start_date": DATE_HINTS["start_date"],
-            "end_date": DATE_HINTS["end_date"],
-            "limit": LIMIT_HINT,
-        },
+        parameter_hints={"page": PAGE_HINT},
         response_hints={
             "sentiment": ResponseFieldInfo(
                 description="News sentiment score",
