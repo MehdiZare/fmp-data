@@ -58,6 +58,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **MCP default toolset hygiene** - Removed dead/deprecated intelligence tools from `DEFAULT_TOOLS` so the default MCP server no longer registers tools that always fail or return empty:
   - Dropped: `intelligence.earnings_confirmed`, `intelligence.earnings_surprises`, `intelligence.stock_news_sentiments`, `intelligence.historical_social_sentiment`, `intelligence.trending_social_sentiment`, `intelligence.social_sentiment_changes`
   - Client methods remain importable; custom manifests can still opt in explicitly
+- **MCP tools reference is complete and self-checking** (#123) - `docs/mcp/tools.md` was missing four whole client sections and carried stale counts:
+  - Added the `Batch` (30), `Index` (6), `SEC` (12), and `Transcripts` (4) sections, plus the previously undocumented `company.profile_cik`
+  - Every section now states both numbers — catalog tools and how many are in `DEFAULT_TOOLS` — with the convention explained once in the header (224 catalog / 159 default)
+  - A guard test asserts every discovered tool key appears in the doc and that the header totals match, so the reference cannot silently drift again
 - **tests/ is now type-checked** (#125) - Removed `tests/` from the mypy exclude list so test annotations are verified instead of decorative:
   - Added a `tests.*` override that relaxes `disallow_untyped_defs` / `disallow_incomplete_defs`, so wrong annotations are caught without requiring complete ones
   - Fixed the 76 latent errors this surfaced (narrowing asserts, explicit annotations, targeted `type: ignore`s); no test behavior or assertions changed
