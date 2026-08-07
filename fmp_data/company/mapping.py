@@ -666,7 +666,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "quote": EndpointSemantics(
-        client_name="market",
+        client_name="company",
         method_name="get_quote",
         natural_description=(
             "Get real-time stock quote data including current price, "
@@ -716,7 +716,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "simple_quote": EndpointSemantics(
-        client_name="market",
+        client_name="company",
         method_name="get_simple_quote",
         natural_description=(
             "Get real-time basic stock quote "
@@ -907,7 +907,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "intraday_prices": EndpointSemantics(
-        client_name="market",
+        client_name="company",
         method_name="get_intraday_prices",
         natural_description=(
             "Get intraday price data with minute-by-minute or hourly intervals"
@@ -955,7 +955,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "historical_price": EndpointSemantics(
-        client_name="market",
+        client_name="company",
         method_name="get_historical_prices",
         natural_description=(
             "Retrieve historical daily price data including open, high, low, close, "
@@ -1026,7 +1026,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "intraday_price": EndpointSemantics(
-        client_name="market",
+        client_name="company",
         method_name="get_intraday_prices",
         natural_description=(
             "Get intraday price data at various intervals (1min to 4hour) "
@@ -1083,7 +1083,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "market_cap": EndpointSemantics(
-        client_name="market",
+        client_name="company",
         method_name="get_market_cap",
         natural_description=(
             "Get current market capitalization data for a company, including "
@@ -1123,7 +1123,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "historical_market_cap": EndpointSemantics(
-        client_name="market",
+        client_name="company",
         method_name="get_historical_market_cap",
         natural_description=(
             "Retrieve historical market capitalization data to track changes in "
@@ -1167,7 +1167,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "historical_prices": EndpointSemantics(
-        client_name="market",
+        client_name="company",
         method_name="get_historical_prices",
         natural_description=(
             "Retrieve historical price data including OHLCV (Open, High, Low, Close, "

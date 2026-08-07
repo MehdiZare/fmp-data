@@ -134,3 +134,21 @@ def test_alias_semantics_match_their_endpoint() -> None:
                 )
 
     assert drift == {}, f"Alias semantics drifted from their endpoint: {drift}"
+
+
+def test_client_name_matches_owning_group() -> None:
+    """``client_name`` must name the client group the semantics is registered under.
+
+    Nothing dispatches on this field today -- MCP resolves tools through the
+    module slug -- so a wrong value is silently wrong metadata rather than a
+    crash. Eight company price/quote entries claimed ``market`` for exactly
+    that reason.
+    """
+    mismatches = {
+        f"{group}.{key}": semantics.client_name
+        for group, config in get_endpoint_groups().items()
+        for key, semantics in config["semantics_map"].items()
+        if semantics.client_name != group
+    }
+
+    assert mismatches == {}, f"client_name does not match owning group: {mismatches}"
