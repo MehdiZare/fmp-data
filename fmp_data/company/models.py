@@ -986,7 +986,7 @@ class MergerAcquisition(BaseModel):
     targeted_symbol: str | None = Field(
         None, alias="targetedSymbol", description="Targeted company symbol"
     )
-    targeted_cik: str | None = Field(
+    targeted_cik: CIK | None = Field(
         None, alias="targetedCik", description="Targeted company CIK number"
     )
     transaction_date: str | None = Field(

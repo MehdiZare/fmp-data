@@ -326,11 +326,13 @@ class TestCIKCoercion:
             Model(cik=True)
 
     def test_no_model_declares_a_bare_str_cik(self) -> None:
-        """Every cik field must route through the CIK coercer.
+        """Every CIK-valued field must route through the CIK coercer.
 
         A bare ``str`` annotation rejects an integer CIK before
         validation_mode is ever consulted, so one drifted model
-        reintroduces the whole bug class.
+        reintroduces the whole bug class. Covers ``cik`` and every
+        sibling ``*_cik`` field (reporting_cik, company_cik, ...),
+        which carry the same identifier and the same defect.
         """
         import importlib
         import pkgutil
@@ -338,6 +340,7 @@ class TestCIKCoercion:
         import fmp_data
 
         offenders: list[str] = []
+        checked = 0
         for module_info in pkgutil.walk_packages(fmp_data.__path__, prefix="fmp_data."):
             if not module_info.name.endswith(".models"):
                 continue
@@ -350,10 +353,18 @@ class TestCIKCoercion:
                     and model is not BaseModel
                 ):
                     continue
-                field = model.model_fields.get("cik")
-                if field is None:
-                    continue
-                if not _field_uses_cik_coercer(field):
-                    offenders.append(f"{module_info.name}.{model.__name__}")
+                for field_name, field in model.model_fields.items():
+                    if field_name != "cik" and not field_name.endswith("_cik"):
+                        continue
+                    checked += 1
+                    if not _field_uses_cik_coercer(field):
+                        offenders.append(
+                            f"{module_info.name}.{model.__name__}.{field_name}"
+                        )
 
         assert not offenders, f"cik fields not using the CIK type: {offenders}"
+        # walk_packages(onerror=None) swallows ImportError, so an extras-gated
+        # subtree can vanish silently and leave this guard passing vacuously.
+        assert checked >= 50, (
+            f"guard inspected only {checked} fields — is it still walking the package?"
+        )

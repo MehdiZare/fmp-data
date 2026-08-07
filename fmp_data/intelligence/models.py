@@ -603,7 +603,7 @@ class CrowdfundingOffering(BaseModel):
     intermediary_company_name: str | None = Field(
         None, alias="intermediaryCompanyName", description="Intermediary company name"
     )
-    intermediary_commission_cik: str | None = Field(
+    intermediary_commission_cik: CIK | None = Field(
         None, alias="intermediaryCommissionCik", description="Intermediary CIK"
     )
     intermediary_commission_file_number: str | None = Field(

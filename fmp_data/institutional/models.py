@@ -219,8 +219,8 @@ class InsiderRoster(BaseModel):
     )
     symbol: str | None = Field(default=None)
     filing_date: str | None = Field(default=None)
-    reporting_cik: str | None = Field(default=None)
-    company_cik: str | None = Field(default=None)
+    reporting_cik: CIK | None = Field(default=None)
+    company_cik: CIK | None = Field(default=None)
     transaction_type: str | None = Field(default=None)
     acquisition_or_disposition: str | None = Field(default=None)
     direct_or_indirect: str | None = Field(default=None)
@@ -270,14 +270,14 @@ class InsiderTrade(BaseModel):
     symbol: str = Field(description="Stock symbol")
     filing_date: datetime = Field(alias="filingDate", description="SEC filing date")
     transaction_date: date = Field(alias="transactionDate", description="Trade date")
-    reporting_cik: str = Field(alias="reportingCik", description="Reporting CIK")
+    reporting_cik: CIK = Field(alias="reportingCik", description="Reporting CIK")
     transaction_type: str = Field(
         alias="transactionType", description="Transaction type"
     )
     securities_owned: float | None = Field(
         None, alias="securitiesOwned", description="Securities owned"
     )
-    company_cik: str = Field(alias="companyCik", description="Company CIK")
+    company_cik: CIK = Field(alias="companyCik", description="Company CIK")
     reporting_name: str = Field(
         alias="reportingName", description="Reporting person name"
     )
@@ -307,7 +307,7 @@ class CIKMapping(BaseModel):
 
     model_config = default_model_config
 
-    reporting_cik: str = Field(
+    reporting_cik: CIK = Field(
         validation_alias=AliasChoices("reportingCik", "cik"),
         description="CIK number",
     )
@@ -387,14 +387,14 @@ class InsiderTradingLatest(BaseModel):
     symbol: str = Field(description="Stock symbol")
     filing_date: datetime = Field(alias="filingDate", description="SEC filing date")
     transaction_date: date = Field(alias="transactionDate", description="Trade date")
-    reporting_cik: str = Field(alias="reportingCik", description="Reporting CIK")
+    reporting_cik: CIK = Field(alias="reportingCik", description="Reporting CIK")
     transaction_type: str = Field(
         alias="transactionType", description="Transaction type"
     )
     securities_owned: float | None = Field(
         None, alias="securitiesOwned", description="Securities owned"
     )
-    company_cik: str = Field(alias="companyCik", description="Company CIK")
+    company_cik: CIK = Field(alias="companyCik", description="Company CIK")
     reporting_name: str = Field(
         alias="reportingName", description="Reporting person name"
     )
@@ -427,14 +427,14 @@ class InsiderTradingSearch(BaseModel):
     symbol: str = Field(description="Stock symbol")
     filing_date: datetime = Field(alias="filingDate", description="SEC filing date")
     transaction_date: date = Field(alias="transactionDate", description="Trade date")
-    reporting_cik: str = Field(alias="reportingCik", description="Reporting CIK")
+    reporting_cik: CIK = Field(alias="reportingCik", description="Reporting CIK")
     transaction_type: str = Field(
         alias="transactionType", description="Transaction type"
     )
     securities_owned: float | None = Field(
         None, alias="securitiesOwned", description="Securities owned"
     )
-    company_cik: str = Field(alias="companyCik", description="Company CIK")
+    company_cik: CIK = Field(alias="companyCik", description="Company CIK")
     reporting_name: str = Field(
         alias="reportingName", description="Reporting person name"
     )
@@ -464,7 +464,7 @@ class InsiderTradingByName(BaseModel):
 
     model_config = default_model_config
 
-    reporting_cik: str = Field(alias="reportingCik", description="Reporting CIK")
+    reporting_cik: CIK = Field(alias="reportingCik", description="Reporting CIK")
     reporting_name: str = Field(
         alias="reportingName", description="Reporting person name"
     )
@@ -481,7 +481,7 @@ class InsiderTradingByName(BaseModel):
     securities_owned: float | None = Field(
         default=None, alias="securitiesOwned", description="Securities owned"
     )
-    company_cik: str | None = Field(
+    company_cik: CIK | None = Field(
         default=None, alias="companyCik", description="Company CIK"
     )
     type_of_owner: str | None = Field(
