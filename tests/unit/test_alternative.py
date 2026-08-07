@@ -110,9 +110,9 @@ def test_crypto_quote_model(mock_crypto_quote):
     assert quote.change_percent == 2.85
     assert isinstance(quote.timestamp, datetime)
     # Update test to check timezone agnostic
-    assert (
-        quote.timestamp.utcoffset().total_seconds() == 0
-    )  # Check if it's a UTC timezone
+    utc_offset = quote.timestamp.utcoffset()
+    assert utc_offset is not None
+    assert utc_offset.total_seconds() == 0  # Check if it's a UTC timezone
 
 
 def test_forex_quote_model(mock_forex_quote):
@@ -124,9 +124,9 @@ def test_forex_quote_model(mock_forex_quote):
     assert quote.change_percent == 0.23
     assert isinstance(quote.timestamp, datetime)
     # Update test to check timezone agnostic
-    assert (
-        quote.timestamp.utcoffset().total_seconds() == 0
-    )  # Check if it's a UTC timezone
+    utc_offset = quote.timestamp.utcoffset()
+    assert utc_offset is not None
+    assert utc_offset.total_seconds() == 0  # Check if it's a UTC timezone
 
 
 @pytest.mark.parametrize(

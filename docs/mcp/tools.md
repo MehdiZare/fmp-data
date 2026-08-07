@@ -5,21 +5,31 @@ Tools are organized by client module and include descriptions.
 
 For full FMP endpoint coverage, use the Python client. The MCP tool catalog includes endpoints with MCP tool semantics.
 
+**Counts convention:** each section lists the number of tools in the *catalog*
+(everything with MCP semantics, loadable via an explicit manifest), followed by
+how many of those are in `DEFAULT_TOOLS` (what a default server registers).
+The two differ where a tool is deprecated, redundant, or too heavy for the
+default set — `224` catalog tools, `159` default.
+
 ## Table of Contents
 
-- [Alternative (15 tools)](#alternative)
-- [Company (31 tools)](#company)
-- [Economics (7 tools)](#economics)
-- [Fundamental (14 tools)](#fundamental)
-- [Institutional (13 tools)](#institutional)
-- [Intelligence (45 tools)](#intelligence)
-- [Investment (14 tools)](#investment)
-- [Market (23 tools)](#market)
-- [Technical (9 tools)](#technical)
+- [Alternative (15 tools, 15 default)](#alternative)
+- [Batch (30 tools, 0 default)](#batch)
+- [Company (32 tools, 30 default)](#company)
+- [Economics (7 tools, 7 default)](#economics)
+- [Fundamental (14 tools, 13 default)](#fundamental)
+- [Index (6 tools, 0 default)](#index)
+- [Institutional (13 tools, 10 default)](#institutional)
+- [Intelligence (45 tools, 39 default)](#intelligence)
+- [Investment (14 tools, 14 default)](#investment)
+- [Market (23 tools, 22 default)](#market)
+- [SEC (12 tools, 0 default)](#sec)
+- [Technical (9 tools, 9 default)](#technical)
+- [Transcripts (4 tools, 0 default)](#transcripts)
 
 ## Alternative
 
-**15 tools** for alternative data access.
+**15 tools** for alternative data access (15 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -39,9 +49,47 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 | `forex_quote` | Get detailed real-time quote for a specific currency pair |
 | `forex_quotes` | Get real-time quotes for all available forex currency pairs |
 
+## Batch
+
+**30 tools** for multi-symbol and bulk downloads (0 default — load explicitly
+via a manifest; these return large payloads and several are CSV).
+
+| Tool Key | Description |
+|----------|-------------|
+| `aftermarket_quotes` | Get aftermarket quote data for multiple symbols. Returns current prices and quotes from after-hours trading sessions. |
+| `aftermarket_trades` | Get aftermarket (post-market) trade data for multiple symbols. Returns trading activity that occurred after regular market hours. |
+| `balance_sheet_bulk` | Get bulk balance sheet statements. Returns comprehensive balance sheet data for many companies. |
+| `balance_sheet_growth_bulk` | Get bulk balance sheet growth data. Returns year-over-year growth metrics for balance sheet items. |
+| `batch_quote` | Get real-time quotes for multiple symbols in a single request. Get current price, volume, and market data for many stocks. |
+| `batch_quote_short` | Get quick price snapshots for multiple symbols. Fast, lightweight quotes with essential price information. |
+| `cash_flow_bulk` | Get bulk cash flow statements. Returns comprehensive cash flow data for many companies. |
+| `cash_flow_growth_bulk` | Get bulk cash flow growth data. Returns year-over-year growth metrics for cash flow items. |
+| `commodity_quotes` | Get batch quotes for all commodities. Returns prices for gold, silver, oil, and other commodity futures. |
+| `crypto_quotes` | Get batch quotes for all cryptocurrencies. Returns crypto market data including Bitcoin, Ethereum, etc. |
+| `dcf_bulk` | Get discounted cash flow valuations in bulk. Returns DCF analysis and intrinsic value calculations for many companies. |
+| `earnings_surprises_bulk` | Get bulk earnings surprises for a given year. Returns actual vs expected earnings data for many companies. |
+| `eod_bulk` | Get bulk end-of-day prices. Returns closing price data for all stocks for a specific date. |
+| `etf_holder_bulk` | Get bulk ETF holdings. Returns comprehensive ETF holding data for many funds. |
+| `etf_quotes` | Get batch quotes for all ETFs. Returns comprehensive quote data for entire ETF universe. |
+| `exchange_quotes` | Get quotes for all stocks on a specific exchange. Returns market data for entire exchange (NYSE, NASDAQ, etc.). |
+| `forex_quotes` | Get batch quotes for all forex pairs. Returns comprehensive foreign exchange rate data for all currency pairs. |
+| `income_statement_bulk` | Get bulk income statements. Returns comprehensive income statement data for many companies. |
+| `income_statement_growth_bulk` | Get bulk income statement growth data. Returns year-over-year growth metrics for income statement items. |
+| `index_quotes` | Get batch quotes for all market indexes. Returns data for S&P 500, Dow Jones, NASDAQ, and other indexes. |
+| `key_metrics_ttm_bulk` | Get bulk trailing twelve month key metrics. Returns comprehensive financial metrics and KPIs for many companies. |
+| `market_caps` | Get market capitalization for multiple symbols. Returns current market cap values for specified companies. |
+| `mutualfund_quotes` | Get batch quotes for all mutual funds. Returns comprehensive quote data for entire mutual fund universe. |
+| `peers_bulk` | Get bulk peer lists. Returns peer company data and competitor lists for many companies. |
+| `price_target_summary_bulk` | Get bulk price target summaries. Returns analyst price target data and consensus for many stocks. |
+| `profile_bulk` | Get company profile data in bulk (CSV format). Returns comprehensive company information for many companies at once. |
+| `rating_bulk` | Get stock ratings in bulk. Returns comprehensive rating data and recommendations for many stocks. |
+| `ratios_ttm_bulk` | Get trailing twelve month financial ratios in bulk. Returns comprehensive financial ratio analysis for many companies. |
+| `scores_bulk` | Get financial scores in bulk. Returns Piotroski F-Score and Altman Z-Score for many companies. |
+| `upgrades_downgrades_consensus_bulk` | Get bulk upgrades/downgrades consensus data. Returns analyst rating changes and consensus for many stocks. |
+
 ## Company
 
-**31 tools** for company information and quotes.
+**32 tools** for company information and quotes (30 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -69,6 +117,7 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 | `price_target_summary` | Get a summary of analyst price targets for a stock, including average, highest, and lowest targets along with number of analysts. |
 | `product_revenue_segmentation` | Get detailed revenue breakdown by product lines or services, showing how company revenue is distributed across different offerings |
 | `profile` | Get detailed company profile information including financial metrics, company description, sector, industry, and contact information |
+| `profile_cik` | Get detailed company profile information using CIK number, including financial metrics, company description, sector, industry, and contact information |
 | `quote` | Get real-time stock quote data including current price, volume, day range, and other key market metrics |
 | `share_float` | Get current share float data showing the number and percentage of shares available for public trading |
 | `simple_quote` | Get real-time basic stock quote including price, volume, and change information |
@@ -79,7 +128,7 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 
 ## Economics
 
-**7 tools** for economic indicators.
+**7 tools** for economic indicators (7 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -93,7 +142,7 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 
 ## Fundamental
 
-**14 tools** for fundamental analysis and valuation.
+**14 tools** for fundamental analysis and valuation (13 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -112,9 +161,22 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 | `levered_dcf` | Perform levered discounted cash flow valuation with detailed assumptions about growth, cost of capital, and future cash flows. |
 | `owner_earnings` | Calculate owner earnings using Warren Buffett's methodology to evaluate true business profitability and cash generation capability. |
 
+## Index
+
+**6 tools** for index constituents (0 default — load explicitly via a manifest).
+
+| Tool Key | Description |
+|----------|-------------|
+| `dowjones_constituents` | Get current Dow Jones Industrial Average constituents. Returns list of 30 companies currently included in the DJIA. |
+| `historical_dowjones` | Get historical Dow Jones constituent changes. Returns list of additions and removals from the DJIA over time. |
+| `historical_nasdaq` | Get historical NASDAQ constituent changes. Returns list of additions and removals from the NASDAQ index over time. |
+| `historical_sp500` | Get historical S&P 500 constituent changes. Returns list of additions and removals from the S&P 500 over time. |
+| `nasdaq_constituents` | Get current NASDAQ index constituents. Returns companies currently in the NASDAQ composite index. |
+| `sp500_constituents` | Get current S&P 500 index constituents. Returns list of companies currently included in the S&P 500 index. |
+
 ## Institutional
 
-**13 tools** for institutional and insider data.
+**13 tools** for institutional and insider data (10 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -134,7 +196,7 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 
 ## Intelligence
 
-**45 tools** for news, sentiment, market events, and analyst ratings/grades.
+**45 tools** for news, sentiment, market events, and analyst ratings/grades (39 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -179,14 +241,14 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 | `senate_trading` | Access Senate trading activity and disclosures including stock trades, transaction details, and filing information |
 | `senate_trading_rss` | Get real-time RSS feed of Senate trading disclosures including new filings and transaction updates |
 | `social_sentiment_changes` | **Removed / not in DEFAULT_TOOLS** — raises `RemovedEndpointError` |
-| `stock_news` | Access stock-specific news and updates including company events, market moves, and corporate developments |
+| `stock_news` | Market-wide stock news feed of company events and corporate developments. Not filterable by symbol; narrow it by date range or page |
 | `stock_news_sentiments` | **Deprecated / not in DEFAULT_TOOLS** — client returns `[]` |
 | `stock_splits_calendar` | Access upcoming and historical stock split events including split ratios, dates, and affected securities |
 | `trending_social_sentiment` | **Removed / not in DEFAULT_TOOLS** — raises `RemovedEndpointError` |
 
 ## Investment
 
-**14 tools** for ETFs and mutual funds.
+**14 tools** for ETFs and mutual funds (14 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -207,7 +269,7 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 
 ## Market
 
-**23 tools** for market data and search.
+**23 tools** for market data and search (22 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -235,9 +297,29 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 | `sector_performance` | Get performance data for major market sectors, showing relative strength and weakness across different areas of the market |
 | `stock_list` | Get a complete list of all available stocks in the market including their basic information such as symbol, name, and exchange listing |
 
+## SEC
+
+**12 tools** for SEC filings and registration data (0 default — load explicitly
+via a manifest).
+
+| Tool Key | Description |
+|----------|-------------|
+| `all_industry_classification` | Get all industry classification records. Returns industry classifications for all registered companies. |
+| `company_search_cik` | Search SEC-registered companies by CIK number. Returns company SEC registration information by Central Index Key. |
+| `company_search_name` | Search SEC-registered companies by name. Returns companies matching the search term in their registered name. |
+| `company_search_symbol` | Search SEC-registered companies by stock symbol. Returns SEC registration information for a specific ticker symbol. |
+| `filings_8k` | Get the latest SEC 8-K filings (material events). Returns recent 8-K filings which companies file to announce major events. |
+| `filings_financials` | Get the latest SEC financial filings (10-K, 10-Q). Returns recent financial filings (annual and quarterly reports). |
+| `filings_search_cik` | Search SEC filings by CIK number (Central Index Key). Returns all SEC filings for a company identified by CIK. |
+| `filings_search_form` | Search SEC filings by form type (e.g., 10-K, 10-Q, 8-K, S-1). Returns filings matching the specified SEC form type. |
+| `filings_search_symbol` | Search SEC filings by stock symbol. Returns all SEC filings for a specific company identified by stock ticker. |
+| `industry_classification_search` | Search industry classification data by symbol, CIK, or SIC code. Returns industry classification information for companies. |
+| `sec_profile` | Get SEC profile with CIK, SIC codes, and registration details. |
+| `sic_codes` | Get list of all Standard Industrial Classification (SIC) codes. Returns complete SIC code directory used by the SEC. |
+
 ## Technical
 
-**9 tools** for technical indicators.
+**9 tools** for technical indicators (9 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -250,3 +332,15 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 | `tema` | Calculate Triple Exponential Moving Average (TEMA). |
 | `williams` | Calculate Williams %R indicator. This momentum indicator measures overbought and oversold levels. |
 | `wma` | Calculate Weighted Moving Average (WMA). |
+
+## Transcripts
+
+**4 tools** for earnings call transcripts (0 default — load explicitly via a
+manifest; transcript bodies are large).
+
+| Tool Key | Description |
+|----------|-------------|
+| `latest_transcripts` | Get the most recent earnings call transcripts across all companies. Returns latest conference call transcripts with full text content. |
+| `transcript` | Get earnings call transcript for a specific company and quarter. Returns full text of earnings conference call for specified fiscal period. |
+| `transcript_dates` | Get available transcript dates for a specific company. Returns list of dates when earnings call transcripts are available. |
+| `transcript_symbols` | Get list of all symbols with available earnings transcripts. Returns companies that have earnings call transcripts available. |

@@ -1,6 +1,13 @@
 # fmp_data/market/mapping.py
 
-from fmp_data.lc.hints import DATE_HINTS, EXCHANGE_HINT, LIMIT_HINT
+from fmp_data.lc.hints import (
+    DATE_HINTS,
+    EXCHANGE_HINT,
+    FROM_TO_DATE_HINTS,
+    INDUSTRY_HINT,
+    LIMIT_HINT,
+    SECTOR_HINT,
+)
 from fmp_data.lc.models import EndpointSemantics, ResponseFieldInfo, SemanticCategory
 from fmp_data.market.endpoints import (
     ALL_EXCHANGE_MARKET_HOURS,
@@ -260,7 +267,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.MARKET_DATA,
         sub_category="Search",
-        parameter_hints={"query": IDENTIFIER_HINT},
+        parameter_hints={"query": IDENTIFIER_HINT, "limit": LIMIT_HINT},
         response_hints={
             "cik": ResponseFieldInfo(
                 description="SEC Central Index Key",
@@ -506,7 +513,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.MARKET_DATA,
         sub_category="Market Status",
-        parameter_hints={},  # Use empty dict to avoid complex validation requirements
+        parameter_hints={"exchange": EXCHANGE_HINT},
         response_hints={
             "exchange": ResponseFieldInfo(
                 description="Exchange code",
@@ -797,6 +804,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         sub_category="Sector Analysis",
         parameter_hints={
             "date": DATE_HINTS["start_date"],
+            "sector": SECTOR_HINT,
             "exchange": EXCHANGE_HINT,
         },
         response_hints={
@@ -841,6 +849,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         sub_category="Industry Analysis",
         parameter_hints={
             "date": DATE_HINTS["start_date"],
+            "industry": INDUSTRY_HINT,
             "exchange": EXCHANGE_HINT,
         },
         response_hints={
@@ -876,8 +885,8 @@ MARKET_ENDPOINTS_SEMANTICS = {
         category=SemanticCategory.MARKET_DATA,
         sub_category="Sector Analysis",
         parameter_hints={
-            "start_date": DATE_HINTS["start_date"],
-            "end_date": DATE_HINTS["end_date"],
+            "sector": SECTOR_HINT,
+            **FROM_TO_DATE_HINTS,
             "exchange": EXCHANGE_HINT,
         },
         response_hints={
@@ -913,8 +922,8 @@ MARKET_ENDPOINTS_SEMANTICS = {
         category=SemanticCategory.MARKET_DATA,
         sub_category="Industry Analysis",
         parameter_hints={
-            "start_date": DATE_HINTS["start_date"],
-            "end_date": DATE_HINTS["end_date"],
+            "industry": INDUSTRY_HINT,
+            **FROM_TO_DATE_HINTS,
             "exchange": EXCHANGE_HINT,
         },
         response_hints={
@@ -951,6 +960,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         sub_category="Valuation",
         parameter_hints={
             "date": DATE_HINTS["start_date"],
+            "sector": SECTOR_HINT,
             "exchange": EXCHANGE_HINT,
         },
         response_hints={
@@ -986,6 +996,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         sub_category="Valuation",
         parameter_hints={
             "date": DATE_HINTS["start_date"],
+            "industry": INDUSTRY_HINT,
             "exchange": EXCHANGE_HINT,
         },
         response_hints={
@@ -1019,8 +1030,8 @@ MARKET_ENDPOINTS_SEMANTICS = {
         category=SemanticCategory.MARKET_DATA,
         sub_category="Valuation",
         parameter_hints={
-            "start_date": DATE_HINTS["start_date"],
-            "end_date": DATE_HINTS["end_date"],
+            "sector": SECTOR_HINT,
+            **FROM_TO_DATE_HINTS,
             "exchange": EXCHANGE_HINT,
         },
         response_hints={
@@ -1054,8 +1065,8 @@ MARKET_ENDPOINTS_SEMANTICS = {
         category=SemanticCategory.MARKET_DATA,
         sub_category="Valuation",
         parameter_hints={
-            "start_date": DATE_HINTS["start_date"],
-            "end_date": DATE_HINTS["end_date"],
+            "industry": INDUSTRY_HINT,
+            **FROM_TO_DATE_HINTS,
             "exchange": EXCHANGE_HINT,
         },
         response_hints={

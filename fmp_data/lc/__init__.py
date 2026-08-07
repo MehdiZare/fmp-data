@@ -173,15 +173,20 @@ def setup_registry(client: FMPDataClient) -> EndpointRegistry:
             else:
                 logger.warning(f"No semantics found for endpoint: {endpoint_name}")
 
-        # Register the batch for this group
+        # Register the batch for this group. Invalid endpoints are skipped
+        # individually so drift in one endpoint cannot drop the whole group.
         if endpoints_for_batch:
-            try:
-                endpoint_registry.register_batch(endpoints_for_batch)
-                logger.debug(
-                    f"Registered {len(endpoints_for_batch)} endpoints from {group_name}"
+            failures = endpoint_registry.register_batch(endpoints_for_batch)
+            registered = len(endpoints_for_batch) - len(failures)
+            logger.debug(
+                f"Registered {registered}/{len(endpoints_for_batch)} "
+                f"endpoints from {group_name}"
+            )
+            if failures:
+                logger.warning(
+                    f"Skipped {len(failures)} invalid {group_name} endpoints: "
+                    f"{', '.join(sorted(failures))}"
                 )
-            except Exception as e:
-                logger.error(f"Failed to register {group_name} endpoints: {e}")
 
     return endpoint_registry
 

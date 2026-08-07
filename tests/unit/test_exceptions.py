@@ -136,6 +136,7 @@ class TestValidationError:
             response={"field": "symbol", "error": "required"},
         )
         assert error.status_code == 400
+        assert isinstance(error.response, dict)
         assert error.response["field"] == "symbol"
 
     def test_validation_error_inheritance(self):

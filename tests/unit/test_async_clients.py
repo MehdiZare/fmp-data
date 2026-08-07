@@ -1125,7 +1125,9 @@ class TestAsyncIntelligenceClient:
         from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
 
         async_client = AsyncMarketIntelligenceClient(mock_client)
-        async_client.get_stock_symbol_news = AsyncMock(return_value=["sentinel"])
+        async_client.get_stock_symbol_news = AsyncMock(  # type: ignore[method-assign]
+            return_value=["sentinel"]
+        )
 
         result = await async_client.get_stock_news(
             symbol="AAPL",
@@ -1404,7 +1406,9 @@ class TestAsyncIntelligenceClient:
         from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
 
         async_client = AsyncMarketIntelligenceClient(mock_client)
-        async_client.get_forex_symbol_news = AsyncMock(return_value=["sentinel"])
+        async_client.get_forex_symbol_news = AsyncMock(  # type: ignore[method-assign]
+            return_value=["sentinel"]
+        )
 
         result = await async_client.get_forex_news(symbol="EURUSD", page=1, limit=5)
 
@@ -1426,7 +1430,7 @@ class TestAsyncIntelligenceClient:
 
         class FixedDate(dt_date):
             @classmethod
-            def today(cls):  # type: ignore[override]
+            def today(cls):
                 return dt_date(2024, 2, 1)
 
         monkeypatch.setattr(intelligence_async, "date", FixedDate)
@@ -1452,13 +1456,15 @@ class TestAsyncIntelligenceClient:
 
         class FixedDate(dt_date):
             @classmethod
-            def today(cls):  # type: ignore[override]
+            def today(cls):
                 return dt_date(2024, 2, 1)
 
         monkeypatch.setattr(intelligence_async, "date", FixedDate)
 
         async_client = AsyncMarketIntelligenceClient(mock_client)
-        async_client.get_crypto_symbol_news = AsyncMock(return_value=["sentinel"])
+        async_client.get_crypto_symbol_news = AsyncMock(  # type: ignore[method-assign]
+            return_value=["sentinel"]
+        )
 
         result = await async_client.get_crypto_news(
             symbol="BTCUSD", from_date=dt_date(2024, 1, 15)
@@ -2452,12 +2458,17 @@ class TestAsyncTranscriptsClient:
         from fmp_data.transcripts.async_client import AsyncTranscriptsClient
 
         mock_client.request_async.return_value = [
-            EarningsTranscript(
-                symbol="AAPL",
-                quarter=1,
-                year=2024,
-                date="2024-01-01",
-                content="This is a test transcript content.",
+            # model_validate rather than a keyword call: the model aliases to
+            # camelCase, so a field-name call needs a blanket
+            # `type: ignore[call-arg]` that would also hide a misspelled field.
+            EarningsTranscript.model_validate(
+                {
+                    "symbol": "AAPL",
+                    "quarter": 1,
+                    "year": 2024,
+                    "date": "2024-01-01",
+                    "content": "This is a test transcript content.",
+                }
             )
         ]
 
@@ -2541,7 +2552,7 @@ class TestAsyncSECClient:
                 {
                     "type": "missing",
                     "loc": ("symbol",),
-                    "msg": "Field required",
+                    "msg": "Field required",  # type: ignore[typeddict-unknown-key]
                     "input": None,
                 }
             ],
@@ -2723,7 +2734,7 @@ class TestAsyncFMPDataClient:
         client = AsyncFMPDataClient(api_key="test_key")
         client.client = MagicMock()
         client._logger = MagicMock()
-        client.aclose = AsyncMock()
+        client.aclose = AsyncMock()  # type: ignore[method-assign]
 
         await client.__aexit__(ValueError, ValueError("boom"), None)
 

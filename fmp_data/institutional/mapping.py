@@ -13,6 +13,7 @@ from fmp_data.institutional.endpoints import (
     INSTITUTIONAL_HOLDINGS,
     TRANSACTION_TYPES,
 )
+from fmp_data.lc.hints import LIMIT_HINT, QUARTER_HINT, YEAR_HINT
 from fmp_data.lc.models import (
     EndpointSemantics,
     ParameterHint,
@@ -60,16 +61,6 @@ PAGE_HINT = ParameterHint(
     ],
     examples=["0", "1", "2"],
     context_clues=["page", "next", "previous", "results"],
-)
-
-NAME_HINT = ParameterHint(
-    natural_names=["company name", "entity name", "institution name"],
-    extraction_patterns=[
-        r"name[:\s]+(.+)",
-        r"company[:\s]+(.+)",
-    ],
-    examples=["Apple Inc", "Microsoft Corporation", "BlackRock"],
-    context_clues=["name", "company", "corporation", "entity"],
 )
 
 INSTITUTIONAL_TIME_PERIODS = {
@@ -161,7 +152,8 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
         sub_category="13F Filings",
         parameter_hints={
             "cik": CIK_HINT,
-            "date": DATE_HINT,
+            "year": YEAR_HINT,
+            "quarter": QUARTER_HINT,
         },
         response_hints={
             "cusip": ResponseFieldInfo(
@@ -282,25 +274,8 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
         sub_category="Ownership Analysis",
         parameter_hints={
             "symbol": SYMBOL_HINT,
-            "includeCurrentQuarter": ParameterHint(
-                natural_names=[
-                    "include current quarter",
-                    "show latest quarter",
-                    "include current period",
-                ],
-                extraction_patterns=[
-                    r"(?i)include.*current.*quarter",
-                    r"(?i)show.*latest.*quarter",
-                    r"(?i)include.*current.*period",
-                ],
-                examples=["true", "false"],
-                context_clues=[
-                    "current quarter",
-                    "latest period",
-                    "most recent quarter",
-                    "preliminary data",
-                ],
-            ),
+            "year": YEAR_HINT,
+            "quarter": QUARTER_HINT,
         },
         response_hints={
             "investors_holding": ResponseFieldInfo(
@@ -341,6 +316,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
         parameter_hints={
             "symbol": SYMBOL_HINT,
             "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
         },
         response_hints={
             "transaction_type": ResponseFieldInfo(
@@ -506,7 +482,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INSTITUTIONAL,
         sub_category="Reference Data",
-        parameter_hints={"page": PAGE_HINT},
+        parameter_hints={"page": PAGE_HINT, "limit": LIMIT_HINT},
         response_hints={
             "reporting_cik": ResponseFieldInfo(
                 description="CIK number of the entity",
@@ -545,8 +521,8 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
         category=SemanticCategory.INSTITUTIONAL,
         sub_category="Reference Data",
         parameter_hints={
-            "name": NAME_HINT,
             "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
         },
         response_hints={
             "reporting_cik": ResponseFieldInfo(
@@ -684,7 +660,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INSTITUTIONAL,
         sub_category="Ownership",
-        parameter_hints={},
+        parameter_hints={"page": PAGE_HINT, "limit": LIMIT_HINT},
         response_hints={
             "holder": ResponseFieldInfo(
                 description="Name of institutional holder",

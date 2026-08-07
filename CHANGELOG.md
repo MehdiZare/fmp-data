@@ -42,15 +42,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The real tools remain available on their owning clients
 - **MCP semantics import no longer requires the langchain extra** - `fmp_data.lc` defers langchain-heavy imports so `fmp_data.lc.models` (and therefore domain `mapping.py` modules / MCP discovery) load with `fmp-data[mcp]` alone
 - **LC category validation picked the wrong endpoint group** (#122) - `ValidationRuleRegistry.validate_category` matched the *first* registered group whose prefix matched, so a shorter prefix in an earlier group swallowed a longer, exact match in the right one — company's `get_price_target` claimed intelligence's `get_price_target_news` and `get_price_target_latest_news`, failing them with a bogus "belongs to Company Information" mismatch. It now prefers the longest matching prefix, which the owning group always supplies because endpoint-map keys *are* method names
+- **Two intelligence tools advertised capabilities they do not have** - Repairing the 27 drifted endpoints made both of these register as live LangChain tools for the first time, which exposed the mismatch:
+  - `intelligence.stock_news` described itself as "stock-specific news" with `"Get stock news for AAPL"` as its lead example, but `STOCK_NEWS_ENDPOINT` accepts only `page` / `start_date` / `end_date` / `limit`. LC's `create_tool` calls `client.request(endpoint, **kwargs)` directly rather than the sync client method that delegates when `symbol` is passed, so a symbol-scoped query matched a tool that ignored the symbol and returned the global feed. It is in `DEFAULT_TOOLS`, so this affected MCP too. Description and example queries now describe the unfiltered feed
+  - `intelligence.stock_news_sentiments` is deprecated and returns `[]` without calling upstream, and `docs/mcp/tools.md` already said so — the semantics table was the one place that did not, so the vector store surfaced it for sentiment queries and returned an empty success. Now marked deprecated in its description, with its matching terms retargeted so it stops competing for live sentiment queries
 
 ### Changed
+- **`EndpointRegistry.register_batch()` signature and failure contract** (#121) - Was `-> None` and raised `ValueError` on the first endpoint that failed validation; is now `-> dict[str, str]` and never raises, returning a `{endpoint_name: error}` mapping of the endpoints it skipped (empty when all registered). `EndpointRegistry` is absent from `fmp_data.lc.__all__`, but `from fmp_data.lc import EndpointRegistry` still resolves, so any code holding a direct reference is affected — not only code importing from `fmp_data.lc.registry`. Callers that relied on the exception to detect drift should check the returned mapping instead. `register()` is unchanged and still raises.
+- **`setup_registry()` no longer swallows non-validation errors** (#121) - It used to wrap each group's registration in `except Exception`, log an error, and continue. Validation failures are now handled per endpoint inside `register_batch()`, and anything else propagates instead of leaving a silently half-built registry — in practice an `ImportError`/`AttributeError` raised while `register()` lazily builds the validation rules via `_ensure_validation_initialized()`. (The `get_endpoint_groups()` call at the top of `setup_registry()` was never inside the removed handler, so it always propagated.) Note that `create_vector_store()` still wraps this in a blanket `except Exception` and returns `None`, so the loud failure does not yet reach that caller; see #133.
 - **`create_vector_store` default argument** - The `embedding_provider` default moved from `EmbeddingProvider.OPENAI` to `None`, resolved to OpenAI inside the function, so the signature no longer forces an eager `fmp_data.lc.embedding` import at module load. Omitting the argument behaves exactly as before; passing `None` explicitly now selects OpenAI instead of raising
 - **MCP SDK 2.x Support** - The MCP server now works against both MCP SDK 1.x and 2.x:
   - MCP SDK 2.0 renamed `mcp.server.fastmcp.FastMCP` to `mcp.server.MCPServer`
   - Added `fmp_data.mcp._compat` to resolve whichever class the installed SDK provides
   - The `mcp` extra floor stays at `>=1.28.1`, so no forced SDK upgrade for existing installs
 - **CI / Tooling Refresh** (#112, closes #107, #108, #109, #110) - Updated GitHub Actions, pre-commit hooks, and the security session:
-  - Actions: `checkout` → v7.0.1, `setup-python` → v7.0.0, `setup-uv` → v9.0.0, `gh-action-pypi-publish` → v1.14.1
+  - Actions: `checkout` → v7.0.1, `setup-python` → v7.0.0, `setup-uv` → v9.0.0, `gh-action-pypi-publish` → v1.14.1 (since bumped to v1.14.2 in #132)
   - Pre-commit: `ruff` + `ruff-format` at v0.16.1 (replaces the black 24.x hook, which fought ruff on assert-message wrapping); `pre-commit-hooks` v6.0.0; `bandit` 1.9.4
   - Reformatted the tree with ruff 0.16 (formatting only, including Python blocks inside Markdown — hence the docs churn)
   - `nox -s security` upgrades pip before `pip-audit` instead of suppressing `CVE-2026-1703`, so the report covers project dependencies rather than the virtualenv's bundled pip
@@ -58,6 +63,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **MCP default toolset hygiene** - Removed dead/deprecated intelligence tools from `DEFAULT_TOOLS` so the default MCP server no longer registers tools that always fail or return empty:
   - Dropped: `intelligence.earnings_confirmed`, `intelligence.earnings_surprises`, `intelligence.stock_news_sentiments`, `intelligence.historical_social_sentiment`, `intelligence.trending_social_sentiment`, `intelligence.social_sentiment_changes`
   - Client methods remain importable; custom manifests can still opt in explicitly
+- **MCP tools reference is complete and self-checking** (#123) - `docs/mcp/tools.md` was missing four whole client sections and carried stale counts:
+  - Added the `Batch` (30), `Index` (6), `SEC` (12), and `Transcripts` (4) sections, plus the previously undocumented `company.profile_cik`
+  - Every section now states both numbers — catalog tools and how many are in `DEFAULT_TOOLS` — with the convention explained once in the header (224 catalog / 159 default)
+  - A guard test asserts every discovered tool key appears in the doc and that the header totals match, so the reference cannot silently drift again
+- **tests/ is now type-checked** (#125) - Removed `tests/` from the mypy exclude list so test annotations are verified instead of decorative:
+  - Added a `tests.*` override that relaxes `disallow_untyped_defs` / `disallow_incomplete_defs`, so wrong annotations are caught without requiring complete ones
+  - Fixed the 76 latent errors this surfaced (narrowing asserts, explicit annotations, targeted `type: ignore`s); no test behavior or assertions changed
+  - `nox -s typecheck` now runs mypy over `fmp_data` and `tests`
+  - Remaining work: tighten the override directory by directory until `tests/` inherits the strict settings
 - **Volume Type Normalization** - Normalized price-model volume fields to always deserialize as `float`:
   - `alternative.HistoricalPrice.volume` and `alternative.HistoricalPrice.unadjusted_volume` now normalize whole-number payloads such as `123` to `123.0`
   - `company.IntradayPrice.volume` now normalizes whole-number payloads to `float` as well
@@ -65,6 +79,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Release impact: treat this as a minor release because the runtime type and generated schema change from integer to number for these fields
 
 ### Fixed
+- **LangChain registry drops most of the catalog** (#121) - `EndpointRegistry.register_batch()` raised on the first endpoint that failed validation, so `setup_registry()` skipped the rest of that client group:
+  - `register_batch()` now registers every valid endpoint, collects the failures, and returns them as a `{endpoint_name: error}` mapping instead of raising
+  - `setup_registry()` logs a per-group summary of skipped endpoints rather than dropping the group
+  - Registered endpoints went from 75 to the full 168 with the semantics fixes below
+- **Endpoint semantics drift** (#123) - Fixed the 27 endpoints that failed registry validation:
+  - Added missing parameter hints for `analyst_estimates`, `intraday_prices`, `employee_count`, `geographic_revenue_segmentation`, `owner_earnings`, `market_hours`, `search_by_cik`, the sector/industry performance and PE endpoints, `form_13f`, `institutional_holders`, `institutional_holdings`, `insider_trades`, `cik_mapper`, `cik_mapper_by_name`, and `equity_offering_rss`
+  - Removed hints for parameters the endpoints do not accept (`stock_news.tickers`, `stock_news_sentiments` date/limit hints, `institutional_holdings.includeCurrentQuarter`, `cik_mapper_by_name.name`)
+  - Corrected `aftermarket_trade`, `aftermarket_quote`, and `stock_price_change` to the Company Information category that matches the client they live on
+  - Historical sector/industry endpoints now hint the actual `from`/`to` query params instead of `start_date`/`end_date`
+  - Added shared `PAGE_HINT`, `SECTOR_HINT`, `INDUSTRY_HINT`, `YEAR_HINT`, `QUARTER_HINT`, `CIK_HINT`, and `FROM_TO_DATE_HINTS` to `fmp_data.lc.hints`
+  - New guard tests assert the whole catalog pairs with semantics and passes validation, so future drift fails in CI
+- **`company.intraday_price` semantics drift** (#123) - The `intraday_price` alias shares `get_intraday_prices` with the `intraday_prices` entry but hinted only `symbol`/`interval`. It is a `DEFAULT_TOOLS` entry, and registry validation never saw it because the endpoint-map key pairs with `intraday_prices` first. It now hints `start_date`, `end_date`, and `nonadjusted` like its twin, and a semantics-first guard test covers alias entries that no endpoint key selects.
+- **Stale `client_name` on company price/quote semantics** (#123) - Eight `COMPANY_ENDPOINTS_SEMANTICS` entries (`quote`, `simple_quote`, `intraday_price(s)`, `historical_price(s)`, `market_cap`, `historical_market_cap`) declared `client_name="market"`, but the methods live on `CompanyClient`. Nothing dispatches on this field, so the effect was limited to wrong metadata in the semantics table.
+- **`InstitutionalOwnershipDates.cik`** - The API returns `cik` on Form 13F filing dates; it is now a declared optional field instead of relying on extra-field passthrough
 - **Historical Earnings 404** (#111) - Fixed `get_historical_earnings()` returning nothing:
   - The endpoint pointed at the legacy `historical/earning-calendar` path, which 404s on `/stable`
   - Now uses the stable `/earnings` path (same family as company earnings)

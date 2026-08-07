@@ -559,6 +559,7 @@ class TestMCPSetupSecurity:
         test_message = "Your API key sk-test-12345abcdef is valid"
         redacted = setup._redact_sensitive(test_message)
 
+        assert redacted is not None
         assert "sk-test-12345abcdef" not in redacted
         assert "[REDACTED]" in redacted
         assert redacted == "Your API key [REDACTED] is valid"
@@ -763,10 +764,10 @@ class TestMCPCompat:
 
         fake_server = types.ModuleType("mcp.server")
         fake_fastmcp = types.ModuleType("mcp.server.fastmcp")
-        fake_fastmcp.FastMCP = _FastMCP
+        fake_fastmcp.FastMCP = _FastMCP  # type: ignore[attr-defined]
         # Parent package stubs so nested imports resolve
         fake_mcp = types.ModuleType("mcp")
-        fake_mcp.server = fake_server
+        fake_mcp.server = fake_server  # type: ignore[attr-defined]
 
         modules = {
             "mcp": fake_mcp,

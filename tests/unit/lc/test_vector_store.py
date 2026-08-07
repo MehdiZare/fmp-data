@@ -1,10 +1,12 @@
 # tests/lc/test_vector_store.py
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import Mock, patch
 
-from langchain_core.embeddings import Embeddings  # type: ignore[import-not-found]
+from langchain_core.embeddings import Embeddings
 import pytest
 
+from fmp_data.base import BaseClient
 from fmp_data.company.mapping import COMPANY_ENDPOINT_MAP, COMPANY_ENDPOINTS_SEMANTICS
 from fmp_data.exceptions import ConfigError
 from fmp_data.lc.models import EndpointInfo
@@ -63,7 +65,11 @@ def registry_with_endpoints():
         ),
     }
 
-    registry.register_batch(endpoints)
+    # register_batch no longer raises, so an unchecked call would leave this
+    # fixture empty and fail the dependent tests with a confusing symptom
+    # rather than at the source.
+    failures = registry.register_batch(endpoints)
+    assert failures == {}, f"fixture endpoints failed to register: {failures}"
     return registry
 
 
@@ -149,7 +155,7 @@ def test_save_load(vector_store, tmp_path):
 def test_search_and_get_tools_with_faiss(
     registry_with_endpoints, fake_embeddings, tmp_path
 ):
-    client = SimpleNamespace(request=Mock())
+    client = cast(BaseClient, SimpleNamespace(request=Mock()))
     store = EndpointVectorStore(
         client=client,
         registry=registry_with_endpoints,
@@ -166,19 +172,23 @@ def test_search_and_get_tools_with_faiss(
 
     tools = store.get_tools(query="company profile", k=1, threshold=0.8)
     assert tools
-    assert tools[0].name == "get_profile"
-    assert "symbol" in tools[0].args_schema.model_fields
+    tool = tools[0]
+    assert not isinstance(tool, dict)
+    assert tool.name == "get_profile"
+    assert "symbol" in tool.args_schema.model_fields
 
     anthropic_tools = store.get_tools(
         query="company profile", k=1, threshold=0.8, provider="anthropic"
     )
-    assert anthropic_tools[0]["name"] == "get_profile"
+    anthropic_tool = anthropic_tools[0]
+    assert isinstance(anthropic_tool, dict)
+    assert anthropic_tool["name"] == "get_profile"
 
 
 def test_load_requires_allow_dangerous_deserialization(
     registry_with_endpoints, fake_embeddings, tmp_path
 ):
-    client = SimpleNamespace(request=Mock())
+    client = cast(BaseClient, SimpleNamespace(request=Mock()))
     store = EndpointVectorStore(
         client=client,
         registry=registry_with_endpoints,

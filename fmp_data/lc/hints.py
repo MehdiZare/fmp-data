@@ -44,6 +44,68 @@ SYMBOL_HINT = ParameterHint(
     context_clues=["for", "about", "'s", "of", "company", "stock"],
 )
 
+CIK_HINT = ParameterHint(
+    natural_names=["CIK", "central index key", "SEC identifier"],
+    extraction_patterns=[
+        r"\b\d{10}\b",
+        r"\b0{6}\d{4}\b",
+        r"CIK\s*:?\s*(\d{10})",
+    ],
+    examples=["0000320193", "0001318605", "0001045810"],
+    context_clues=["CIK", "central index key", "SEC identifier", "CIK number"],
+)
+
+PAGE_HINT = ParameterHint(
+    natural_names=["page", "page number", "offset"],
+    extraction_patterns=[
+        r"page\s+(\d+)",
+        r"(?:second|third|next)\s+page",
+    ],
+    examples=["0", "1", "2"],
+    context_clues=["page", "pagination", "offset", "next page"],
+)
+
+SECTOR_HINT = ParameterHint(
+    natural_names=["sector", "market sector", "industry sector"],
+    extraction_patterns=[
+        r"(?i)\b(technology|healthcare|financials?|energy|utilities|"
+        r"industrials|materials|real estate|consumer\s+\w+)\b",
+        r"(?i)(?:in|for)\s+the\s+(\w+)\s+sector",
+    ],
+    examples=["Technology", "Healthcare", "Energy", "Financial Services"],
+    context_clues=["sector", "industry group", "market segment"],
+)
+
+INDUSTRY_HINT = ParameterHint(
+    natural_names=["industry", "business line", "sub-industry"],
+    extraction_patterns=[
+        r"(?i)(?:in|for)\s+the\s+([\w\s]+)\s+industry",
+        r"(?i)\b(software|biotechnology|semiconductors|banks|insurance)\b",
+    ],
+    examples=["Software", "Biotechnology", "Semiconductors", "Banks"],
+    context_clues=["industry", "business line", "vertical"],
+)
+
+YEAR_HINT = ParameterHint(
+    natural_names=["year", "filing year", "reporting year"],
+    extraction_patterns=[
+        r"\b(19|20)\d{2}\b",
+        r"(?:in|for|during)\s+((?:19|20)\d{2})",
+    ],
+    examples=["2023", "2024"],
+    context_clues=["year", "annual", "fiscal year", "in"],
+)
+
+QUARTER_HINT = ParameterHint(
+    natural_names=["quarter", "fiscal quarter", "reporting quarter"],
+    extraction_patterns=[
+        r"(?i)\bQ([1-4])\b",
+        r"(?i)(first|second|third|fourth)\s+quarter",
+    ],
+    examples=["1", "2", "3", "4"],
+    context_clues=["quarter", "Q1", "Q2", "Q3", "Q4", "quarterly"],
+)
+
 DATE_HINTS = {
     "start_date": ParameterHint(
         natural_names=["start date", "from date", "beginning", "since"],
@@ -63,4 +125,10 @@ DATE_HINTS = {
         examples=["2024-01-01", "2023-12-31"],
         context_clues=["to", "until", "through", "ending"],
     ),
+}
+
+# Same date semantics for endpoints whose query params are named from/to
+FROM_TO_DATE_HINTS = {
+    "from": DATE_HINTS["start_date"],
+    "to": DATE_HINTS["end_date"],
 }

@@ -601,6 +601,7 @@ class InstitutionalOwnershipDates(BaseModel):
 
     model_config = default_model_config
 
+    cik: str | None = Field(default=None, description="Institution CIK number")
     report_date: date = Field(description="Filing date", alias="date")
     year: int | None = Field(default=None, description="Filing year")
     quarter: int | None = Field(default=None, description="Filing quarter")

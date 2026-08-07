@@ -320,7 +320,9 @@ def lint(session: Session) -> None:
 def typecheck(session: Session) -> None:
     """Run *mypy* with strict settings."""
     _sync_with_uv(session, extras=["dev"])
-    session.run("mypy", PACKAGE_NAME)
+    # tests/ is checked too (relaxed via the tests.* override in pyproject.toml)
+    # so annotations in tests are verified rather than decorative.
+    session.run("mypy", PACKAGE_NAME, "tests")
 
 
 @nox.session(python=DEFAULT_PYTHON, tags=["security"])

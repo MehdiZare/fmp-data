@@ -503,48 +503,64 @@ class EndpointRegistry:
         """
         try:
             info = EndpointInfo(endpoint=endpoint, semantics=semantics)
-            valid, error_details = self.validate_endpoint(name, info)
-            if not valid:
-                self.logger.error(
-                    f"Validation failed for endpoint {name}",
-                    extra={
-                        "endpoint_name": name,
-                        "semantic_method_name": semantics.method_name,
-                        "semantic_category": semantics.category,
-                        "validation_error": error_details,
-                    },
-                )
-                raise ValueError(
-                    f"Invalid endpoint information for {name}: {error_details}"
-                )
-
-            self._endpoints[name] = info
-            self.logger.debug(f"Successfully registered endpoint: {name}")
+        except ValueError as e:
+            # pydantic's ValidationError subclasses ValueError, so a malformed
+            # pair is a tolerated per-endpoint skip that register_batch()
+            # reports at WARNING. Logging it again at ERROR would imply the
+            # whole batch failed.
+            self.logger.debug(f"Failed to build endpoint info for {name}: {e!s}")
+            raise
         except Exception as e:
+            # Outside the register_batch() contract: this aborts the batch.
             self.logger.error(
                 f"Failed to register endpoint {name}: {e!s}", exc_info=True
             )
             raise
 
+        valid, error_details = self.validate_endpoint(name, info)
+        if not valid:
+            self.logger.debug(
+                f"Validation failed for endpoint {name}",
+                extra={
+                    "endpoint_name": name,
+                    "semantic_method_name": semantics.method_name,
+                    "semantic_category": semantics.category,
+                    "validation_error": error_details,
+                },
+            )
+            raise ValueError(
+                f"Invalid endpoint information for {name}: {error_details}"
+            )
+
+        self._endpoints[name] = info
+        self.logger.debug(f"Successfully registered endpoint: {name}")
+
     def register_batch(
         self, endpoints: dict[str, tuple[Endpoint, EndpointSemantics]]
-    ) -> None:
+    ) -> dict[str, str]:
         """
         Register multiple endpoints at once.
+
+        Invalid endpoints are skipped rather than aborting the batch, so one
+        endpoint with drifted semantics cannot silently drop the rest of its
+        client group from the registry.
 
         Args:
             endpoints: Dictionary mapping
             endpoint names to (Endpoint, EndpointSemantics) pairs
 
-        Raises:
-            ValueError: If any endpoint fails validation
+        Returns:
+            Mapping of endpoint name to validation error, for endpoints that
+            failed validation. Empty when every endpoint registered.
         """
+        failures: dict[str, str] = {}
         for name, (endpoint, semantics) in endpoints.items():
             try:
                 self.register(name, endpoint, semantics)
             except ValueError as e:
-                self.logger.error(f"Failed to register endpoint {name}: {e!s}")
-                raise
+                failures[name] = str(e)
+                self.logger.warning(f"Skipping invalid endpoint {name}: {e!s}")
+        return failures
 
     def get_endpoint(self, name: str) -> EndpointInfo | None:
         """

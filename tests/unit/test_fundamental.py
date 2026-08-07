@@ -255,6 +255,7 @@ class TestFundamentalEndpoints(unittest.TestCase):
         self.assertEqual(len(result), 1)
         ratio = result[0]
         self.assertIsInstance(ratio, FinancialRatios)
+        assert ratio.current_ratio is not None
         self.assertAlmostEqual(ratio.current_ratio, 0.8673125765340832)
 
     def test_get_financial_reports_dates(self):

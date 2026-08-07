@@ -1,10 +1,14 @@
 # tests/lc/test_mapping.py
 
+from typing import Any, cast
+
 from fmp_data.lc.mapping import (
     ALL_ENDPOINT_MAP,
     ALL_ENDPOINT_SEMANTICS,
     ENDPOINT_GROUPS,
 )
+from fmp_data.lc.models import EndpointSemantics
+from fmp_data.models import Endpoint
 
 
 def test_endpoint_mappings():
@@ -68,8 +72,11 @@ def test_endpoint_group_organization():
     errors = []
 
     for group_name, group_data in ENDPOINT_GROUPS.items():
-        endpoint_map = group_data["endpoint_map"]
-        semantics_map = group_data["semantics_map"]
+        # ENDPOINT_GROUPS mixes maps with a `display_name` string, so its value
+        # type is heterogeneous and a cast is unavoidable -- but cast to the
+        # real element types, not Any, so the contents stay type-checked.
+        endpoint_map = cast(dict[str, Endpoint[Any]], group_data["endpoint_map"])
+        semantics_map = cast(dict[str, EndpointSemantics], group_data["semantics_map"])
 
         # Track missing semantic mappings for this group
         missing_semantics = []

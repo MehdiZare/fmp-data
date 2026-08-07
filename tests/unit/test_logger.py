@@ -351,7 +351,7 @@ class TestFMPLogger:
         original_initialized = logger._initialized
 
         # Initialize again
-        logger.__init__()
+        logger.__init__()  # type: ignore[misc]
 
         # Should still be initialized
         assert logger._initialized == original_initialized
@@ -564,6 +564,7 @@ class TestFMPLogger:
         fmp_logger._add_handler("file", config, tmp_path)
 
         handler = fmp_logger._handlers["file"]
+        assert isinstance(handler, logging.FileHandler)
         # Should have combined log_path with filename
         assert str(tmp_path) in handler.baseFilename
 
@@ -578,6 +579,7 @@ class TestFMPLogger:
         fmp_logger._add_handler("file", config, tmp_path)
 
         handler = fmp_logger._handlers["file"]
+        assert isinstance(handler, logging.FileHandler)
         # Should have prepended log_path to relative filename
         assert handler.baseFilename == str(tmp_path / "relative.log")
 
@@ -598,6 +600,7 @@ class TestFMPLogger:
         fmp_logger._add_handler("file", config, other_log_path)
 
         handler = fmp_logger._handlers["file"]
+        assert isinstance(handler, logging.FileHandler)
         # Should NOT have prepended other_log_path - should use the absolute path as-is
         assert handler.baseFilename == str(absolute_path)
         assert str(other_log_path) not in handler.baseFilename
@@ -615,6 +618,7 @@ class TestFMPLogger:
         fmp_logger._add_handler("file", config, log_path=None)
 
         handler = fmp_logger._handlers["file"]
+        assert isinstance(handler, logging.FileHandler)
         # Should use the filename as provided
         assert handler.baseFilename == str(log_file)
 

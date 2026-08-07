@@ -572,7 +572,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.FUNDAMENTAL_ANALYSIS,
         sub_category="Financial Metrics",
-        parameter_hints={"symbol": SYMBOL_HINT},
+        parameter_hints={"symbol": SYMBOL_HINT, "limit": LIMIT_HINT},
         response_hints={
             "reported_owner_earnings": ResponseFieldInfo(
                 description="Reported owner earnings value",
