@@ -3,10 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar
+from typing import TYPE_CHECKING, Annotated, Any, Generic, Literal, TypeVar
 import warnings
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 if TYPE_CHECKING:
@@ -32,6 +32,29 @@ default_model_config = ConfigDict(
     extra="allow",
     alias_generator=to_camel,
 )
+
+
+def _coerce_cik(value: Any) -> Any:
+    """Coerce an integer CIK to its canonical zero-padded string form.
+
+    A CIK is a fixed-width 10-digit zero-padded identifier. Every FMP
+    endpoint observed returning one returns a string (probed 2026-08-07),
+    but JSON producers drop leading zeros routinely, so an int is coerced
+    rather than rejected.
+
+    Strings pass through untouched: re-padding would rewrite whatever the
+    API actually sent, which is a larger claim than the evidence supports.
+    ``bool`` is excluded because it subclasses ``int``.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return f"{value:010d}"
+    return value
+
+
+# SEC Central Index Key, coerced from int to a 10-digit zero-padded string.
+CIK = Annotated[str, BeforeValidator(_coerce_cik)]
 
 
 class HTTPMethod(str, Enum):

@@ -3,6 +3,8 @@
 
 from typing import Any
 
+from pydantic import BaseModel, Field
+from pydantic import ValidationError as PydanticValidationError
 import pytest
 
 from fmp_data.exceptions import ValidationError
@@ -239,3 +241,61 @@ class TestBuildParamLookup:
         assert "from" in lookup
         # Both should point to the same param
         assert lookup["start_date"] is lookup["from"]
+
+
+class TestCIKCoercion:
+    """CIK is a fixed-width zero-padded identifier, not a number."""
+
+    def test_int_is_zero_padded_to_ten_digits(self) -> None:
+        from fmp_data.models import CIK, default_model_config
+
+        class Model(BaseModel):
+            model_config = default_model_config
+            cik: CIK | None = Field(default=None)
+
+        assert Model(cik=320193).cik == "0000320193"
+        assert Model(cik=1067983).cik == "0001067983"
+
+    def test_string_passes_through_untouched(self) -> None:
+        from fmp_data.models import CIK, default_model_config
+
+        class Model(BaseModel):
+            model_config = default_model_config
+            cik: CIK | None = Field(default=None)
+
+        # Already canonical: unchanged.
+        assert Model(cik="0000320193").cik == "0000320193"
+        # Unpadded string: NOT re-padded — we do not rewrite what the API sent.
+        assert Model(cik="320193").cik == "320193"
+
+    def test_none_is_preserved(self) -> None:
+        from fmp_data.models import CIK, default_model_config
+
+        class Model(BaseModel):
+            model_config = default_model_config
+            cik: CIK | None = Field(default=None)
+
+        assert Model().cik is None
+        assert Model(cik=None).cik is None
+
+    def test_required_cik_stays_required(self) -> None:
+        from fmp_data.models import CIK, default_model_config
+
+        class Model(BaseModel):
+            model_config = default_model_config
+            cik: CIK = Field(description="CIK number")
+
+        assert Model(cik=320193).cik == "0000320193"
+        with pytest.raises(PydanticValidationError):
+            Model()  # type: ignore[call-arg]
+
+    def test_bool_is_not_treated_as_int(self) -> None:
+        """bool is a subclass of int; padding True to '0000000001' is nonsense."""
+        from fmp_data.models import CIK, default_model_config
+
+        class Model(BaseModel):
+            model_config = default_model_config
+            cik: CIK | None = Field(default=None)
+
+        with pytest.raises(PydanticValidationError):
+            Model(cik=True)
