@@ -51,7 +51,23 @@ def __getattr__(name: str) -> Any:
         from fmp_data.lc.config import LangChainConfig
 
         return LangChainConfig
+    # Not in ``__all__``, but importable from this module before the lazy-import
+    # rework -- keep them reachable so ``from fmp_data.lc import Endpoint`` and
+    # ``from fmp_data.lc import Embeddings`` do not start raising AttributeError.
+    if name == "Endpoint":
+        from fmp_data.models import Endpoint
+
+        return Endpoint
+    if name == "Embeddings":
+        from langchain_core.embeddings import Embeddings
+
+        return Embeddings
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    """Include lazily-exported names so REPL/IDE completion still finds them."""
+    return sorted({*globals(), *__all__, "Endpoint", "Embeddings"})
 
 
 def init_langchain() -> bool:

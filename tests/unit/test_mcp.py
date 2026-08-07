@@ -361,6 +361,38 @@ class TestSemanticsMethodResolution:
             duplicates
         )
 
+    def test_discovered_tool_keys_are_unambiguous_globally(self):
+        """Key-style names resolve against *all* discovered tools, not defaults.
+
+        ``_build_key_to_spec`` indexes the full discovery catalogue, so a key
+        shared by two clients raises at registration even when only one of them
+        is in ``DEFAULT_TOOLS``. The allowlist below records collisions that
+        predate this guard; it must only ever shrink. See issue #126.
+        """
+        from fmp_data.mcp.discovery import discover_all_tools
+
+        known_collisions = {"crypto_quotes", "forex_quotes"}
+
+        tools = discover_all_tools()
+        assert tools, "discover_all_tools() returned no tools"
+
+        by_key: dict[str, list[str]] = {}
+        for tool in tools:
+            by_key.setdefault(tool["spec"].split(".", 1)[1], []).append(tool["spec"])
+
+        collisions = {k: v for k, v in by_key.items() if len(v) > 1}
+        new_collisions = {
+            k: v for k, v in collisions.items() if k not in known_collisions
+        }
+        assert not new_collisions, "New ambiguous key-style tool names:\n" + "\n".join(
+            f"{k}: {v}" for k, v in new_collisions.items()
+        )
+
+        stale = known_collisions - collisions.keys()
+        assert not stale, (
+            f"Allowlist entries no longer collide, remove them: {sorted(stale)}"
+        )
+
 
 class TestIntelligenceGradesAndRatingsTools:
     """Grades/ratings surface must be discoverable via MCP (issue #116)."""
@@ -410,6 +442,49 @@ class TestIntelligenceGradesAndRatingsTools:
             if f"intelligence.{k}" not in DEFAULT_TOOLS
         ]
         assert not missing, f"Missing DEFAULT_TOOLS entries: {missing}"
+
+    def test_register_from_manifest(self, live_client):
+        """The nine tools must actually register, not merely be declared.
+
+        Membership in the semantics/endpoint dicts is what issues #114/#115
+        showed to be insufficient — registration is the path that fails on
+        mapping drift.
+        """
+        from fmp_data.mcp.tool_loader import register_from_manifest
+
+        mcp = Mock()
+        specs = [f"intelligence.{k}" for k in self.GRADES_AND_RATINGS]
+        register_from_manifest(mcp, live_client, specs)
+
+        registered = {call.kwargs["name"] for call in mcp.add_tool.call_args_list}
+        assert registered in (set(self.GRADES_AND_RATINGS), set(specs))
+
+    def test_semantics_register_in_langchain_registry(self):
+        """Each tool must survive LC category validation as Intelligence.
+
+        ``price_target_news`` / ``price_target_latest_news`` sit under company's
+        ``get_price_target`` prefix, so a first-match category rule misfiles
+        them and aborts the whole intelligence group. See issue #122.
+        """
+        from fmp_data.intelligence.mapping import (
+            INTELLIGENCE_ENDPOINT_MAP,
+            INTELLIGENCE_ENDPOINTS_SEMANTICS,
+        )
+        from fmp_data.lc.registry import EndpointRegistry
+
+        registry = EndpointRegistry()
+        failures = []
+        for key in self.GRADES_AND_RATINGS:
+            semantics = INTELLIGENCE_ENDPOINTS_SEMANTICS[key]
+            endpoint = INTELLIGENCE_ENDPOINT_MAP[semantics.method_name]
+            try:
+                registry.register(semantics.method_name, endpoint, semantics)
+            except ValueError as exc:
+                failures.append(f"{key}: {exc}")
+
+        assert not failures, "Endpoints rejected by the LC registry:\n" + "\n".join(
+            failures
+        )
 
 
 class TestMCPManifestLoading:

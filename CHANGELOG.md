@@ -35,14 +35,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Mapping drift between semantics and client methods** (#114) - Corrected `method_name` values that no client method implemented, which made `register_from_manifest` fail for tools that discovery advertised:
   - `intelligence.crowdfunding_search` → `search_crowdfunding`, `intelligence.equity_offering_search` → `search_equity_offering` (endpoint-map keys renamed to match)
   - Same class of drift fixed in neighbouring clients found by the new guard test: `market.search` → `search_company`, `institutional.cik_mapper` → `get_cik_mappings` (semantics key renamed to `cik_mappings`), `institutional.cik_mapper_by_name` → `search_cik_by_name`
-  - LangChain endpoint/semantics pairing now also matches on `method_name` (not only exact key / `get_` strip), so the renames above remain discoverable in the LC registry path
+  - `resolve_semantics_for_endpoint` now also matches on `method_name` (not only exact key / `get_` strip), so the renamed entries still pair with their semantics. This repairs the pairing helper only — several client groups are still dropped wholesale from the LangChain registry by the group-level abort tracked in #121, so LC discoverability of these endpoints is not yet restored
   - New unit tests assert every discovered tool's `method_name` resolves on a live client via `_resolve_attr`, and that discovery is non-empty under the `mcp` extra alone
 - **Ghost intelligence semantics** (#115) - Removed `intelligence.institutional_holders` and `intelligence.financial_reports_dates`, which advertised methods owned by the institutional and fundamental clients:
   - They could never register, and their key-only tool names collided with the real `institutional.institutional_holders` / `fundamental.financial_reports_dates` tools
   - The real tools remain available on their owning clients
 - **MCP semantics import no longer requires the langchain extra** - `fmp_data.lc` defers langchain-heavy imports so `fmp_data.lc.models` (and therefore domain `mapping.py` modules / MCP discovery) load with `fmp-data[mcp]` alone
+- **LC category validation picked the wrong endpoint group** (#122) - `ValidationRuleRegistry.validate_category` matched the *first* registered group whose prefix matched, so a shorter prefix in an earlier group swallowed a longer, exact match in the right one — company's `get_price_target` claimed intelligence's `get_price_target_news` and `get_price_target_latest_news`, failing them with a bogus "belongs to Company Information" mismatch. It now prefers the longest matching prefix, which the owning group always supplies because endpoint-map keys *are* method names
 
 ### Changed
+- **`create_vector_store` default argument** - The `embedding_provider` default moved from `EmbeddingProvider.OPENAI` to `None`, resolved to OpenAI inside the function, so the signature no longer forces an eager `fmp_data.lc.embedding` import at module load. Omitting the argument behaves exactly as before; passing `None` explicitly now selects OpenAI instead of raising
 - **MCP SDK 2.x Support** - The MCP server now works against both MCP SDK 1.x and 2.x:
   - MCP SDK 2.0 renamed `mcp.server.fastmcp.FastMCP` to `mcp.server.MCPServer`
   - Added `fmp_data.mcp._compat` to resolve whichever class the installed SDK provides
