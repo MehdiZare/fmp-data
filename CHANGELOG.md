@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **LC category validation picked the wrong endpoint group** (#122) - `ValidationRuleRegistry.validate_category` matched the *first* registered group whose prefix matched, so a shorter prefix in an earlier group swallowed a longer, exact match in the right one — company's `get_price_target` claimed intelligence's `get_price_target_news` and `get_price_target_latest_news`, failing them with a bogus "belongs to Company Information" mismatch. It now prefers the longest matching prefix, which the owning group always supplies because endpoint-map keys *are* method names
 
 ### Changed
+- **`EndpointRegistry.register_batch()` signature and failure contract** (#121) - Was `-> None` and raised `ValueError` on the first endpoint that failed validation; is now `-> dict[str, str]` and never raises, returning a `{endpoint_name: error}` mapping of the endpoints it skipped (empty when all registered). `EndpointRegistry` is not exported from `fmp_data.lc`, so this only affects code importing it directly from `fmp_data.lc.registry`. Callers that relied on the exception to detect drift should check the returned mapping instead. `register()` is unchanged and still raises.
 - **`create_vector_store` default argument** - The `embedding_provider` default moved from `EmbeddingProvider.OPENAI` to `None`, resolved to OpenAI inside the function, so the signature no longer forces an eager `fmp_data.lc.embedding` import at module load. Omitting the argument behaves exactly as before; passing `None` explicitly now selects OpenAI instead of raising
 - **MCP SDK 2.x Support** - The MCP server now works against both MCP SDK 1.x and 2.x:
   - MCP SDK 2.0 renamed `mcp.server.fastmcp.FastMCP` to `mcp.server.MCPServer`
@@ -77,15 +78,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **LangChain registry drops most of the catalog** (#121) - `EndpointRegistry.register_batch()` raised on the first endpoint that failed validation, so `setup_registry()` skipped the rest of that client group:
   - `register_batch()` now registers every valid endpoint, collects the failures, and returns them as a `{endpoint_name: error}` mapping instead of raising
   - `setup_registry()` logs a per-group summary of skipped endpoints rather than dropping the group
-  - Registered endpoints went from 73 to the full 159 with the semantics fixes below
-- **Endpoint semantics drift** (#123) - Fixed the 29 endpoints that failed registry validation:
+  - Registered endpoints went from 75 to the full 168 with the semantics fixes below
+- **Endpoint semantics drift** (#123) - Fixed the 27 endpoints that failed registry validation:
   - Added missing parameter hints for `analyst_estimates`, `intraday_prices`, `employee_count`, `geographic_revenue_segmentation`, `owner_earnings`, `market_hours`, `search_by_cik`, the sector/industry performance and PE endpoints, `form_13f`, `institutional_holders`, `institutional_holdings`, `insider_trades`, `cik_mapper`, `cik_mapper_by_name`, and `equity_offering_rss`
   - Removed hints for parameters the endpoints do not accept (`stock_news.tickers`, `stock_news_sentiments` date/limit hints, `institutional_holdings.includeCurrentQuarter`, `cik_mapper_by_name.name`)
   - Corrected `aftermarket_trade`, `aftermarket_quote`, and `stock_price_change` to the Company Information category that matches the client they live on
   - Historical sector/industry endpoints now hint the actual `from`/`to` query params instead of `start_date`/`end_date`
   - Added shared `PAGE_HINT`, `SECTOR_HINT`, `INDUSTRY_HINT`, `YEAR_HINT`, `QUARTER_HINT`, `CIK_HINT`, and `FROM_TO_DATE_HINTS` to `fmp_data.lc.hints`
   - New guard tests assert the whole catalog pairs with semantics and passes validation, so future drift fails in CI
-- **Broken `market.search` MCP tool** - The market `search` semantics pointed at a `search` method that does not exist on `MarketClient`; it now resolves to `search_company`, and `setup_registry()` falls back to matching semantics by `method_name` (which also pairs `investment.search_fund_disclosure_holders`)
+- **`company.intraday_price` semantics drift** (#123) - The `intraday_price` alias shares `get_intraday_prices` with the `intraday_prices` entry but hinted only `symbol`/`interval`. It is a `DEFAULT_TOOLS` entry, and registry validation never saw it because the endpoint-map key pairs with `intraday_prices` first. It now hints `start_date`, `end_date`, and `nonadjusted` like its twin, and a semantics-first guard test covers alias entries that no endpoint key selects.
+- **Stale `client_name` on company price/quote semantics** (#123) - Eight `COMPANY_ENDPOINTS_SEMANTICS` entries (`quote`, `simple_quote`, `intraday_price(s)`, `historical_price(s)`, `market_cap`, `historical_market_cap`) declared `client_name="market"`, but the methods live on `CompanyClient`. Nothing dispatches on this field, so the effect was limited to wrong metadata in the semantics table.
 - **`InstitutionalOwnershipDates.cik`** - The API returns `cik` on Form 13F filing dates; it is now a declared optional field instead of relying on extra-field passthrough
 - **Historical Earnings 404** (#111) - Fixed `get_historical_earnings()` returning nothing:
   - The endpoint pointed at the legacy `historical/earning-calendar` path, which 404s on `/stable`
