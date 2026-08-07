@@ -599,7 +599,15 @@ class InstitutionalOwnershipExtract(BaseModel):
 
 
 class InstitutionalOwnershipDates(BaseModel):
-    """Form 13F filing dates"""
+    """Form 13F filing dates.
+
+    ``cik`` is a request parameter for this endpoint, not a response field:
+    probed 2026-08-07, ``institutional-ownership/dates`` returns rows
+    containing only ``date``, ``year`` and ``quarter``. The field is kept
+    declared so that a future API addition parses under ``strict`` mode
+    rather than failing as an unexpected field; in practice it is always
+    ``None``.
+    """
 
     model_config = default_model_config
 
