@@ -18,7 +18,7 @@
 - All Pydantic models use `extra="allow"` with `alias_generator=to_camel` via `default_model_config`. Do not add per-model `model_config`.
 - CHANGELOG entries go under `## Unreleased` (which becomes 2.6.0). The `## [2.5.0]` section is cut and closed — do not add to it.
 - Run `make lint` and `make format` before committing; pre-commit hooks run ruff and mypy automatically.
-- Do not touch `fmp_data/lc/registry.py`'s `_find_matching_rule` / `get_expected_category` — that is separate in-flight work in the working tree.
+- `fmp_data/lc/registry.py` also contains `_find_matching_rule` / `get_expected_category`, landed separately in `d9a37cc`. This plan only touches `_get_type_pattern`; leave those two alone.
 
 ---
 
