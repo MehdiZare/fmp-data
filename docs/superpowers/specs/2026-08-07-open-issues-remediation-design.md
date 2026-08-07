@@ -82,6 +82,8 @@ defensive coercer rather than treating the probe as a proof of impossibility.
 | D2 | `create_vector_store` error contract (#133) | Dedicated `VectorStoreCreationError`, raised in 2.5, no `None` path |
 | D3 | Verify #130/#131 against the live API | Yes — done, see §2 |
 | D4 | Delivery shape | Four themed PRs |
+| D5 | Int CIK coercion form (#131) | Zero-pad to 10 digits; ints only, strings untouched |
+| D6 | Conflicting hint patterns (#135) | Union of existing patterns; record each genuine conflict in the PR body |
 
 ### D2 rationale
 
@@ -139,10 +141,16 @@ is the intended fix, but it is the reason #134 was kept out of #127.
 3. Add a docstring note recording that this endpoint does not return `cik`, with the probe
    date — so the next reader does not re-derive it.
 
-**Open sub-decision — zero-padding.** A bare `str(320193)` yields `"320193"`, which will not
-compare equal to the `"0000320193"` every other endpoint returns. Recommendation: pad to 10
-digits (`f"{v:010d}"`) so callers see one canonical form. Flagged here because it is
-opinionated: it normalises a value rather than merely retyping it.
+**Zero-padding — decided: pad to 10 digits.** A bare `str(320193)` yields `"320193"`, which
+will not compare equal to the `"0000320193"` every probed endpoint returns. The coercer emits
+`f"{v:010d}"` so callers see one canonical form regardless of how the producer serialised it.
+This normalises a value rather than merely retyping it, which is deliberate: a CIK is a
+fixed-width zero-padded identifier, and a caller keying a dict or joining on `cik` across two
+endpoints must not get two spellings of the same institution.
+
+Applies to ints only. A string that arrives already unpadded is left alone — re-padding
+strings would silently rewrite whatever an endpoint actually sent, which is a bigger claim
+than the probe evidence supports.
 
 **Tests:** compile every pattern returned by `get_parameter_requirements` for all 168
 registered endpoints (guards #134 against regression); round-trip int and str CIKs through
