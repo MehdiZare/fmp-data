@@ -9,9 +9,11 @@
 Twelve issues were open at the start of this pass. Three are already fixed and only need
 closing; nine need work.
 
-### Already fixed by #127 — close, do not re-implement
+### Already fixed by #127 — closed, do not re-implement
 
-`closes #N` is inert on dev-base PRs, so #127 merged without closing its linked issues.
+`closes #N` is inert on dev-base PRs, so #127 merged without closing its linked issues; all
+three were closed by hand shortly afterwards (2026-08-07 15:47Z, reason `COMPLETED`, each with
+a pointer to `272fb90`). Recorded here so this pass does not re-open or re-implement them.
 Verified against the merged tree:
 
 | Issue | Claim | Evidence in `272fb90` |
@@ -20,7 +22,7 @@ Verified against the merged tree:
 | #123 | Semantics hint / catalog-count drift | Hint drift and docs sync landed |
 | #125 | `tests/` unchecked by mypy | `"tests/"` removed from `[tool.mypy].exclude`; `tests.*` override added exactly as proposed (`pyproject.toml:244`, `:310`) |
 
-Action: close #121, #123, #125 by hand, each with a one-line pointer to #127.
+No action required. Nine issues remain open: #126, #128, #129, #130, #131, #133, #134, #135, #136.
 
 ### Measured baseline
 
@@ -112,9 +114,13 @@ Ordered by blast radius. Each lands independently against `dev`.
 
 ```python
 # before
-return [f"^({'|'.join(map(str, valid_values))}))$"]   # -> "^(annual|quarter))$"  re.error
+return [
+    f"^({'|'.join(map(str, valid_values))}))$"
+]  # -> "^(annual|quarter))$"  re.error
 # after
-return [f"^({'|'.join(v.value if hasattr(v, 'value') else str(v) for v in valid_values)})$"]
+return [
+    f"^({'|'.join(v.value if hasattr(v, 'value') else str(v) for v in valid_values)})$"
+]
 ```
 
 The same line has a second defect the issue flags: `economics.get_economic_indicators` passes
@@ -266,8 +272,9 @@ contents.
 ```python
 class VectorStoreCreationError(FMPError):
     """Raised when a vector store cannot be built."""
+
     cause: Exception
-    failures: dict[str, str]   # endpoint name -> validation error
+    failures: dict[str, str]  # endpoint name -> validation error
 ```
 
 - `create_vector_store` return type narrows to `EndpointVectorStore` (no `| None`).
