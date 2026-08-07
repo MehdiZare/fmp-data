@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [2.5.0] - 2026-08-07
+
+Released from `dev` via #113. Adds earnings report times (#111), the analyst
+grades/ratings MCP surface (#116), CIK company profiles, and opt-in response
+caching; repairs MCP/LangChain semantics drift (#114, #115, #120, #121, #122,
+#123) so the LangChain registry serves all 168 endpoints instead of 75; and
+starts type-checking `tests/` (#125).
+
 ### Added
 - **Analyst Grades & Ratings via MCP** (#116) - Wired the intelligence grades/ratings surface into the mapping layer so MCP discovery and `DEFAULT_TOOLS` can advertise and call them:
   - New `INTELLIGENCE_ENDPOINT_MAP` entries and `INTELLIGENCE_ENDPOINTS_SEMANTICS` for `ratings_snapshot`, `ratings_historical`, `price_target_news`, `price_target_latest_news`, `grades`, `grades_historical`, `grades_consensus`, `grades_news`, `grades_latest_news`
@@ -30,21 +38,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added environment-based cache configuration via `FMP_CACHE_ENABLED`, `FMP_CACHE_BACKEND`, `FMP_CACHE_TTL`, `FMP_CACHE_DIR`, and `FMP_CACHE_REDIS_URL`
   - Added per-endpoint TTL overrides, deterministic cache keys, and `force_refresh=True` support to bypass cache reads on demand
   - Added optional `cache-redis` extra for Redis-backed caching
-
-### Fixed
-- **Mapping drift between semantics and client methods** (#114) - Corrected `method_name` values that no client method implemented, which made `register_from_manifest` fail for tools that discovery advertised:
-  - `intelligence.crowdfunding_search` → `search_crowdfunding`, `intelligence.equity_offering_search` → `search_equity_offering` (endpoint-map keys renamed to match)
-  - Same class of drift fixed in neighbouring clients found by the new guard test: `market.search` → `search_company`, `institutional.cik_mapper` → `get_cik_mappings` (semantics key renamed to `cik_mappings`), `institutional.cik_mapper_by_name` → `search_cik_by_name`
-  - `resolve_semantics_for_endpoint` now also matches on `method_name` (not only exact key / `get_` strip), so the renamed entries still pair with their semantics. This repairs the pairing helper only — several client groups are still dropped wholesale from the LangChain registry by the group-level abort tracked in #121, so LC discoverability of these endpoints is not yet restored
-  - New unit tests assert every discovered tool's `method_name` resolves on a live client via `_resolve_attr`, and that discovery is non-empty under the `mcp` extra alone
-- **Ghost intelligence semantics** (#115) - Removed `intelligence.institutional_holders` and `intelligence.financial_reports_dates`, which advertised methods owned by the institutional and fundamental clients:
-  - They could never register, and their key-only tool names collided with the real `institutional.institutional_holders` / `fundamental.financial_reports_dates` tools
-  - The real tools remain available on their owning clients
-- **MCP semantics import no longer requires the langchain extra** - `fmp_data.lc` defers langchain-heavy imports so `fmp_data.lc.models` (and therefore domain `mapping.py` modules / MCP discovery) load with `fmp-data[mcp]` alone
-- **LC category validation picked the wrong endpoint group** (#122) - `ValidationRuleRegistry.validate_category` matched the *first* registered group whose prefix matched, so a shorter prefix in an earlier group swallowed a longer, exact match in the right one — company's `get_price_target` claimed intelligence's `get_price_target_news` and `get_price_target_latest_news`, failing them with a bogus "belongs to Company Information" mismatch. It now prefers the longest matching prefix, which the owning group always supplies because endpoint-map keys *are* method names
-- **Two intelligence tools advertised capabilities they do not have** - Repairing the 27 drifted endpoints made both of these register as live LangChain tools for the first time, which exposed the mismatch:
-  - `intelligence.stock_news` described itself as "stock-specific news" with `"Get stock news for AAPL"` as its lead example, but `STOCK_NEWS_ENDPOINT` accepts only `page` / `start_date` / `end_date` / `limit`. LC's `create_tool` calls `client.request(endpoint, **kwargs)` directly rather than the sync client method that delegates when `symbol` is passed, so a symbol-scoped query matched a tool that ignored the symbol and returned the global feed. It is in `DEFAULT_TOOLS`, so this affected MCP too. Description and example queries now describe the unfiltered feed
-  - `intelligence.stock_news_sentiments` is deprecated and returns `[]` without calling upstream, and `docs/mcp/tools.md` already said so — the semantics table was the one place that did not, so the vector store surfaced it for sentiment queries and returned an empty success. Now marked deprecated in its description, with its matching terms retargeted so it stops competing for live sentiment queries
 
 ### Changed
 - **`EndpointRegistry.register_batch()` signature and failure contract** (#121) - Was `-> None` and raised `ValueError` on the first endpoint that failed validation; is now `-> dict[str, str]` and never raises, returning a `{endpoint_name: error}` mapping of the endpoints it skipped (empty when all registered). `EndpointRegistry` is absent from `fmp_data.lc.__all__`, but `from fmp_data.lc import EndpointRegistry` still resolves, so any code holding a direct reference is affected — not only code importing from `fmp_data.lc.registry`. Callers that relied on the exception to detect drift should check the returned mapping instead. `register()` is unchanged and still raises.
@@ -77,8 +70,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `company.IntradayPrice.volume` now normalizes whole-number payloads to `float` as well
   - This keeps a single return type for price-volume fields when FMP mixes integer and fractional responses
   - Release impact: treat this as a minor release because the runtime type and generated schema change from integer to number for these fields
+- **GitHub Actions Maintenance** - Updated workflow actions to current upstream releases:
+  - Bumped `actions/deploy-pages` from `v4` to `v5` in the documentation workflow
+  - Bumped `codecov/codecov-action` from `v5` to `v6` in CI coverage uploads
+  - Bumped `actions/github-script` from `v8` to `v9` in the TestPyPI publishing workflow
+  - Bumped `pypa/gh-action-pypi-publish` from `v1.13.0` to `v1.14.0` in publishing workflows
+- **VCR Cassettes Excluded from Git** - Cassettes are now gitignored (`tests/integration/vcr_cassettes/`) because they are too large for GitHub (130 MB+ individual files). Developers must record cassettes locally with `FMP_TEST_API_KEY`.
+- **CI Secret Scan** - The `secret-scan` job now gracefully skips when no cassette YAML files are present instead of failing.
+- **Cassette Contract Test** - `test_vcr_cassettes_match_endpoint_models` now skips with a clear message when no cassettes are found, instead of silently passing.
+- **Documentation** - Enhanced `CLAUDE.md` with best practices:
+  - Added critical testing strategy reminders for validating successful API responses
+  - Documented historical price endpoint variants (`/full`, `/light`, `/non-split-adjusted`, `/dividend-adjusted`)
+  - Added endpoint definition guidelines to prevent future 404 errors
+  - Established deprecation handling process for removed FMP endpoints
+- **Testing** - Enabled parallel pytest runs for local Makefile/nox usage and added `pytest-xdist` to dev dependencies (CI remains serial to avoid stalls).
+- **Makefile** - `.venv/.installed` now tracks `pyproject.toml` changes to auto-refresh dev deps.
 
 ### Fixed
+- **Mapping drift between semantics and client methods** (#114) - Corrected `method_name` values that no client method implemented, which made `register_from_manifest` fail for tools that discovery advertised:
+  - `intelligence.crowdfunding_search` → `search_crowdfunding`, `intelligence.equity_offering_search` → `search_equity_offering` (endpoint-map keys renamed to match)
+  - Same class of drift fixed in neighbouring clients found by the new guard test: `market.search` → `search_company`, `institutional.cik_mapper` → `get_cik_mappings` (semantics key renamed to `cik_mappings`), `institutional.cik_mapper_by_name` → `search_cik_by_name`
+  - `resolve_semantics_for_endpoint` now also matches on `method_name` (not only exact key / `get_` strip), so the renamed entries still pair with their semantics
+  - New unit tests assert every discovered tool's `method_name` resolves on a live client via `_resolve_attr`, and that discovery is non-empty under the `mcp` extra alone
+- **Ghost intelligence semantics** (#115) - Removed `intelligence.institutional_holders` and `intelligence.financial_reports_dates`, which advertised methods owned by the institutional and fundamental clients:
+  - They could never register, and their key-only tool names collided with the real `institutional.institutional_holders` / `fundamental.financial_reports_dates` tools
+  - The real tools remain available on their owning clients
+- **MCP semantics import no longer requires the langchain extra** - `fmp_data.lc` defers langchain-heavy imports so `fmp_data.lc.models` (and therefore domain `mapping.py` modules / MCP discovery) load with `fmp-data[mcp]` alone
+- **LC category validation picked the wrong endpoint group** (#122) - `ValidationRuleRegistry.validate_category` matched the *first* registered group whose prefix matched, so a shorter prefix in an earlier group swallowed a longer, exact match in the right one — company's `get_price_target` claimed intelligence's `get_price_target_news` and `get_price_target_latest_news`, failing them with a bogus "belongs to Company Information" mismatch. It now prefers the longest matching prefix, which the owning group always supplies because endpoint-map keys *are* method names
+- **Two intelligence tools advertised capabilities they do not have** - Repairing the drifted endpoints made both of these register as live LangChain tools for the first time, which exposed the mismatch:
+  - `intelligence.stock_news` described itself as "stock-specific news" with `"Get stock news for AAPL"` as its lead example, but `STOCK_NEWS_ENDPOINT` accepts only `page` / `start_date` / `end_date` / `limit`. LC's `create_tool` calls `client.request(endpoint, **kwargs)` directly rather than the sync client method that delegates when `symbol` is passed, so a symbol-scoped query matched a tool that ignored the symbol and returned the global feed. It is in `DEFAULT_TOOLS`, so this affected MCP too. Description and example queries now describe the unfiltered feed
+  - `intelligence.stock_news_sentiments` is deprecated and returns `[]` without calling upstream, and `docs/mcp/tools.md` already said so — the semantics table was the one place that did not, so the vector store surfaced it for sentiment queries and returned an empty success. Now marked deprecated in its description, with its matching terms retargeted so it stops competing for live sentiment queries
 - **LangChain registry drops most of the catalog** (#121) - `EndpointRegistry.register_batch()` raised on the first endpoint that failed validation, so `setup_registry()` skipped the rest of that client group:
   - `register_batch()` now registers every valid endpoint, collects the failures, and returns them as a `{endpoint_name: error}` mapping instead of raising
   - `setup_registry()` logs a per-group summary of skipped endpoints rather than dropping the group
@@ -180,24 +201,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `test_cassette_contracts.py` validates every cassette response against its declared Pydantic endpoint model, catching schema drift and stale cassettes
   - Pre-commit `detect-secrets` hook now excludes only Python test files (`tests/.*\.py$`), ensuring cassette YAML files are always scanned
   - CI `secret-scan` job explicitly targets `tests/integration/vcr_cassettes/` as an additional safety net
-
-### Changed
-- **GitHub Actions Maintenance** - Updated workflow actions to current upstream releases:
-  - Bumped `actions/deploy-pages` from `v4` to `v5` in the documentation workflow
-  - Bumped `codecov/codecov-action` from `v5` to `v6` in CI coverage uploads
-  - Bumped `actions/github-script` from `v8` to `v9` in the TestPyPI publishing workflow
-  - Bumped `pypa/gh-action-pypi-publish` from `v1.13.0` to `v1.14.0` in publishing workflows
-
-- **VCR Cassettes Excluded from Git** - Cassettes are now gitignored (`tests/integration/vcr_cassettes/`) because they are too large for GitHub (130 MB+ individual files). Developers must record cassettes locally with `FMP_TEST_API_KEY`.
-- **CI Secret Scan** - The `secret-scan` job now gracefully skips when no cassette YAML files are present instead of failing.
-- **Cassette Contract Test** - `test_vcr_cassettes_match_endpoint_models` now skips with a clear message when no cassettes are found, instead of silently passing.
-- **Documentation** - Enhanced `CLAUDE.md` with best practices:
-  - Added critical testing strategy reminders for validating successful API responses
-  - Documented historical price endpoint variants (`/full`, `/light`, `/non-split-adjusted`, `/dividend-adjusted`)
-  - Added endpoint definition guidelines to prevent future 404 errors
-  - Established deprecation handling process for removed FMP endpoints
-- **Testing** - Enabled parallel pytest runs for local Makefile/nox usage and added `pytest-xdist` to dev dependencies (CI remains serial to avoid stalls).
-- **Makefile** - `.venv/.installed` now tracks `pyproject.toml` changes to auto-refresh dev deps.
 
 ## [2.4.0] - 2026-07-13
 
