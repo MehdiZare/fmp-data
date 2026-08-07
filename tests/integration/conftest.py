@@ -45,7 +45,7 @@ class SafeFilesystemPersister(FilesystemPersister):
     """Treat empty or invalid cassettes like missing ones for replay."""
 
     @classmethod
-    def load_cassette(cls, cassette_path: str | Path, serializer):  # type: ignore[override]
+    def load_cassette(cls, cassette_path: str | Path, serializer):
         cassette_path = Path(cassette_path)
         if not cassette_path.is_file():
             raise CassetteNotFoundError()

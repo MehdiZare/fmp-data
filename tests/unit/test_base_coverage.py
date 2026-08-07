@@ -154,6 +154,7 @@ class TestValidateModel:
         assert isinstance(result, _SampleModel)
         assert result.name == "x"
         assert result.value == 1
+        assert result.__pydantic_extra__ is not None
         assert result.__pydantic_extra__["extraField"] == "ignored"
 
     def test_strict_raises_on_extra_fields(self):

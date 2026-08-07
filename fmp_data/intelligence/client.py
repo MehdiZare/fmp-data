@@ -1,8 +1,9 @@
 # fmp_data/intelligence/client.py
 from datetime import date
+from typing import Any
 
 from fmp_data.base import EndpointGroup
-from fmp_data.helpers import RemovedEndpointError, removed
+from fmp_data.helpers import RemovedEndpointError, deprecated, removed
 from fmp_data.intelligence.endpoints import (
     CROWDFUNDING_BY_CIK,
     CROWDFUNDING_RSS,
@@ -11,8 +12,6 @@ from fmp_data.intelligence.endpoints import (
     CRYPTO_SYMBOL_NEWS_ENDPOINT,
     DIVIDENDS_CALENDAR,
     EARNINGS_CALENDAR,
-    EARNINGS_CONFIRMED,
-    EARNINGS_SURPRISES,
     EQUITY_OFFERING_BY_CIK,
     EQUITY_OFFERING_RSS,
     EQUITY_OFFERING_SEARCH,
@@ -124,28 +123,92 @@ class MarketIntelligenceClient(EndpointGroup):
         return params
 
     def get_earnings_calendar(
-        self, start_date: date | None = None, end_date: date | None = None
+        self,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        include_report_times: bool | None = None,
     ) -> list[EarningEvent]:
-        """Get earnings calendar"""
-        params = self._build_date_params(start_date, end_date)
+        """Get earnings calendar
+
+        Args:
+            start_date: Earliest reporting date to include
+            end_date: Latest reporting date to include
+            include_report_times: When True, the API may include session
+                ``time`` ('bmo'/'amc'), ``period_ending``, ``fiscal_period``,
+                ``fiscal_year`` and ``confirmed`` on events (per-row optional).
+                Omitted from the query when unset; explicit True/False is sent.
+
+        Returns:
+            list[EarningEvent]: Earnings events in the requested window
+        """
+        params: dict[str, Any] = self._build_date_params(start_date, end_date)
+        if include_report_times is not None:
+            params["include_report_times"] = include_report_times
         return self.client.request(EARNINGS_CALENDAR, **params)
 
-    def get_historical_earnings(self, symbol: str) -> list[EarningEvent]:
-        """Get historical earnings"""
-        return self.client.request(HISTORICAL_EARNINGS, symbol=symbol)
+    def get_historical_earnings(
+        self,
+        symbol: str,
+        limit: int | None = None,
+        include_report_times: bool | None = None,
+    ) -> list[EarningEvent]:
+        """Get historical and upcoming earnings reports for a symbol
 
+        Args:
+            symbol: Stock symbol
+            limit: Maximum number of reports to return
+            include_report_times: When True, the API may include session
+                ``time`` ('bmo'/'amc'), ``period_ending``, ``fiscal_period``,
+                ``fiscal_year`` and ``confirmed`` on reports (per-row optional).
+                Omitted from the query when unset; explicit True/False is sent.
+
+        Returns:
+            list[EarningEvent]: Earnings reports for the symbol
+        """
+        params: dict[str, Any] = {"symbol": symbol}
+        if limit is not None:
+            params["limit"] = limit
+        if include_report_times is not None:
+            params["include_report_times"] = include_report_times
+        return self.client.request(HISTORICAL_EARNINGS, **params)
+
+    @deprecated(
+        "The FMP API no longer serves the confirmed earnings calendar. Use "
+        "get_earnings_calendar(include_report_times=True) and read the "
+        "`confirmed` field (and `time` as 'bmo'/'amc', not HH:MM) instead."
+    )
     def get_earnings_confirmed(
         self,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[EarningConfirmed]:
-        """Get confirmed earnings dates"""
-        params = self._build_date_params(start_date, end_date)
-        return self.client.request(EARNINGS_CONFIRMED, **params)
+        """Get confirmed earnings dates
 
+        .. deprecated::
+            This endpoint is no longer available on the FMP API and will be
+            removed in a future version. It currently returns an empty list.
+            Use :meth:`get_earnings_calendar` with ``include_report_times=True``
+            and read ``confirmed`` plus session ``time`` (``bmo``/``amc``),
+            which is not a drop-in for the old clock-time field.
+        """
+        return []
+
+    @deprecated(
+        "The FMP API no longer serves earnings surprises. Use "
+        "get_historical_earnings() and compare `eps` against `eps_estimated` "
+        "instead."
+    )
     def get_earnings_surprises(self, symbol: str) -> list[EarningSurprise]:
-        """Get earnings surprises"""
-        return self.client.request(EARNINGS_SURPRISES, symbol=symbol)
+        """Get earnings surprises
+
+        .. deprecated::
+            This endpoint is no longer available on the FMP API and will be
+            removed in a future version. It currently returns an empty list.
+            Use :meth:`get_historical_earnings` and compare ``eps`` against
+            ``eps_estimated`` (old model used ``actual_earning_result`` /
+            ``estimated_earning``).
+        """
+        return []
 
     def get_dividends_calendar(
         self, start_date: date | None = None, end_date: date | None = None

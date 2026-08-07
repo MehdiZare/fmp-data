@@ -20,6 +20,11 @@ from fmp_data.intelligence.endpoints import (
     FOREX_NEWS_ENDPOINT,
     FOREX_SYMBOL_NEWS_ENDPOINT,
     GENERAL_NEWS_ENDPOINT,
+    GRADES,
+    GRADES_CONSENSUS,
+    GRADES_HISTORICAL,
+    GRADES_LATEST_NEWS,
+    GRADES_NEWS,
     HISTORICAL_EARNINGS,
     HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT,
     HOUSE_DISCLOSURE,
@@ -28,6 +33,10 @@ from fmp_data.intelligence.endpoints import (
     IPO_CALENDAR,
     PRESS_RELEASES_BY_SYMBOL_ENDPOINT,
     PRESS_RELEASES_ENDPOINT,
+    PRICE_TARGET_LATEST_NEWS,
+    PRICE_TARGET_NEWS,
+    RATINGS_HISTORICAL,
+    RATINGS_SNAPSHOT,
     SENATE_LATEST,
     SENATE_TRADES_BY_NAME,
     SENATE_TRADING,
@@ -38,6 +47,7 @@ from fmp_data.intelligence.endpoints import (
     STOCK_SPLITS_CALENDAR,
     TRENDING_SOCIAL_SENTIMENT_ENDPOINT,
 )
+from fmp_data.lc.hints import CIK_HINT
 from fmp_data.lc.models import (
     EndpointSemantics,
     ParameterHint,
@@ -69,10 +79,10 @@ INTELLIGENCE_ENDPOINT_MAP = {
     "get_house_trades_by_name": HOUSE_TRADES_BY_NAME,
     # Fundraising endpoints
     "get_crowdfunding_rss": CROWDFUNDING_RSS,
-    "get_crowdfunding_search": CROWDFUNDING_SEARCH,
+    "search_crowdfunding": CROWDFUNDING_SEARCH,
     "get_crowdfunding_by_cik": CROWDFUNDING_BY_CIK,
     "get_equity_offering_rss": EQUITY_OFFERING_RSS,
-    "get_equity_offering_search": EQUITY_OFFERING_SEARCH,
+    "search_equity_offering": EQUITY_OFFERING_SEARCH,
     "get_equity_offering_by_cik": EQUITY_OFFERING_BY_CIK,
     # News endpoints
     "get_fmp_articles": FMP_ARTICLES_ENDPOINT,
@@ -89,6 +99,16 @@ INTELLIGENCE_ENDPOINT_MAP = {
     "get_historical_social_sentiment": HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT,
     "get_trending_social_sentiment": TRENDING_SOCIAL_SENTIMENT_ENDPOINT,
     "get_social_sentiment_changes": SOCIAL_SENTIMENT_CHANGES_ENDPOINT,
+    # Analyst ratings & grades endpoints
+    "get_ratings_snapshot": RATINGS_SNAPSHOT,
+    "get_ratings_historical": RATINGS_HISTORICAL,
+    "get_price_target_news": PRICE_TARGET_NEWS,
+    "get_price_target_latest_news": PRICE_TARGET_LATEST_NEWS,
+    "get_grades": GRADES,
+    "get_grades_historical": GRADES_HISTORICAL,
+    "get_grades_consensus": GRADES_CONSENSUS,
+    "get_grades_news": GRADES_NEWS,
+    "get_grades_latest_news": GRADES_LATEST_NEWS,
 }
 
 # Common parameter hints
@@ -101,6 +121,29 @@ SYMBOL_HINT = ParameterHint(
     ],
     examples=["AAPL", "MSFT", "GOOGL"],
     context_clues=["company", "stock", "ticker", "symbol"],
+)
+
+INCLUDE_REPORT_TIMES_HINT = ParameterHint(
+    natural_names=[
+        "report time",
+        "announcement time",
+        "confirmed",
+        "before/after hours",
+    ],
+    extraction_patterns=[
+        r"(?i)(before|after)\s+(the\s+)?(market|bell|hours)",
+        r"(?i)\b(bmo|amc)\b",
+        r"(?i)confirmed\s+(earnings|dates?)",
+    ],
+    examples=["true", "false"],
+    context_clues=[
+        "report time",
+        "before market open",
+        "after market close",
+        "confirmed",
+        "fiscal period",
+    ],
+    required=False,
 )
 
 CRYPTO_PAIR_HINT = ParameterHint(
@@ -218,6 +261,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         parameter_hints={
             "start_date": DATE_HINTS["start_date"],
             "end_date": DATE_HINTS["end_date"],
+            "include_report_times": INCLUDE_REPORT_TIMES_HINT,
         },
         response_hints={
             "date": ResponseFieldInfo(
@@ -303,7 +347,11 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INTELLIGENCE,
         sub_category="Fundraising",
-        parameter_hints={"page": PAGE_HINT, "limit": LIMIT_HINT},
+        parameter_hints={
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+            "cik": CIK_HINT,
+        },
         response_hints={
             "offering_type": ResponseFieldInfo(
                 description="Type of equity offering",
@@ -466,12 +514,13 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         client_name="intelligence",
         method_name="get_stock_news",
         natural_description=(
-            "Access stock-specific news and updates including company events, "
-            "market moves, and corporate developments"
+            "Market-wide stock news feed of company events and corporate "
+            "developments. Not filterable by symbol; narrow it by date range "
+            "or page"
         ),
         example_queries=[
-            "Get stock news for AAPL",
-            "Show company updates",
+            "Show the latest stock news",
+            "Recent market headlines",
             "Latest stock headlines",
             "Company news feed",
         ],
@@ -484,12 +533,6 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         category=SemanticCategory.INTELLIGENCE,
         sub_category="News & Media",
         parameter_hints={
-            "tickers": ParameterHint(
-                natural_names=["symbols", "stocks", "tickers"],
-                extraction_patterns=[r"[A-Z,\s]+"],
-                examples=["AAPL", "AAPL,MSFT,GOOGL"],
-                context_clues=["stocks", "symbols", "companies"],
-            ),
             "page": PAGE_HINT,
             "start_date": DATE_HINTS["start_date"],
             "end_date": DATE_HINTS["end_date"],
@@ -518,30 +561,21 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         client_name="intelligence",
         method_name="get_stock_news_sentiments",
         natural_description=(
-            "Get stock news with sentiment analysis "
-            "including positive/negative sentiment "
-            "scores and market impact assessment"
+            "DEPRECATED and non-functional: FMP no longer serves this "
+            "endpoint, so it always returns an empty list. Do not select it "
+            "for sentiment queries"
         ),
         example_queries=[
-            "Show news sentiment analysis",
-            "Get stock news with sentiment",
-            "News sentiment scores",
-            "Market sentiment data",
+            "Deprecated: stock news sentiment endpoint (returns no data)",
         ],
         related_terms=[
-            "sentiment analysis",
-            "news sentiment",
-            "market mood",
-            "news impact",
+            "deprecated",
+            "removed endpoint",
+            "unavailable",
         ],
         category=SemanticCategory.INTELLIGENCE,
         sub_category="News & Media",
-        parameter_hints={
-            "page": PAGE_HINT,
-            "start_date": DATE_HINTS["start_date"],
-            "end_date": DATE_HINTS["end_date"],
-            "limit": LIMIT_HINT,
-        },
+        parameter_hints={"page": PAGE_HINT},
         response_hints={
             "sentiment": ResponseFieldInfo(
                 description="News sentiment score",
@@ -612,8 +646,8 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         client_name="intelligence",
         method_name="get_earnings_confirmed",
         natural_description=(
-            "Access confirmed earnings dates and times for companies including "
-            "timing details and publication information"
+            "DEPRECATED: empty list. Prefer earnings_calendar with "
+            "include_report_times=True (confirmed + bmo/amc time)."
         ),
         example_queries=[
             "Show confirmed earnings dates",
@@ -1087,7 +1121,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
     ),
     "equity_offering_search": EndpointSemantics(
         client_name="intelligence",
-        method_name="get_equity_offering_search",
+        method_name="search_equity_offering",
         natural_description=(
             "Search for equity offerings including public and private placements, "
             "with detailed offering terms and company information"
@@ -1276,10 +1310,8 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         client_name="intelligence",
         method_name="get_earnings_surprises",
         natural_description=(
-            "Retrieve historical earnings "
-            "surprises including actual vs "
-            "estimated earnings, "
-            "surprise percentages, and earnings dates"
+            "DEPRECATED: empty list. Prefer historical_earnings and "
+            "compare eps vs eps_estimated."
         ),
         example_queries=[
             "Get earnings surprises for AAPL",
@@ -1320,10 +1352,8 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         client_name="intelligence",
         method_name="get_historical_earnings",
         natural_description=(
-            "Access historical earnings "
-            "reports including revenue, "
-            "EPS, and dates for "
-            "past quarters and fiscal years"
+            "Historical/upcoming earnings for a symbol, with optional "
+            "limit and include_report_times metadata."
         ),
         example_queries=[
             "Show historical earnings for AAPL",
@@ -1340,7 +1370,11 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INTELLIGENCE,
         sub_category="Calendar Events",
-        parameter_hints={"symbol": SYMBOL_HINT},
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "limit": LIMIT_HINT,
+            "include_report_times": INCLUDE_REPORT_TIMES_HINT,
+        },
         response_hints={
             "date": ResponseFieldInfo(
                 description="Earnings report date",
@@ -1747,51 +1781,13 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "Market analysis",
         ],
     ),
-    "institutional_holders": EndpointSemantics(
-        client_name="intelligence",
-        method_name="get_institutional_holders",
-        natural_description=(
-            "Retrieve institutional ownership data including holder details, "
-            "position sizes, and ownership changes"
-        ),
-        example_queries=[
-            "Show institutional holders for AAPL",
-            "Get institutional ownership data",
-            "Who owns this stock?",
-            "Major shareholders list",
-        ],
-        related_terms=[
-            "institutional ownership",
-            "major holders",
-            "shareholders",
-            "ownership stakes",
-            "institutional investors",
-        ],
-        category=SemanticCategory.INTELLIGENCE,
-        sub_category="Ownership",
-        parameter_hints={"symbol": SYMBOL_HINT},
-        response_hints={
-            "holder_name": ResponseFieldInfo(
-                description="Institution name",
-                examples=["BlackRock", "Vanguard"],
-                related_terms=["institution", "shareholder", "investor"],
-            ),
-            "shares": ResponseFieldInfo(
-                description="Number of shares held",
-                examples=["10000000", "5000000"],
-                related_terms=["position size", "holdings", "stake"],
-            ),
-        },
-        use_cases=[
-            "Ownership analysis",
-            "Investment research",
-            "Institutional tracking",
-            "Market structure",
-        ],
-    ),
+    # NOTE: institutional ownership lives on the institutional client
+    # (institutional.institutional_holders) and financial report dates on the
+    # fundamental client (fundamental.financial_reports_dates). They are
+    # deliberately NOT re-declared here - see issue #115.
     "crowdfunding_search": EndpointSemantics(
         client_name="intelligence",
-        method_name="get_crowdfunding_search",
+        method_name="search_crowdfunding",
         natural_description=(
             "Search crowdfunding offerings and campaigns by company name with "
             "detailed offering information"
@@ -1886,39 +1882,376 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "Due diligence",
         ],
     ),
-    "financial_reports_dates": EndpointSemantics(
+    "ratings_snapshot": EndpointSemantics(
         client_name="intelligence",
-        method_name="get_financial_reports_dates",
+        method_name="get_ratings_snapshot",
         natural_description=(
-            "Retrieve available financial report dates and filing deadlines"
+            "Get the current analyst rating snapshot for a company, including "
+            "the overall rating and component scores"
         ),
         example_queries=[
-            "When are financial reports due?",
-            "Get report filing dates",
-            "Show financial reporting calendar",
-            "Next earnings report dates",
+            "What is the analyst rating for AAPL?",
+            "Show current rating snapshot for Tesla",
+            "Get the stock rating score",
+            "How is MSFT rated by analysts?",
         ],
         related_terms=[
-            "filing dates",
-            "report deadlines",
-            "financial calendar",
-            "reporting schedule",
+            "analyst rating",
+            "stock rating",
+            "rating score",
+            "buy sell hold",
+            "recommendation",
         ],
         category=SemanticCategory.INTELLIGENCE,
-        sub_category="Calendar Events",
-        parameter_hints={},  # Add any parameters if needed
+        sub_category="Analyst Ratings",
+        parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
-            "date": ResponseFieldInfo(
-                description="Report filing date",
-                examples=["2024-01-15", "2024-02-01"],
-                related_terms=["filing date", "report date"],
+            "rating": ResponseFieldInfo(
+                description="Overall analyst rating",
+                examples=["A+", "B", "C-"],
+                related_terms=["grade", "score", "recommendation"],
+            ),
+            "overall_score": ResponseFieldInfo(
+                description="Composite rating score",
+                examples=["4", "3"],
+                related_terms=["score", "rank", "rating value"],
             ),
         },
         use_cases=[
-            "Filing deadline tracking",
-            "Report scheduling",
-            "Compliance planning",
-            "Calendar management",
+            "Investment screening",
+            "Sentiment assessment",
+            "Portfolio review",
+            "Analyst consensus tracking",
+        ],
+    ),
+    "ratings_historical": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_ratings_historical",
+        natural_description=(
+            "Retrieve historical analyst ratings for a company to track how "
+            "the rating and its component scores changed over time"
+        ),
+        example_queries=[
+            "Show rating history for AAPL",
+            "How has the analyst rating changed for Tesla?",
+            "Get historical stock ratings",
+            "Rating trend over time",
+        ],
+        related_terms=[
+            "rating history",
+            "historical ratings",
+            "rating changes",
+            "rating trend",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Analyst Ratings",
+        parameter_hints={"symbol": SYMBOL_HINT, "limit": LIMIT_HINT},
+        response_hints={
+            "date": ResponseFieldInfo(
+                description="Rating date",
+                examples=["2024-01-15", "2023-12-01"],
+                related_terms=["as of date", "rating date"],
+            ),
+            "rating": ResponseFieldInfo(
+                description="Analyst rating on that date",
+                examples=["A+", "B-"],
+                related_terms=["grade", "score"],
+            ),
+        },
+        use_cases=[
+            "Rating trend analysis",
+            "Backtesting",
+            "Sentiment history",
+            "Research",
+        ],
+    ),
+    "price_target_news": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_price_target_news",
+        natural_description=(
+            "Get news articles covering analyst price target changes for a "
+            "specific company, with the new and prior targets"
+        ),
+        example_queries=[
+            "Show price target news for AAPL",
+            "Any price target changes for Tesla?",
+            "Analyst price target updates",
+            "Who raised the price target?",
+        ],
+        related_terms=[
+            "price target",
+            "target price",
+            "analyst target",
+            "price forecast",
+            "target change",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Analyst Ratings",
+        parameter_hints={"symbol": SYMBOL_HINT, "page": PAGE_HINT},
+        response_hints={
+            "price_target": ResponseFieldInfo(
+                description="Announced price target",
+                examples=["250.00", "180.50"],
+                related_terms=["target", "target price", "forecast"],
+            ),
+            "analyst_company": ResponseFieldInfo(
+                description="Firm issuing the price target",
+                examples=["Morgan Stanley", "Goldman Sachs"],
+                related_terms=["broker", "firm", "analyst firm"],
+            ),
+        },
+        use_cases=[
+            "Price target tracking",
+            "News monitoring",
+            "Valuation research",
+            "Trade idea generation",
+        ],
+    ),
+    "price_target_latest_news": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_price_target_latest_news",
+        natural_description=(
+            "Get the latest price target news across all companies, covering "
+            "recent analyst target changes market-wide"
+        ),
+        example_queries=[
+            "Latest price target news",
+            "Recent analyst target changes",
+            "Show newest price target updates",
+            "What price targets changed today?",
+        ],
+        related_terms=[
+            "latest price targets",
+            "target updates",
+            "analyst news",
+            "market-wide targets",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Analyst Ratings",
+        parameter_hints={"page": PAGE_HINT},
+        response_hints={
+            "symbol": ResponseFieldInfo(
+                description="Company the target applies to",
+                examples=["AAPL", "MSFT"],
+                related_terms=["ticker", "stock"],
+            ),
+            "price_target": ResponseFieldInfo(
+                description="Announced price target",
+                examples=["250.00", "180.50"],
+                related_terms=["target", "forecast"],
+            ),
+        },
+        use_cases=[
+            "Market monitoring",
+            "News feed",
+            "Idea screening",
+            "Analyst activity tracking",
+        ],
+    ),
+    "grades": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_grades",
+        natural_description=(
+            "Get analyst grade actions for a company, including upgrades, "
+            "downgrades and the firms behind them"
+        ),
+        example_queries=[
+            "Show analyst grades for AAPL",
+            "Any upgrades for Tesla?",
+            "Get stock grade changes",
+            "Which firms downgraded MSFT?",
+        ],
+        related_terms=[
+            "upgrades",
+            "downgrades",
+            "analyst grades",
+            "rating actions",
+            "grade changes",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Analyst Grades",
+        parameter_hints={"symbol": SYMBOL_HINT, "page": PAGE_HINT},
+        response_hints={
+            "grading_company": ResponseFieldInfo(
+                description="Firm issuing the grade",
+                examples=["Barclays", "UBS"],
+                related_terms=["broker", "analyst firm"],
+            ),
+            "new_grade": ResponseFieldInfo(
+                description="Grade after the action",
+                examples=["Buy", "Overweight"],
+                related_terms=["rating", "recommendation"],
+            ),
+        },
+        use_cases=[
+            "Upgrade/downgrade tracking",
+            "Sentiment analysis",
+            "Event-driven research",
+            "Screening",
+        ],
+    ),
+    "grades_historical": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_grades_historical",
+        natural_description=(
+            "Retrieve the historical distribution of analyst grades for a "
+            "company across buy, hold and sell buckets over time"
+        ),
+        example_queries=[
+            "Show grade history for AAPL",
+            "Historical analyst grades for Tesla",
+            "How many buy ratings over time?",
+            "Grade distribution history",
+        ],
+        related_terms=[
+            "grade history",
+            "historical grades",
+            "rating distribution",
+            "consensus history",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Analyst Grades",
+        parameter_hints={"symbol": SYMBOL_HINT, "limit": LIMIT_HINT},
+        response_hints={
+            "date": ResponseFieldInfo(
+                description="Snapshot date",
+                examples=["2024-01-15", "2023-12-01"],
+                related_terms=["as of date", "period"],
+            ),
+            "analyst_ratings_buy": ResponseFieldInfo(
+                description="Number of buy ratings",
+                examples=["25", "12"],
+                related_terms=["buy count", "bullish analysts"],
+            ),
+        },
+        use_cases=[
+            "Consensus trend analysis",
+            "Sentiment history",
+            "Research",
+            "Backtesting",
+        ],
+    ),
+    "grades_consensus": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_grades_consensus",
+        natural_description=(
+            "Get the current analyst grade consensus for a company, summarizing "
+            "buy, hold and sell counts and the overall consensus"
+        ),
+        example_queries=[
+            "What is the analyst consensus for AAPL?",
+            "Show buy hold sell counts for Tesla",
+            "Get grade consensus",
+            "Is MSFT a buy?",
+        ],
+        related_terms=[
+            "consensus",
+            "analyst consensus",
+            "buy hold sell",
+            "recommendation summary",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Analyst Grades",
+        parameter_hints={"symbol": SYMBOL_HINT},
+        response_hints={
+            "consensus": ResponseFieldInfo(
+                description="Overall consensus recommendation",
+                examples=["Buy", "Hold"],
+                related_terms=["recommendation", "rating"],
+            ),
+            "buy": ResponseFieldInfo(
+                description="Number of buy recommendations",
+                examples=["25", "12"],
+                related_terms=["buy count", "bullish analysts"],
+            ),
+        },
+        use_cases=[
+            "Investment screening",
+            "Consensus checks",
+            "Portfolio review",
+            "Research",
+        ],
+    ),
+    "grades_news": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_grades_news",
+        natural_description=(
+            "Get news articles covering analyst grade changes for a specific "
+            "company, with previous and new grades"
+        ),
+        example_queries=[
+            "Show grade news for AAPL",
+            "Upgrade and downgrade news for Tesla",
+            "Analyst rating news",
+            "Recent grade coverage",
+        ],
+        related_terms=[
+            "grade news",
+            "upgrade news",
+            "downgrade news",
+            "analyst coverage",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Analyst Grades",
+        parameter_hints={"symbol": SYMBOL_HINT, "page": PAGE_HINT},
+        response_hints={
+            "new_grade": ResponseFieldInfo(
+                description="Grade after the action",
+                examples=["Buy", "Neutral"],
+                related_terms=["rating", "recommendation"],
+            ),
+            "news_publisher": ResponseFieldInfo(
+                description="News publisher",
+                examples=["Benzinga", "MarketWatch"],
+                related_terms=["source", "outlet", "publisher"],
+            ),
+        },
+        use_cases=[
+            "News monitoring",
+            "Event-driven research",
+            "Sentiment analysis",
+            "Coverage tracking",
+        ],
+    ),
+    "grades_latest_news": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_grades_latest_news",
+        natural_description=(
+            "Get the latest analyst grade news across all companies, covering "
+            "recent upgrades and downgrades market-wide"
+        ),
+        example_queries=[
+            "Latest analyst grade news",
+            "Recent upgrades and downgrades",
+            "Show newest rating changes",
+            "What stocks were upgraded today?",
+        ],
+        related_terms=[
+            "latest grades",
+            "recent upgrades",
+            "recent downgrades",
+            "market-wide grades",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Analyst Grades",
+        parameter_hints={"page": PAGE_HINT},
+        response_hints={
+            "symbol": ResponseFieldInfo(
+                description="Company the grade applies to",
+                examples=["AAPL", "MSFT"],
+                related_terms=["ticker", "stock"],
+            ),
+            "new_grade": ResponseFieldInfo(
+                description="Grade after the action",
+                examples=["Buy", "Sell"],
+                related_terms=["rating", "recommendation"],
+            ),
+        },
+        use_cases=[
+            "Market monitoring",
+            "News feed",
+            "Screening",
+            "Analyst activity tracking",
         ],
     ),
 }

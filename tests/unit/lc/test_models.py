@@ -49,7 +49,7 @@ def test_response_field_info():
 
     # Invalid - missing required fields
     with pytest.raises(ValidationError):
-        ResponseFieldInfo()
+        ResponseFieldInfo()  # type: ignore[call-arg]
 
 
 def test_endpoint_semantics():
@@ -85,4 +85,4 @@ def test_endpoint_semantics():
 
     # Invalid - missing required fields
     with pytest.raises(ValidationError):
-        EndpointSemantics()
+        EndpointSemantics()  # type: ignore[call-arg]

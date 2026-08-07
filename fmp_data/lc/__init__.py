@@ -8,6 +8,10 @@ This module provides LangChain integration features including:
 - LangChain tool creation
 - Vector store management
 - Natural language endpoint discovery
+
+Heavy LangChain imports are deferred so domain mapping modules can import
+``fmp_data.lc.models`` (and MCP discovery can load semantics) without the
+``langchain`` extra installed.
 """
 
 from __future__ import annotations
@@ -15,22 +19,55 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING, Any
 
-from langchain_core.embeddings import Embeddings
-
-from fmp_data.lc.config import LangChainConfig
-from fmp_data.lc.embedding import EmbeddingProvider
 from fmp_data.lc.models import EndpointSemantics, SemanticCategory
 from fmp_data.lc.registry import EndpointRegistry
 from fmp_data.lc.utils import is_langchain_available
-from fmp_data.lc.vector_store import EndpointVectorStore
 from fmp_data.logger import FMPLogger
-from fmp_data.models import Endpoint
 
 # Only import for type checking, not at runtime
 if TYPE_CHECKING:
+    from langchain_core.embeddings import Embeddings
+
     from fmp_data.client import FMPDataClient
+    from fmp_data.lc.config import LangChainConfig
+    from fmp_data.lc.embedding import EmbeddingProvider
+    from fmp_data.lc.vector_store import EndpointVectorStore
+    from fmp_data.models import Endpoint
 
 logger = FMPLogger().get_logger(__name__)
+
+
+def __getattr__(name: str) -> Any:
+    """Lazy-export symbols that require the optional langchain extra."""
+    if name == "EmbeddingProvider":
+        from fmp_data.lc.embedding import EmbeddingProvider
+
+        return EmbeddingProvider
+    if name == "EndpointVectorStore":
+        from fmp_data.lc.vector_store import EndpointVectorStore
+
+        return EndpointVectorStore
+    if name == "LangChainConfig":
+        from fmp_data.lc.config import LangChainConfig
+
+        return LangChainConfig
+    # Not in ``__all__``, but importable from this module before the lazy-import
+    # rework -- keep them reachable so ``from fmp_data.lc import Endpoint`` and
+    # ``from fmp_data.lc import Embeddings`` do not start raising AttributeError.
+    if name == "Endpoint":
+        from fmp_data.models import Endpoint
+
+        return Endpoint
+    if name == "Embeddings":
+        from langchain_core.embeddings import Embeddings
+
+        return Embeddings
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    """Include lazily-exported names so REPL/IDE completion still finds them."""
+    return sorted({*globals(), *__all__, "Endpoint", "Embeddings"})
 
 
 def init_langchain() -> bool:
@@ -70,6 +107,36 @@ def validate_api_keys(
     return fmp_key, openai_key
 
 
+def resolve_semantics_for_endpoint(
+    endpoint_name: str,
+    semantics_map: dict[str, EndpointSemantics],
+) -> EndpointSemantics | None:
+    """Pair an endpoint-map key with its semantics entry.
+
+    Endpoint-map keys are client method names. Semantics table keys are often
+    short aliases (``crowdfunding_search`` vs ``search_crowdfunding``). Match
+    order:
+
+    1. Exact key match
+    2. Strip a leading ``get_`` prefix (historical convention)
+    3. Match ``EndpointSemantics.method_name`` (authoritative for MCP/client)
+    """
+    semantics = semantics_map.get(endpoint_name)
+    if semantics is not None:
+        return semantics
+
+    if endpoint_name.startswith("get_"):
+        semantics = semantics_map.get(endpoint_name[4:])
+        if semantics is not None:
+            return semantics
+
+    for candidate in semantics_map.values():
+        if candidate.method_name == endpoint_name:
+            return candidate
+
+    return None
+
+
 def setup_registry(client: FMPDataClient) -> EndpointRegistry:
     """
     Initialize and populate endpoint registry.
@@ -80,6 +147,8 @@ def setup_registry(client: FMPDataClient) -> EndpointRegistry:
     Returns:
         Configured endpoint registry
     """
+    from fmp_data.models import Endpoint
+
     endpoint_registry = EndpointRegistry()
 
     # Get endpoint groups with lazy loading to avoid circular imports
@@ -97,27 +166,27 @@ def setup_registry(client: FMPDataClient) -> EndpointRegistry:
         endpoints_for_batch: dict[str, tuple[Endpoint[Any], EndpointSemantics]] = {}
 
         for endpoint_name, endpoint in endpoint_map.items():
-            # Look for semantics - try exact match first, then without 'get_' prefix
-            semantics = semantics_map.get(endpoint_name)
-            if semantics is None and endpoint_name.startswith("get_"):
-                # Try without the 'get_' prefix
-                base_name = endpoint_name[4:]
-                semantics = semantics_map.get(base_name)
+            semantics = resolve_semantics_for_endpoint(endpoint_name, semantics_map)
 
             if semantics is not None:
                 endpoints_for_batch[endpoint_name] = (endpoint, semantics)
             else:
                 logger.warning(f"No semantics found for endpoint: {endpoint_name}")
 
-        # Register the batch for this group
+        # Register the batch for this group. Invalid endpoints are skipped
+        # individually so drift in one endpoint cannot drop the whole group.
         if endpoints_for_batch:
-            try:
-                endpoint_registry.register_batch(endpoints_for_batch)
-                logger.debug(
-                    f"Registered {len(endpoints_for_batch)} endpoints from {group_name}"
+            failures = endpoint_registry.register_batch(endpoints_for_batch)
+            registered = len(endpoints_for_batch) - len(failures)
+            logger.debug(
+                f"Registered {registered}/{len(endpoints_for_batch)} "
+                f"endpoints from {group_name}"
+            )
+            if failures:
+                logger.warning(
+                    f"Skipped {len(failures)} invalid {group_name} endpoints: "
+                    f"{', '.join(sorted(failures))}"
                 )
-            except Exception as e:
-                logger.error(f"Failed to register {group_name} endpoints: {e}")
 
     return endpoint_registry
 
@@ -128,7 +197,7 @@ def create_vector_store(
     cache_dir: str | None = None,
     store_name: str = "fmp_endpoints",
     force_create: bool = False,
-    embedding_provider: EmbeddingProvider = EmbeddingProvider.OPENAI,
+    embedding_provider: EmbeddingProvider | None = None,
     embedding_model: str | None = None,
 ) -> EndpointVectorStore | None:
     """
@@ -140,14 +209,19 @@ def create_vector_store(
         cache_dir: Directory to store vector index
         store_name: Name for the vector store
         force_create: Whether to recreate existing store
-        embedding_provider: Provider for embeddings
+        embedding_provider: Provider for embeddings (default: OpenAI)
         embedding_model: Specific model name
 
     Returns:
         Configured vector store or None if setup fails
     """
-    # Late import to avoid circular dependency
+    # Late import to avoid circular dependency and optional langchain deps
     from fmp_data.client import FMPDataClient
+    from fmp_data.lc.embedding import EmbeddingConfig
+    from fmp_data.lc.embedding import EmbeddingProvider as EP
+
+    if embedding_provider is None:
+        embedding_provider = EP.OPENAI
 
     try:
         # Validate API keys
@@ -158,9 +232,6 @@ def create_vector_store(
 
         # Setup registry
         registry = setup_registry(client)
-
-        # Configure embeddings
-        from fmp_data.lc.embedding import EmbeddingConfig
 
         embedding_config = EmbeddingConfig(
             provider=embedding_provider, model_name=embedding_model, api_key=openai_key
@@ -194,6 +265,8 @@ def try_load_existing_store(
     store_name: str,
 ) -> EndpointVectorStore | None:
     """Attempt to load existing vector store (using existing pattern)."""
+    from fmp_data.lc.vector_store import EndpointVectorStore
+
     try:
         vector_store = EndpointVectorStore(
             client=client,
@@ -224,6 +297,8 @@ def create_new_store(
     store_name: str,
 ) -> EndpointVectorStore:
     """Create and populate new vector store (using existing pattern)."""
+    from fmp_data.lc.vector_store import EndpointVectorStore
+
     vector_store = EndpointVectorStore(
         client=client,
         registry=registry,
@@ -251,6 +326,7 @@ __all__ = [
     "create_new_store",
     "create_vector_store",
     "init_langchain",
+    "resolve_semantics_for_endpoint",
     "setup_registry",
     "try_load_existing_store",
     "validate_api_keys",

@@ -35,10 +35,17 @@ from fmp_data.company.hints import (
     CIK_HINT,
     FLOAT_RESPONSE_HINTS,
     INTERVAL_HINT,
+    NONADJUSTED_HINT,
     PROFILE_RESPONSE_HINTS,
     STRUCTURE_HINT,
 )
-from fmp_data.lc.hints import DATE_HINTS, PERIOD_HINT, SYMBOL_HINT
+from fmp_data.lc.hints import (
+    DATE_HINTS,
+    LIMIT_HINT,
+    PAGE_HINT,
+    PERIOD_HINT,
+    SYMBOL_HINT,
+)
 from fmp_data.lc.models import EndpointSemantics, ResponseFieldInfo, SemanticCategory
 
 # Company endpoints mapping
@@ -283,7 +290,11 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.COMPANY_INFO,
         sub_category="Revenue",
-        parameter_hints={"symbol": SYMBOL_HINT, "structure": STRUCTURE_HINT},
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "structure": STRUCTURE_HINT,
+            "period": PERIOD_HINT,
+        },
         response_hints={
             "segments": ResponseFieldInfo(
                 description="Revenue by region",
@@ -414,7 +425,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
             "employment figures",
         ],
         category=SemanticCategory.COMPANY_INFO,
-        parameter_hints={"symbol": SYMBOL_HINT},
+        parameter_hints={"symbol": SYMBOL_HINT, "limit": LIMIT_HINT},
         response_hints={
             "count": ResponseFieldInfo(
                 description="Number of employees",
@@ -655,7 +666,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "quote": EndpointSemantics(
-        client_name="market",
+        client_name="company",
         method_name="get_quote",
         natural_description=(
             "Get real-time stock quote data including current price, "
@@ -705,7 +716,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "simple_quote": EndpointSemantics(
-        client_name="market",
+        client_name="company",
         method_name="get_simple_quote",
         natural_description=(
             "Get real-time basic stock quote "
@@ -773,7 +784,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
             "post-market trade",
             "extended hours trade",
         ],
-        category=SemanticCategory.MARKET_DATA,
+        category=SemanticCategory.COMPANY_INFO,
         sub_category="Aftermarket Data",
         parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
@@ -819,7 +830,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
             "post-market quote",
             "extended hours quote",
         ],
-        category=SemanticCategory.MARKET_DATA,
+        category=SemanticCategory.COMPANY_INFO,
         sub_category="Aftermarket Data",
         parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
@@ -869,7 +880,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
             "return",
             "timeframe change",
         ],
-        category=SemanticCategory.MARKET_DATA,
+        category=SemanticCategory.COMPANY_INFO,
         sub_category="Price Performance",
         parameter_hints={"symbol": SYMBOL_HINT},
         response_hints={
@@ -896,7 +907,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "intraday_prices": EndpointSemantics(
-        client_name="market",
+        client_name="company",
         method_name="get_intraday_prices",
         natural_description=(
             "Get intraday price data with minute-by-minute or hourly intervals"
@@ -920,6 +931,9 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         parameter_hints={
             "symbol": SYMBOL_HINT,
             "interval": INTERVAL_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+            "nonadjusted": NONADJUSTED_HINT,
         },
         response_hints={
             "datetime": ResponseFieldInfo(
@@ -941,7 +955,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "historical_price": EndpointSemantics(
-        client_name="market",
+        client_name="company",
         method_name="get_historical_prices",
         natural_description=(
             "Retrieve historical daily price data including open, high, low, close, "
@@ -1012,7 +1026,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "intraday_price": EndpointSemantics(
-        client_name="market",
+        client_name="company",
         method_name="get_intraday_prices",
         natural_description=(
             "Get intraday price data at various intervals (1min to 4hour) "
@@ -1038,6 +1052,9 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         parameter_hints={
             "symbol": SYMBOL_HINT,
             "interval": INTERVAL_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+            "nonadjusted": NONADJUSTED_HINT,
         },
         response_hints={
             "date": ResponseFieldInfo(
@@ -1066,7 +1083,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "market_cap": EndpointSemantics(
-        client_name="market",
+        client_name="company",
         method_name="get_market_cap",
         natural_description=(
             "Get current market capitalization data for a company, including "
@@ -1106,7 +1123,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "historical_market_cap": EndpointSemantics(
-        client_name="market",
+        client_name="company",
         method_name="get_historical_market_cap",
         natural_description=(
             "Retrieve historical market capitalization data to track changes in "
@@ -1150,7 +1167,7 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         ],
     ),
     "historical_prices": EndpointSemantics(
-        client_name="market",
+        client_name="company",
         method_name="get_historical_prices",
         natural_description=(
             "Retrieve historical price data including OHLCV (Open, High, Low, Close, "
@@ -1270,7 +1287,12 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.COMPANY_INFO,
         sub_category="Analyst Research",
-        parameter_hints={"symbol": SYMBOL_HINT},
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "period": PERIOD_HINT,
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
         response_hints={
             "estimated_revenue_avg": ResponseFieldInfo(
                 description="Average estimated revenue",

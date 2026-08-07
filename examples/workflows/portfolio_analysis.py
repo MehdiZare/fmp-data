@@ -69,7 +69,9 @@ def analyze_portfolio(client: FMPDataClient, portfolio: list[str]) -> None:
                 signal = (
                     "Overbought"
                     if current_rsi > 70
-                    else "Oversold" if current_rsi < 30 else "Neutral"
+                    else "Oversold"
+                    if current_rsi < 30
+                    else "Neutral"
                 )
                 print(f"{symbol}: RSI = {current_rsi:.2f} ({signal})")
         except FMPError as e:

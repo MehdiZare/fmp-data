@@ -77,6 +77,15 @@ FLOAT_RESPONSE_HINTS = {
     ),
 }
 
+NONADJUSTED_HINT = ParameterHint(
+    natural_names=["nonadjusted", "unadjusted", "raw prices"],
+    extraction_patterns=[
+        r"(?i)\b(non-?adjusted|unadjusted|raw)\b",
+    ],
+    examples=["true", "false"],
+    context_clues=["nonadjusted", "unadjusted", "raw", "without adjustments"],
+)
+
 INTERVAL_HINT = ParameterHint(
     natural_names=["interval", "timeframe", "period"],
     extraction_patterns=[

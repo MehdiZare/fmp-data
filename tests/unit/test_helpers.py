@@ -115,3 +115,27 @@ class TestDeprecatedDecorator:
             assert result == "old result"
             assert len(w) == 1
             assert "old_method is deprecated." in str(w[0].message)
+
+    def test_deprecated_async_preserves_coroutine(self):
+        """Async wrappers stay coroutine functions and still warn on await."""
+        import asyncio
+        import inspect
+
+        @deprecated("Use new_async instead.")
+        async def old_async() -> str:
+            return "result"
+
+        assert inspect.iscoroutinefunction(old_async)
+
+        async def _run() -> str:
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                result = await old_async()
+                assert result == "result"
+                assert len(w) == 1
+                assert issubclass(w[0].category, DeprecationWarning)
+                assert "old_async is deprecated." in str(w[0].message)
+                assert "Use new_async instead." in str(w[0].message)
+            return result
+
+        assert asyncio.run(_run()) == "result"

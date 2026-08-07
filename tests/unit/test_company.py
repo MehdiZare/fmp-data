@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -743,7 +744,7 @@ class TestMergersAcquisitions:
 
     def test_model_validation_minimal(self):
         """Test MergerAcquisition model with minimal data"""
-        data = {}
+        data: dict[str, Any] = {}
         merger = MergerAcquisition.model_validate(data)
         assert merger.companyName is None
         assert merger.targetedCompanyName is None
@@ -1173,7 +1174,9 @@ class TestCompanyCalendarEndpoints:
         assert result[0].dividend == 0.24
         assert result[0].adj_dividend == 0.24
         assert result[0].ex_dividend_date.strftime("%Y-%m-%d") == "2024-02-15"
-        assert result[0].payment_date.strftime("%Y-%m-%d") == "2024-02-15"
+        payment_date = result[0].payment_date
+        assert payment_date is not None
+        assert payment_date.strftime("%Y-%m-%d") == "2024-02-15"
 
         # Verify request parameters
         mock_client.request.assert_called_once()

@@ -1125,7 +1125,9 @@ class TestAsyncIntelligenceClient:
         from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
 
         async_client = AsyncMarketIntelligenceClient(mock_client)
-        async_client.get_stock_symbol_news = AsyncMock(return_value=["sentinel"])
+        async_client.get_stock_symbol_news = AsyncMock(  # type: ignore[method-assign]
+            return_value=["sentinel"]
+        )
 
         result = await async_client.get_stock_news(
             symbol="AAPL",
@@ -1161,6 +1163,117 @@ class TestAsyncIntelligenceClient:
             start_date="2024-01-01",
             end_date="2024-01-15",
         )
+
+    @pytest.mark.asyncio
+    async def test_get_earnings_calendar_include_report_times(
+        self, mock_client: MagicMock
+    ) -> None:
+        """Test earnings calendar forwards include_report_times."""
+        from fmp_data.intelligence import endpoints as intelligence_endpoints
+        from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncMarketIntelligenceClient(mock_client)
+
+        await async_client.get_earnings_calendar(include_report_times=True)
+
+        mock_client.request_async.assert_called_once_with(
+            intelligence_endpoints.EARNINGS_CALENDAR,
+            include_report_times=True,
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_historical_earnings_optional_params(
+        self, mock_client: MagicMock
+    ) -> None:
+        """Test historical earnings forwards limit and include_report_times."""
+        from fmp_data.intelligence import endpoints as intelligence_endpoints
+        from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncMarketIntelligenceClient(mock_client)
+
+        await async_client.get_historical_earnings(
+            "AAPL", limit=5, include_report_times=True
+        )
+
+        mock_client.request_async.assert_called_once_with(
+            intelligence_endpoints.HISTORICAL_EARNINGS,
+            symbol="AAPL",
+            limit=5,
+            include_report_times=True,
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_historical_earnings_omits_optional_params(
+        self, mock_client: MagicMock
+    ) -> None:
+        """Default historical call must not send limit/include_report_times."""
+        from fmp_data.intelligence import endpoints as intelligence_endpoints
+        from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncMarketIntelligenceClient(mock_client)
+
+        await async_client.get_historical_earnings("AAPL")
+
+        mock_client.request_async.assert_called_once_with(
+            intelligence_endpoints.HISTORICAL_EARNINGS,
+            symbol="AAPL",
+        )
+        kwargs = mock_client.request_async.call_args.kwargs
+        assert "limit" not in kwargs
+        assert "include_report_times" not in kwargs
+
+    @pytest.mark.asyncio
+    async def test_include_report_times_false_is_forwarded_async(
+        self, mock_client: MagicMock
+    ) -> None:
+        """Explicit False is sent on async calendar and historical paths."""
+        from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncMarketIntelligenceClient(mock_client)
+
+        await async_client.get_earnings_calendar(include_report_times=False)
+        assert (
+            mock_client.request_async.call_args.kwargs["include_report_times"] is False
+        )
+
+        await async_client.get_historical_earnings("AAPL", include_report_times=False)
+        assert (
+            mock_client.request_async.call_args.kwargs["include_report_times"] is False
+        )
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("method_name", "args", "hint"),
+        [
+            ("get_earnings_confirmed", (), "include_report_times"),
+            ("get_earnings_surprises", ("AAPL",), "eps_estimated"),
+        ],
+    )
+    async def test_dead_earnings_endpoints_warn_async(
+        self,
+        mock_client: MagicMock,
+        method_name: str,
+        args: tuple[str, ...],
+        hint: str,
+    ) -> None:
+        """Async dead earnings endpoints warn and soft-fail without HTTP."""
+        import inspect
+
+        from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
+
+        async_client = AsyncMarketIntelligenceClient(mock_client)
+        method = getattr(async_client, method_name)
+        assert inspect.iscoroutinefunction(method)
+        with pytest.warns(DeprecationWarning, match=method_name) as record:
+            result = await method(*args)
+
+        assert result == []
+        mock_client.request_async.assert_not_called()
+        assert hint in str(record[0].message)
 
     def test_build_date_params_custom_keys(self):
         """Test _build_date_params supports custom keys."""
@@ -1293,7 +1406,9 @@ class TestAsyncIntelligenceClient:
         from fmp_data.intelligence.async_client import AsyncMarketIntelligenceClient
 
         async_client = AsyncMarketIntelligenceClient(mock_client)
-        async_client.get_forex_symbol_news = AsyncMock(return_value=["sentinel"])
+        async_client.get_forex_symbol_news = AsyncMock(  # type: ignore[method-assign]
+            return_value=["sentinel"]
+        )
 
         result = await async_client.get_forex_news(symbol="EURUSD", page=1, limit=5)
 
@@ -1315,7 +1430,7 @@ class TestAsyncIntelligenceClient:
 
         class FixedDate(dt_date):
             @classmethod
-            def today(cls):  # type: ignore[override]
+            def today(cls):
                 return dt_date(2024, 2, 1)
 
         monkeypatch.setattr(intelligence_async, "date", FixedDate)
@@ -1341,13 +1456,15 @@ class TestAsyncIntelligenceClient:
 
         class FixedDate(dt_date):
             @classmethod
-            def today(cls):  # type: ignore[override]
+            def today(cls):
                 return dt_date(2024, 2, 1)
 
         monkeypatch.setattr(intelligence_async, "date", FixedDate)
 
         async_client = AsyncMarketIntelligenceClient(mock_client)
-        async_client.get_crypto_symbol_news = AsyncMock(return_value=["sentinel"])
+        async_client.get_crypto_symbol_news = AsyncMock(  # type: ignore[method-assign]
+            return_value=["sentinel"]
+        )
 
         result = await async_client.get_crypto_news(
             symbol="BTCUSD", from_date=dt_date(2024, 1, 15)
@@ -2341,12 +2458,17 @@ class TestAsyncTranscriptsClient:
         from fmp_data.transcripts.async_client import AsyncTranscriptsClient
 
         mock_client.request_async.return_value = [
-            EarningsTranscript(
-                symbol="AAPL",
-                quarter=1,
-                year=2024,
-                date="2024-01-01",
-                content="This is a test transcript content.",
+            # model_validate rather than a keyword call: the model aliases to
+            # camelCase, so a field-name call needs a blanket
+            # `type: ignore[call-arg]` that would also hide a misspelled field.
+            EarningsTranscript.model_validate(
+                {
+                    "symbol": "AAPL",
+                    "quarter": 1,
+                    "year": 2024,
+                    "date": "2024-01-01",
+                    "content": "This is a test transcript content.",
+                }
             )
         ]
 
@@ -2430,7 +2552,7 @@ class TestAsyncSECClient:
                 {
                     "type": "missing",
                     "loc": ("symbol",),
-                    "msg": "Field required",
+                    "msg": "Field required",  # type: ignore[typeddict-unknown-key]
                     "input": None,
                 }
             ],
@@ -2612,7 +2734,7 @@ class TestAsyncFMPDataClient:
         client = AsyncFMPDataClient(api_key="test_key")
         client.client = MagicMock()
         client._logger = MagicMock()
-        client.aclose = AsyncMock()
+        client.aclose = AsyncMock()  # type: ignore[method-assign]
 
         await client.__aexit__(ValueError, ValueError("boom"), None)
 

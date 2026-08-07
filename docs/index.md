@@ -91,6 +91,7 @@ For async applications, use `AsyncFMPDataClient`:
 import asyncio
 from fmp_data import AsyncFMPDataClient
 
+
 async def main():
     async with AsyncFMPDataClient.from_env() as client:
         # All methods are async - same names as sync client
@@ -100,9 +101,10 @@ async def main():
         # Fetch multiple items concurrently
         quote, income = await asyncio.gather(
             client.company.get_quote("AAPL"),
-            client.fundamental.get_income_statement("AAPL", period="annual")
+            client.fundamental.get_income_statement("AAPL", period="annual"),
         )
         print(f"Price: ${quote.price}, Revenue: ${income[0].revenue:,.0f}")
+
 
 asyncio.run(main())
 ```
@@ -242,6 +244,7 @@ with FMPDataClient.from_env() as client:
 import asyncio
 from fmp_data import AsyncFMPDataClient
 
+
 async def analyze_portfolio(symbols: list[str]):
     async with AsyncFMPDataClient.from_env() as client:
         # Fetch all profiles concurrently
@@ -256,6 +259,7 @@ async def analyze_portfolio(symbols: list[str]):
 
         for profile, quote in zip(profiles, quotes):
             print(f"{profile.symbol}: ${quote.price:,.2f} ({profile.sector})")
+
 
 asyncio.run(analyze_portfolio(["AAPL", "MSFT", "GOOGL", "AMZN"]))
 ```

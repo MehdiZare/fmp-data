@@ -264,7 +264,14 @@ class TestInvestmentEndpoints(BaseTestCase):
             result = self._handle_rate_limit(
                 fmp_client.investment.get_etf_info, "INVALID_SYMBOL"
             )
-            assert result is None or (isinstance(result, list) and len(result) == 0)
+            # get_etf_info is typed to return a model, so mypy proves the list
+            # branch unreachable and this reduces to `result is None`. The branch
+            # is kept only so the assertion still reads correctly if the return
+            # type is ever widened to a list; it is not evidence that FMP has
+            # been seen returning one.
+            assert result is None or (
+                isinstance(result, list) and len(result) == 0  # type: ignore[unreachable]
+            )
 
     def test_error_handling_invalid_date(
         self,

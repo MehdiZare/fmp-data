@@ -7,7 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [2.5.0] - 2026-08-07
+
+Released from `dev` via #113. Adds earnings report times (#111), the analyst
+grades/ratings MCP surface (#116), CIK company profiles, and opt-in response
+caching; repairs MCP/LangChain semantics drift (#114, #115, #120, #121, #122,
+#123) so the LangChain registry serves all 168 endpoints instead of 75; and
+starts type-checking `tests/` (#125).
+
 ### Added
+- **Analyst Grades & Ratings via MCP** (#116) - Wired the intelligence grades/ratings surface into the mapping layer so MCP discovery and `DEFAULT_TOOLS` can advertise and call them:
+  - New `INTELLIGENCE_ENDPOINT_MAP` entries and `INTELLIGENCE_ENDPOINTS_SEMANTICS` for `ratings_snapshot`, `ratings_historical`, `price_target_news`, `price_target_latest_news`, `grades`, `grades_historical`, `grades_consensus`, `grades_news`, `grades_latest_news`
+  - All nine added to `DEFAULT_TOOLS`, along with the now-working `intelligence.crowdfunding_search` and `intelligence.equity_offering_search` (intelligence defaults: 28 → 39)
+  - `docs/mcp/tools.md` updated: Intelligence catalog lists 45 semantics tools (39 in `DEFAULT_TOOLS`); Institutional MCP tool key `cik_mapper` renamed to `cik_mappings`
+- **Earnings Report Times** (#111) - Exposed FMP's `includeReportTimes` flag on the intelligence earnings endpoints:
+  - `get_earnings_calendar(..., include_report_times=...)` and `get_historical_earnings(..., include_report_times=...)` on both sync and async clients
+  - Python kwarg `include_report_times` maps to query `includeReportTimes` when not `None` (explicit `True`/`False` are forwarded; unset omits the param)
+  - When true, responses may populate session `time` (`"bmo"` / `"amc"`), `period_ending`, `fiscal_period`, `fiscal_year`, and `confirmed` (per-row optional)
+  - New `EarningEvent` fields are optional and default to `None`; without the flag the API typically omits confirmation/fiscal extras. Session `time` can still appear on base `/earnings` payloads (including company `get_earnings()`)
+  - `get_historical_earnings()` also accepts optional `limit`
+  - Thanks to @joshuatz for the report
 - **New Company Endpoint** - Added `get_profile_cik()` method to retrieve company profile using CIK (Central Index Key) number
   - Available in both sync (`CompanyClient`) and async (`AsyncCompanyClient`) clients
   - Endpoint: `/stable/profile-cik`
@@ -21,17 +40,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added optional `cache-redis` extra for Redis-backed caching
 
 ### Changed
+- **`EndpointRegistry.register_batch()` signature and failure contract** (#121) - Was `-> None` and raised `ValueError` on the first endpoint that failed validation; is now `-> dict[str, str]` and never raises, returning a `{endpoint_name: error}` mapping of the endpoints it skipped (empty when all registered). `EndpointRegistry` is absent from `fmp_data.lc.__all__`, but `from fmp_data.lc import EndpointRegistry` still resolves, so any code holding a direct reference is affected — not only code importing from `fmp_data.lc.registry`. Callers that relied on the exception to detect drift should check the returned mapping instead. `register()` is unchanged and still raises.
+- **`setup_registry()` no longer swallows non-validation errors** (#121) - It used to wrap each group's registration in `except Exception`, log an error, and continue. Validation failures are now handled per endpoint inside `register_batch()`, and anything else propagates instead of leaving a silently half-built registry — in practice an `ImportError`/`AttributeError` raised while `register()` lazily builds the validation rules via `_ensure_validation_initialized()`. (The `get_endpoint_groups()` call at the top of `setup_registry()` was never inside the removed handler, so it always propagated.) Note that `create_vector_store()` still wraps this in a blanket `except Exception` and returns `None`, so the loud failure does not yet reach that caller; see #133.
+- **`create_vector_store` default argument** - The `embedding_provider` default moved from `EmbeddingProvider.OPENAI` to `None`, resolved to OpenAI inside the function, so the signature no longer forces an eager `fmp_data.lc.embedding` import at module load. Omitting the argument behaves exactly as before; passing `None` explicitly now selects OpenAI instead of raising
+- **MCP SDK 2.x Support** - The MCP server now works against both MCP SDK 1.x and 2.x:
+  - MCP SDK 2.0 renamed `mcp.server.fastmcp.FastMCP` to `mcp.server.MCPServer`
+  - Added `fmp_data.mcp._compat` to resolve whichever class the installed SDK provides
+  - The `mcp` extra floor stays at `>=1.28.1`, so no forced SDK upgrade for existing installs
+- **CI / Tooling Refresh** (#112, closes #107, #108, #109, #110) - Updated GitHub Actions, pre-commit hooks, and the security session:
+  - Actions: `checkout` → v7.0.1, `setup-python` → v7.0.0, `setup-uv` → v9.0.0, `gh-action-pypi-publish` → v1.14.1 (since bumped to v1.14.2 in #132)
+  - Pre-commit: `ruff` + `ruff-format` at v0.16.1 (replaces the black 24.x hook, which fought ruff on assert-message wrapping); `pre-commit-hooks` v6.0.0; `bandit` 1.9.4
+  - Reformatted the tree with ruff 0.16 (formatting only, including Python blocks inside Markdown — hence the docs churn)
+  - `nox -s security` upgrades pip before `pip-audit` instead of suppressing `CVE-2026-1703`, so the report covers project dependencies rather than the virtualenv's bundled pip
+  - Package floors in `pyproject.toml` for `mcp` / `ruff` / `mypy` are unchanged; `uv.lock` remains gitignored and is not part of the published artifact
+- **MCP default toolset hygiene** - Removed dead/deprecated intelligence tools from `DEFAULT_TOOLS` so the default MCP server no longer registers tools that always fail or return empty:
+  - Dropped: `intelligence.earnings_confirmed`, `intelligence.earnings_surprises`, `intelligence.stock_news_sentiments`, `intelligence.historical_social_sentiment`, `intelligence.trending_social_sentiment`, `intelligence.social_sentiment_changes`
+  - Client methods remain importable; custom manifests can still opt in explicitly
+- **MCP tools reference is complete and self-checking** (#123) - `docs/mcp/tools.md` was missing four whole client sections and carried stale counts:
+  - Added the `Batch` (30), `Index` (6), `SEC` (12), and `Transcripts` (4) sections, plus the previously undocumented `company.profile_cik`
+  - Every section now states both numbers — catalog tools and how many are in `DEFAULT_TOOLS` — with the convention explained once in the header (224 catalog / 159 default)
+  - A guard test asserts every discovered tool key appears in the doc and that the header totals match, so the reference cannot silently drift again
+- **tests/ is now type-checked** (#125) - Removed `tests/` from the mypy exclude list so test annotations are verified instead of decorative:
+  - Added a `tests.*` override that relaxes `disallow_untyped_defs` / `disallow_incomplete_defs`, so wrong annotations are caught without requiring complete ones
+  - Fixed the 76 latent errors this surfaced (narrowing asserts, explicit annotations, targeted `type: ignore`s); no test behavior or assertions changed
+  - `nox -s typecheck` now runs mypy over `fmp_data` and `tests`
+  - Remaining work: tighten the override directory by directory until `tests/` inherits the strict settings
 - **Volume Type Normalization** - Normalized price-model volume fields to always deserialize as `float`:
   - `alternative.HistoricalPrice.volume` and `alternative.HistoricalPrice.unadjusted_volume` now normalize whole-number payloads such as `123` to `123.0`
   - `company.IntradayPrice.volume` now normalizes whole-number payloads to `float` as well
   - This keeps a single return type for price-volume fields when FMP mixes integer and fractional responses
   - Release impact: treat this as a minor release because the runtime type and generated schema change from integer to number for these fields
+- **GitHub Actions Maintenance** - Updated workflow actions to current upstream releases:
+  - Bumped `actions/deploy-pages` from `v4` to `v5` in the documentation workflow
+  - Bumped `codecov/codecov-action` from `v5` to `v6` in CI coverage uploads
+  - Bumped `actions/github-script` from `v8` to `v9` in the TestPyPI publishing workflow
+  - Bumped `pypa/gh-action-pypi-publish` from `v1.13.0` to `v1.14.0` in publishing workflows
+- **VCR Cassettes Excluded from Git** - Cassettes are now gitignored (`tests/integration/vcr_cassettes/`) because they are too large for GitHub (130 MB+ individual files). Developers must record cassettes locally with `FMP_TEST_API_KEY`.
+- **CI Secret Scan** - The `secret-scan` job now gracefully skips when no cassette YAML files are present instead of failing.
+- **Cassette Contract Test** - `test_vcr_cassettes_match_endpoint_models` now skips with a clear message when no cassettes are found, instead of silently passing.
+- **Documentation** - Enhanced `CLAUDE.md` with best practices:
+  - Added critical testing strategy reminders for validating successful API responses
+  - Documented historical price endpoint variants (`/full`, `/light`, `/non-split-adjusted`, `/dividend-adjusted`)
+  - Added endpoint definition guidelines to prevent future 404 errors
+  - Established deprecation handling process for removed FMP endpoints
+- **Testing** - Enabled parallel pytest runs for local Makefile/nox usage and added `pytest-xdist` to dev dependencies (CI remains serial to avoid stalls).
+- **Makefile** - `.venv/.installed` now tracks `pyproject.toml` changes to auto-refresh dev deps.
 
 ### Fixed
-- **Bulk CSV Volume String Coercion** (#104) - Fixed silent bulk row drops when FMP sends volume as a fractional numeric string:
-  - `coerce_volume_value` now coerces numeric strings such as `"475.9"` via `int(float(...))` for `CompanyProfile` / `Quote` volume fields
-  - Empty/whitespace volume cells become `None`; non-numeric strings still surface as validation errors
-  - Addresses ~9.7% row loss on `profile-bulk` (and other bulk CSV endpoints that use the same helper). Refs #70
+- **Mapping drift between semantics and client methods** (#114) - Corrected `method_name` values that no client method implemented, which made `register_from_manifest` fail for tools that discovery advertised:
+  - `intelligence.crowdfunding_search` → `search_crowdfunding`, `intelligence.equity_offering_search` → `search_equity_offering` (endpoint-map keys renamed to match)
+  - Same class of drift fixed in neighbouring clients found by the new guard test: `market.search` → `search_company`, `institutional.cik_mapper` → `get_cik_mappings` (semantics key renamed to `cik_mappings`), `institutional.cik_mapper_by_name` → `search_cik_by_name`
+  - `resolve_semantics_for_endpoint` now also matches on `method_name` (not only exact key / `get_` strip), so the renamed entries still pair with their semantics
+  - New unit tests assert every discovered tool's `method_name` resolves on a live client via `_resolve_attr`, and that discovery is non-empty under the `mcp` extra alone
+- **Ghost intelligence semantics** (#115) - Removed `intelligence.institutional_holders` and `intelligence.financial_reports_dates`, which advertised methods owned by the institutional and fundamental clients:
+  - They could never register, and their key-only tool names collided with the real `institutional.institutional_holders` / `fundamental.financial_reports_dates` tools
+  - The real tools remain available on their owning clients
+- **MCP semantics import no longer requires the langchain extra** - `fmp_data.lc` defers langchain-heavy imports so `fmp_data.lc.models` (and therefore domain `mapping.py` modules / MCP discovery) load with `fmp-data[mcp]` alone
+- **LC category validation picked the wrong endpoint group** (#122) - `ValidationRuleRegistry.validate_category` matched the *first* registered group whose prefix matched, so a shorter prefix in an earlier group swallowed a longer, exact match in the right one — company's `get_price_target` claimed intelligence's `get_price_target_news` and `get_price_target_latest_news`, failing them with a bogus "belongs to Company Information" mismatch. It now prefers the longest matching prefix, which the owning group always supplies because endpoint-map keys *are* method names
+- **Two intelligence tools advertised capabilities they do not have** - Repairing the drifted endpoints made both of these register as live LangChain tools for the first time, which exposed the mismatch:
+  - `intelligence.stock_news` described itself as "stock-specific news" with `"Get stock news for AAPL"` as its lead example, but `STOCK_NEWS_ENDPOINT` accepts only `page` / `start_date` / `end_date` / `limit`. LC's `create_tool` calls `client.request(endpoint, **kwargs)` directly rather than the sync client method that delegates when `symbol` is passed, so a symbol-scoped query matched a tool that ignored the symbol and returned the global feed. It is in `DEFAULT_TOOLS`, so this affected MCP too. Description and example queries now describe the unfiltered feed
+  - `intelligence.stock_news_sentiments` is deprecated and returns `[]` without calling upstream, and `docs/mcp/tools.md` already said so — the semantics table was the one place that did not, so the vector store surfaced it for sentiment queries and returned an empty success. Now marked deprecated in its description, with its matching terms retargeted so it stops competing for live sentiment queries
+- **LangChain registry drops most of the catalog** (#121) - `EndpointRegistry.register_batch()` raised on the first endpoint that failed validation, so `setup_registry()` skipped the rest of that client group:
+  - `register_batch()` now registers every valid endpoint, collects the failures, and returns them as a `{endpoint_name: error}` mapping instead of raising
+  - `setup_registry()` logs a per-group summary of skipped endpoints rather than dropping the group
+  - Registered endpoints went from 75 to the full 168 with the semantics fixes below
+- **Endpoint semantics drift** (#123) - Fixed the 27 endpoints that failed registry validation:
+  - Added missing parameter hints for `analyst_estimates`, `intraday_prices`, `employee_count`, `geographic_revenue_segmentation`, `owner_earnings`, `market_hours`, `search_by_cik`, the sector/industry performance and PE endpoints, `form_13f`, `institutional_holders`, `institutional_holdings`, `insider_trades`, `cik_mapper`, `cik_mapper_by_name`, and `equity_offering_rss`
+  - Removed hints for parameters the endpoints do not accept (`stock_news.tickers`, `stock_news_sentiments` date/limit hints, `institutional_holdings.includeCurrentQuarter`, `cik_mapper_by_name.name`)
+  - Corrected `aftermarket_trade`, `aftermarket_quote`, and `stock_price_change` to the Company Information category that matches the client they live on
+  - Historical sector/industry endpoints now hint the actual `from`/`to` query params instead of `start_date`/`end_date`
+  - Added shared `PAGE_HINT`, `SECTOR_HINT`, `INDUSTRY_HINT`, `YEAR_HINT`, `QUARTER_HINT`, `CIK_HINT`, and `FROM_TO_DATE_HINTS` to `fmp_data.lc.hints`
+  - New guard tests assert the whole catalog pairs with semantics and passes validation, so future drift fails in CI
+- **`company.intraday_price` semantics drift** (#123) - The `intraday_price` alias shares `get_intraday_prices` with the `intraday_prices` entry but hinted only `symbol`/`interval`. It is a `DEFAULT_TOOLS` entry, and registry validation never saw it because the endpoint-map key pairs with `intraday_prices` first. It now hints `start_date`, `end_date`, and `nonadjusted` like its twin, and a semantics-first guard test covers alias entries that no endpoint key selects.
+- **Stale `client_name` on company price/quote semantics** (#123) - Eight `COMPANY_ENDPOINTS_SEMANTICS` entries (`quote`, `simple_quote`, `intraday_price(s)`, `historical_price(s)`, `market_cap`, `historical_market_cap`) declared `client_name="market"`, but the methods live on `CompanyClient`. Nothing dispatches on this field, so the effect was limited to wrong metadata in the semantics table.
+- **`InstitutionalOwnershipDates.cik`** - The API returns `cik` on Form 13F filing dates; it is now a declared optional field instead of relying on extra-field passthrough
+- **Historical Earnings 404** (#111) - Fixed `get_historical_earnings()` returning nothing:
+  - The endpoint pointed at the legacy `historical/earning-calendar` path, which 404s on `/stable`
+  - Now uses the stable `/earnings` path (same family as company earnings)
+  - Integration test asserts a non-empty response so a future path break fails loudly (re-record local VCR cassettes after path changes; cassettes are gitignored)
+- **Dead earnings endpoints soft-fail** (#111) - `get_earnings_confirmed()` and `get_earnings_surprises()` (sync and async) now emit `DeprecationWarning` and return `[]` without calling the upstream 404 paths (same soft-fail pattern as `get_stock_news_sentiments`)
 - **Cache Payload Isolation** - Prevented mutable cached payloads from being shared by reference:
   - `BaseClient` now deep-copies cache payloads on both cache read and write paths
   - Added sync and async regression coverage to prevent future cache aliasing regressions
@@ -55,10 +142,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Made `adj_close` and `unadjusted_volume` fields optional in `HistoricalPrice` model
   - Fixed `FOREX_HISTORICAL` endpoint to use correct response model (`ForexHistoricalPrice` instead of `ForexPriceHistory`)
   - Updated unit test mocks to match actual `/full` endpoint response format (flat list structure)
-- **Test Coverage** - Improved patch coverage to 100% for deprecation warnings:
+- **Test Coverage** - Improved patch coverage for deprecation warnings:
   - Added async test for `get_stock_news_sentiments()` deprecation warning
   - Enhanced sync test to validate `DeprecationWarning` emission
-  - All 866 unit tests now passing with proper coverage of warning code paths
 - **Missing Data Defaults** - Normalized economic and intelligence models to keep missing values as `None`:
   - `EconomicEvent.country` now defaults to `None` instead of empty string
   - `EconomicEvent.change_percent` now defaults to `None` instead of `0`
@@ -93,6 +179,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Cassette Contract Test** - Enhanced to run in `warn` mode and assert zero uncaptured fields (excluding dynamic SEC XBRL taxonomy keys in AsReported models)
 
 ### Deprecated
+- **Confirmed Earnings & Earnings Surprises Endpoints** (#111) - Marked `get_earnings_confirmed()` and `get_earnings_surprises()` as deprecated on sync and async clients:
+  - Upstream paths `earning-calendar-confirmed` and `earnings-surprises` 404 on `/stable`
+  - Methods emit `DeprecationWarning` and return `[]` without making an HTTP call (soft-fail; see Fixed above)
+  - Prefer `get_earnings_calendar(include_report_times=True)` and read `confirmed` plus session `time` (`"bmo"` / `"amc"` — not a drop-in for the old HH:MM clock string on `EarningConfirmed`)
+  - Prefer `get_historical_earnings()` and compare `eps` vs `eps_estimated` (old surprise model used `actual_earning_result` / `estimated_earning`)
+  - `EarningConfirmed` and `EarningSurprise` models remain importable; removal planned for the next major version
 - **Stock News Sentiments Endpoint** - Marked `get_stock_news_sentiments()` as deprecated:
   - FMP API no longer supports the `stock-news-sentiments-rss-feed` endpoint (returns 404)
   - Both sync and async methods now emit `DeprecationWarning` with clear migration message
@@ -103,37 +195,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **HTTP Error Traceback Redaction** - Suppressed exception chaining for HTTP status errors so formatted tracebacks do not expose API key query parameters:
   - Updated rate limit, authentication, validation, and fallback HTTP error paths to raise sanitized package exceptions without chaining the raw `httpx.HTTPStatusError`
   - Added regression coverage for API key redaction in formatted tracebacks and exception messages
-- **HTTP Error Payload & Binary Path Redaction** (#97) - Expanded API-key redaction beyond traceback cause suppression:
-  - Redact reflected keys in HTTP error detail payloads (query-string, percent-encoded, nested JSON, and known key names)
-  - Route binary (`response_model is bytes`) status failures through the same typed FMP error mapper
-  - Safely decode non-UTF-8 error bodies, redact 429 bodies before rate-limiter logging, and keep mapped 5xx `FMPError`s retryable
-  - Added regression coverage for sync/async binary paths, non-UTF-8 bodies, and message embedding of error details
+
 - **VCR Cassette Leak Guard** - Added unit tests that scan all committed VCR cassettes for leaked API keys:
   - `test_vcr_sanitization.py` verifies the VCR `scrub_api_key` / `scrub_response_secrets` hooks and scans every YAML cassette for real API key values
   - `test_cassette_contracts.py` validates every cassette response against its declared Pydantic endpoint model, catching schema drift and stale cassettes
   - Pre-commit `detect-secrets` hook now excludes only Python test files (`tests/.*\.py$`), ensuring cassette YAML files are always scanned
   - CI `secret-scan` job explicitly targets `tests/integration/vcr_cassettes/` as an additional safety net
 
+## [2.4.0] - 2026-07-13
+
+Released from `dev` via #106 (HTTP redaction, bulk volume fix, dependency refresh).
+
+### Fixed
+- **Bulk CSV Volume String Coercion** (#104) - Fixed silent bulk row drops when FMP sends volume as a fractional numeric string:
+  - `coerce_volume_value` now coerces numeric strings such as `"475.9"` via `int(float(...))` for `CompanyProfile` / `Quote` volume fields
+  - Empty/whitespace volume cells become `None`; non-numeric strings still surface as validation errors
+  - Addresses ~9.7% row loss on `profile-bulk` (and other bulk CSV endpoints that use the same helper). Refs #70
+
+### Security
+- **HTTP Error Payload & Binary Path Redaction** (#97) - Expanded API-key redaction beyond traceback cause suppression:
+  - Redact reflected keys in HTTP error detail payloads (query-string, percent-encoded, nested JSON, and known key names)
+  - Route binary (`response_model is bytes`) status failures through the same typed FMP error mapper
+  - Safely decode non-UTF-8 error bodies, redact 429 bodies before rate-limiter logging, and keep mapped 5xx `FMPError`s retryable
+  - Added regression coverage for sync/async binary paths, non-UTF-8 bodies, and message embedding of error details
+
 ### Changed
-- **GitHub Actions Maintenance** - Updated workflow actions to current upstream releases:
-  - Bumped `actions/deploy-pages` from `v4` to `v5` in the documentation workflow
-  - Bumped `codecov/codecov-action` from `v5` to `v6` in CI coverage uploads
-  - Bumped `actions/github-script` from `v8` to `v9` in the TestPyPI publishing workflow
-  - Bumped `pypa/gh-action-pypi-publish` from `v1.13.0` to `v1.14.0` in publishing workflows
 - **Dependency Refresh** (#105) - Raised GitHub Actions and Python package floors to current stable releases:
   - Actions: `checkout` 7, `setup-python` 6.3, `setup-uv` 8.3.2, `cache` 6.1, `codecov-action` 7, and related workflow pins
   - Python: pydantic 2.13, redis 8 (cache-redis extra), mypy 2.x, rich 15, langchain/openai/mcp stack bumps, ruff/pytest/nox updates
   - Set mypy `python_version` to 3.12 for numpy 2.x stubs while keeping runtime support on 3.10+
-- **VCR Cassettes Excluded from Git** - Cassettes are now gitignored (`tests/integration/vcr_cassettes/`) because they are too large for GitHub (130 MB+ individual files). Developers must record cassettes locally with `FMP_TEST_API_KEY`.
-- **CI Secret Scan** - The `secret-scan` job now gracefully skips when no cassette YAML files are present instead of failing.
-- **Cassette Contract Test** - `test_vcr_cassettes_match_endpoint_models` now skips with a clear message when no cassettes are found, instead of silently passing.
-- **Documentation** - Enhanced `CLAUDE.md` with best practices:
-  - Added critical testing strategy reminders for validating successful API responses
-  - Documented historical price endpoint variants (`/full`, `/light`, `/non-split-adjusted`, `/dividend-adjusted`)
-  - Added endpoint definition guidelines to prevent future 404 errors
-  - Established deprecation handling process for removed FMP endpoints
-- **Testing** - Enabled parallel pytest runs for local Makefile/nox usage and added `pytest-xdist` to dev dependencies (CI remains serial to avoid stalls).
-- **Makefile** - `.venv/.installed` now tracks `pyproject.toml` changes to auto-refresh dev deps.
 
 ## [2.1.0] - 2026-01-23
 
@@ -246,7 +336,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   # New (2.0.0+)
   vector_store = EndpointVectorStore.load(
       cache_dir,
-      allow_dangerous_deserialization=True  # Only if you trust the cache source
+      allow_dangerous_deserialization=True,  # Only if you trust the cache source
   )
   ```
 

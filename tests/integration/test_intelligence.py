@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from pydantic import HttpUrl
 import pytest
+import vcr
 
 from fmp_data import FMPDataClient
 from fmp_data.helpers import RemovedEndpointError
@@ -11,9 +12,7 @@ from fmp_data.intelligence.models import (
     CrowdfundingOfferingSearchItem,
     CryptoNewsArticle,
     DividendEvent,
-    EarningConfirmed,
     EarningEvent,
-    EarningSurprise,
     EquityOffering,
     EquityOfferingSearchItem,
     ESGBenchmark,
@@ -73,35 +72,24 @@ class TestIntelligenceEndpoints(BaseTestCase):
                     assert isinstance(event.eps_estimated, float)
 
     def test_get_earnings_confirmed(
-        self, fmp_client: FMPDataClient, vcr_instance, frozen_today: date
-    ):
-        """Test getting confirmed earnings"""
-        with vcr_instance.use_cassette("intelligence/earnings_confirmed.yaml"):
-            start_date = frozen_today
-            end_date = start_date + timedelta(days=30)
+        self, fmp_client: FMPDataClient, frozen_today: date
+    ) -> None:
+        """Deprecated confirmed calendar soft-fails with empty list (no HTTP)."""
+        start_date = frozen_today
+        end_date = start_date + timedelta(days=30)
 
-            events = self._handle_rate_limit(
-                fmp_client.intelligence.get_earnings_confirmed,
+        with pytest.warns(DeprecationWarning, match="get_earnings_confirmed"):
+            events = fmp_client.intelligence.get_earnings_confirmed(
                 start_date=start_date,
                 end_date=end_date,
             )
 
-            assert isinstance(events, list), "events is not a list"
-            if len(events) > 0:
-                for event in events:
-                    assert isinstance(
-                        event, EarningConfirmed
-                    ), "event tpye is not Earning Confirmed"
-                    if event.time is not None:
-                        assert isinstance(
-                            event.time, str
-                        ), "event time is not of type string, it"
-                    if event.event_date is not None:
-                        assert isinstance(
-                            event.event_date, datetime
-                        ), "event date is not of datetime type"
+        assert isinstance(events, list)
+        assert events == [], "Deprecated endpoint should return empty list"
 
-    def test_get_historical_earnings(self, fmp_client: FMPDataClient, vcr_instance):
+    def test_get_historical_earnings(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
+    ) -> None:
         """Test getting historical earnings"""
         with vcr_instance.use_cassette("intelligence/historical_earnings.yaml"):
             events = self._handle_rate_limit(
@@ -109,31 +97,68 @@ class TestIntelligenceEndpoints(BaseTestCase):
             )
 
             assert isinstance(events, list)
-            # API may return empty array if no historical data available
-            if len(events) > 0:
-                for event in events:
-                    assert isinstance(event, EarningEvent)
-                    assert event.symbol == "AAPL"
-                    assert isinstance(event.event_date, date)
-                    if event.time is not None:
-                        assert isinstance(event.time, str)
+            assert len(events) > 0
+            for event in events:
+                assert isinstance(event, EarningEvent)
+                assert event.symbol == "AAPL"
+                assert isinstance(event.event_date, date)
+                if event.time is not None:
+                    assert isinstance(event.time, str)
 
-    def test_get_earnings_surprises(self, fmp_client: FMPDataClient, vcr_instance):
-        """Test getting earnings surprises"""
-        with vcr_instance.use_cassette("intelligence/earnings_surprises.yaml"):
-            surprises = self._handle_rate_limit(
-                fmp_client.intelligence.get_earnings_surprises, "AAPL"
+    def test_get_historical_earnings_with_report_times(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
+    ) -> None:
+        """Report time fields are populated when include_report_times is set"""
+        with vcr_instance.use_cassette(
+            "intelligence/historical_earnings_report_times.yaml"
+        ):
+            events = self._handle_rate_limit(
+                fmp_client.intelligence.get_historical_earnings,
+                "AAPL",
+                include_report_times=True,
             )
 
-            assert isinstance(surprises, list)
-            # API may return empty array if no data available
-            if len(surprises) > 0:
-                for surprise in surprises:
-                    assert isinstance(surprise, EarningSurprise)
-                    assert surprise.symbol == "AAPL"
-                    assert isinstance(surprise.surprise_date, date)
-                    assert isinstance(surprise.actual_earning_result, float)
-                    assert isinstance(surprise.estimated_earning, float)
+            assert isinstance(events, list)
+            assert len(events) > 0
+            # At least one report carries the extra fields the flag unlocks
+            assert any(event.time in {"bmo", "amc"} for event in events)
+            assert any(event.confirmed is not None for event in events)
+            assert any(event.fiscal_period is not None for event in events)
+            for event in events:
+                if event.period_ending is not None:
+                    assert isinstance(event.period_ending, date)
+                if event.fiscal_year is not None:
+                    assert isinstance(event.fiscal_year, int)
+
+    def test_get_earnings_calendar_with_report_times(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR, frozen_today: date
+    ) -> None:
+        """Earnings calendar exposes report times when the flag is set"""
+        with vcr_instance.use_cassette(
+            "intelligence/earnings_calendar_report_times.yaml"
+        ):
+            events = self._handle_rate_limit(
+                fmp_client.intelligence.get_earnings_calendar,
+                start_date=frozen_today,
+                end_date=frozen_today + timedelta(days=30),
+                include_report_times=True,
+            )
+
+            assert isinstance(events, list)
+            assert len(events) > 0
+            assert any(event.confirmed is not None for event in events)
+            for event in events:
+                assert isinstance(event, EarningEvent)
+                if event.time is not None:
+                    assert event.time in {"bmo", "amc"}
+
+    def test_get_earnings_surprises(self, fmp_client: FMPDataClient) -> None:
+        """Deprecated surprises endpoint soft-fails with empty list (no HTTP)."""
+        with pytest.warns(DeprecationWarning, match="get_earnings_surprises"):
+            surprises = fmp_client.intelligence.get_earnings_surprises("AAPL")
+
+        assert isinstance(surprises, list)
+        assert surprises == [], "Deprecated endpoint should return empty list"
 
     def test_get_dividends_calendar(
         self, fmp_client: FMPDataClient, vcr_instance, frozen_today: date
