@@ -503,7 +503,15 @@ class EndpointRegistry:
         """
         try:
             info = EndpointInfo(endpoint=endpoint, semantics=semantics)
+        except ValueError as e:
+            # pydantic's ValidationError subclasses ValueError, so a malformed
+            # pair is a tolerated per-endpoint skip that register_batch()
+            # reports at WARNING. Logging it again at ERROR would imply the
+            # whole batch failed.
+            self.logger.debug(f"Failed to build endpoint info for {name}: {e!s}")
+            raise
         except Exception as e:
+            # Outside the register_batch() contract: this aborts the batch.
             self.logger.error(
                 f"Failed to register endpoint {name}: {e!s}", exc_info=True
             )
