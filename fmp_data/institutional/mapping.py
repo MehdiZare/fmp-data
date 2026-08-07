@@ -63,16 +63,6 @@ PAGE_HINT = ParameterHint(
     context_clues=["page", "next", "previous", "results"],
 )
 
-NAME_HINT = ParameterHint(
-    natural_names=["company name", "entity name", "institution name"],
-    extraction_patterns=[
-        r"name[:\s]+(.+)",
-        r"company[:\s]+(.+)",
-    ],
-    examples=["Apple Inc", "Microsoft Corporation", "BlackRock"],
-    context_clues=["name", "company", "corporation", "entity"],
-)
-
 INSTITUTIONAL_TIME_PERIODS = {
     "quarterly": {
         "patterns": [
