@@ -215,6 +215,7 @@ class TestFMPDataClientContextManager:
             pass
 
         # Even with exception, client should be closed
+        assert httpx_client is not None
         assert httpx_client.is_closed
 
     def test_context_manager_not_initialized_error(self):
@@ -496,7 +497,7 @@ class TestFMPDataClientCleanup:
     def test_close_method_none_client(self):
         """Test close method when client is None"""
         client = FMPDataClient(api_key="test_key")
-        client.client = None
+        client.client = None  # type: ignore[assignment]
 
         # Should not raise exception
         client.close()
@@ -516,7 +517,9 @@ class TestFMPDataClientCleanup:
         client = FMPDataClient(api_key="test_key")
 
         # Mock client.close to raise exception
-        client.client.close = Mock(side_effect=Exception("Close error"))
+        client.client.close = Mock(  # type: ignore[method-assign]
+            side_effect=Exception("Close error")
+        )
 
         # Should handle exception gracefully
         client.close()
@@ -562,7 +565,7 @@ class TestFMPDataClientCleanup:
         client.client = Mock()
         logger_mock = Mock()
         client._logger = logger_mock
-        client.aclose = AsyncMock()
+        client.aclose = AsyncMock()  # type: ignore[method-assign]
 
         await client.__aexit__(ValueError, ValueError("boom"), None)
 

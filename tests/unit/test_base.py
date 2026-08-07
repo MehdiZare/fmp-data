@@ -273,6 +273,7 @@ def test_get_error_details_redacts_api_keys_in_raw_content():
 
     details = BaseClient._get_error_details(response)
 
+    assert isinstance(details, dict)
     assert fake_key_value not in repr(details)
     assert details["raw_content"].count("[REDACTED]") >= 1
 
@@ -285,6 +286,7 @@ def test_get_error_details_redacts_api_keys_in_scalar_json():
 
     details = BaseClient._get_error_details(response)
 
+    assert isinstance(details, dict)
     assert fake_key_value not in repr(details)
     assert "[REDACTED]" in details["raw_content"]
 
@@ -296,6 +298,7 @@ def test_get_error_details_handles_non_utf8_body():
 
     details = BaseClient._get_error_details(response)
 
+    assert isinstance(details, dict)
     assert "raw_content" in details
     assert isinstance(details["raw_content"], str)
 
@@ -310,6 +313,7 @@ def test_sanitize_error_details_top_level_string_and_list():
     redacted_list = _sanitize_error_details(
         [f"apikey={fake_key_value}", {"count": 1, "api-key": fake_key_value}]
     )
+    assert isinstance(redacted_list, list)
     assert fake_key_value not in repr(redacted_list)
     assert redacted_list[1]["count"] == 1
     assert redacted_list[1]["api-key"] == "[REDACTED]"
@@ -704,7 +708,7 @@ def test_validate_single_item_primitives_and_model():
     }
 
     endpoint.response_model = SingleField
-    result = BaseClient._validate_single_item(endpoint, 7)
+    result: SingleField = BaseClient._validate_single_item(endpoint, 7)
     assert isinstance(result, SingleField)
     assert result.value == 7
 
@@ -747,7 +751,7 @@ def test_process_response_warn_mode_logs_unknown_fields() -> None:
     endpoint.response_model = ExtraAllowModel
 
     with patch("fmp_data.base.logger.warning") as mock_warning:
-        result = BaseClient._process_response(
+        result: ExtraAllowModel | list[ExtraAllowModel] = BaseClient._process_response(
             endpoint, {"value": 1, "unexpected": 2}, validation_mode="warn"
         )
 

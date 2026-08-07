@@ -1,6 +1,8 @@
 # tests/unit/test_models.py
 """Tests for the models module, particularly the validate_params method."""
 
+from typing import Any
+
 import pytest
 
 from fmp_data.exceptions import ValidationError
@@ -203,7 +205,7 @@ class TestBuildParamLookup:
 
     def test_lookup_contains_names_and_aliases(self):
         """Test that lookup contains both param names and aliases."""
-        endpoint = Endpoint(
+        endpoint: Endpoint[Any] = Endpoint(
             name="test",
             path="test",
             version=APIVersion.STABLE,

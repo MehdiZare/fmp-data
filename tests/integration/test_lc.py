@@ -140,13 +140,15 @@ class TestLangChainIntegration:
                 assert len(tools) > 0
 
                 if provider == "openai":
-                    assert all(isinstance(tool, dict) for tool in tools)
+                    dict_tools = [tool for tool in tools if isinstance(tool, dict)]
+                    assert len(dict_tools) == len(tools)
                     assert all(
-                        "name" in tool and "description" in tool for tool in tools
+                        "name" in tool and "description" in tool for tool in dict_tools
                     )
                 elif provider == "anthropic":
-                    assert all(isinstance(tool, dict) for tool in tools)
-                    assert all("parameters" in tool for tool in tools)
+                    dict_tools = [tool for tool in tools if isinstance(tool, dict)]
+                    assert len(dict_tools) == len(tools)
+                    assert all("parameters" in tool for tool in dict_tools)
                 else:
                     StructuredTool = importlib.import_module(
                         "langchain_core.tools"

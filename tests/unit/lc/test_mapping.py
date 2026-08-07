@@ -1,5 +1,7 @@
 # tests/lc/test_mapping.py
 
+from typing import Any, cast
+
 from fmp_data.lc.mapping import (
     ALL_ENDPOINT_MAP,
     ALL_ENDPOINT_SEMANTICS,
@@ -68,8 +70,8 @@ def test_endpoint_group_organization():
     errors = []
 
     for group_name, group_data in ENDPOINT_GROUPS.items():
-        endpoint_map = group_data["endpoint_map"]
-        semantics_map = group_data["semantics_map"]
+        endpoint_map = cast(dict[str, Any], group_data["endpoint_map"])
+        semantics_map = cast(dict[str, Any], group_data["semantics_map"])
 
         # Track missing semantic mappings for this group
         missing_semantics = []

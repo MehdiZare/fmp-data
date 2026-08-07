@@ -121,7 +121,9 @@ class TestAclose:
 
         # Initialize async client
         async_client = client._setup_async_client()
-        assert not async_client.is_closed
+        # Read through a local so mypy does not pin the property to Literal[False]
+        closed_before = async_client.is_closed
+        assert not closed_before
 
         # Close it
         await client.aclose()
@@ -226,13 +228,15 @@ class TestAsyncRateLimitHandling:
 
         # Mock get_wait_time to return 0 so we don't actually wait
         original_get_wait_time = client._rate_limiter.get_wait_time
-        client._rate_limiter.get_wait_time = lambda: 0.001
+        client._rate_limiter.get_wait_time = lambda: 0.001  # type: ignore[method-assign]
 
         try:
             with pytest.raises(RateLimitError, match="Rate limit exceeded"):
                 await client.request_async(sample_endpoint, symbol="AAPL")
         finally:
-            client._rate_limiter.get_wait_time = original_get_wait_time
+            client._rate_limiter.get_wait_time = (  # type: ignore[method-assign]
+                original_get_wait_time
+            )
 
         await client.aclose()
 
@@ -251,8 +255,11 @@ class TestAcloseCleanup:
         sync_client = client.client  # Access sync client
         async_client = client._setup_async_client()  # Create async client
 
-        assert not sync_client.is_closed
-        assert not async_client.is_closed
+        # Read through locals so mypy does not pin the properties to Literal[False]
+        sync_closed_before = sync_client.is_closed
+        async_closed_before = async_client.is_closed
+        assert not sync_closed_before
+        assert not async_closed_before
 
         # aclose should close both
         await client.aclose()

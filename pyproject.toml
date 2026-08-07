@@ -242,7 +242,6 @@ disable_error_code = [
     "type-arg",
 ]
 exclude = [
-    "tests/",
     "examples/",
     "scripts/",
     "build/",
@@ -297,6 +296,22 @@ module = [
     "fmp_data.lc.*",
     "fmp_data.mcp.*",
 ]
+ignore_missing_imports = true
+disable_error_code = [
+    "import-untyped",
+    "import-not-found",
+]
+
+# tests/ is type-checked so annotations are verified rather than decorative,
+# but complete annotations are not yet required. Tracking issue: #125 —
+# tighten by dropping these flags directory by directory.
+[[tool.mypy.overrides]]
+module = [
+    "tests.*",
+    "conftest",
+]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
 ignore_missing_imports = true
 disable_error_code = [
     "import-untyped",

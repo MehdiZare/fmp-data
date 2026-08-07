@@ -53,7 +53,9 @@ def fmp_client(mock_client: Mock) -> FMPDataClient:
     # Replace the intelligence client with our properly mocked one
     mock_base_client = Mock()
     client._intelligence = MarketIntelligenceClient(mock_base_client)
-    client._intelligence.client.request = mock_client.request
+    client._intelligence.client.request = (  # type: ignore[method-assign]
+        mock_client.request
+    )
     return client
 
 

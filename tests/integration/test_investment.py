@@ -264,7 +264,11 @@ class TestInvestmentEndpoints(BaseTestCase):
             result = self._handle_rate_limit(
                 fmp_client.investment.get_etf_info, "INVALID_SYMBOL"
             )
-            assert result is None or (isinstance(result, list) and len(result) == 0)
+            # Defensive: the endpoint returns a model, but an empty list has been
+            # observed for unknown symbols.
+            assert result is None or (
+                isinstance(result, list) and len(result) == 0  # type: ignore[unreachable]
+            )
 
     def test_error_handling_invalid_date(
         self,
