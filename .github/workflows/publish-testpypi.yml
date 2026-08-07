@@ -109,7 +109,7 @@ jobs:
           fi
 
       - name: 🧪  Upload to Test PyPI
-        uses: pypa/gh-action-pypi-publish@v1.14.1
+        uses: pypa/gh-action-pypi-publish@v1.14.2
         with:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: dist
@@ -201,7 +201,7 @@ jobs:
           python -m build --wheel --sdist
 
       - name: 🚀  Upload to Test PyPI
-        uses: pypa/gh-action-pypi-publish@v1.14.1
+        uses: pypa/gh-action-pypi-publish@v1.14.2
         with:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: dist
