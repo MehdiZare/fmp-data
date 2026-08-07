@@ -101,7 +101,9 @@ class TestValidationRuleRegistry:
         assert "No matching rule found" in message
 
     def test_validate_category_prefers_longest_prefix(
-        self, market_endpoints, alternative_endpoints
+        self,
+        market_endpoints: dict[str, Endpoint[Any]],
+        alternative_endpoints: dict[str, Endpoint[Any]],
     ) -> None:
         """A more specific prefix wins over a shorter one registered earlier.
 
@@ -174,3 +176,34 @@ class TestValidationRuleRegistry:
             == SemanticCategory.ALTERNATIVE_DATA
         )
         assert registry.get_expected_category("invalid_method") is None
+
+    def test_get_expected_category_prefers_longest_prefix(
+        self,
+        market_endpoints: dict[str, Endpoint[Any]],
+        alternative_endpoints: dict[str, Endpoint[Any]],
+    ) -> None:
+        """Ownership must not depend on which public method you ask.
+
+        ``validate_category`` picks the most specific prefix; this method has to
+        agree, or the same endpoint belongs to two different categories
+        depending on the entry point.
+        """
+        registry = ValidationRuleRegistry()
+        # Shorter, unrelated prefix registered first.
+        registry.register_rule(
+            EndpointBasedRule(
+                {"get_market": market_endpoints["get_market_data"]},
+                SemanticCategory.MARKET_DATA,
+            )
+        )
+        registry.register_rule(
+            EndpointBasedRule(
+                {"get_market_data_feed": market_endpoints["get_market_data"]},
+                SemanticCategory.ALTERNATIVE_DATA,
+            )
+        )
+
+        assert (
+            registry.get_expected_category("get_market_data_feed")
+            == SemanticCategory.ALTERNATIVE_DATA
+        )

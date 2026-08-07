@@ -318,6 +318,28 @@ class ValidationRuleRegistry:
         self._rules.append(rule)
         self.logger.debug(f"Registered validation rule: {rule.__class__.__name__}")
 
+    def _find_matching_rule(self, method_name: str) -> ValidationRule | None:
+        """Find the rule that owns a method name.
+
+        Longest prefix wins. Group prefixes are the endpoint-map keys, which are
+        themselves method names, so the owning group always contributes an exact
+        (hence maximal-length) match. A first-match scan would instead hand the
+        endpoint to whichever group happens to be registered first among those
+        with a shorter prefix -- e.g. intelligence's ``get_price_target_news``
+        being claimed by company's ``get_price_target``.
+
+        Every caller must go through here: ownership cannot depend on which
+        public method the question is asked through.
+        """
+        matching_rule: ValidationRule | None = None
+        best_prefix_len = -1
+        for rule in self._rules:
+            for prefix in rule.endpoint_prefixes:
+                if method_name.startswith(prefix) and len(prefix) > best_prefix_len:
+                    matching_rule = rule
+                    best_prefix_len = len(prefix)
+        return matching_rule
+
     def validate_category(
         self, method_name: str, category: SemanticCategory
     ) -> tuple[bool, str]:
@@ -329,22 +351,7 @@ class ValidationRuleRegistry:
         if not category_rules:
             return False, f"No rules found for category {category.value}"
 
-        # Find matching rule based on prefix patterns.
-        #
-        # Longest prefix wins. Group prefixes are the endpoint-map keys, which
-        # are themselves method names, so the owning group always contributes an
-        # exact (hence maximal-length) match. A first-match scan would instead
-        # hand the endpoint to whichever group happens to be registered first
-        # among those with a shorter prefix -- e.g. intelligence's
-        # ``get_price_target_news`` being claimed by company's
-        # ``get_price_target``.
-        matching_rule: ValidationRule | None = None
-        best_prefix_len = -1
-        for rule in self._rules:
-            for prefix in rule.endpoint_prefixes:
-                if method_name.startswith(prefix) and len(prefix) > best_prefix_len:
-                    matching_rule = rule
-                    best_prefix_len = len(prefix)
+        matching_rule = self._find_matching_rule(method_name)
 
         if matching_rule:
             if matching_rule.expected_category != category:
@@ -383,10 +390,8 @@ class ValidationRuleRegistry:
 
     def get_expected_category(self, method_name: str) -> SemanticCategory | None:
         """Determine the expected category for a method name."""
-        for rule in self._rules:
-            if any(method_name.startswith(prefix) for prefix in rule.endpoint_prefixes):
-                return rule.expected_category
-        return None
+        matching_rule = self._find_matching_rule(method_name)
+        return matching_rule.expected_category if matching_rule else None
 
 
 class EndpointRegistry:
