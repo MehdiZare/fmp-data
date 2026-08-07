@@ -58,6 +58,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **MCP default toolset hygiene** - Removed dead/deprecated intelligence tools from `DEFAULT_TOOLS` so the default MCP server no longer registers tools that always fail or return empty:
   - Dropped: `intelligence.earnings_confirmed`, `intelligence.earnings_surprises`, `intelligence.stock_news_sentiments`, `intelligence.historical_social_sentiment`, `intelligence.trending_social_sentiment`, `intelligence.social_sentiment_changes`
   - Client methods remain importable; custom manifests can still opt in explicitly
+- **tests/ is now type-checked** (#125) - Removed `tests/` from the mypy exclude list so test annotations are verified instead of decorative:
+  - Added a `tests.*` override that relaxes `disallow_untyped_defs` / `disallow_incomplete_defs`, so wrong annotations are caught without requiring complete ones
+  - Fixed the 76 latent errors this surfaced (narrowing asserts, explicit annotations, targeted `type: ignore`s); no test behavior or assertions changed
+  - `nox -s typecheck` now runs mypy over `fmp_data` and `tests`
+  - Remaining work: tighten the override directory by directory until `tests/` inherits the strict settings
 - **Volume Type Normalization** - Normalized price-model volume fields to always deserialize as `float`:
   - `alternative.HistoricalPrice.volume` and `alternative.HistoricalPrice.unadjusted_volume` now normalize whole-number payloads such as `123` to `123.0`
   - `company.IntradayPrice.volume` now normalizes whole-number payloads to `float` as well
@@ -65,6 +70,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Release impact: treat this as a minor release because the runtime type and generated schema change from integer to number for these fields
 
 ### Fixed
+- **LangChain registry drops most of the catalog** (#121) - `EndpointRegistry.register_batch()` raised on the first endpoint that failed validation, so `setup_registry()` skipped the rest of that client group:
+  - `register_batch()` now registers every valid endpoint, collects the failures, and returns them as a `{endpoint_name: error}` mapping instead of raising
+  - `setup_registry()` logs a per-group summary of skipped endpoints rather than dropping the group
+  - Registered endpoints went from 73 to the full 159 with the semantics fixes below
+- **Endpoint semantics drift** (#123) - Fixed the 29 endpoints that failed registry validation:
+  - Added missing parameter hints for `analyst_estimates`, `intraday_prices`, `employee_count`, `geographic_revenue_segmentation`, `owner_earnings`, `market_hours`, `search_by_cik`, the sector/industry performance and PE endpoints, `form_13f`, `institutional_holders`, `institutional_holdings`, `insider_trades`, `cik_mapper`, `cik_mapper_by_name`, and `equity_offering_rss`
+  - Removed hints for parameters the endpoints do not accept (`stock_news.tickers`, `stock_news_sentiments` date/limit hints, `institutional_holdings.includeCurrentQuarter`, `cik_mapper_by_name.name`)
+  - Corrected `aftermarket_trade`, `aftermarket_quote`, and `stock_price_change` to the Company Information category that matches the client they live on
+  - Historical sector/industry endpoints now hint the actual `from`/`to` query params instead of `start_date`/`end_date`
+  - Added shared `PAGE_HINT`, `SECTOR_HINT`, `INDUSTRY_HINT`, `YEAR_HINT`, `QUARTER_HINT`, `CIK_HINT`, and `FROM_TO_DATE_HINTS` to `fmp_data.lc.hints`
+  - New guard tests assert the whole catalog pairs with semantics and passes validation, so future drift fails in CI
+- **Broken `market.search` MCP tool** - The market `search` semantics pointed at a `search` method that does not exist on `MarketClient`; it now resolves to `search_company`, and `setup_registry()` falls back to matching semantics by `method_name` (which also pairs `investment.search_fund_disclosure_holders`)
+- **`InstitutionalOwnershipDates.cik`** - The API returns `cik` on Form 13F filing dates; it is now a declared optional field instead of relying on extra-field passthrough
 - **Historical Earnings 404** (#111) - Fixed `get_historical_earnings()` returning nothing:
   - The endpoint pointed at the legacy `historical/earning-calendar` path, which 404s on `/stable`
   - Now uses the stable `/earnings` path (same family as company earnings)
