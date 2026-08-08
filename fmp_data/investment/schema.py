@@ -4,6 +4,7 @@ from datetime import date
 
 from pydantic import Field
 
+from fmp_data.models import CIK
 from fmp_data.schema import BaseArgModel, BaseEnum, SymbolArg
 
 
@@ -94,7 +95,7 @@ class WeightingArgs(SymbolArg):
 class PortfolioDateArgs(SymbolArg):
     """Arguments for getting portfolio dates"""
 
-    cik: str | None = Field(
+    cik: CIK | None = Field(
         None,
         description="CIK number (required for mutual funds)",
         pattern=r"^\d{10}$",

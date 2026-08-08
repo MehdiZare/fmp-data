@@ -3,10 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar
+from typing import TYPE_CHECKING, Annotated, Any, Generic, Literal, TypeVar
 import warnings
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 if TYPE_CHECKING:
@@ -32,6 +32,29 @@ default_model_config = ConfigDict(
     extra="allow",
     alias_generator=to_camel,
 )
+
+
+def _coerce_cik(value: Any) -> Any:
+    """Coerce an integer CIK to its canonical zero-padded string form.
+
+    A CIK is a fixed-width 10-digit zero-padded identifier. Every FMP
+    endpoint observed returning one returns a string (probed 2026-08-07),
+    but JSON producers drop leading zeros routinely, so an int is coerced
+    rather than rejected.
+
+    Strings pass through untouched: re-padding would rewrite whatever the
+    API actually sent, which is a larger claim than the evidence supports.
+    ``bool`` is excluded because it subclasses ``int``.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return f"{value:010d}"
+    return value
+
+
+# SEC Central Index Key, coerced from int to a 10-digit zero-padded string.
+CIK = Annotated[str, BeforeValidator(_coerce_cik)]
 
 
 class HTTPMethod(str, Enum):
@@ -73,6 +96,7 @@ class ParamType(str, Enum):
     BOOLEAN = "boolean"
     DATE = "date"
     DATETIME = "datetime"
+    CIK = "cik"
 
     def convert_value(self, value: Any) -> Any:
         """Convert value to the appropriate type"""
@@ -92,6 +116,8 @@ class ParamType(str, Enum):
                 return self._convert_to_date(value)
             if self is ParamType.DATETIME:
                 return self._convert_to_datetime(value)
+            if self is ParamType.CIK:
+                return self._convert_to_cik(value)
             raise ValueError(f"Unsupported type: {self}")
         except (ValueError, TypeError) as e:
             raise ValueError(
@@ -100,6 +126,30 @@ class ParamType(str, Enum):
 
     def _convert_to_string(self, value: Any) -> str:
         return str(value)
+
+    def _convert_to_cik(self, value: Any) -> str:
+        """Convert a CIK request parameter to its canonical wire form.
+
+        FMP matches a CIK as a fixed-width 10-digit zero-padded string, so
+        ``str(320193)`` -- what a plain STRING param would produce -- is a
+        lookup that succeeds and returns nothing.
+
+        This pads *numeric strings* too, which the response-side coercer
+        deliberately does not: inbound, re-padding would misreport what the
+        API actually sent, but outbound the padded form is simply the
+        correct request and there is nothing to misreport. A non-numeric
+        string is passed through so a bad value surfaces as an API error
+        rather than being silently mangled into one.
+
+        ``bool`` is rejected rather than stringified, matching the response
+        side where pydantic refuses it: ``cik=True`` is never a real lookup.
+        """
+        if isinstance(value, bool):
+            raise ValueError("CIK must be a string or an integer, not a bool")
+        if isinstance(value, int):
+            return f"{value:010d}"
+        text = str(value)
+        return text.zfill(10) if text.isdigit() else text
 
     def _convert_to_integer(self, value: Any) -> int:
         return int(value)
@@ -137,6 +187,27 @@ class EndpointParam:
     default: Any = None
     alias: str | None = None
     valid_values: list[Any] | None = None
+
+    def __post_init__(self) -> None:
+        """Normalise ``valid_values`` to the values that travel over the wire.
+
+        Endpoints may declare ``valid_values`` as enum members
+        (``valid_values=list(EconomicIndicatorType)``). Every consumer wants
+        the wire value, not the member: ``validate_value`` compares against a
+        converted request value, and ``EndpointBasedRule._get_type_pattern``
+        builds a regex from them. Unwrapping once here means neither consumer
+        has to special-case ``Enum``.
+
+        Only ``Enum`` is unwrapped -- values keep their native type. Coercing
+        everything to ``str`` would break the membership check below for
+        integer-typed params such as ``transcripts.quarter``
+        (``valid_values=[1, 2, 3, 4]``), whose converted value is an ``int``.
+        """
+        if self.valid_values is not None:
+            self.valid_values = [
+                value.value if isinstance(value, Enum) else value
+                for value in self.valid_values
+            ]
 
     def validate_value(self, value: Any) -> Any:
         """Validate and convert parameter value.

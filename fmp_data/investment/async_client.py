@@ -104,7 +104,7 @@ class AsyncInvestmentClient(AsyncEndpointGroup):
 
     # Mutual Fund methods
     async def get_mutual_fund_dates(
-        self, symbol: str, cik: str | None = None
+        self, symbol: str, cik: str | int | None = None
     ) -> list[date]:
         """Get mutual fund/ETF disclosure dates
 
@@ -115,13 +115,13 @@ class AsyncInvestmentClient(AsyncEndpointGroup):
         Returns:
             List of disclosure dates
         """
-        params: dict[str, str] = {"symbol": symbol}
+        params: dict[str, str | int] = {"symbol": symbol}
         if cik is not None:
             params["cik"] = cik
         return await self.client.request_async(MUTUAL_FUND_DATES, **params)
 
     async def get_fund_disclosure_dates(
-        self, symbol: str, cik: str | None = None
+        self, symbol: str, cik: str | int | None = None
     ) -> list[date]:
         """Get mutual fund/ETF disclosure dates"""
         return await self.get_mutual_fund_dates(symbol=symbol, cik=cik)
@@ -153,7 +153,7 @@ class AsyncInvestmentClient(AsyncEndpointGroup):
         )
 
     async def get_fund_disclosure(
-        self, symbol: str, year: int, quarter: int, cik: str | None = None
+        self, symbol: str, year: int, quarter: int, cik: str | int | None = None
     ) -> list[FundDisclosureHolding]:
         """Get mutual fund/ETF disclosure holdings"""
         params: dict[str, str | int] = {

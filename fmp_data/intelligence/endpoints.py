@@ -1049,7 +1049,7 @@ CROWDFUNDING_BY_CIK: Endpoint = Endpoint(
         EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
+            param_type=ParamType.CIK,
             required=True,
             description="Company CIK number",
         )
@@ -1085,7 +1085,7 @@ EQUITY_OFFERING_RSS: Endpoint = Endpoint(
         EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
+            param_type=ParamType.CIK,
             required=False,
             description="Company CIK number",
         ),
@@ -1120,7 +1120,7 @@ EQUITY_OFFERING_BY_CIK: Endpoint = Endpoint(
         EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
+            param_type=ParamType.CIK,
             required=True,
             description="Company CIK number",
         )

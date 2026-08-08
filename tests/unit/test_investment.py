@@ -228,6 +228,45 @@ class TestInvestmentClient:
         assert holding.market_value == 1000000.0
 
     @patch("httpx.Client.request")
+    def test_get_mutual_fund_dates_omits_cik_when_absent(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """cik is optional; omitting it must not put a cik on the query."""
+        mock_request.return_value = mock_response(status_code=200, json_data=[])
+
+        fmp_client.investment.get_mutual_fund_dates(symbol="VFIAX")
+
+        params = mock_request.call_args.kwargs["params"]
+        assert params["symbol"] == "VFIAX"
+        assert "cik" not in params
+
+    @patch("httpx.Client.request")
+    def test_get_mutual_fund_dates_zero_pads_an_integer_cik(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """The end-to-end reason ParamType.CIK exists.
+
+        A plain STRING param would put ``320193`` on the wire, which FMP
+        matches against nothing — the request succeeds and comes back empty.
+        """
+        mock_request.return_value = mock_response(status_code=200, json_data=[])
+
+        fmp_client.investment.get_mutual_fund_dates(symbol="VFIAX", cik=320193)
+
+        assert mock_request.call_args.kwargs["params"]["cik"] == "0000320193"
+
+    @patch("httpx.Client.request")
+    def test_get_mutual_fund_dates_pads_a_numeric_string_cik(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """Outbound, an unpadded string is padded too — see _convert_to_cik."""
+        mock_request.return_value = mock_response(status_code=200, json_data=[])
+
+        fmp_client.investment.get_mutual_fund_dates(symbol="VFIAX", cik="320193")
+
+        assert mock_request.call_args.kwargs["params"]["cik"] == "0000320193"
+
+    @patch("httpx.Client.request")
     def test_get_fund_disclosure_holders_latest(
         self,
         mock_request,

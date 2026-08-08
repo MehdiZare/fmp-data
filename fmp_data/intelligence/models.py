@@ -13,6 +13,8 @@ from pydantic import (
 )
 from pydantic.alias_generators import to_camel
 
+from fmp_data.models import CIK
+
 default_model_config = ConfigDict(
     populate_by_name=True,
     validate_assignment=True,
@@ -378,7 +380,7 @@ class ESGData(BaseModel):
     model_config = default_model_config
 
     symbol: str | None = Field(None, description="Company symbol")
-    cik: str | None = Field(None, description="CIK number")
+    cik: CIK | None = Field(None, description="CIK number")
     date: datetime | None = Field(None, description="ESG data date")
     environmental_score: float | None = Field(
         None, alias="environmentalScore", description="Environmental score"
@@ -409,7 +411,7 @@ class ESGRating(BaseModel):
     model_config = default_model_config
 
     symbol: str | None = Field(None, description="Company symbol")
-    cik: str | None = Field(None, description="CIK number")
+    cik: CIK | None = Field(None, description="CIK number")
     company_name: str | None = Field(
         None, alias="companyName", description="Company name"
     )
@@ -553,7 +555,7 @@ class CrowdfundingOffering(BaseModel):
 
     model_config = default_model_config
 
-    cik: str = Field(description="Company CIK number")
+    cik: CIK = Field(description="Company CIK number")
     company_name: str | None = Field(
         None, alias="companyName", description="Company name"
     )
@@ -601,7 +603,7 @@ class CrowdfundingOffering(BaseModel):
     intermediary_company_name: str | None = Field(
         None, alias="intermediaryCompanyName", description="Intermediary company name"
     )
-    intermediary_commission_cik: str | None = Field(
+    intermediary_commission_cik: CIK | None = Field(
         None, alias="intermediaryCommissionCik", description="Intermediary CIK"
     )
     intermediary_commission_file_number: str | None = Field(
@@ -721,7 +723,7 @@ class CrowdfundingOfferingSearchItem(BaseModel):
 
     model_config = default_model_config
 
-    cik: str = Field(description="Company CIK number")
+    cik: CIK = Field(description="Company CIK number")
     name: str | None = Field(None, description="Company or issuer name")
     date: str | None = Field(None, description="Offering date")
 
@@ -750,7 +752,7 @@ class EquityOffering(BaseModel):
     )
 
     # Issuer information
-    cik: str = Field(description="Company CIK number")
+    cik: CIK = Field(description="Company CIK number")
     company_name: str | None = Field(
         None, alias="companyName", description="Company name"
     )
@@ -876,7 +878,7 @@ class EquityOfferingSearchItem(BaseModel):
 
     model_config = default_model_config
 
-    cik: str = Field(description="Company CIK number")
+    cik: CIK = Field(description="Company CIK number")
     name: str = Field(description="Company name")
     date: datetime = Field(description="Date of filing")
 

@@ -176,7 +176,7 @@ MUTUAL_FUND_DATES: Endpoint = Endpoint(
         EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
+            param_type=ParamType.CIK,
             required=False,
             description="Fund CIK",
         ),
@@ -295,7 +295,7 @@ FUNDS_DISCLOSURE: Endpoint = Endpoint(
         EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
+            param_type=ParamType.CIK,
             required=False,
             description="Fund CIK",
         ),

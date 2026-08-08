@@ -1,10 +1,24 @@
+from enum import Enum, IntEnum
+import re
 from typing import Any
 
 import pytest
 
 from fmp_data.lc.models import SemanticCategory
-from fmp_data.lc.registry import EndpointBasedRule, ValidationRuleRegistry
-from fmp_data.models import APIVersion, Endpoint, HTTPMethod, URLType
+from fmp_data.lc.registry import (
+    EndpointBasedRule,
+    ValidationRuleRegistry,
+    get_endpoint_groups,
+)
+from fmp_data.models import (
+    APIVersion,
+    Endpoint,
+    EndpointParam,
+    HTTPMethod,
+    ParamLocation,
+    ParamType,
+    URLType,
+)
 
 
 @pytest.fixture
@@ -207,3 +221,146 @@ class TestValidationRuleRegistry:
             registry.get_expected_category("get_market_data_feed")
             == SemanticCategory.ALTERNATIVE_DATA
         )
+
+
+def test_every_emitted_pattern_compiles() -> None:
+    """Every regex the registry can emit must compile.
+
+    Patterns from this family are consumed by an uncaught ``re.match`` in
+    ``fmp_data/lc/validation.py``, so an uncompilable pattern is a crash
+    waiting for the first caller that reaches it.
+    """
+    uncompilable: list[tuple[str, str, str]] = []
+    checked = 0
+    for group_name, config in get_endpoint_groups().items():
+        rule = EndpointBasedRule(config["endpoint_map"], config["category"])
+        for method_name in config["endpoint_map"]:
+            requirements = rule.get_parameter_requirements(method_name) or {}
+            for param_name, patterns in requirements.items():
+                for pattern in patterns:
+                    try:
+                        re.compile(pattern)
+                        checked += 1
+                    except re.error as exc:
+                        uncompilable.append(
+                            (f"{group_name}.{method_name}", param_name, str(exc))
+                        )
+    assert not uncompilable, f"uncompilable patterns: {uncompilable}"
+    assert checked > 100, (
+        f"guard checked only {checked} patterns — is it still reaching the registry?"
+    )
+
+
+def test_enum_valid_values_use_wire_value_not_repr() -> None:
+    """Enum members must contribute their .value, not their repr.
+
+    ``economics.get_economic_indicators`` declares valid_values as
+    EconomicIndicatorType members. ``str(member)`` yields
+    'EconomicIndicatorType.GDP', so the pattern would compile and then
+    reject the very values it is supposed to accept.
+    """
+    from fmp_data.economics.endpoints import ECONOMIC_INDICATORS
+    from fmp_data.economics.schema import EconomicIndicatorType
+
+    rule = EndpointBasedRule(
+        {"get_economic_indicators": ECONOMIC_INDICATORS},
+        SemanticCategory.ECONOMIC,
+    )
+    requirements = rule.get_parameter_requirements("get_economic_indicators")
+    assert requirements is not None
+    patterns = requirements["name"]
+
+    assert "EconomicIndicatorType." not in patterns[0]
+    for member in EconomicIndicatorType:
+        assert any(re.match(pattern, member.value) for pattern in patterns), (
+            f"{member.value!r} rejected by {patterns}"
+        )
+
+
+class TestValidValuesNormalisation:
+    """EndpointParam unwraps Enum members in valid_values at construction."""
+
+    def test_enum_members_are_unwrapped_to_wire_values(self) -> None:
+        from fmp_data.economics.schema import EconomicIndicatorType
+
+        param = EndpointParam(
+            name="name",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Indicator",
+            valid_values=list(EconomicIndicatorType),
+        )
+
+        assert param.valid_values == [m.value for m in EconomicIndicatorType]
+        assert not any(isinstance(v, Enum) for v in param.valid_values or [])
+
+    def test_non_enum_values_keep_their_native_type(self) -> None:
+        """Integer valid_values must stay ints.
+
+        ``validate_value`` compares the *converted* request value against
+        this list, and an INTEGER param converts to ``int``. Stringifying
+        the list here would make every such comparison fail.
+        """
+        param = EndpointParam(
+            name="quarter",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Fiscal quarter",
+            valid_values=[1, 2, 3, 4],
+        )
+
+        assert param.valid_values == [1, 2, 3, 4]
+        assert param.validate_value("2") == 2
+
+    def test_none_valid_values_stays_none(self) -> None:
+        param = EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Symbol",
+        )
+
+        assert param.valid_values is None
+
+    def test_non_str_enum_yields_a_compilable_pattern(self) -> None:
+        """A non-str Enum must not reach re.escape as an int.
+
+        ``re.escape`` raises TypeError on a non-str, so an IntEnum in
+        valid_values used to crash pattern generation outright.
+        """
+
+        class Quarter(IntEnum):
+            Q1 = 1
+            Q2 = 2
+
+        param = EndpointParam(
+            name="quarter",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Fiscal quarter",
+            valid_values=list(Quarter),
+        )
+        patterns = EndpointBasedRule._get_type_pattern(
+            param.param_type.value, param.valid_values
+        )
+
+        for pattern in patterns:
+            re.compile(pattern)
+        assert any(re.match(p, "1") for p in patterns)
+        assert not any(re.match(p, "Quarter.Q1") for p in patterns)
+
+    def test_get_type_pattern_tolerates_raw_enum_from_direct_callers(self) -> None:
+        """The staticmethod is public enough to be called with raw members."""
+
+        class Quarter(IntEnum):
+            Q1 = 1
+
+        patterns = EndpointBasedRule._get_type_pattern("string", list(Quarter))
+
+        for pattern in patterns:
+            re.compile(pattern)
+        assert any(re.match(p, "1") for p in patterns)

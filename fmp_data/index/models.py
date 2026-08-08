@@ -4,6 +4,8 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
+from fmp_data.models import CIK
+
 default_model_config = ConfigDict(
     populate_by_name=True,
     validate_assignment=True,
@@ -28,7 +30,7 @@ class IndexConstituent(BaseModel):
     date_first_added: datetime | None = Field(
         None, alias="dateFirstAdded", description="Date added to index"
     )
-    cik: str | None = Field(None, description="CIK number")
+    cik: CIK | None = Field(None, description="CIK number")
     founded: str | None = Field(None, description="Year founded")
 
 

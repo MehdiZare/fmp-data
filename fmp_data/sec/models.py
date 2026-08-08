@@ -4,6 +4,8 @@ from datetime import datetime
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
+from fmp_data.models import CIK
+
 default_model_config = ConfigDict(
     populate_by_name=True,
     validate_assignment=True,
@@ -19,7 +21,7 @@ class SECFiling8K(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol")
-    cik: str | None = Field(None, description="SEC CIK number")
+    cik: CIK | None = Field(None, description="SEC CIK number")
     form_type: str | None = Field(None, alias="formType", description="SEC form type")
     accepted_date: datetime | None = Field(
         None, alias="acceptedDate", description="Filing acceptance date"
@@ -54,7 +56,7 @@ class SECFinancialFiling(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol")
-    cik: str | None = Field(None, description="SEC CIK number")
+    cik: CIK | None = Field(None, description="SEC CIK number")
     form_type: str | None = Field(None, alias="formType", description="SEC form type")
     accepted_date: datetime | None = Field(
         None, alias="acceptedDate", description="Filing acceptance date"
@@ -91,7 +93,7 @@ class SECFilingSearchResult(BaseModel):
     model_config = default_model_config
 
     symbol: str | None = Field(None, description="Stock symbol")
-    cik: str | None = Field(None, description="SEC CIK number")
+    cik: CIK | None = Field(None, description="SEC CIK number")
     company_name: str | None = Field(
         None, alias="companyName", description="Company name"
     )
@@ -117,7 +119,7 @@ class SECCompanySearchResult(BaseModel):
     model_config = default_model_config
 
     symbol: str | None = Field(None, description="Stock symbol")
-    cik: str | None = Field(None, description="SEC CIK number")
+    cik: CIK | None = Field(None, description="SEC CIK number")
     company_name: str | None = Field(
         None,
         alias="companyName",
@@ -150,7 +152,7 @@ class SECProfile(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol")
-    cik: str | None = Field(None, description="SEC CIK number")
+    cik: CIK | None = Field(None, description="SEC CIK number")
     company_name: str | None = Field(
         None,
         alias="companyName",
@@ -250,7 +252,7 @@ class IndustryClassification(BaseModel):
 
     symbol: str | None = Field(None, description="Stock symbol")
     name: str | None = Field(None, description="Company name")
-    cik: str | None = Field(None, description="SEC CIK number")
+    cik: CIK | None = Field(None, description="SEC CIK number")
     sic_code: str | None = Field(None, alias="sicCode", description="SIC code")
     industry_title: str | None = Field(
         None, alias="industryTitle", description="Industry title"

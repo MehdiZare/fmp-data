@@ -1960,6 +1960,32 @@ class TestAsyncInvestmentClient:
         assert result is None
 
     @pytest.mark.asyncio
+    async def test_get_mutual_fund_dates_omits_cik_when_absent(self, mock_client):
+        """cik is optional and must not be sent when the caller omits it."""
+        from fmp_data.investment.async_client import AsyncInvestmentClient
+
+        mock_client.request_async.return_value = []
+
+        async_client = AsyncInvestmentClient(mock_client)
+        await async_client.get_mutual_fund_dates("VFIAX")
+
+        _, kwargs = mock_client.request_async.call_args
+        assert kwargs == {"symbol": "VFIAX"}
+
+    @pytest.mark.asyncio
+    async def test_get_mutual_fund_dates_forwards_integer_cik(self, mock_client):
+        """An int cik must reach the request layer for ParamType.CIK to pad it."""
+        from fmp_data.investment.async_client import AsyncInvestmentClient
+
+        mock_client.request_async.return_value = []
+
+        async_client = AsyncInvestmentClient(mock_client)
+        await async_client.get_mutual_fund_dates("VFIAX", cik=320193)
+
+        _, kwargs = mock_client.request_async.call_args
+        assert kwargs == {"symbol": "VFIAX", "cik": 320193}
+
+    @pytest.mark.asyncio
     async def test_get_etf_info_empty_list_returns_none(self, mock_client):
         """Test get_etf_info handles empty list responses."""
         from fmp_data.investment.async_client import AsyncInvestmentClient

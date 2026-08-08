@@ -7,6 +7,7 @@ lazy imports to avoid circular dependencies.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from enum import Enum
 from logging import Logger
 import re
 from typing import TYPE_CHECKING, Any, TypedDict
@@ -269,7 +270,18 @@ class EndpointBasedRule(ValidationRule):
         match param_type:
             case "string":
                 if valid_values:
-                    return [f"^({'|'.join(map(str, valid_values))}))$"]
+                    # Values arrive already unwrapped: EndpointParam.__post_init__
+                    # replaces Enum members with their wire value. The Enum branch
+                    # is kept for direct callers of this staticmethod, and the
+                    # str() guards a non-str enum value -- re.escape raises
+                    # TypeError when handed an int.
+                    alternatives = "|".join(
+                        re.escape(
+                            str(value.value) if isinstance(value, Enum) else str(value)
+                        )
+                        for value in valid_values
+                    )
+                    return [f"^({alternatives})$"]
                 return [r"^.+$"]
             case "integer":
                 return [r"^\d+$"]
@@ -281,6 +293,10 @@ class EndpointBasedRule(ValidationRule):
                 return [r"^\d{4}-\d{2}-\d{2}$"]
             case "datetime":
                 return [r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$"]
+            case "cik":
+                # Matched against the caller's raw value, before ParamType.CIK
+                # zero-pads it, so an unpadded 320193 must pass too.
+                return [r"^\d{1,10}$"]
             case _:
                 return []
 

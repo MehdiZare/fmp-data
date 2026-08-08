@@ -239,7 +239,7 @@ SEC_FILINGS_SEARCH_CIK: Endpoint = Endpoint(
         EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
+            param_type=ParamType.CIK,
             required=True,
             description="SEC CIK number",
         ),
@@ -362,7 +362,7 @@ SEC_COMPANY_SEARCH_CIK: Endpoint = Endpoint(
         EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
+            param_type=ParamType.CIK,
             required=True,
             description="SEC CIK number",
         ),
@@ -437,7 +437,7 @@ INDUSTRY_CLASSIFICATION_SEARCH: Endpoint = Endpoint(
         EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
+            param_type=ParamType.CIK,
             required=False,
             description="SEC CIK number",
         ),

@@ -66,7 +66,7 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         quarter = (report_date.month - 1) // 3 + 1
         return report_date.year, quarter
 
-    async def get_form_13f(self, cik: str, report_date: date) -> list[Form13F]:
+    async def get_form_13f(self, cik: str | int, report_date: date) -> list[Form13F]:
         """
         Get Form 13F filing data
 
@@ -98,7 +98,7 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
             return result
         return [result]
 
-    async def get_form_13f_dates(self, cik: str) -> list[Form13FDate]:
+    async def get_form_13f_dates(self, cik: str | int) -> list[Form13FDate]:
         """
         Get Form 13F filing dates
 
@@ -280,7 +280,7 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
 
     # Form 13F Methods
     async def get_institutional_ownership_latest(
-        self, cik: str | None = None, page: int = 0, limit: int = 100
+        self, cik: str | int | None = None, page: int = 0, limit: int = 100
     ) -> list[InstitutionalOwnershipLatest]:
         """Get latest institutional ownership filings"""
         params: dict[str, str | int] = {"page": page, "limit": limit}
@@ -289,7 +289,7 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         return await self.client.request_async(INSTITUTIONAL_OWNERSHIP_LATEST, **params)
 
     async def get_institutional_ownership_extract(
-        self, cik: str, report_date: date
+        self, cik: str | int, report_date: date
     ) -> list[InstitutionalOwnershipExtract]:
         """Get filings extract data for a report period end date"""
         year, quarter = self._date_to_year_quarter(report_date)
@@ -298,7 +298,7 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         )
 
     async def get_institutional_ownership_dates(
-        self, cik: str
+        self, cik: str | int
     ) -> list[InstitutionalOwnershipDates]:
         """Get Form 13F filing dates"""
         return await self.client.request_async(INSTITUTIONAL_OWNERSHIP_DATES, cik=cik)
@@ -318,7 +318,7 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         )
 
     async def get_holder_performance_summary(
-        self, cik: str, report_date: date | None = None, page: int = 0
+        self, cik: str | int, report_date: date | None = None, page: int = 0
     ) -> list[HolderPerformanceSummary]:
         """Get holder performance summary for a report period end date"""
         params: dict[str, str | int] = {"cik": cik, "page": page}
@@ -329,7 +329,7 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         return await self.client.request_async(HOLDER_PERFORMANCE_SUMMARY, **params)
 
     async def get_holder_industry_breakdown(
-        self, cik: str, report_date: date
+        self, cik: str | int, report_date: date
     ) -> list[HolderIndustryBreakdown]:
         """Get holders industry breakdown for a report period end date"""
         year, quarter = self._date_to_year_quarter(report_date)
