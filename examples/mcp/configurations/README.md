@@ -85,7 +85,7 @@ fmp-mcp list --client market
 #### Using with Python module execution
 ```bash
 export FMP_API_KEY=your_api_key_here  # pragma: allowlist secret
-export FMP_MCP_MANIFEST=examples/mcp_configurations/trading_manifest.py
+export FMP_MCP_MANIFEST=examples/mcp/configurations/trading_manifest.py
 python -m fmp_data.mcp
 ```
 
@@ -93,7 +93,7 @@ python -m fmp_data.mcp
 ```bash
 FMP_API_KEY=your_api_key mcp dev python -c "
 from fmp_data.mcp.server import create_app
-app = create_app('examples/mcp_configurations/research_manifest.py')
+app = create_app('examples/mcp/configurations/research_manifest.py')
 app.run()
 "
 ```
@@ -103,7 +103,7 @@ app.run()
 from fmp_data.mcp.server import create_app
 
 # Load a specific configuration
-app = create_app(tools="examples/mcp_configurations/minimal_manifest.py")
+app = create_app(tools="examples/mcp/configurations/minimal_manifest.py")
 app.run()
 ```
 

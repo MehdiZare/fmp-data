@@ -11,7 +11,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 - [Fundamental (14 endpoints)](#fundamental)
 - [Technical (9 endpoints)](#technical)
 - [Market Intelligence (47 endpoints)](#market-intelligence)
-- [Institutional (25 endpoints)](#institutional)
+- [Institutional (24 endpoints)](#institutional)
 - [Investment (14 endpoints)](#investment)
 - [Alternative Markets (15 endpoints)](#alternative-markets)
 - [Economics (7 endpoints)](#economics)
@@ -220,14 +220,13 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 
 ## Institutional
 
-### 25 endpoints
+### 24 endpoints
 
 | Endpoint | Path | Description |
 |----------|------|-------------|
 | `asset_allocation` | `/stable/13f-asset-allocation` | Get 13F asset allocation data |
 | `beneficial_ownership` | `/stable/acquisition-of-beneficial-ownership` | Get beneficial ownership data |
-| `cik_mapper` (client `get_cik_mappings`, MCP `cik_mappings`) | `/stable/cik-list` | Get CIK to name mappings |
-| `cik_mapper_by_name` (client `search_cik_by_name`) | `/stable/cik-list` | Search CIK mappings by name |
+| `cik_mapper` (clients `get_cik_mappings` and `search_cik_by_name`, MCP `cik_mappings`) | `/stable/cik-list` | Get CIK to name mappings. `/stable/cik-list` has no server-side name filter, so `search_cik_by_name` fetches the full list and filters locally; the separate `cik_mapper_by_name` endpoint was removed in 2.6 (#130) |
 | `fail_to_deliver` | `/stable/fail_to_deliver` | Get fail to deliver data |
 | `transaction_types` | `/stable/insider-trading-transaction-type` | Get insider transaction types |
 | `insider_trading_latest` | `/stable/insider-trading/latest` | Get latest insider trading activity |

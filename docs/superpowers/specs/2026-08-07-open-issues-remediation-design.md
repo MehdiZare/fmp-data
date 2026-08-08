@@ -216,7 +216,9 @@ The one PR with a public surface change. Establishes the invariant: **one tool k
 | Deprecate → 3.0 | `executives` → `key_executives` | #136 |
 | Deprecate → 3.0 | key-only `crypto_quotes`, `forex_quotes` | #126 — require `alternative.*` / `batch.*` |
 
-Catalog: 224 → 223 in 2.6, → 218 in 3.0.
+Catalog: 224 → 223 in 2.6, → 220 in 3.0 (three deprecated keys removed, not five —
+the two ambiguous `crypto_quotes` / `forex_quotes` keys stay in the catalog, since
+only *bare-key resolution* of them is dropped, not either tool).
 
 `cik_mapper_by_name` is removed outright rather than deprecated because it is not a second name
 for a working tool — it is a tool that cannot express the operation it claims. The sync/async

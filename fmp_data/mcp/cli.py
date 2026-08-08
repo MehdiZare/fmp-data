@@ -27,14 +27,28 @@ def list_available_tools() -> list[dict[str, Any]]:
     """
     Discover and list all available MCP tools from endpoint semantics.
 
+    Each tool carries a ``deprecated`` key: the spec that replaces it, or
+    ``None``. Deprecated specs still resolve but are removed in 3.0, so every
+    output format can flag them without re-deriving the policy.
+
     Returns
     -------
     list[dict[str, Any]]
         List of tool definitions with metadata
     """
     from fmp_data.mcp.discovery import discover_all_tools
+    from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
 
-    return discover_all_tools()
+    return [
+        {**tool, "deprecated": DEPRECATED_TOOLS.get(tool["spec"])}
+        for tool in discover_all_tools()
+    ]
+
+
+def _deprecation_note(tool: dict[str, Any]) -> str:
+    """``" [DEPRECATED -> <replacement>]"`` for a deprecated tool, else ``""``."""
+    replacement = tool.get("deprecated")
+    return f" [DEPRECATED -> {replacement}]" if replacement else ""
 
 
 def print_tools_table(tools: list[dict[str, Any]], format: str = "table") -> None:
@@ -52,7 +66,7 @@ def print_tools_table(tools: list[dict[str, Any]], format: str = "table") -> Non
 def _print_tools_list(tools: list[dict[str, Any]]) -> None:
     """Print tools as a simple list."""
     for tool in tools:
-        print(f"{tool['spec']}: {tool['description']}")
+        print(f"{tool['spec']}{_deprecation_note(tool)}: {tool['description']}")
 
 
 def _print_tools_tree(tools: list[dict[str, Any]]) -> None:
@@ -77,7 +91,9 @@ def _print_tools_tree(tools: list[dict[str, Any]]) -> None:
         branch = tree.add(f"[bold cyan]{client}[/bold cyan]")
         for tool in client_tools:
             desc = tool["description"][:60]
-            branch.add(f"[green]{tool['method']}[/green]: {desc}...")
+            branch.add(
+                f"[green]{tool['method']}[/green]{_deprecation_note(tool)}: {desc}..."
+            )
 
     console.print(tree)
 
@@ -101,7 +117,7 @@ def _print_rich_table(tools: list[dict[str, Any]]) -> None:
 
     for tool in tools:
         table.add_row(
-            tool["spec"],
+            tool["spec"] + _deprecation_note(tool),
             tool["client"],
             tool["method"],
             (
@@ -121,7 +137,8 @@ def _print_simple_table(tools: list[dict[str, Any]]) -> None:
     print(f"{'Tool Spec':<30} {'Client':<12} {'Method':<25}")
     print("-" * 80)
     for tool in tools:
-        print(f"{tool['spec']:<30} {tool['client']:<12} {tool['method']:<25}")
+        spec = tool["spec"] + _deprecation_note(tool)
+        print(f"{spec:<30} {tool['client']:<12} {tool['method']:<25}")
 
 
 def generate_manifest(
@@ -188,6 +205,78 @@ TOOLS = [
     print(f"Total tools: {len(selected_tools)}")
 
 
+def _classify_manifest_entries(
+    entries: list[str],
+) -> tuple[list[str], list[str], list[tuple[str, str]]]:
+    """Sort manifest entries into unknown, ambiguous and deprecated.
+
+    An entry may be a bare key (``profile``) or a fully qualified spec
+    (``company.profile``), so each one is resolved the same way the loader
+    resolves it before being judged.
+
+    Returns
+    -------
+    tuple[list[str], list[str], list[tuple[str, str]]]
+        ``(unknown, ambiguous, deprecated)`` where ``ambiguous`` entries are
+        preformatted with their candidates and ``deprecated`` pairs the entry
+        as written with the spec that replaces it.
+    """
+    available_tools = list_available_tools()
+    available_specs = {tool["spec"] for tool in available_tools}
+    replacement_by_spec = {tool["spec"]: tool["deprecated"] for tool in available_tools}
+    specs_by_key: dict[str, list[str]] = {}
+    for tool in available_tools:
+        specs_by_key.setdefault(tool["key"], []).append(tool["spec"])
+
+    unknown: list[str] = []
+    ambiguous: list[str] = []
+    deprecated: list[tuple[str, str]] = []
+
+    for entry in entries:
+        if entry in available_specs:
+            resolved = entry
+        else:
+            candidates = sorted(specs_by_key.get(entry, []))
+            if not candidates:
+                unknown.append(entry)
+                continue
+            if len(candidates) > 1:
+                ambiguous.append(f"{entry} (use one of: {', '.join(candidates)})")
+                continue
+            resolved = candidates[0]
+
+        replacement = replacement_by_spec.get(resolved)
+        if replacement:
+            deprecated.append((entry, replacement))
+
+    return unknown, ambiguous, deprecated
+
+
+def _report_manifest_findings(
+    unknown: list[str],
+    ambiguous: list[str],
+    deprecated: list[tuple[str, str]],
+) -> None:
+    """Print what validation found. None of it is fatal on its own."""
+    if unknown:
+        print(f"Warning: Unknown tools found: {', '.join(unknown)}", file=sys.stderr)
+
+    if ambiguous:
+        print(
+            "Warning: bare keys claimed by more than one client, which fail to "
+            f"resolve at registration: {'; '.join(ambiguous)}",
+            file=sys.stderr,
+        )
+
+    # Deprecated is still valid -- it resolves today -- so this reports rather
+    # than fails. It is the answer to "is my manifest future-proof?", which is
+    # what someone running `validate` is asking.
+    if deprecated:
+        print(f"Deprecated tools found ({len(deprecated)}), removed in 3.0:")
+        for entry, replacement in deprecated:
+            print(f"  {entry} -> use {replacement}")
+
+
 def validate_manifest(manifest_path: str | Path) -> bool:
     """
     Validate a manifest file for correctness.
@@ -231,22 +320,12 @@ def validate_manifest(manifest_path: str | Path) -> bool:
         print("Error: TOOLS must be a list", file=sys.stderr)
         return False
 
-    # Validate each tool
-    available_tools = list_available_tools()
-    available_specs = {tool["spec"] for tool in available_tools}
-
-    invalid_tools = []
     for tool in tools:
         if not isinstance(tool, str):
             print(f"Error: Tool spec must be string, got {type(tool)}", file=sys.stderr)
             return False
 
-        if tool not in available_specs:
-            invalid_tools.append(tool)
-
-    if invalid_tools:
-        tools_str = ", ".join(invalid_tools)
-        print(f"Warning: Unknown tools found: {tools_str}", file=sys.stderr)
+    _report_manifest_findings(*_classify_manifest_entries(tools))
 
     print(f"Manifest is valid with {len(tools)} tools")
     return True

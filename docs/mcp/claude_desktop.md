@@ -107,7 +107,7 @@ Note: `FMP_API_KEY` is a secret (pragma: allowlist secret).
       "args": ["-m", "fmp_data.mcp"],
       "env": {
         "FMP_API_KEY": "your_api_key_here", // pragma: allowlist secret
-        "FMP_MCP_MANIFEST": "examples/mcp_configurations/trading_manifest.py"
+        "FMP_MCP_MANIFEST": "examples/mcp/configurations/trading_manifest.py"
       }
     }
   }

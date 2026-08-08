@@ -1,6 +1,6 @@
 # MCP Configuration Examples
 
-Example MCP (Model Context Protocol) manifests live in `examples/mcp_configurations/`.
+Example MCP (Model Context Protocol) manifests live in `examples/mcp/configurations/`.
 Use them to scope which tools are exposed to Claude or other MCP clients. If you
 installed from PyPI, copy the manifests from the repo or create your own.
 
@@ -80,7 +80,7 @@ fmp-mcp list --client market
 #### Using with Python module execution
 ```bash
 export FMP_API_KEY=your_api_key_here  # pragma: allowlist secret
-export FMP_MCP_MANIFEST=examples/mcp_configurations/trading_manifest.py
+export FMP_MCP_MANIFEST=examples/mcp/configurations/trading_manifest.py
 python -m fmp_data.mcp
 ```
 
@@ -88,7 +88,7 @@ python -m fmp_data.mcp
 ```bash
 FMP_API_KEY=your_api_key mcp dev python -c "
 from fmp_data.mcp.server import create_app
-app = create_app("examples/mcp_configurations/research_manifest.py")
+app = create_app("examples/mcp/configurations/research_manifest.py")
 app.run()
 "
 ```
@@ -98,7 +98,7 @@ app.run()
 from fmp_data.mcp.server import create_app
 
 # Load a specific configuration
-app = create_app(tools="examples/mcp_configurations/minimal_manifest.py")
+app = create_app(tools="examples/mcp/configurations/minimal_manifest.py")
 app.run()
 ```
 
@@ -142,6 +142,30 @@ fmp-mcp list --format json > tools.json
 
 Tip: set `FMP_MCP_TOOL_NAME_STYLE=spec` to expose fully qualified tool names
 (`client.key`) and avoid naming collisions when multiple tools share a key.
+
+### Bare keys vs. fully qualified specs
+
+A manifest entry may be the bare tool key (`profile`) or the fully qualified
+spec (`company.profile`). A bare key resolves **only when exactly one client
+claims it**. Two keys are claimed by two clients each — `crypto_quotes` and
+`forex_quotes`, by `alternative` and `batch` — and must be written in full:
+
+```python
+TOOLS = [
+    "alternative.crypto_quotes",  # not "crypto_quotes"
+    "batch.forex_quotes",         # not "forex_quotes"
+]
+```
+
+Using the bare form for either raises at registration with an error naming
+every candidate.
+
+Naming **both** halves of a colliding pair is a separate failure. Under the
+default `FMP_MCP_TOOL_NAME_STYLE=key`, the advertised tool name is just the
+key, so `alternative.crypto_quotes` and `batch.crypto_quotes` in one manifest
+both want to be called `crypto_quotes` and registration is refused. To expose
+both at once, set `FMP_MCP_TOOL_NAME_STYLE=spec` (see the tip above) so each
+tool is advertised under its fully qualified name.
 
 ## Validation
 
