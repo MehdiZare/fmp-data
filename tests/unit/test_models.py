@@ -498,6 +498,22 @@ class TestCIKRequestParam:
     def test_canonical_string_is_unchanged(self) -> None:
         assert self._param().validate_value("0000320193") == "0000320193"
 
+    def test_unhandled_param_type_reaches_the_guard(self) -> None:
+        """The fall-through past the CIK branch must still raise.
+
+        Every ParamType member has a branch, so the trailing
+        ``raise ValueError("Unsupported type")`` is unreachable through
+        normal use — which left it as a permanently uncovered branch that
+        moved to whichever conversion was added last. Calling the method
+        with a non-member ``self`` exercises it directly.
+        """
+
+        class _NotAParamType:
+            value = "unsupported"
+
+        with pytest.raises(ValueError, match="Unsupported type"):
+            ParamType.convert_value(_NotAParamType(), "x")  # type: ignore[arg-type]
+
     def test_non_numeric_string_passes_through(self) -> None:
         """Better a clear API error than a value we mangled into one."""
         assert self._param().validate_value("AAPL") == "AAPL"
