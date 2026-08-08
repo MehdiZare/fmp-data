@@ -270,9 +270,14 @@ class EndpointBasedRule(ValidationRule):
         match param_type:
             case "string":
                 if valid_values:
+                    # Values arrive already unwrapped: EndpointParam.__post_init__
+                    # replaces Enum members with their wire value. The Enum branch
+                    # is kept for direct callers of this staticmethod, and the
+                    # str() guards a non-str enum value -- re.escape raises
+                    # TypeError when handed an int.
                     alternatives = "|".join(
                         re.escape(
-                            value.value if isinstance(value, Enum) else str(value)
+                            str(value.value) if isinstance(value, Enum) else str(value)
                         )
                         for value in valid_values
                     )

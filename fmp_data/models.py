@@ -161,6 +161,27 @@ class EndpointParam:
     alias: str | None = None
     valid_values: list[Any] | None = None
 
+    def __post_init__(self) -> None:
+        """Normalise ``valid_values`` to the values that travel over the wire.
+
+        Endpoints may declare ``valid_values`` as enum members
+        (``valid_values=list(EconomicIndicatorType)``). Every consumer wants
+        the wire value, not the member: ``validate_value`` compares against a
+        converted request value, and ``EndpointBasedRule._get_type_pattern``
+        builds a regex from them. Unwrapping once here means neither consumer
+        has to special-case ``Enum``.
+
+        Only ``Enum`` is unwrapped -- values keep their native type. Coercing
+        everything to ``str`` would break the membership check below for
+        integer-typed params such as ``transcripts.quarter``
+        (``valid_values=[1, 2, 3, 4]``), whose converted value is an ``int``.
+        """
+        if self.valid_values is not None:
+            self.valid_values = [
+                value.value if isinstance(value, Enum) else value
+                for value in self.valid_values
+            ]
+
     def validate_value(self, value: Any) -> Any:
         """Validate and convert parameter value.
 

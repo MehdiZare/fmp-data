@@ -1,3 +1,4 @@
+from enum import Enum, IntEnum
 import re
 from typing import Any
 
@@ -9,7 +10,15 @@ from fmp_data.lc.registry import (
     ValidationRuleRegistry,
     get_endpoint_groups,
 )
-from fmp_data.models import APIVersion, Endpoint, HTTPMethod, URLType
+from fmp_data.models import (
+    APIVersion,
+    Endpoint,
+    EndpointParam,
+    HTTPMethod,
+    ParamLocation,
+    ParamType,
+    URLType,
+)
 
 
 @pytest.fixture
@@ -266,3 +275,92 @@ def test_enum_valid_values_use_wire_value_not_repr() -> None:
         assert any(re.match(pattern, member.value) for pattern in patterns), (
             f"{member.value!r} rejected by {patterns}"
         )
+
+
+class TestValidValuesNormalisation:
+    """EndpointParam unwraps Enum members in valid_values at construction."""
+
+    def test_enum_members_are_unwrapped_to_wire_values(self) -> None:
+        from fmp_data.economics.schema import EconomicIndicatorType
+
+        param = EndpointParam(
+            name="name",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Indicator",
+            valid_values=list(EconomicIndicatorType),
+        )
+
+        assert param.valid_values == [m.value for m in EconomicIndicatorType]
+        assert not any(isinstance(v, Enum) for v in param.valid_values or [])
+
+    def test_non_enum_values_keep_their_native_type(self) -> None:
+        """Integer valid_values must stay ints.
+
+        ``validate_value`` compares the *converted* request value against
+        this list, and an INTEGER param converts to ``int``. Stringifying
+        the list here would make every such comparison fail.
+        """
+        param = EndpointParam(
+            name="quarter",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            required=True,
+            description="Fiscal quarter",
+            valid_values=[1, 2, 3, 4],
+        )
+
+        assert param.valid_values == [1, 2, 3, 4]
+        assert param.validate_value("2") == 2
+
+    def test_none_valid_values_stays_none(self) -> None:
+        param = EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Symbol",
+        )
+
+        assert param.valid_values is None
+
+    def test_non_str_enum_yields_a_compilable_pattern(self) -> None:
+        """A non-str Enum must not reach re.escape as an int.
+
+        ``re.escape`` raises TypeError on a non-str, so an IntEnum in
+        valid_values used to crash pattern generation outright.
+        """
+
+        class Quarter(IntEnum):
+            Q1 = 1
+            Q2 = 2
+
+        param = EndpointParam(
+            name="quarter",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            required=True,
+            description="Fiscal quarter",
+            valid_values=list(Quarter),
+        )
+        patterns = EndpointBasedRule._get_type_pattern(
+            param.param_type.value, param.valid_values
+        )
+
+        for pattern in patterns:
+            re.compile(pattern)
+        assert any(re.match(p, "1") for p in patterns)
+        assert not any(re.match(p, "Quarter.Q1") for p in patterns)
+
+    def test_get_type_pattern_tolerates_raw_enum_from_direct_callers(self) -> None:
+        """The staticmethod is public enough to be called with raw members."""
+
+        class Quarter(IntEnum):
+            Q1 = 1
+
+        patterns = EndpointBasedRule._get_type_pattern("string", list(Quarter))
+
+        for pattern in patterns:
+            re.compile(pattern)
+        assert any(re.match(p, "1") for p in patterns)
