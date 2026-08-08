@@ -317,6 +317,12 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         }
         return await self.client.request_async(STOCK_NEWS_ENDPOINT, **params)
 
+    @deprecated(
+        "The FMP API no longer supports this endpoint -- "
+        "stock-news-sentiments-rss-feed returns the legacy 403. Use "
+        "get_stock_news() for the articles themselves; FMP publishes no "
+        "stable replacement for the sentiment scores."
+    )
     async def get_stock_news_sentiments(
         self, page: int = 0
     ) -> list[StockNewsSentiment]:
@@ -325,15 +331,9 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         .. deprecated::
             This endpoint is no longer available on the FMP API and will be removed
             in a future version. It currently returns an empty list.
+            Use :meth:`get_stock_news` for the articles; the sentiment and
+            sentiment-score fields have no stable replacement.
         """
-        import warnings
-
-        warnings.warn(
-            "get_stock_news_sentiments is deprecated and will be removed in a "
-            "future version. The FMP API no longer supports this endpoint.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         return []
 
     async def get_forex_news(

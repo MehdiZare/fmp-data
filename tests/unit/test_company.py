@@ -14,7 +14,6 @@ from fmp_data.company.models import (
     HistoricalPrice,
     IntradayPrice,
     MergerAcquisition,
-    PriceTarget,
     PriceTargetSummary,
     Quote,
     SimpleQuote,
@@ -683,13 +682,17 @@ class TestCompanySymbol:
         assert price.volume == 82034567
 
 
-def test_get_price_target(fmp_client, mock_client, price_target_data):
-    """Test fetching price targets"""
-    mock_client.request.return_value = [PriceTarget(**price_target_data[0])]
-    result = fmp_client.get_price_target(symbol="AAPL")
-    assert isinstance(result, list)
-    assert isinstance(result[0], PriceTarget)
-    assert result[0].symbol == "AAPL"
+def test_get_price_target_is_deprecated(fmp_client, mock_client):
+    """``price-target`` 404s, so the request must not be issued.
+
+    The method warns, names the two live aggregate endpoints, and returns an
+    empty list rather than spending a rate-limit slot to earn a 404.
+    """
+    with pytest.warns(DeprecationWarning, match="get_price_target_summary"):
+        result = fmp_client.get_price_target(symbol="AAPL")
+
+    assert result == []
+    mock_client.request.assert_not_called()
 
 
 def test_get_price_target_summary(fmp_client, mock_client, price_target_summary_data):

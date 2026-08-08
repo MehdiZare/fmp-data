@@ -135,20 +135,22 @@ class TestAsyncCompanyClient:
         assert result.symbol == "AAPL"
 
     @pytest.mark.asyncio
-    async def test_get_core_information_empty_returns_none(self, mock_client):
-        """Test get_core_information returns None on empty response."""
-        from fmp_data.company import endpoints as company_endpoints
+    async def test_get_core_information_is_deprecated_and_never_calls_api(
+        self, mock_client
+    ):
+        """``company-core-information`` 404s, so the call must not be made.
+
+        The method warns and returns ``None`` without touching the network:
+        issuing the request would spend a rate-limit slot to earn a 404.
+        """
         from fmp_data.company.async_client import AsyncCompanyClient
 
-        mock_client.request_async.return_value = []
-
         async_client = AsyncCompanyClient(mock_client)
-        result = await async_client.get_core_information("AAPL")
+        with pytest.warns(DeprecationWarning, match="get_profile"):
+            result = await async_client.get_core_information("AAPL")
 
         assert result is None
-        mock_client.request_async.assert_called_once_with(
-            company_endpoints.CORE_INFORMATION, symbol="AAPL"
-        )
+        mock_client.request_async.assert_not_called()
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -512,32 +514,45 @@ class TestAsyncCompanyClient:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_get_upgrades_downgrades_consensus_list_returns_first(
-        self, mock_client
-    ):
-        """Test upgrades/downgrades consensus returns first list item."""
+    async def test_get_upgrades_downgrades_consensus_is_deprecated(self, mock_client):
+        """``upgrades-downgrades-consensus`` 404s, so no request is issued.
+
+        The unwrap-a-list and unwrap-an-object cases this used to cover are
+        unreachable now: there is no response left to unwrap. What matters
+        instead is that the caller is pointed at ``get_grades_consensus``.
+        """
         from fmp_data.company.async_client import AsyncCompanyClient
 
-        sentinel = MagicMock()
-        mock_client.request_async.return_value = [sentinel]
-
         async_client = AsyncCompanyClient(mock_client)
-        result = await async_client.get_upgrades_downgrades_consensus("AAPL")
+        with pytest.warns(DeprecationWarning, match="get_grades_consensus"):
+            result = await async_client.get_upgrades_downgrades_consensus("AAPL")
 
-        assert result is sentinel
+        assert result is None
+        mock_client.request_async.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_get_upgrades_downgrades_consensus_object(self, mock_client):
-        """Test upgrades/downgrades consensus accepts non-list response."""
+    async def test_get_analyst_recommendations_is_deprecated(self, mock_client):
+        """``analyst-stock-recommendations`` 404s, so no request is issued."""
         from fmp_data.company.async_client import AsyncCompanyClient
 
-        sentinel = MagicMock()
-        mock_client.request_async.return_value = sentinel
+        async_client = AsyncCompanyClient(mock_client)
+        with pytest.warns(DeprecationWarning, match="get_grades_consensus"):
+            result = await async_client.get_analyst_recommendations("AAPL")
+
+        assert result == []
+        mock_client.request_async.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_get_upgrades_downgrades_is_deprecated(self, mock_client):
+        """``upgrades-downgrades`` 404s, so no request is issued."""
+        from fmp_data.company.async_client import AsyncCompanyClient
 
         async_client = AsyncCompanyClient(mock_client)
-        result = await async_client.get_upgrades_downgrades_consensus("AAPL")
+        with pytest.warns(DeprecationWarning, match="get_grades"):
+            result = await async_client.get_upgrades_downgrades("AAPL")
 
-        assert result is sentinel
+        assert result == []
+        mock_client.request_async.assert_not_called()
 
 
 class TestAsyncMarketClient:
@@ -1731,12 +1746,6 @@ class TestAsyncInstitutionalClient:
         "method_name,kwargs,endpoint_name,expected_kwargs",
         [
             (
-                "get_asset_allocation",
-                {"report_date": dt_date(2024, 6, 30)},
-                "ASSET_ALLOCATION",
-                {"date": "2024-06-30"},
-            ),
-            (
                 "get_institutional_holders",
                 {"page": 1, "limit": 10},
                 "INSTITUTIONAL_HOLDERS",
@@ -1761,12 +1770,6 @@ class TestAsyncInstitutionalClient:
                 "BENEFICIAL_OWNERSHIP",
                 {"symbol": "AAPL"},
             ),
-            (
-                "get_fail_to_deliver",
-                {"symbol": "AAPL", "page": 3},
-                "FAIL_TO_DELIVER",
-                {"symbol": "AAPL", "page": 3},
-            ),
         ],
     )
     async def test_institutional_simple_endpoints(
@@ -1790,6 +1793,38 @@ class TestAsyncInstitutionalClient:
             )
         else:
             mock_client.request_async.assert_called_once_with(endpoint)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "method_name,kwargs,expected_match",
+        [
+            (
+                "get_asset_allocation",
+                {"report_date": dt_date(2024, 6, 30)},
+                "13F asset allocation",
+            ),
+            ("get_fail_to_deliver", {"symbol": "AAPL", "page": 3}, "fail-to-deliver"),
+        ],
+    )
+    async def test_institutional_dead_endpoints_warn_without_calling(
+        self, mock_client, method_name, kwargs, expected_match
+    ):
+        """Both paths 404 and have no stable replacement.
+
+        These used to sit in the forwarding table above, asserting that the
+        request was issued -- a request that could only ever earn a 404. They
+        now warn and return empty without spending a rate-limit slot.
+        """
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        async_client = AsyncInstitutionalClient(mock_client)
+
+        method = getattr(async_client, method_name)
+        with pytest.warns(DeprecationWarning, match=expected_match):
+            result = await method(**kwargs)
+
+        assert result == []
+        mock_client.request_async.assert_not_called()
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
