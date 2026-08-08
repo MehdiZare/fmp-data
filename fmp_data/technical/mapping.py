@@ -1,3 +1,4 @@
+from fmp_data.lc.hints import PERIOD_LENGTH_HINT, SYMBOL_HINT
 from fmp_data.lc.models import (
     EndpointSemantics,
     ParameterHint,
@@ -17,27 +18,6 @@ from fmp_data.technical.endpoints import (
 )
 
 # Common parameter hints
-SYMBOL_HINT = ParameterHint(
-    natural_names=["symbol", "ticker", "stock"],
-    extraction_patterns=[
-        r"(?i)for\s+([A-Z]{1,5})",
-        r"(?i)([A-Z]{1,5})(?:'s|'|\s+)",
-        r"\b[A-Z]{1,5}\b",
-    ],
-    examples=["AAPL", "MSFT", "GOOGL"],
-    context_clues=["stock", "symbol", "ticker", "company"],
-)
-
-PERIOD_HINT = ParameterHint(
-    natural_names=["period", "period length", "lookback"],
-    extraction_patterns=[
-        r"(\d+)[-\s]?(?:day|period)",
-        r"(?:period|lookback)\s+of\s+(\d+)",
-    ],
-    examples=["14", "20", "50", "200"],
-    context_clues=["period", "days", "lookback", "window"],
-)
-
 TIMEFRAME_HINT = ParameterHint(
     natural_names=["timeframe", "interval", "frequency"],
     extraction_patterns=[
@@ -71,7 +51,7 @@ TO_DATE_HINT = ParameterHint(
 # Common parameter hints dictionary
 COMMON_PARAMS = {
     "symbol": SYMBOL_HINT,
-    "periodLength": PERIOD_HINT,
+    "periodLength": PERIOD_LENGTH_HINT,
     "timeframe": TIMEFRAME_HINT,
     "from": FROM_DATE_HINT,
     "to": TO_DATE_HINT,
