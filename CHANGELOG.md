@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New `tests/unit/test_imports.py` asserts every module in the package imports, failing on any exception rather than only `ImportError` — #139 raised `PydanticUserError`, so an `ImportError`-only check would have missed it. Nothing in the suite imported this module, which is why the break sat unnoticed
     - The optional-extra exemption for `fmp_data.lc` / `fmp_data.mcp` is keyed on whether the extra is actually installed, not on the module name: CI runs `langchain` and `mcp-server` sessions with those extras present, and a name-only exemption would have swallowed genuine `ImportError`s in the very jobs meant to catch them
     - `walk_packages` is given an `onerror` handler, since by default a package that fails to import silently drops its whole subtree from the walk
-  - The `_KNOWN_UNIMPORTABLE` allowlist added in #138 is now empty, so the CIK drift guard covers `investment.schema` again — raising its coverage from 61 to 64 CIK-valued fields and confirming `PortfolioDateArgs.cik` is correct
+  - The `_KNOWN_UNIMPORTABLE` allowlist added in #138 is now empty, so the CIK drift guard covers `investment.schema` again — raising its coverage from 63 to 64 CIK-valued fields and confirming `PortfolioDateArgs.cik` is correct
 
 ## [2.5.0] - 2026-08-07
 

@@ -31,9 +31,12 @@ class TestInvestmentArgSchemas:
     @pytest.mark.parametrize("model", [ETFHoldingsArgs, MutualFundHoldingsArgs])
     def test_holdings_date_field_name_and_type(self, model):
         """Field is named ``date``, annotated ``datetime.date``, parses ISO."""
+        # Deliberately not asserting requiredness: ETF_HOLDINGS declares this
+        # parameter optional while MUTUAL_FUND_HOLDINGS declares it mandatory,
+        # and both arg models declare it required. Pinning either side here
+        # would cement one half of an unresolved contradiction (see #143).
         assert "date" in model.model_fields
         assert model.model_fields["date"].annotation is date
-        assert model.model_fields["date"].is_required()
 
         parsed = model(symbol="SPY", date="2024-01-15")
         assert parsed.date == date(2024, 1, 15)
