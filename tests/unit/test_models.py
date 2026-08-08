@@ -333,18 +333,39 @@ class TestCIKCoercion:
         reintroduces the whole bug class. Covers ``cik`` and every
         sibling ``*_cik`` field (reporting_cik, company_cik, ...),
         which carry the same identifier and the same defect.
+
+        Every module is walked, not just ``*.models``: request-argument
+        models live in ``*.schema`` (``Form13FArgs``, ``PortfolioDateArgs``)
+        and carry cik fields too, so a ``*.models``-only walk left the
+        drift hole open in exactly the place it had already happened.
         """
         import importlib
         import pkgutil
 
         import fmp_data
 
+        # fmp_data.investment.schema cannot be imported under pydantic 2.13:
+        # ETFHoldingsArgs declares `date: date`, clashing with the datetime
+        # import. Pre-existing on dev, tracked in #139. Listed explicitly
+        # rather than swallowed, so a *newly* un-importable module fails this
+        # guard instead of quietly dropping out of its coverage.
+        known_unimportable = {"fmp_data.investment.schema"}
+        unexpected: list[str] = []
+
         offenders: list[str] = []
-        checked = 0
+        # A model imported into several modules shows up in each one's dir();
+        # key on its defining module so the count means what it says.
+        seen: set[tuple[str, str, str]] = set()
         for module_info in pkgutil.walk_packages(fmp_data.__path__, prefix="fmp_data."):
-            if not module_info.name.endswith(".models"):
+            try:
+                module = importlib.import_module(module_info.name)
+            except Exception as exc:
+                # Broad on purpose: a module can fail to import for reasons
+                # other than ImportError (#139 raises PydanticUserError).
+                # Nothing is swallowed -- it is asserted on below.
+                if module_info.name not in known_unimportable:
+                    unexpected.append(f"{module_info.name}: {exc!r}")
                 continue
-            module = importlib.import_module(module_info.name)
             for attr_name in dir(module):
                 model = getattr(module, attr_name)
                 if not (
@@ -356,18 +377,21 @@ class TestCIKCoercion:
                 for field_name, field in model.model_fields.items():
                     if field_name != "cik" and not field_name.endswith("_cik"):
                         continue
-                    checked += 1
+                    key = (model.__module__, model.__qualname__, field_name)
+                    if key in seen:
+                        continue
+                    seen.add(key)
                     if not _field_uses_cik_coercer(field):
-                        offenders.append(
-                            f"{module_info.name}.{model.__name__}.{field_name}"
-                        )
+                        offenders.append("{}.{}.{}".format(*key))
 
         assert not offenders, f"cik fields not using the CIK type: {offenders}"
+        assert not unexpected, f"modules this guard could not inspect: {unexpected}"
 
         # walk_packages(onerror=None) swallows ImportError, so an extras-gated
         # subtree can vanish silently and leave this guard passing vacuously.
-        assert checked >= 50, (
-            f"guard inspected only {checked} fields — is it still walking the package?"
+        assert len(seen) >= 50, (
+            f"guard inspected only {len(seen)} fields — "
+            "is it still walking the package?"
         )
 
 
