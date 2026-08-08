@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
+from enum import Enum
 import importlib
 import inspect
 import os
@@ -104,38 +106,166 @@ def _warn_if_deprecated(full_spec: str) -> None:
     logger.warning(message)
 
 
+class ResolutionStatus(Enum):
+    """What :func:`resolve_tool_spec` made of a single manifest entry."""
+
+    #: Resolves to exactly one catalog spec, which is not deprecated.
+    RESOLVED = "resolved"
+    #: Resolves, but to a spec removed in 3.0. ``replacement`` names the
+    #: canonical spec. Still registrable today, hence a resolved status.
+    DEPRECATED = "deprecated"
+    #: A bare key claimed by more than one client. ``candidates`` lists them.
+    AMBIGUOUS = "ambiguous"
+    #: Neither a known spec nor a known key.
+    UNKNOWN = "unknown"
+
+
+@dataclass(frozen=True)
+class Resolution:
+    """The outcome of resolving one manifest entry, as data.
+
+    Deliberately not a tuple: callers ask different questions of it. The
+    registration path wants the ``(spec, client, key)`` triple and whether to
+    announce a deprecation; ``fmp-mcp validate`` wants the failure kind and
+    the material to explain it with (every candidate of an ambiguous key, the
+    replacement for a deprecated spec). Both read the same fields off the same
+    object, so neither can drift from the rule (#149).
+
+    Attributes
+    ----------
+    entry
+        The manifest entry as written, bare key or fully qualified spec.
+    status
+        See :class:`ResolutionStatus`.
+    spec, client, key
+        The resolved ``"<client>.<key>"`` spec split into its parts, or
+        ``None`` when :attr:`is_resolved` is false.
+    replacement
+        The canonical spec superseding a deprecated one; ``None`` otherwise.
+    candidates
+        Every spec claiming an ambiguous bare key, sorted; empty otherwise.
+    message
+        Why an unresolved entry failed, phrased for a user; ``None`` when
+        resolved. This is the text the registration path raises.
+    """
+
+    entry: str
+    status: ResolutionStatus
+    spec: str | None = None
+    client: str | None = None
+    key: str | None = None
+    replacement: str | None = None
+    candidates: tuple[str, ...] = ()
+    message: str | None = None
+
+    @property
+    def is_resolved(self) -> bool:
+        """True when the entry names exactly one registrable tool."""
+        return self.status in (ResolutionStatus.RESOLVED, ResolutionStatus.DEPRECATED)
+
+    @property
+    def is_deprecated(self) -> bool:
+        """True when the entry resolves to a spec removed in 3.0."""
+        return self.status is ResolutionStatus.DEPRECATED
+
+    def require(self) -> tuple[str, str, str]:
+        """Return ``(spec, client, key)`` or raise the failure message."""
+        if not self.is_resolved or self.spec is None:
+            raise ERR(self.message or f"Tool key '{self.entry}' cannot be resolved")
+        client_slug, sem_key = self.spec.split(".", 1)
+        return self.spec, client_slug, sem_key
+
+
+def _resolved(entry: str, full_spec: str) -> Resolution:
+    client_slug, sem_key = full_spec.split(".", 1)
+    replacement = DEPRECATED_TOOLS.get(full_spec)
+    return Resolution(
+        entry=entry,
+        status=(
+            ResolutionStatus.DEPRECATED if replacement else ResolutionStatus.RESOLVED
+        ),
+        spec=full_spec,
+        client=client_slug,
+        key=sem_key,
+        replacement=replacement,
+    )
+
+
+def resolve_tool_spec(spec: str, key_to_spec: dict[str, list[str]]) -> Resolution:
+    """Resolve one manifest entry against the tool catalog. Pure.
+
+    The single implementation of "a bare tool key resolves only when exactly
+    one client claims it" (#126). It emits no warning, writes no log line and
+    raises nothing, so a validator can classify a whole manifest without
+    announcing deprecations for keys the user is merely *checking*. The
+    registration path pairs it with :func:`_warn_if_deprecated`; nobody else
+    does (#149).
+
+    Parameters
+    ----------
+    spec
+        A bare key (``"profile"``) or a full spec (``"company.profile"``).
+    key_to_spec
+        Key to claiming specs, from :func:`_build_key_to_spec`. Its values are
+        also the catalog, so a full spec absent from them is UNKNOWN rather
+        than trusted -- a typo must not survive to a confusing import error.
+
+    Returns
+    -------
+    Resolution
+        Never ``None``; failures are a status, not an exception.
+    """
+    if "." in spec:
+        catalog = {claimed for specs in key_to_spec.values() for claimed in specs}
+        if spec not in catalog:
+            return Resolution(
+                entry=spec,
+                status=ResolutionStatus.UNKNOWN,
+                message=f"Tool key '{spec}' not found in available tools",
+            )
+        return _resolved(spec, spec)
+
+    # Two clients can legitimately expose distinct tools under the same key
+    # (see issue #126), and there is no defensible way to pick one.
+    specs_for_key = sorted(key_to_spec.get(spec, []))
+    if not specs_for_key:
+        return Resolution(
+            entry=spec,
+            status=ResolutionStatus.UNKNOWN,
+            message=f"Tool key '{spec}' not found in available tools",
+        )
+    if len(specs_for_key) > 1:
+        candidates = ", ".join(specs_for_key)
+        return Resolution(
+            entry=spec,
+            status=ResolutionStatus.AMBIGUOUS,
+            candidates=tuple(specs_for_key),
+            message=(
+                f"Tool key '{spec}' is claimed by {len(specs_for_key)} clients "
+                f"({candidates}), so the bare key cannot be resolved. Bare tool "
+                f"keys work only when exactly one client claims them; name the "
+                f"client explicitly using the full '<client>.<key>' form, e.g. "
+                f"'{specs_for_key[0]}'."
+            ),
+        )
+
+    return _resolved(spec, specs_for_key[0])
+
+
 def _resolve_tool_spec(
     spec: str, key_to_spec: dict[str, list[str]]
 ) -> tuple[str, str, str]:
-    if "." in spec:
-        # Full format: "<client>.<semantics_key>"
-        try:
-            client_slug, sem_key = spec.split(".", 1)
-        except ValueError:
-            raise ERR(f"'{spec}' is not in '<client>.<endpoint>' format") from None
-        _warn_if_deprecated(spec)
-        return spec, client_slug, sem_key
+    """Registration-path resolution: the pure rule plus the announcement.
 
-    if spec not in key_to_spec:
-        raise ERR(f"Tool key '{spec}' not found in available tools") from None
-
-    # Bare-key resolution is only supported for keys claimed by exactly one
-    # client. Two clients can legitimately expose distinct tools under the same
-    # key (see issue #126), and there is no defensible way to pick one.
-    specs_for_key = sorted(key_to_spec[spec])
-    if len(specs_for_key) > 1:
-        candidates = ", ".join(specs_for_key)
-        raise ERR(
-            f"Tool key '{spec}' is claimed by {len(specs_for_key)} clients "
-            f"({candidates}), so the bare key cannot be resolved. Bare tool "
-            f"keys work only when exactly one client claims them; name the "
-            f"client explicitly using the full '<client>.<key>' form, e.g. "
-            f"'{specs_for_key[0]}'."
-        ) from None
-
-    full_spec = specs_for_key[0]
-    client_slug, sem_key = full_spec.split(".", 1)
-    _warn_if_deprecated(full_spec)
+    Raises
+    ------
+    RuntimeError
+        If the entry is unknown or ambiguous.
+    """
+    resolution = resolve_tool_spec(spec, key_to_spec)
+    full_spec, client_slug, sem_key = resolution.require()
+    if resolution.is_deprecated:
+        _warn_if_deprecated(full_spec)
     return full_spec, client_slug, sem_key
 
 

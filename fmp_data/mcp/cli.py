@@ -211,8 +211,11 @@ def _classify_manifest_entries(
     """Sort manifest entries into unknown, ambiguous and deprecated.
 
     An entry may be a bare key (``profile``) or a fully qualified spec
-    (``company.profile``), so each one is resolved the same way the loader
-    resolves it before being judged.
+    (``company.profile``). Both forms are judged by
+    :func:`fmp_data.mcp.tool_loader.resolve_tool_spec` -- the same pure
+    function the loader resolves with -- so validation cannot bless a manifest
+    that registration then refuses (#149). Resolution is pure, so looping over
+    a manifest here announces nothing; only the registration path warns.
 
     Returns
     -------
@@ -221,33 +224,23 @@ def _classify_manifest_entries(
         preformatted with their candidates and ``deprecated`` pairs the entry
         as written with the spec that replaces it.
     """
-    available_tools = list_available_tools()
-    available_specs = {tool["spec"] for tool in available_tools}
-    replacement_by_spec = {tool["spec"]: tool["deprecated"] for tool in available_tools}
-    specs_by_key: dict[str, list[str]] = {}
-    for tool in available_tools:
-        specs_by_key.setdefault(tool["key"], []).append(tool["spec"])
+    from fmp_data.mcp import tool_loader
+
+    key_to_spec = tool_loader._build_key_to_spec(list_available_tools())
 
     unknown: list[str] = []
     ambiguous: list[str] = []
     deprecated: list[tuple[str, str]] = []
 
     for entry in entries:
-        if entry in available_specs:
-            resolved = entry
-        else:
-            candidates = sorted(specs_by_key.get(entry, []))
-            if not candidates:
-                unknown.append(entry)
-                continue
-            if len(candidates) > 1:
-                ambiguous.append(f"{entry} (use one of: {', '.join(candidates)})")
-                continue
-            resolved = candidates[0]
-
-        replacement = replacement_by_spec.get(resolved)
-        if replacement:
-            deprecated.append((entry, replacement))
+        resolution = tool_loader.resolve_tool_spec(entry, key_to_spec)
+        if resolution.status is tool_loader.ResolutionStatus.UNKNOWN:
+            unknown.append(entry)
+        elif resolution.status is tool_loader.ResolutionStatus.AMBIGUOUS:
+            candidates = ", ".join(resolution.candidates)
+            ambiguous.append(f"{entry} (use one of: {candidates})")
+        elif resolution.replacement is not None:
+            deprecated.append((entry, resolution.replacement))
 
     return unknown, ambiguous, deprecated
 
