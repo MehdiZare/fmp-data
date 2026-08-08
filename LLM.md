@@ -83,6 +83,11 @@ or call `model_dump()` / `model_dump_json()` for raw data.
 ## Optional integrations
 - LangChain extras: `pip install "fmp-data[langchain]"`
   - Vector store helper: `from fmp_data import create_vector_store`
+  - 2.6.0+: it returns an `EndpointVectorStore` or raises
+    `VectorStoreCreationError` (importable from `fmp_data` without the extra);
+    it no longer returns `None`. The exception carries `cause` and a `failures`
+    dict of endpoints skipped during registration. `setup_registry` likewise
+    returns `(registry, failures)` rather than a bare registry.
   - 2.0.0+: `EndpointVectorStore.load(..., allow_dangerous_deserialization=True)` is
     required for cached stores and should only be used with trusted cache sources.
 - MCP server extras: `pip install "fmp-data[mcp]"`

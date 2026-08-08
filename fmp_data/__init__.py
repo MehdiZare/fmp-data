@@ -33,6 +33,7 @@ from fmp_data.exceptions import (
     FMPError,
     RateLimitError,
     ValidationError,
+    VectorStoreCreationError,
 )
 from fmp_data.logger import FMPLogger
 
@@ -60,6 +61,7 @@ __all__ = [
     "RateLimitConfig",
     "RateLimitError",
     "ValidationError",
+    "VectorStoreCreationError",
     "__version__",
     "is_langchain_available",
     "logger",

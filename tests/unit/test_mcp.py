@@ -1236,3 +1236,53 @@ class TestMCPCompat:
             cls = _compat.import_mcp_server_class()
 
         assert cls is _FastMCP
+
+
+class TestDeprecationMechanismsStaySeparate:
+    """The MCP side of #137's contract.
+
+    These live here, rather than beside the other #137 tests in
+    ``tests/unit/lc/``, because they need the ``mcp`` extra and that directory
+    is skipped without ``langchain``. No CI job installs both: the ``langchain``
+    job has no ``mcp``, and the ``mcp-server`` job runs only this file
+    (``noxfile.py``). Placed anywhere else, they would never execute.
+    """
+
+    def test_mcp_catalog_still_advertises_the_deprecated_keys(self):
+        """The flag is LangChain-side only; MCP tool keys must stay resolvable.
+
+        #137 chose the flag over deleting the entries precisely so the catalog
+        count does not move and nothing breaks without a deprecation window.
+        MCP reads the semantics tables directly, never the vector store.
+        """
+        from fmp_data.mcp.discovery import discover_all_tools
+        from tests.unit.test_deprecated_endpoint_flags import (
+            DEPRECATED_INTELLIGENCE_ENDPOINTS,
+        )
+
+        keys = {tool["key"] for tool in discover_all_tools()}
+        assert DEPRECATED_INTELLIGENCE_ENDPOINTS <= keys
+
+    def test_lc_deprecation_and_mcp_deprecated_tools_are_separate(self):
+        """Two mechanisms, deliberately disjoint -- see the comments on each.
+
+        ``DEPRECATED_TOOLS`` renames duplicate keys for methods that still
+        work; ``EndpointSemantics.deprecated`` marks endpoints that return
+        nothing. If a future change makes these overlap, that is a design
+        decision to take explicitly rather than discover.
+        """
+        from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
+        from tests.unit.test_deprecated_endpoint_flags import (
+            DEPRECATED_INTELLIGENCE_ENDPOINTS,
+        )
+
+        # Neither side may be empty, or the disjointness below is vacuous.
+        assert DEPRECATED_TOOLS
+        assert DEPRECATED_INTELLIGENCE_ENDPOINTS
+
+        # DEPRECATED_TOOLS keys are namespaced (``company.executives``) while
+        # MCP tool keys are bare, so compare on the bare name -- the stricter
+        # reading, which fires even if the two picked the same name in
+        # different domains.
+        aliased = {spec.split(".", 1)[-1] for spec in DEPRECATED_TOOLS}
+        assert not (aliased & DEPRECATED_INTELLIGENCE_ENDPOINTS)

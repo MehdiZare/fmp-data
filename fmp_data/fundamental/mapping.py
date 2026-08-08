@@ -16,6 +16,12 @@ from fmp_data.fundamental.endpoints import (
     LEVERED_DCF,
     OWNER_EARNINGS,
 )
+from fmp_data.lc.hints import (
+    LIMIT_HINT,
+    PAGE_HINT,
+    PERIOD_WITH_FISCAL_HINT,
+    SYMBOL_HINT,
+)
 from fmp_data.lc.models import (
     EndpointSemantics,
     ParameterHint,
@@ -41,76 +47,6 @@ FUNDAMENTAL_ENDPOINT_MAP = {
     "get_latest_financial_statements": LATEST_FINANCIAL_STATEMENTS,
 }
 # Common parameter hints
-SYMBOL_HINT = ParameterHint(
-    natural_names=["company", "ticker", "stock", "symbol"],
-    extraction_patterns=[
-        r"(?i)for\s+([A-Z]{1,5})",
-        r"(?i)([A-Z]{1,5})(?:'s|'|\s+)",
-        r"\b[A-Z]{1,5}\b",
-    ],
-    examples=["AAPL", "MSFT", "GOOGL", "META", "AMZN"],
-    context_clues=[
-        "company",
-        "stock",
-        "ticker",
-        "shares",
-        "corporation",
-        "business",
-        "enterprise",
-        "firm",
-    ],
-)
-
-PERIOD_HINT = ParameterHint(
-    natural_names=["period", "frequency", "interval"],
-    extraction_patterns=[
-        r"(?i)(annual|yearly|quarterly|quarter|fy|q1|q2|q3|q4)",
-        r"(?i)every\s+(year|quarter)",
-    ],
-    examples=["annual", "quarter", "FY", "Q1"],
-    context_clues=[
-        "annual",
-        "yearly",
-        "quarterly",
-        "q1",
-        "q2",
-        "q3",
-        "q4",
-        "fy",
-        "fiscal",
-        "period",
-        "reporting",
-        "financial",
-    ],
-)
-
-LIMIT_HINT = ParameterHint(
-    natural_names=["limit", "count", "number"],
-    extraction_patterns=[
-        r"(?i)last\s+(\d+)",
-        r"(?i)(\d+)\s+periods",
-        r"(?i)recent\s+(\d+)",
-    ],
-    examples=["10", "20", "40"],
-    context_clues=[
-        "last",
-        "recent",
-        "previous",
-        "historical",
-        "periods",
-        "statements",
-        "reports",
-    ],
-)
-PAGE_HINT = ParameterHint(
-    natural_names=["page"],
-    extraction_patterns=[
-        r"(?i)page\s+(\d+)",
-        r"(?i)page\s+number\s+(\d+)",
-    ],
-    examples=["0", "1", "2"],
-    context_clues=["page", "pagination"],
-)
 FUNDAMENTAL_CONCEPTS = {
     "profitability": [
         "margins",
@@ -195,7 +131,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         sub_category="Financial Statements",
         parameter_hints={
             "symbol": SYMBOL_HINT,
-            "period": PERIOD_HINT,
+            "period": PERIOD_WITH_FISCAL_HINT,
             "limit": LIMIT_HINT,
         },
         response_hints={
@@ -314,7 +250,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         sub_category="Financial Statements",
         parameter_hints={
             "symbol": SYMBOL_HINT,
-            "period": PERIOD_HINT,
+            "period": PERIOD_WITH_FISCAL_HINT,
             "limit": LIMIT_HINT,
         },
         response_hints={
@@ -379,7 +315,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         sub_category="Financial Statements",
         parameter_hints={
             "symbol": SYMBOL_HINT,
-            "period": PERIOD_HINT,
+            "period": PERIOD_WITH_FISCAL_HINT,
             "limit": LIMIT_HINT,
         },
         response_hints={
@@ -443,7 +379,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         sub_category="Financial Metrics",
         parameter_hints={
             "symbol": SYMBOL_HINT,
-            "period": PERIOD_HINT,
+            "period": PERIOD_WITH_FISCAL_HINT,
             "limit": LIMIT_HINT,
         },
         response_hints={
@@ -507,7 +443,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         sub_category="Financial Metrics",
         parameter_hints={
             "symbol": SYMBOL_HINT,
-            "period": PERIOD_HINT,
+            "period": PERIOD_WITH_FISCAL_HINT,
             "limit": LIMIT_HINT,
         },
         response_hints={
@@ -755,7 +691,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         sub_category="Financial Statements",
         parameter_hints={
             "symbol": SYMBOL_HINT,
-            "period": PERIOD_HINT,
+            "period": PERIOD_WITH_FISCAL_HINT,
             "limit": LIMIT_HINT,
         },
         response_hints={
@@ -1079,7 +1015,7 @@ FULL_STATEMENT_SEMANTICS = EndpointSemantics(
     sub_category="Financial Statements",
     parameter_hints={
         "symbol": SYMBOL_HINT,
-        "period": PERIOD_HINT,
+        "period": PERIOD_WITH_FISCAL_HINT,
         "limit": LIMIT_HINT,
     },
     response_hints={

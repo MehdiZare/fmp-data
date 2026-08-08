@@ -16,6 +16,13 @@ from fmp_data.investment.endpoints import (
     MUTUAL_FUND_HOLDER,
     MUTUAL_FUND_HOLDINGS,
 )
+from fmp_data.lc.hints import (
+    AS_OF_DATE_HINT,
+    CIK_HINT,
+    QUARTER_HINT,
+    SYMBOL_HINT,
+    YEAR_HINT,
+)
 from fmp_data.lc.models import (
     EndpointSemantics,
     ParameterHint,
@@ -24,51 +31,6 @@ from fmp_data.lc.models import (
 )
 
 # Common parameter hints
-SYMBOL_HINT = ParameterHint(
-    natural_names=["symbol", "ticker", "code"],
-    extraction_patterns=[
-        r"(?i)for\s+([A-Z]{1,5})",
-        r"(?i)([A-Z]{1,5})(?:'s|'|\s+)",
-        r"\b[A-Z]{1,5}\b",
-    ],
-    examples=["SPY", "QQQ", "VTI", "VFIAX"],
-    context_clues=["etf", "fund", "symbol", "ticker"],
-)
-
-DATE_HINT = ParameterHint(
-    natural_names=["date", "as of", "portfolio date"],
-    extraction_patterns=[
-        r"(\d{4}-\d{2}-\d{2})",
-        r"(?:on|at|for)\s+(\d{4}-\d{2}-\d{2})",
-    ],
-    examples=["2024-01-15", "2023-12-31"],
-    context_clues=["date", "as of", "holdings", "portfolio"],
-)
-
-YEAR_HINT = ParameterHint(
-    natural_names=["year", "fiscal year"],
-    extraction_patterns=[r"\b(20\d{2})\b"],
-    examples=["2023", "2024"],
-    context_clues=["year", "fiscal"],
-)
-
-QUARTER_HINT = ParameterHint(
-    natural_names=["quarter", "q"],
-    extraction_patterns=[r"\bQ([1-4])\b", r"\bquarter\s+([1-4])\b"],
-    examples=["Q1", "Q4"],
-    context_clues=["quarter", "q"],
-)
-
-CIK_HINT = ParameterHint(
-    natural_names=["cik", "company id", "sec id"],
-    extraction_patterns=[
-        r"(?i)cik[:\s]+(\d{10})",
-        r"(?i)cik[:\s]+(\d{1,10})",
-    ],
-    examples=["0000102909", "0000884560"],
-    context_clues=["cik", "sec identifier", "company id"],
-)
-
 FUND_NAME_HINT = ParameterHint(
     natural_names=["fund name", "mutual fund name", "fund"],
     extraction_patterns=[
@@ -179,7 +141,7 @@ INVESTMENT_ENDPOINTS_SEMANTICS = {
         sub_category="ETF Holdings",
         parameter_hints={
             "symbol": SYMBOL_HINT,
-            "date": DATE_HINT,
+            "date": AS_OF_DATE_HINT,
         },
         response_hints={
             "symbol": ResponseFieldInfo(
@@ -648,7 +610,7 @@ INVESTMENT_ENDPOINTS_SEMANTICS = {
         sub_category="Mutual Fund Holdings",
         parameter_hints={
             "symbol": SYMBOL_HINT,
-            "date": DATE_HINT,
+            "date": AS_OF_DATE_HINT,
         },
         response_hints={
             "asset": ResponseFieldInfo(

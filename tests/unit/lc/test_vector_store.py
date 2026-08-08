@@ -81,11 +81,11 @@ def vector_store(mock_client, mock_registry, mock_embeddings, tmp_path):
         embeddings=mock_embeddings,
         cache_dir=str(tmp_path),
     )
-    # Make sure registry returns data
-    mock_registry.list_endpoints.return_value = {
-        "test_endpoint": Mock(spec=EndpointInfo)
-    }
-    mock_registry.get_endpoint.return_value = Mock(spec=EndpointInfo)
+    # Make sure registry returns data. `semantics.deprecated` is spelled out
+    # because `spec=EndpointInfo` does not expose pydantic field names, and
+    # `add_endpoint` reads it to filter deprecated endpoints (#137).
+    mock_registry.list_endpoints.return_value = {"test_endpoint": _live_endpoint_info()}
+    mock_registry.get_endpoint.return_value = _live_endpoint_info()
     mock_registry.get_embedding_text.return_value = "Test embedding text"
     return store
 
@@ -108,11 +108,18 @@ def mock_client():
     return Mock(spec="BaseClient")
 
 
+def _live_endpoint_info() -> Mock:
+    """An ``EndpointInfo`` stand-in that is not deprecated (#137)."""
+    info = Mock(spec=EndpointInfo)
+    info.semantics = Mock(deprecated=False)
+    return info
+
+
 @pytest.fixture
 def mock_registry():
     """Mock registry with proper info returns"""
     registry = Mock(spec=EndpointRegistry)
-    registry.get_endpoint.return_value = Mock()
+    registry.get_endpoint.return_value = _live_endpoint_info()
     registry.get_embedding_text.return_value = "Test embedding text"
     return registry
 

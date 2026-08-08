@@ -12,56 +12,22 @@ from fmp_data.institutional.endpoints import (
     INSTITUTIONAL_HOLDINGS,
     TRANSACTION_TYPES,
 )
-from fmp_data.lc.hints import LIMIT_HINT, QUARTER_HINT, YEAR_HINT
+from fmp_data.lc.hints import (
+    AS_OF_DATE_HINT,
+    CIK_HINT,
+    LIMIT_HINT,
+    PAGE_HINT,
+    QUARTER_HINT,
+    SYMBOL_HINT,
+    YEAR_HINT,
+)
 from fmp_data.lc.models import (
     EndpointSemantics,
-    ParameterHint,
     ResponseFieldInfo,
     SemanticCategory,
 )
 
 # Common parameter hints for reuse
-SYMBOL_HINT = ParameterHint(
-    natural_names=["ticker", "stock symbol", "company symbol"],
-    extraction_patterns=[
-        r"[A-Z]{1,5}",
-        r"symbol[:\s]+([A-Z]{1,5})",
-        r"(?i)for\s+([A-Z]{1,5})",
-    ],
-    examples=["AAPL", "MSFT", "TSLA"],
-    context_clues=["stock", "ticker", "symbol", "shares", "company"],
-)
-
-CIK_HINT = ParameterHint(
-    natural_names=["CIK", "SEC ID", "filing ID"],
-    extraction_patterns=[
-        r"CIK[:\s]+(\d+)",
-        r"(\d{10})",
-    ],
-    examples=["0000320193", "0000789019", "0001652044"],
-    context_clues=["CIK", "SEC identifier", "filing ID", "regulatory ID"],
-)
-
-DATE_HINT = ParameterHint(
-    natural_names=["date", "filing date", "report date"],
-    extraction_patterns=[
-        r"(\d{4}-\d{2}-\d{2})",
-        r"(\d{2}/\d{2}/\d{4})",
-    ],
-    examples=["2024-03-31", "2023-12-31", "2024-06-30"],
-    context_clues=["date", "as of", "filed on", "reported", "for period"],
-)
-
-PAGE_HINT = ParameterHint(
-    natural_names=["page number", "page", "result page"],
-    extraction_patterns=[
-        r"page[:\s]+(\d+)",
-        r"p(\d+)",
-    ],
-    examples=["0", "1", "2"],
-    context_clues=["page", "next", "previous", "results"],
-)
-
 INSTITUTIONAL_TIME_PERIODS = {
     "quarterly": {
         "patterns": [
@@ -234,7 +200,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INSTITUTIONAL,
         sub_category="Portfolio Analysis",
-        parameter_hints={"date": DATE_HINT},
+        parameter_hints={"date": AS_OF_DATE_HINT},
         response_hints={
             "asset_type": ResponseFieldInfo(
                 description="Type of asset or investment category",

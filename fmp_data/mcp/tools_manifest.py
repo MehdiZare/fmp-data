@@ -20,6 +20,16 @@ FMP_MCP_MANIFEST environment variable to point to a custom manifest file.
 #: (see ``fmp_data.mcp.tool_loader._warn_if_deprecated``) and are removed in
 #: 3.0. They are excluded from :data:`DEFAULT_TOOLS` now, so a default server
 #: already advertises exactly one tool per method.
+#:
+#: **Not the same mechanism as** ``EndpointSemantics.deprecated`` (#137), and
+#: they must not be merged. This table is about duplicate *names* for a method
+#: that still works: resolve one and you get live data, plus a warning telling
+#: you to rename. That flag is about an endpoint that no longer returns
+#: anything, whatever name you reach it by -- the fix there is to stop
+#: advertising it to an LLM, not to rename it. The two are independent: a key
+#: here need not be flagged there, and every endpoint flagged there
+#: (``intelligence.stock_news_sentiments``, ``earnings_confirmed``,
+#: ``earnings_surprises``) has exactly one name and so does not appear here.
 DEPRECATED_TOOLS: dict[str, str] = {
     "company.executives": "company.key_executives",
     "company.historical_price": "company.historical_prices",

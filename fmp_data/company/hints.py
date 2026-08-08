@@ -1,4 +1,3 @@
-from fmp_data.company.schema import IntradayTimeInterval
 from fmp_data.lc.models import ParameterHint, ResponseFieldInfo
 
 STRUCTURE_HINT = ParameterHint(
@@ -6,17 +5,6 @@ STRUCTURE_HINT = ParameterHint(
     extraction_patterns=[r"\b(flat|nested)\b"],
     examples=["flat", "nested"],
     context_clues=["structure", "format", "organize", "arrangement"],
-)
-
-CIK_HINT = ParameterHint(
-    natural_names=["CIK", "central index key", "SEC identifier"],
-    extraction_patterns=[
-        r"\b\d{10}\b",  # 10-digit CIK
-        r"\b0{6}\d{4}\b",  # CIK with leading zeros
-        r"CIK\s*:?\s*(\d{10})",  # "CIK: 0000320193" or "CIK 0000320193"
-    ],
-    examples=["0000320193", "0001318605", "0001045810"],
-    context_clues=["CIK", "central index key", "SEC identifier", "CIK number"],
 )
 
 # Common response field hints
@@ -84,14 +72,4 @@ NONADJUSTED_HINT = ParameterHint(
     ],
     examples=["true", "false"],
     context_clues=["nonadjusted", "unadjusted", "raw", "without adjustments"],
-)
-
-INTERVAL_HINT = ParameterHint(
-    natural_names=["interval", "timeframe", "period"],
-    extraction_patterns=[
-        r"(?i)(\d+)\s*(?:min|minute|hour|hr)",
-        r"(?i)(one|five|fifteen|thirty)\s*(?:min|minute|hour|hr)",
-    ],
-    examples=list(IntradayTimeInterval),
-    context_clues=["interval", "timeframe", "period", "frequency"],
 )

@@ -10,6 +10,7 @@ from fmp_data.economics.endpoints import (
     TREASURY_RATES,
 )
 from fmp_data.economics.schema import EconomicIndicatorType
+from fmp_data.lc.hints import DATE_HINTS
 from fmp_data.lc.models import (
     EndpointSemantics,
     ParameterHint,
@@ -56,27 +57,6 @@ ECONOMICS_COMMON_TERMS = {
         "employment situation",
         "labor statistics",
     ],
-}
-
-DATE_HINTS = {
-    "start_date": ParameterHint(
-        natural_names=["start date", "from date", "beginning", "since"],
-        extraction_patterns=[
-            r"(\d{4}-\d{2}-\d{2})",
-            r"(?:from|since|after)\s+(\d{4}-\d{2}-\d{2})",
-        ],
-        examples=["2023-01-01", "2022-12-31"],
-        context_clues=["from", "since", "starting", "beginning", "after"],
-    ),
-    "end_date": ParameterHint(  # Changed from "to_date"
-        natural_names=["end date", "to date", "until", "through"],
-        extraction_patterns=[
-            r"(?:to|until|through)\s+(\d{4}-\d{2}-\d{2})",
-            r"(\d{4}-\d{2}-\d{2})",
-        ],
-        examples=["2024-01-01", "2023-12-31"],
-        context_clues=["to", "until", "through", "ending"],
-    ),
 }
 
 COT_SYMBOL_HINT = ParameterHint(

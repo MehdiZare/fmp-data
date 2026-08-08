@@ -32,15 +32,15 @@ from fmp_data.company.endpoints import (
     UPGRADES_DOWNGRADES_CONSENSUS,
 )
 from fmp_data.company.hints import (
-    CIK_HINT,
     FLOAT_RESPONSE_HINTS,
-    INTERVAL_HINT,
     NONADJUSTED_HINT,
     PROFILE_RESPONSE_HINTS,
     STRUCTURE_HINT,
 )
 from fmp_data.lc.hints import (
+    CIK_HINT,
     DATE_HINTS,
+    INTERVAL_HINT,
     LIMIT_HINT,
     PAGE_HINT,
     PERIOD_HINT,

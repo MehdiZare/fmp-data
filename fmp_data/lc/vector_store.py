@@ -425,11 +425,34 @@ class EndpointVectorStore:
         except Exception as e:
             raise ConfigError(f"Failed to save vector store: {e!s}") from e
 
+    @staticmethod
+    def _is_deprecated(info: Any) -> bool:
+        """Whether an endpoint no longer returns data (#137).
+
+        Deprecated endpoints stay in the semantics tables -- their MCP tool
+        keys must keep resolving for explicit manifests, and the catalog count
+        must not move -- but they are kept out of this store entirely, because
+        an LLM that selects one gets an empty *success* it cannot tell apart
+        from "no data matched your query".
+
+        Distinct from ``fmp_data.mcp.tools_manifest.DEPRECATED_TOOLS``, which
+        maps duplicate tool *names* onto the canonical name of a method that
+        still works. See ``EndpointSemantics.deprecated``; do not merge them.
+        """
+        return bool(getattr(info.semantics, "deprecated", False))
+
     def add_endpoint(self, name: str) -> None:
-        """Add endpoint to vector store"""
+        """Add endpoint to vector store.
+
+        Deprecated endpoints are skipped -- see :meth:`_is_deprecated`.
+        """
         info = self.registry.get_endpoint(name)
         if not info:
             self.logger.warning(f"Endpoint not found in registry: {name}")
+            return
+
+        if self._is_deprecated(info):
+            self.logger.debug(f"Skipping deprecated endpoint: {name}")
             return
 
         text = self.registry.get_embedding_text(name)
@@ -442,39 +465,74 @@ class EndpointVectorStore:
         self.vector_store.add_documents([document])
         self.logger.debug(f"Added endpoint to vector store: {name}")
 
-    def add_endpoints(self, names: list[str]) -> None:
-        """Add multiple endpoints to vector store"""
+    def _classify_endpoint(self, name: str) -> tuple[str, Document | None]:
+        """Sort one endpoint into ``ok`` / ``invalid`` / ``deprecated`` / ``skip``.
+
+        Split out of :meth:`add_endpoints` purely to keep that method under the
+        complexity limit; it holds no state of its own.
+        """
+        try:
+            info = self.registry.get_endpoint(name)
+            if not info:
+                return "invalid", None
+
+            if self._is_deprecated(info):
+                return "deprecated", None
+
+            text = self.registry.get_embedding_text(name)
+            if not text:
+                self.logger.warning(f"No embedding text for endpoint: {name}")
+                return "skip", None
+
+            return "ok", Document(page_content=text, metadata={"endpoint": name})
+        except Exception as e:
+            self.logger.error(f"Error processing endpoint {name}: {e!s}")
+            return "skip", None
+
+    def add_endpoints(self, names: list[str]) -> int:
+        """Add multiple endpoints to vector store.
+
+        Deprecated endpoints are skipped -- see :meth:`_is_deprecated`. They are
+        counted separately from ``skipped_endpoints`` because being deprecated
+        is a deliberate exclusion, not a defect worth a warning.
+
+        Returns:
+            How many endpoints were actually indexed. Callers offering the whole
+            catalog get back fewer than they passed, so reporting the input
+            length would overstate the store's contents.
+        """
         if not names:
             raise ValueError("No endpoint names provided")
 
-        documents = []
-        skipped_endpoints = set()
-        invalid_endpoints = set()
+        documents: list[Document] = []
+        buckets: dict[str, set[str]] = {
+            "invalid": set(),
+            "deprecated": set(),
+            "skip": set(),
+        }
 
         for name in names:
-            try:
-                info = self.registry.get_endpoint(name)
-                if not info:
-                    invalid_endpoints.add(name)
-                    continue
+            outcome, document = self._classify_endpoint(name)
+            if document is not None:
+                documents.append(document)
+            else:
+                buckets[outcome].add(name)
 
-                text = self.registry.get_embedding_text(name)
-                if not text:
-                    self.logger.warning(f"No embedding text for endpoint: {name}")
-                    skipped_endpoints.add(name)
-                    continue
-
-                doc = Document(page_content=text, metadata={"endpoint": name})
-                documents.append(doc)
-            except Exception as e:
-                self.logger.error(f"Error processing endpoint {name}: {e!s}")
-                skipped_endpoints.add(name)
+        invalid_endpoints = buckets["invalid"]
+        skipped_endpoints = buckets["skip"]
+        deprecated_endpoints = buckets["deprecated"]
 
         if invalid_endpoints:
             self.logger.error(f"Invalid endpoints: {sorted(invalid_endpoints)}")
 
         if skipped_endpoints:
             self.logger.warning(f"Skipped endpoints: {sorted(skipped_endpoints)}")
+
+        if deprecated_endpoints:
+            self.logger.info(
+                f"Excluded {len(deprecated_endpoints)} deprecated endpoints: "
+                f"{sorted(deprecated_endpoints)}"
+            )
 
         if not documents:
             raise RuntimeError("No valid endpoints to add to vector store")
@@ -483,10 +541,22 @@ class EndpointVectorStore:
             self.vector_store.add_documents(documents)
             self.logger.info(
                 f"Added {len(documents)} endpoints to vector store "
-                f"(skipped {len(skipped_endpoints)})"
+                f"(skipped {len(skipped_endpoints)}, "
+                f"deprecated {len(deprecated_endpoints)})"
             )
         except Exception as e:
             raise RuntimeError(f"Failed to add documents to vector store: {e!s}") from e
+
+        return len(documents)
+
+    #: How many widening fetches :meth:`search` may make. A store persisted by
+    #: an earlier release still carries deprecated endpoints in its backing
+    #: index; they are filtered out here, but a plain top-k fetch lets each one
+    #: consume a slot, so ``search(query, k=3)`` would quietly return two live
+    #: endpoints -- under-recall in exactly the stale-index case this filtering
+    #: exists for. Each round doubles the window, and the loop stops as soon as
+    #: k results are live, nothing was displaced, or the index is exhausted.
+    _SEARCH_FETCH_ROUNDS = 3
 
     def search(
         self, query: str, k: int = 3, threshold: float = 0.3
@@ -500,7 +570,9 @@ class EndpointVectorStore:
             threshold: Minimum similarity score threshold (0-1)
 
         Returns:
-            List of SearchResult objects containing matches
+            List of SearchResult objects containing matches. Never more than
+            ``k``; deprecated entries in a stale index do not reduce the count
+            below ``k`` while live matches remain.
 
         Raises:
             ValueError: If invalid k or threshold values
@@ -511,27 +583,55 @@ class EndpointVectorStore:
             raise ValueError("threshold must be between 0 and 1")
 
         try:
-            results = []
-            docs_and_scores = self.vector_store.similarity_search_with_score(query, k=k)
+            fetch_k = k
+            results: list[SearchResult] = []
+            for _ in range(self._SEARCH_FETCH_ROUNDS):
+                docs_and_scores = self.vector_store.similarity_search_with_score(
+                    query, k=fetch_k
+                )
+                results, displaced = self._collect_live_results(
+                    docs_and_scores, threshold
+                )
+                index_exhausted = len(docs_and_scores) < fetch_k
+                if len(results) >= k or not displaced or index_exhausted:
+                    break
+                fetch_k *= 2
 
-            for doc, score in docs_and_scores:
-                similarity = 1 / (1 + score)
-                if similarity < threshold:
-                    continue
-
-                endpoint_name = doc.metadata.get("endpoint")
-                if not isinstance(endpoint_name, str):
-                    continue
-                info = self.registry.get_endpoint(endpoint_name)
-                if info:
-                    results.append(
-                        SearchResult(score=similarity, name=endpoint_name, info=info)
-                    )
-
-            return sorted(results, key=lambda x: x.score, reverse=True)
+            results.sort(key=lambda x: x.score, reverse=True)
+            return results[:k]
         except Exception as e:
             self.logger.error(f"Search failed: {e!s}")
             raise
+
+    def _collect_live_results(
+        self, docs_and_scores: Sequence[tuple[Any, float]], threshold: float
+    ) -> tuple[list[SearchResult], int]:
+        """Turn raw hits into results, dropping deprecated and unknown entries.
+
+        Returns the results plus how many hits were *displaced* -- dropped for
+        a reason a wider fetch can compensate for. Hits below ``threshold`` are
+        not counted: those are a genuine relevance cut, and re-fetching would
+        only surface less relevant matches.
+        """
+        results: list[SearchResult] = []
+        displaced = 0
+        for doc, score in docs_and_scores:
+            similarity = 1 / (1 + score)
+            if similarity < threshold:
+                continue
+
+            endpoint_name = doc.metadata.get("endpoint")
+            if not isinstance(endpoint_name, str):
+                displaced += 1
+                continue
+            info = self.registry.get_endpoint(endpoint_name)
+            if info is None or self._is_deprecated(info):
+                displaced += 1
+                continue
+            results.append(
+                SearchResult(score=similarity, name=endpoint_name, info=info)
+            )
+        return results, displaced
 
     def _serialize_result(self, result: Any) -> dict[str, Any]:
         """Serialize result, converting Pydantic models to JSON."""
@@ -671,6 +771,12 @@ class EndpointVectorStore:
 
         Returns:
             List of tools (formatted or unformatted based on provider)
+
+        Note:
+            Deprecated endpoints are excluded here as well as at index time
+            (:meth:`_is_deprecated`). Filtering only on the way in would leave a
+            store persisted by an earlier release still serving them, which is
+            exactly the state #137 describes.
         """
         try:
             tools: list[ToolLike] = []
@@ -684,7 +790,7 @@ class EndpointVectorStore:
                     if not isinstance(endpoint_name, str):
                         continue
                     info = self.registry.get_endpoint(endpoint_name)
-                    if info:
+                    if info and not self._is_deprecated(info):
                         tools.append(self.create_tool(info))
 
             if provider:
