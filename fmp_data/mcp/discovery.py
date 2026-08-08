@@ -223,7 +223,7 @@ def get_recommended_tools() -> list[str]:
         "company.profile",
         "company.market_cap",
         "company.quote",
-        "company.historical_price",
+        "company.historical_prices",
         # Market data
         "market.gainers",
         "market.losers",

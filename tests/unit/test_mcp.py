@@ -8,8 +8,10 @@ Relative path: tests/unit/test_mcp.py
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
+import warnings
 
 import pytest
 
@@ -560,6 +562,241 @@ class TestToolKeyNamespace:
         with warnings.catch_warnings():
             warnings.simplefilter("error", DeprecationWarning)
             _resolve_tool_spec("company.key_executives", {})
+
+    def test_warning_is_attributed_to_the_caller_not_the_library(self) -> None:
+        """``stacklevel`` must point at the manifest author's own module.
+
+        A warning attributed to ``tool_loader.py`` is useless: it names the
+        library rather than the line to change, and no ``filterwarnings`` rule
+        keyed on the caller's module can match it.
+        """
+        from fmp_data.client import FMPDataClient
+        from fmp_data.mcp.tool_loader import register_from_manifest
+
+        client = FMPDataClient(api_key="dummy-key-for-attribute-resolution")
+        try:
+            with pytest.warns(DeprecationWarning) as record:
+                register_from_manifest(Mock(), client, ["company.historical_price"])
+        finally:
+            client.close()
+
+        assert Path(record[0].filename).name == Path(__file__).name, (
+            f"warning attributed to {record[0].filename}, expected this test file"
+        )
+
+    def test_recommended_tools_names_no_deprecated_key(self) -> None:
+        """A public helper must not hand out a key this release deprecates."""
+        from fmp_data.mcp.discovery import get_recommended_tools
+        from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
+
+        offenders = sorted(set(get_recommended_tools()) & set(DEPRECATED_TOOLS))
+
+        assert offenders == [], (
+            f"get_recommended_tools() recommends deprecated keys: {offenders}"
+        )
+
+    def test_no_removal_reminder_missed_for_3_0(self) -> None:
+        """Breadcrumb: 3.0 must not ship with the deprecation cycle still open.
+
+        ``fmp_data.__version__`` is hatch-vcs derived and resolves to the
+        ``"0.0.0"`` fallback whenever the suite imports the source tree rather
+        than a built wheel -- which is what happens in this repo -- so it is
+        checked only when it carries a real value. The CHANGELOG is the signal
+        that actually moves in-tree: cutting 3.0 adds a released ``## [3.x.y]``
+        heading, and that is what trips this test.
+
+        On failure: drop ``DEPRECATED_TOOLS``, the ``executives`` /
+        ``historical_price`` / ``intraday_price`` semantics entries in
+        ``fmp_data/company/mapping.py``, and ``_warn_if_deprecated`` plus its
+        two call sites in ``fmp_data/mcp/tool_loader.py``.
+        """
+        import re
+
+        from fmp_data import __version__
+
+        reminder = (
+            "3.0: drop DEPRECATED_TOOLS, the three alias semantics entries, "
+            "and _warn_if_deprecated"
+        )
+
+        if __version__ != "0.0.0":
+            assert int(__version__.split(".")[0]) < 3, reminder
+
+        changelog = (Path(__file__).resolve().parents[2] / "CHANGELOG.md").read_text()
+        released_majors = {
+            int(match) for match in re.findall(r"^## \[(\d+)\.", changelog, re.M)
+        }
+
+        assert not any(major >= 3 for major in released_majors), reminder
+
+
+class TestExampleManifests:
+    """Shipped examples must demonstrate the policy, not violate it (#126, #136).
+
+    ``docs/mcp/configurations.md`` tells users to copy one of these files, so a
+    deprecated or unresolvable key here is advice to write broken manifests.
+    """
+
+    MANIFEST_DIR = Path(__file__).resolve().parents[2] / "examples/mcp/configurations"
+
+    @staticmethod
+    def _manifest_paths() -> list[Path]:
+        paths = sorted(TestExampleManifests.MANIFEST_DIR.glob("*_manifest.py"))
+        assert paths, (
+            f"No example manifests found in {TestExampleManifests.MANIFEST_DIR}"
+        )
+        return paths
+
+    @staticmethod
+    def _load_tools(path: Path) -> list[str]:
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        return load_manifest_tools(path)
+
+    def test_no_example_manifest_names_a_deprecated_key(self) -> None:
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
+
+        specs_by_key: dict[str, list[str]] = {}
+        for tool in discover_all_tools():
+            specs_by_key.setdefault(tool["key"], []).append(tool["spec"])
+
+        offenders: list[str] = []
+        for path in self._manifest_paths():
+            for entry in self._load_tools(path):
+                candidates = [entry] if "." in entry else specs_by_key.get(entry, [])
+                for spec in candidates:
+                    if spec in DEPRECATED_TOOLS:
+                        offenders.append(
+                            f"{path.name}: '{entry}' -> use '{DEPRECATED_TOOLS[spec]}'"
+                        )
+
+        assert offenders == [], (
+            "Example manifests name deprecated tool keys:\n" + "\n".join(offenders)
+        )
+
+    def test_every_example_manifest_entry_resolves(self) -> None:
+        """Catches ambiguous bare keys and typos, not just deprecation.
+
+        ``crypto_manifest.py`` listed bare ``crypto_quotes`` / ``forex_quotes``,
+        which are claimed by two clients each and raise at registration (#126).
+        """
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tool_loader import _build_key_to_spec, _resolve_tool_spec
+
+        key_to_spec = _build_key_to_spec(discover_all_tools())
+        catalog = {tool["spec"] for tool in discover_all_tools()}
+
+        failures: list[str] = []
+        for path in self._manifest_paths():
+            for entry in self._load_tools(path):
+                try:
+                    full_spec, _, _ = _resolve_tool_spec(entry, key_to_spec)
+                except RuntimeError as exc:
+                    failures.append(f"{path.name}: '{entry}': {exc}")
+                    continue
+                if full_spec not in catalog:
+                    failures.append(f"{path.name}: '{entry}' -> unknown {full_spec}")
+
+        assert failures == [], (
+            "Example manifest entries that do not resolve:\n" + "\n".join(failures)
+        )
+
+    def test_no_example_manifest_lists_a_tool_twice(self) -> None:
+        """Two names for one method is the very thing #136 removes."""
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tool_loader import _build_key_to_spec, _resolve_tool_spec
+
+        key_to_spec = _build_key_to_spec(discover_all_tools())
+        method_by_spec = {tool["spec"]: tool["method"] for tool in discover_all_tools()}
+
+        duplicates: list[str] = []
+        for path in self._manifest_paths():
+            seen: dict[tuple[str, str], str] = {}
+            for entry in self._load_tools(path):
+                try:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", DeprecationWarning)
+                        full_spec, client_slug, _ = _resolve_tool_spec(
+                            entry, key_to_spec
+                        )
+                except RuntimeError:
+                    # Unresolvable entries are test_every_example_manifest_entry
+                    # _resolves' failure to report; do not double-fail here.
+                    continue
+                pair = (client_slug, method_by_spec[full_spec])
+                if pair in seen:
+                    duplicates.append(f"{path.name}: '{seen[pair]}' and '{entry}'")
+                seen[pair] = entry
+
+        assert duplicates == [], (
+            "Example manifests register the same method twice:\n"
+            + "\n".join(duplicates)
+        )
+
+
+class TestMCPCliDeprecationReporting:
+    """``fmp-mcp validate`` answers 'is my manifest future-proof?' (#136)."""
+
+    def test_validate_reports_deprecated_specs_and_still_passes(
+        self, tmp_path, capsys
+    ) -> None:
+        from fmp_data.mcp.cli import validate_manifest
+
+        manifest = tmp_path / "deprecated_manifest.py"
+        manifest.write_text('TOOLS = ["company.historical_price", "company.profile"]\n')
+
+        assert validate_manifest(manifest) is True
+
+        out = capsys.readouterr().out
+        assert "company.historical_price" in out
+        assert "company.historical_prices" in out
+        assert "3.0" in out
+
+    def test_validate_reports_a_deprecated_bare_key(self, tmp_path, capsys) -> None:
+        from fmp_data.mcp.cli import validate_manifest
+
+        manifest = tmp_path / "bare_manifest.py"
+        manifest.write_text('TOOLS = ["historical_price"]\n')
+
+        assert validate_manifest(manifest) is True
+
+        out = capsys.readouterr().out
+        assert "company.historical_prices" in out
+
+    def test_validate_is_quiet_for_a_canonical_manifest(self, tmp_path, capsys) -> None:
+        from fmp_data.mcp.cli import validate_manifest
+
+        manifest = tmp_path / "clean_manifest.py"
+        manifest.write_text('TOOLS = ["company.historical_prices"]\n')
+
+        assert validate_manifest(manifest) is True
+
+        captured = capsys.readouterr()
+        assert "Deprecated" not in captured.out
+        assert "Unknown tools" not in captured.err
+
+    def test_validate_flags_an_ambiguous_bare_key(self, tmp_path, capsys) -> None:
+        from fmp_data.mcp.cli import validate_manifest
+
+        manifest = tmp_path / "ambiguous_manifest.py"
+        manifest.write_text('TOOLS = ["crypto_quotes"]\n')
+
+        assert validate_manifest(manifest) is True
+
+        err = capsys.readouterr().err
+        assert "alternative.crypto_quotes" in err
+        assert "batch.crypto_quotes" in err
+
+    def test_listing_marks_deprecated_tools(self) -> None:
+        from fmp_data.mcp.cli import list_available_tools
+
+        by_spec = {tool["spec"]: tool for tool in list_available_tools()}
+
+        assert by_spec["company.historical_price"]["deprecated"] == (
+            "company.historical_prices"
+        )
+        assert by_spec["company.historical_prices"]["deprecated"] is None
 
 
 class TestIntelligenceGradesAndRatingsTools:

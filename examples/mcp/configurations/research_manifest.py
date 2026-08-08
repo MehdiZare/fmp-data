@@ -8,7 +8,6 @@ company research, and investment decision-making.
 TOOLS = [
     # Company information
     "profile",
-    "executives",
     "key_executives",
     "employee_count",
     "market_cap",

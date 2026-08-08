@@ -100,7 +100,7 @@ To use a specific profile during manual setup, set the `FMP_MCP_MANIFEST` enviro
       "args": ["-m", "fmp_data.mcp"],
       "env": {
         "FMP_API_KEY": "your_api_key_here",
-        "FMP_MCP_MANIFEST": "/path/to/fmp-data/examples/mcp_configurations/trading_manifest.py"
+        "FMP_MCP_MANIFEST": "/path/to/fmp-data/examples/mcp/configurations/trading_manifest.py"
       }
     }
   }

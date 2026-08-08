@@ -14,9 +14,7 @@ TOOLS = [
     "most_active",
     "pre_post_market",
     # Price history for charting
-    "historical_price",
     "historical_prices",
-    "intraday_price",
     "intraday_prices",
     # Technical analysis
     "sma",

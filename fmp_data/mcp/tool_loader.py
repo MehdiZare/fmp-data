@@ -61,7 +61,18 @@ def _build_key_to_spec(all_tools: list[dict[str, str]]) -> dict[str, list[str]]:
 
 
 def _warn_if_deprecated(full_spec: str) -> None:
-    """Announce a tool key that is scheduled for removal in 3.0."""
+    """Announce a tool key that is scheduled for removal in 3.0.
+
+    Emitted once per resolution, i.e. once per manifest entry naming the key.
+    Deduplication is delegated to Python's default warning filter, which shows
+    a given (message, category, module, lineno) once per process — so each
+    distinct deprecated key surfaces once, at the caller's own location.
+
+    ``stacklevel=4`` walks out of the library to that caller:
+    ``_warn_if_deprecated`` (1) -> ``_resolve_tool_spec`` (2) ->
+    ``register_from_manifest`` (3) -> caller (4). Attributing the warning to
+    the user's module is what lets their own ``filterwarnings`` rules match.
+    """
     replacement = DEPRECATED_TOOLS.get(full_spec)
     if replacement is None:
         return
@@ -70,7 +81,7 @@ def _warn_if_deprecated(full_spec: str) -> None:
         f"3.0; use '{replacement}' instead. Both names call the same client "
         f"method, so the replacement is a drop-in.",
         DeprecationWarning,
-        stacklevel=3,
+        stacklevel=4,
     )
 
 
