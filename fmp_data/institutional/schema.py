@@ -4,6 +4,7 @@ from datetime import date
 
 from pydantic import Field
 
+from fmp_data.models import CIK
 from fmp_data.schema import BaseArgModel, BaseEnum, PaginationArg, SymbolArg
 
 
@@ -21,7 +22,7 @@ class InsiderTransactionType(BaseEnum):
 class Form13FArgs(BaseArgModel):
     """Arguments for getting Form 13F data"""
 
-    cik: str = Field(
+    cik: CIK = Field(
         description="Institution CIK number",
         pattern=r"^\d{10}$",
         json_schema_extra={"examples": ["0001234567"]},
@@ -34,7 +35,7 @@ class Form13FArgs(BaseArgModel):
 class Form13FDatesArgs(BaseArgModel):
     """Arguments for getting Form 13F filing dates"""
 
-    cik: str = Field(description="Institution CIK number", pattern=r"^\d{10}$")
+    cik: CIK = Field(description="Institution CIK number", pattern=r"^\d{10}$")
 
 
 class AssetAllocationArgs(BaseArgModel):

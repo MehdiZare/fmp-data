@@ -42,7 +42,7 @@ class InvestmentClient(EndpointGroup):
         self, symbol: str, holdings_date: date | None = None
     ) -> list[ETFHolding]:
         """Get ETF holdings"""
-        params: dict[str, str] = {"symbol": symbol}
+        params: dict[str, str | int] = {"symbol": symbol}
         if holdings_date is not None:
             params["date"] = holdings_date.strftime("%Y-%m-%d")
         return self.client.request(ETF_HOLDINGS, **params)
@@ -92,7 +92,9 @@ class InvestmentClient(EndpointGroup):
         return self.client.request(ETF_HOLDER, symbol=symbol)
 
     # Mutual Fund methods
-    def get_mutual_fund_dates(self, symbol: str, cik: str | None = None) -> list[date]:
+    def get_mutual_fund_dates(
+        self, symbol: str, cik: str | int | None = None
+    ) -> list[date]:
         """Get mutual fund/ETF disclosure dates
 
         Args:
@@ -102,13 +104,13 @@ class InvestmentClient(EndpointGroup):
         Returns:
             List of disclosure dates
         """
-        params: dict[str, str] = {"symbol": symbol}
+        params: dict[str, str | int] = {"symbol": symbol}
         if cik is not None:
             params["cik"] = cik
         return self.client.request(MUTUAL_FUND_DATES, **params)
 
     def get_fund_disclosure_dates(
-        self, symbol: str, cik: str | None = None
+        self, symbol: str, cik: str | int | None = None
     ) -> list[date]:
         """Get mutual fund/ETF disclosure dates"""
         return self.get_mutual_fund_dates(symbol=symbol, cik=cik)
@@ -138,7 +140,7 @@ class InvestmentClient(EndpointGroup):
         return self.client.request(FUNDS_DISCLOSURE_HOLDERS_LATEST, symbol=symbol)
 
     def get_fund_disclosure(
-        self, symbol: str, year: int, quarter: int, cik: str | None = None
+        self, symbol: str, year: int, quarter: int, cik: str | int | None = None
     ) -> list[FundDisclosureHolding]:
         """Get mutual fund/ETF disclosure holdings"""
         params: dict[str, str | int] = {

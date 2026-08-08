@@ -38,6 +38,10 @@ class ToolFactory:
         ParamType.BOOLEAN: bool,
         ParamType.DATE: date,
         ParamType.DATETIME: datetime,
+        # A CIK is presented to the LLM as a string; ParamType.CIK zero-pads
+        # it on the way out. Mapping it to int would strip the leading zeros
+        # the API matches on.
+        ParamType.CIK: str,
     }
 
     @staticmethod

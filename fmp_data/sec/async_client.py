@@ -162,7 +162,7 @@ class AsyncSECClient(AsyncEndpointGroup):
 
     async def search_by_cik(
         self,
-        cik: str,
+        cik: str | int,
         page: int = 0,
         limit: int = 100,
         from_date: date | None = None,
@@ -224,7 +224,9 @@ class AsyncSECClient(AsyncEndpointGroup):
         """
         return await self.client.request_async(SEC_COMPANY_SEARCH_SYMBOL, symbol=symbol)
 
-    async def search_company_by_cik(self, cik: str) -> list[SECCompanySearchResult]:
+    async def search_company_by_cik(
+        self, cik: str | int
+    ) -> list[SECCompanySearchResult]:
         """Search SEC companies by CIK number
 
         Args:
@@ -265,7 +267,7 @@ class AsyncSECClient(AsyncEndpointGroup):
     async def search_industry_classification(
         self,
         symbol: str | None = None,
-        cik: str | None = None,
+        cik: str | int | None = None,
         sic_code: str | None = None,
     ) -> list[IndustryClassification]:
         """Search industry classification data
@@ -280,7 +282,7 @@ class AsyncSECClient(AsyncEndpointGroup):
         """
         if not symbol and not cik and not sic_code:
             raise ValueError("Provide at least one of symbol, cik, or sic_code")
-        params: dict[str, str] = {}
+        params: dict[str, str | int] = {}
         if symbol:
             params["symbol"] = symbol
         if cik:

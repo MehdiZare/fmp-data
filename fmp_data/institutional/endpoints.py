@@ -45,7 +45,7 @@ FORM_13F: Endpoint = Endpoint(
         EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
+            param_type=ParamType.CIK,
             required=True,
             description="Institution CIK number",
         ),
@@ -79,7 +79,7 @@ FORM_13F_DATES: Endpoint = Endpoint(
         EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
+            param_type=ParamType.CIK,
             required=True,
             description="Institution CIK number",
         ),
@@ -515,7 +515,7 @@ INSTITUTIONAL_OWNERSHIP_LATEST: Endpoint = Endpoint(
         EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
+            param_type=ParamType.CIK,
             required=False,
             description="Institution CIK filter",
         ),
@@ -550,7 +550,7 @@ INSTITUTIONAL_OWNERSHIP_EXTRACT: Endpoint = Endpoint(
         EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
+            param_type=ParamType.CIK,
             required=True,
             description="Institution CIK",
         ),
@@ -584,7 +584,7 @@ INSTITUTIONAL_OWNERSHIP_DATES: Endpoint = Endpoint(
         EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
+            param_type=ParamType.CIK,
             required=True,
             description="Institution CIK",
         )
@@ -655,7 +655,7 @@ HOLDER_PERFORMANCE_SUMMARY: Endpoint = Endpoint(
         EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
+            param_type=ParamType.CIK,
             required=True,
             description="Institution CIK",
         )
@@ -698,7 +698,7 @@ HOLDER_INDUSTRY_BREAKDOWN: Endpoint = Endpoint(
         EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
+            param_type=ParamType.CIK,
             required=True,
             description="Institution CIK",
         ),

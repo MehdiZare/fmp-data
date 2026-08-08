@@ -96,6 +96,7 @@ class ParamType(str, Enum):
     BOOLEAN = "boolean"
     DATE = "date"
     DATETIME = "datetime"
+    CIK = "cik"
 
     def convert_value(self, value: Any) -> Any:
         """Convert value to the appropriate type"""
@@ -115,6 +116,8 @@ class ParamType(str, Enum):
                 return self._convert_to_date(value)
             if self is ParamType.DATETIME:
                 return self._convert_to_datetime(value)
+            if self is ParamType.CIK:
+                return self._convert_to_cik(value)
             raise ValueError(f"Unsupported type: {self}")
         except (ValueError, TypeError) as e:
             raise ValueError(
@@ -123,6 +126,30 @@ class ParamType(str, Enum):
 
     def _convert_to_string(self, value: Any) -> str:
         return str(value)
+
+    def _convert_to_cik(self, value: Any) -> str:
+        """Convert a CIK request parameter to its canonical wire form.
+
+        FMP matches a CIK as a fixed-width 10-digit zero-padded string, so
+        ``str(320193)`` -- what a plain STRING param would produce -- is a
+        lookup that succeeds and returns nothing.
+
+        This pads *numeric strings* too, which the response-side coercer
+        deliberately does not: inbound, re-padding would misreport what the
+        API actually sent, but outbound the padded form is simply the
+        correct request and there is nothing to misreport. A non-numeric
+        string is passed through so a bad value surfaces as an API error
+        rather than being silently mangled into one.
+
+        ``bool`` is rejected rather than stringified, matching the response
+        side where pydantic refuses it: ``cik=True`` is never a real lookup.
+        """
+        if isinstance(value, bool):
+            raise ValueError("CIK must be a string or an integer, not a bool")
+        if isinstance(value, int):
+            return f"{value:010d}"
+        text = str(value)
+        return text.zfill(10) if text.isdigit() else text
 
     def _convert_to_integer(self, value: Any) -> int:
         return int(value)

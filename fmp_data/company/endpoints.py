@@ -954,7 +954,7 @@ PROFILE_CIK: Endpoint[CompanyProfile] = Endpoint(
         EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
+            param_type=ParamType.CIK,
             required=True,
             description="Company CIK number",
         )

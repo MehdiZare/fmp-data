@@ -293,6 +293,10 @@ class EndpointBasedRule(ValidationRule):
                 return [r"^\d{4}-\d{2}-\d{2}$"]
             case "datetime":
                 return [r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$"]
+            case "cik":
+                # Matched against the caller's raw value, before ParamType.CIK
+                # zero-pads it, so an unpadded 320193 must pass too.
+                return [r"^\d{1,10}$"]
             case _:
                 return []
 

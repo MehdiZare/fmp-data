@@ -363,8 +363,96 @@ class TestCIKCoercion:
                         )
 
         assert not offenders, f"cik fields not using the CIK type: {offenders}"
+
         # walk_packages(onerror=None) swallows ImportError, so an extras-gated
         # subtree can vanish silently and leave this guard passing vacuously.
         assert checked >= 50, (
             f"guard inspected only {checked} fields — is it still walking the package?"
+        )
+
+
+class TestCIKRequestParam:
+    """ParamType.CIK zero-pads a CIK on the way out to the API."""
+
+    @staticmethod
+    def _param(required: bool = True) -> EndpointParam:
+        return EndpointParam(
+            name="cik",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.CIK,
+            required=required,
+            description="CIK number",
+        )
+
+    def test_int_is_zero_padded(self) -> None:
+        """A plain STRING param would send '320193' and match nothing."""
+        assert self._param().validate_value(320193) == "0000320193"
+
+    def test_unpadded_string_is_padded(self) -> None:
+        """Unlike the response side, a request value is ours to normalise.
+
+        The response coercer leaves strings alone because rewriting them
+        would misreport what the API sent. Outbound there is no such
+        constraint: FMP matches on the padded form, so pad it.
+        """
+        assert self._param().validate_value("320193") == "0000320193"
+
+    def test_canonical_string_is_unchanged(self) -> None:
+        assert self._param().validate_value("0000320193") == "0000320193"
+
+    def test_non_numeric_string_passes_through(self) -> None:
+        """Better a clear API error than a value we mangled into one."""
+        assert self._param().validate_value("AAPL") == "AAPL"
+
+    def test_over_long_digits_are_not_truncated(self) -> None:
+        assert self._param().validate_value("12345678901") == "12345678901"
+
+    def test_bool_is_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            self._param().validate_value(True)
+
+    def test_optional_none_stays_none(self) -> None:
+        assert self._param(required=False).validate_value(None) is None
+
+    def test_every_cik_endpoint_param_uses_the_cik_type(self) -> None:
+        """No cik param may stay ParamType.STRING.
+
+        A STRING cik silently stringifies an int without padding, so the
+        request succeeds and returns nothing — the failure mode this type
+        exists to remove.
+        """
+        import importlib
+        import pkgutil
+
+        import fmp_data
+        from fmp_data.models import Endpoint as EndpointModel
+
+        offenders: list[str] = []
+        checked = 0
+        for module_info in pkgutil.walk_packages(fmp_data.__path__, prefix="fmp_data."):
+            if not module_info.name.endswith(".endpoints"):
+                continue
+            module = importlib.import_module(module_info.name)
+            for attr_name in dir(module):
+                endpoint = getattr(module, attr_name)
+                if not isinstance(endpoint, EndpointModel):
+                    continue
+                params = list(endpoint.mandatory_params) + list(
+                    endpoint.optional_params or []
+                )
+                for param in params:
+                    if param.name != "cik" and not param.name.endswith("_cik"):
+                        continue
+                    checked += 1
+                    if param.param_type is not ParamType.CIK:
+                        offenders.append(
+                            f"{module_info.name}.{attr_name}.{param.name}"
+                            f" is {param.param_type}"
+                        )
+
+        assert not offenders, f"cik params not using ParamType.CIK: {offenders}"
+        # walk_packages(onerror=None) swallows ImportError, so a subtree can
+        # vanish silently and leave this guard passing vacuously.
+        assert checked >= 15, (
+            f"guard inspected only {checked} params — is it still walking the package?"
         )
