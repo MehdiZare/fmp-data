@@ -130,3 +130,19 @@ class VectorStoreCreationError(FMPError):
         super().__init__(message)
         self.cause = cause
         self.failures: dict[str, str] = dict(failures or {})
+
+    def __str__(self) -> str:
+        """Include the skipped endpoints, so ``log.error(exc)`` keeps them.
+
+        ``failures`` is the data #133 made programmatically reachable; leaving
+        it out of the string form loses it again for every caller that logs the
+        exception rather than destructuring it. Follows ``RateLimitError``,
+        which appends ``retry_after`` the same way.
+        """
+        base = super().__str__()
+        if not self.failures:
+            return base
+        skipped = ", ".join(
+            f"{name}: {error}" for name, error in sorted(self.failures.items())
+        )
+        return f"{base} ({len(self.failures)} endpoint(s) skipped -- {skipped})"

@@ -65,6 +65,30 @@ def test_failures_defaults_to_an_empty_dict_not_none() -> None:
     assert err.failures == {}
 
 
+def test_str_surfaces_the_skipped_endpoints() -> None:
+    """Logging the exception must not lose what #133 made reachable.
+
+    Plenty of callers do ``logger.error(exc)`` rather than destructuring, and
+    the skipped-endpoint dict is the whole point of the new contract.
+    """
+    err = VectorStoreCreationError(
+        "boom",
+        cause=RuntimeError("x"),
+        failures={"company.profile": "category mismatch"},
+    )
+
+    rendered = str(err)
+    assert "boom" in rendered
+    assert "company.profile" in rendered
+    assert "category mismatch" in rendered
+
+
+def test_str_stays_plain_when_nothing_was_skipped() -> None:
+    """No empty ``(0 endpoint(s) skipped)`` noise on the common path."""
+    err = VectorStoreCreationError("boom", cause=RuntimeError("x"))
+    assert str(err) == "boom"
+
+
 @requires_langchain
 def test_return_annotation_has_no_none_member() -> None:
     """The ``| None`` is gone from the signature, not merely unreachable."""
@@ -147,8 +171,9 @@ def test_setup_registry_returns_registry_and_failures() -> None:
     assert isinstance(result, RegistrySetup)
     assert isinstance(result.registry, EndpointRegistry)
     assert isinstance(result.failures, dict)
-    # Non-vacuous: the catalog is large, and a healthy run skips nothing.
-    assert len(result.registry.list_endpoints()) > 100
+    # Non-vacuous, and calibrated: the catalog registers 215 endpoints. A loose
+    # floor would sit under the 168 that #129 regressed to and call it healthy.
+    assert len(result.registry.list_endpoints()) >= 200
     assert result.failures == {}, (
         f"endpoints failed registry validation: {sorted(result.failures)}"
     )

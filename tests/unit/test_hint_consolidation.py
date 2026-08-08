@@ -35,6 +35,11 @@ MIN_MODULES_SCANNED = 60
 MIN_HINT_BINDINGS = 80
 MIN_SHARED_NAMES = 15
 
+# Floors for the examples-vs-valid_values guard below (observed: 215 endpoints,
+# 29 parameters that both constrain their values and carry a hint).
+MIN_ENDPOINTS_SCANNED = 200
+MIN_CONSTRAINED_PARAMS = 20
+
 # Every module that declares or re-exports hints. Import failure here is a
 # hard error, not a skip: swallowing it would let a module drop out of the
 # comparison and take its divergent hints with it, which is exactly the
@@ -190,7 +195,101 @@ def test_period_and_period_length_stay_distinct_concepts() -> None:
     lookback_examples = {str(e) for e in PERIOD_LENGTH_HINT.examples}
     assert "annual" in frequency_examples
     assert not any(e.isdigit() for e in frequency_examples)
+    # Non-empty, else the digit assertion below passes vacuously.
+    assert lookback_examples
     assert all(e.isdigit() for e in lookback_examples)
+
+
+def test_the_three_period_hints_match_their_valid_values_sets() -> None:
+    """``period`` is three hints because the catalog gives it three value sets.
+
+    A single union hint advertised ``FY``/``Q1`` to the three company endpoints
+    that accept only ``annual``/``quarter``, and ``annual``/``quarter`` to the
+    six bulk endpoints that accept only fiscal labels. Both are rejected by
+    ``EndpointParam.validate_value``, so the tool description promised what the
+    client refuses to send. The catalog-wide guard below would catch a
+    re-merge; this pins the intended shape directly.
+    """
+    from fmp_data.lc.hints import (
+        FISCAL_PERIOD_HINT,
+        PERIOD_HINT,
+        PERIOD_WITH_FISCAL_HINT,
+    )
+
+    plain = {str(e).lower() for e in PERIOD_HINT.examples}
+    with_fiscal = {str(e).lower() for e in PERIOD_WITH_FISCAL_HINT.examples}
+    fiscal_only = {str(e).lower() for e in FISCAL_PERIOD_HINT.examples}
+
+    assert plain == {"annual", "quarter"}
+    assert plain < with_fiscal, "the fiscal variant must still accept the plain values"
+    assert "fy" in with_fiscal
+    # Fiscal-only: never the plain frequencies, since the bulk endpoints reject
+    # them. It enumerates all four quarters, which the fiscal variant does not.
+    assert fiscal_only and not (fiscal_only & {"annual", "quarter"})
+    assert {"fy", "q1", "q4"} <= fiscal_only
+
+
+def test_hint_examples_are_within_valid_values() -> None:
+    """Advertised examples must be values the endpoint actually accepts.
+
+    ``ToolFactory.generate_description`` renders ``hint.examples`` verbatim into
+    the tool description an LLM reads, while ``EndpointParam.validate_value``
+    rejects anything outside ``valid_values`` -- and ``create_parameter_fields``
+    does not narrow the generated field type, so the enum never reaches the
+    model. When the two disagree the catalog advertises a value that fails
+    client-side, which is what one shared ``PERIOD_HINT`` did for nine
+    endpoints until it was split three ways.
+    """
+    from fmp_data.lc.registry import (
+        get_endpoint_groups,
+        resolve_semantics_for_endpoint,
+    )
+
+    offenders: list[str] = []
+    endpoints_scanned = 0
+    constrained_params = 0
+
+    for group in get_endpoint_groups().values():
+        for endpoint_name, endpoint in group["endpoint_map"].items():
+            semantics = resolve_semantics_for_endpoint(
+                endpoint_name, group["semantics_map"]
+            )
+            if semantics is None:
+                continue
+            endpoints_scanned += 1
+            params = list(endpoint.mandatory_params or []) + list(
+                endpoint.optional_params or []
+            )
+            for param in params:
+                valid_values = getattr(param, "valid_values", None)
+                hint = (semantics.parameter_hints or {}).get(param.name)
+                if not valid_values or hint is None:
+                    continue
+                constrained_params += 1
+                allowed = {str(value).lower() for value in valid_values}
+                rejected = [
+                    example
+                    for example in hint.examples
+                    if str(example).lower() not in allowed
+                ]
+                if rejected:
+                    offenders.append(
+                        f"{endpoint_name}.{param.name}: advertises {rejected}, "
+                        f"but valid_values is {list(valid_values)}"
+                    )
+
+    assert endpoints_scanned >= MIN_ENDPOINTS_SCANNED, (
+        f"only {endpoints_scanned} endpoints resolved semantics; the scan is "
+        "not covering the catalog and this guard would pass vacuously"
+    )
+    assert constrained_params >= MIN_CONSTRAINED_PARAMS, (
+        f"only {constrained_params} parameters both constrain their values and "
+        f"carry a hint; expected at least {MIN_CONSTRAINED_PARAMS}"
+    )
+    assert not offenders, (
+        "these parameter hints advertise examples the endpoint rejects:\n  "
+        + "\n  ".join(sorted(offenders))
+    )
 
 
 def _domain(module_name: str) -> str:

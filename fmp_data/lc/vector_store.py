@@ -489,19 +489,27 @@ class EndpointVectorStore:
             self.logger.error(f"Error processing endpoint {name}: {e!s}")
             return "skip", None
 
-    def add_endpoints(self, names: list[str]) -> None:
+    def add_endpoints(self, names: list[str]) -> int:
         """Add multiple endpoints to vector store.
 
         Deprecated endpoints are skipped -- see :meth:`_is_deprecated`. They are
         counted separately from ``skipped_endpoints`` because being deprecated
         is a deliberate exclusion, not a defect worth a warning.
+
+        Returns:
+            How many endpoints were actually indexed. Callers offering the whole
+            catalog get back fewer than they passed, so reporting the input
+            length would overstate the store's contents.
         """
         if not names:
             raise ValueError("No endpoint names provided")
 
         documents: list[Document] = []
-        buckets: dict[str, set[str]] = {"invalid": set(), "deprecated": set()}
-        buckets["skip"] = set()
+        buckets: dict[str, set[str]] = {
+            "invalid": set(),
+            "deprecated": set(),
+            "skip": set(),
+        }
 
         for name in names:
             outcome, document = self._classify_endpoint(name)
@@ -539,6 +547,17 @@ class EndpointVectorStore:
         except Exception as e:
             raise RuntimeError(f"Failed to add documents to vector store: {e!s}") from e
 
+        return len(documents)
+
+    #: How many widening fetches :meth:`search` may make. A store persisted by
+    #: an earlier release still carries deprecated endpoints in its backing
+    #: index; they are filtered out here, but a plain top-k fetch lets each one
+    #: consume a slot, so ``search(query, k=3)`` would quietly return two live
+    #: endpoints -- under-recall in exactly the stale-index case this filtering
+    #: exists for. Each round doubles the window, and the loop stops as soon as
+    #: k results are live, nothing was displaced, or the index is exhausted.
+    _SEARCH_FETCH_ROUNDS = 3
+
     def search(
         self, query: str, k: int = 3, threshold: float = 0.3
     ) -> list[SearchResult]:
@@ -551,7 +570,9 @@ class EndpointVectorStore:
             threshold: Minimum similarity score threshold (0-1)
 
         Returns:
-            List of SearchResult objects containing matches
+            List of SearchResult objects containing matches. Never more than
+            ``k``; deprecated entries in a stale index do not reduce the count
+            below ``k`` while live matches remain.
 
         Raises:
             ValueError: If invalid k or threshold values
@@ -562,27 +583,55 @@ class EndpointVectorStore:
             raise ValueError("threshold must be between 0 and 1")
 
         try:
-            results = []
-            docs_and_scores = self.vector_store.similarity_search_with_score(query, k=k)
+            fetch_k = k
+            results: list[SearchResult] = []
+            for _ in range(self._SEARCH_FETCH_ROUNDS):
+                docs_and_scores = self.vector_store.similarity_search_with_score(
+                    query, k=fetch_k
+                )
+                results, displaced = self._collect_live_results(
+                    docs_and_scores, threshold
+                )
+                index_exhausted = len(docs_and_scores) < fetch_k
+                if len(results) >= k or not displaced or index_exhausted:
+                    break
+                fetch_k *= 2
 
-            for doc, score in docs_and_scores:
-                similarity = 1 / (1 + score)
-                if similarity < threshold:
-                    continue
-
-                endpoint_name = doc.metadata.get("endpoint")
-                if not isinstance(endpoint_name, str):
-                    continue
-                info = self.registry.get_endpoint(endpoint_name)
-                if info and not self._is_deprecated(info):
-                    results.append(
-                        SearchResult(score=similarity, name=endpoint_name, info=info)
-                    )
-
-            return sorted(results, key=lambda x: x.score, reverse=True)
+            results.sort(key=lambda x: x.score, reverse=True)
+            return results[:k]
         except Exception as e:
             self.logger.error(f"Search failed: {e!s}")
             raise
+
+    def _collect_live_results(
+        self, docs_and_scores: Sequence[tuple[Any, float]], threshold: float
+    ) -> tuple[list[SearchResult], int]:
+        """Turn raw hits into results, dropping deprecated and unknown entries.
+
+        Returns the results plus how many hits were *displaced* -- dropped for
+        a reason a wider fetch can compensate for. Hits below ``threshold`` are
+        not counted: those are a genuine relevance cut, and re-fetching would
+        only surface less relevant matches.
+        """
+        results: list[SearchResult] = []
+        displaced = 0
+        for doc, score in docs_and_scores:
+            similarity = 1 / (1 + score)
+            if similarity < threshold:
+                continue
+
+            endpoint_name = doc.metadata.get("endpoint")
+            if not isinstance(endpoint_name, str):
+                displaced += 1
+                continue
+            info = self.registry.get_endpoint(endpoint_name)
+            if info is None or self._is_deprecated(info):
+                displaced += 1
+                continue
+            results.append(
+                SearchResult(score=similarity, name=endpoint_name, info=info)
+            )
+        return results, displaced
 
     def _serialize_result(self, result: Any) -> dict[str, Any]:
         """Serialize result, converting Pydantic models to JSON."""

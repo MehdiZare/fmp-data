@@ -8,6 +8,12 @@ indistinguishable from "no data for your query".
 on it at index time *and* at selection time. The entries are not deleted: their
 tool keys stay resolvable for anyone loading them through an explicit MCP
 manifest, and the MCP catalog count does not move.
+
+This module holds the half of #137 that genuinely needs the ``langchain`` extra:
+the store's filtering behaviour. Which endpoints carry the flag is pinned in
+``tests/unit/test_deprecated_endpoint_flags.py`` and the MCP side of the
+contract in ``tests/unit/test_mcp.py``, both of which run in CI jobs this
+directory is skipped in.
 """
 
 from __future__ import annotations
@@ -15,105 +21,6 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-
-from fmp_data.intelligence.mapping import INTELLIGENCE_ENDPOINTS_SEMANTICS
-from fmp_data.lc.models import EndpointSemantics
-
-#: The endpoints #137 names. Spelled out rather than derived, so silently
-#: un-marking one fails here instead of shrinking a computed set to nothing.
-DEPRECATED_INTELLIGENCE_ENDPOINTS = {
-    "stock_news_sentiments",
-    "earnings_confirmed",
-    "earnings_surprises",
-}
-
-
-def test_deprecated_defaults_to_false() -> None:
-    """Existing semantics keep their meaning without touching every entry."""
-    assert EndpointSemantics.model_fields["deprecated"].default is False
-
-
-def test_the_three_intelligence_endpoints_are_marked() -> None:
-    marked = {
-        name
-        for name, semantics in INTELLIGENCE_ENDPOINTS_SEMANTICS.items()
-        if semantics.deprecated
-    }
-    assert marked == DEPRECATED_INTELLIGENCE_ENDPOINTS
-
-
-def test_marked_endpoints_are_not_deleted() -> None:
-    """#137 is explicit: keep the entries so tool keys stay resolvable."""
-    for name in DEPRECATED_INTELLIGENCE_ENDPOINTS:
-        assert name in INTELLIGENCE_ENDPOINTS_SEMANTICS
-
-
-def test_nothing_else_is_marked_deprecated_by_accident() -> None:
-    """A floor on the other side: the flag is off for the rest of the catalog.
-
-    Scans every semantics table, not just intelligence -- otherwise another
-    domain could acquire ``deprecated=True`` and silently vanish from the
-    vector store with nothing to catch it.
-    """
-    import importlib
-    import pkgutil
-
-    import fmp_data
-    from fmp_data.lc.models import EndpointSemantics
-
-    flagged: set[str] = set()
-    checked = 0
-    for module_info in pkgutil.walk_packages(fmp_data.__path__, prefix="fmp_data."):
-        if not module_info.name.endswith(".mapping"):
-            continue
-        module = importlib.import_module(module_info.name)
-        for attr, value in vars(module).items():
-            if not (attr.endswith("_SEMANTICS") and isinstance(value, dict)):
-                continue
-            for key, semantics in value.items():
-                if not isinstance(semantics, EndpointSemantics):
-                    continue
-                checked += 1
-                if semantics.deprecated:
-                    flagged.add(key)
-
-    assert flagged == DEPRECATED_INTELLIGENCE_ENDPOINTS, (
-        "the set of deprecated endpoints changed. Deprecating one is fine, "
-        "but it removes the endpoint from the LangChain vector store, so it "
-        f"must be deliberate. Expected {sorted(DEPRECATED_INTELLIGENCE_ENDPOINTS)}, "
-        f"found {sorted(flagged)}"
-    )
-    # Without a floor an empty scan reads as a pass.
-    assert checked > 150, f"only {checked} semantics scanned; is the walk working?"
-
-
-def test_mcp_catalog_still_advertises_the_deprecated_keys() -> None:
-    """The flag is LangChain-side only; MCP tool keys must stay resolvable.
-
-    #137 chose the flag over deleting the entries precisely so the catalog
-    count does not move and nothing breaks without a deprecation window. MCP
-    reads the semantics tables directly and never consults the vector store.
-    """
-    pytest.importorskip("mcp", reason="mcp extra not installed")
-    from fmp_data.mcp.discovery import discover_all_tools
-
-    keys = {tool["key"] for tool in discover_all_tools()}
-    assert DEPRECATED_INTELLIGENCE_ENDPOINTS <= keys
-
-
-def test_lc_deprecation_and_mcp_deprecated_tools_are_separate() -> None:
-    """Two mechanisms, deliberately disjoint -- see the comments on each.
-
-    ``DEPRECATED_TOOLS`` renames duplicate keys for methods that still work;
-    ``EndpointSemantics.deprecated`` marks endpoints that return nothing. If a
-    future change makes these overlap, that is a design decision to take
-    explicitly rather than discover.
-    """
-    pytest.importorskip("mcp", reason="mcp extra not installed")
-    from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
-
-    aliased = {spec.split(".", 1)[-1] for spec in DEPRECATED_TOOLS}
-    assert not (aliased & DEPRECATED_INTELLIGENCE_ENDPOINTS)
 
 
 class _StubRegistry:
@@ -254,7 +161,7 @@ def real_store(monkeypatch: pytest.MonkeyPatch) -> Any:
         STOCK_NEWS_SENTIMENTS_ENDPOINT,
     )
     from fmp_data.intelligence.mapping import INTELLIGENCE_ENDPOINTS_SEMANTICS
-    from fmp_data.market.endpoints import MARKET_HOURS
+    from fmp_data.market.endpoints import GAINERS, MARKET_HOURS
     from fmp_data.market.mapping import MARKET_ENDPOINTS_SEMANTICS
 
     registry.register(
@@ -272,6 +179,13 @@ def real_store(monkeypatch: pytest.MonkeyPatch) -> Any:
         MARKET_HOURS,
         MARKET_ENDPOINTS_SEMANTICS["market_hours"],
     )
+    # A second live endpoint, so a k smaller than the index can be requested
+    # and still be satisfiable after deprecated hits are dropped.
+    registry.register(
+        "get_gainers",
+        GAINERS,
+        MARKET_ENDPOINTS_SEMANTICS["gainers"],
+    )
 
     instance: Any = EndpointVectorStore.__new__(EndpointVectorStore)
     instance.registry = registry
@@ -288,9 +202,13 @@ def real_store(monkeypatch: pytest.MonkeyPatch) -> Any:
         def similarity_search_with_score(
             self, _query: str, k: int = 10
         ) -> list[tuple[Any, float]]:
-            # Score 0.0 -> similarity 1.0, so nothing is lost to the
-            # threshold and the deprecation filter is what is under test.
-            return [(doc, 0.0) for doc in self.added]
+            # Honours k, like a real backing index: the caller gets a window,
+            # not the whole store. That is what lets a deprecated hit consume a
+            # slot, which is the behaviour the over-fetch test below pins.
+            #
+            # Score 0.0 -> similarity 1.0, so nothing is lost to the threshold
+            # and the deprecation filter is what is under test.
+            return [(doc, 0.0) for doc in self.added[:k]]
 
     instance.vector_store = _Backing()
     return instance
@@ -320,3 +238,59 @@ def test_search_filters_deprecated(real_store: Any) -> None:
     results = real_store.search("anything")
 
     assert [result.name for result in results] == ["get_market_hours"]
+
+
+def test_search_does_not_return_fewer_than_k_because_of_deprecated_hits(
+    real_store: Any,
+) -> None:
+    """Filtering must not silently cost the caller a result slot.
+
+    On a store persisted by an older release -- the case selection-time
+    filtering exists for -- deprecated entries sit in the backing index and a
+    plain top-k fetch lets each one consume a slot. ``search(q, k=2)`` would
+    then hand back one live endpoint and no indication that it had been
+    truncated: under-recall instead of a dead endpoint. Ordering the deprecated
+    entries first makes that the failure mode without the widening fetch.
+    """
+    from langchain_core.documents import Document
+
+    real_store.vector_store.add_documents(
+        [
+            Document(page_content="stale", metadata={"endpoint": name})
+            for name in (
+                "get_stock_news_sentiments",
+                "get_earnings_confirmed",
+                "get_market_hours",
+                "get_gainers",
+            )
+        ]
+    )
+
+    results = real_store.search("anything", k=2)
+
+    assert [result.name for result in results] == ["get_market_hours", "get_gainers"]
+
+
+def test_search_still_caps_results_at_k(real_store: Any) -> None:
+    """The widening fetch must not leak extra results past ``k``."""
+    from langchain_core.documents import Document
+
+    real_store.vector_store.add_documents(
+        [
+            Document(page_content="stale", metadata={"endpoint": name})
+            for name in ("get_market_hours", "get_gainers")
+        ]
+    )
+
+    assert len(real_store.search("anything", k=1)) == 1
+
+
+def test_add_endpoints_reports_what_it_indexed(store: Any) -> None:
+    """The return value is the indexed count, not the offered count.
+
+    ``create_new_store`` logs it; reporting ``len(names)`` there overstated the
+    store by however many endpoints the deprecation filter had just dropped.
+    """
+    indexed = store.add_endpoints(["live_one", "live_two", "dead_one"])
+
+    assert indexed == 2

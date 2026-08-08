@@ -324,10 +324,12 @@ def create_new_store(
 
     # Get all endpoints from registry and populate store
     endpoint_names = list(registry.list_endpoints().keys())
-    vector_store.add_endpoints(endpoint_names)  # Use the actual method
+    indexed = vector_store.add_endpoints(endpoint_names)  # Use the actual method
     vector_store.save()  # Use the actual method
 
-    logger.info(f"Created new vector store with {len(endpoint_names)} endpoints")
+    # Report what was indexed, not what was offered: deprecated endpoints are
+    # filtered out on the way in (#137), so the two numbers differ.
+    logger.info(f"Created new vector store with {indexed} endpoints")
     return vector_store
 
 

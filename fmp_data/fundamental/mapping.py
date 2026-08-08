@@ -19,7 +19,7 @@ from fmp_data.fundamental.endpoints import (
 from fmp_data.lc.hints import (
     LIMIT_HINT,
     PAGE_HINT,
-    PERIOD_HINT,
+    PERIOD_WITH_FISCAL_HINT,
     SYMBOL_HINT,
 )
 from fmp_data.lc.models import (
@@ -131,7 +131,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         sub_category="Financial Statements",
         parameter_hints={
             "symbol": SYMBOL_HINT,
-            "period": PERIOD_HINT,
+            "period": PERIOD_WITH_FISCAL_HINT,
             "limit": LIMIT_HINT,
         },
         response_hints={
@@ -250,7 +250,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         sub_category="Financial Statements",
         parameter_hints={
             "symbol": SYMBOL_HINT,
-            "period": PERIOD_HINT,
+            "period": PERIOD_WITH_FISCAL_HINT,
             "limit": LIMIT_HINT,
         },
         response_hints={
@@ -315,7 +315,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         sub_category="Financial Statements",
         parameter_hints={
             "symbol": SYMBOL_HINT,
-            "period": PERIOD_HINT,
+            "period": PERIOD_WITH_FISCAL_HINT,
             "limit": LIMIT_HINT,
         },
         response_hints={
@@ -379,7 +379,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         sub_category="Financial Metrics",
         parameter_hints={
             "symbol": SYMBOL_HINT,
-            "period": PERIOD_HINT,
+            "period": PERIOD_WITH_FISCAL_HINT,
             "limit": LIMIT_HINT,
         },
         response_hints={
@@ -443,7 +443,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         sub_category="Financial Metrics",
         parameter_hints={
             "symbol": SYMBOL_HINT,
-            "period": PERIOD_HINT,
+            "period": PERIOD_WITH_FISCAL_HINT,
             "limit": LIMIT_HINT,
         },
         response_hints={
@@ -691,7 +691,7 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         sub_category="Financial Statements",
         parameter_hints={
             "symbol": SYMBOL_HINT,
-            "period": PERIOD_HINT,
+            "period": PERIOD_WITH_FISCAL_HINT,
             "limit": LIMIT_HINT,
         },
         response_hints={
@@ -1015,7 +1015,7 @@ FULL_STATEMENT_SEMANTICS = EndpointSemantics(
     sub_category="Financial Statements",
     parameter_hints={
         "symbol": SYMBOL_HINT,
-        "period": PERIOD_HINT,
+        "period": PERIOD_WITH_FISCAL_HINT,
         "limit": LIMIT_HINT,
     },
     response_hints={

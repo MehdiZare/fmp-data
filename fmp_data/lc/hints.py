@@ -70,8 +70,20 @@ EXCHANGE_HINT = ParameterHint(
     context_clues=["on", "listed on", "trading on", "exchange", "market"],
 )
 
-# Reporting frequency -- the ``period`` query parameter on financial
-# statements. Union of the former lc and fundamental copies.
+# Reporting frequency -- the ``period`` query parameter.
+#
+# CONFLICT (recorded): the catalog enforces THREE different ``valid_values``
+# sets under this one parameter name, so this concept is three hints, not one.
+# ``examples`` are rendered verbatim into the tool description by
+# ``ToolFactory.generate_description``, while ``EndpointParam.validate_value``
+# rejects anything outside ``valid_values`` -- so a union would advertise
+# values the endpoint refuses, which is the same failure QUARTER_HINT avoids
+# below. ``test_hint_examples_are_within_valid_values`` pins every hint's
+# examples against the valid_values of every parameter it is bound to.
+#
+#   PERIOD_HINT              annual | quarter                (company, 3)
+#   PERIOD_WITH_FISCAL_HINT  annual | quarter | FY | Q1..Q4  (fundamental, 7)
+#   FISCAL_PERIOD_HINT       FY | Q1..Q4                     (bulk, 6)
 #
 # CONFLICT (recorded): technical/mapping.py also bound the name PERIOD_HINT,
 # but for its ``periodLength`` parameter, which is an indicator lookback in
@@ -79,6 +91,29 @@ EXCHANGE_HINT = ParameterHint(
 # RSI window and "50" as a valid statement period. They are two concepts, not
 # one; the lookback lives below as PERIOD_LENGTH_HINT.
 PERIOD_HINT = ParameterHint(
+    natural_names=["period", "timeframe", "frequency"],
+    extraction_patterns=[
+        r"\b(annual|quarterly)\b",
+        r"(?:by|per)\s+(year|quarter)",
+        r"(?i)every\s+(year|quarter)",
+    ],
+    examples=["annual", "quarter"],
+    context_clues=[
+        "annual",
+        "quarterly",
+        "year",
+        "quarter",
+        "yearly",
+        "period",
+        "reporting",
+        "financial",
+    ],
+)
+
+# ``period`` where the endpoint also accepts fiscal labels. Union of the former
+# lc and fundamental copies -- valid only where valid_values carries FY/Q1..Q4
+# alongside annual/quarter, which today is every fundamental statement endpoint.
+PERIOD_WITH_FISCAL_HINT = ParameterHint(
     natural_names=["period", "timeframe", "frequency", "interval"],
     extraction_patterns=[
         r"\b(annual|quarterly)\b",
@@ -105,6 +140,30 @@ PERIOD_HINT = ParameterHint(
     ],
 )
 
+# ``period`` on the bulk endpoints, which accept fiscal labels ONLY -- there is
+# no "annual"/"quarter" in their valid_values. Advertising those (as the shared
+# hint did before the split) invited a client-side ValidationError on all six.
+FISCAL_PERIOD_HINT = ParameterHint(
+    natural_names=["period", "fiscal period", "quarter", "fiscal quarter"],
+    extraction_patterns=[
+        r"(?i)\b(fy|q1|q2|q3|q4)\b",
+        r"(?i)(?:fiscal\s+)?(?:year|quarter)\s+(fy|q[1-4])",
+    ],
+    examples=["FY", "Q1", "Q2", "Q3", "Q4"],
+    context_clues=[
+        "fiscal",
+        "fy",
+        "q1",
+        "q2",
+        "q3",
+        "q4",
+        "quarter",
+        "period",
+        "reporting",
+        "financial",
+    ],
+)
+
 # Indicator lookback length in bars -- the ``periodLength`` parameter on
 # technical indicators. See the CONFLICT note on PERIOD_HINT above; these must
 # not be merged.
@@ -123,10 +182,11 @@ PERIOD_LENGTH_HINT = ParameterHint(
 #
 # CONFLICT (recorded): institutional/mapping.py carried an unanchored
 # ``[A-Z]{1,5}`` which matches inside a longer token ("NASDAQ" -> "NASDA").
-# It is subsumed by the anchored ``\b[A-Z]{1,5}\b`` already present, so the
-# unanchored form is dropped rather than unioned in. Likewise its
-# case-sensitive ``symbol[:\s]+([A-Z]{1,5})`` is subsumed by intelligence's
-# ``(?i)`` form.
+# The anchored ``\b[A-Z]{1,5}\b`` already present is deliberately narrower --
+# it matches strictly less, which is the point -- so the unanchored form is
+# dropped rather than unioned in. Its case-sensitive
+# ``symbol[:\s]+([A-Z]{1,5})`` is a different case: that one really is subsumed
+# by intelligence's ``(?i)`` form, which matches everything it does.
 SYMBOL_HINT = ParameterHint(
     natural_names=[
         "ticker",
@@ -195,7 +255,9 @@ SYMBOLS_HINT = ParameterHint(
 #
 # CONFLICT (recorded): institutional/mapping.py carried a bare ``(\d{10})``,
 # unanchored, which takes the first ten digits out of a longer run and yields a
-# truncated CIK. It is subsumed by the anchored ``\b\d{10}\b`` and is dropped.
+# truncated CIK. The anchored ``\b\d{10}\b`` is deliberately narrower -- it
+# declines the eleven-digit run rather than truncating it -- so the bare form is
+# dropped rather than unioned in.
 # Its ``CIK[:\s]+(\d+)`` was likewise unbounded; merged with investment's
 # ``(?i)cik[:\s]+(\d{1,10})`` into one case-insensitive, length-bounded form,
 # since a CIK is at most ten digits.
@@ -245,10 +307,14 @@ CIK_HINT = ParameterHint(
 # matches inside any word ending in "p" followed by digits -- "sp500" would
 # yield page 500. Narrowed to ``\bp(\d+)\b`` rather than dropped, so the
 # shorthand it was reaching for ("p2") still resolves.
+#
+# The main pattern is anchored for the same reason: the union of the four
+# copies (``page\s+``, ``page[:\s]+``, ``page\s*``) was widest at ``page[:\s]*``,
+# which matches inside a longer token -- "webpage3" would yield page 3.
 PAGE_HINT = ParameterHint(
     natural_names=["page", "page number", "offset", "result page"],
     extraction_patterns=[
-        r"(?i)page[:\s]*(\d+)",
+        r"(?i)\bpage[:\s]*(\d+)",
         r"(?i)page\s+number\s+(\d+)",
         r"(?:second|third|next)\s+page",
         r"(\d+)(?:st|nd|rd|th)\s+page",
