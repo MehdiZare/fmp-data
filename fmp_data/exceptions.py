@@ -95,3 +95,38 @@ class FMPNotFound(FMPError):
 
     def __init__(self, symbol: str):
         super().__init__(f"Symbol {symbol} not found")
+
+
+class VectorStoreCreationError(FMPError):
+    """Raised when ``fmp_data.lc.create_vector_store`` cannot build a store.
+
+    Replaces the ``None`` that function used to return on any failure (#133).
+    ``None`` was reachable from exactly one place -- a blanket
+    ``except Exception`` -- so it meant "something threw" and nothing more,
+    which also cancelled out the loud-failure behaviour #121/#127 added to
+    ``setup_registry``.
+
+    Attributes:
+        cause: the exception that actually stopped the build. Also set as
+            ``__cause__``; exposed as a named attribute so callers can branch
+            on it without reaching into dunders.
+        failures: endpoint name -> validation error, for endpoints
+            ``EndpointRegistry.register_batch`` skipped before the failure.
+            Always a dict, never ``None``. Empty when the build failed before
+            registration, or when nothing was skipped.
+
+    Lives in the core exceptions module, not under ``fmp_data.lc``, so
+    ``except VectorStoreCreationError`` is importable without the ``langchain``
+    extra installed.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        cause: BaseException | None = None,
+        failures: dict[str, str] | None = None,
+    ):
+        super().__init__(message)
+        self.cause = cause
+        self.failures: dict[str, str] = dict(failures or {})

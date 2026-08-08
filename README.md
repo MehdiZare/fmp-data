@@ -223,13 +223,19 @@ For the full MCP catalog, run `fmp-mcp list` or see [docs/mcp/tools.md](https://
 ### Quick Start with Vector Store
 
 ```python
-from fmp_data import create_vector_store
+from fmp_data import VectorStoreCreationError, create_vector_store
 
-# Initialize the vector store
-vector_store = create_vector_store(
-    fmp_api_key="YOUR_FMP_API_KEY",  # pragma: allowlist secret
-    openai_api_key="YOUR_OPENAI_API_KEY",  # pragma: allowlist secret
-)
+# Initialize the vector store. Raises VectorStoreCreationError if it cannot be
+# built; the exception carries the underlying `cause` and a `failures` dict of
+# any endpoints skipped during registration.
+try:
+    vector_store = create_vector_store(
+        fmp_api_key="YOUR_FMP_API_KEY",  # pragma: allowlist secret
+        openai_api_key="YOUR_OPENAI_API_KEY",  # pragma: allowlist secret
+    )
+except VectorStoreCreationError as exc:
+    print(f"Could not build the vector store: {exc.cause}")
+    raise
 
 # Example queries
 queries = [
@@ -292,7 +298,7 @@ vector_store = create_vector_store(
     cache_dir=config.vector_store_path,
     embedding_provider=config.embedding_provider,
     embedding_model=config.embedding_model,
-)
+)  # raises VectorStoreCreationError on failure -- see the example above
 
 # Search for relevant endpoints
 results = vector_store.search("show me Tesla's financial metrics")

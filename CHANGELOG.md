@@ -8,6 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Changed
+- **BREAKING: `create_vector_store()` raises `VectorStoreCreationError` instead of returning `None`** (#133) - the function wrapped its whole body, including `setup_registry()`, in `except Exception: return None`. That cancelled out the loud-failure behaviour added in #121/#127: an `ImportError` raised while `register()` lazily built validation rules still reached a library user as a bare `None`. And `None` carried no information — the blanket handler was the only caller-reachable `return None` (the two inside `try_load_existing_store` fall through to `create_new_store` and never reach the caller), so it unconditionally meant "something threw" and never said what. The return type narrows to `EndpointVectorStore`; there is no `None` path, no deprecation shim and no opt-in flag, because a sentinel whose only meaning is "an error you cannot inspect" is the defect.
+
+  ```python
+  # before
+  store = create_vector_store(fmp_api_key=..., openai_api_key=...)
+  if store is None:
+      ...  # no idea why
+
+  # after
+  from fmp_data import VectorStoreCreationError, create_vector_store
+
+  try:
+      store = create_vector_store(fmp_api_key=..., openai_api_key=...)
+  except VectorStoreCreationError as exc:
+      print(exc.cause)      # the exception that actually stopped the build
+      print(exc.failures)   # {endpoint name: validation error} for skipped endpoints
+  ```
+
+  - `VectorStoreCreationError` subclasses `FMPError`, so anything already catching `FMPError` keeps working. It lives in `fmp_data.exceptions` and is re-exported from `fmp_data`, not from `fmp_data.lc`, so `except VectorStoreCreationError` is importable **without the `langchain` extra installed** — you can catch it in code that only conditionally builds a store
+  - `cause` is exposed as a named attribute as well as `__cause__`, so callers can branch on the underlying failure without reaching into dunders
+  - `try_load_existing_store`'s internal `None` returns are untouched. They mean "fall through to create", not "error", and remain internal
+- **BREAKING: `setup_registry()` returns `(registry, failures)` rather than a bare `EndpointRegistry`** (#133, closing note) - `register_batch()` returns a per-endpoint failure dict; `setup_registry()` inspected it, logged a summary and discarded it, so parsing logs was the only way for a programmatic consumer to learn which endpoints were skipped. The return is now a `RegistrySetup` NamedTuple, so `registry, failures = setup_registry(client)` unpacks or `result.registry` / `result.failures` reads. Those same failures are what `create_vector_store` attaches to `VectorStoreCreationError.failures` when a later step fails. Callers doing `registry = setup_registry(client)` must unpack or take `.registry`.
 - **Generated LangChain tool schemas gained optional arguments where they previously had required ones** (#128) - this is the user-visible half of the fix below. A tool for `market.get_historical_sector_pe` now requires only `sector`; `from`, `to` and `exchange` became optional. Prompts or callers that always supplied every argument keep working — the change only removes an obligation — but anything asserting on a tool's required-field set will see it shrink.
 - **`ToolFactory.create_parameter_fields` signature break** (#128) - it now takes `mandatory_params` and `optional_params` as two separate arguments instead of one concatenated list. External callers constructing an args model by hand must split their list; passing the old single sequence raises `TypeError` rather than silently mis-shaping a schema.
 

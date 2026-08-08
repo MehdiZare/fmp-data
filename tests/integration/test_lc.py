@@ -10,7 +10,7 @@ pytest.importorskip("langchain_community", reason="langchain extra not installed
 pytest.importorskip("langchain_openai", reason="langchain extra not installed")
 pytest.importorskip("faiss", reason="faiss extra not installed")
 
-from fmp_data import FMPDataClient
+from fmp_data import FMPDataClient, VectorStoreCreationError
 from fmp_data.lc import EndpointVectorStore, LangChainConfig, create_vector_store
 
 
@@ -43,17 +43,22 @@ def vector_store(
     # Use temporary directory for test cache
     cache_dir = tmp_path_factory.mktemp("vector_store_cache")
 
-    # Create store
-    store = create_vector_store(
-        fmp_api_key=fmp_client.config.api_key,
-        openai_api_key=openai_api_key,
-        cache_dir=str(cache_dir),
-        store_name="test_store",
-        force_create=True,
-    )
-
-    if not store:
-        pytest.fail("Failed to create vector store")
+    # Create store. Since 2.6 this raises rather than returning None, so a
+    # failure arrives with the underlying cause attached instead of as a bare
+    # sentinel the fixture has to interpret.
+    try:
+        store = create_vector_store(
+            fmp_api_key=fmp_client.config.api_key,
+            openai_api_key=openai_api_key,
+            cache_dir=str(cache_dir),
+            store_name="test_store",
+            force_create=True,
+        )
+    except VectorStoreCreationError as exc:
+        pytest.fail(
+            f"Failed to create vector store: {exc.cause!r}; "
+            f"skipped endpoints: {sorted(exc.failures)}"
+        )
 
     yield store
 
@@ -84,8 +89,8 @@ class TestLangChainIntegration:
             force_create=True,
         )
 
-        # Basic checks
-        assert store is not None
+        # Basic checks. `create_vector_store` no longer has a None return,
+        # so reaching this line at all means the build succeeded.
         assert isinstance(store, EndpointVectorStore)
         assert store.metadata.embedding_provider == "OpenAIEmbeddings"
         assert store.metadata.dimension > 0
