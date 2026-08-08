@@ -11,8 +11,11 @@ From 2.6 the function raises :class:`VectorStoreCreationError`, carrying the
 underlying ``cause`` and the per-endpoint ``failures`` dict, and its return type
 is ``EndpointVectorStore`` with no ``None`` member.
 
-No ``langchain`` extra needed: every failure path here trips before
-``create_vector_store`` reaches its ``fmp_data.lc.embedding`` import.
+Requires the ``langchain`` extra. An earlier version of this docstring claimed
+otherwise -- that every failure path trips before ``create_vector_store``
+reaches its ``fmp_data.lc.embedding`` import. That is false: the ``monkeypatch``
+targets below resolve that module, so it must be importable. CI installs no
+extras, so these passed locally and failed the whole matrix.
 """
 
 from __future__ import annotations
@@ -22,7 +25,13 @@ from typing import Any
 
 import pytest
 
-from fmp_data.exceptions import ConfigError, FMPError, VectorStoreCreationError
+pytest.importorskip("langchain_core", reason="langchain extra not installed")
+
+from fmp_data.exceptions import (
+    ConfigError,
+    FMPError,
+    VectorStoreCreationError,
+)
 from fmp_data.lc import RegistrySetup, create_vector_store, setup_registry
 
 

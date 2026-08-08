@@ -69,7 +69,7 @@ def test_every_hint_bearing_module_imports() -> None:
     for name in MUST_IMPORT:
         try:
             importlib.import_module(name)
-        except Exception as exc:
+        except BaseException as exc:  # SystemExit is not an Exception
             broken[name] = f"{type(exc).__name__}: {exc}"
     assert not broken, f"hint-bearing modules failed to import: {broken}"
 
@@ -85,7 +85,12 @@ def _iter_fmp_modules() -> list[ModuleType]:
     for info in pkgutil.walk_packages(fmp_data.__path__, prefix="fmp_data."):
         try:
             modules.append(importlib.import_module(info.name))
-        except Exception as exc:  # optional extras (mcp, langchain) may be absent
+        except BaseException as exc:
+            # BaseException, not Exception: fmp_data/mcp/__main__.py calls
+            # sys.exit(1) when the mcp extra is absent, and SystemExit does
+            # not inherit from Exception. Catching only Exception let that
+            # escape and failed the whole scan in a core-only install --
+            # which is how CI runs.
             SKIPPED_MODULES[info.name] = f"{type(exc).__name__}: {exc}"
     return modules
 
