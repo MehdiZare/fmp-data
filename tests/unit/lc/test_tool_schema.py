@@ -1,0 +1,137 @@
+"""Guard tests: generated LangChain tool schemas must mirror endpoint arity.
+
+``ToolFactory`` turns an endpoint's parameters into a pydantic model that the
+LLM fills in. If an optional endpoint parameter lands in that model without a
+default, pydantic marks it required and the LLM has to invent a value for
+something the endpoint never wanted (#128).
+"""
+
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, create_model
+import pytest
+
+from fmp_data.lc.models import EndpointSemantics
+from fmp_data.lc.registry import get_endpoint_groups
+from fmp_data.lc.vector_store import ToolFactory
+from fmp_data.models import Endpoint
+
+# Below the current catalog size but far above zero: a refactor that empties
+# the iteration (renamed group dict, broken semantics resolution) must fail
+# here rather than pass vacuously.
+MINIMUM_ENDPOINTS_CHECKED = 150
+
+
+def _args_model(
+    endpoint: Endpoint[Any], semantics: EndpointSemantics
+) -> type[BaseModel]:
+    """Build the args model exactly the way ``create_tool`` does."""
+    return create_model(
+        f"{semantics.method_name}Args",
+        **ToolFactory.create_parameter_fields(
+            endpoint.mandatory_params,
+            endpoint.optional_params or [],
+            semantics.parameter_hints,
+        ),
+        __config__=ConfigDict(extra="forbid", arbitrary_types_allowed=True),
+    )
+
+
+def _catalog() -> list[tuple[str, Endpoint[Any], EndpointSemantics]]:
+    """Every (name, endpoint, semantics) triple ``setup_registry`` would enroll."""
+    from fmp_data.lc import resolve_semantics_for_endpoint
+
+    triples: list[tuple[str, Endpoint[Any], EndpointSemantics]] = []
+    for group, config in get_endpoint_groups().items():
+        semantics_map = config["semantics_map"]
+        for name, endpoint in config["endpoint_map"].items():
+            semantics = resolve_semantics_for_endpoint(name, semantics_map)
+            if semantics is not None:
+                triples.append((f"{group}.{name}", endpoint, semantics))
+    return triples
+
+
+def test_tool_schema_requires_exactly_the_mandatory_params() -> None:
+    """A tool's required arguments must be the endpoint's mandatory params.
+
+    Not ``param.required`` and not "has no default": 13 endpoints declare a
+    ``default`` on a mandatory param and 13 more carry ``required=True`` on a
+    param that sits in ``optional_params``. Membership of ``mandatory_params``
+    is the only self-consistent answer, so it is the one the schema follows.
+    """
+    drift: dict[str, str] = {}
+    checked = 0
+
+    for label, endpoint, semantics in _catalog():
+        checked += 1
+        model = _args_model(endpoint, semantics)
+        required = {
+            name for name, field in model.model_fields.items() if field.is_required()
+        }
+        expected = {param.name for param in endpoint.mandatory_params}
+        if required != expected:
+            drift[label] = (
+                f"over-required={sorted(required - expected)} "
+                f"under-required={sorted(expected - required)}"
+            )
+
+    assert drift == {}, f"Tool schemas disagree with endpoint arity: {drift}"
+    assert checked >= MINIMUM_ENDPOINTS_CHECKED, (
+        f"Only {checked} endpoints checked; expected at least "
+        f"{MINIMUM_ENDPOINTS_CHECKED}. The catalog iteration is broken."
+    )
+
+
+def test_optional_params_default_to_their_declared_value() -> None:
+    """An optional param with a ``default`` must keep it in the tool schema.
+
+    ``Endpoint.validate_params`` marks a param as seen before it skips a
+    ``None`` value, so an explicitly-passed ``None`` suppresses the default it
+    would otherwise apply. Defaulting the schema field to ``None`` instead of
+    ``param.default`` would therefore silently drop the default off the wire.
+    """
+    mismatches: dict[str, str] = {}
+    checked = 0
+
+    for label, endpoint, semantics in _catalog():
+        model = _args_model(endpoint, semantics)
+        for param in endpoint.optional_params or []:
+            field = model.model_fields[param.name]
+            checked += 1
+            if field.default != param.default:
+                mismatches[f"{label}.{param.name}"] = (
+                    f"schema default {field.default!r} != endpoint default "
+                    f"{param.default!r}"
+                )
+
+    assert mismatches == {}, f"Optional param defaults drifted: {mismatches}"
+    assert checked > 0, "No optional params were checked"
+
+
+def test_optional_params_accept_omission() -> None:
+    """The canonical #128 repro: an all-optional-but-one endpoint stays callable."""
+    from fmp_data.market.endpoints import HISTORICAL_SECTOR_PE
+    from fmp_data.market.mapping import MARKET_ENDPOINTS_SEMANTICS
+
+    semantics = MARKET_ENDPOINTS_SEMANTICS["historical_sector_pe"]
+    model = _args_model(HISTORICAL_SECTOR_PE, semantics)
+
+    required = {
+        name for name, field in model.model_fields.items() if field.is_required()
+    }
+    assert required == {"sector"}
+
+    instance = model(sector="Technology")
+    assert instance.model_dump()["sector"] == "Technology"
+
+
+def test_mandatory_params_are_still_enforced() -> None:
+    """Relaxing optional params must not make mandatory ones optional."""
+    from fmp_data.company.endpoints import PROFILE
+    from fmp_data.company.mapping import COMPANY_ENDPOINTS_SEMANTICS
+
+    semantics = COMPANY_ENDPOINTS_SEMANTICS["profile"]
+    model = _args_model(PROFILE, semantics)
+
+    with pytest.raises(ValueError):
+        model()
