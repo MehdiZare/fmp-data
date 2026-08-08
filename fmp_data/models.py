@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date as dt_date
+from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Annotated, Any, Generic, Literal, TypeVar
 import warnings
@@ -162,10 +163,10 @@ class ParamType(str, Enum):
             return value.lower() in ("true", "1", "yes")
         return bool(value)
 
-    def _convert_to_date(self, value: Any) -> date:
+    def _convert_to_date(self, value: Any) -> dt_date:
         if isinstance(value, datetime):
             return value.date()
-        if isinstance(value, date):
+        if isinstance(value, dt_date):
             return value
         return datetime.strptime(value, "%Y-%m-%d").date()
 

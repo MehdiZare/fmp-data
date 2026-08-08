@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date as dt_date
+from datetime import datetime
 from decimal import Decimal
 import json
 import math
@@ -558,7 +559,7 @@ class ExecutiveCompensation(BaseModel):
     industry_title: str | None = Field(
         None, alias="industryTitle", description="Industry classification"
     )
-    filing_date: date = Field(alias="filingDate", description="SEC filing date")
+    filing_date: dt_date = Field(alias="filingDate", description="SEC filing date")
     accepted_date: datetime = Field(
         alias="acceptedDate", description="SEC acceptance date"
     )
@@ -639,7 +640,7 @@ class SymbolChange(BaseModel):
 
     model_config = default_model_config
 
-    change_date: date = Field(
+    change_date: dt_date = Field(
         description="Date when the symbol change occurred", alias="date"
     )
     name: str = Field(alias="companyName", description="Company or security name")

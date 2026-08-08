@@ -1,5 +1,6 @@
 # fmp_data/intelligence/models.py
-from datetime import date, datetime
+from datetime import date as dt_date
+from datetime import datetime
 from decimal import Decimal
 from typing import Annotated
 
@@ -35,7 +36,7 @@ class EarningEvent(BaseModel):
 
     model_config = default_model_config
 
-    event_date: date = Field(description="Earnings date", alias="date")
+    event_date: dt_date = Field(description="Earnings date", alias="date")
     symbol: str = Field(description="Company symbol")
     eps: float | None = Field(
         default=None, alias="epsActual", description="Actual earnings per share"
@@ -57,7 +58,7 @@ class EarningEvent(BaseModel):
     revenue_estimated: float | None = Field(
         alias="revenueEstimated", default=None, description="Estimated revenue"
     )
-    period_ending: date | None = Field(
+    period_ending: dt_date | None = Field(
         None,
         alias="periodEnding",
         description=(
@@ -90,7 +91,7 @@ class EarningEvent(BaseModel):
             "include_report_times=True."
         ),
     )
-    fiscal_date_ending: date | None = Field(
+    fiscal_date_ending: dt_date | None = Field(
         None,
         alias="fiscalDateEnding",
         description=(
@@ -99,10 +100,10 @@ class EarningEvent(BaseModel):
             "a different response shape."
         ),
     )
-    updated_from_date: date | None = Field(
+    updated_from_date: dt_date | None = Field(
         None, alias="updatedFromDate", description="Last update date"
     )
-    last_updated: date | None = Field(
+    last_updated: dt_date | None = Field(
         None, alias="lastUpdated", description="Last update date"
     )
 
@@ -130,7 +131,7 @@ class EarningSurprise(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
-    surprise_date: date = Field(description="Earnings date", alias="date")
+    surprise_date: dt_date = Field(description="Earnings date", alias="date")
     actual_earning_result: float = Field(
         alias="actualEarningResult", description="Actual earnings per share"
     )
@@ -145,7 +146,7 @@ class DividendEvent(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
-    ex_dividend_date: date = Field(description="Ex-dividend date", alias="date")
+    ex_dividend_date: dt_date = Field(description="Ex-dividend date", alias="date")
     label: str | None = Field(None, description="Human-readable date label")
     adj_dividend: float | None = Field(
         None, alias="adjDividend", description="Adjusted dividend amount"
@@ -155,14 +156,14 @@ class DividendEvent(BaseModel):
         None, alias="yield", description="Dividend yield"
     )
     frequency: str | None = Field(None, description="Dividend frequency")
-    record_date: Annotated[date | None, BeforeValidator(_empty_str_to_none)] = Field(
+    record_date: Annotated[dt_date | None, BeforeValidator(_empty_str_to_none)] = Field(
         None, alias="recordDate", description="Record date"
     )
-    payment_date: Annotated[date | None, BeforeValidator(_empty_str_to_none)] = Field(
-        None, alias="paymentDate", description="Payment date"
+    payment_date: Annotated[dt_date | None, BeforeValidator(_empty_str_to_none)] = (
+        Field(None, alias="paymentDate", description="Payment date")
     )
     declaration_date: Annotated[
-        date | None,
+        dt_date | None,
         BeforeValidator(_empty_str_to_none),
     ] = Field(None, alias="declarationDate", description="Declaration date")
 
@@ -173,7 +174,7 @@ class StockSplitEvent(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
-    split_event_date: date = Field(description="Split date", alias="date")
+    split_event_date: dt_date = Field(description="Split date", alias="date")
     label: str | None = Field(None, description="Human-readable date label")
     numerator: float = Field(description="Numerator of the split ratio")
     denominator: float = Field(description="Denominator of the split ratio")
@@ -187,7 +188,7 @@ class IPOEvent(BaseModel):
 
     symbol: str = Field(description="Company symbol")
     company: str = Field(description="Company name")
-    ipo_event_date: date = Field(description="IPO date", alias="date")
+    ipo_event_date: dt_date = Field(description="IPO date", alias="date")
     exchange: str = Field(description="Exchange")
     actions: str = Field(description="IPO status")
     shares: int | None = Field(description="Number of shares")
