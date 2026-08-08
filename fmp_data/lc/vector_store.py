@@ -93,6 +93,14 @@ class ToolFactory:
         ``validate_params`` marks a param seen before it skips a ``None``
         value, so passing ``None`` explicitly suppresses the default it would
         otherwise have applied on the way out.
+
+        That last step depends on langchain forwarding fields that hold
+        explicit defaults -- see ``BaseTool._parse_input``, which has in the
+        past used the narrower ``if k in tool_input`` filter, and note that
+        ``langchain-core`` is pinned ``>=1.4.9`` with no upper bound. If it
+        ever stops forwarding them, declared defaults silently stop reaching
+        the API. ``test_omitted_optional_reaches_the_endpoint_with_its_
+        declared_default`` drives a real ``StructuredTool`` to pin it.
         """
         param_fields: dict[str, Any] = {}
 

@@ -34,7 +34,7 @@ from fmp_data.batch.endpoints import (
     UPGRADES_DOWNGRADES_CONSENSUS_BULK,
 )
 from fmp_data.lc.hints import (
-    DATE_HINT,
+    AS_OF_DATE_HINT,
     EXCHANGE_HINT,
     PERIOD_HINT,
     SYMBOLS_HINT,
@@ -833,7 +833,7 @@ BATCH_ENDPOINTS_SEMANTICS = {
             "daily prices",
         ],
         category=SemanticCategory.MARKET_DATA,
-        parameter_hints={"date": DATE_HINT},
+        parameter_hints={"date": AS_OF_DATE_HINT},
         response_hints={},
         use_cases=["Market data analysis", "Financial research"],
     ),

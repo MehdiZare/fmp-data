@@ -135,3 +135,59 @@ def test_mandatory_params_are_still_enforced() -> None:
 
     with pytest.raises(ValueError):
         model()
+
+
+def test_omitted_optional_reaches_the_endpoint_with_its_declared_default() -> None:
+    """An omitted optional must still arrive at the client carrying its default.
+
+    This pins a *third-party* contract, which is why it drives a real
+    ``StructuredTool`` rather than inspecting ``model_fields``. Giving optional
+    params ``default=param.default`` only helps if langchain then forwards
+    those fields: ``BaseTool._parse_input`` currently includes fields holding
+    explicit defaults, but langchain has historically used the narrower
+    ``if k in tool_input`` filter, and ``langchain-core`` is pinned ``>=1.4.9``
+    with no upper bound.
+
+    If that behaviour reverts, 64 optional params across the catalog silently
+    stop sending their declared defaults -- ``period=annual`` and ``limit=40``
+    would fall off the wire on every LLM call that omitted them -- while every
+    schema-shape assertion in this file still passes. So assert on the kwargs
+    the wrapped function actually receives.
+    """
+    from langchain_core.tools import StructuredTool
+
+    from fmp_data.fundamental.endpoints import INCOME_STATEMENT
+    from fmp_data.fundamental.mapping import FUNDAMENTAL_ENDPOINTS_SEMANTICS
+
+    semantics = FUNDAMENTAL_ENDPOINTS_SEMANTICS["income_statement"]
+    assert [p.name for p in INCOME_STATEMENT.mandatory_params] == ["symbol"]
+    declared = {p.name: p.default for p in INCOME_STATEMENT.optional_params or []}
+    assert declared == {"period": "annual", "limit": 40}, (
+        f"fixture drifted -- INCOME_STATEMENT optional defaults are now {declared}"
+    )
+
+    received: dict[str, Any] = {}
+
+    def endpoint_func(**kwargs: Any) -> str:
+        received.update(kwargs)
+        return "ok"
+
+    tool = StructuredTool.from_function(
+        func=endpoint_func,
+        name=semantics.method_name,
+        description=semantics.natural_description,
+        args_schema=_args_model(INCOME_STATEMENT, semantics),
+        return_direct=True,
+        infer_schema=False,
+    )
+
+    # The LLM supplies only the mandatory param, as it is now entitled to.
+    assert tool.invoke({"symbol": "AAPL"}) == "ok"
+
+    assert received == {"symbol": "AAPL", "period": "annual", "limit": 40}, (
+        "langchain dropped fields holding explicit defaults, so optional "
+        f"endpoint defaults no longer reach the client. Received: {received}"
+    )
+
+    # ...and the endpoint agrees those kwargs are valid, closing the round trip.
+    assert INCOME_STATEMENT.validate_params(received)["period"] == "annual"

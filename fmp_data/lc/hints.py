@@ -121,7 +121,11 @@ QUARTER_HINT = ParameterHint(
 # A single as-of day, not one end of a range. DATE_HINTS below covers ranges;
 # reaching for its "start_date" entry here would tell the model the parameter
 # means "from", which is exactly wrong for a one-day snapshot.
-DATE_HINT = ParameterHint(
+#
+# Named AS_OF_DATE_HINT rather than DATE_HINT so it cannot be mistaken at a
+# glance for the DATE_HINTS range mapping defined just below -- one character
+# apart, opposite meanings.
+AS_OF_DATE_HINT = ParameterHint(
     natural_names=["date", "as-of date", "trading day"],
     extraction_patterns=[
         r"(\d{4}-\d{2}-\d{2})",

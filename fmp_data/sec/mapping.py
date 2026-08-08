@@ -38,8 +38,9 @@ FORM_TYPE_HINT = ParameterHint(
 SIC_CODE_HINT = ParameterHint(
     natural_names=["SIC code", "standard industrial classification", "industry code"],
     extraction_patterns=[
+        # Anchored on the word "sic": a bare ``\b\d{4}\b`` would claim any
+        # four-digit number in the query -- a year, or ``limit=1000``.
         r"(?i)sic\s*(?:code)?\s*:?\s*(\d{4})",
-        r"\b\d{4}\b",
     ],
     examples=["7372", "2834", "6021"],
     context_clues=["SIC", "SIC code", "industry code", "classification code"],
