@@ -1,7 +1,13 @@
 # fmp_data/transcripts/mapping.py
 from __future__ import annotations
 
-from fmp_data.lc.hints import SYMBOL_HINT
+from fmp_data.lc.hints import (
+    LIMIT_HINT,
+    PAGE_HINT,
+    QUARTER_HINT,
+    SYMBOL_HINT,
+    YEAR_HINT,
+)
 from fmp_data.lc.models import EndpointSemantics, SemanticCategory
 from fmp_data.transcripts.endpoints import (
     EARNINGS_TRANSCRIPT,
@@ -43,7 +49,7 @@ TRANSCRIPTS_ENDPOINTS_SEMANTICS = {
             "recent earnings",
         ],
         category=SemanticCategory.INTELLIGENCE,
-        parameter_hints={},
+        parameter_hints={"page": PAGE_HINT, "limit": LIMIT_HINT},
         response_hints={},
         use_cases=["Market data analysis", "Financial research"],
     ),
@@ -70,7 +76,12 @@ TRANSCRIPTS_ENDPOINTS_SEMANTICS = {
             "earnings text",
         ],
         category=SemanticCategory.INTELLIGENCE,
-        parameter_hints={},
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "year": YEAR_HINT,
+            "quarter": QUARTER_HINT,
+            "limit": LIMIT_HINT,
+        },
         response_hints={},
         use_cases=["Market data analysis", "Financial research"],
     ),

@@ -20,7 +20,7 @@ import os
 from typing import TYPE_CHECKING, Any
 
 from fmp_data.lc.models import EndpointSemantics, SemanticCategory
-from fmp_data.lc.registry import EndpointRegistry
+from fmp_data.lc.registry import EndpointRegistry, resolve_semantics_for_endpoint
 from fmp_data.lc.utils import is_langchain_available
 from fmp_data.logger import FMPLogger
 
@@ -105,36 +105,6 @@ def validate_api_keys(
         )
 
     return fmp_key, openai_key
-
-
-def resolve_semantics_for_endpoint(
-    endpoint_name: str,
-    semantics_map: dict[str, EndpointSemantics],
-) -> EndpointSemantics | None:
-    """Pair an endpoint-map key with its semantics entry.
-
-    Endpoint-map keys are client method names. Semantics table keys are often
-    short aliases (``crowdfunding_search`` vs ``search_crowdfunding``). Match
-    order:
-
-    1. Exact key match
-    2. Strip a leading ``get_`` prefix (historical convention)
-    3. Match ``EndpointSemantics.method_name`` (authoritative for MCP/client)
-    """
-    semantics = semantics_map.get(endpoint_name)
-    if semantics is not None:
-        return semantics
-
-    if endpoint_name.startswith("get_"):
-        semantics = semantics_map.get(endpoint_name[4:])
-        if semantics is not None:
-            return semantics
-
-    for candidate in semantics_map.values():
-        if candidate.method_name == endpoint_name:
-            return candidate
-
-    return None
 
 
 def setup_registry(client: FMPDataClient) -> EndpointRegistry:
