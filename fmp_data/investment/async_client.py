@@ -48,7 +48,7 @@ class AsyncInvestmentClient(AsyncEndpointGroup):
         self, symbol: str, holdings_date: date | None = None
     ) -> list[ETFHolding]:
         """Get ETF holdings"""
-        params: dict[str, str | int] = {"symbol": symbol}
+        params: dict[str, str] = {"symbol": symbol}
         if holdings_date is not None:
             params["date"] = holdings_date.strftime("%Y-%m-%d")
         return await self.client.request_async(ETF_HOLDINGS, **params)
