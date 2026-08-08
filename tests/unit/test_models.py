@@ -268,6 +268,113 @@ def _field_uses_cik_coercer(field: Any) -> bool:
     return False
 
 
+# fmp_data.investment.schema cannot be imported under pydantic 2.13:
+# ETFHoldingsArgs declares `date: date`, clashing with the datetime import.
+# Pre-existing on dev, tracked in #139. Listed explicitly rather than
+# swallowed, so a *newly* un-importable module fails the guard instead of
+# quietly dropping out of its coverage.
+_KNOWN_UNIMPORTABLE = {"fmp_data.investment.schema"}
+
+# The module kinds that define pydantic models. Importing the rest of the
+# package is not free: fmp_data.mcp calls sys.exit(1) when its extra is
+# absent, and fmp_data.lc resolves exports lazily and raises on attribute
+# access. _cik_fields_declared_outside_inspected_modules covers the gap.
+_INSPECTED_STEMS = {"models", "schema"}
+
+
+def _cik_fields_via_import() -> tuple[list[str], list[str], set[tuple[str, str, str]]]:
+    """Find cik fields by importing the model-defining modules.
+
+    Returns (offenders, uninspectable modules, distinct fields seen).
+    """
+    import importlib
+    import pkgutil
+
+    import fmp_data
+
+    offenders: list[str] = []
+    unexpected: list[str] = []
+    # A model imported into several modules shows up in each one's dir();
+    # key on its defining module so the count means what it says.
+    seen: set[tuple[str, str, str]] = set()
+
+    for module_info in pkgutil.walk_packages(fmp_data.__path__, prefix="fmp_data."):
+        if module_info.name.rsplit(".", 1)[-1] not in _INSPECTED_STEMS:
+            continue
+        try:
+            module = importlib.import_module(module_info.name)
+        except Exception as exc:
+            # Broad on purpose: a module can fail to import for reasons other
+            # than ImportError (#139 raises PydanticUserError). Nothing is
+            # swallowed -- the caller asserts on this list.
+            if module_info.name not in _KNOWN_UNIMPORTABLE:
+                unexpected.append(f"{module_info.name}: {exc!r}")
+            continue
+        offenders += _collect_cik_fields(module, seen)
+
+    return offenders, unexpected, seen
+
+
+def _collect_cik_fields(module: Any, seen: set[tuple[str, str, str]]) -> list[str]:
+    """Record every cik field on ``module``'s models; return the offenders."""
+    offenders: list[str] = []
+    for attr_name in dir(module):
+        model = getattr(module, attr_name)
+        if not (
+            isinstance(model, type)
+            and issubclass(model, BaseModel)
+            and model is not BaseModel
+        ):
+            continue
+        for field_name, field in model.model_fields.items():
+            if field_name != "cik" and not field_name.endswith("_cik"):
+                continue
+            key = (model.__module__, model.__qualname__, field_name)
+            if key in seen:
+                continue
+            seen.add(key)
+            if not _field_uses_cik_coercer(field):
+                offenders.append("{}.{}.{}".format(*key))
+    return offenders
+
+
+def _cik_fields_declared_outside_inspected_modules() -> list[str]:
+    """Find cik fields the import-based check would never look at.
+
+    A cik field declared outside ``*.models`` / ``*.schema`` is invisible to
+    :func:`_cik_fields_via_import`, which would then pass by not looking.
+    This reads the source instead, so no extra can affect the result.
+    """
+    import ast
+    import pathlib
+
+    import fmp_data
+
+    offenders: list[str] = []
+    package_root = pathlib.Path(fmp_data.__file__).parent
+    for source_path in sorted(package_root.rglob("*.py")):
+        if source_path.stem in _INSPECTED_STEMS:
+            continue
+        tree = ast.parse(source_path.read_text(encoding="utf-8"))
+        for class_node in ast.walk(tree):
+            if not isinstance(class_node, ast.ClassDef):
+                continue
+            for node in class_node.body:
+                if not isinstance(node, ast.AnnAssign) or not isinstance(
+                    node.target, ast.Name
+                ):
+                    continue
+                name = node.target.id
+                if name == "cik" or name.endswith("_cik"):
+                    offenders.append(
+                        f"{source_path.relative_to(package_root)}"
+                        f":{node.lineno} {class_node.name}.{name}"
+                        " — cik field outside *.models / *.schema,"
+                        " so the import-based check never sees it"
+                    )
+    return offenders
+
+
 class TestCIKCoercion:
     """CIK is a fixed-width zero-padded identifier, not a number."""
 
@@ -334,55 +441,22 @@ class TestCIKCoercion:
         sibling ``*_cik`` field (reporting_cik, company_cik, ...),
         which carry the same identifier and the same defect.
 
-        Every module is walked, not just ``*.models``: request-argument
-        models live in ``*.schema`` (``Form13FArgs``, ``PortfolioDateArgs``)
-        and carry cik fields too, so a ``*.models``-only walk left the
-        drift hole open in exactly the place it had already happened.
+        Both halves of the package are covered. Response models live in
+        ``*.models``; request-argument models live in ``*.schema``
+        (``Form13FArgs``, ``PortfolioDateArgs``) and carry cik fields too, so
+        a ``*.models``-only check left the hole open in exactly the place
+        drift had already happened.
+
+        Those are the only two module kinds imported. Importing the whole
+        package instead is not free: ``fmp_data.mcp`` calls ``sys.exit(1)``
+        when its extra is absent, and ``fmp_data.lc`` resolves exports lazily
+        and raises on attribute access. The AST sweep below closes the gap
+        that narrowing leaves -- it reads every source file in the package
+        and fails if a cik field is declared anywhere outside the imported
+        set, without importing anything.
         """
-        import importlib
-        import pkgutil
-
-        import fmp_data
-
-        # fmp_data.investment.schema cannot be imported under pydantic 2.13:
-        # ETFHoldingsArgs declares `date: date`, clashing with the datetime
-        # import. Pre-existing on dev, tracked in #139. Listed explicitly
-        # rather than swallowed, so a *newly* un-importable module fails this
-        # guard instead of quietly dropping out of its coverage.
-        known_unimportable = {"fmp_data.investment.schema"}
-        unexpected: list[str] = []
-
-        offenders: list[str] = []
-        # A model imported into several modules shows up in each one's dir();
-        # key on its defining module so the count means what it says.
-        seen: set[tuple[str, str, str]] = set()
-        for module_info in pkgutil.walk_packages(fmp_data.__path__, prefix="fmp_data."):
-            try:
-                module = importlib.import_module(module_info.name)
-            except Exception as exc:
-                # Broad on purpose: a module can fail to import for reasons
-                # other than ImportError (#139 raises PydanticUserError).
-                # Nothing is swallowed -- it is asserted on below.
-                if module_info.name not in known_unimportable:
-                    unexpected.append(f"{module_info.name}: {exc!r}")
-                continue
-            for attr_name in dir(module):
-                model = getattr(module, attr_name)
-                if not (
-                    isinstance(model, type)
-                    and issubclass(model, BaseModel)
-                    and model is not BaseModel
-                ):
-                    continue
-                for field_name, field in model.model_fields.items():
-                    if field_name != "cik" and not field_name.endswith("_cik"):
-                        continue
-                    key = (model.__module__, model.__qualname__, field_name)
-                    if key in seen:
-                        continue
-                    seen.add(key)
-                    if not _field_uses_cik_coercer(field):
-                        offenders.append("{}.{}.{}".format(*key))
+        offenders, unexpected, seen = _cik_fields_via_import()
+        offenders += _cik_fields_declared_outside_inspected_modules()
 
         assert not offenders, f"cik fields not using the CIK type: {offenders}"
         assert not unexpected, f"modules this guard could not inspect: {unexpected}"
