@@ -44,6 +44,18 @@ SYMBOL_HINT = ParameterHint(
     context_clues=["for", "about", "'s", "of", "company", "stock"],
 )
 
+# Plural of SYMBOL_HINT: endpoints that take a comma-separated ticker list in
+# one parameter rather than one ticker per call.
+SYMBOLS_HINT = ParameterHint(
+    natural_names=["symbols", "tickers", "symbol list", "watchlist"],
+    extraction_patterns=[
+        r"\b[A-Z]{1,5}(?:\s*,\s*[A-Z]{1,5})+\b",
+        r"(?:for|of)\s+([A-Z]{1,5}(?:\s*,\s*[A-Z]{1,5})+)",
+    ],
+    examples=["AAPL,MSFT", "AAPL,MSFT,GOOGL", "TSLA,AMZN,NVDA"],
+    context_clues=["symbols", "tickers", "multiple", "batch", "list", "these"],
+)
+
 CIK_HINT = ParameterHint(
     natural_names=["CIK", "central index key", "SEC identifier"],
     extraction_patterns=[
@@ -104,6 +116,23 @@ QUARTER_HINT = ParameterHint(
     ],
     examples=["1", "2", "3", "4"],
     context_clues=["quarter", "Q1", "Q2", "Q3", "Q4", "quarterly"],
+)
+
+# A single as-of day, not one end of a range. DATE_HINTS below covers ranges;
+# reaching for its "start_date" entry here would tell the model the parameter
+# means "from", which is exactly wrong for a one-day snapshot.
+#
+# Named AS_OF_DATE_HINT rather than DATE_HINT so it cannot be mistaken at a
+# glance for the DATE_HINTS range mapping defined just below -- one character
+# apart, opposite meanings.
+AS_OF_DATE_HINT = ParameterHint(
+    natural_names=["date", "as-of date", "trading day"],
+    extraction_patterns=[
+        r"(\d{4}-\d{2}-\d{2})",
+        r"(?:on|for)\s+(\d{4}-\d{2}-\d{2})",
+    ],
+    examples=["2024-01-02", "2023-12-29"],
+    context_clues=["on", "for", "date", "day", "as of"],
 )
 
 DATE_HINTS = {

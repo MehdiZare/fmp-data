@@ -73,17 +73,51 @@ class ToolFactory:
 
     @staticmethod
     def create_parameter_fields(
-        params: list, parameter_hints: dict[str, Any]
+        mandatory_params: Sequence[Any],
+        optional_params: Sequence[Any],
+        parameter_hints: dict[str, Any],
     ) -> dict[str, Any]:
-        """Construct field definitions for parameters (mandatory or optional)."""
+        """Construct field definitions for an endpoint's parameters.
+
+        Mandatory-ness is taken from which list a parameter arrives in, never
+        inferred from the parameter itself. ``EndpointParam.required`` and
+        ``EndpointParam.default`` both disagree with list membership across the
+        catalog -- 13 params sit in ``optional_params`` with ``required=True``,
+        and 13 more sit in ``mandatory_params`` carrying a ``default`` -- so
+        either one would silently mis-shape a schema. ``Endpoint`` itself
+        resolves the same question by list membership in ``validate_params``.
+
+        Optional parameters get a pydantic default so ``is_required()`` is
+        false and the LLM may omit them. That default is ``param.default``
+        rather than ``None`` whenever the endpoint declares one:
+        ``validate_params`` marks a param seen before it skips a ``None``
+        value, so passing ``None`` explicitly suppresses the default it would
+        otherwise have applied on the way out.
+
+        That last step depends on langchain forwarding fields that hold
+        explicit defaults -- see ``BaseTool._parse_input``, which has in the
+        past used the narrower ``if k in tool_input`` filter, and note that
+        ``langchain-core`` is pinned ``>=1.4.9`` with no upper bound. If it
+        ever stops forwarding them, declared defaults silently stop reaching
+        the API. ``test_omitted_optional_reaches_the_endpoint_with_its_
+        declared_default`` drives a real ``StructuredTool`` to pin it.
+        """
         param_fields: dict[str, Any] = {}
-        for param in params:
+
+        for param in mandatory_params:
             hint = parameter_hints.get(param.name)
             description = ToolFactory.generate_description(param, hint)
-            field_type = ToolFactory.get_field_type(
-                param.param_type, optional=(param.default is not None)
-            )
+            field_type = ToolFactory.get_field_type(param.param_type, optional=False)
             param_fields[param.name] = (field_type, Field(description=description))
+
+        for param in optional_params:
+            hint = parameter_hints.get(param.name)
+            description = ToolFactory.generate_description(param, hint)
+            field_type = ToolFactory.get_field_type(param.param_type, optional=True)
+            param_fields[param.name] = (
+                field_type,
+                Field(default=param.default, description=description),
+            )
 
         return param_fields
 
@@ -586,7 +620,8 @@ class EndpointVectorStore:
             tool_args_model = create_model(
                 f"{semantics.method_name}Args",
                 **ToolFactory.create_parameter_fields(
-                    endpoint.mandatory_params + (endpoint.optional_params or []),
+                    endpoint.mandatory_params,
+                    endpoint.optional_params or [],
                     semantics.parameter_hints,
                 ),
                 __config__=ConfigDict(
