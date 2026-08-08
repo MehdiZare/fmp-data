@@ -515,6 +515,11 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
     "stock_news_sentiments": EndpointSemantics(
         client_name="intelligence",
         method_name="get_stock_news_sentiments",
+        # Retired upstream: the client method returns [] without a
+        # request. Kept in the table so the MCP tool key still
+        # resolves; `deprecated` keeps it out of the LangChain vector
+        # store so no semantic query can select it (#137).
+        deprecated=True,
         natural_description=(
             "DEPRECATED and non-functional: FMP no longer serves this "
             "endpoint, so it always returns an empty list. Do not select it "
@@ -600,6 +605,11 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
     "earnings_confirmed": EndpointSemantics(
         client_name="intelligence",
         method_name="get_earnings_confirmed",
+        # Retired upstream: the client method returns [] without a
+        # request. Kept in the table so the MCP tool key still
+        # resolves; `deprecated` keeps it out of the LangChain vector
+        # store so no semantic query can select it (#137).
+        deprecated=True,
         natural_description=(
             "DEPRECATED: empty list. Prefer earnings_calendar with "
             "include_report_times=True (confirmed + bmo/amc time)."
@@ -1264,6 +1274,11 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
     "earnings_surprises": EndpointSemantics(
         client_name="intelligence",
         method_name="get_earnings_surprises",
+        # Retired upstream: the client method returns [] without a
+        # request. Kept in the table so the MCP tool key still
+        # resolves; `deprecated` keeps it out of the LangChain vector
+        # store so no semantic query can select it (#137).
+        deprecated=True,
         natural_description=(
             "DEPRECATED: empty list. Prefer historical_earnings and "
             "compare eps vs eps_estimated."

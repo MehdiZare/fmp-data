@@ -89,6 +89,31 @@ class EndpointSemantics(BaseModel):
     schema_format: Literal["openai", "anthropic", "standard"] = Field(
         default="standard", description="Format specification for parameter schema"
     )
+    deprecated: bool = Field(
+        default=False,
+        description=(
+            "True when the endpoint no longer returns data. "
+            "EndpointVectorStore excludes these from indexing and from "
+            "get_tools, so a semantic query cannot select one."
+        ),
+    )
+    """Whether this endpoint still returns data (#137).
+
+    Some FMP endpoints were retired upstream; the client methods short-circuit
+    and return ``[]`` without a request. Indexed, they are worse than absent: an
+    LLM picks one and gets an empty *success*, indistinguishable from "no data
+    matched your query". The entry stays in the semantics table -- deleting it
+    would drop a public MCP tool key with no deprecation window -- and this flag
+    keeps it out of the LangChain vector store instead.
+
+    **Not the same thing as** ``fmp_data.mcp.tools_manifest.DEPRECATED_TOOLS``.
+    That maps a duplicate tool *name* to the canonical name for a method that
+    still works, so resolving one warns and then serves live data. This flag
+    says the endpoint itself is dead, whatever you call it. A tool can be in
+    ``DEPRECATED_TOOLS`` and not deprecated here (a live method under a second
+    name), or deprecated here and absent from ``DEPRECATED_TOOLS`` (a dead
+    endpoint with only one name). Do not merge the two mechanisms.
+    """
 
 
 class EndpointInfo(BaseModel):
