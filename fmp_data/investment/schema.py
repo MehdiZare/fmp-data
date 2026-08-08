@@ -1,6 +1,6 @@
 # fmp_data/investment/schema.py
 
-from datetime import date
+from datetime import date as dt_date
 
 from pydantic import Field
 
@@ -42,7 +42,7 @@ class WeightingType(BaseEnum):
 class ETFHoldingsArgs(SymbolArg):
     """Arguments for getting ETF holdings"""
 
-    date: date = Field(
+    date: dt_date = Field(
         description="Holdings date", json_schema_extra={"examples": ["2024-01-15"]}
     )
 
@@ -56,7 +56,7 @@ class ETFInfoArgs(SymbolArg):
 class MutualFundHoldingsArgs(SymbolArg):
     """Arguments for getting mutual fund holdings"""
 
-    date: date = Field(
+    date: dt_date = Field(
         description="Holdings date", json_schema_extra={"examples": ["2024-01-15"]}
     )
 

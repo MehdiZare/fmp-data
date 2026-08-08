@@ -268,12 +268,12 @@ def _field_uses_cik_coercer(field: Any) -> bool:
     return False
 
 
-# fmp_data.investment.schema cannot be imported under pydantic 2.13:
-# ETFHoldingsArgs declares `date: date`, clashing with the datetime import.
-# Pre-existing on dev, tracked in #139. Listed explicitly rather than
-# swallowed, so a *newly* un-importable module fails the guard instead of
-# quietly dropping out of its coverage.
-_KNOWN_UNIMPORTABLE = {"fmp_data.investment.schema"}
+# Modules that legitimately cannot be imported. Empty since #139 was fixed
+# (fmp_data.investment.schema declared `date: date`, clashing with the
+# datetime import, and was un-importable under pydantic 2.13). Kept as a
+# named hook so a newly un-importable module fails the guard loudly instead
+# of quietly dropping out of its coverage. See tests/unit/test_imports.py.
+_KNOWN_UNIMPORTABLE: set[str] = set()
 
 # The module kinds that define pydantic models. Importing the rest of the
 # package is not free: fmp_data.mcp calls sys.exit(1) when its extra is

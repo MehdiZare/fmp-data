@@ -20,8 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The argument models use the `CIK` type, so an integer is padded before their `^\d{10}$` constraint is checked
   - Guard tests assert no `cik` parameter can revert to `ParamType.STRING` and no model can reintroduce a bare-`str` CIK field; the latter now walks every module rather than only `*.models`, which is where the argument-model drift had been hiding
 
-### Known issues
-- `fmp_data.investment.schema` cannot be imported under pydantic 2.13 — `ETFHoldingsArgs` declares `date: date`, clashing with the `datetime.date` import. Pre-existing, tracked in #139. `PortfolioDateArgs.cik` is declared with the `CIK` type so it is correct once that is resolved.
+- **`fmp_data.investment.schema` was un-importable** (#139) - `ETFHoldingsArgs` and `MutualFundHoldingsArgs` each declared a field named `date` annotated with the `date` imported from `datetime`. Under pydantic 2.13 the field name shadows the type before the annotation is evaluated, so building the class raised `PydanticUserError` and the entire module — every arg model in it — was unreachable at runtime. Any LangChain registration path importing it failed outright.
+  - The annotation is now imported as `dt_date`, matching the convention already used in `fmp_data/technical/schema.py`. The field is still named `date`, so the wire format is unchanged
+  - New `tests/unit/test_imports.py` asserts every module in the package imports, failing on any exception rather than only `ImportError` — #139 raised `PydanticUserError`, so an `ImportError`-only check would have missed it. Nothing in the suite imported this module, which is why the break sat unnoticed
+  - The `_KNOWN_UNIMPORTABLE` allowlist added in #138 is now empty, so the CIK drift guard covers `investment.schema` again — raising its coverage from 61 to 64 CIK-valued fields and confirming `PortfolioDateArgs.cik` is correct
 
 ## [2.5.0] - 2026-08-07
 
