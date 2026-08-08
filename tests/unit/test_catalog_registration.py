@@ -10,6 +10,11 @@ from fmp_data.lc.models import EndpointSemantics, SemanticCategory
 from fmp_data.lc.registry import EndpointRegistry, get_endpoint_groups
 from fmp_data.models import Endpoint
 
+# Below the current catalog size but far above zero. An assertion over a
+# comprehension is vacuously true on an empty group dict, so any guard whose
+# universe is derived from ``get_endpoint_groups()`` needs a floor beneath it.
+MINIMUM_SEMANTICS_CHECKED = 200
+
 
 def _semantics_for(
     endpoint_name: str, semantics_map: dict[str, EndpointSemantics]
@@ -260,9 +265,10 @@ def test_every_group_declares_one_category_and_its_semantics_agree() -> None:
     rather than rewriting the declarations, since ``category`` feeds the
     semantic search the registry exists to serve.
     """
+    groups = get_endpoint_groups()
     divergent = {
         f"{group}.{key}": str(semantics.category)
-        for group, config in get_endpoint_groups().items()
+        for group, config in groups.items()
         for key, semantics in config["semantics_map"].items()
         if semantics.category != config["category"]
     }
@@ -271,6 +277,13 @@ def test_every_group_declares_one_category_and_its_semantics_agree() -> None:
         "Semantics entries whose category differs from their group's: "
         f"{divergent}. A group carries exactly one category; pick the group "
         "the endpoint belongs to, or move the endpoint."
+    )
+
+    checked = sum(len(config["semantics_map"]) for config in groups.values())
+    assert checked >= MINIMUM_SEMANTICS_CHECKED, (
+        f"Only {checked} semantics entries checked across {len(groups)} groups; "
+        f"expected at least {MINIMUM_SEMANTICS_CHECKED}. An empty or shrunken "
+        "group dict passes the assertion above vacuously."
     )
 
 
@@ -428,9 +441,17 @@ def test_partitioning_is_a_no_op_for_uniform_clients() -> None:
             "is stale."
         )
         config = partitioned[client]
-        assert config["endpoint_map"] == endpoint_map
-        assert config["semantics_map"] == semantics_map
-        assert config["client"] == client
+        assert config["endpoint_map"] == endpoint_map, (
+            f"{client}: partitioning changed the endpoint map; symmetric "
+            f"difference: {sorted(set(config['endpoint_map']) ^ set(endpoint_map))}"
+        )
+        assert config["semantics_map"] == semantics_map, (
+            f"{client}: partitioning changed the semantics map; symmetric "
+            f"difference: {sorted(set(config['semantics_map']) ^ set(semantics_map))}"
+        )
+        assert config["client"] == client, (
+            f"{client}: group reports client {config['client']!r}"
+        )
 
     # And the two that do split must round-trip: no endpoint or semantics entry
     # may be lost or duplicated across the pieces.
@@ -448,19 +469,33 @@ def test_partitioning_is_a_no_op_for_uniform_clients() -> None:
         semantics_keys = [
             key for config in partitioned.values() for key in config["semantics_map"]
         ]
-        assert len(endpoint_names) == len(set(endpoint_names))
-        assert len(semantics_keys) == len(set(semantics_keys))
+        assert len(endpoint_names) == len(set(endpoint_names)), (
+            f"{client}: endpoint duplicated across subgroups: "
+            f"{sorted({n for n in endpoint_names if endpoint_names.count(n) > 1})}"
+        )
+        assert len(semantics_keys) == len(set(semantics_keys)), (
+            f"{client}: semantics key duplicated across subgroups: "
+            f"{sorted({k for k in semantics_keys if semantics_keys.count(k) > 1})}"
+        )
 
         # Everything survives except the declared exclusions.
         from fmp_data.lc.registry import PENDING_COLLISION_EXCLUSIONS
 
         excluded = PENDING_COLLISION_EXCLUSIONS.get(client, frozenset())
-        assert set(endpoint_names) == set(endpoint_map) - excluded
-        assert set(semantics_keys) == {
+        expected_endpoints = set(endpoint_map) - excluded
+        assert set(endpoint_names) == expected_endpoints, (
+            f"{client}: endpoints lost or invented by partitioning; symmetric "
+            f"difference: {sorted(set(endpoint_names) ^ expected_endpoints)}"
+        )
+        expected_keys = {
             key
             for key, entry in semantics_map.items()
             if entry.method_name not in excluded
         }
+        assert set(semantics_keys) == expected_keys, (
+            f"{client}: semantics entries lost or invented by partitioning; "
+            f"symmetric difference: {sorted(set(semantics_keys) ^ expected_keys)}"
+        )
 
 
 def test_every_category_has_a_group_slug() -> None:
