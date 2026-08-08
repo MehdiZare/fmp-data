@@ -9,10 +9,13 @@ from typing import Any
 import warnings
 
 from fmp_data.client import FMPDataClient
+from fmp_data.logger import FMPLogger
 from fmp_data.mcp._compat import MCPServerType
 from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
 
 ERR = RuntimeError  # shorten
+
+logger = FMPLogger().get_logger(__name__)
 
 
 def _resolve_attr(obj: object, dotted: str) -> Callable:
@@ -68,21 +71,37 @@ def _warn_if_deprecated(full_spec: str) -> None:
     a given (message, category, module, lineno) once per process — so each
     distinct deprecated key surfaces once, at the caller's own location.
 
-    ``stacklevel=4`` walks out of the library to that caller:
-    ``_warn_if_deprecated`` (1) -> ``_resolve_tool_spec`` (2) ->
-    ``register_from_manifest`` (3) -> caller (4). Attributing the warning to
-    the user's module is what lets their own ``filterwarnings`` rules match.
+    The announcement goes out over **two** channels, because neither one
+    reaches every consumer on its own:
+
+    * ``warnings.warn`` with ``stacklevel=4`` walks out of the library to the
+      caller: ``_warn_if_deprecated`` (1) -> ``_resolve_tool_spec`` (2) ->
+      ``register_from_manifest`` (3) -> caller (4). Attributing the warning to
+      the user's module is what lets their own ``filterwarnings`` rules match.
+    * ``logger.warning`` covers the path that actually dominates in practice.
+      When the caller is :func:`fmp_data.mcp.server.create_app` — which is what
+      ``python -m fmp_data.mcp``, ``fmp-mcp serve`` and Claude Desktop all
+      funnel through — frame 4 *is* ``create_app``, so the warning is
+      attributed to ``fmp_data.mcp.server``. Python's default filter chain is
+      ``default::DeprecationWarning:__main__`` followed by
+      ``ignore::DeprecationWarning``, so a warning attributed to any module
+      other than ``__main__`` is discarded before it is ever printed. Without
+      the log line, the single most common way to run this server announces
+      nothing at all before 3.0 removes the key.
+
+    No stacklevel can point at the real culprit anyway: the offending key
+    usually lives in a manifest *data* file, not in a stack frame.
     """
     replacement = DEPRECATED_TOOLS.get(full_spec)
     if replacement is None:
         return
-    warnings.warn(
+    message = (
         f"MCP tool key '{full_spec}' is deprecated and will be removed in "
         f"3.0; use '{replacement}' instead. Both names call the same client "
-        f"method, so the replacement is a drop-in.",
-        DeprecationWarning,
-        stacklevel=4,
+        f"method, so the replacement is a drop-in."
     )
+    warnings.warn(message, DeprecationWarning, stacklevel=4)
+    logger.warning(message)
 
 
 def _resolve_tool_spec(

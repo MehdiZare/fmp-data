@@ -138,10 +138,10 @@ def test_alias_semantics_match_their_endpoint() -> None:
 
     ``test_every_endpoint_passes_registry_validation`` iterates endpoint-map
     first, so a semantics entry that no endpoint key selects is never
-    validated. Those aliases are still live MCP tools -- ``company``'s
-    ``intraday_price`` sits in ``DEFAULT_TOOLS`` alongside the
-    ``intraday_prices`` entry that shadows it -- so their hints have to track
-    the endpoint too.
+    validated. Those aliases are still resolvable MCP tools -- ``company``'s
+    ``intraday_price`` is deprecated rather than deleted, and keeps resolving
+    to the same method as ``intraday_prices`` until 3.0 -- so their hints have
+    to track the endpoint for as long as they still answer.
 
     Entries whose ``method_name`` has no endpoint at all are skipped: those are
     client-side methods such as ``get_company_logo_url``, which builds a URL

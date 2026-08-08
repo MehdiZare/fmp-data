@@ -11,7 +11,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 - [Fundamental (14 endpoints)](#fundamental)
 - [Technical (9 endpoints)](#technical)
 - [Market Intelligence (47 endpoints)](#market-intelligence)
-- [Institutional (25 endpoints)](#institutional)
+- [Institutional (24 endpoints)](#institutional)
 - [Investment (14 endpoints)](#investment)
 - [Alternative Markets (15 endpoints)](#alternative-markets)
 - [Economics (7 endpoints)](#economics)

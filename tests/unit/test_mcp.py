@@ -7,6 +7,7 @@ Relative path: tests/unit/test_mcp.py
 
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 from types import SimpleNamespace
@@ -555,8 +556,6 @@ class TestToolKeyNamespace:
             )
 
     def test_canonical_keys_do_not_warn(self) -> None:
-        import warnings
-
         from fmp_data.mcp.tool_loader import _resolve_tool_spec
 
         with warnings.catch_warnings():
@@ -582,6 +581,60 @@ class TestToolKeyNamespace:
 
         assert Path(record[0].filename).name == Path(__file__).name, (
             f"warning attributed to {record[0].filename}, expected this test file"
+        )
+
+    def test_deprecation_survives_pythons_default_warning_filters(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """The announcement must reach the server operator, not just linters.
+
+        ``stacklevel=4`` attributes the warning to whoever called
+        ``register_from_manifest``. On the dominant path that caller is
+        ``fmp_data.mcp.server.create_app`` — a *library* module — and Python's
+        default filter chain (``default::DeprecationWarning:__main__`` then
+        ``ignore::DeprecationWarning``) drops any DeprecationWarning not
+        attributed to ``__main__``. So ``python -m fmp_data.mcp``, ``fmp-mcp
+        serve`` and Claude Desktop would announce nothing at all before 3.0.
+
+        This reproduces those filters exactly and asserts the log channel still
+        carries the message. Deleting the ``logger.warning`` call fails here.
+        """
+        from fmp_data.mcp.tool_loader import _warn_if_deprecated
+
+        with warnings.catch_warnings(record=True) as shown:
+            warnings.resetwarnings()
+            warnings.filterwarnings(
+                "default", category=DeprecationWarning, module="__main__"
+            )
+            warnings.filterwarnings("ignore", category=DeprecationWarning)
+            with caplog.at_level(
+                logging.WARNING, logger="fmp_data.fmp_data.mcp.tool_loader"
+            ):
+                _warn_if_deprecated("company.historical_price")
+
+        assert shown == [], (
+            "expected the DeprecationWarning to be swallowed by the default "
+            "filters — if it is not, this test no longer proves anything"
+        )
+        logged = [r.getMessage() for r in caplog.records]
+        assert len(logged) == 1, f"expected exactly one log record, got {logged}"
+        assert "company.historical_price" in logged[0]
+        assert "company.historical_prices" in logged[0]
+        assert "3.0" in logged[0]
+
+    def test_canonical_keys_are_silent_on_both_channels(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """The log channel must not turn every canonical key into noise."""
+        from fmp_data.mcp.tool_loader import _warn_if_deprecated
+
+        with caplog.at_level(
+            logging.WARNING, logger="fmp_data.fmp_data.mcp.tool_loader"
+        ):
+            _warn_if_deprecated("company.historical_prices")
+
+        assert caplog.records == [], (
+            f"canonical key logged {[r.getMessage() for r in caplog.records]}"
         )
 
     def test_recommended_tools_names_no_deprecated_key(self) -> None:

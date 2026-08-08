@@ -160,6 +160,13 @@ TOOLS = [
 Using the bare form for either raises at registration with an error naming
 every candidate.
 
+Naming **both** halves of a colliding pair is a separate failure. Under the
+default `FMP_MCP_TOOL_NAME_STYLE=key`, the advertised tool name is just the
+key, so `alternative.crypto_quotes` and `batch.crypto_quotes` in one manifest
+both want to be called `crypto_quotes` and registration is refused. To expose
+both at once, set `FMP_MCP_TOOL_NAME_STYLE=spec` (see the tip above) so each
+tool is advertised under its fully qualified name.
+
 ## Validation
 
 Validate your manifest file before using:
