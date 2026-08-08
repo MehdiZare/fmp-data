@@ -15,6 +15,32 @@ from fmp_data.investment.models import (
     FundDisclosureSearchResult,
     MutualFundHolding,
 )
+from fmp_data.investment.schema import ETFHoldingsArgs, MutualFundHoldingsArgs
+
+
+class TestInvestmentArgSchemas:
+    """The holdings arg models must keep their wire field name and parsing.
+
+    ``date`` is both the field name and, via the ``dt_date`` alias, its own
+    annotation -- the clash that made this module un-importable in #139. The
+    field name is the wire contract, so renaming it to dodge the clash would
+    be a silent breaking change. These assertions pin the shape the fix
+    preserved; nothing else in the suite constructs these models.
+    """
+
+    @pytest.mark.parametrize("model", [ETFHoldingsArgs, MutualFundHoldingsArgs])
+    def test_holdings_date_field_name_and_type(self, model):
+        """Field is named ``date``, annotated ``datetime.date``, parses ISO."""
+        assert "date" in model.model_fields
+        assert model.model_fields["date"].annotation is date
+        assert model.model_fields["date"].is_required()
+
+        parsed = model(symbol="SPY", date="2024-01-15")
+        assert parsed.date == date(2024, 1, 15)
+
+        schema = model.model_json_schema()["properties"]["date"]
+        assert schema["format"] == "date"
+        assert schema["examples"] == ["2024-01-15"]
 
 
 class TestInvestmentClient:
