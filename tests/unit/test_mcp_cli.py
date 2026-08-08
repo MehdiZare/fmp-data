@@ -487,3 +487,110 @@ class TestMCPCLIMain:
             main()
 
         mock_serve.assert_called_once_with("custom.py")
+
+
+class TestGeneratedManifestIsUsable:
+    """`fmp-mcp generate` must emit a manifest that can start a server (#148).
+
+    With no ``--tools`` filter it wrote every catalog spec verbatim: the three
+    keys this release deprecates, plus both sides of the two tool-name
+    collisions, which ``_validate_tool_names`` refuses under the default
+    ``key`` name style. The result was a file that failed at registration.
+    """
+
+    @staticmethod
+    def _generate(tmp_path: Path, **kwargs: object) -> tuple[list[str], str]:
+        from fmp_data.mcp.cli import generate_manifest
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        path = tmp_path / "generated_manifest.py"
+        generate_manifest(path, **kwargs)  # type: ignore[arg-type]
+        return load_manifest_tools(path), path.read_text()
+
+    def test_generated_manifest_omits_deprecated_keys(self, tmp_path: Path) -> None:
+        from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
+
+        tools, _ = self._generate(tmp_path)
+
+        assert sorted(set(tools) & set(DEPRECATED_TOOLS)) == []
+
+    def test_generated_manifest_has_no_tool_name_collision(
+        self, tmp_path: Path
+    ) -> None:
+        tools, _ = self._generate(tmp_path)
+
+        by_name: dict[str, list[str]] = {}
+        for spec in tools:
+            by_name.setdefault(spec.split(".", 1)[1], []).append(spec)
+        collisions = {k: v for k, v in by_name.items() if len(v) > 1}
+
+        assert collisions == {}
+
+    def test_generated_manifest_documents_the_excluded_side(
+        self, tmp_path: Path
+    ) -> None:
+        """A dropped tool must be recoverable from the file itself."""
+        tools, content = self._generate(tmp_path)
+
+        header = content.split("TOOLS = [", 1)[0]
+        assert "batch.crypto_quotes" in header
+        assert "batch.forex_quotes" in header
+        assert "FMP_MCP_TOOL_NAME_STYLE=spec" in header
+        assert "batch.crypto_quotes" not in tools
+        assert "alternative.crypto_quotes" in tools
+
+    def test_generated_manifest_still_covers_the_catalog(self, tmp_path: Path) -> None:
+        """Only the deprecated keys and one side of each collision may go."""
+        from fmp_data.mcp.cli import list_available_tools
+        from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
+
+        tools, _ = self._generate(tmp_path)
+        catalog = {tool["spec"] for tool in list_available_tools()}
+
+        assert set(tools) == catalog - set(DEPRECATED_TOOLS) - {
+            "batch.crypto_quotes",
+            "batch.forex_quotes",
+        }
+
+    def test_generated_manifest_registers_cleanly(self, tmp_path: Path) -> None:
+        """The acceptance test: it must actually start a server.
+
+        Registration under the default ``key`` name style is what #148 says a
+        generated manifest could not survive, and no deprecation may fire.
+        """
+        import warnings
+
+        from fmp_data.client import FMPDataClient
+        from fmp_data.mcp.tool_loader import register_from_manifest
+
+        tools, _ = self._generate(tmp_path)
+        mcp = Mock()
+        client = FMPDataClient(api_key="dummy-key-for-attribute-resolution")
+
+        try:
+            with (
+                patch.dict(os.environ, {"FMP_MCP_TOOL_NAME_STYLE": "key"}),
+                warnings.catch_warnings(),
+            ):
+                warnings.simplefilter("error", DeprecationWarning)
+                register_from_manifest(mcp, client, tools)
+        finally:
+            client.close()
+
+        assert mcp.add_tool.call_count == len(tools)
+
+    def test_explicit_tools_keep_both_sides_and_get_guidance(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """An explicit selection is the user's call; generate warns, not drops."""
+        tools, content = self._generate(
+            tmp_path,
+            tools=["alternative.crypto_quotes", "batch.crypto_quotes"],
+            include_defaults=False,
+        )
+
+        assert sorted(tools) == ["alternative.crypto_quotes", "batch.crypto_quotes"]
+        header = content.split("TOOLS = [", 1)[0]
+        assert "crypto_quotes" in header
+        assert "FMP_MCP_TOOL_NAME_STYLE=spec" in header
+        assert "crypto_quotes" in capsys.readouterr().err

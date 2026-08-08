@@ -123,7 +123,19 @@ fmp-mcp generate my_manifest.py --tools company.profile company.quote
 
 # Generate manifest without default tools
 fmp-mcp generate my_manifest.py --no-defaults --tools company.quote market.gainers
+
+# Generate a manifest covering the whole catalog
+fmp-mcp generate everything.py
 ```
+
+With no `--tools` filter the generated manifest covers the catalog except for
+what would stop it starting a server: deprecated tool keys (removed in 3.0),
+and one side of each tool-name collision. Under the default
+`FMP_MCP_TOOL_NAME_STYLE=key` a tool is advertised under its bare key, so
+`alternative.crypto_quotes` and `batch.crypto_quotes` both want to be called
+`crypto_quotes` and registration refuses the pair. Every exclusion is named in
+the generated file's header; set `FMP_MCP_TOOL_NAME_STYLE=spec` (names become
+`<client>.<key>`) and add them back to serve both sides.
 
 3. **Discovering available tools** - List all available tools:
 ```bash
