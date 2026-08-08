@@ -168,9 +168,14 @@ CIK_SEARCH: Endpoint = Endpoint(
         EndpointParam(
             name="query",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
+            param_type=ParamType.CIK,
             required=True,
-            description="Search query",
+            description=(
+                "CIK number to look up, e.g. 320193 or '0000320193'. This is "
+                "not a free-text search: the API matches a CIK only, and "
+                "rejects a company name with 400 'Invalid or missing query "
+                "parameter - cik'. Sent on the wire as 'cik' via the alias."
+            ),
             alias="cik",
         )
     ],

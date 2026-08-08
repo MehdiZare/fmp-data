@@ -169,7 +169,7 @@ CRYPTO_HISTORICAL: Endpoint = Endpoint(
 
 CRYPTO_INTRADAY: Endpoint = Endpoint(
     name="crypto_intraday",
-    path="historical-chart/{interval}/{symbol}",
+    path="historical-chart/{interval}",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -189,7 +189,7 @@ CRYPTO_INTRADAY: Endpoint = Endpoint(
         ),
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Crypto pair symbol",
@@ -495,7 +495,7 @@ COMMODITY_HISTORICAL: Endpoint = Endpoint(
 
 COMMODITY_INTRADAY: Endpoint = Endpoint(
     name="commodity_intraday",
-    path="historical-chart/{interval}/{symbol}",
+    path="historical-chart/{interval}",
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
@@ -515,7 +515,7 @@ COMMODITY_INTRADAY: Endpoint = Endpoint(
         ),
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             required=True,
             description="Commodity symbol",

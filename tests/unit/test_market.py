@@ -239,7 +239,10 @@ class TestCompanySearch:
         assert isinstance(results[0], CIKResult)
 
         params = mock_request.call_args[1]["params"]
-        assert params["cik"] == "320193"
+        # Sent as 'cik', not 'query': the API rejects the latter with a 400,
+        # and zero-padded to the canonical 10 digits, which is how every
+        # other CIK-typed param in the library goes out.
+        assert params["cik"] == "0000320193"
 
     @patch("httpx.Client.request")
     def test_search_by_cusip(self, mock_request, fmp_client, mock_response):

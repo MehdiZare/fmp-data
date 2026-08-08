@@ -131,22 +131,22 @@ SEC_FILINGS_SEARCH_FORM_TYPE: Endpoint = Endpoint(
             required=True,
             description="SEC form type (e.g., 10-K, 10-Q, 8-K)",
         ),
-    ],
-    optional_params=[
         EndpointParam(
             name="from",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="Start date (YYYY-MM-DD)",
         ),
         EndpointParam(
             name="to",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="End date (YYYY-MM-DD)",
         ),
+    ],
+    optional_params=[
         EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
@@ -187,22 +187,22 @@ SEC_FILINGS_SEARCH_SYMBOL: Endpoint = Endpoint(
             required=True,
             description="Stock symbol",
         ),
-    ],
-    optional_params=[
         EndpointParam(
             name="from",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="Start date (YYYY-MM-DD)",
         ),
         EndpointParam(
             name="to",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="End date (YYYY-MM-DD)",
         ),
+    ],
+    optional_params=[
         EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
@@ -243,22 +243,22 @@ SEC_FILINGS_SEARCH_CIK: Endpoint = Endpoint(
             required=True,
             description="SEC CIK number",
         ),
-    ],
-    optional_params=[
         EndpointParam(
             name="from",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="Start date (YYYY-MM-DD)",
         ),
         EndpointParam(
             name="to",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
+            required=True,
             description="End date (YYYY-MM-DD)",
         ),
+    ],
+    optional_params=[
         EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
@@ -424,7 +424,14 @@ INDUSTRY_CLASSIFICATION_SEARCH: Endpoint = Endpoint(
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Search industry classification data",
+    description=(
+        "Search industry classification data. At least one of ``symbol``, "
+        "``cik`` or ``sicCode`` must be supplied -- the API rejects a bare "
+        "call with 400 'Please enter at least one search value'. Each is "
+        "individually optional, which ``mandatory_params`` cannot express, "
+        "so the constraint is enforced in "
+        "``SECClient.search_industry_classification`` instead."
+    ),
     mandatory_params=[],
     optional_params=[
         EndpointParam(

@@ -123,7 +123,19 @@ class MarketClient(EndpointGroup):
         return self.client.request(AVAILABLE_INDEXES)
 
     def search_by_cik(self, query: str) -> list[CIKResult]:
-        """Search companies by CIK number"""
+        """Search companies by CIK number.
+
+        Args:
+            query: The CIK number, e.g. ``"320193"`` or ``"0000320193"``.
+                Despite the parameter name this is not a free-text search:
+                the API matches a CIK only and rejects a company name with
+                400 ``Invalid or missing query parameter - cik``. A numeric
+                value is zero-padded to the canonical 10 digits before it is
+                sent.
+
+        Returns:
+            List of matching CIK records.
+        """
         return self.client.request(CIK_SEARCH, query=query)
 
     def get_cik_list(self, page: int = 0, limit: int = 1000) -> list[CIKListEntry]:

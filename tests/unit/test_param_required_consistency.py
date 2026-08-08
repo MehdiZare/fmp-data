@@ -22,7 +22,7 @@ import importlib
 import pkgutil
 
 import fmp_data
-from fmp_data.models import Endpoint
+from fmp_data.models import Endpoint, ParamLocation
 
 #: Modules the walk could not import, kept so a failure can name them.
 SKIPPED_MODULES: dict[str, str] = {}
@@ -82,3 +82,59 @@ def test_required_flag_agrees_with_list_membership() -> None:
     )
     # Without a floor an empty walk reads as a pass.
     assert checked > 400, f"only {checked} params inspected; is the walk working?"
+
+
+def test_path_params_and_path_template_agree() -> None:
+    """``location=PATH`` and the ``{placeholder}``s in ``path`` must match up.
+
+    ``build_url`` substitutes a placeholder only from a param declared
+    ``ParamLocation.PATH``, and ``get_query_params`` sends only params
+    declared ``ParamLocation.QUERY``. So each direction fails silently in its
+    own way:
+
+    * a placeholder with no PATH param leaves a literal ``{symbol}`` in the
+      URL, which the API answers with a 404 -- this was
+      ``historical-chart/{interval}/{symbol}``, where the API wants ``symbol``
+      as a query parameter;
+    * a PATH param absent from the template is substituted nowhere and sent
+      nowhere, so the value a caller passed is **dropped without a word** --
+      this was ``MUTUAL_FUND_HOLDINGS``, whose ``symbol`` never left the
+      process.
+
+    Neither shows up in the unit suite, which never builds a real URL, so the
+    agreement is asserted directly here.
+    """
+    import re
+
+    mismatches: list[str] = []
+    checked = 0
+
+    for module_name, attr, endpoint in _endpoints():
+        checked += 1
+        placeholders = set(re.findall(r"\{(\w+)\}", endpoint.path))
+        path_params = {
+            param.name
+            for param in [
+                *endpoint.mandatory_params,
+                *(endpoint.optional_params or []),
+            ]
+            if param.location is ParamLocation.PATH
+        }
+        for name in sorted(placeholders - path_params):
+            mismatches.append(
+                f"{module_name}.{attr}: path {endpoint.path!r} has "
+                f"{{{name}}} but no param declares location=PATH for it, so "
+                "the placeholder survives into the request URL"
+            )
+        for name in sorted(path_params - placeholders):
+            mismatches.append(
+                f"{module_name}.{attr}: param {name!r} is location=PATH but "
+                f"{endpoint.path!r} has no {{{name}}}, so it is substituted "
+                "nowhere and never sent as a query param either"
+            )
+
+    assert not mismatches, (
+        "path templates and PATH-located params must correspond one-to-one:"
+        "\n  " + "\n  ".join(mismatches)
+    )
+    assert checked > 200, f"only {checked} endpoints inspected; walk broken?"
