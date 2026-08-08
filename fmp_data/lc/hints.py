@@ -1,7 +1,7 @@
 """Shared ``ParameterHint`` definitions (#135).
 
 One definition per concept, imported by the domain mapping modules. Before
-this consolidation nine names were bound in several modules at once with
+this consolidation ten names were bound in several modules at once with
 divergent contents, so the same user phrasing resolved on one tool and not
 another with nothing comparing them. ``tests/unit/test_hint_consolidation.py``
 fails if a name ever gains a second, different definition.
@@ -128,7 +128,17 @@ PERIOD_LENGTH_HINT = ParameterHint(
 # case-sensitive ``symbol[:\s]+([A-Z]{1,5})`` is subsumed by intelligence's
 # ``(?i)`` form.
 SYMBOL_HINT = ParameterHint(
-    natural_names=["ticker", "symbol", "stock", "company", "code"],
+    natural_names=[
+        "ticker",
+        "symbol",
+        "stock",
+        "company",
+        "code",
+        # From institutional's copy. natural_names feed get_embedding_text,
+        # so dropping these would shift the embedding for 18 endpoints.
+        "company symbol",
+        "stock symbol",
+    ],
     extraction_patterns=[
         r"\b[A-Z]{1,5}\b",
         r"(?:for|of)\s+([A-Z]{1,5})",
@@ -190,13 +200,34 @@ SYMBOLS_HINT = ParameterHint(
 # ``(?i)cik[:\s]+(\d{1,10})`` into one case-insensitive, length-bounded form,
 # since a CIK is at most ten digits.
 CIK_HINT = ParameterHint(
-    natural_names=["CIK", "central index key", "SEC identifier", "SEC ID"],
+    natural_names=[
+        "CIK",
+        "central index key",
+        "SEC identifier",
+        "SEC ID",
+        # company/hints.py listed these as natural_names, not context_clues.
+        # Both fields feed get_embedding_text, but they are not
+        # interchangeable, so the union keeps them in both.
+        "filing ID",
+        "company id",
+    ],
     extraction_patterns=[
         r"\b\d{10}\b",
         r"\b0{6}\d{4}\b",
         r"(?i)CIK\s*:?\s*(\d{1,10})",
     ],
-    examples=["0000320193", "0001318605", "0001045810", "0000102909"],
+    examples=[
+        "0000320193",
+        "0001318605",
+        "0001045810",
+        "0000102909",
+        # Unioned back in from the company/investment copies: examples feed
+        # ToolFactory.generate_description, so the tool text an LLM reads
+        # changes if they are dropped.
+        "0000789019",
+        "0001652044",
+        "0000884560",
+    ],
     context_clues=[
         "CIK",
         "central index key",
@@ -346,7 +377,15 @@ AS_OF_DATE_HINT = ParameterHint(
         r"(\d{4}-\d{2}-\d{2})",
         r"(?:on|at|for)\s+(\d{4}-\d{2}-\d{2})",
     ],
-    examples=["2024-01-02", "2023-12-29", "2024-03-31", "2023-12-31"],
+    examples=[
+        "2024-01-02",
+        "2023-12-29",
+        "2024-03-31",
+        "2023-12-31",
+        # Unioned back in from the investment/institutional copies.
+        "2024-01-15",
+        "2024-06-30",
+    ],
     context_clues=[
         "on",
         "for",
