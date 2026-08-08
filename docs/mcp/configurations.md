@@ -143,6 +143,23 @@ fmp-mcp list --format json > tools.json
 Tip: set `FMP_MCP_TOOL_NAME_STYLE=spec` to expose fully qualified tool names
 (`client.key`) and avoid naming collisions when multiple tools share a key.
 
+### Bare keys vs. fully qualified specs
+
+A manifest entry may be the bare tool key (`profile`) or the fully qualified
+spec (`company.profile`). A bare key resolves **only when exactly one client
+claims it**. Two keys are claimed by two clients each — `crypto_quotes` and
+`forex_quotes`, by `alternative` and `batch` — and must be written in full:
+
+```python
+TOOLS = [
+    "alternative.crypto_quotes",  # not "crypto_quotes"
+    "batch.forex_quotes",         # not "forex_quotes"
+]
+```
+
+Using the bare form for either raises at registration with an error naming
+every candidate.
+
 ## Validation
 
 Validate your manifest file before using:

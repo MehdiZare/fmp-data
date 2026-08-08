@@ -6,9 +6,11 @@ import importlib
 import inspect
 import os
 from typing import Any
+import warnings
 
 from fmp_data.client import FMPDataClient
 from fmp_data.mcp._compat import MCPServerType
+from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
 
 ERR = RuntimeError  # shorten
 
@@ -58,6 +60,20 @@ def _build_key_to_spec(all_tools: list[dict[str, str]]) -> dict[str, list[str]]:
     return key_to_spec
 
 
+def _warn_if_deprecated(full_spec: str) -> None:
+    """Announce a tool key that is scheduled for removal in 3.0."""
+    replacement = DEPRECATED_TOOLS.get(full_spec)
+    if replacement is None:
+        return
+    warnings.warn(
+        f"MCP tool key '{full_spec}' is deprecated and will be removed in "
+        f"3.0; use '{replacement}' instead. Both names call the same client "
+        f"method, so the replacement is a drop-in.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
+
+
 def _resolve_tool_spec(
     spec: str, key_to_spec: dict[str, list[str]]
 ) -> tuple[str, str, str]:
@@ -67,20 +83,29 @@ def _resolve_tool_spec(
             client_slug, sem_key = spec.split(".", 1)
         except ValueError:
             raise ERR(f"'{spec}' is not in '<client>.<endpoint>' format") from None
+        _warn_if_deprecated(spec)
         return spec, client_slug, sem_key
 
     if spec not in key_to_spec:
         raise ERR(f"Tool key '{spec}' not found in available tools") from None
 
-    specs_for_key = key_to_spec[spec]
+    # Bare-key resolution is only supported for keys claimed by exactly one
+    # client. Two clients can legitimately expose distinct tools under the same
+    # key (see issue #126), and there is no defensible way to pick one.
+    specs_for_key = sorted(key_to_spec[spec])
     if len(specs_for_key) > 1:
-        specs_list = ", ".join(sorted(specs_for_key))
+        candidates = ", ".join(specs_for_key)
         raise ERR(
-            f"Tool key '{spec}' is ambiguous; matches multiple tools: {specs_list}"
+            f"Tool key '{spec}' is claimed by {len(specs_for_key)} clients "
+            f"({candidates}), so the bare key cannot be resolved. Bare tool "
+            f"keys work only when exactly one client claims them; name the "
+            f"client explicitly using the full '<client>.<key>' form, e.g. "
+            f"'{specs_for_key[0]}'."
         ) from None
 
     full_spec = specs_for_key[0]
     client_slug, sem_key = full_spec.split(".", 1)
+    _warn_if_deprecated(full_spec)
     return full_spec, client_slug, sem_key
 
 

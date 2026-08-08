@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Deprecated
+- **Duplicate MCP tool keys, one per `(client, method)` pair from 3.0** (#136) - three company methods were advertised under two tool keys each, so an MCP client saw two tools that did exactly the same thing and an LLM had to pick between them with nothing to distinguish them. The plural key is canonical; the singular one is deprecated and **removed in 3.0**:
+
+  | Deprecated key | Replacement | Method |
+  |---|---|---|
+  | `company.executives` | `company.key_executives` | `get_executives` |
+  | `company.historical_price` | `company.historical_prices` | `get_historical_prices` |
+  | `company.intraday_price` | `company.intraday_prices` | `get_intraday_prices` |
+
+  - The deprecated keys still resolve through 2.6, in both the bare (`historical_price`) and fully qualified (`company.historical_price`) form. Resolving one emits a `DeprecationWarning` naming the replacement and the 3.0 removal — raised from `fmp_data.mcp.tool_loader._warn_if_deprecated`, on the single path (`_resolve_tool_spec`) that both forms funnel through
+  - The pairs are declared in `fmp_data.mcp.tools_manifest.DEPRECATED_TOOLS` as `{deprecated spec: replacement spec}`
+  - **They are removed from `DEFAULT_TOOLS` now** (159 → 156), so a default server already advertises exactly one tool per method. Only manifests naming a deprecated key explicitly are affected, and they keep working with a warning until 3.0
+  - Catalog is unchanged at this step: both names remain loadable via an explicit manifest until 3.0, when the catalog drops 223 → 220
+- **Bare-key resolution for tool keys claimed by two clients** (#126) - `register_from_manifest` accepts a bare tool key (`profile`) as well as the fully qualified spec (`company.profile`), resolving it through `_build_key_to_spec`, which indexes the whole discovery catalogue rather than `DEFAULT_TOOLS`. `crypto_quotes` and `forex_quotes` are each claimed by two clients (`alternative` and `batch`), so the bare form failed with a bare `RuntimeError: Tool key 'crypto_quotes' is ambiguous` that named neither candidate.
+  - Both tools are legitimate and distinct, so neither is removed and neither is renamed. What is now stated is the guarantee: **a bare tool key resolves only when exactly one client claims it.** For the two ambiguous keys, write `alternative.crypto_quotes` / `batch.crypto_quotes` (likewise for `forex_quotes`)
+  - The error now names every candidate and the exact form to use instead, so the fix is readable off the message without consulting the catalogue
+  - The guard test no longer carries a shrinking allowlist. It asserts the set of ambiguous bare keys is exactly this documented pair — a new, undocumented collision still fails, and so does silently *resolving* one of the two
+
+### Removed
+- **`institutional.cik_mapper_by_name` MCP tool and its endpoint** (#130) - `CIK_MAPPER_BY_NAME` declared the same `cik-list` path and the same `page`/`limit` parameters as `CIK_MAPPER`, and no `name` parameter, so the tool generated from it had no way to express the search it claimed. LangChain tools call `client.request(endpoint, **kwargs)` directly, bypassing the client wrapper where the filtering actually happens, which made it a byte-for-byte duplicate of `cik_mappings`.
+  - Confirmed against the live `stable` API on 2026-08-07: `GET /stable/cik-list` with `name=Apple`, with `company=Apple`, and unfiltered returned byte-identical unfiltered pages. There is no server-side name filter to model
+  - Removed: the `cik_mapper_by_name` entry in `INSTITUTIONAL_ENDPOINTS_SEMANTICS`, the `search_cik_by_name` entry in `INSTITUTIONAL_ENDPOINT_MAP`, and the now-unreferenced `CIK_MAPPER_BY_NAME` endpoint definition. Catalog 224 → 223; institutional endpoints 25 → 24
+  - **`InstitutionalClient.search_cik_by_name` and its async twin are unchanged and keep working.** They are the genuine interface: they call `CIK_MAPPER` with `limit=10000` and filter locally, which the probe confirms is the only option. This removal takes away a dead tool, not a capability
+  - It is removed outright rather than deprecated because it is not a second name for a working tool — it is a tool that cannot perform the operation it advertises. There is nothing for a deprecation cycle to migrate callers *from*
+  - Not addressed here: teaching the LangChain tool layer to dispatch through client methods rather than `client.request`, so wrappers carrying real logic become reachable. That is the general form of the problem and needs its own design pass
+
 ### Fixed
 - **Uncompilable enum validation patterns** (#134) - `EndpointBasedRule._get_type_pattern` emitted `^(annual|quarter))$` — one closing paren too many — for every string parameter declaring `valid_values`. The patterns are consumed by an uncaught `re.match` in `fmp_data/lc/validation.py`, so any caller reaching `ValidationRuleRegistry.get_parameter_requirements` on a live registry hit `re.error`. 22 parameters across 15 endpoints were affected (`period`, `interval`, `timeframe`, `name`).
   - Enum members now contribute their `.value` rather than their repr, so `economics.get_economic_indicators` matches `realGDP` instead of `EconomicIndicatorType.REAL_GDP`. The unwrapping happens once, in `EndpointParam.__post_init__`, so both consumers of `valid_values` — pattern generation and the membership check in `validate_value` — see the wire value. Only `Enum` is unwrapped; other values keep their native type, since `validate_value` compares against a *converted* request value and an integer-typed param such as `transcripts.quarter` (`valid_values=[1, 2, 3, 4]`) would otherwise never match

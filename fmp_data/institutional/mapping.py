@@ -2,7 +2,6 @@ from fmp_data.institutional.endpoints import (
     ASSET_ALLOCATION,
     BENEFICIAL_OWNERSHIP,
     CIK_MAPPER,
-    CIK_MAPPER_BY_NAME,
     FAIL_TO_DELIVER,
     FORM_13F,
     FORM_13F_DATES,
@@ -119,7 +118,9 @@ INSTITUTIONAL_ENDPOINT_MAP = {
     "get_insider_roster": INSIDER_ROSTER,
     "get_insider_statistics": INSIDER_STATISTICS,
     "get_cik_mappings": CIK_MAPPER,
-    "search_cik_by_name": CIK_MAPPER_BY_NAME,
+    # No entry for ``search_cik_by_name``: ``/stable/cik-list`` has no
+    # server-side name filter, so the client method fetches the full list and
+    # filters locally. There is no distinct endpoint to model (#130).
     "get_beneficial_ownership": BENEFICIAL_OWNERSHIP,
     "get_fail_to_deliver": FAIL_TO_DELIVER,
 }
@@ -500,47 +501,6 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
             "Filing research",
             "Data integration",
             "Compliance verification",
-        ],
-    ),
-    "cik_mapper_by_name": EndpointSemantics(
-        client_name="institutional",
-        method_name="search_cik_by_name",
-        natural_description=("Search for CIK numbers by company or institution name."),
-        example_queries=[
-            "Find CIK for Apple",
-            "Search CIK by company name",
-            "What's Microsoft's CIK?",
-            "Look up Tesla's CIK number",
-        ],
-        related_terms=[
-            "company search",
-            "entity lookup",
-            "name search",
-            "CIK lookup",
-        ],
-        category=SemanticCategory.INSTITUTIONAL,
-        sub_category="Reference Data",
-        parameter_hints={
-            "page": PAGE_HINT,
-            "limit": LIMIT_HINT,
-        },
-        response_hints={
-            "reporting_cik": ResponseFieldInfo(
-                description="CIK number of the entity",
-                examples=["0001166559", "0000102909"],
-                related_terms=["CIK", "SEC ID", "identifier"],
-            ),
-            "reporting_name": ResponseFieldInfo(
-                description="Name of the entity",
-                examples=["APPLE INC", "MICROSOFT CORP"],
-                related_terms=["company name", "entity name", "legal name"],
-            ),
-        },
-        use_cases=[
-            "Entity identification",
-            "Filing research",
-            "Company lookup",
-            "Data verification",
         ],
     ),
     "beneficial_ownership": EndpointSemantics(

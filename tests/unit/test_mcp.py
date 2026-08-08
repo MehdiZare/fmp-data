@@ -205,7 +205,7 @@ class TestToolsManifest:
             "company.profile",
             "company.market_cap",
             "alternative.crypto_quote",
-            "company.historical_price",
+            "company.historical_prices",
         ]
 
         for tool in expected_tools:
@@ -280,11 +280,6 @@ class TestSemanticsMethodResolution:
                 "search_equity_offering",
                 INTELLIGENCE_ENDPOINTS_SEMANTICS,
                 "equity_offering_search",
-            ),
-            (
-                "search_cik_by_name",
-                INSTITUTIONAL_ENDPOINTS_SEMANTICS,
-                "cik_mapper_by_name",
             ),
             ("get_cik_mappings", INSTITUTIONAL_ENDPOINTS_SEMANTICS, "cik_mappings"),
             ("search_company", MARKET_ENDPOINTS_SEMANTICS, "search"),
@@ -361,17 +356,18 @@ class TestSemanticsMethodResolution:
             duplicates
         )
 
-    def test_discovered_tool_keys_are_unambiguous_globally(self):
-        """Key-style names resolve against *all* discovered tools, not defaults.
+    def test_ambiguous_bare_keys_are_exactly_the_documented_pair(self):
+        """Bare-key resolution is only guaranteed for singly-claimed keys.
 
         ``_build_key_to_spec`` indexes the full discovery catalogue, so a key
-        shared by two clients raises at registration even when only one of them
-        is in ``DEFAULT_TOOLS``. The allowlist below records collisions that
-        predate this guard; it must only ever shrink. See issue #126.
+        claimed by two clients cannot resolve from the bare form. Exactly two
+        such keys exist and both name legitimate, distinct tools; callers must
+        spell them ``<client>.<key>``. Any *other* collision is a namespace
+        regression and must fail here. See issue #126.
         """
         from fmp_data.mcp.discovery import discover_all_tools
 
-        known_collisions = {"crypto_quotes", "forex_quotes"}
+        documented_ambiguous = {"crypto_quotes", "forex_quotes"}
 
         tools = discover_all_tools()
         assert tools, "discover_all_tools() returned no tools"
@@ -380,18 +376,190 @@ class TestSemanticsMethodResolution:
         for tool in tools:
             by_key.setdefault(tool["spec"].split(".", 1)[1], []).append(tool["spec"])
 
-        collisions = {k: v for k, v in by_key.items() if len(v) > 1}
-        new_collisions = {
-            k: v for k, v in collisions.items() if k not in known_collisions
-        }
-        assert not new_collisions, "New ambiguous key-style tool names:\n" + "\n".join(
-            f"{k}: {v}" for k, v in new_collisions.items()
+        ambiguous = {k: sorted(v) for k, v in by_key.items() if len(v) > 1}
+
+        assert set(ambiguous) == documented_ambiguous, (
+            "Ambiguous bare tool keys changed. Expected exactly "
+            f"{sorted(documented_ambiguous)}, found "
+            f"{dict(sorted(ambiguous.items()))}"
+        )
+        assert ambiguous["crypto_quotes"] == [
+            "alternative.crypto_quotes",
+            "batch.crypto_quotes",
+        ]
+        assert ambiguous["forex_quotes"] == [
+            "alternative.forex_quotes",
+            "batch.forex_quotes",
+        ]
+
+    def test_ambiguous_bare_key_error_names_every_candidate(self):
+        """The error must be actionable: list candidates, show the fix."""
+        from fmp_data.mcp.tool_loader import _build_key_to_spec, _resolve_tool_spec
+
+        key_to_spec = _build_key_to_spec(
+            [
+                {"key": "crypto_quotes", "spec": "alternative.crypto_quotes"},
+                {"key": "crypto_quotes", "spec": "batch.crypto_quotes"},
+            ]
         )
 
-        stale = known_collisions - collisions.keys()
-        assert not stale, (
-            f"Allowlist entries no longer collide, remove them: {sorted(stale)}"
+        with pytest.raises(RuntimeError) as exc_info:
+            _resolve_tool_spec("crypto_quotes", key_to_spec)
+
+        message = str(exc_info.value)
+        assert "alternative.crypto_quotes" in message
+        assert "batch.crypto_quotes" in message
+        assert "<client>.<key>" in message
+
+    def test_full_spec_still_resolves_an_ambiguous_key(self):
+        """Naming the client is the documented escape hatch; it must work."""
+        from fmp_data.mcp.tool_loader import _build_key_to_spec, _resolve_tool_spec
+
+        key_to_spec = _build_key_to_spec(
+            [
+                {"key": "crypto_quotes", "spec": "alternative.crypto_quotes"},
+                {"key": "crypto_quotes", "spec": "batch.crypto_quotes"},
+            ]
         )
+
+        assert _resolve_tool_spec("batch.crypto_quotes", key_to_spec) == (
+            "batch.crypto_quotes",
+            "batch",
+            "crypto_quotes",
+        )
+
+
+class TestToolKeyNamespace:
+    """One tool key per ``(client, method)`` pair (#126, #130, #136)."""
+
+    def test_cik_mapper_by_name_is_gone(self):
+        """#130: a tool that cannot express its own operation is removed."""
+        from fmp_data.institutional.mapping import (
+            INSTITUTIONAL_ENDPOINT_MAP,
+            INSTITUTIONAL_ENDPOINTS_SEMANTICS,
+        )
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tools_manifest import DEFAULT_TOOLS
+
+        assert "cik_mapper_by_name" not in INSTITUTIONAL_ENDPOINTS_SEMANTICS
+        assert "search_cik_by_name" not in INSTITUTIONAL_ENDPOINT_MAP
+        assert "institutional.cik_mapper_by_name" not in {
+            tool["spec"] for tool in discover_all_tools()
+        }
+        assert "institutional.cik_mapper_by_name" not in DEFAULT_TOOLS
+
+    def test_search_cik_by_name_client_methods_still_work(self):
+        """The client wrapper is the genuine interface and stays untouched."""
+        import inspect
+
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+        from fmp_data.institutional.client import InstitutionalClient
+
+        for cls in (InstitutionalClient, AsyncInstitutionalClient):
+            method = cls.search_cik_by_name
+            assert "name" in inspect.signature(method).parameters
+
+    def test_one_tool_key_per_client_method_pair(self):
+        """#136: no ``(client, method)`` may be advertised under two keys."""
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
+
+        by_pair: dict[tuple[str, str], list[str]] = {}
+        for tool in discover_all_tools():
+            by_pair.setdefault((tool["client"], tool["method"]), []).append(
+                tool["spec"]
+            )
+
+        doubled = {
+            pair: sorted(specs)
+            for pair, specs in by_pair.items()
+            if len(specs) > 1 and not any(spec in DEPRECATED_TOOLS for spec in specs)
+        }
+
+        assert doubled == {}, (
+            "Methods advertised under more than one non-deprecated tool key:\n"
+            + "\n".join(f"{pair}: {specs}" for pair, specs in sorted(doubled.items()))
+        )
+
+    def test_deprecated_keys_are_not_in_default_tools(self):
+        """The default server advertises one tool per method."""
+        from fmp_data.mcp.tools_manifest import DEFAULT_TOOLS, DEPRECATED_TOOLS
+
+        leaked = sorted(set(DEPRECATED_TOOLS) & set(DEFAULT_TOOLS))
+
+        assert leaked == [], f"Deprecated tool keys still in DEFAULT_TOOLS: {leaked}"
+
+    def test_deprecated_keys_map_to_canonical_keys_in_default_tools(self):
+        """Every replacement must actually be what the default server serves."""
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tools_manifest import DEFAULT_TOOLS, DEPRECATED_TOOLS
+
+        catalog = {tool["spec"] for tool in discover_all_tools()}
+
+        assert DEPRECATED_TOOLS == {
+            "company.executives": "company.key_executives",
+            "company.historical_price": "company.historical_prices",
+            "company.intraday_price": "company.intraday_prices",
+        }
+        for deprecated, replacement in DEPRECATED_TOOLS.items():
+            assert deprecated in catalog, f"{deprecated} must keep resolving in 2.6"
+            assert replacement in catalog
+            assert replacement in DEFAULT_TOOLS
+
+    def test_deprecated_keys_share_the_method_of_their_replacement(self):
+        """An alias must be an alias, not a rename onto a different callable."""
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
+
+        method_by_spec = {tool["spec"]: tool["method"] for tool in discover_all_tools()}
+
+        for deprecated, replacement in DEPRECATED_TOOLS.items():
+            assert method_by_spec[deprecated] == method_by_spec[replacement]
+
+    @pytest.mark.parametrize(
+        ("spec", "replacement"),
+        [
+            ("company.executives", "company.key_executives"),
+            ("company.historical_price", "company.historical_prices"),
+            ("company.intraday_price", "company.intraday_prices"),
+        ],
+    )
+    def test_resolving_a_deprecated_full_spec_warns(
+        self, spec: str, replacement: str
+    ) -> None:
+        from fmp_data.mcp.tool_loader import _resolve_tool_spec
+
+        with pytest.warns(DeprecationWarning) as record:
+            _resolve_tool_spec(spec, {})
+
+        message = str(record[0].message)
+        assert spec in message
+        assert replacement in message
+        assert "3.0" in message
+
+    def test_resolving_a_deprecated_bare_key_warns(self) -> None:
+        """The bare form resolves to the same spec, so it warns too."""
+        from fmp_data.mcp.tool_loader import _build_key_to_spec, _resolve_tool_spec
+
+        key_to_spec = _build_key_to_spec(
+            [{"key": "executives", "spec": "company.executives"}]
+        )
+
+        with pytest.warns(DeprecationWarning, match="company.key_executives"):
+            assert _resolve_tool_spec("executives", key_to_spec) == (
+                "company.executives",
+                "company",
+                "executives",
+            )
+
+    def test_canonical_keys_do_not_warn(self) -> None:
+        import warnings
+
+        from fmp_data.mcp.tool_loader import _resolve_tool_spec
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            _resolve_tool_spec("company.key_executives", {})
 
 
 class TestIntelligenceGradesAndRatingsTools:

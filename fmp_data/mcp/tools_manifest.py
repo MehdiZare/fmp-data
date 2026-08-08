@@ -9,6 +9,23 @@ To customize the available tools, modify the DEFAULT_TOOLS list or set the
 FMP_MCP_MANIFEST environment variable to point to a custom manifest file.
 """
 
+#: Tool keys that still resolve but are on their way out.
+#:
+#: Maps a deprecated ``<client>.<key>`` spec to the canonical spec that replaces
+#: it. The invariant being restored is **one tool key per ``(client, method)``
+#: pair** (#136): each key below names the same callable as its replacement, so
+#: an MCP client saw two tools that did exactly the same thing.
+#:
+#: Deprecated keys keep resolving through 2.6 behind a ``DeprecationWarning``
+#: (see ``fmp_data.mcp.tool_loader._warn_if_deprecated``) and are removed in
+#: 3.0. They are excluded from :data:`DEFAULT_TOOLS` now, so a default server
+#: already advertises exactly one tool per method.
+DEPRECATED_TOOLS: dict[str, str] = {
+    "company.executives": "company.key_executives",
+    "company.historical_price": "company.historical_prices",
+    "company.intraday_price": "company.intraday_prices",
+}
+
 DEFAULT_TOOLS: list[str] = [
     # Alternative (15 tools) - Crypto, Forex, and Commodities
     "alternative.commodities_list",
@@ -33,15 +50,12 @@ DEFAULT_TOOLS: list[str] = [
     "company.core_information",
     "company.employee_count",
     "company.executive_compensation",
-    "company.executives",
     "company.aftermarket_quote",
     "company.aftermarket_trade",
     "company.geographic_revenue_segmentation",
     "company.historical_market_cap",
-    "company.historical_price",
     "company.historical_prices",
     "company.historical_share_float",
-    "company.intraday_price",
     "company.intraday_prices",
     "company.key_executives",
     "company.market_cap",

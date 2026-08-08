@@ -287,32 +287,12 @@ CIK_MAPPER: Endpoint = Endpoint(
     response_model=CIKMapping,
 )
 
-CIK_MAPPER_BY_NAME: Endpoint = Endpoint(
-    name="cik_mapper_by_name",
-    path="cik-list",
-    version=APIVersion.STABLE,
-    description="Search CIK mappings by name",
-    mandatory_params=[],
-    optional_params=[
-        EndpointParam(
-            name="page",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.INTEGER,
-            required=False,
-            description="Page number",
-            default=0,
-        ),
-        EndpointParam(
-            name="limit",
-            location=ParamLocation.QUERY,
-            param_type=ParamType.INTEGER,
-            required=False,
-            description="Number of results",
-            default=1000,
-        ),
-    ],
-    response_model=CIKMapping,
-)
+# ``CIK_MAPPER_BY_NAME`` was removed in 2.6 (#130). It declared the same path
+# and the same ``page``/``limit`` parameters as ``CIK_MAPPER`` -- ``cik-list``
+# has no server-side name filter -- so it was a byte-for-byte duplicate that
+# could not express the search it claimed. ``InstitutionalClient
+# .search_cik_by_name`` remains the interface: it calls ``CIK_MAPPER`` with
+# ``limit=10000`` and filters locally.
 
 BENEFICIAL_OWNERSHIP: Endpoint = Endpoint(
     name="beneficial_ownership",
