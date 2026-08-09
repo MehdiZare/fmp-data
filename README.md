@@ -327,6 +327,22 @@ export FMP_EMBEDDING_MODEL=text-embedding-3-small
 - Automatic caching of embeddings
 - Persistent vector store for faster lookups
 
+### Tool argument names (LangChain vs MCP)
+
+LangChain tools built from the vector store keep **API / wire** parameter names
+(`from`, `to`, `periodLength`, `sicCode`, …). At invoke time those names are
+mapped onto the matching client method (`from_date` / `start_date`, …) so
+method defaults and constraints still apply (#172 / #186).
+
+MCP tools expose the **Python method** parameter names instead (the signature
+of `client.<module>.<method>`). The same endpoint can therefore show
+`from`/`to` in a LangChain schema and `from_date`/`to_date` (or
+`start_date`/`end_date`) on MCP — both are intentional.
+
+A catalogue-wide guard (`tests/unit/lc/test_endpoint_method_coverage.py`) fails
+CI when a required method parameter cannot be filled from wire fields, or when
+a mandatory wire field would be silently dropped under method dispatch (#188).
+
 ## Quick Start
 
 ```python

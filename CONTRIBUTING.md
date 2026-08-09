@@ -150,6 +150,20 @@ make typecheck-lang    # LangChain
 make typecheck-mcp     # MCP server
 ```
 
+## CI: Claude Code Review (advisory)
+
+Pull requests also run an optional [Claude Code Review](https://github.com/anthropics/claude-code-action)
+workflow (`.github/workflows/claude-code-review.yml`). It is **not** a required
+check:
+
+- Empty `CLAUDE_CODE_OAUTH_TOKEN` → job skipped (no red X).
+- Present but broken/expired token → review step soft-fails and a job summary
+  explains how to rotate the secret.
+
+Maintainers: restore or rotate the token as described in
+[`.github/CLAUDE_CODE_REVIEW.md`](.github/CLAUDE_CODE_REVIEW.md). Do not make
+this check required.
+
 ## Making a Pull Request
 
 1. **Ensure all checks pass:**
