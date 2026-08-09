@@ -289,9 +289,11 @@ class TestMCPCLI:
         from fmp_data.mcp.cli import generate_manifest
 
         # Mock available tools
+        # "key" is required: selection now resolves through
+        # `resolve_tool_spec`, which is keyed on the bare key (#160).
         mock_list_tools.return_value = [
-            {"spec": "company.profile", "client": "company"},
-            {"spec": "market.gainers", "client": "market"},
+            {"spec": "company.profile", "client": "company", "key": "profile"},
+            {"spec": "market.gainers", "client": "market", "key": "gainers"},
         ]
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
@@ -561,12 +563,20 @@ class TestMCPCLIMain:
 
     @patch("fmp_data.mcp.cli.generate_manifest")
     def test_cli_generate_command(self, mock_generate):
-        """Test CLI generate command."""
+        """Test CLI generate command.
+
+        `generate` now exits with a code, so a successful run raises
+        SystemExit(0) rather than falling off the end of `main` (#160/#161).
+        """
         from fmp_data.mcp.cli import main
 
-        with patch("sys.argv", ["fmp-mcp", "generate", "output.py"]):
-            main()
+        mock_generate.return_value = True
 
+        with patch("sys.argv", ["fmp-mcp", "generate", "output.py"]):
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+
+        assert excinfo.value.code == 0
         mock_generate.assert_called_once_with("output.py", None, True)
 
     @patch("fmp_data.mcp.cli.validate_manifest")
@@ -738,9 +748,24 @@ class TestGeneratedManifestIsUsable:
         assert mcp.add_tool.call_count == len(tools)
 
     def test_explicit_tools_keep_both_sides_and_get_guidance(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """An explicit selection is the user's call; generate warns, not drops."""
+        """An explicit selection is the user's call; generate warns, not drops.
+
+        Under ``spec`` style the pair registers, so the manifest is written
+        with **both** sides -- neither is thinned behind the caller's back --
+        and the header carries the guidance.
+
+        This used to be asserted under the default ``key`` style too, where
+        the pair cannot register: writing that file and exiting 0 handed back
+        an artifact ``validate`` exits 1 on. The refusal at that style is
+        pinned by the test below.
+        """
+        monkeypatch.setenv("FMP_MCP_TOOL_NAME_STYLE", "spec")
+
         tools, content = self._generate(
             tmp_path,
             tools=["alternative.crypto_quotes", "batch.crypto_quotes"],
@@ -752,6 +777,33 @@ class TestGeneratedManifestIsUsable:
         assert "crypto_quotes" in header
         assert "FMP_MCP_TOOL_NAME_STYLE=spec" in header
         assert "crypto_quotes" in capsys.readouterr().err
+
+    def test_a_collision_is_refused_under_the_default_name_style(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The other half of the contract above, at the style people run.
+
+        Neither side is dropped -- the selection is refused whole, with the
+        escape hatch named -- so the user makes the call, not ``generate``.
+        """
+        from fmp_data.mcp.cli import generate_manifest
+
+        monkeypatch.delenv("FMP_MCP_TOOL_NAME_STYLE", raising=False)
+        path = tmp_path / "generated_manifest.py"
+
+        written = generate_manifest(
+            path,
+            tools=["alternative.crypto_quotes", "batch.crypto_quotes"],
+            include_defaults=False,
+        )
+        err = capsys.readouterr().err
+
+        assert written is False
+        assert not path.exists(), "wrote a manifest that cannot start a server"
+        assert "FMP_MCP_TOOL_NAME_STYLE=spec" in err
 
     def test_a_default_yields_to_an_explicit_pick_of_the_other_side(
         self, tmp_path: Path

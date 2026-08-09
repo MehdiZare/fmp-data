@@ -90,9 +90,16 @@ def _print_tools_tree(tools: list[dict[str, Any]]) -> None:
     for client, client_tools in sorted(clients.items()):
         branch = tree.add(f"[bold cyan]{client}[/bold cyan]")
         for tool in client_tools:
-            desc = tool["description"][:60]
+            # The full spec, not the method name (#163). Leaves used to be
+            # labelled `tool["method"]`, so the entry a user has to write into
+            # a manifest never appeared anywhere in this format -- and because
+            # a deprecated key shares its replacement's method, the deprecated
+            # row was labelled with the *replacement's* name and read as
+            # self-referential. The method is kept as trailing detail.
+            desc = tool["description"][:40]
             branch.add(
-                f"[green]{tool['method']}[/green]{_deprecation_note(tool)}: {desc}..."
+                f"[green]{tool['spec']}[/green]{_deprecation_note(tool)} "
+                f"[dim]({tool['method']})[/dim]: {desc}..."
             )
 
     console.print(tree)
@@ -107,19 +114,34 @@ def _print_tools_table_format(tools: list[dict[str, Any]]) -> None:
 
 
 def _print_rich_table(tools: list[dict[str, Any]]) -> None:
-    """Print tools using rich table."""
+    """Print tools using rich table.
+
+    The spec column never truncates (#163). It is the primary key of this
+    output -- the string a user copies into a manifest -- and rich's default
+    ellipsis overflow rendered ``company.historical_price`` and
+    ``company.historical_prices`` as the same ``company.historica…``, flattening
+    precisely the pair a reader most needs to tell apart. ``overflow="fold"``
+    wraps instead, so a narrow terminal costs a line rather than the answer.
+
+    The deprecation marker moves to its own column for the same reason: as a
+    suffix on the spec cell it was inside the truncated region, so the one
+    piece of text explaining the duplicate row was the first thing cut.
+    """
     console = Console()
     table = Table(title="Available FMP MCP Tools")
-    table.add_column("Tool Spec", style="cyan")
+    table.add_column("Tool Spec", style="cyan", overflow="fold", no_wrap=False)
     table.add_column("Client", style="green")
     table.add_column("Method", style="yellow")
+    table.add_column("Deprecated", style="magenta", overflow="fold", no_wrap=False)
     table.add_column("Description", style="white")
 
     for tool in tools:
+        replacement = tool.get("deprecated")
         table.add_row(
-            tool["spec"] + _deprecation_note(tool),
+            tool["spec"],
             tool["client"],
             tool["method"],
+            f"-> {replacement}" if replacement else "",
             (
                 tool["description"][:50] + "..."
                 if len(tool["description"]) > 50
@@ -131,14 +153,26 @@ def _print_rich_table(tools: list[dict[str, Any]]) -> None:
 
 
 def _print_simple_table(tools: list[dict[str, Any]]) -> None:
-    """Print tools using simple table format."""
+    """Print tools using simple table format.
+
+    Columns are padded, never truncated: an over-long spec pushes the row wide
+    rather than losing characters, for the same reason as :func:`_print_rich_table`.
+    """
     print("\nAvailable FMP MCP Tools")
-    print("-" * 80)
-    print(f"{'Tool Spec':<30} {'Client':<12} {'Method':<25}")
-    print("-" * 80)
+    print("-" * 100)
+    print(f"{'Tool Spec':<45} {'Client':<12} {'Method':<25} {'Deprecated':<30}")
+    print("-" * 100)
     for tool in tools:
-        spec = tool["spec"] + _deprecation_note(tool)
-        print(f"{spec:<30} {tool['client']:<12} {tool['method']:<25}")
+        replacement = tool.get("deprecated")
+        note = f"-> {replacement}" if replacement else ""
+        print(
+            f"{tool['spec']:<45} {tool['client']:<12} {tool['method']:<25} {note:<30}"
+        )
+
+
+def _pluralise(count: int, noun: str) -> str:
+    """``"1 tool"`` / ``"2 tools"``. Fixes the "1 tools" in validate's verdict."""
+    return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
 
 
 def _tool_name(spec: str) -> str:
@@ -147,11 +181,21 @@ def _tool_name(spec: str) -> str:
 
 
 def _name_collisions(specs: list[str]) -> dict[str, list[str]]:
-    """Advertised name to the specs claiming it, for names claimed twice."""
-    by_name: dict[str, list[str]] = {}
-    for spec in specs:
-        by_name.setdefault(_tool_name(spec), []).append(spec)
-    return {name: sorted(claims) for name, claims in by_name.items() if len(claims) > 1}
+    """Advertised name to the specs claiming it, for names claimed twice.
+
+    Delegates the grouping to :func:`fmp_data.mcp.tool_loader.advertised_names`
+    so ``generate``'s idea of "these two share a name" is the loader's, not a
+    parallel one. Fixed to ``key`` style because that is what a generated
+    manifest must start under by default; the ``spec`` style escape hatch is
+    what the header then points at.
+    """
+    from fmp_data.mcp import tool_loader
+
+    resolved = [(spec, spec.split(".", 1)[0], _tool_name(spec)) for spec in specs]
+    _, collisions = tool_loader.split_name_clashes(
+        tool_loader.advertised_names(resolved, "key")
+    )
+    return collisions
 
 
 def _preferred_spec(candidates: list[str]) -> str:
@@ -307,37 +351,76 @@ def _startable_catalog(
     return selected
 
 
-def _validated_specs(tools: list[str], available_specs: set[str]) -> list[str]:
-    """An explicit selection, minus entries that name nothing in the catalog.
+def _validated_specs(tools: list[str], failures: list[tuple[str, str]]) -> list[str]:
+    """An explicit selection, resolved and minus entries naming nothing.
+
+    Entries are judged by :func:`fmp_data.mcp.tool_loader.resolve_tool_spec`,
+    the same pure rule the loader and ``validate`` use, so ``generate`` is the
+    fourth *consumer* of that rule rather than a fourth implementation of it
+    (#160). Before that it did its own membership test against fully qualified
+    specs only, so ``--tools profile`` -- a form the loader resolves and
+    ``validate`` blesses -- was reported "unknown" and silently dropped.
+
+    What is written out is always the **resolved** ``<client>.<key>`` spec,
+    never the bare key as typed: the qualified form is unambiguous under either
+    name style, so a manifest generated from bare keys keeps working if a
+    second client later claims one of them.
 
     Deprecated and withdrawn specs are kept -- an explicit ask is honoured --
     but reported, so the one path that can still put a retired key in a
     manifest says so just as the default path does. Both kinds are reported,
     and separately: the default path drops withdrawn specs entirely, so this
     is the only way one reaches a generated manifest, and it would otherwise
-    be the one place a dead tool is written with nothing said about it. Bare
-    keys are not accepted here yet; see issue #160.
+    be the one place a dead tool is written with nothing said about it.
+
+    ``failures`` is appended to in place with ``(entry, reason)`` for each
+    entry that resolves to nothing, so :func:`generate_manifest` can say
+    *which* asks failed and *why* -- unknown or ambiguous -- rather than
+    leaving a user to re-run ``fmp-mcp list`` and diff by hand.
     """
-    from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS, WITHDRAWN_TOOLS
+    from fmp_data.mcp import tool_loader
+
+    key_to_spec = tool_loader.build_key_to_spec(list_available_tools())
 
     selected: list[str] = []
     for tool in tools:
-        if tool not in available_specs:
+        resolution = tool_loader.resolve_tool_spec(tool, key_to_spec)
+        if resolution.status is tool_loader.ResolutionStatus.UNKNOWN:
             print(
                 f"Warning: Unknown tool '{tool}', skipping. "
                 "Run `fmp-mcp list` to see available tools.",
                 file=sys.stderr,
             )
+            failures.append((tool, "unknown -- names nothing in the catalog"))
             continue
-        replacement = DEPRECATED_TOOLS.get(tool)
-        if replacement is not None:
+        if resolution.status is tool_loader.ResolutionStatus.AMBIGUOUS:
+            # Reported as an ambiguity rather than as "unknown": the key is
+            # perfectly good, it just needs a client. Saying "unknown" sent
+            # users looking for a typo that was not there.
             print(
-                f"Warning: '{tool}' is deprecated and is removed in 3.0; "
-                f"including it as asked. Use {replacement} instead.",
+                f"Warning: bare key '{tool}' is claimed by "
+                f"{len(resolution.candidates)} clients "
+                f"({', '.join(resolution.candidates)}), so it cannot be "
+                f"resolved; skipping. Name the client explicitly, e.g. "
+                f"'{resolution.candidates[0]}'.",
                 file=sys.stderr,
             )
-        elif tool in WITHDRAWN_TOOLS:
-            successor = WITHDRAWN_TOOLS[tool]
+            failures.append(
+                (
+                    tool,
+                    "ambiguous -- claimed by "
+                    f"{', '.join(resolution.candidates)}; name the client",
+                )
+            )
+            continue
+        if resolution.is_deprecated:
+            print(
+                f"Warning: '{tool}' is deprecated and is removed in 3.0; "
+                f"including it as asked. Use {resolution.replacement} instead.",
+                file=sys.stderr,
+            )
+        elif resolution.is_withdrawn:
+            successor = resolution.successor
             remedy = (
                 f"The nearest live tool is {successor}, but its payload differs."
                 if successor
@@ -348,7 +431,13 @@ def _validated_specs(tools: list[str], available_specs: set[str]) -> list[str]:
                 f"it answers with no data; including it as asked. {remedy}",
                 file=sys.stderr,
             )
-        selected.append(tool)
+        if resolution.spec is None:  # unreachable: is_resolved implies a spec
+            continue
+        # Two entries can name one tool -- `profile` and `company.profile` --
+        # and writing both would produce a manifest the loader refuses (#162).
+        # A repeated ask is one ask, so it is collapsed rather than reported.
+        if resolution.spec not in selected:
+            selected.append(resolution.spec)
     return selected
 
 
@@ -408,7 +497,7 @@ def generate_manifest(
     output_path: str | Path,
     tools: list[str] | None = None,
     include_defaults: bool = True,
-) -> None:
+) -> bool:
     """
     Generate a custom manifest file with selected tools.
 
@@ -426,8 +515,22 @@ def generate_manifest(
     so nothing is dropped silently.
 
     An explicit ``tools`` list is the caller's own selection and is never
-    thinned: a collision inside it is reported on stderr and in the header
-    instead.
+    *thinned*: neither side of a collision inside it is dropped behind the
+    caller's back. Under the default ``key`` name style such a pair cannot
+    register, so no file is written and the return is ``False``; under
+    ``spec`` style both sides are advertised at their full spec and the pair
+    registers, so the collision is a warning and the manifest is written.
+    That is the same verdict ``validate`` and ``register_from_manifest``
+    reach, which is the whole point of #161.
+
+    **A selection that resolves to nothing is a failure, not an empty file.**
+    It used to write ``TOOLS = []`` and exit 0, which is #161's defect one
+    command over: an artifact that cannot start a server, reported as success.
+    Nothing is written in that case and the return is ``False``, so the file
+    already at ``output_path`` -- which may well be the good one -- survives.
+    This holds for an explicit ``--tools`` selection **regardless of
+    ``include_defaults``**: the defaults are not an answer to an ask that
+    named only tools which do not exist.
 
     Parameters
     ----------
@@ -437,6 +540,13 @@ def generate_manifest(
         List of tool specs to include (if None, includes the whole catalog)
     include_defaults
         Whether to include default tools
+
+    Returns
+    -------
+    bool
+        ``True`` when a manifest was written. ``False`` when the selection was
+        empty, in which case no file is written and the reason for every
+        failed entry has been printed to stderr.
     """
     output_path = Path(output_path)
 
@@ -447,6 +557,7 @@ def generate_manifest(
     excluded: list[str] = []
     deprecated: list[str] = []
     withdrawn: list[str] = []
+    failures: list[tuple[str, str]] = []
 
     # Build tool list
     if tools is None:
@@ -454,15 +565,47 @@ def generate_manifest(
             available_specs, excluded, deprecated, withdrawn
         )
     else:
-        selected_tools = _validated_specs(tools, available_specs)
+        selected_tools = _validated_specs(tools, failures)
+        # Checked *before* defaults are added, not after. `--tools` without
+        # `--no-defaults` used to be rescued by the 137 defaults the user
+        # never asked for: every name they typed could fail to resolve and
+        # the command still wrote a manifest and exited 0, with `failures`
+        # discarded. The ask was "give me these tools"; none of them exist,
+        # so that ask failed, whatever else would have gone in the file.
+        if not selected_tools:
+            _report_empty_selection(output_path, tools, failures)
+            return False
 
     if include_defaults:
         _add_defaults(selected_tools, available_specs, excluded)
+
+    if not selected_tools:
+        _report_empty_selection(output_path, tools, failures)
+        return False
 
     # Anything left can only come from an explicitly requested pair.
     collisions = _name_collisions(selected_tools)
     if collisions:
         _warn_collisions(collisions)
+        # Refuse rather than write an unstartable file (#161's defect, one
+        # command over). Gated on the *active* name style, not on the `key`
+        # style `_name_collisions` reports under: `spec` style advertises
+        # both sides at their full spec and registers the pair happily, so
+        # under `spec` this is a warning and the file is written, exactly as
+        # `validate` and `register_from_manifest` would have it. Under the
+        # default `key` style the pair cannot register, so writing the file
+        # and reporting success would hand back an artifact that fails at
+        # server start -- and `generate && validate` would fail in a
+        # pipeline. The warning above already names the escape hatch.
+        from fmp_data.mcp import tool_loader
+
+        if tool_loader.tool_name_style() == "key":
+            print(
+                "No manifest written: the selection cannot start a server "
+                "under the default tool-name style.",
+                file=sys.stderr,
+            )
+            return False
 
     # Generate manifest content
     manifest_content = (
@@ -478,6 +621,47 @@ def generate_manifest(
     print(f"Manifest saved to: {output_path}")
     print(f"Total tools: {len(selected_tools)}")
     _report_exclusions(withdrawn, deprecated, excluded)
+    return True
+
+
+def _report_empty_selection(
+    output_path: Path,
+    tools: list[str] | None,
+    failures: list[tuple[str, str]],
+) -> None:
+    """Explain why nothing was selected, naming each failed ask.
+
+    The point is that a user should not have to re-run ``fmp-mcp list`` and
+    diff it against what they typed to find out what went wrong, so every
+    rejected entry is repeated here beside its reason.
+
+    The implicit branch (``tools is None``, i.e. an empty *catalog*) is treated
+    identically. It should be unreachable -- discovery would have to find no
+    semantics at all -- but "unreachable" is exactly the state that writes a
+    zero-tool manifest and calls it a success if nobody checks.
+    """
+    print(
+        f"Error: no tools selected, so {output_path} was not written.",
+        file=sys.stderr,
+    )
+    if failures:
+        print(
+            f"None of the {_pluralise(len(failures), 'requested tool')} resolved:",
+            file=sys.stderr,
+        )
+        for entry, reason in failures:
+            print(f"  {entry}: {reason}", file=sys.stderr)
+    elif tools is None:
+        print(
+            "The tool catalog is empty, which should be impossible -- no "
+            "endpoint semantics were discovered.",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            "The selection resolved to no tools.",
+            file=sys.stderr,
+        )
 
 
 def _report_exclusions(
@@ -583,28 +767,37 @@ def _manifest_name_clashes(
     from fmp_data.mcp import tool_loader
 
     key_to_spec = tool_loader.build_key_to_spec(list_available_tools())
-    key_style = tool_loader._get_tool_name_style() == "key"
+    name_style = tool_loader._get_tool_name_style()
 
-    by_name: dict[str, list[str]] = {}
-    specs_by_name: dict[str, set[str]] = {}
+    resolved: list[tuple[str, str, str]] = []
+    entries_by_spec: dict[str, list[str]] = {}
     for entry in entries:
         resolution = tool_loader.resolve_tool_spec(entry, key_to_spec)
-        if resolution.spec is None:
+        if resolution.spec is None or resolution.key is None:
             continue  # unknown or ambiguous; already reported as such
-        name = _tool_name(resolution.spec) if key_style else resolution.spec
-        by_name.setdefault(name, []).append(entry)
-        specs_by_name.setdefault(name, set()).add(resolution.spec)
+        resolved.append((resolution.spec, resolution.client or "", resolution.key))
+        entries_by_spec.setdefault(resolution.spec, []).append(entry)
 
-    duplicates = {
-        name: claims
-        for name, claims in by_name.items()
-        if len(claims) > 1 and len(specs_by_name[name]) == 1
-    }
-    collisions = {
-        name: claims
-        for name, claims in by_name.items()
-        if len(claims) > 1 and len(specs_by_name[name]) > 1
-    }
+    # Grouping and the duplicate/collision split are the loader's, not a
+    # parallel implementation: `_validate_tool_names` raises off exactly these
+    # two dicts, so validate cannot report a clash the loader tolerates or
+    # miss one it refuses (#162).
+    by_name = tool_loader.advertised_names(resolved, name_style)
+    dup_specs, coll_specs = tool_loader.split_name_clashes(by_name)
+
+    def _as_written(specs: list[str]) -> list[str]:
+        """Name each clashing spec by the entry the user actually typed.
+
+        ``dict.fromkeys`` because a duplicate arrives as one spec repeated;
+        the entries that produced it are already all in ``entries_by_spec``.
+        """
+        written: list[str] = []
+        for spec in dict.fromkeys(specs):
+            written.extend(entries_by_spec.get(spec, [spec]))
+        return written
+
+    duplicates = {name: _as_written(specs) for name, specs in dup_specs.items()}
+    collisions = {name: _as_written(specs) for name, specs in coll_specs.items()}
     return duplicates, collisions
 
 
@@ -616,7 +809,12 @@ def _report_manifest_findings(
     duplicates: dict[str, list[str]] | None = None,
     collisions: dict[str, list[str]] | None = None,
 ) -> None:
-    """Print what validation found. None of it is fatal on its own."""
+    """Print what validation found.
+
+    Reporting only. Which findings are fatal is
+    :func:`validate_manifest`'s call, and it is made in exactly one place so
+    the verdict cannot disagree with the text printed above it (#161).
+    """
     if unknown:
         print(
             f"Warning: Unknown tools found: {', '.join(unknown)}. "
@@ -631,10 +829,10 @@ def _report_manifest_findings(
             file=sys.stderr,
         )
 
-    # Deliberately does not claim registration refuses this. Under the default
-    # `key` style it does; under `spec`, `_validate_tool_names` skips the
-    # duplicate check entirely, so the second registration silently shadows the
-    # first. Either way the manifest is wrong and the fix is the same.
+    # Registration refuses this under *every* name style since #162: one spec
+    # listed twice is one spec listed twice however names are derived. The
+    # advice deliberately does not mention FMP_MCP_TOOL_NAME_STYLE, which
+    # cannot help and is useless to someone already on `spec`.
     for name, claims in sorted((duplicates or {}).items()):
         print(
             f"Warning: '{name}' is listed more than once ({', '.join(claims)}) "
@@ -726,11 +924,30 @@ def validate_manifest(manifest_path: str | Path) -> bool:
             print(f"Error: Tool spec must be string, got {type(tool)}", file=sys.stderr)
             return False
 
+    unknown, ambiguous, deprecated, withdrawn = _classify_manifest_entries(tools)
+    duplicates, collisions = _manifest_name_clashes(tools)
     _report_manifest_findings(
-        *_classify_manifest_entries(tools), *_manifest_name_clashes(tools)
+        unknown, ambiguous, deprecated, withdrawn, duplicates, collisions
     )
 
-    print(f"Manifest is valid with {len(tools)} tools")
+    # Exactly the four conditions under which `register_from_manifest` raises,
+    # and nothing else (#161). Reporting a fatal finding and then printing
+    # "Manifest is valid" with exit 0 turned a startup error into a trusted
+    # green check -- the precise failure mode a validator exists to prevent.
+    #
+    # Deprecated and withdrawn stay reports: both resolve and register today,
+    # so "is my manifest future-proof?" is a question you can ask without
+    # failing your build.
+    fatal = bool(unknown or ambiguous or duplicates or collisions)
+    if fatal:
+        print(
+            f"Manifest is invalid: {_pluralise(len(tools), 'tool')} listed, but "
+            "the findings above stop the server starting.",
+            file=sys.stderr,
+        )
+        return False
+
+    print(f"Manifest is valid with {_pluralise(len(tools), 'tool')}")
     return True
 
 
@@ -949,7 +1166,8 @@ def main() -> None:
         print_tools_table(tools, args.format)
 
     elif args.command == "generate":
-        generate_manifest(args.output, args.tools, not args.no_defaults)
+        written = generate_manifest(args.output, args.tools, not args.no_defaults)
+        sys.exit(0 if written else 1)
 
     elif args.command == "validate":
         valid = validate_manifest(args.manifest)

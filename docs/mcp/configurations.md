@@ -126,10 +126,40 @@ fmp-mcp generate my_manifest.py --no-defaults --tools company.quote market.gaine
 
 # Generate a manifest covering the whole catalog
 fmp-mcp generate everything.py
+
+# Bare keys work too, and are written out in their fully qualified form
+fmp-mcp generate my_manifest.py --no-defaults --tools profile quote gainers
 ```
 
+`--tools` accepts the same two entry forms a manifest does — a bare key
+(`profile`) or a fully qualified spec (`company.profile`) — resolved by the
+rule the server uses. What is *written* is always the qualified form, since it
+is unambiguous under either name style. A bare key claimed by two clients is
+reported as an ambiguity naming both candidates, not as "unknown"; an entry
+naming nothing at all is still reported as unknown and skipped.
+
+> **Changed in this release.** If **nothing** in an explicit `--tools`
+> selection resolves, `generate` now writes no file and exits non-zero, naming
+> each failed entry and why. It previously wrote `TOOLS = []` and exited 0.
+> A single bad entry among good ones is still just a warning.
+>
+> This holds **whether or not `--no-defaults` is passed**. The default tools
+> are not an answer to an ask that named only tools which do not exist, so
+> they no longer top up an otherwise-empty selection and turn the failure
+> into a success.
+>
+> **Also changed:** if an explicit `--tools` selection contains both sides of
+> a name collision, `generate` writes no file and exits non-zero under the
+> default `FMP_MCP_TOOL_NAME_STYLE=key`, because that pair cannot register.
+> Neither side is silently dropped — drop one yourself, or set
+> `FMP_MCP_TOOL_NAME_STYLE=spec`, under which both are advertised at their
+> full spec and the manifest is written. `generate` and `validate` reach the
+> same verdict under either style, so `generate && validate` no longer fails
+> on a file `generate` just reported as successfully written.
+
 With no `--tools` filter the generated manifest covers the catalog except for
-what would stop it starting a server: deprecated tool keys (removed in 3.0),
+what would stop it starting a *useful* server: tool keys FMP no longer serves
+(they return no data on every call), deprecated tool keys (removed in 3.0),
 and one side of each tool-name collision. Under the default
 `FMP_MCP_TOOL_NAME_STYLE=key` a tool is advertised under its bare key, so
 `alternative.crypto_quotes` and `batch.crypto_quotes` both want to be called
@@ -156,6 +186,22 @@ fmp-mcp list --format json > tools.json
 
 Tip: set `FMP_MCP_TOOL_NAME_STYLE=spec` to expose fully qualified tool names
 (`client.key`) and avoid naming collisions when multiple tools share a key.
+
+> **Changed in this release — `list` output shape.** Every format now emits
+> the **fully qualified spec** (`company.profile`), not the bare key, so what
+> you read can be pasted straight into a manifest or `--tools` without
+> guessing which client owns it. Previously the table and tree showed bare
+> keys, which are ambiguous for `crypto_quotes` and `forex_quotes` — the two
+> keys claimed by two clients each — and so could not be copied safely.
+> The table also gained a **`Deprecated`** column.
+>
+> This changes output any script parsing `fmp-mcp list` will see. `--format
+> json` remains the stable interface for programmatic use.
+>
+> One rough edge: at an 80-column terminal the table wraps a long spec across
+> two lines rather than truncating it. Nothing is lost and the specs remain
+> distinguishable, but a spec that wraps is not directly copy-pasteable — use
+> `--format json`, or a wider terminal, if you are copying.
 
 ### Bare keys vs. fully qualified specs
 
@@ -187,6 +233,29 @@ Validate your manifest file before using:
 ```bash
 fmp-mcp validate my_manifest.py
 ```
+
+**The exit code is the verdict, and it means "this manifest can start a
+server".** `validate` exits non-zero for exactly the four things
+`register_from_manifest` refuses:
+
+| Finding | Exit code | Why |
+|---|---|---|
+| unknown entry (`company.profil`) | non-zero | resolves to nothing |
+| ambiguous bare key (`crypto_quotes`) | non-zero | claimed by two clients |
+| the same tool listed twice (`profile` **and** `company.profile`) | non-zero | one tool, two entries; no name style separates them |
+| two tools claiming one advertised name | non-zero | only under the default `FMP_MCP_TOOL_NAME_STYLE=key`; set `spec` and this stops being a clash |
+| deprecated entry | **0** | still resolves; the migration table prints |
+| withdrawn entry | **0** | still registers, answers with no data; reported |
+| `TOOLS = []` | **0** | an empty manifest starts a server with no tools — useless, but not broken, and `validate`'s verdict is "can this start a server". `generate` nonetheless *refuses to write* one, because there the emptiness is a failed ask with named reasons |
+
+Clashes are judged under the `FMP_MCP_TOOL_NAME_STYLE` in effect, so validating
+with the variable your server runs with is what you want.
+
+> **Changed in this release.** `validate` previously printed its warnings and
+> then exited 0 regardless, so a manifest with a typo passed CI and failed at
+> server start. If you have `fmp-mcp validate` in a pipeline, a manifest with
+> any of the fatal findings above will now fail that build — which is the point,
+> but it may fail on first upgrade.
 
 ## Tips
 
