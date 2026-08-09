@@ -642,10 +642,15 @@ class TestGeneratedManifestIsUsable:
 
         assert collisions == {}
 
-    def test_generated_manifest_documents_the_excluded_side(
+    def test_generated_manifest_documents_the_dropped_side(
         self, tmp_path: Path
     ) -> None:
         """A dropped tool must be recoverable from the file itself.
+
+        Renamed from ``..._documents_the_excluded_side`` (#171): it no longer
+        asserts anything about the *excluded* (collision-loser) category, which
+        is what the old name promised a reader scanning for collision coverage.
+        It asserts the *withdrawn* one, for the reason the next paragraph gives.
 
         The sides swapped. ``alternative.crypto_quotes`` and
         ``alternative.forex_quotes`` are now withdrawn -- ``quotes/crypto``
@@ -700,6 +705,56 @@ class TestGeneratedManifestIsUsable:
             assert replacement in line, line
             # The replacement is what makes the drop lossless -- it must ship.
             assert replacement in tools
+
+    def test_withdrawn_drops_name_their_remedy(self, tmp_path: Path) -> None:
+        """The withdrawn counterpart to the test above (#171).
+
+        ``test_every_dropped_spec_is_named_in_the_header`` proves a withdrawn
+        spec *appears* in the header; it does not prove the remedy is attached
+        to it. Since the whole argument for keeping withdrawn and deprecated as
+        separate categories is that the remedy differs -- a deprecated tool has
+        a drop-in replacement, a withdrawn one has at best a different endpoint
+        with a different payload -- the remedy is the part worth asserting, and
+        it was asserted for only one of the two.
+
+        The two shapes are checked separately because they fail differently. A
+        successor that silently stopped being printed leaves a user with a dead
+        tool and no next step. An entry with no successor that stopped saying
+        so is worse: an absent remedy reads as an oversight, and a user will go
+        looking for a migration that does not exist.
+        """
+        from fmp_data.mcp.cli import list_available_tools
+        from fmp_data.mcp.tools_manifest import WITHDRAWN_TOOLS
+
+        tools, content = self._generate(tmp_path)
+        header = content.split("TOOLS = [", 1)[0]
+
+        # Only withdrawn specs the catalog actually offers reach the header --
+        # `_select_specs` intersects the table with the available specs.
+        catalog = {tool["spec"] for tool in list_available_tools()}
+        gone = sorted(set(WITHDRAWN_TOOLS) & catalog)
+        assert gone, "vacuous unless something withdrawn was actually dropped"
+
+        without_successor = 0
+        for spec in gone:
+            line = next(ln for ln in header.splitlines() if spec in ln)
+            successor = WITHDRAWN_TOOLS[spec]
+            if successor is None:
+                without_successor += 1
+                assert "FMP publishes no replacement" in line, line
+            else:
+                assert successor in line, line
+                # Unlike a deprecated replacement, a withdrawn successor is a
+                # different endpoint and need not ship in this manifest -- but
+                # the line must then say so rather than imply it is present.
+                where = "included below" if successor in tools else "not in this"
+                assert where in line, line
+
+        assert without_successor, (
+            "no withdrawn entry exercised the no-successor branch; "
+            f"WITHDRAWN_TOOLS has {sum(v is None for v in WITHDRAWN_TOOLS.values())} "
+            "of them, so this assertion has gone vacuous"
+        )
 
     def test_generated_manifest_still_covers_the_catalog(self, tmp_path: Path) -> None:
         """Only deprecated, withdrawn, and collision losers may go.

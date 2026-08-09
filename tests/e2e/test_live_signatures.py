@@ -313,8 +313,8 @@ def _deprecated_method_names(client_module: Any) -> set[str]:
     return marked
 
 
-def _deprecated_endpoints() -> set[str]:
-    """Endpoint attribute names whose client method is deprecated or removed.
+def _deprecated_endpoints() -> set[tuple[str, str]]:
+    """``(client, endpoint attribute)`` pairs whose method is deprecated/removed.
 
     A path FMP has withdrawn still 404s after we deprecate it -- deprecating
     is the acknowledgement that it is dead, not a repair. Probing it would
@@ -326,16 +326,28 @@ def _deprecated_endpoints() -> set[str]:
     ``*_ENDPOINT_MAP`` maps a method name to its endpoint. A method that
     stops being deprecated therefore rejoins the assertion automatically,
     and a list here cannot silently rot.
+
+    **Keyed by the pair, not the bare attribute name** (#171). No two clients
+    share an endpoint attribute name across the 275 declarations today, so this
+    changes no verdict now. But a bare name would exempt *every* client's
+    endpoint of that name the moment one collision appeared, and a live
+    endpoint that happens to be called what a dead one was called would drop
+    out of the 404 sweep silently -- the exemption would stop being earned,
+    which is precisely the property ``test_deprecated_endpoints_are_really_dead``
+    exists to guarantee. ``name_by_endpoint`` already carries the client, so
+    the pair costs nothing.
     """
     # Orphans: an endpoint reachable from no client method has no decorator to
     # carry the marker, so its description is the only place the deprecation
     # can live. COMPANY_OUTLOOK is declared but wired to nothing.
     deprecated = {
-        attr
-        for _client, attr, endpoint in ENDPOINTS
+        (client, attr)
+        for client, attr, endpoint in ENDPOINTS
         if (endpoint.description or "").lstrip().upper().startswith("DEPRECATED")
     }
-    name_by_endpoint = {id(endpoint): attr for _c, attr, endpoint in ENDPOINTS}
+    name_by_endpoint = {
+        id(endpoint): (client, attr) for client, attr, endpoint in ENDPOINTS
+    }
 
     for info in pkgutil.walk_packages(fmp_data.__path__, prefix="fmp_data."):
         if not info.name.endswith(".mapping"):
@@ -356,14 +368,40 @@ def _deprecated_endpoints() -> set[str]:
 
         for method_name in marked:
             endpoint = endpoint_map.get(method_name)
-            attr_name = name_by_endpoint.get(id(endpoint)) if endpoint else None
-            if attr_name:
-                deprecated.add(attr_name)
+            key = name_by_endpoint.get(id(endpoint)) if endpoint else None
+            if key:
+                deprecated.add(key)
 
     return deprecated
 
 
-DEPRECATED_ENDPOINTS = _deprecated_endpoints() if API_KEY else set()
+DEPRECATED_ENDPOINTS: set[tuple[str, str]] = (
+    _deprecated_endpoints() if API_KEY else set()
+)
+
+
+def test_the_exemption_names_endpoints_that_exist() -> None:
+    """Every exempted pair must resolve to a real declaration (#171).
+
+    Costs no API calls. Two things it catches that the pair keying opened the
+    door to: a ``(client, attr)`` assembled from mismatched halves, and an
+    entry left behind after an endpoint was renamed or moved between clients.
+    Either would exempt nothing, which is harmless, or -- worse -- silently
+    stop exempting something that is genuinely dead, and the 404 sweep would
+    start failing on an endpoint already handled.
+
+    The other half of the keying is held by mypy, which type-checks this file:
+    ``DEPRECATED_ENDPOINTS`` is a ``set[tuple[str, str]]`` and every membership
+    test passes a pair, so a revert to bare attribute names fails the type
+    check rather than quietly widening the exemption.
+    """
+    declared = {(client, attr) for client, attr, _endpoint in ENDPOINTS}
+    orphans = sorted(DEPRECATED_ENDPOINTS - declared)
+
+    assert not orphans, (
+        "the deprecation exemption names endpoints that do not exist:\n  "
+        + "\n  ".join(f"{client}.{attr}" for client, attr in orphans)
+    )
 
 
 def test_no_endpoint_path_returns_404() -> None:
@@ -374,7 +412,7 @@ def test_no_endpoint_path_returns_404() -> None:
     """
     dead: list[str] = []
     for client, name, endpoint in ENDPOINTS:
-        if name in DEPRECATED_ENDPOINTS:
+        if (client, name) in DEPRECATED_ENDPOINTS:
             continue
         version = getattr(endpoint.version, "value", "stable")
         params = {p.name: _sample(p) for p in endpoint.mandatory_params}
@@ -403,7 +441,7 @@ def test_deprecated_endpoints_are_really_dead() -> None:
     """
     alive: list[str] = []
     for client, name, endpoint in ENDPOINTS:
-        if name not in DEPRECATED_ENDPOINTS:
+        if (client, name) not in DEPRECATED_ENDPOINTS:
             continue
         version = getattr(endpoint.version, "value", "stable")
         params = {p.name: _sample(p) for p in endpoint.mandatory_params}
@@ -454,7 +492,7 @@ def test_mandatory_params_are_really_mandatory() -> None:
     """
     ignored: list[str] = []
     for client, name, endpoint in ENDPOINTS:
-        if name in DEPRECATED_ENDPOINTS:
+        if (client, name) in DEPRECATED_ENDPOINTS:
             continue
         if len(endpoint.mandatory_params) != 1:
             # With several mandatory params, omitting one leaves the request
@@ -525,7 +563,7 @@ def test_optional_params_are_really_optional() -> None:
     """
     wrongly_optional: list[str] = []
     for client, name, endpoint in ENDPOINTS:
-        if name in DEPRECATED_ENDPOINTS or name in ONE_OF_ENDPOINTS:
+        if (client, name) in DEPRECATED_ENDPOINTS or name in ONE_OF_ENDPOINTS:
             continue
         if not endpoint.optional_params:
             continue
