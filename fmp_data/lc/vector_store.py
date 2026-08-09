@@ -54,6 +54,7 @@ _ENDPOINT_TO_METHOD_ALIASES = ENDPOINT_TO_METHOD_ALIASES
 __all__ = [
     "ENDPOINT_TO_METHOD_ALIASES",
     "EndpointVectorStore",
+    "SearchResult",
     "ToolFactory",
     "ToolLike",
     "VectorStoreMetadata",

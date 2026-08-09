@@ -244,6 +244,38 @@ def test_dispatch_resolver_refuses_an_unfillable_shape() -> None:
     )
 
 
+def test_dispatch_resolver_returns_none_when_method_is_missing() -> None:
+    client = _client_double()
+    assert resolve_dispatch_method(client, "ghost", "get_profile", ["symbol"]) is None
+    assert resolve_dispatch_method(client, "company", "nope", ["symbol"]) is None
+
+
+def test_compatibility_reexports_are_the_same_objects() -> None:
+    """Private/public re-exports stay aliases of the shared module (#188).
+
+    A future "reimplement for convenience" would reintroduce the drift this
+    PR exists to end. MCP re-exports load without optional extras; the
+    LangChain module is only checked when the extra is installed.
+    """
+    from fmp_data import tool_binding
+    from fmp_data.mcp import tool_loader
+
+    assert tool_loader._resolve_attr is tool_binding.resolve_attr
+    assert tool_loader.resolve_attr is tool_binding.resolve_attr
+
+    pytest.importorskip("langchain_core")
+    from fmp_data.lc import vector_store
+
+    assert vector_store.bindable_params is tool_binding.bindable_params
+    assert vector_store.camel_to_snake is tool_binding.camel_to_snake
+    assert vector_store._camel_to_snake is tool_binding.camel_to_snake
+    assert (
+        vector_store._ENDPOINT_TO_METHOD_ALIASES
+        is tool_binding.ENDPOINT_TO_METHOD_ALIASES
+    )
+    assert "SearchResult" in vector_store.__all__
+
+
 def test_binding_layer_imports_without_optional_extras() -> None:
     """No langchain, no mcp — only the standard library.
 

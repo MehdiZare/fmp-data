@@ -273,18 +273,15 @@ def resolve_client_method(
 ) -> Callable[..., Any] | None:
     """Resolve ``client.<client_name>.<method_name>``, or ``None`` if missing.
 
-    The lenient half of the pair. Returns ``None`` rather than raising so tool
-    creation still works when the store holds a bare
-    :class:`~fmp_data.base.BaseClient` (or a test double) that has no
-    sub-clients. Dispatch then falls back to ``client.request``.
+    The lenient half of the pair — same walk as :func:`resolve_attr`, but
+    returns ``None`` rather than raising so tool creation still works when the
+    store holds a bare :class:`~fmp_data.base.BaseClient` (or a test double)
+    that has no sub-clients. Dispatch then falls back to ``client.request``.
     """
-    subclient = getattr(client, client_name, None)
-    if subclient is None:
+    try:
+        return resolve_attr(client, f"{client_name}.{method_name}")
+    except RuntimeError:
         return None
-    method = getattr(subclient, method_name, None)
-    if method is None or not callable(method):
-        return None
-    return cast(Callable[..., Any], method)
 
 
 def resolve_dispatch_method(
