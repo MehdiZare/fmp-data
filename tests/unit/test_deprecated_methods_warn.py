@@ -147,7 +147,7 @@ def test_every_deprecated_method_warns_and_never_calls_the_api() -> None:
 
     for module_name, cls, attr in DEPRECATED:
         method = getattr(cls, attr)
-        if inspect.iscoroutinefunction(inspect.unwrap(method)):
+        if inspect.iscoroutinefunction(method):
             continue  # covered by the async test below
 
         instance: Any = object.__new__(cls)
@@ -200,18 +200,26 @@ def test_every_deprecated_method_warns_and_never_calls_the_api() -> None:
 async def test_every_deprecated_async_method_warns_and_never_calls_the_api() -> None:
     """Same guarantee for the async clients.
 
-    ``@deprecated`` wraps a coroutine differently from a plain function, so a
-    decorator that works on one can silently no-op on the other.
+    ``@deprecated`` and ``@removed`` both wrap a coroutine differently from a
+    plain function (#170), so a decorator that works on one can silently
+    no-op on the other -- and, before #170, ``@removed`` did exactly that:
+    every one of its wrappers was a plain ``def``, so
+    ``inspect.iscoroutinefunction`` reported False for its three async
+    social-sentiment methods and this sweep never saw them. The classification
+    below reads that flag directly, with no ``inspect.unwrap`` fallback, so a
+    decorator that stops being honest about coroutine-ness fails here instead
+    of being quietly compensated for.
     """
     silent: list[str] = []
     called_api: list[str] = []
     call_errors: list[str] = []
     returned: list[str] = []
     checked = 0
+    removed_async_checked = 0
 
     for module_name, cls, attr in DEPRECATED:
         method = getattr(cls, attr)
-        if not inspect.iscoroutinefunction(inspect.unwrap(method)):
+        if not inspect.iscoroutinefunction(method):
             continue
 
         instance: Any = object.__new__(cls)
@@ -235,6 +243,8 @@ async def test_every_deprecated_async_method_warns_and_never_calls_the_api() -> 
             except Exception as exc:
                 call_errors.append(f"{where}: {type(exc).__name__}: {exc}")
 
+        if raised_removed:
+            removed_async_checked += 1
         if not (raised_removed or _warned(caught)):
             silent.append(where)
         if stub.calls:
@@ -257,4 +267,16 @@ async def test_every_deprecated_async_method_warns_and_never_calls_the_api() -> 
     )
     assert checked > 25, (
         f"only {checked} async methods exercised; is the sweep working?"
+    )
+    # #170: pins that @removed's async branch is actually reached by this
+    # sweep, not merely that @removed works at all -- a decorator that goes
+    # back to always returning a sync wrapper would silently drop these three
+    # out of this async test and into the sync one above, where they would
+    # still pass (a sync raise still satisfies that test's contract) and this
+    # regression would reappear unnoticed.
+    assert removed_async_checked > 0, (
+        "no @removed async method was exercised by this sweep -- either the "
+        "three social-sentiment methods were removed, or @removed stopped "
+        "producing an async wrapper and this sweep silently stopped seeing "
+        "them (see fmp_data.helpers.removed, #170)"
     )
