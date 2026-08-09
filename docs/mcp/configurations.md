@@ -193,7 +193,7 @@ Tip: set `FMP_MCP_TOOL_NAME_STYLE=spec` to expose fully qualified tool names
 > guessing which client owns it. Previously the table and tree showed bare
 > keys, which are ambiguous for `crypto_quotes` and `forex_quotes` — the two
 > keys claimed by two clients each — and so could not be copied safely.
-> The table also gained a **`Deprecated`** column.
+> The table also gained a **`Retirement`** column.
 >
 > This changes output any script parsing `fmp-mcp list` will see. `--format
 > json` remains the stable interface for programmatic use.
@@ -202,6 +202,22 @@ Tip: set `FMP_MCP_TOOL_NAME_STYLE=spec` to expose fully qualified tool names
 > two lines rather than truncating it. Nothing is lost and the specs remain
 > distinguishable, but a spec that wraps is not directly copy-pasteable — use
 > `--format json`, or a wider terminal, if you are copying.
+
+> **Reading the `Retirement` column.** Three different things can be true of
+> a tool key, and they are labelled apart because each asks something
+> different of you:
+>
+> | Label | Meaning | What to do |
+> |---|---|---|
+> | *(blank)* | Live tool. | Nothing. |
+> | `DEPRECATED -> other.spec` | A second **name** for a method that still serves real data. Stops resolving in 3.0. | Swap the name; the replacement is a drop-in. |
+> | `WITHDRAWN, nearest live tool other.spec` | FMP no longer serves this endpoint. It resolves and registers, but can only ever answer `[]`. | Move to the named tool — and check its fields, the payload differs. |
+> | `WITHDRAWN, no replacement` | Same, and FMP publishes nothing equivalent. | Drop the tool. |
+>
+> In `--format json` these are three fields: `deprecated` (the replacement
+> spec, or `null`), `withdrawn` (boolean) and `successor` (the nearest live
+> spec for a withdrawal, or `null`). `deprecated` keeps the meaning it has
+> always had — withdrawals are **not** folded into it.
 
 ### Bare keys vs. fully qualified specs
 

@@ -937,3 +937,167 @@ class TestGeneratedManifestIsUsable:
         _, content = self._generate(tmp_path)
 
         assert content.endswith("]\n")
+
+
+class TestListLabelsAllThreeRetirementConcepts:
+    """#158: ``list`` knew only about renames, so withdrawals read as live.
+
+    Manifests are written by copying keys out of this listing. Three distinct
+    things can be true of a key and each obliges the reader to do something
+    different:
+
+    * ``DEPRECATED_TOOLS`` -- a second *name* for a live method. Still serves
+      real data; swap the name before 3.0.
+    * ``WITHDRAWN_TOOLS`` / ``EndpointSemantics.deprecated`` -- FMP does not
+      serve the endpoint. Resolves, registers, and answers ``[]`` forever;
+      there is nothing to swap to unless a ``successor`` is named, and even
+      then the payload differs.
+    * live -- nothing to do.
+
+    They stay three concepts. The listing labels them apart rather than
+    collapsing them into one flag.
+    """
+
+    @staticmethod
+    def _render(fmt: str) -> str:
+        from contextlib import redirect_stdout
+        import io
+
+        from fmp_data.mcp.cli import list_available_tools, print_tools_table
+
+        buffer = io.StringIO()
+        with patch.dict(os.environ, {"COLUMNS": "400", "TERM": "dumb"}):
+            with redirect_stdout(buffer):
+                print_tools_table(list_available_tools(), fmt)
+        return buffer.getvalue()
+
+    def test_the_three_endpoints_named_in_the_issue_are_marked(self) -> None:
+        """They printed ``deprecated: None``, identical to a live tool."""
+        from fmp_data.mcp.cli import list_available_tools
+
+        by_spec = {tool["spec"]: tool for tool in list_available_tools()}
+        reported = [
+            "intelligence.stock_news_sentiments",
+            "intelligence.earnings_confirmed",
+            "intelligence.earnings_surprises",
+        ]
+
+        for spec in reported:
+            assert spec in by_spec, f"floor: {spec} left the catalog"
+            assert by_spec[spec]["withdrawn"] is True, f"{spec} still reads as live"
+
+    def test_withdrawal_and_rename_stay_separate_keys(self) -> None:
+        """Neither mechanism may be re-derived from the other.
+
+        ``deprecated`` keeps meaning exactly what it meant before -- the spec
+        that replaces this one -- so a script reading that field is not
+        silently handed withdrawals under the same name.
+        """
+        from fmp_data.mcp.cli import list_available_tools
+        from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS, WITHDRAWN_TOOLS
+
+        tools = list_available_tools()
+        assert len(tools) > 100, "floor: an empty catalog would pass vacuously"
+
+        specs = {tool["spec"] for tool in tools}
+        renamed = {t["spec"] for t in tools if t["deprecated"]}
+        withdrawn = {t["spec"] for t in tools if t["withdrawn"]}
+
+        assert renamed == set(DEPRECATED_TOOLS) & specs
+        assert withdrawn >= set(WITHDRAWN_TOOLS) & specs
+        assert renamed and withdrawn, "floor: both mechanisms must be populated"
+        assert renamed.isdisjoint(withdrawn), (
+            "a spec is now both renamed and withdrawn -- the rendering shows "
+            "both labels, but that overlap is a design decision to take "
+            "explicitly rather than discover"
+        )
+
+    def test_the_semantics_flag_alone_is_enough_to_label_a_tool(self) -> None:
+        """``EndpointSemantics.deprecated`` is read, not merely mirrored.
+
+        ``WITHDRAWN_TOOLS`` and the flag are kept equal by #164's guard, so a
+        listing that consulted only the table would look correct today and
+        drift silently tomorrow. Emptying the table proves the flag is wired.
+        """
+        from fmp_data.mcp import cli, tools_manifest
+
+        with patch.object(tools_manifest, "WITHDRAWN_TOOLS", {}):
+            withdrawn = {
+                t["spec"] for t in cli.list_available_tools() if t["withdrawn"]
+            }
+
+        assert "intelligence.earnings_confirmed" in withdrawn
+        assert len(withdrawn) >= 20, (
+            f"only {len(withdrawn)} tools carry EndpointSemantics.deprecated "
+            "-- the flag is no longer reaching the CLI"
+        )
+
+    def test_the_table_is_read_too_when_the_flag_is_absent(self) -> None:
+        """The other half of the union: a table entry alone also labels."""
+        from fmp_data.mcp import cli
+
+        probe = [
+            {
+                "spec": "company.gone",
+                "client": "company",
+                "method": "gone",
+                "key": "gone",
+                "description": "d",
+                "withdrawn": False,
+            }
+        ]
+        with patch("fmp_data.mcp.discovery.discover_all_tools", return_value=probe):
+            with patch.dict(
+                "fmp_data.mcp.tools_manifest.WITHDRAWN_TOOLS",
+                {"company.gone": "company.here"},
+            ):
+                tool = cli.list_available_tools()[0]
+
+        assert tool["withdrawn"] is True
+        assert tool["successor"] == "company.here"
+        assert tool["deprecated"] is None
+
+    @pytest.mark.parametrize("fmt", ["table", "json", "list", "tree"])
+    def test_every_format_shows_the_withdrawal(self, fmt: str) -> None:
+        """All four, because a manifest is copied out of whichever you ran."""
+        rendered = self._render(fmt)
+
+        if fmt == "json":
+            assert '"withdrawn": true' in rendered
+            assert '"successor"' in rendered
+        else:
+            assert "WITHDRAWN" in rendered
+
+    @pytest.mark.parametrize("fmt", ["table", "list", "tree"])
+    def test_a_withdrawal_is_not_labelled_a_deprecation(self, fmt: str) -> None:
+        """The label has to say which of the two it is.
+
+        ``[DEPRECATED -> x]`` on a withdrawn tool would promise a drop-in
+        replacement for an endpoint that has none -- the "empty success" #137
+        removed from the LangChain side, re-introduced as text.
+        """
+        from fmp_data.mcp.cli import _retirement_labels, list_available_tools
+
+        withdrawn = [t for t in list_available_tools() if t["withdrawn"]]
+        assert withdrawn, "floor: nothing withdrawn"
+
+        for tool in withdrawn:
+            labels = _retirement_labels(tool)
+            assert labels, f"{tool['spec']} rendered no label"
+            assert any(label.startswith("WITHDRAWN") for label in labels)
+            assert not any(label.startswith("DEPRECATED") for label in labels)
+
+        rendered = self._render(fmt)
+        assert "no replacement" in rendered, (
+            "no withdrawn tool rendered its successor-less form; FMP "
+            "publishes nothing equivalent for several of them"
+        )
+
+    def test_a_rename_still_renders_its_replacement(self) -> None:
+        """#163's contract is unchanged by the new label."""
+        from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
+
+        rendered = self._render("list")
+        assert DEPRECATED_TOOLS, "floor: no renames to check"
+        for spec, replacement in sorted(DEPRECATED_TOOLS.items()):
+            assert f"{spec} [DEPRECATED -> {replacement}]" in rendered

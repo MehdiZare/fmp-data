@@ -27,9 +27,37 @@ def list_available_tools() -> list[dict[str, Any]]:
     """
     Discover and list all available MCP tools from endpoint semantics.
 
-    Each tool carries a ``deprecated`` key: the spec that replaces it, or
-    ``None``. Deprecated specs still resolve but are removed in 3.0, so every
-    output format can flag them without re-deriving the policy.
+    Three retirement facts can attach to a tool, and every output format
+    shows them apart because they oblige a reader to do different things
+    (#158). They are carried on three keys:
+
+    ``deprecated``
+        The spec that replaces this one, or ``None``. A *rename*: both keys
+        call the same live client method, migration is mechanical, and the
+        old key stops resolving in 3.0. Source:
+        :data:`~fmp_data.mcp.tools_manifest.DEPRECATED_TOOLS`.
+    ``withdrawn``
+        ``True`` when FMP no longer serves the endpoint, so the tool can only
+        ever answer empty. The key keeps resolving -- an explicit manifest
+        must keep working without a deprecation window -- which is exactly
+        why it has to be *labelled*. Source: the union of
+        :data:`~fmp_data.mcp.tools_manifest.WITHDRAWN_TOOLS` and
+        ``EndpointSemantics.deprecated``, the LangChain-side flag that hides
+        the same endpoints from the vector store. The two are kept in step by
+        a guard (#164) but are separate tables, so reading only one would let
+        drift decide what the CLI prints.
+    ``successor``
+        For a withdrawn tool, the nearest live spec, or ``None`` when FMP
+        publishes no replacement at all. Never a drop-in: the payload
+        differs, which is the whole reason this is not a ``deprecated`` entry.
+
+    Before this, ``list`` derived deprecation from ``DEPRECATED_TOOLS``
+    alone, so ``intelligence.stock_news_sentiments``,
+    ``intelligence.earnings_confirmed`` and
+    ``intelligence.earnings_surprises`` printed ``deprecated: None`` and were
+    indistinguishable from live tools. Manifests are built by copying keys
+    out of this listing, so that shipped users a tool that can only return an
+    empty success.
 
     Returns
     -------
@@ -37,18 +65,44 @@ def list_available_tools() -> list[dict[str, Any]]:
         List of tool definitions with metadata
     """
     from fmp_data.mcp.discovery import discover_all_tools
-    from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
+    from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS, WITHDRAWN_TOOLS
 
     return [
-        {**tool, "deprecated": DEPRECATED_TOOLS.get(tool["spec"])}
+        {
+            **tool,
+            "deprecated": DEPRECATED_TOOLS.get(tool["spec"]),
+            "withdrawn": bool(tool.get("withdrawn")) or tool["spec"] in WITHDRAWN_TOOLS,
+            "successor": WITHDRAWN_TOOLS.get(tool["spec"]),
+        }
         for tool in discover_all_tools()
     ]
 
 
-def _deprecation_note(tool: dict[str, Any]) -> str:
-    """``" [DEPRECATED -> <replacement>]"`` for a deprecated tool, else ``""``."""
+def _retirement_labels(tool: dict[str, Any]) -> list[str]:
+    """Every retirement fact that applies, as text, most actionable first.
+
+    A list rather than a single label: the two mechanisms are independent, so
+    a spec could in principle be both a rename *and* withdrawn, and dropping
+    either half would hide the one a reader needed. Empty for a live tool.
+    """
+    labels: list[str] = []
     replacement = tool.get("deprecated")
-    return f" [DEPRECATED -> {replacement}]" if replacement else ""
+    if replacement:
+        labels.append(f"DEPRECATED -> {replacement}")
+    if tool.get("withdrawn"):
+        successor = tool.get("successor")
+        labels.append(
+            f"WITHDRAWN, nearest live tool {successor}"
+            if successor
+            else "WITHDRAWN, no replacement"
+        )
+    return labels
+
+
+def _retirement_note(tool: dict[str, Any]) -> str:
+    """``" [DEPRECATED -> x]"`` / ``" [WITHDRAWN, ...]"``, or ``""`` if live."""
+    labels = _retirement_labels(tool)
+    return f" [{'; '.join(labels)}]" if labels else ""
 
 
 def print_tools_table(tools: list[dict[str, Any]], format: str = "table") -> None:
@@ -66,7 +120,7 @@ def print_tools_table(tools: list[dict[str, Any]], format: str = "table") -> Non
 def _print_tools_list(tools: list[dict[str, Any]]) -> None:
     """Print tools as a simple list."""
     for tool in tools:
-        print(f"{tool['spec']}{_deprecation_note(tool)}: {tool['description']}")
+        print(f"{tool['spec']}{_retirement_note(tool)}: {tool['description']}")
 
 
 def _print_tools_tree(tools: list[dict[str, Any]]) -> None:
@@ -98,7 +152,7 @@ def _print_tools_tree(tools: list[dict[str, Any]]) -> None:
             # self-referential. The method is kept as trailing detail.
             desc = tool["description"][:40]
             branch.add(
-                f"[green]{tool['spec']}[/green]{_deprecation_note(tool)} "
+                f"[green]{tool['spec']}[/green]{_retirement_note(tool)} "
                 f"[dim]({tool['method']})[/dim]: {desc}..."
             )
 
@@ -123,25 +177,29 @@ def _print_rich_table(tools: list[dict[str, Any]]) -> None:
     precisely the pair a reader most needs to tell apart. ``overflow="fold"``
     wraps instead, so a narrow terminal costs a line rather than the answer.
 
-    The deprecation marker moves to its own column for the same reason: as a
+    The retirement marker moves to its own column for the same reason: as a
     suffix on the spec cell it was inside the truncated region, so the one
     piece of text explaining the duplicate row was the first thing cut.
+
+    That column is headed ``Retirement`` rather than ``Deprecated`` (#158).
+    It now carries withdrawals too -- endpoints FMP no longer serves, which
+    resolve and answer empty -- and calling those "deprecated" would say the
+    one thing that is not true of them: that a drop-in replacement exists.
     """
     console = Console()
     table = Table(title="Available FMP MCP Tools")
     table.add_column("Tool Spec", style="cyan", overflow="fold", no_wrap=False)
     table.add_column("Client", style="green")
     table.add_column("Method", style="yellow")
-    table.add_column("Deprecated", style="magenta", overflow="fold", no_wrap=False)
+    table.add_column("Retirement", style="magenta", overflow="fold", no_wrap=False)
     table.add_column("Description", style="white")
 
     for tool in tools:
-        replacement = tool.get("deprecated")
         table.add_row(
             tool["spec"],
             tool["client"],
             tool["method"],
-            f"-> {replacement}" if replacement else "",
+            "; ".join(_retirement_labels(tool)),
             (
                 tool["description"][:50] + "..."
                 if len(tool["description"]) > 50
@@ -159,14 +217,13 @@ def _print_simple_table(tools: list[dict[str, Any]]) -> None:
     rather than losing characters, for the same reason as :func:`_print_rich_table`.
     """
     print("\nAvailable FMP MCP Tools")
-    print("-" * 100)
-    print(f"{'Tool Spec':<45} {'Client':<12} {'Method':<25} {'Deprecated':<30}")
-    print("-" * 100)
+    print("-" * 130)
+    print(f"{'Tool Spec':<45} {'Client':<12} {'Method':<25} {'Retirement':<45}")
+    print("-" * 130)
     for tool in tools:
-        replacement = tool.get("deprecated")
-        note = f"-> {replacement}" if replacement else ""
+        note = "; ".join(_retirement_labels(tool))
         print(
-            f"{tool['spec']:<45} {tool['client']:<12} {tool['method']:<25} {note:<30}"
+            f"{tool['spec']:<45} {tool['client']:<12} {tool['method']:<25} {note:<45}"
         )
 
 
