@@ -255,7 +255,9 @@ def test_examples_and_field_type_prefer_valid_values_over_a_drifted_hint() -> No
     at time of writing none has (that is the point of #156: examples are now
     derived, not hand-written). So it cannot, by itself, prove a future
     regression that reverts ``ToolFactory`` to prefer ``hint.examples`` would
-    be caught. This test manufactures the disagreement directly.
+    be caught. This test manufactures the disagreement and drives it through
+    ``create_parameter_fields`` -- the production path that builds tool schemas
+    -- so a regression in the wiring (not only the helpers) fails the suite.
     """
     from fmp_data.lc.models import ParameterHint
     from fmp_data.models import EndpointParam, ParamLocation, ParamType
@@ -275,18 +277,25 @@ def test_examples_and_field_type_prefer_valid_values_over_a_drifted_hint() -> No
         context_clues=[],
     )
 
+    # Focused helper assertions: still useful for pinpointing which step drifted.
     examples = ToolFactory.get_examples_for_param(param, drifted_hint)
     assert examples == ["annual", "quarter"], (
         f"examples must come from valid_values, not the drifted hint: {examples}"
     )
 
-    field_type = ToolFactory.get_field_type(
-        param.param_type, optional=False, valid_values=param.valid_values
-    )
+    # Critical path: the same assembly ``create_tool`` / ``_args_model`` use.
     model = create_model(
         "DriftProbe",
-        period=(field_type, ...),
-        __config__=ConfigDict(extra="forbid"),
+        **ToolFactory.create_parameter_fields([param], [], {"period": drifted_hint}),
+        __config__=ConfigDict(extra="forbid", arbitrary_types_allowed=True),
+    )
+    field = model.model_fields["period"]
+    assert field.examples == ["annual", "quarter"], (
+        f"schema examples must come from valid_values, not the drifted hint: "
+        f"{field.examples}"
+    )
+    assert "biweekly" not in (field.description or ""), (
+        "derived description must not re-advertise the drifted hint example"
     )
     with pytest.raises(ValidationError):
         model(period="biweekly")

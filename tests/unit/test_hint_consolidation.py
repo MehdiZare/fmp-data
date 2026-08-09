@@ -249,15 +249,18 @@ def test_the_three_period_hints_match_their_valid_values_sets() -> None:
 
 
 def test_hint_examples_are_within_valid_values() -> None:
-    """Advertised examples must be values the endpoint actually accepts.
+    """Hand-written hint examples must stay inside ``valid_values`` (#150).
 
-    ``ToolFactory.generate_description`` renders ``hint.examples`` verbatim into
-    the tool description an LLM reads, while ``EndpointParam.validate_value``
-    rejects anything outside ``valid_values`` -- and ``create_parameter_fields``
-    does not narrow the generated field type, so the enum never reaches the
-    model. When the two disagree the catalog advertises a value that fails
-    client-side, which is what one shared ``PERIOD_HINT`` did for nine
-    endpoints until it was split three ways.
+    #156 made the *tool-schema* path true by construction: when an endpoint
+    declares ``valid_values``, ``ToolFactory.create_parameter_fields`` derives
+    field examples and a ``Literal`` type from those values rather than from
+    ``ParameterHint.examples``. That does not retire this guard.
+    ``hint.examples`` still feeds embedding text via
+    ``EndpointRegistry.get_embedding_text``, and unconstrained parameters still
+    advertise the hint's examples on the tool description. A hand-written
+    example outside ``valid_values`` would therefore still poison semantic
+    search (and any unconstrained tool text), which is what one shared
+    ``PERIOD_HINT`` did for nine endpoints until it was split three ways.
     """
     from fmp_data.lc.registry import (
         get_endpoint_groups,

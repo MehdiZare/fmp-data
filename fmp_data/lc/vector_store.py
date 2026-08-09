@@ -89,10 +89,12 @@ class ToolFactory:
         (``EndpointParam.validate_value``); a hint's hand-written ``examples``
         can drift from it -- which is exactly the defect #156 fixes. When the
         endpoint declares ``valid_values``, they are the sole source of
-        advertised examples, so ``test_hint_examples_are_within_valid_values``
-        and the schema-examples guard in ``tests/unit/lc/test_tool_schema.py``
-        cannot fail on this parameter again. Falls back to the hint's examples
-        only when the endpoint places no constraint on the value.
+        advertised schema examples, so the schema-examples guard in
+        ``tests/unit/lc/test_tool_schema.py`` is true by construction on this
+        parameter. ``test_hint_examples_are_within_valid_values`` (#150) is a
+        separate pipeline: it still checks the hand-written hint content used
+        by embedding text. Falls back to the hint's examples only when the
+        endpoint places no constraint on the value.
         """
         valid_values = getattr(param, "valid_values", None)
         if valid_values:
