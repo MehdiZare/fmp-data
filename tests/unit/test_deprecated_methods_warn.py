@@ -265,18 +265,23 @@ async def test_every_deprecated_async_method_warns_and_never_calls_the_api() -> 
         "retired async methods returning something other than empty:\n  "
         + "\n  ".join(returned)
     )
-    assert checked > 25, (
-        f"only {checked} async methods exercised; is the sweep working?"
-    )
     # #170: pins that @removed's async branch is actually reached by this
     # sweep, not merely that @removed works at all -- a decorator that goes
     # back to always returning a sync wrapper would silently drop these three
     # out of this async test and into the sync one above, where they would
     # still pass (a sync raise still satisfies that test's contract) and this
     # regression would reappear unnoticed.
+    #
+    # Asserted before the coarse `checked` floor below: the #170 regression
+    # drops the async count too, so the coarse floor would trip first and
+    # report a vague "is the sweep working?" for a failure this message names
+    # exactly.
     assert removed_async_checked > 0, (
         "no @removed async method was exercised by this sweep -- either the "
         "three social-sentiment methods were removed, or @removed stopped "
         "producing an async wrapper and this sweep silently stopped seeing "
         "them (see fmp_data.helpers.removed, #170)"
+    )
+    assert checked > 25, (
+        f"only {checked} async methods exercised; is the sweep working?"
     )
