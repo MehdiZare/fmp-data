@@ -77,6 +77,12 @@ def removed(reason: str = "") -> Callable[[F], F]:
 
     Returns:
         A decorator that raises RemovedEndpointError when the function is called.
+        Coroutine functions are wrapped with an async wrapper so
+        ``inspect.iscoroutinefunction`` remains True, mirroring ``deprecated()``
+        (#170): a sync wrapper around an ``async def`` raises while its caller's
+        argument list is still being built (e.g. inside ``asyncio.gather(...)``),
+        not while it is awaited, which stops sibling coroutines passed alongside
+        it from ever starting.
 
     Example:
         >>> @removed("This endpoint was discontinued by FMP in 2024.")
@@ -85,6 +91,15 @@ def removed(reason: str = "") -> Callable[[F], F]:
     """
 
     def decorator(func: F) -> F:
+        if inspect.iscoroutinefunction(func):
+
+            @functools.wraps(func)
+            async def async_wrapped(*_args: Any, **_kwargs: Any) -> Any:
+                raise RemovedEndpointError(func.__name__, reason)
+
+            async_wrapped.__fmp_deprecated__ = True  # type: ignore[attr-defined]
+            return async_wrapped  # type: ignore[return-value]
+
         @functools.wraps(func)
         def wrapped(*_args: Any, **_kwargs: Any) -> Any:
             raise RemovedEndpointError(func.__name__, reason)
