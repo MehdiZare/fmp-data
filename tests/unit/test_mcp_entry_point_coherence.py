@@ -448,6 +448,19 @@ class TestTheTwoRetirementMechanismsStayInStep:
         double-counts every flagged endpoint as ``lc.<key>``. Anyone rewriting
         :func:`_semantics_flagged_specs` the obvious way trips this: the
         phantoms are not in the catalog, so the assertion names them.
+
+        **Extras dependency, deliberate and currently safe.** This test imports
+        ``fmp_data.lc.mapping`` on purpose -- asserting the re-export is what
+        stops the warning above outliving its cause. That import works in a
+        core-only install *only* because the module carries semantics data and
+        pulls in no ``langchain``, which is true today by accident rather than
+        by design: nothing in ``fmp_data.lc.mapping`` promises to stay
+        extras-free. ``tests/unit/test_imports.py`` would catch the module
+        becoming un-importable, but nothing there records that *this* test
+        depends on it. If ``lc.mapping`` ever gains an extras-dependent import,
+        this test needs ``pytest.importorskip("langchain")`` -- otherwise it
+        fails in every CI job, which installs no extras, through a path nobody
+        would think to look at.
         """
         import importlib
 
