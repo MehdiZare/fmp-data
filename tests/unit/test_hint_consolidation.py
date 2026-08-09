@@ -40,6 +40,18 @@ MIN_SHARED_NAMES = 15
 MIN_ENDPOINTS_SCANNED = 200
 MIN_CONSTRAINED_PARAMS = 20
 
+# Floor for the same-concept-different-name guard below (#157). Observed: 36
+# candidate pairs, all instances of the one known divergence recorded in
+# _KNOWN_SAME_CONCEPT_DIVERGENCES.
+MIN_SAME_CONCEPT_CANDIDATES = 20
+
+#: Minimum shared substring length for two ``extraction_patterns`` entries to
+#: count as "the same underlying shape". Long enough that a shared capture
+#: group like ``(\d{4}-\d{2}-\d{2})`` (18 chars) counts; short enough that it
+#: is not defeated by a wrapping literal. Kept well above trivial fragments
+#: such as ``\d+`` so two unrelated numeric patterns do not collide.
+MIN_PATTERN_OVERLAP_LEN = 10
+
 # Every module that declares or re-exports hints. Import failure here is a
 # hard error, not a skip: swallowing it would let a module drop out of the
 # comparison and take its divergent hints with it, which is exactly the
@@ -318,6 +330,161 @@ def test_cross_domain_hints_originate_in_lc_hints() -> None:
     assert not offenders, (
         "these hint names are used by more than one domain package but are "
         f"not defined in fmp_data.lc.hints: {offenders}"
+    )
+
+
+# --- #157: same concept, different name ------------------------------------
+#
+# test_no_two_modules_define_the_same_hint_differently above proves "one
+# name -> one definition". It cannot see a concept redefined under a SECOND
+# name, which is exactly how fmp_data.technical.mapping.FROM_DATE_HINT /
+# TO_DATE_HINT drifted from fmp_data.lc.hints.DATE_HINTS["start_date"] /
+# ["end_date"]: different examples, different extraction_patterns, same
+# "date range boundary" concept, and nothing compares them because the names
+# differ and technical is the sole importer of its own copies (single owner,
+# so test_cross_domain_hints_originate_in_lc_hints does not see it either).
+#
+# Rule: two ParameterHint bindings under different names, in different
+# modules, are flagged as a likely same-concept duplicate when BOTH hold:
+#
+#   1. natural_names overlap -- they share at least one phrasing, so the same
+#      user query can resolve to either tool's parameter.
+#   2. extraction_patterns overlap (see _pattern_overlap) -- one pattern is a
+#      long-enough literal substring of the other, which catches "the same
+#      capture group wrapped in different surrounding text" (the ISO-date
+#      group ``(\d{4}-\d{2}-\d{2})`` sitting inside ``from\s+(\d{4}-\d{2}-\d{2})``)
+#      without demanding byte-identical pattern strings.
+#
+# Both are required, not either. A single shared generic word is too weak on
+# its own: PERIOD_HINT / INTERVAL_HINT / PERIOD_LENGTH_HINT in lc/hints.py all
+# list "period" in natural_names but extract nothing in common, and flagging
+# that trio would be exactly the noise #157 warns against. A shared pattern
+# fragment without shared phrasing is typically coincidence (two unrelated
+# concepts that both happen to extract a number). Requiring both signals is
+# what keeps the rule predictable: a maintainer can tell in advance that it
+# trips only when a user phrase AND the text it extracts both line up.
+#
+# Deliberately NOT flagged: a hint whose extraction_patterns are an exact
+# subset of another's (see _is_extension) is a reviewed refinement -- e.g.
+# PERIOD_HINT's three patterns are a strict subset of
+# PERIOD_WITH_FISCAL_HINT's four, by design (see the CONFLICT note in
+# lc/hints.py: the catalog genuinely has three different valid_values sets
+# for "period", pinned by test_the_three_period_hints_match_their_valid_values_sets
+# above). Treating that as a #157 violation would be crying wolf on a shape
+# the maintainers already reviewed and tested.
+def _pattern_overlap(a: list[str], b: list[str]) -> bool:
+    """True if some pattern in ``a`` is a literal substring of one in ``b``."""
+    return any(
+        len(pa) >= MIN_PATTERN_OVERLAP_LEN
+        and len(pb) >= MIN_PATTERN_OVERLAP_LEN
+        and (pa in pb or pb in pa)
+        for pa in a
+        for pb in b
+    )
+
+
+def _is_extension(a: list[str], b: list[str]) -> bool:
+    """True if one extraction_patterns list is an exact subset of the other."""
+    set_a, set_b = set(a), set(b)
+    return set_a <= set_b or set_b <= set_a
+
+
+def _same_concept_candidates() -> list[tuple[str, str, str, str]]:
+    """Cross-module, cross-name hint pairs that look like the same concept.
+
+    Returns ``(module_a, name_a, module_b, name_b)`` tuples. See the module
+    comment above for the rule.
+    """
+    by_name, _, _ = _collect()
+    flat = [
+        (name, module_name, hint)
+        for name, modules in by_name.items()
+        for module_name, hint in modules.items()
+    ]
+    candidates: list[tuple[str, str, str, str]] = []
+    for i, (name_a, mod_a, hint_a) in enumerate(flat):
+        for name_b, mod_b, hint_b in flat[i + 1 :]:
+            if name_a == name_b or mod_a == mod_b or hint_a is hint_b:
+                continue
+            if hint_a.model_dump_json() == hint_b.model_dump_json():
+                continue  # identical contents: not a divergence
+            nn_a = {n.lower() for n in hint_a.natural_names}
+            nn_b = {n.lower() for n in hint_b.natural_names}
+            if not nn_a & nn_b:
+                continue
+            if _is_extension(hint_a.extraction_patterns, hint_b.extraction_patterns):
+                continue
+            if not _pattern_overlap(
+                hint_a.extraction_patterns, hint_b.extraction_patterns
+            ):
+                continue
+            candidates.append((mod_a, name_a, mod_b, name_b))
+    return candidates
+
+
+#: Pre-existing, tracked divergence (#157's "Options" section): folding
+#: technical/mapping.py's local FROM_DATE_HINT/TO_DATE_HINT onto the shared
+#: fmp_data.lc.hints.DATE_HINTS changes the embedding text and tool
+#: descriptions of nine indicator tools, which #157 scoped as its own
+#: before/after review rather than a guard-only change. Recorded here, not
+#: silently dropped: the test below asserts every entry still trips the raw
+#: detector, so both "the duplication got fixed" (entry now unused) and "the
+#: duplication rotted further out of view" (entry stops matching) fail loudly
+#: instead of the allowlist quietly widening.
+KNOWN_SAME_CONCEPT_DIVERGENCES = {
+    ("fmp_data.technical.mapping", "FROM_DATE_HINT"),
+    ("fmp_data.technical.mapping", "TO_DATE_HINT"),
+    ("fmp_data.technical.mapping", "COMMON_PARAMS[from]"),
+    ("fmp_data.technical.mapping", "COMMON_PARAMS[to]"),
+}
+
+
+def test_no_same_concept_hint_under_a_different_name() -> None:
+    """Same concept, different binding name, is the #157 gap in #135's guard.
+
+    New same-concept duplicates must either import the shared hint or be
+    added to ``KNOWN_SAME_CONCEPT_DIVERGENCES`` with a reason -- silently
+    passing is not an option either way.
+    """
+    candidates = _same_concept_candidates()
+
+    # Floor: a detector that finds nothing is not proof there is nothing to
+    # find. Pinned above the count observed at the time of writing so a
+    # change that breaks the comparison (e.g. an accidental early `continue`
+    # above) fails here instead of passing vacuously.
+    assert len(candidates) >= MIN_SAME_CONCEPT_CANDIDATES, (
+        f"only {len(candidates)} same-concept candidate pairs found; the "
+        "comparison in _same_concept_candidates may not be running"
+    )
+
+    seen_allowlisted: set[tuple[str, str]] = set()
+    unexpected: list[str] = []
+    for mod_a, name_a, mod_b, name_b in candidates:
+        allowed_a = (mod_a, name_a) in KNOWN_SAME_CONCEPT_DIVERGENCES
+        allowed_b = (mod_b, name_b) in KNOWN_SAME_CONCEPT_DIVERGENCES
+        if allowed_a:
+            seen_allowlisted.add((mod_a, name_a))
+        if allowed_b:
+            seen_allowlisted.add((mod_b, name_b))
+        if not (allowed_a or allowed_b):
+            unexpected.append(f"{mod_a}.{name_a} vs {mod_b}.{name_b}")
+
+    assert not unexpected, (
+        "these hint pairs look like the same concept under different names "
+        "(shared phrasing in natural_names, shared shape in "
+        "extraction_patterns). Either import the shared fmp_data.lc.hints "
+        "definition, or -- if this is a reviewed, deliberate copy -- add it "
+        "to KNOWN_SAME_CONCEPT_DIVERGENCES with a reason:\n  " + "\n  ".join(unexpected)
+    )
+
+    # An allowlist entry that no longer appears among the candidates is
+    # stale: either the duplication was fixed (drop the entry) or the
+    # detector itself regressed (a real bug -- do not shrink the allowlist
+    # to hide it).
+    stale = KNOWN_SAME_CONCEPT_DIVERGENCES - seen_allowlisted
+    assert not stale, (
+        "these KNOWN_SAME_CONCEPT_DIVERGENCES entries no longer appear among "
+        f"the detected candidates and should be removed: {stale}"
     )
 
 
