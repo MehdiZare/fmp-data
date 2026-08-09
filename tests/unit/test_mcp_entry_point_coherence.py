@@ -550,6 +550,83 @@ class TestGenerateRefusesToWriteAUselessManifest:
 
         assert path.read_text() == 'TOOLS = ["company.profile"]\n'
 
+    def test_a_collision_under_key_style_is_not_written(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: Any
+    ) -> None:
+        """`generate` exiting 0 on a manifest `validate` exits 1 on is the bug.
+
+        Both sides of a name collision are kept -- an explicit selection is
+        never thinned behind the caller's back -- but under the default
+        ``key`` style the pair cannot register, so writing the file and
+        reporting success hands back an artifact that fails at server start,
+        and ``generate && validate`` fails in a pipeline. That is #161's
+        defect one command over, on the one shape the coherence table did not
+        cover.
+        """
+        monkeypatch.delenv("FMP_MCP_TOOL_NAME_STYLE", raising=False)
+        path = tmp_path / "coll.py"
+
+        written = generate_manifest(
+            path,
+            tools=["alternative.crypto_quotes", "batch.crypto_quotes"],
+            include_defaults=False,
+        )
+        err = capsys.readouterr().err
+
+        assert written is False
+        assert not path.exists(), "wrote a manifest that cannot start a server"
+        assert "crypto_quotes" in err
+
+    def test_the_same_collision_is_written_under_spec_style(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: Any
+    ) -> None:
+        """The refusal tracks the *active* style, not a fixed one.
+
+        Under ``spec`` both sides are advertised at their full spec and the
+        pair registers, so refusing here would be `generate` inventing a
+        second opinion -- the mirror image of the bug above, and just as
+        incoherent. Pinned in both directions so a future "always fatal"
+        simplification cannot pass.
+        """
+        monkeypatch.setenv("FMP_MCP_TOOL_NAME_STYLE", "spec")
+        path = tmp_path / "coll_spec.py"
+
+        written = generate_manifest(
+            path,
+            tools=["alternative.crypto_quotes", "batch.crypto_quotes"],
+            include_defaults=False,
+        )
+        capsys.readouterr()
+
+        assert written is True
+        assert path.exists()
+
+    def test_defaults_do_not_rescue_an_unresolvable_explicit_selection(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """``include_defaults=True`` is the *default* path, and it used to rescue.
+
+        Every other case in this class passes ``include_defaults=False``, so
+        the documented "writes no file and exits non-zero" was pinned only
+        under ``--no-defaults`` -- which is opt-in. On the real default path
+        ``_add_defaults`` ran before the emptiness check, so a selection in
+        which nothing resolved was topped up with 137 defaults the user never
+        asked for, ``failures`` was discarded, and the command reported
+        success. The ask was "give me these tools"; none of them exist.
+        """
+        path = tmp_path / "rescued.py"
+
+        written = generate_manifest(
+            path, tools=["company.profil", "nope"], include_defaults=True
+        )
+        err = capsys.readouterr().err
+
+        assert written is False
+        assert not path.exists(), (
+            "defaults rescued a selection in which nothing the user asked for resolved"
+        )
+        assert "company.profil" in err and "nope" in err
+
     def test_a_partly_resolvable_selection_still_succeeds(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -655,6 +732,26 @@ class TestListOutputIsCopyPasteable:
             if "│" in line and line.split("│")[1].rstrip().endswith("…")
         ]
         assert cut == [], f"{len(cut)} specs truncated, e.g. {cut[:2]}"
+
+        # Folding is lossless, which is the actual claim -- the sibling test
+        # at COLUMNS=400 pins "every format emits the full spec", but it does
+        # so at a width nobody uses, so it cannot see the difference between
+        # ellipsis (lossy) and fold (lossy-looking, not lossy). Reassembling
+        # the spec column and stripping the fold points must recover the two
+        # specs that motivated #163 -- they differ only in their tails, so a
+        # truncation that survived the check above would lose them here.
+        # `docs/mcp/configurations.md` documents the wrap; this pins that it
+        # stays a wrap and never becomes a truncation.
+        column = "".join(
+            line.split("│")[1].strip()
+            for line in rendered.splitlines()
+            if "│" in line and len(line.split("│")) > 2
+        )
+        for spec in ("company.historical_price", "company.profile"):
+            assert spec in column, (
+                f"{spec} is not recoverable from the 80-column table; the "
+                "spec column is losing characters, not just wrapping"
+            )
 
     @pytest.mark.parametrize("fmt", FORMATS)
     def test_the_deprecation_marker_and_replacement_survive(self, fmt: str) -> None:

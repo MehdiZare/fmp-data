@@ -47,11 +47,25 @@ def _load_semantics(client_slug: str, key: str) -> Any:
     return table[key]  # EndpointSemantics instance
 
 
-def _get_tool_name_style() -> str:
+def tool_name_style() -> str:
+    """The active advertised-name style: ``"key"`` (default) or ``"spec"``.
+
+    Public because ``cli.py`` needs the same answer the loader acts on --
+    reading ``FMP_MCP_TOOL_NAME_STYLE`` a second time in the CLI is how
+    ``validate`` and the loader drift apart, which is what #162 was. An
+    unrecognised value falls back to ``key`` rather than raising: the style
+    is an optional environment tweak, and refusing to start a server over a
+    typo in it would be worse than serving the documented default.
+    """
     style = os.getenv("FMP_MCP_TOOL_NAME_STYLE", "key").strip().lower()
     if style not in {"key", "spec"}:
         return "key"
     return style
+
+
+#: Retained so anything already importing the private name keeps working.
+#: Prefer :func:`tool_name_style`.
+_get_tool_name_style = tool_name_style
 
 
 def build_key_to_spec(all_tools: list[dict[str, str]]) -> dict[str, list[str]]:

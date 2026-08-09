@@ -515,14 +515,22 @@ def generate_manifest(
     so nothing is dropped silently.
 
     An explicit ``tools`` list is the caller's own selection and is never
-    thinned: a collision inside it is reported on stderr and in the header
-    instead.
+    *thinned*: neither side of a collision inside it is dropped behind the
+    caller's back. Under the default ``key`` name style such a pair cannot
+    register, so no file is written and the return is ``False``; under
+    ``spec`` style both sides are advertised at their full spec and the pair
+    registers, so the collision is a warning and the manifest is written.
+    That is the same verdict ``validate`` and ``register_from_manifest``
+    reach, which is the whole point of #161.
 
     **A selection that resolves to nothing is a failure, not an empty file.**
     It used to write ``TOOLS = []`` and exit 0, which is #161's defect one
     command over: an artifact that cannot start a server, reported as success.
     Nothing is written in that case and the return is ``False``, so the file
     already at ``output_path`` -- which may well be the good one -- survives.
+    This holds for an explicit ``--tools`` selection **regardless of
+    ``include_defaults``**: the defaults are not an answer to an ask that
+    named only tools which do not exist.
 
     Parameters
     ----------
@@ -558,6 +566,15 @@ def generate_manifest(
         )
     else:
         selected_tools = _validated_specs(tools, failures)
+        # Checked *before* defaults are added, not after. `--tools` without
+        # `--no-defaults` used to be rescued by the 137 defaults the user
+        # never asked for: every name they typed could fail to resolve and
+        # the command still wrote a manifest and exited 0, with `failures`
+        # discarded. The ask was "give me these tools"; none of them exist,
+        # so that ask failed, whatever else would have gone in the file.
+        if not selected_tools:
+            _report_empty_selection(output_path, tools, failures)
+            return False
 
     if include_defaults:
         _add_defaults(selected_tools, available_specs, excluded)
@@ -570,6 +587,25 @@ def generate_manifest(
     collisions = _name_collisions(selected_tools)
     if collisions:
         _warn_collisions(collisions)
+        # Refuse rather than write an unstartable file (#161's defect, one
+        # command over). Gated on the *active* name style, not on the `key`
+        # style `_name_collisions` reports under: `spec` style advertises
+        # both sides at their full spec and registers the pair happily, so
+        # under `spec` this is a warning and the file is written, exactly as
+        # `validate` and `register_from_manifest` would have it. Under the
+        # default `key` style the pair cannot register, so writing the file
+        # and reporting success would hand back an artifact that fails at
+        # server start -- and `generate && validate` would fail in a
+        # pipeline. The warning above already names the escape hatch.
+        from fmp_data.mcp import tool_loader
+
+        if tool_loader.tool_name_style() == "key":
+            print(
+                "No manifest written: the selection cannot start a server "
+                "under the default tool-name style.",
+                file=sys.stderr,
+            )
+            return False
 
     # Generate manifest content
     manifest_content = (
