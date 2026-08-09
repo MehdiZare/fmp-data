@@ -83,6 +83,7 @@ or call `model_dump()` / `model_dump_json()` for raw data.
 ## Optional integrations
 - LangChain extras: `pip install "fmp-data[langchain]"`
   - Vector store helper: `from fmp_data import create_vector_store`
+  - Tool arg names are API/wire names (`from`, `to`, …); mapped onto client methods at invoke when shapes match, else `client.request` fallback. MCP tools use Python method parameter names instead.
   - 2.6.0+: it returns an `EndpointVectorStore` or raises
     `VectorStoreCreationError` (importable from `fmp_data` without the extra);
     it no longer returns `None`. The exception carries `cause` and a `failures`

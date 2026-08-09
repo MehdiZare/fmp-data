@@ -327,6 +327,29 @@ export FMP_EMBEDDING_MODEL=text-embedding-3-small
 - Automatic caching of embeddings
 - Persistent vector store for faster lookups
 
+### Tool argument names (LangChain vs MCP)
+
+LangChain tools built from the vector store keep **API / wire** parameter names
+(`from`, `to`, `periodLength`, `sicCode`, …). When the method shape is
+compatible, those names are mapped onto the matching client method
+(`from_date` / `start_date`, …) at invoke so method defaults and constraints
+still apply (#172 / #186). When shapes diverge (currently Form 13F /
+institutional holdings: wire `year`/`quarter` vs required method
+`report_date`), LangChain keeps the wire schema and falls back to
+`client.request` instead of the method.
+
+MCP tools expose the **Python method** parameter names instead (the signature
+of `client.<module>.<method>`). The same endpoint can therefore show
+`from`/`to` in a LangChain schema and `from_date`/`to_date` (or
+`start_date`/`end_date`) on MCP — both are intentional. On the institutional
+fallback tools the schemas diverge further: MCP exposes `report_date`,
+LangChain still asks for `year`/`quarter`.
+
+A catalogue-wide guard (`tests/unit/lc/test_endpoint_method_coverage.py`) fails
+CI on *new* uncovered required method parameters or newly dropped mandatory
+wire fields under method dispatch. Known cases are allowlisted in that test
+(#188).
+
 ## Quick Start
 
 ```python

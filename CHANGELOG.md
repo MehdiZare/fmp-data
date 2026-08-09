@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+- **Catalogue-wide LangChain endpoint↔method parameter coverage guard** (#188) - after #172 / #186, tools dispatch through `client.<client>.<method>` when every required method parameter can be filled from wire/endpoint fields, otherwise fall back to `client.request`. That gate is per-tool at create time; a new shape mismatch could still land only as a silent request-fallback or a mandatory wire field omitted from the tool schema. `tests/unit/lc/test_endpoint_method_coverage.py` walks every `(endpoint_map × semantics)` pair, requires each method to resolve on a live client, pins the two known request-fallback tools (`institutional.get_form_13f`, `institutional.get_institutional_holdings` — wire `year`/`quarter` cannot satisfy required method `report_date`, and the uncovered param set is pinned so known debt cannot silently grow), and pins the two known dropped-mandatory wire fields (revenue segmentation `structure`). Any *new* mismatch fails CI until allowlisted with a comment or fixed.
+
+### Changed
+- **Document LangChain wire names vs MCP method parameter names** (#188) - LangChain tool schemas keep API/wire parameter names and map at invoke when method-compatible; MCP tools expose Python method parameter names. README (LangChain section) and `docs/mcp/index.md` state the difference — including the Form 13F / holdings request-fallback exception — so callers do not treat one schema as wrong.
+
 ### Deprecated
 - **`EndpointParam(required=...)` is deprecated in 2.7 and removed in 3.0; requiredness is now derived from list membership** (#165) - an endpoint declares its parameters in `mandatory_params` or `optional_params`, and every parameter *also* carried a `required` flag restating the same fact. Two representations of one thing can disagree, and #144 found 14 that did: params sitting in `optional_params` while declaring `required=True`. #155 reconciled them and added a guard; this removes the second representation so there is nothing left to reconcile.
   - `EndpointParam.required` is now a **read-only property**. `Endpoint` stamps it from the list the parameter sits in, so the two cannot drift apart — and because there is no setter, they cannot be pushed apart at runtime either. The 544 `required=` declarations across the 13 endpoint modules are gone.
