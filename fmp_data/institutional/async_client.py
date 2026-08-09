@@ -4,6 +4,7 @@
 from datetime import date
 
 from fmp_data.base import AsyncEndpointGroup
+from fmp_data.exceptions import FMPError, ValidationError
 from fmp_data.helpers import deprecated
 from fmp_data.institutional.endpoints import (
     BENEFICIAL_OWNERSHIP,
@@ -88,7 +89,9 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
             result = await self.client.request_async(
                 FORM_13F, cik=cik, year=year, quarter=quarter
             )
-        except Exception as exc:
+        except (FMPError, ValidationError) as exc:
+            # API errors return empty list for convenience (same contract as sync).
+            # Programming bugs must not be swallowed here.
             self.client.logger.warning(
                 f"No Form 13F data found for CIK {cik} in {year} Q{quarter}: {exc!s}"
             )
@@ -135,8 +138,8 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
             result = await self.client.request_async(FORM_13F_DATES, cik=cik)
             # Ensure we always return a list
             return result if isinstance(result, list) else [result]
-        except Exception as e:
-            # Log the error but return empty list instead of raising
+        except (FMPError, ValidationError) as e:
+            # API errors return empty list for convenience (same contract as sync).
             self.client.logger.warning(
                 f"No Form 13F filings found for CIK {cik}: {e!s}"
             )
