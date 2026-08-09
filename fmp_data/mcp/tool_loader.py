@@ -1,7 +1,6 @@
 # fmp_data/mcp/tool_loader.py
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
 import importlib
@@ -14,20 +13,20 @@ from fmp_data.client import FMPDataClient
 from fmp_data.logger import FMPLogger
 from fmp_data.mcp._compat import MCPServerType
 from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS, WITHDRAWN_TOOLS
+from fmp_data.tool_binding import resolve_attr
 
 ERR = RuntimeError  # shorten
 
 logger = FMPLogger().get_logger(__name__)
 
-
-def _resolve_attr(obj: object, dotted: str) -> Callable:
-    for part in dotted.split("."):
-        obj = getattr(obj, part, None)
-        if obj is None:
-            raise ERR(f"Attribute chain '{dotted}' failed at '{part}'")
-    if not callable(obj):
-        raise ERR(f"'{dotted}' is not callable")
-    return obj
+#: MCP and LangChain resolve ``client.<module>.<method>`` the same way; the
+#: rule lives in :mod:`fmp_data.tool_binding` so the two cannot drift (#188).
+#: This module keeps the strict variant, which raises rather than returning
+#: ``None``: a manifest naming a method that does not exist must stop the
+#: server from starting, not register a tool that fails on first call.
+#: Retained under the old private name because it is imported by name in
+#: tests and was reachable from anything already importing this module.
+_resolve_attr = resolve_attr
 
 
 def _load_semantics(client_slug: str, key: str) -> Any:
