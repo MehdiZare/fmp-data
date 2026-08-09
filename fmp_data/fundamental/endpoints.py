@@ -15,16 +15,6 @@ from fmp_data.fundamental.models import (
     LeveredDCF,
     OwnerEarnings,
 )
-from fmp_data.fundamental.schema import (
-    BalanceSheetArgs,
-    CashFlowArgs,
-    FinancialRatiosArgs,
-    IncomeStatementArgs,
-    KeyMetricsArgs,
-    LatestFinancialStatementsArgs,
-    OwnerEarningsArgs,
-    SimpleSymbolArgs,
-)
 from fmp_data.models import (
     APIVersion,
     Endpoint,
@@ -70,7 +60,6 @@ INCOME_STATEMENT: Endpoint = Endpoint(
         ),
     ],
     response_model=IncomeStatement,
-    arg_model=IncomeStatementArgs,
     example_queries=[
         "Get AAPL income statement",
         "Show quarterly income statements for MSFT",
@@ -118,7 +107,6 @@ BALANCE_SHEET: Endpoint = Endpoint(
         ),
     ],
     response_model=BalanceSheet,
-    arg_model=BalanceSheetArgs,
     example_queries=[
         "Get AAPL balance sheet",
         "Show Microsoft's assets and liabilities",
@@ -165,7 +153,6 @@ CASH_FLOW: Endpoint = Endpoint(
         ),
     ],
     response_model=CashFlowStatement,
-    arg_model=CashFlowArgs,
     example_queries=[
         "Get AAPL cash flow statement",
         "Show Microsoft's operating cash flow",
@@ -201,7 +188,6 @@ LATEST_FINANCIAL_STATEMENTS: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=LatestFinancialStatement,
-    arg_model=LatestFinancialStatementsArgs,
     example_queries=[
         "Get latest financial statements page 0",
         "Show the newest financial statement entries",
@@ -246,7 +232,6 @@ KEY_METRICS: Endpoint = Endpoint(
         ),
     ],
     response_model=KeyMetrics,
-    arg_model=KeyMetricsArgs,
     example_queries=[
         "Show AAPL key metrics",
         "Get Microsoft's financial KPIs",
@@ -293,7 +278,6 @@ FINANCIAL_RATIOS: Endpoint = Endpoint(
         ),
     ],
     response_model=FinancialRatios,
-    arg_model=FinancialRatiosArgs,
     example_queries=[
         "Get AAPL financial ratios",
         "Show Microsoft's profitability metrics",
@@ -383,7 +367,6 @@ OWNER_EARNINGS: Endpoint = Endpoint(
         ),
     ],
     response_model=OwnerEarnings,
-    arg_model=OwnerEarningsArgs,
     example_queries=[
         "Calculate AAPL owner earnings",
         "Get Microsoft's owner earnings",
@@ -411,7 +394,6 @@ LEVERED_DCF: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=LeveredDCF,
-    arg_model=SimpleSymbolArgs,
     example_queries=[
         "Calculate AAPL DCF value",
         "Get Microsoft's intrinsic value",
@@ -442,7 +424,6 @@ HISTORICAL_RATING: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=HistoricalRating,
-    arg_model=SimpleSymbolArgs,
     example_queries=[
         "Get AAPL historical ratings",
         "Show Microsoft's rating history",
@@ -471,7 +452,6 @@ DISCOUNTED_CASH_FLOW: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=DCF,
-    arg_model=SimpleSymbolArgs,
     example_queries=[
         "Calculate AAPL DCF valuation",
         "Get Microsoft's intrinsic value",
@@ -500,7 +480,6 @@ CUSTOM_DISCOUNTED_CASH_FLOW: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=CustomDCF,
-    arg_model=SimpleSymbolArgs,
     example_queries=[
         "Get detailed DCF for AAPL",
         "Show Microsoft's cash flow projections",
@@ -529,7 +508,6 @@ CUSTOM_LEVERED_DCF: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=CustomLeveredDCF,
-    arg_model=SimpleSymbolArgs,
     example_queries=[
         "Calculate levered DCF for AAPL",
         "Get Microsoft's FCFE projections",

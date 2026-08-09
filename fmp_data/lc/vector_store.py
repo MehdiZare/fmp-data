@@ -432,7 +432,7 @@ class EndpointVectorStore:
             raise ConfigError(f"Failed to save vector store: {e!s}") from e
 
     @staticmethod
-    def _is_deprecated(info: Any) -> bool:
+    def _is_deprecated(info: EndpointInfo) -> bool:
         """Whether an endpoint no longer returns data (#137).
 
         Deprecated endpoints stay in the semantics tables -- their MCP tool
@@ -444,8 +444,14 @@ class EndpointVectorStore:
         Distinct from ``fmp_data.mcp.tools_manifest.DEPRECATED_TOOLS``, which
         maps duplicate tool *names* onto the canonical name of a method that
         still works. See ``EndpointSemantics.deprecated``; do not merge them.
+
+        Typed ``EndpointInfo`` (#159) rather than ``Any`` with a
+        ``getattr(..., default=False)`` fallback: that combination made a
+        renamed or dropped ``deprecated`` field fail silently into "nothing is
+        deprecated" instead of a mypy error or an ``AttributeError``. Reading
+        the field directly means a rename is caught at type-check time.
         """
-        return bool(getattr(info.semantics, "deprecated", False))
+        return info.semantics.deprecated
 
     def add_endpoint(self, name: str) -> None:
         """Add endpoint to vector store.

@@ -2,12 +2,84 @@
 from datetime import date
 from enum import Enum
 from typing import Any
+import warnings
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    GetJsonSchemaHandler,
+    field_validator,
+    model_validator,
+)
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import CoreSchema
+
+#: Deprecated in 2.7, removed in 3.0 (#153). Formatted with the concrete
+#: subclass name so the warning names the model the caller actually used.
+ARG_MODEL_DEPRECATION = (
+    "{name} is deprecated and will be removed in 3.0. The hand-written "
+    "argument models are read by nothing: LangChain tool schemas are built "
+    "dynamically from each endpoint's mandatory_params/optional_params in "
+    "fmp_data.lc.vector_store, and Endpoint.arg_model was never consulted. "
+    "See https://github.com/MehdiZare/fmp-data/issues/153."
+)
 
 
-class BaseArgModel(BaseModel):
-    """Base model for all API arguments"""
+class DeprecatedArgModel(BaseModel):
+    """Common base for the deprecated hand-written argument models (#153).
+
+    It adds no fields and no configuration -- only a ``DeprecationWarning``
+    on every validation, so importing the class stays silent while *using*
+    one says so. ``mode="before"`` covers ``Model(...)`` and
+    ``Model.model_validate(...)`` alike.
+
+    Validation is not the only way these models get used: an "argument model"
+    a downstream caller kept is most naturally handed to a tool/function
+    schema generator, which calls ``model_json_schema()`` and never validates
+    anything. ``__get_pydantic_json_schema__`` covers that path so such a
+    caller is told too, rather than reaching 3.0 without a single warning.
+    JSON-schema generation is lazy in pydantic v2 -- the core schema built at
+    class-creation time does not invoke it -- so importing stays silent.
+
+    Scheduled for removal in 3.0 together with every model that inherits it.
+    """
+
+    @model_validator(mode="before")
+    @classmethod
+    def _warn_deprecated_arg_model(cls, data: Any) -> Any:
+        # stacklevel=2 does not reach the caller here: construction crosses
+        # pydantic-core frames, so the warning reports against pydantic's
+        # main.py. The class name is in the message, so per-class filtering
+        # and dedup still work; there is no stacklevel that reliably lands on
+        # user code through a compiled boundary.
+        warnings.warn(
+            ARG_MODEL_DEPRECATION.format(name=cls.__name__),
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return data
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls,
+        core_schema: CoreSchema,
+        handler: GetJsonSchemaHandler,
+    ) -> JsonSchemaValue:
+        warnings.warn(
+            ARG_MODEL_DEPRECATION.format(name=cls.__name__),
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return handler(core_schema)
+
+
+class BaseArgModel(DeprecatedArgModel):
+    """Base model for all API arguments.
+
+    .. deprecated:: 2.7
+        Removed in 3.0 -- see :data:`ARG_MODEL_DEPRECATION`.
+    """
 
     model_config = ConfigDict(
         # Core config settings

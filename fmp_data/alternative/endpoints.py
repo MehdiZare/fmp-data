@@ -14,23 +14,6 @@ from fmp_data.alternative.models import (
     ForexPair,
     ForexQuote,
 )
-from fmp_data.alternative.schema import (
-    CommoditiesListArgs,
-    CommoditiesQuotesArgs,
-    CommodityHistoricalArgs,
-    CommodityIntradayArgs,
-    CommodityQuoteArgs,
-    CryptoHistoricalArgs,
-    CryptoIntradayArgs,
-    CryptoListArgs,
-    CryptoQuoteArgs,
-    CryptoQuotesArgs,
-    ForexHistoricalArgs,
-    ForexIntradayArgs,
-    ForexListArgs,
-    ForexQuoteArgs,
-    ForexQuotesArgs,
-)
 from fmp_data.models import (
     APIVersion,
     Endpoint,
@@ -57,7 +40,6 @@ CRYPTO_LIST: Endpoint = Endpoint(
     mandatory_params=[],
     optional_params=[],
     response_model=CryptoPair,
-    arg_model=CryptoListArgs,
     example_queries=[
         "List all available cryptocurrencies",
         "Get cryptocurrency trading pairs",
@@ -80,7 +62,6 @@ CRYPTO_QUOTES: Endpoint = Endpoint(
     mandatory_params=[],
     optional_params=[],
     response_model=CryptoQuote,
-    arg_model=CryptoQuotesArgs,
     example_queries=[
         "Get current prices for all cryptocurrencies",
         "Show real-time crypto quotes",
@@ -111,7 +92,6 @@ CRYPTO_QUOTE: Endpoint[CryptoQuote] = Endpoint(
     ],
     optional_params=[],
     response_model=CryptoQuote,
-    arg_model=CryptoQuoteArgs,
     example_queries=[
         "Get Bitcoin price quote",
         "Show current price for ETH",
@@ -159,7 +139,6 @@ CRYPTO_HISTORICAL: Endpoint = Endpoint(
         ),
     ],
     response_model=CryptoHistoricalPrice,
-    arg_model=CryptoHistoricalArgs,
     example_queries=[
         "Get Bitcoin historical prices",
         "Show ETH price history for last month",
@@ -198,7 +177,6 @@ CRYPTO_INTRADAY: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=CryptoIntradayPrice,
-    arg_model=CryptoIntradayArgs,
     example_queries=[
         "Get Bitcoin minute-by-minute prices",
         "Show hourly cryptocurrency data",
@@ -220,7 +198,6 @@ FOREX_LIST: Endpoint = Endpoint(
     mandatory_params=[],
     optional_params=[],
     response_model=ForexPair,
-    arg_model=ForexListArgs,
     example_queries=[
         "List all forex pairs",
         "Show available currency pairs",
@@ -243,7 +220,6 @@ FOREX_QUOTES: Endpoint = Endpoint(
     mandatory_params=[],
     optional_params=[],
     response_model=ForexQuote,
-    arg_model=ForexQuotesArgs,
     example_queries=[
         "Get all forex quotes",
         "Show current exchange rates",
@@ -273,7 +249,6 @@ FOREX_QUOTE: Endpoint[ForexQuote] = Endpoint(
     ],
     optional_params=[],
     response_model=ForexQuote,
-    arg_model=ForexQuoteArgs,
     example_queries=[
         "Get EURUSD exchange rate",
         "Show current price for GBPUSD",
@@ -320,7 +295,6 @@ FOREX_HISTORICAL: Endpoint = Endpoint(
         ),
     ],
     response_model=ForexHistoricalPrice,
-    arg_model=ForexHistoricalArgs,
     example_queries=[
         "Get historical EURUSD rates",
         "Show forex pair price history",
@@ -359,7 +333,6 @@ FOREX_INTRADAY: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=ForexIntradayPrice,
-    arg_model=ForexIntradayArgs,
     example_queries=[
         "Get minute-by-minute EURUSD data",
         "Show hourly forex rates",
@@ -381,7 +354,6 @@ COMMODITIES_LIST: Endpoint = Endpoint(
     mandatory_params=[],
     optional_params=[],
     response_model=Commodity,
-    arg_model=CommoditiesListArgs,
     example_queries=[
         "List all commodities",
         "Show available commodity symbols",
@@ -404,7 +376,6 @@ COMMODITIES_QUOTES: Endpoint = Endpoint(
     mandatory_params=[],
     optional_params=[],
     response_model=CommodityQuote,
-    arg_model=CommoditiesQuotesArgs,
     example_queries=[
         "Get all commodity prices",
         "Show current commodity quotes",
@@ -435,7 +406,6 @@ COMMODITY_QUOTE: Endpoint[CommodityQuote] = Endpoint(
     ],
     optional_params=[],
     response_model=CommodityQuote,
-    arg_model=CommodityQuoteArgs,
     example_queries=[
         "Get gold price quote",
         "Show current oil price",
@@ -485,7 +455,6 @@ COMMODITY_HISTORICAL: Endpoint = Endpoint(
         ),
     ],
     response_model=CommodityHistoricalPrice,
-    arg_model=CommodityHistoricalArgs,
     example_queries=[
         "Get gold price history",
         "Show historical oil prices",
@@ -526,7 +495,6 @@ COMMODITY_INTRADAY: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=CommodityIntradayPrice,
-    arg_model=CommodityIntradayArgs,
     example_queries=[
         "Get minute-by-minute gold prices",
         "Show hourly oil price data",
