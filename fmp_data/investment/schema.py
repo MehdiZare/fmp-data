@@ -42,8 +42,15 @@ class WeightingType(BaseEnum):
 class ETFHoldingsArgs(SymbolArg):
     """Arguments for getting ETF holdings"""
 
-    date: dt_date = Field(
-        description="Holdings date", json_schema_extra={"examples": ["2024-01-15"]}
+    # Optional, matching ETF_HOLDINGS.optional_params (#143). Probed against
+    # the live API on 2026-08-08: etf/holdings?symbol=SPY returns 505 rows
+    # with and without `date`, so the endpoint is right and this model was
+    # the stricter side -- a caller satisfying the endpoint contract was
+    # rejected by the tool schema before a request was ever built.
+    date: dt_date | None = Field(
+        None,
+        description="Holdings date (defaults to the latest available)",
+        json_schema_extra={"examples": ["2024-01-15"]},
     )
 
 
@@ -56,6 +63,12 @@ class ETFInfoArgs(SymbolArg):
 class MutualFundHoldingsArgs(SymbolArg):
     """Arguments for getting mutual fund holdings"""
 
+    # Required, matching MUTUAL_FUND_HOLDINGS.mandatory_params (#143). Unlike
+    # ETFHoldingsArgs above, whether that is *correct* could not be settled:
+    # the `mutual-fund-holdings` path 404s for every request, so there is no
+    # response to check the declaration against. See #152 -- if that endpoint
+    # is repointed or removed, revisit this field and the ParamType.STRING on
+    # its endpoint param at the same time.
     date: dt_date = Field(
         description="Holdings date", json_schema_extra={"examples": ["2024-01-15"]}
     )

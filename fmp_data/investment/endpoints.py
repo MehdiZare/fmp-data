@@ -184,6 +184,21 @@ MUTUAL_FUND_DATES: Endpoint = Endpoint(
     response_model=PortfolioDate,
 )
 
+# The `date` param below disagrees with ETF_HOLDINGS' on both counts: it is
+# declared mandatory rather than optional, and ParamType.STRING rather than
+# ParamType.DATE (STRING skips date validation and coercion, so a malformed
+# date reaches the API as-is instead of failing locally -- the #131/#134
+# drift class).
+#
+# Neither is corrected here, because neither can be *verified*. Probed on
+# 2026-08-08: this path returns 404 for every request, every symbol, with and
+# without `date`, as do `funds/holdings`, `mutual-fund/holdings` and
+# `fund-holdings`. Meanwhile `etf/holdings?symbol=VFIAX` -- a mutual fund --
+# returns 200 with 509 rows, suggesting FMP consolidated both product types
+# onto etf/holdings. What to do about that is #152; editing these
+# declarations to match an endpoint that never answers would be a guess
+# dressed up as a fix. Revisit this param and MutualFundHoldingsArgs.date
+# together once #152 settles where this endpoint should point.
 MUTUAL_FUND_HOLDINGS: Endpoint = Endpoint(
     name="mutual_fund_holdings",
     path="mutual-fund-holdings",

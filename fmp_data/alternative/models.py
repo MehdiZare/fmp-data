@@ -1,6 +1,7 @@
 # fmp_data/alternative/models.py
 
-from datetime import date, datetime
+from datetime import date as dt_date
+from datetime import datetime
 from typing import Any
 import warnings
 from zoneinfo import ZoneInfo
@@ -109,7 +110,7 @@ class HistoricalPrice(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    price_date: date = Field(
+    price_date: dt_date = Field(
         description="The date of the historical record", alias="date"
     )
     open: float = Field(description="Opening price")
@@ -166,7 +167,7 @@ class CryptoPair(BaseModel):
         None, alias="exchangeShortName", description="Short name of the exchange"
     )
     exchange: str | None = Field(None, description="Exchange identifier")
-    ico_date: date | None = Field(None, alias="icoDate", description="ICO date")
+    ico_date: dt_date | None = Field(None, alias="icoDate", description="ICO date")
     circulating_supply: float | None = Field(
         None, alias="circulatingSupply", description="Circulating supply"
     )

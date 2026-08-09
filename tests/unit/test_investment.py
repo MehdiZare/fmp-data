@@ -1,4 +1,5 @@
 from datetime import date
+from typing import get_args
 from unittest.mock import patch
 
 import pytest
@@ -31,18 +32,24 @@ class TestInvestmentArgSchemas:
     @pytest.mark.parametrize("model", [ETFHoldingsArgs, MutualFundHoldingsArgs])
     def test_holdings_date_field_name_and_type(self, model):
         """Field is named ``date``, annotated ``datetime.date``, parses ISO."""
-        # Deliberately not asserting requiredness: ETF_HOLDINGS declares this
-        # parameter optional while MUTUAL_FUND_HOLDINGS declares it mandatory,
-        # and both arg models declare it required. Pinning either side here
-        # would cement one half of an unresolved contradiction (see #143).
+        # Requiredness is asserted in test_arg_model_consistency.py, against
+        # each model's own endpoint -- the two legitimately differ now (#143):
+        # ETF_HOLDINGS declares `date` optional and ETFHoldingsArgs follows,
+        # MUTUAL_FUND_HOLDINGS declares it mandatory and its model follows.
+        # This test pins only the shape they still share, so it stays
+        # parametrized over both.
         assert "date" in model.model_fields
-        assert model.model_fields["date"].annotation is date
+        annotation = model.model_fields["date"].annotation
+        assert annotation is date or date in get_args(annotation)
 
         parsed = model(symbol="SPY", date="2024-01-15")
         assert parsed.date == date(2024, 1, 15)
 
         schema = model.model_json_schema()["properties"]["date"]
-        assert schema["format"] == "date"
+        # An optional field renders as anyOf[{date}, {null}] rather than a
+        # flat schema, so read the date branch out of whichever shape applies.
+        branches = schema.get("anyOf", [schema])
+        assert any(branch.get("format") == "date" for branch in branches)
         assert schema["examples"] == ["2024-01-15"]
 
 
