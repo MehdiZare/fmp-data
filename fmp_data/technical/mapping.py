@@ -1,4 +1,4 @@
-from fmp_data.lc.hints import PERIOD_LENGTH_HINT, SYMBOL_HINT
+from fmp_data.lc.hints import DATE_HINTS, PERIOD_LENGTH_HINT, SYMBOL_HINT
 from fmp_data.lc.models import (
     EndpointSemantics,
     ParameterHint,
@@ -28,33 +28,20 @@ TIMEFRAME_HINT = ParameterHint(
     context_clues=["interval", "frequency", "period", "timeframe"],
 )
 
-FROM_DATE_HINT = ParameterHint(
-    natural_names=["from date", "start date", "beginning"],
-    extraction_patterns=[
-        r"from\s+(\d{4}-\d{2}-\d{2})",
-        r"starting\s+(\d{4}-\d{2}-\d{2})",
-    ],
-    examples=["2024-01-01", "2023-12-01"],
-    context_clues=["from", "start", "beginning", "since"],
-)
-
-TO_DATE_HINT = ParameterHint(
-    natural_names=["to date", "end date", "until"],
-    extraction_patterns=[
-        r"to\s+(\d{4}-\d{2}-\d{2})",
-        r"until\s+(\d{4}-\d{2}-\d{2})",
-    ],
-    examples=["2024-12-31", "2023-12-31"],
-    context_clues=["to", "end", "until", "through"],
-)
-
 # Common parameter hints dictionary
+#
+# "from"/"to" fold onto the shared fmp_data.lc.hints.DATE_HINTS (#179) rather
+# than keeping local FROM_DATE_HINT/TO_DATE_HINT copies -- both described the
+# same start/end-of-range concept as DATE_HINTS["start_date"]/["end_date"]
+# with different natural_names, extraction_patterns and examples, which is
+# the #157 same-concept-different-name gap in #135's guard. See the
+# CHANGELOG for what this changes for the nine indicator tools.
 COMMON_PARAMS = {
     "symbol": SYMBOL_HINT,
     "periodLength": PERIOD_LENGTH_HINT,
     "timeframe": TIMEFRAME_HINT,
-    "from": FROM_DATE_HINT,
-    "to": TO_DATE_HINT,
+    "from": DATE_HINTS["start_date"],
+    "to": DATE_HINTS["end_date"],
 }
 
 # Define each technical indicator explicitly

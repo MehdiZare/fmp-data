@@ -454,22 +454,17 @@ def _same_concept_candidates() -> tuple[list[tuple[str, str, str, str]], int]:
     return candidates, compared
 
 
-#: Pre-existing, tracked divergence (#157's "Options" section, now #179):
-#: folding
+#: Pre-existing, tracked divergences go here (#157's "Options" section), each
+#: with the issue that scoped its fix. #179 folded
 #: technical/mapping.py's local FROM_DATE_HINT/TO_DATE_HINT onto the shared
-#: fmp_data.lc.hints.DATE_HINTS changes the embedding text and tool
-#: descriptions of nine indicator tools, which #157 scoped as its own
-#: before/after review rather than a guard-only change. Recorded here, not
-#: silently dropped: the test below asserts every entry still trips the raw
-#: detector, so both "the duplication got fixed" (entry now unused) and "the
-#: duplication rotted further out of view" (entry stops matching) fail loudly
-#: instead of the allowlist quietly widening.
-KNOWN_SAME_CONCEPT_DIVERGENCES = {
-    ("fmp_data.technical.mapping", "FROM_DATE_HINT"),
-    ("fmp_data.technical.mapping", "TO_DATE_HINT"),
-    ("fmp_data.technical.mapping", "COMMON_PARAMS[from]"),
-    ("fmp_data.technical.mapping", "COMMON_PARAMS[to]"),
-}
+#: fmp_data.lc.hints.DATE_HINTS, so that entry is gone -- see the CHANGELOG
+#: for what changed in the embedding text and tool descriptions of the nine
+#: affected indicator tools. Recorded here, not silently dropped: the test
+#: below asserts every remaining entry still trips the raw detector, so both
+#: "the duplication got fixed" (entry now unused) and "the duplication rotted
+#: further out of view" (entry stops matching) fail loudly instead of the
+#: allowlist quietly widening.
+KNOWN_SAME_CONCEPT_DIVERGENCES: set[tuple[str, str]] = set()
 
 
 def test_no_same_concept_hint_under_a_different_name() -> None:
