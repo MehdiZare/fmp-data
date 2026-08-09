@@ -563,12 +563,20 @@ class TestMCPCLIMain:
 
     @patch("fmp_data.mcp.cli.generate_manifest")
     def test_cli_generate_command(self, mock_generate):
-        """Test CLI generate command."""
+        """Test CLI generate command.
+
+        `generate` now exits with a code, so a successful run raises
+        SystemExit(0) rather than falling off the end of `main` (#160/#161).
+        """
         from fmp_data.mcp.cli import main
 
-        with patch("sys.argv", ["fmp-mcp", "generate", "output.py"]):
-            main()
+        mock_generate.return_value = True
 
+        with patch("sys.argv", ["fmp-mcp", "generate", "output.py"]):
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+
+        assert excinfo.value.code == 0
         mock_generate.assert_called_once_with("output.py", None, True)
 
     @patch("fmp_data.mcp.cli.validate_manifest")

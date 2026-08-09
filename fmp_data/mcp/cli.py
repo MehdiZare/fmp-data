@@ -351,7 +351,7 @@ def _startable_catalog(
     return selected
 
 
-def _validated_specs(tools: list[str]) -> list[str]:
+def _validated_specs(tools: list[str], failures: list[tuple[str, str]]) -> list[str]:
     """An explicit selection, resolved and minus entries naming nothing.
 
     Entries are judged by :func:`fmp_data.mcp.tool_loader.resolve_tool_spec`,
@@ -372,6 +372,11 @@ def _validated_specs(tools: list[str]) -> list[str]:
     and separately: the default path drops withdrawn specs entirely, so this
     is the only way one reaches a generated manifest, and it would otherwise
     be the one place a dead tool is written with nothing said about it.
+
+    ``failures`` is appended to in place with ``(entry, reason)`` for each
+    entry that resolves to nothing, so :func:`generate_manifest` can say
+    *which* asks failed and *why* -- unknown or ambiguous -- rather than
+    leaving a user to re-run ``fmp-mcp list`` and diff by hand.
     """
     from fmp_data.mcp import tool_loader
 
@@ -386,6 +391,7 @@ def _validated_specs(tools: list[str]) -> list[str]:
                 "Run `fmp-mcp list` to see available tools.",
                 file=sys.stderr,
             )
+            failures.append((tool, "unknown -- names nothing in the catalog"))
             continue
         if resolution.status is tool_loader.ResolutionStatus.AMBIGUOUS:
             # Reported as an ambiguity rather than as "unknown": the key is
@@ -398,6 +404,13 @@ def _validated_specs(tools: list[str]) -> list[str]:
                 f"resolved; skipping. Name the client explicitly, e.g. "
                 f"'{resolution.candidates[0]}'.",
                 file=sys.stderr,
+            )
+            failures.append(
+                (
+                    tool,
+                    "ambiguous -- claimed by "
+                    f"{', '.join(resolution.candidates)}; name the client",
+                )
             )
             continue
         if resolution.is_deprecated:
@@ -484,7 +497,7 @@ def generate_manifest(
     output_path: str | Path,
     tools: list[str] | None = None,
     include_defaults: bool = True,
-) -> None:
+) -> bool:
     """
     Generate a custom manifest file with selected tools.
 
@@ -505,6 +518,12 @@ def generate_manifest(
     thinned: a collision inside it is reported on stderr and in the header
     instead.
 
+    **A selection that resolves to nothing is a failure, not an empty file.**
+    It used to write ``TOOLS = []`` and exit 0, which is #161's defect one
+    command over: an artifact that cannot start a server, reported as success.
+    Nothing is written in that case and the return is ``False``, so the file
+    already at ``output_path`` -- which may well be the good one -- survives.
+
     Parameters
     ----------
     output_path
@@ -513,6 +532,13 @@ def generate_manifest(
         List of tool specs to include (if None, includes the whole catalog)
     include_defaults
         Whether to include default tools
+
+    Returns
+    -------
+    bool
+        ``True`` when a manifest was written. ``False`` when the selection was
+        empty, in which case no file is written and the reason for every
+        failed entry has been printed to stderr.
     """
     output_path = Path(output_path)
 
@@ -523,6 +549,7 @@ def generate_manifest(
     excluded: list[str] = []
     deprecated: list[str] = []
     withdrawn: list[str] = []
+    failures: list[tuple[str, str]] = []
 
     # Build tool list
     if tools is None:
@@ -530,10 +557,14 @@ def generate_manifest(
             available_specs, excluded, deprecated, withdrawn
         )
     else:
-        selected_tools = _validated_specs(tools)
+        selected_tools = _validated_specs(tools, failures)
 
     if include_defaults:
         _add_defaults(selected_tools, available_specs, excluded)
+
+    if not selected_tools:
+        _report_empty_selection(output_path, tools, failures)
+        return False
 
     # Anything left can only come from an explicitly requested pair.
     collisions = _name_collisions(selected_tools)
@@ -554,6 +585,48 @@ def generate_manifest(
     print(f"Manifest saved to: {output_path}")
     print(f"Total tools: {len(selected_tools)}")
     _report_exclusions(withdrawn, deprecated, excluded)
+    return True
+
+
+def _report_empty_selection(
+    output_path: Path,
+    tools: list[str] | None,
+    failures: list[tuple[str, str]],
+) -> None:
+    """Explain why nothing was selected, naming each failed ask.
+
+    The point is that a user should not have to re-run ``fmp-mcp list`` and
+    diff it against what they typed to find out what went wrong, so every
+    rejected entry is repeated here beside its reason.
+
+    The implicit branch (``tools is None``, i.e. an empty *catalog*) is treated
+    identically. It should be unreachable -- discovery would have to find no
+    semantics at all -- but "unreachable" is exactly the state that writes a
+    zero-tool manifest and calls it a success if nobody checks.
+    """
+    print(
+        f"Error: no tools selected, so {output_path} was not written.",
+        file=sys.stderr,
+    )
+    if failures:
+        print(
+            f"None of the {len(failures)} requested "
+            f"{'tool' if len(failures) == 1 else 'tools'} resolved:",
+            file=sys.stderr,
+        )
+        for entry, reason in failures:
+            print(f"  {entry}: {reason}", file=sys.stderr)
+    elif tools is None:
+        print(
+            "The tool catalog is empty, which should be impossible -- no "
+            "endpoint semantics were discovered.",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            "The selection resolved to no tools.",
+            file=sys.stderr,
+        )
 
 
 def _report_exclusions(
@@ -1058,7 +1131,8 @@ def main() -> None:
         print_tools_table(tools, args.format)
 
     elif args.command == "generate":
-        generate_manifest(args.output, args.tools, not args.no_defaults)
+        written = generate_manifest(args.output, args.tools, not args.no_defaults)
+        sys.exit(0 if written else 1)
 
     elif args.command == "validate":
         valid = validate_manifest(args.manifest)

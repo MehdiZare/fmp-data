@@ -138,8 +138,14 @@ is unambiguous under either name style. A bare key claimed by two clients is
 reported as an ambiguity naming both candidates, not as "unknown"; an entry
 naming nothing at all is still reported as unknown and skipped.
 
+> **Changed in this release.** If **nothing** in an explicit `--tools`
+> selection resolves, `generate` now writes no file and exits non-zero, naming
+> each failed entry and why. It previously wrote `TOOLS = []` and exited 0.
+> A single bad entry among good ones is still just a warning.
+
 With no `--tools` filter the generated manifest covers the catalog except for
-what would stop it starting a server: deprecated tool keys (removed in 3.0),
+what would stop it starting a *useful* server: tool keys FMP no longer serves
+(they return no data on every call), deprecated tool keys (removed in 3.0),
 and one side of each tool-name collision. Under the default
 `FMP_MCP_TOOL_NAME_STYLE=key` a tool is advertised under its bare key, so
 `alternative.crypto_quotes` and `batch.crypto_quotes` both want to be called

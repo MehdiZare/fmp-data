@@ -211,17 +211,26 @@ class TestGenerateAgreesWithTheResolver:
         key_to_spec = tool_loader.build_key_to_spec(list_available_tools())
 
         expected: list[str] = []
+        expected_failures: list[str] = []
         for entry in entries:
             resolution = tool_loader.resolve_tool_spec(entry, key_to_spec)
-            if resolution.spec is not None and resolution.spec not in expected:
+            if resolution.spec is None:
+                expected_failures.append(entry)
+            elif resolution.spec not in expected:
                 expected.append(resolution.spec)
 
-        actual = _validated_specs(entries)
+        failures: list[tuple[str, str]] = []
+        actual = _validated_specs(entries, failures)
         capsys.readouterr()
 
         assert expected, "floor: the catalog must not be empty"
         assert any("." not in entry for entry in entries), "floor: no bare keys probed"
         assert actual == expected
+        # The unresolvable probes, and only those, are reported as failures --
+        # the ambiguous bare keys among them included.
+        assert "company.profil" in expected_failures, "floor: no typo probed"
+        assert "crypto_quotes" in expected_failures, "floor: no ambiguous key probed"
+        assert [entry for entry, _ in failures] == expected_failures
 
     def test_a_bare_key_reaches_the_manifest_as_its_full_spec(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -324,6 +333,196 @@ class TestLoaderChecksNamesUnderBothStyles:
             f"{case!r} under {style}: clashes={duplicates or collisions}, "
             f"registration {'raised' if refused else 'succeeded'}"
         )
+
+
+def _semantics_flagged_specs() -> set[str]:
+    """Every spec whose ``EndpointSemantics`` carries ``deprecated=True``.
+
+    Derived by walking the mapping tables rather than hard-coded, so the guard
+    below measures reality instead of a list someone kept up to date.
+    """
+    import importlib
+
+    from fmp_data.mcp.discovery import _get_client_modules
+
+    flagged: set[str] = set()
+    for client in _get_client_modules():
+        mapping = importlib.import_module(f"fmp_data.{client}.mapping")
+        table = getattr(mapping, f"{client.upper()}_ENDPOINTS_SEMANTICS", None) or {}
+        for key, semantics in table.items():
+            if getattr(semantics, "deprecated", False):
+                flagged.add(f"{client}.{key}")
+    return flagged
+
+
+class TestTheTwoRetirementMechanismsStayInStep:
+    """#164: one fact about a tool, recorded in two places that must agree."""
+
+    def test_withdrawn_tools_match_the_semantics_flag(self) -> None:
+        """``WITHDRAWN_TOOLS`` and ``EndpointSemantics.deprecated`` are one set.
+
+        They record the same fact -- FMP no longer serves this endpoint -- for
+        two different surfaces. The flag is what hides a dead endpoint from the
+        LangChain vector store; the table is what hides it from MCP's
+        ``generate`` and reports it from ``validate``. A spec in one and not
+        the other means one surface still advertises a tool that can only
+        answer empty, which is exactly what happened: three ``intelligence``
+        entries were flagged in #137 and never tabled, so every generated
+        manifest shipped them (#164).
+
+        ``DEPRECATED_TOOLS`` deliberately does **not** participate. It records
+        a different fact -- a second name for a method that still works and
+        returns live data -- and its warning promises the replacement is a
+        drop-in. Folding it in here would make that promise false, which is
+        what #137's changelog note warns against.
+        """
+        from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS, WITHDRAWN_TOOLS
+
+        flagged = _semantics_flagged_specs()
+
+        assert len(flagged) >= 20, (
+            f"floor: only {len(flagged)} flagged specs found -- a broken walk "
+            "would make this comparison pass against an empty set"
+        )
+        assert WITHDRAWN_TOOLS, "floor: an empty table would pass vacuously"
+
+        assert set(WITHDRAWN_TOOLS) == flagged, {
+            "flagged but not withdrawn": sorted(flagged - set(WITHDRAWN_TOOLS)),
+            "withdrawn but not flagged": sorted(set(WITHDRAWN_TOOLS) - flagged),
+        }
+        # The third mechanism stays out of it, in both directions.
+        assert not set(DEPRECATED_TOOLS) & flagged
+        assert not set(DEPRECATED_TOOLS) & set(WITHDRAWN_TOOLS)
+
+    def test_generate_ships_no_tool_that_can_only_answer_empty(self) -> None:
+        """The user-visible consequence, checked end to end.
+
+        A generated manifest handed to an LLM must not advertise a tool that
+        returns `[]` on every call -- the empty *success* that is
+        indistinguishable from "no data matched", which is #137's original
+        complaint.
+        """
+        import tempfile
+
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "generated.py"
+            generate_manifest(path)
+            entries = load_manifest_tools(path)
+
+        flagged = _semantics_flagged_specs()
+        assert flagged, "floor: nothing is flagged"
+        assert len(entries) > 100, "floor: a near-empty manifest proves nothing"
+        assert sorted(set(entries) & flagged) == []
+
+    def test_the_three_orphans_are_the_ones_that_were_missing(self) -> None:
+        """Pin the specific regression, so the sweep above cannot be gamed.
+
+        Deleting the three entries would make the set comparison fail, but a
+        future refactor could satisfy it by deleting the *flag* instead. These
+        three must be withdrawn, by name.
+        """
+        from fmp_data.mcp.tools_manifest import WITHDRAWN_TOOLS
+
+        for spec in (
+            "intelligence.earnings_confirmed",
+            "intelligence.earnings_surprises",
+            "intelligence.stock_news_sentiments",
+        ):
+            assert spec in WITHDRAWN_TOOLS, f"{spec} 404s and must be withdrawn"
+            assert WITHDRAWN_TOOLS[spec] is None, "FMP publishes no equivalent"
+
+    def test_a_withdrawn_orphan_still_resolves_for_an_explicit_manifest(self) -> None:
+        """Resolution is untouched: this is not a removal (#164)."""
+        entries = ["intelligence.earnings_confirmed"]
+
+        assert _registration_raises(entries) is False
+
+
+class TestGenerateRefusesToWriteAUselessManifest:
+    """An empty artifact reported as success is #161's defect, one command over."""
+
+    def test_an_entirely_unresolvable_selection_returns_false(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        path = tmp_path / "empty.py"
+
+        written = generate_manifest(
+            path, tools=["company.profil", "crypto_quotes"], include_defaults=False
+        )
+
+        assert written is False
+        assert not path.exists(), "a file that cannot start a server was written"
+
+    def test_the_error_names_every_failed_ask_and_its_reason(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """So the user can act without re-running `fmp-mcp list`."""
+        generate_manifest(
+            tmp_path / "empty.py",
+            tools=["company.profil", "crypto_quotes"],
+            include_defaults=False,
+        )
+
+        err = capsys.readouterr().err
+        assert "company.profil" in err
+        assert "unknown" in err
+        assert "crypto_quotes" in err
+        assert "ambiguous" in err
+        assert "alternative.crypto_quotes" in err
+
+    def test_an_existing_manifest_is_not_clobbered(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The file already there may well be the good one."""
+        path = tmp_path / "existing.py"
+        path.write_text('TOOLS = ["company.profile"]\n')
+
+        assert generate_manifest(path, tools=["nope"], include_defaults=False) is False
+        capsys.readouterr()
+
+        assert path.read_text() == 'TOOLS = ["company.profile"]\n'
+
+    def test_a_partly_resolvable_selection_still_succeeds(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Only *nothing* resolving is fatal; one bad entry among good ones is not."""
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        path = tmp_path / "partial.py"
+        written = generate_manifest(
+            path, tools=["company.profil", "profile"], include_defaults=False
+        )
+        capsys.readouterr()
+
+        assert written is True
+        assert load_manifest_tools(path) == ["company.profile"]
+
+    def test_the_catalog_default_path_still_succeeds(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Floor: the failure branch must not swallow the normal case."""
+        assert generate_manifest(tmp_path / "all.py") is True
+        capsys.readouterr()
+
+    def test_the_cli_exit_code_follows_the_verdict(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The part a script reads."""
+        from fmp_data.mcp.cli import main
+
+        argv = ["fmp-mcp", "generate", str(tmp_path / "x.py"), "--no-defaults"]
+        with patch("sys.argv", [*argv, "--tools", "company.profil"]):
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+        assert excinfo.value.code == 1
+
+        with patch("sys.argv", [*argv, "--tools", "profile"]):
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+        assert excinfo.value.code == 0
+        capsys.readouterr()
 
 
 class TestListOutputIsCopyPasteable:

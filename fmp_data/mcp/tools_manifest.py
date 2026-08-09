@@ -26,10 +26,14 @@ FMP_MCP_MANIFEST environment variable to point to a custom manifest file.
 #: that still works: resolve one and you get live data, plus a warning telling
 #: you to rename. That flag is about an endpoint that no longer returns
 #: anything, whatever name you reach it by -- the fix there is to stop
-#: advertising it to an LLM, not to rename it. The two are independent: a key
-#: here need not be flagged there, and every endpoint flagged there
-#: (``intelligence.stock_news_sentiments``, ``earnings_confirmed``,
-#: ``earnings_surprises``) has exactly one name and so does not appear here.
+#: advertising it to an LLM, not to rename it. The two stay **disjoint**: no
+#: spec is both an alias for a live method and a dead endpoint, and a guard
+#: asserts it.
+#:
+#: :data:`WITHDRAWN_TOOLS` is the table that *does* correspond to that flag,
+#: one-for-one. Note the three-way split, because it is easy to collapse: an
+#: alias for a live method belongs here; a dead endpoint belongs there and
+#: carries the flag; nothing belongs in both.
 DEPRECATED_TOOLS: dict[str, str] = {
     "company.executives": "company.key_executives",
     "company.historical_price": "company.historical_prices",
@@ -52,6 +56,16 @@ DEPRECATED_TOOLS: dict[str, str] = {
 #: resolve, so an explicit manifest keeps working, but they are excluded from
 #: :data:`DEFAULT_TOOLS`: a default server should not advertise a tool that
 #: can only ever return empty.
+#:
+#: **This table must list every endpoint carrying**
+#: ``EndpointSemantics.deprecated=True`` **(#164).** The flag is what hides a
+#: dead endpoint from the LangChain vector store; this table is what hides it
+#: from MCP. They describe the same fact -- "FMP does not serve this any more"
+#: -- so a spec in one and not the other means one surface still advertises a
+#: tool that can only answer empty. It did: three ``intelligence`` entries were
+#: flagged but untabled, and ``fmp-mcp generate`` shipped all three.
+#: ``test_withdrawn_tools_match_the_semantics_flag`` asserts the two agree
+#: exactly, so the next withdrawal cannot fix one surface and forget the other.
 WITHDRAWN_TOOLS: dict[str, str | None] = {
     "alternative.crypto_quotes": "batch.crypto_quotes",
     "alternative.forex_quotes": "batch.forex_quotes",
@@ -63,7 +77,16 @@ WITHDRAWN_TOOLS: dict[str, str | None] = {
     "company.upgrades_downgrades_consensus": "intelligence.grades_consensus",
     "company.historical_share_float": "company.share_float",
     "fundamental.historical_rating": "intelligence.ratings_historical",
+    # Probed live: earning-calendar-confirmed, earnings-surprises and
+    # stock-news-sentiments-rss-feed all 404. They carried
+    # `EndpointSemantics.deprecated=True` from #137 -- which hid them from the
+    # LangChain vector store -- but were absent here, so `fmp-mcp generate`
+    # kept shipping three tools that answer empty on every call (#164). FMP
+    # publishes nothing equivalent for any of them.
+    "intelligence.earnings_confirmed": None,
+    "intelligence.earnings_surprises": None,
     "intelligence.senate_trading_rss": "intelligence.senate_latest",
+    "intelligence.stock_news_sentiments": None,
     "investment.etf_holding_dates": "investment.mutual_fund_dates",
     "investment.mutual_fund_holdings": "investment.etf_holdings",
     "investment.etf_holder": "investment.fund_disclosure_holders_latest",
@@ -149,11 +172,13 @@ DEFAULT_TOOLS: list[str] = [
     "institutional.institutional_holdings",
     "institutional.transaction_types",
     # Intelligence (38 tools) - news, events, grades/ratings (#116)
-    # Dead/deprecated FMP endpoints intentionally omitted from defaults:
-    # earnings_confirmed, earnings_surprises, stock_news_sentiments,
-    # historical_social_sentiment, trending_social_sentiment,
-    # social_sentiment_changes (still importable on the client), and
-    # senate_trading_rss -- replaced by senate_latest (see DEPRECATED_TOOLS).
+    # Dead FMP endpoints intentionally omitted from defaults, all in
+    # WITHDRAWN_TOOLS: earnings_confirmed, earnings_surprises and
+    # stock_news_sentiments 404 with no successor at all, and
+    # senate_trading_rss is superseded by senate_latest.
+    # historical_social_sentiment, trending_social_sentiment and
+    # social_sentiment_changes are still importable on the client but have no
+    # semantics entry, so they are not MCP tools and cannot be listed here.
     "intelligence.crowdfunding_by_cik",
     "intelligence.crowdfunding_rss",
     "intelligence.crowdfunding_search",
