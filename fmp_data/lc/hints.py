@@ -10,13 +10,16 @@ Where two module-local copies genuinely disagreed, the union was taken; where
 the union would have produced *wrong* extraction rather than merely a longer
 list, the resolution is recorded in a comment on the hint itself.
 
-Note on reach: ``examples`` and ``context_clues`` are rendered into each
-generated tool's parameter description (``ToolFactory.generate_description``),
-and ``natural_names``/``context_clues``/``examples`` are rendered into the
-embedding text an endpoint is indexed under (``EndpointRegistry.
-get_embedding_text``). ``extraction_patterns`` is documentation only -- nothing
-compiles or applies it today -- so pattern edits below change what a reader and
-a reviewer see, not what a query resolves to.
+Note on reach: ``natural_names``/``context_clues``/``examples`` are rendered
+into the embedding text an endpoint is indexed under
+(``EndpointRegistry.get_embedding_text``). On the tool-schema path, when the
+endpoint declares ``valid_values``, ``ToolFactory.create_parameter_fields``
+derives the field's advertised examples (and the description line that lists
+them) from those values instead of from ``hint.examples`` (#156); unconstrained
+parameters still fall back to the hint. ``context_clues`` still reach the tool
+description either way. ``extraction_patterns`` is documentation only --
+nothing compiles or applies it today -- so pattern edits below change what a
+reader and a reviewer see, not what a query resolves to.
 """
 
 from fmp_data.lc.models import ParameterHint
@@ -74,12 +77,14 @@ EXCHANGE_HINT = ParameterHint(
 #
 # CONFLICT (recorded): the catalog enforces THREE different ``valid_values``
 # sets under this one parameter name, so this concept is three hints, not one.
-# ``examples`` are rendered verbatim into the tool description by
-# ``ToolFactory.generate_description``, while ``EndpointParam.validate_value``
-# rejects anything outside ``valid_values`` -- so a union would advertise
-# values the endpoint refuses, which is the same failure QUARTER_HINT avoids
-# below. ``test_hint_examples_are_within_valid_values`` pins every hint's
-# examples against the valid_values of every parameter it is bound to.
+# Tool schemas now derive examples and a ``Literal`` from the endpoint's
+# ``valid_values`` (#156), so a union would no longer mis-shape the schema
+# itself -- but ``hint.examples`` still feed embedding text
+# (``EndpointRegistry.get_embedding_text``), and a union would still index
+# values some bound endpoints refuse. That is the same failure QUARTER_HINT
+# avoids below. ``test_hint_examples_are_within_valid_values`` (#150) pins
+# every hand-written hint's examples against the valid_values of every
+# parameter it is bound to.
 #
 #   PERIOD_HINT              annual | quarter                (company, 3)
 #   PERIOD_WITH_FISCAL_HINT  annual | quarter | FY | Q1..Q4  (fundamental, 7)

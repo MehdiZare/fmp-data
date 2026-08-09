@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import date, datetime
+from enum import Enum
 import json
 from logging import Logger
 from pathlib import Path
-from typing import Any, ClassVar, Protocol, cast
+from typing import Any, ClassVar, Literal, Protocol, cast
 
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
@@ -45,31 +46,78 @@ class ToolFactory:
     }
 
     @staticmethod
-    def get_field_type(param_type: ParamType, optional: bool) -> Any:
+    def get_field_type(
+        param_type: ParamType,
+        optional: bool,
+        valid_values: list[Any] | None = None,
+    ) -> Any:
         """
         Map ParamType to Python type, including optional wrapper.
 
         Args:
             param_type: The parameter type from the ParamType enum
             optional: Whether the parameter is optional
+            valid_values: The endpoint's declared allowed values, if any.
+                When present, the field is narrowed to a ``Literal`` of those
+                values (#156) instead of the bare ``param_type`` mapping, so
+                the constraint the client enforces
+                (``EndpointParam.validate_value``) reaches the LLM through
+                the schema rather than being discovered on a rejected call.
 
         Returns:
             The corresponding Python type
         """
-
-        base_type = ToolFactory.PARAM_TYPE_MAPPING.get(param_type, str)
+        if valid_values:
+            # Values arrive already unwrapped: EndpointParam.__post_init__
+            # replaces Enum members with their wire value. The isinstance
+            # branch mirrors EndpointRegistry._get_type_pattern's defensive
+            # handling for callers that bypass the dataclass.
+            literal_values = tuple(
+                value.value if isinstance(value, Enum) else value
+                for value in valid_values
+            )
+            base_type: Any = Literal[literal_values]
+        else:
+            base_type = ToolFactory.PARAM_TYPE_MAPPING.get(param_type, str)
         return base_type | None if optional else base_type
 
     @staticmethod
-    def generate_description(param: Any, hint: Any | None) -> str:
-        """Generate the description string for a parameter."""
+    def get_examples_for_param(param: Any, hint: Any | None) -> list[str]:
+        """Derive the examples to advertise for a parameter.
+
+        ``valid_values`` is the client-enforced constraint
+        (``EndpointParam.validate_value``); a hint's hand-written ``examples``
+        can drift from it -- which is exactly the defect #156 fixes. When the
+        endpoint declares ``valid_values``, they are the sole source of
+        advertised schema examples, so the schema-examples guard in
+        ``tests/unit/lc/test_tool_schema.py`` is true by construction on this
+        parameter. ``test_hint_examples_are_within_valid_values`` (#150) is a
+        separate pipeline: it still checks the hand-written hint content used
+        by embedding text. Falls back to the hint's examples only when the
+        endpoint places no constraint on the value.
+        """
+        valid_values = getattr(param, "valid_values", None)
+        if valid_values:
+            return [
+                str(value.value) if isinstance(value, Enum) else str(value)
+                for value in valid_values
+            ]
         if hint:
-            return (
-                f"{param.description!s}\n"
-                f"Examples: {', '.join(str(ex) for ex in hint.examples)}\n"
-                f"Context clues: {', '.join(str(c) for c in hint.context_clues)}"
-            )
-        return str(param.description)
+            return [str(ex) for ex in hint.examples]
+        return []
+
+    @staticmethod
+    def generate_description(
+        param: Any, hint: Any | None, examples: Sequence[str] = ()
+    ) -> str:
+        """Generate the description string for a parameter."""
+        lines = [str(param.description)]
+        if examples:
+            lines.append(f"Examples: {', '.join(examples)}")
+        if hint:
+            clues = ", ".join(str(c) for c in hint.context_clues)
+            lines.append(f"Context clues: {clues}")
+        return "\n".join(lines)
 
     @staticmethod
     def create_parameter_fields(
@@ -112,18 +160,27 @@ class ToolFactory:
 
         for param in mandatory_params:
             hint = parameter_hints.get(param.name)
-            description = ToolFactory.generate_description(param, hint)
-            field_type = ToolFactory.get_field_type(param.param_type, optional=False)
-            param_fields[param.name] = (field_type, Field(description=description))
+            examples = ToolFactory.get_examples_for_param(param, hint)
+            description = ToolFactory.generate_description(param, hint, examples)
+            field_type = ToolFactory.get_field_type(
+                param.param_type, optional=False, valid_values=param.valid_values
+            )
+            field_kwargs: dict[str, Any] = {"description": description}
+            if examples:
+                field_kwargs["examples"] = examples
+            param_fields[param.name] = (field_type, Field(**field_kwargs))
 
         for param in optional_params:
             hint = parameter_hints.get(param.name)
-            description = ToolFactory.generate_description(param, hint)
-            field_type = ToolFactory.get_field_type(param.param_type, optional=True)
-            param_fields[param.name] = (
-                field_type,
-                Field(default=param.default, description=description),
+            examples = ToolFactory.get_examples_for_param(param, hint)
+            description = ToolFactory.generate_description(param, hint, examples)
+            field_type = ToolFactory.get_field_type(
+                param.param_type, optional=True, valid_values=param.valid_values
             )
+            field_kwargs = {"default": param.default, "description": description}
+            if examples:
+                field_kwargs["examples"] = examples
+            param_fields[param.name] = (field_type, Field(**field_kwargs))
 
         return param_fields
 
