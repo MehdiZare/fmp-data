@@ -52,7 +52,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 | `executive_compensation` | `/stable/governance-executive-compensation` | Get detailed executive compensation data including salary, bonuses, stock awards, and total compensation. Provides insights into how company executives are compensated. |
 | `intraday_price` | `/stable/historical-chart/{interval}` | Get intraday price data |
 | `historical_market_cap` | `/stable/historical-market-capitalization` | Get historical market capitalization data |
-| `historical_price` | `/stable/historical-price-eod` | Get historical daily price data |
+| `historical_price` | `/stable/historical-price-eod/full` | Get historical daily price data |
 | `historical_price_dividend_adjusted` | `/stable/historical-price-eod/dividend-adjusted` | Get historical daily price data adjusted for dividends |
 | `historical_price_light` | `/stable/historical-price-eod/light` | Get lightweight historical daily price data (OHLC only) |
 | `historical_price_non_split_adjusted` | `/stable/historical-price-eod/non-split-adjusted` | Get historical daily price data without split adjustments |
@@ -120,7 +120,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 | `cusip_search` | `/stable/search-cusip` | Search for companies by their CUSIP (Committee on Uniform Securities Identification Procedures) number. Helps identify securities using their unique identifier. |
 | `search_exchange_variants` | `/stable/search-exchange-variants` | Search for exchange trading variants of a company |
 | `isin_search` | `/stable/search-isin` | Search for companies by their ISIN (International Securities Identification Number). Used to find securities using their globally unique identifier. |
-| `search_name` | `/stable/search_name` | Search for companies by name, ticker, or other identifiers. Returns matching companies with their basic information including symbol, name, and exchange. Useful for finding companies based on keywords or partial matches. |
+| `search-name` | `/stable/search-name` | Search for companies by name, ticker, or other identifiers. Returns matching companies with their basic information including symbol, name, and exchange. Useful for finding companies based on keywords or partial matches. |
 | `search_symbol` | `/stable/search-symbol` | Search for security symbols across all asset types |
 | `sector_pe_snapshot` | `/stable/sector-pe-snapshot` | Get sector PE snapshot data |
 | `sector_performance` | `/stable/sector-performance-snapshot` | Get sector performance data |
@@ -167,7 +167,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 
 ## Market Intelligence
 
-### 47 endpoints
+### 46 endpoints
 
 | Endpoint | Path | Description |
 |----------|------|-------------|
@@ -196,9 +196,9 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 | `house_disclosure` | `/stable/house-trades` | Get House trading data by symbol |
 | `house_trades_by_name` | `/stable/house-trades-by-name` | Get House trading data by name |
 | `ipo_calendar` | `/stable/ipos-calendar` | Get IPO calendar |
-| `crypto_symbol_news` | `/stable/news/crypto` | Search crypto news articles by trading pair |
+| `crypto_news_symbol` | `/stable/news/crypto` | Search crypto news articles by trading pair |
 | `crypto_news` | `/stable/news/crypto-latest` | Get a list of the latest crypto news articles |
-| `forex_symbol_news` | `/stable/news/forex` | Search forex news articles by currency pair |
+| `forex_news_symbol` | `/stable/news/forex` | Search forex news articles by currency pair |
 | `forex_news` | `/stable/news/forex-latest` | Get a list of the latest forex news articles |
 | `general_news` | `/stable/news/general-latest` | Get a list of the latest general news articles |
 | `press_releases_by_symbol` | `/stable/news/press-releases` | Get a list of the latest press releases for a specific company |
@@ -282,9 +282,9 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 | `forex_intraday` | `/stable/historical-chart/{interval}` | Retrieve intraday exchange rate data for forex pairs at specified intervals, ideal for day trading and short-term analysis |
 | `commodity_intraday` | `/stable/historical-chart/{interval}/{symbol}` | Access detailed intraday price data for commodities at specified time intervals. Provides high-frequency price data including open, high, low, close prices and volume |
 | `crypto_intraday` | `/stable/historical-chart/{interval}/{symbol}` | Get detailed intraday price data for a cryptocurrency at specified time intervals, perfect for short-term trading analysis and high-frequency data needs |
-| `commodity_historical` | `/stable/historical-price-eod` | Retrieve comprehensive historical price data for a commodity over a specified date range, including daily OHLCV (Open, High, Low, Close, Volume) data, adjusted prices, and price change metrics |
-| `crypto_historical` | `/stable/historical-price-eod` | Retrieve historical price data for a cryptocurrency over a specified date range, including daily OHLCV (Open, High, Low, Close, Volume) data and adjusted prices |
-| `forex_historical` | `/stable/historical-price-eod` | Access historical exchange rate data for forex pairs over a specified date range, including daily rates and price changes |
+| `commodity_historical` | `/stable/historical-price-eod/full` | Retrieve comprehensive historical price data for a commodity over a specified date range, including daily OHLCV (Open, High, Low, Close, Volume) data, adjusted prices, and price change metrics |
+| `crypto_historical` | `/stable/historical-price-eod/full` | Retrieve historical price data for a cryptocurrency over a specified date range, including daily OHLCV (Open, High, Low, Close, Volume) data and adjusted prices |
+| `forex_historical` | `/stable/historical-price-eod/full` | Access historical exchange rate data for forex pairs over a specified date range, including daily rates and price changes |
 | `commodity_quote` | `/stable/quote` | Get detailed real-time price quote for a specific commodity including current price, daily change, trading volume and other key market metrics |
 | `crypto_quote` | `/stable/quote` | Get detailed real-time price quote and trading information for a specific cryptocurrency including price, volume, change percentage, and market metrics |
 | `forex_quote` | `/stable/quote` | Get detailed real-time quote for a specific forex currency pair including current rate, daily change, and trading metrics |

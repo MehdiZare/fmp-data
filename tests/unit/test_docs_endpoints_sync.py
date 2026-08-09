@@ -36,9 +36,9 @@ _LABEL_TO_CLIENT = {
 }
 
 
-def _endpoint_counts() -> dict[str, int]:
-    """client name -> number of ``Endpoint`` objects it declares."""
-    counts: dict[str, int] = {}
+def _endpoint_paths() -> dict[str, dict[str, str]]:
+    """client name -> {endpoint name: path} for every ``Endpoint`` it declares."""
+    declared: dict[str, dict[str, str]] = {}
     for module_info in pkgutil.walk_packages(fmp_data.__path__, prefix="fmp_data."):
         if not module_info.name.endswith(".endpoints"):
             continue
@@ -51,10 +51,51 @@ def _endpoint_counts() -> dict[str, int]:
             SKIPPED_MODULES[module_info.name] = f"{type(exc).__name__}: {exc}"
             continue
         client = module_info.name.split(".")[1]
-        counts[client] = sum(
-            1 for value in vars(module).values() if isinstance(value, Endpoint)
-        )
-    return counts
+        declared[client] = {
+            value.name: value.path
+            for value in vars(module).values()
+            if isinstance(value, Endpoint)
+        }
+    return declared
+
+
+def _endpoint_counts() -> dict[str, int]:
+    """client name -> number of ``Endpoint`` objects it declares."""
+    return {client: len(paths) for client, paths in _endpoint_paths().items()}
+
+
+def _skipped_suffix() -> str:
+    """Name what fell out of the walk, so a failure is not read as a full scan."""
+    if not SKIPPED_MODULES:
+        return ""
+    return "\n\nModules that did not import (excluded from the counts above):\n  " + (
+        "\n  ".join(f"{name}: {why}" for name, why in sorted(SKIPPED_MODULES.items()))
+    )
+
+
+def _doc_rows(section: str) -> list[tuple[str, str]]:
+    """``(endpoint name, path)`` for every table row in a section.
+
+    The first column is the endpoint's ``name`` and the second its ``path``,
+    both in backticks. Rows inside fenced code blocks are ignored, as is the
+    ``|---|---|`` alignment row and the header.
+    """
+    rows: list[tuple[str, str]] = []
+    fenced = False
+    for line in section.splitlines():
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+            continue
+        if fenced or not line.startswith("|"):
+            continue
+        cells = line.split("|")
+        if len(cells) < 4:
+            continue
+        name = re.match(r"\s*`([^`]+)`", cells[1])
+        path = re.match(r"\s*`([^`]+)`", cells[2])
+        if name and path:
+            rows.append((name.group(1), path.group(1)))
+    return rows
 
 
 def test_endpoint_doc_counts_match_the_code() -> None:
@@ -77,6 +118,7 @@ def test_endpoint_doc_counts_match_the_code() -> None:
     assert not mismatches, (
         "docs/api/endpoints.md is out of step with the code:\n  "
         + "\n  ".join(mismatches)
+        + _skipped_suffix()
     )
     assert checked >= 10, (
         f"only {checked} client counts found in the TOC; the parse is not "
@@ -84,37 +126,87 @@ def test_endpoint_doc_counts_match_the_code() -> None:
     )
 
 
-def test_endpoint_doc_section_tables_match_their_headings() -> None:
-    """A section's table must have as many rows as its TOC entry claims."""
-    text = ENDPOINTS_DOC.read_text()
+def test_endpoint_doc_section_headings_match_the_code() -> None:
+    """Each section's own ``### N endpoints`` heading must equal the real count.
+
+    The TOC and the heading are two independent copies of the same number.
+    Guarding only the TOC is what let ``## Market Intelligence`` keep claiming
+    47 in its heading after the TOC was corrected to 46.
+    """
     counts = _endpoint_counts()
 
     mismatches: list[str] = []
     checked = 0
-    sections = re.split(r"^## ", text, flags=re.M)[1:]
-    for section in sections:
+    for section in re.split(r"^## ", ENDPOINTS_DOC.read_text(), flags=re.M)[1:]:
         label = section.splitlines()[0].strip()
         client = _LABEL_TO_CLIENT.get(label.lower(), label.lower())
         if client not in counts:
             continue
-        rows = [
-            line
-            for line in section.splitlines()
-            if line.startswith("|") and not re.match(r"^\|[\s:|-]+\|$", line)
-        ]
-        # Minus the header row.
-        body_rows = max(0, len(rows) - 1)
+        heading = re.search(r"^### (\d+) endpoints?$", section, flags=re.M)
+        if heading is None:
+            mismatches.append(f"{label}: no `### N endpoints` heading")
+            continue
         checked += 1
-        if body_rows != counts[client]:
+        if int(heading.group(1)) != counts[client]:
             mismatches.append(
-                f"{label}: table has {body_rows} rows, code has {counts[client]}"
+                f"{label}: heading says {heading.group(1)}, code has {counts[client]}"
             )
 
     assert not mismatches, (
-        "docs/api/endpoints.md tables are out of step with the code:\n  "
+        "docs/api/endpoints.md section headings are out of step with the code:\n  "
         + "\n  ".join(mismatches)
+        + _skipped_suffix()
     )
-    assert checked >= 10, f"only {checked} sections parsed; the guard is not reading"
+    assert checked >= 10, f"only {checked} section headings parsed; the guard is blind"
+
+
+def test_endpoint_doc_tables_match_the_code_row_for_row() -> None:
+    """Row-set equality, not just counts, because a rename miscounts as zero.
+
+    ``crypto_symbol_news`` / ``forex_symbol_news`` and ``search_name`` were all
+    documented under names the code does not use, and the counts matched
+    exactly, so nothing noticed. Paths are compared too: four rows documented
+    the bare ``/stable/historical-price-eod`` that ``CLAUDE.md`` forbids, while
+    the code correctly requests the ``/full`` variant.
+
+    The code is the authority. ``Endpoint.name`` is not cosmetic -- it is the
+    cache-key prefix and the cache-TTL lookup key -- so a disagreement is fixed
+    in the document, not by renaming the endpoint.
+    """
+    declared = _endpoint_paths()
+
+    mismatches: list[str] = []
+    checked = 0
+    for section in re.split(r"^## ", ENDPOINTS_DOC.read_text(), flags=re.M)[1:]:
+        label = section.splitlines()[0].strip()
+        client = _LABEL_TO_CLIENT.get(label.lower(), label.lower())
+        if client not in declared:
+            continue
+        paths = declared[client]
+        rows = dict(_doc_rows(section))
+        checked += len(rows)
+
+        for name in sorted(rows.keys() - paths.keys()):
+            mismatches.append(f"{label}: doc row `{name}` names no endpoint in code")
+        for name in sorted(paths.keys() - rows.keys()):
+            mismatches.append(f"{label}: endpoint `{name}` has no row in the doc")
+        for name in sorted(rows.keys() & paths.keys()):
+            documented = rows[name].removeprefix("/stable/").strip("/")
+            if documented != paths[name].strip("/"):
+                mismatches.append(
+                    f"{label}: `{name}` path is `{rows[name]}` in the doc "
+                    f"but `{paths[name]}` in code"
+                )
+
+    assert not mismatches, (
+        "docs/api/endpoints.md rows are out of step with the code:\n  "
+        + "\n  ".join(mismatches)
+        + _skipped_suffix()
+    )
+    assert checked >= 250, (
+        f"only {checked} table rows parsed, expected >= 250; the row parse is "
+        "not matching, so this guard would pass vacuously"
+    )
 
 
 def test_configurations_doc_paths_exist() -> None:
