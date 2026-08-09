@@ -363,6 +363,15 @@ def test_binding_descriptions_name_the_cause() -> None:
     assert "report_date" in mismatch
     assert "client.request" in mismatch
 
+    # The success branch is reachable too -- ``describe`` is public, and a
+    # caller logging every binding (not only the failures) must not get a
+    # fallback sentence for a binding that succeeded.
+    bound = bind_client_method(
+        client, "institutional", "get_form_13f", ["cik", "date"]
+    ).describe("institutional", "get_form_13f")
+    assert bound == "dispatching through institutional.get_form_13f"
+    assert "client.request" not in bound
+
 
 def test_dispatch_resolver_refuses_an_unfillable_shape() -> None:
     def get_form_13f(cik: str, report_date: str) -> None: ...  # pragma: no cover

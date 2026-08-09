@@ -765,22 +765,68 @@ class TestInstitutionalQuarterWireShape:
             )
         delegate.assert_called_once_with("AAPL", 2023, 3, page=2, limit=25)
 
+    @pytest.mark.parametrize(
+        ("method", "args", "path", "extra"),
+        [
+            (
+                "get_institutional_ownership_extract_by_quarter",
+                ("0001067983", 2023, 3),
+                "institutional-ownership/extract",
+                {"cik": "0001067983"},
+            ),
+            (
+                "get_institutional_ownership_analytics_by_quarter",
+                ("AAPL", 2023, 3),
+                "institutional-ownership/extract-analytics/holder",
+                {"symbol": "AAPL", "page": 0, "limit": 100},
+            ),
+            (
+                "get_holder_industry_breakdown_by_quarter",
+                ("0001067983", 2023, 3),
+                "institutional-ownership/holder-industry-breakdown",
+                {"cik": "0001067983"},
+            ),
+            (
+                "get_symbol_positions_summary_by_quarter",
+                ("AAPL", 2023, 3),
+                "institutional-ownership/symbol-positions-summary",
+                {"symbol": "AAPL"},
+            ),
+            (
+                "get_industry_performance_summary_by_quarter",
+                (2023, 3),
+                "institutional-ownership/industry-summary",
+                {},
+            ),
+        ],
+    )
     @patch("httpx.Client.request")
     def test_by_quarter_sends_year_and_quarter_not_a_date(
-        self, mock_request, fmp_client, mock_response
+        self, mock_request, fmp_client, mock_response, method, args, path, extra
     ):
-        """The wire never sees a date — that field is a response value."""
+        """Each wire-shaped method hits its own endpoint with the wire params.
+
+        Exercised through the real request path rather than a patched
+        delegate: an endpoint constant or parameter name mistyped in one of
+        these bodies is invisible to a delegation test, which only proves the
+        wrapper called *something*.
+        """
         mock_request.return_value = mock_response(status_code=200, json_data=[])
 
-        fmp_client.institutional.get_symbol_positions_summary_by_quarter(
-            "AAPL", 2023, 3
-        )
+        getattr(fmp_client.institutional, method)(*args)
+
+        # httpx.Client.request is called positionally: (method, url).
+        url = str(mock_request.call_args.args[1])
+        assert path in url, f"{method} hit {url}"
 
         sent = mock_request.call_args.kwargs["params"]
         assert sent["year"] == 2023
         assert sent["quarter"] == 3
+        # The wire has no date parameter at all; ``date`` is a response field.
         assert "date" not in sent
         assert "report_date" not in sent
+        for key, value in extra.items():
+            assert sent[key] == value
 
 
 class TestHolderPerformanceSummaryInertFilter:
