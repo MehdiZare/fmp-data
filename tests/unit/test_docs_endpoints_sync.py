@@ -11,6 +11,7 @@ Row-set equality, not just counts, because a rename miscounts as zero.
 
 from __future__ import annotations
 
+from collections import Counter
 import importlib
 from pathlib import Path
 import pkgutil
@@ -24,6 +25,19 @@ from fmp_data.models import Endpoint
 #: Modules the walk could not import, kept so a failure can name them.
 SKIPPED_MODULES: dict[str, str] = {}
 
+
+def _record_walk_error(name: str) -> None:
+    """Record a package that blew up *while being walked*.
+
+    Without an ``onerror`` callback ``walk_packages`` re-raises anything that
+    is not an ``ImportError``, and it raises it from the ``for`` header --
+    outside the ``try`` below, which only wraps the explicit ``import_module``
+    of a ``.endpoints`` module. So the two guards catch different failures and
+    both are needed.
+    """
+    SKIPPED_MODULES[name] = "raised while being walked"
+
+
 DOCS = Path(__file__).resolve().parents[2] / "docs"
 ENDPOINTS_DOC = DOCS / "api" / "endpoints.md"
 CONFIGURATIONS_DOC = DOCS / "mcp" / "configurations.md"
@@ -32,22 +46,27 @@ CONFIGURATIONS_DOC = DOCS / "mcp" / "configurations.md"
 _LABEL_TO_CLIENT = {
     "market intelligence": "intelligence",
     "alternative markets": "alternative",
-    "sec": "sec",
 }
 
 
 def _endpoint_paths() -> dict[str, dict[str, str]]:
     """client name -> {endpoint name: path} for every ``Endpoint`` it declares."""
     declared: dict[str, dict[str, str]] = {}
-    for module_info in pkgutil.walk_packages(fmp_data.__path__, prefix="fmp_data."):
+    for module_info in pkgutil.walk_packages(
+        fmp_data.__path__, prefix="fmp_data.", onerror=_record_walk_error
+    ):
         if not module_info.name.endswith(".endpoints"):
             continue
         try:
             module = importlib.import_module(module_info.name)
         except BaseException as exc:
-            # BaseException: fmp_data/mcp/__main__.py raises SystemExit without
-            # its extra, and SystemExit is not an Exception. Recorded rather
-            # than discarded so a failure message can say what fell out.
+            # BaseException, not Exception, because an `endpoints` module that
+            # calls sys.exit at import time raises SystemExit, which is not an
+            # Exception and would take the whole scan down. (The often-cited
+            # fmp_data/mcp/__main__.py cannot reach here -- the `.endpoints`
+            # filter above excludes it -- so this is defence, not a fix for
+            # that specific module.) Recorded rather than discarded so a
+            # failure message can say what fell out.
             SKIPPED_MODULES[module_info.name] = f"{type(exc).__name__}: {exc}"
             continue
         client = module_info.name.split(".")[1]
@@ -183,9 +202,17 @@ def test_endpoint_doc_tables_match_the_code_row_for_row() -> None:
         if client not in declared:
             continue
         paths = declared[client]
-        rows = dict(_doc_rows(section))
-        checked += len(rows)
+        row_list = _doc_rows(section)
+        rows = dict(row_list)
+        # Count the list, not the dict: a duplicated row would otherwise be
+        # collapsed before it was counted, and set equality alone cannot see
+        # it. The row-count check this replaced did catch that, so counting
+        # the dict would have been a regression.
+        checked += len(row_list)
 
+        for name, count in sorted(Counter(name for name, _ in row_list).items()):
+            if count > 1:
+                mismatches.append(f"{label}: `{name}` appears in {count} rows")
         for name in sorted(rows.keys() - paths.keys()):
             mismatches.append(f"{label}: doc row `{name}` names no endpoint in code")
         for name in sorted(paths.keys() - rows.keys()):
@@ -215,13 +242,20 @@ def test_configurations_doc_paths_exist() -> None:
     It previously told users to look in ``examples/mcp_configurations/`` while
     the real directory is ``examples/mcp/configurations/`` -- a path-existence
     check would have caught that.
+
+    Paths are matched bare rather than only inside backticks. The three that
+    matter most are the concrete manifests in ``export FMP_MCP_MANIFEST=...``
+    and ``create_app(...)`` snippets, which live inside fenced code blocks and
+    carry no backticks -- so a backtick-only match checked the directory and
+    none of the files a reader actually copy-pastes.
     """
     repo_root = DOCS.parent
     text = CONFIGURATIONS_DOC.read_text()
 
     missing: list[str] = []
     checked = 0
-    for candidate in re.findall(r"`(examples/[\w/.\-]+)`", text):
+    for candidate in sorted(set(re.findall(r"examples/[\w/.\-]+", text))):
+        candidate = candidate.rstrip(".,")
         checked += 1
         if not (repo_root / candidate).exists():
             missing.append(candidate)
@@ -230,7 +264,35 @@ def test_configurations_doc_paths_exist() -> None:
         f"{CONFIGURATIONS_DOC.name} references paths that do not exist:\n  "
         + "\n  ".join(sorted(set(missing)))
     )
-    assert checked > 0, "no example paths found in the doc; the parse is not matching"
+    assert checked >= 4, (
+        f"only {checked} example paths found in the doc; the directory plus "
+        "three manifests are expected, so the parse is not matching"
+    )
+
+
+def test_every_client_has_a_documented_section() -> None:
+    """Every client with an ``endpoints`` module must appear in the document.
+
+    The other guards iterate over the document's sections, so they can only
+    ever prove doc ⊆ code. A brand-new client documented nowhere has no
+    section for them to iterate over, and all of them stay green -- which is
+    the exact drift class #146 is about. This is the code ⊆ doc direction.
+
+    (A *renamed* section is already caught: its TOC label no longer resolves
+    to a module and ``test_endpoint_doc_counts_match_the_code`` reports it.)
+    """
+    documented: set[str] = set()
+    for section in re.split(r"^## ", ENDPOINTS_DOC.read_text(), flags=re.M)[1:]:
+        label = section.splitlines()[0].strip().lower()
+        documented.add(_LABEL_TO_CLIENT.get(label, label))
+
+    undocumented = sorted(set(_endpoint_paths()) - documented)
+    assert not undocumented, (
+        "clients with an `endpoints` module but no section in "
+        f"docs/api/endpoints.md: {undocumented}. Add a `## <Client>` section "
+        "with its `### N endpoints` heading and table, or map its label in "
+        "_LABEL_TO_CLIENT if the section is named differently." + _skipped_suffix()
+    )
 
 
 @pytest.mark.parametrize("doc", [ENDPOINTS_DOC, CONFIGURATIONS_DOC])
