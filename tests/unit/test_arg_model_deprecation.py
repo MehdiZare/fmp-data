@@ -32,6 +32,8 @@ import inspect
 from pathlib import Path
 import pkgutil
 import re
+import subprocess
+import sys
 from typing import Any
 import warnings
 
@@ -42,10 +44,10 @@ import fmp_data
 from fmp_data.models import Endpoint
 from fmp_data.schema import DeprecatedArgModel
 
-# 106 ``*Args`` models across the nine ``schema.py`` modules today. A floor,
-# not an equality: the point is that the walk cannot stop yielding and let
-# these assertions pass over an empty set.
-_MIN_ARG_MODELS = 100
+# 116 argument models across the ``schema.py`` modules today: 106 ``*Args``
+# plus 10 singular ``*Arg``. A floor, not an equality: the point is that the
+# walk cannot stop yielding and let these assertions pass over an empty set.
+_MIN_ARG_MODELS = 110
 
 # 275 endpoints today across the ``endpoints.py`` modules. Same reason.
 _MIN_ENDPOINTS = 250
@@ -54,9 +56,14 @@ _MIN_ENDPOINTS = 250
 def _walk(suffix: str) -> list[tuple[str, Any]]:
     """Import every ``fmp_data.*.<suffix>`` module that imports cleanly.
 
-    ``BaseException``, not ``Exception``: ``fmp_data/mcp/__main__.py`` raises
-    ``SystemExit`` without its extra, which is not an ``Exception`` and would
-    otherwise take the whole scan down in CI, where no extras are installed.
+    ``BaseException``, not ``Exception``: a module whose extra is missing can
+    fail on import with something outside the ``Exception`` hierarchy -- a
+    bare ``SystemExit`` from a module-level guard is the usual shape -- which
+    would otherwise take the whole scan down in CI, where no extras are
+    installed. No module reached by this walk does that today (the filter
+    only imports names ending ``.schema``/``.endpoints``, and
+    ``walk_packages`` imports packages, whose ``__init__`` files are empty
+    here), so this is a guard against a future one, not a live workaround.
     """
     modules: list[tuple[str, Any]] = []
     for info in pkgutil.walk_packages(
@@ -74,7 +81,15 @@ def _walk(suffix: str) -> list[tuple[str, Any]]:
 
 
 def _arg_models() -> dict[str, type[BaseModel]]:
-    """Every ``*Args`` model defined in a ``schema.py``, by qualified name."""
+    """Every ``*Arg``/``*Args`` model defined in a ``schema.py``, by name.
+
+    Both suffixes, not just the plural: ``BaseSearchArg`` and
+    ``BaseExchangeArg`` are public and deprecated but have no in-tree
+    subclass, so a plural-only filter misses them entirely and a revert of
+    either would leave this file green. The other singular roots are only
+    covered transitively, through whichever ``*Args`` subclass they happen
+    to have -- which is coverage by accident, not by design.
+    """
     found: dict[str, type[BaseModel]] = {}
     for module_name, module in _walk("schema"):
         for attr, obj in vars(module).items():
@@ -82,7 +97,7 @@ def _arg_models() -> dict[str, type[BaseModel]]:
                 inspect.isclass(obj)
                 and issubclass(obj, BaseModel)
                 and obj.__module__ == module_name
-                and attr.endswith("Args")
+                and attr.endswith(("Arg", "Args"))
             ):
                 found[f"{module_name}.{attr}"] = obj
     return found
@@ -190,7 +205,16 @@ def test_every_arg_model_is_marked_deprecated() -> None:
 def test_using_an_arg_model_warns(
     module: str, name: str, kwargs: dict[str, Any]
 ) -> None:
-    """One per distinct base, including the four roots outside ``BaseArgModel``."""
+    """A spot-check across distinct bases, one per inheritance shape.
+
+    Not exhaustive over the roots: there are seven outside ``BaseArgModel``
+    (``BaseListArgs``, ``BaseQuoteArgs``, ``BaseSearchArg``,
+    ``BaseExchangeArg``, ``QuoteArgs``, ``MarketCapArgs``, ``BaseSymbolArg``)
+    and these four cases cover three of them plus ``BaseArgModel`` itself.
+    Exhaustiveness is ``test_every_arg_model_is_marked_deprecated``'s job --
+    it walks all 116; this one pins that the warning actually fires on real
+    construction with real kwargs.
+    """
     model = getattr(importlib.import_module(module), name)
 
     with pytest.warns(DeprecationWarning) as record:
@@ -199,6 +223,47 @@ def test_using_an_arg_model_warns(
     message = str(record[0].message)
     assert name in message
     assert "3.0" in message
+
+
+def test_generating_a_json_schema_warns() -> None:
+    """Schema generation is a use, and it never validates anything.
+
+    An "argument model" an external caller kept is most naturally handed to a
+    tool/function-schema generator, which calls ``model_json_schema()`` and
+    goes nowhere near ``model_validate``. Warning only from the validator
+    would let exactly that caller reach 3.0 having never been told.
+    """
+    from fmp_data.technical.schema import TechnicalIndicatorArgs
+
+    with pytest.warns(DeprecationWarning) as record:
+        schema = TechnicalIndicatorArgs.model_json_schema()
+
+    assert "TechnicalIndicatorArgs" in str(record[0].message)
+    # The warning must not cost the caller the schema they asked for.
+    assert schema["properties"], "model_json_schema returned an empty schema"
+
+
+def test_importing_an_arg_model_stays_silent() -> None:
+    """An import is not a use, and JSON-schema generation is lazy.
+
+    Pins the other half of the contract above: ``__get_pydantic_json_schema__``
+    must not fire at class-creation time. If pydantic ever started building
+    JSON schemas eagerly, every ``import fmp_data`` would start warning and
+    the deprecation would become noise users filter out wholesale.
+    """
+    code = (
+        "import warnings\n"
+        "warnings.simplefilter('error', DeprecationWarning)\n"
+        "import fmp_data.technical.schema\n"
+        "import fmp_data.market.schema\n"
+        "import fmp_data.models\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True
+    )
+    assert result.returncode == 0, (
+        "importing a schema module raised a DeprecationWarning:\n" + result.stderr
+    )
 
 
 def test_arg_models_still_import() -> None:
