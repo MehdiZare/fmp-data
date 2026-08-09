@@ -2,12 +2,49 @@
 from datetime import date
 from enum import Enum
 from typing import Any
+import warnings
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+#: Deprecated in 2.7, removed in 3.0 (#153). Formatted with the concrete
+#: subclass name so the warning names the model the caller actually used.
+ARG_MODEL_DEPRECATION = (
+    "{name} is deprecated and will be removed in 3.0. The hand-written "
+    "argument models are read by nothing: LangChain tool schemas are built "
+    "dynamically from each endpoint's mandatory_params/optional_params in "
+    "fmp_data.lc.vector_store, and Endpoint.arg_model was never consulted. "
+    "See https://github.com/MehdiZare/fmp-data/issues/153."
+)
 
 
-class BaseArgModel(BaseModel):
-    """Base model for all API arguments"""
+class DeprecatedArgModel(BaseModel):
+    """Common base for the deprecated hand-written argument models (#153).
+
+    It adds no fields and no configuration -- only a ``DeprecationWarning``
+    on every validation, so importing the class stays silent while *using*
+    one says so. ``mode="before"`` covers ``Model(...)`` and
+    ``Model.model_validate(...)`` alike.
+
+    Scheduled for removal in 3.0 together with every model that inherits it.
+    """
+
+    @model_validator(mode="before")
+    @classmethod
+    def _warn_deprecated_arg_model(cls, data: Any) -> Any:
+        warnings.warn(
+            ARG_MODEL_DEPRECATION.format(name=cls.__name__),
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return data
+
+
+class BaseArgModel(DeprecatedArgModel):
+    """Base model for all API arguments.
+
+    .. deprecated:: 2.7
+        Removed in 3.0 -- see :data:`ARG_MODEL_DEPRECATION`.
+    """
 
     model_config = ConfigDict(
         # Core config settings

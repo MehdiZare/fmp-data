@@ -1,11 +1,12 @@
 # fmp_data/market/schema.py
 
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from fmp_data.schema import (
     BaseArgModel,
     DateRangeArg,
+    DeprecatedArgModel,
     ExchangeArg,
     NoParamArg,
     PaginationArg,
@@ -26,14 +27,22 @@ class SearchArgs(SearchArg, PaginationArg):
     )
 
 
-class BaseSearchArg(BaseModel):
-    """Base model for search-type endpoints"""
+class BaseSearchArg(DeprecatedArgModel):
+    """Base model for search-type endpoints.
+
+    .. deprecated:: 2.7
+        Removed in 3.0 -- see :data:`fmp_data.schema.ARG_MODEL_DEPRECATION`.
+    """
 
     query: str = Field(description="Search query string", min_length=2)
 
 
-class BaseExchangeArg(BaseModel):
-    """Base model for exchange-related queries"""
+class BaseExchangeArg(DeprecatedArgModel):
+    """Base model for exchange-related queries.
+
+    .. deprecated:: 2.7
+        Removed in 3.0 -- see :data:`fmp_data.schema.ARG_MODEL_DEPRECATION`.
+    """
 
     exchange: str = Field(
         description="Exchange code (e.g., NYSE, NASDAQ)",
@@ -161,14 +170,22 @@ class MarketMoversArgs(BaseArgModel):
     limit: int | None = Field(default=10, ge=1, le=100, description="Number of results")
 
 
-class QuoteArgs(BaseModel):
-    """Arguments for getting stock quotes"""
+class QuoteArgs(DeprecatedArgModel):
+    """Arguments for getting stock quotes.
+
+    .. deprecated:: 2.7
+        Removed in 3.0 -- see :data:`fmp_data.schema.ARG_MODEL_DEPRECATION`.
+    """
 
     symbol: str = Field(description="Stock symbol (ticker)")
 
 
-class MarketCapArgs(BaseModel):
-    """Arguments for getting market capitalization data"""
+class MarketCapArgs(DeprecatedArgModel):
+    """Arguments for getting market capitalization data.
+
+    .. deprecated:: 2.7
+        Removed in 3.0 -- see :data:`fmp_data.schema.ARG_MODEL_DEPRECATION`.
+    """
 
     symbol: str = Field(description="Stock symbol (ticker)")
 

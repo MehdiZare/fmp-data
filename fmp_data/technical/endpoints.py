@@ -20,7 +20,6 @@ from fmp_data.technical.models import (
     WilliamsIndicator,
     WMAIndicator,
 )
-from fmp_data.technical.schema import TechnicalIndicatorArgs
 
 # Valid timeframes for all technical indicators
 VALID_TIMEFRAMES = ["1min", "5min", "15min", "30min", "1hour", "4hour", "1day"]
@@ -77,7 +76,6 @@ SMA: Endpoint = Endpoint(
         ),
     ],
     response_model=SMAIndicator,
-    arg_model=TechnicalIndicatorArgs,
     example_queries=[
         "Get 50-day SMA for Apple",
         "Calculate simple moving average for TSLA",
@@ -137,7 +135,6 @@ EMA: Endpoint = Endpoint(
         ),
     ],
     response_model=EMAIndicator,
-    arg_model=TechnicalIndicatorArgs,
     example_queries=[
         "Get 12-day EMA for AAPL",
         "Calculate exponential moving average",
@@ -197,7 +194,6 @@ WMA: Endpoint = Endpoint(
         ),
     ],
     response_model=WMAIndicator,
-    arg_model=TechnicalIndicatorArgs,
     example_queries=[
         "Get weighted moving average for MSFT",
         "Calculate WMA indicator",
@@ -257,7 +253,6 @@ DEMA: Endpoint = Endpoint(
         ),
     ],
     response_model=DEMAIndicator,
-    arg_model=TechnicalIndicatorArgs,
     example_queries=[
         "Get DEMA for stock analysis",
         "Calculate double exponential moving average",
@@ -317,7 +312,6 @@ TEMA: Endpoint = Endpoint(
         ),
     ],
     response_model=TEMAIndicator,
-    arg_model=TechnicalIndicatorArgs,
     example_queries=[
         "Get TEMA for trend analysis",
         "Calculate triple exponential moving average",
@@ -377,7 +371,6 @@ RSI: Endpoint = Endpoint(
         ),
     ],
     response_model=RSIIndicator,
-    arg_model=TechnicalIndicatorArgs,
     example_queries=[
         "Get RSI for overbought/oversold signals",
         "Calculate 14-day RSI",
@@ -437,7 +430,6 @@ STANDARD_DEVIATION: Endpoint = Endpoint(
         ),
     ],
     response_model=StandardDeviationIndicator,
-    arg_model=TechnicalIndicatorArgs,
     example_queries=[
         "Get volatility using standard deviation",
         "Calculate price volatility",
@@ -497,7 +489,6 @@ WILLIAMS: Endpoint = Endpoint(
         ),
     ],
     response_model=WilliamsIndicator,
-    arg_model=TechnicalIndicatorArgs,
     example_queries=[
         "Get Williams %R indicator",
         "Calculate Williams percentage range",
@@ -557,7 +548,6 @@ ADX: Endpoint = Endpoint(
         ),
     ],
     response_model=ADXIndicator,
-    arg_model=TechnicalIndicatorArgs,
     example_queries=[
         "Get ADX trend strength indicator",
         "Calculate average directional index",

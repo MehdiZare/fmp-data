@@ -33,12 +33,6 @@ from fmp_data.company.models import (
     UpgradeDowngrade,
     UpgradeDowngradeConsensus,
 )
-from fmp_data.company.schema import (
-    BaseSymbolArg,
-    GeographicRevenueArgs,
-    ProductRevenueArgs,
-    SymbolChangesArgs,
-)
 from fmp_data.fundamental.models import (
     AsReportedBalanceSheet,
     AsReportedCashFlowStatement,
@@ -116,7 +110,6 @@ AFTERMARKET_TRADE: Endpoint[AftermarketTrade] = Endpoint(
     ],
     optional_params=[],
     response_model=AftermarketTrade,
-    arg_model=BaseSymbolArg,
 )
 
 AFTERMARKET_QUOTE: Endpoint[AftermarketQuote] = Endpoint(
@@ -135,7 +128,6 @@ AFTERMARKET_QUOTE: Endpoint[AftermarketQuote] = Endpoint(
     ],
     optional_params=[],
     response_model=AftermarketQuote,
-    arg_model=BaseSymbolArg,
 )
 
 STOCK_PRICE_CHANGE: Endpoint[StockPriceChange] = Endpoint(
@@ -154,7 +146,6 @@ STOCK_PRICE_CHANGE: Endpoint[StockPriceChange] = Endpoint(
     ],
     optional_params=[],
     response_model=StockPriceChange,
-    arg_model=BaseSymbolArg,
 )
 
 HISTORICAL_PRICE: Endpoint = Endpoint(
@@ -368,7 +359,6 @@ PROFILE: Endpoint[CompanyProfile] = Endpoint(
     ],
     optional_params=[],
     response_model=CompanyProfile,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "Get Apple's company profile",
         "Show me Microsoft's company information",
@@ -402,7 +392,6 @@ CORE_INFORMATION: Endpoint[CompanyCoreInformation] = Endpoint(
     ],
     optional_params=[],
     response_model=CompanyCoreInformation,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "Get core information for Apple",
         "Show me Tesla's basic company details",
@@ -437,7 +426,6 @@ KEY_EXECUTIVES: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=CompanyExecutive,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "Who are Apple's key executives?",
         "Get Microsoft's management team",
@@ -467,7 +455,6 @@ EXECUTIVE_COMPENSATION: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=ExecutiveCompensation,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "What is Apple CEO's compensation?",
         "Show Microsoft executive pay",
@@ -507,7 +494,6 @@ EMPLOYEE_COUNT: Endpoint = Endpoint(
         ),
     ],
     response_model=EmployeeCount,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "How many employees does Apple have?",
         "Show Microsoft's employee count history",
@@ -541,7 +527,6 @@ COMPANY_NOTES: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=CompanyNote,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "Get financial notes for Apple",
         "Show me Microsoft's company disclosures",
@@ -571,7 +556,6 @@ HISTORICAL_SHARE_FLOAT: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=HistoricalShareFloat,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "Show historical share float for Tesla",
         "How has Apple's share float changed over time?",
@@ -619,7 +603,6 @@ PRODUCT_REVENUE_SEGMENTATION: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=ProductRevenueSegment,
-    arg_model=ProductRevenueArgs,
     example_queries=[
         "Show Apple's revenue by product",
         "How is Microsoft's revenue split between products?",
@@ -666,7 +649,6 @@ GEOGRAPHIC_REVENUE_SEGMENTATION: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=GeographicRevenueSegment,
-    arg_model=GeographicRevenueArgs,
     example_queries=[
         "Show Apple's revenue by region",
         "How is Microsoft's revenue split geographically?",
@@ -688,7 +670,6 @@ SYMBOL_CHANGES: Endpoint = Endpoint(
     mandatory_params=[],
     optional_params=[],
     response_model=SymbolChange,
-    arg_model=SymbolChangesArgs,
     example_queries=[
         "Show recent stock symbol changes",
         "List companies that changed their tickers",
@@ -718,7 +699,6 @@ SHARE_FLOAT: Endpoint[ShareFloat] = Endpoint(
     ],
     optional_params=[],
     response_model=ShareFloat,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "What is Apple's share float?",
         "Get Microsoft's floating shares",
@@ -1321,7 +1301,6 @@ COMPANY_DIVIDENDS: Endpoint = Endpoint(
         ),
     ],
     response_model=DividendEvent,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "Get Apple's dividend history",
         "Show Microsoft's dividend payments",
@@ -1361,7 +1340,6 @@ COMPANY_EARNINGS: Endpoint = Endpoint(
         ),
     ],
     response_model=EarningEvent,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "Get Apple's earnings history",
         "Show Tesla's earnings reports",
@@ -1416,7 +1394,6 @@ COMPANY_SPLITS: Endpoint = Endpoint(
         ),
     ],
     response_model=StockSplitEvent,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "Get Apple's stock split history",
         "Show Tesla's stock splits",
