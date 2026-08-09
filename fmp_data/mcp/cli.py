@@ -610,8 +610,7 @@ def _report_empty_selection(
     )
     if failures:
         print(
-            f"None of the {len(failures)} requested "
-            f"{'tool' if len(failures) == 1 else 'tools'} resolved:",
+            f"None of the {_pluralise(len(failures), 'requested tool')} resolved:",
             file=sys.stderr,
         )
         for entry, reason in failures:
