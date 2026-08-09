@@ -131,6 +131,12 @@ class ResolutionStatus(Enum):
     #: Resolves, but to a spec removed in 3.0. ``replacement`` names the
     #: canonical spec. Still registrable today, hence a resolved status.
     DEPRECATED = "deprecated"
+    #: Resolves, but to an endpoint FMP no longer serves: the tool registers
+    #: and answers with nothing. Distinct from :attr:`DEPRECATED`, which is a
+    #: rename whose replacement is a drop-in -- here ``successor`` is a
+    #: migration and may not exist at all. Still registrable today, so an
+    #: explicit manifest keeps working until 3.0.
+    WITHDRAWN = "withdrawn"
     #: A bare key claimed by more than one client. ``candidates`` lists them.
     AMBIGUOUS = "ambiguous"
     #: Neither a known spec nor a known key.
@@ -159,6 +165,12 @@ class Resolution:
         ``None`` when :attr:`is_resolved` is false.
     replacement
         The canonical spec superseding a deprecated one; ``None`` otherwise.
+        Deliberately not set for a withdrawn spec: a withdrawal has no
+        drop-in, and callers bucket on it.
+    successor
+        The nearest live spec for a withdrawn one, or ``None`` when FMP
+        publishes no replacement at all. Kept apart from ``replacement``
+        because the two carry different promises.
     candidates
         Every spec claiming an ambiguous bare key, sorted; empty otherwise.
     message
@@ -172,18 +184,42 @@ class Resolution:
     client: str | None = None
     key: str | None = None
     replacement: str | None = None
+    successor: str | None = None
     candidates: tuple[str, ...] = ()
     message: str | None = None
 
     @property
     def is_resolved(self) -> bool:
-        """True when the entry names exactly one registrable tool."""
-        return self.status in (ResolutionStatus.RESOLVED, ResolutionStatus.DEPRECATED)
+        """True when the entry names exactly one registrable tool.
+
+        A withdrawn spec still registers -- it answers empty rather than
+        failing -- so an explicit manifest naming one keeps working until 3.0.
+        """
+        return self.status in (
+            ResolutionStatus.RESOLVED,
+            ResolutionStatus.DEPRECATED,
+            ResolutionStatus.WITHDRAWN,
+        )
 
     @property
     def is_deprecated(self) -> bool:
         """True when the entry resolves to a spec removed in 3.0."""
         return self.status is ResolutionStatus.DEPRECATED
+
+    @property
+    def is_withdrawn(self) -> bool:
+        """True when the entry resolves to an endpoint FMP no longer serves."""
+        return self.status is ResolutionStatus.WITHDRAWN
+
+    @property
+    def is_retired(self) -> bool:
+        """True when resolving this entry must announce something.
+
+        The gate the registration path warns behind. Both retirement kinds
+        have to pass it; gating on :attr:`is_deprecated` alone is what made
+        the withdrawal branch of ``_warn_if_deprecated`` unreachable.
+        """
+        return self.is_deprecated or self.is_withdrawn
 
     def require(self) -> tuple[str, str, str]:
         """Return ``(spec, client, key)`` or raise the failure message."""
@@ -196,15 +232,24 @@ class Resolution:
 def _resolved(entry: str, full_spec: str) -> Resolution:
     client_slug, sem_key = full_spec.split(".", 1)
     replacement = DEPRECATED_TOOLS.get(full_spec)
+    if replacement is not None:
+        status = ResolutionStatus.DEPRECATED
+    elif full_spec in WITHDRAWN_TOOLS:
+        status = ResolutionStatus.WITHDRAWN
+    else:
+        status = ResolutionStatus.RESOLVED
     return Resolution(
         entry=entry,
-        status=(
-            ResolutionStatus.DEPRECATED if replacement else ResolutionStatus.RESOLVED
-        ),
+        status=status,
         spec=full_spec,
         client=client_slug,
         key=sem_key,
         replacement=replacement,
+        successor=(
+            WITHDRAWN_TOOLS.get(full_spec)
+            if status is ResolutionStatus.WITHDRAWN
+            else None
+        ),
     )
 
 
@@ -281,7 +326,7 @@ def _resolve_tool_spec(
     """
     resolution = resolve_tool_spec(spec, key_to_spec)
     full_spec, client_slug, sem_key = resolution.require()
-    if resolution.is_deprecated:
+    if resolution.is_retired:
         _warn_if_deprecated(full_spec)
     return full_spec, client_slug, sem_key
 

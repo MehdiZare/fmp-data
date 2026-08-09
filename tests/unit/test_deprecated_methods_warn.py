@@ -206,6 +206,7 @@ async def test_every_deprecated_async_method_warns_and_never_calls_the_api() -> 
     silent: list[str] = []
     called_api: list[str] = []
     call_errors: list[str] = []
+    returned: list[str] = []
     checked = 0
 
     for module_name, cls, attr in DEPRECATED:
@@ -223,7 +224,12 @@ async def test_every_deprecated_async_method_warns_and_never_calls_the_api() -> 
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             try:
-                await getattr(instance, attr)(**_call_args(method))
+                result = await getattr(instance, attr)(**_call_args(method))
+                # Asserted on both halves. The async wrapper is a separate
+                # code path from the sync one, so it is precisely where the
+                # two contracts could diverge unnoticed.
+                if result not in ([], None):
+                    returned.append(f"{where}: returned {result!r}")
             except RemovedEndpointError:
                 raised_removed = True
             except Exception as exc:
@@ -244,6 +250,10 @@ async def test_every_deprecated_async_method_warns_and_never_calls_the_api() -> 
     )
     assert not called_api, (
         "retired async methods that issued a request:\n  " + "\n  ".join(called_api)
+    )
+    assert not returned, (
+        "retired async methods returning something other than empty:\n  "
+        + "\n  ".join(returned)
     )
     assert checked > 25, (
         f"only {checked} async methods exercised; is the sweep working?"

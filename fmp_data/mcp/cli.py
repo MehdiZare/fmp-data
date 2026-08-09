@@ -310,12 +310,15 @@ def _startable_catalog(
 def _validated_specs(tools: list[str], available_specs: set[str]) -> list[str]:
     """An explicit selection, minus entries that name nothing in the catalog.
 
-    Deprecated specs are kept -- an explicit ask is honoured -- but reported,
-    so the one path that can still put a deprecated key in a manifest says so
-    just as the default path does. Bare keys are not accepted here yet; see
-    issue #160.
+    Deprecated and withdrawn specs are kept -- an explicit ask is honoured --
+    but reported, so the one path that can still put a retired key in a
+    manifest says so just as the default path does. Both kinds are reported,
+    and separately: the default path drops withdrawn specs entirely, so this
+    is the only way one reaches a generated manifest, and it would otherwise
+    be the one place a dead tool is written with nothing said about it. Bare
+    keys are not accepted here yet; see issue #160.
     """
-    from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
+    from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS, WITHDRAWN_TOOLS
 
     selected: list[str] = []
     for tool in tools:
@@ -333,6 +336,18 @@ def _validated_specs(tools: list[str], available_specs: set[str]) -> list[str]:
                 f"including it as asked. Use {replacement} instead.",
                 file=sys.stderr,
             )
+        elif tool in WITHDRAWN_TOOLS:
+            successor = WITHDRAWN_TOOLS[tool]
+            remedy = (
+                f"The nearest live tool is {successor}, but its payload differs."
+                if successor
+                else "FMP publishes no replacement."
+            )
+            print(
+                f"Warning: '{tool}' names an endpoint FMP no longer serves, so "
+                f"it answers with no data; including it as asked. {remedy}",
+                file=sys.stderr,
+            )
         selected.append(tool)
     return selected
 
@@ -345,19 +360,25 @@ def _add_defaults(
     A default must not break a manifest by colliding with a spec the caller
     explicitly asked for, so it is skipped and noted rather than added.
 
-    Deprecated specs are skipped here too. The two sets are disjoint today, so
-    this is dead defence -- but it runs *after* ``_startable_catalog`` has
-    stripped deprecations, and without it a future deprecated entry in
-    ``DEFAULT_TOOLS`` would be silently reinstated into a manifest the same
-    release just cleaned.
+    Retired specs -- deprecated or withdrawn -- are skipped here too. Neither
+    set intersects ``DEFAULT_TOOLS`` today, so this is dead defence -- but it
+    runs *after* ``_startable_catalog`` has stripped both, and without it a
+    future retired entry in ``DEFAULT_TOOLS`` would be silently reinstated
+    into a manifest the same release just cleaned. The withdrawn half matters
+    more than the deprecated one: a deprecated default still answers, while a
+    withdrawn default would advertise a tool that can only return nothing.
     """
-    from fmp_data.mcp.tools_manifest import DEFAULT_TOOLS, DEPRECATED_TOOLS
+    from fmp_data.mcp.tools_manifest import (
+        DEFAULT_TOOLS,
+        DEPRECATED_TOOLS,
+        WITHDRAWN_TOOLS,
+    )
 
     claimed = {_tool_name(spec): spec for spec in selected}
     for tool in DEFAULT_TOOLS:
         if tool in selected or tool not in available_specs:
             continue
-        if tool in DEPRECATED_TOOLS:
+        if tool in DEPRECATED_TOOLS or tool in WITHDRAWN_TOOLS:
             continue
         name = _tool_name(tool)
         owner = claimed.get(name)
@@ -484,8 +505,8 @@ def _report_exclusions(
 
 def _classify_manifest_entries(
     entries: list[str],
-) -> tuple[list[str], list[str], list[tuple[str, str]]]:
-    """Sort manifest entries into unknown, ambiguous and deprecated.
+) -> tuple[list[str], list[str], list[tuple[str, str]], list[tuple[str, str | None]]]:
+    """Sort manifest entries into unknown, ambiguous, deprecated and withdrawn.
 
     An entry may be a bare key (``profile``) or a fully qualified spec
     (``company.profile``). Both forms are judged by
@@ -494,12 +515,20 @@ def _classify_manifest_entries(
     that registration then refuses (#149). Resolution is pure, so looping over
     a manifest here announces nothing; only the registration path warns.
 
+    Withdrawn is reported apart from deprecated, and bucketed on ``status``
+    rather than on ``replacement is not None``: a withdrawal deliberately
+    carries no ``replacement``, so the old truthiness test filed all 19 of
+    them as healthy and ``validate`` blessed a manifest full of tools that can
+    only answer empty.
+
     Returns
     -------
-    tuple[list[str], list[str], list[tuple[str, str]]]
-        ``(unknown, ambiguous, deprecated)`` where ``ambiguous`` entries are
-        preformatted with their candidates and ``deprecated`` pairs the entry
-        as written with the spec that replaces it.
+    tuple[list[str], list[str], list[tuple[str, str]], list[tuple[str, str | None]]]
+        ``(unknown, ambiguous, deprecated, withdrawn)`` where ``ambiguous``
+        entries are preformatted with their candidates, ``deprecated`` pairs
+        the entry as written with the spec that replaces it, and ``withdrawn``
+        pairs it with the nearest live spec or ``None`` when FMP publishes no
+        replacement.
     """
     from fmp_data.mcp import tool_loader
 
@@ -508,6 +537,7 @@ def _classify_manifest_entries(
     unknown: list[str] = []
     ambiguous: list[str] = []
     deprecated: list[tuple[str, str]] = []
+    withdrawn: list[tuple[str, str | None]] = []
 
     for entry in entries:
         resolution = tool_loader.resolve_tool_spec(entry, key_to_spec)
@@ -516,10 +546,12 @@ def _classify_manifest_entries(
         elif resolution.status is tool_loader.ResolutionStatus.AMBIGUOUS:
             candidates = ", ".join(resolution.candidates)
             ambiguous.append(f"{entry} (use one of: {candidates})")
+        elif resolution.is_withdrawn:
+            withdrawn.append((entry, resolution.successor))
         elif resolution.replacement is not None:
             deprecated.append((entry, resolution.replacement))
 
-    return unknown, ambiguous, deprecated
+    return unknown, ambiguous, deprecated, withdrawn
 
 
 def _manifest_name_clashes(
@@ -580,6 +612,7 @@ def _report_manifest_findings(
     unknown: list[str],
     ambiguous: list[str],
     deprecated: list[tuple[str, str]],
+    withdrawn: list[tuple[str, str | None]] | None = None,
     duplicates: dict[str, list[str]] | None = None,
     collisions: dict[str, list[str]] | None = None,
 ) -> None:
@@ -626,6 +659,23 @@ def _report_manifest_findings(
         print(f"Deprecated tools found ({len(deprecated)}), removed in 3.0:")
         for entry, replacement in deprecated:
             print(f"  {entry} -> use {replacement}")
+
+    # Reported apart from deprecated because the remedy differs: a deprecated
+    # key is a rename and its replacement is a drop-in, while these name an
+    # endpoint FMP stopped serving, so the tool registers and answers nothing.
+    # Four of them have no successor at all, and saying "use X" would be a lie.
+    if withdrawn:
+        print(
+            f"Withdrawn tools found ({len(withdrawn)}): FMP no longer serves "
+            "these endpoints, so they answer with no data. Removed in 3.0:"
+        )
+        for entry, successor in withdrawn:
+            remedy = (
+                f"nearest live tool is {successor}, payload differs"
+                if successor
+                else "FMP publishes no replacement"
+            )
+            print(f"  {entry} -> {remedy}")
 
 
 def validate_manifest(manifest_path: str | Path) -> bool:

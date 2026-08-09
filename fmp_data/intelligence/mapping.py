@@ -1713,6 +1713,15 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
     "senate_trading_rss": EndpointSemantics(
         client_name="intelligence",
         method_name="get_senate_trading_rss",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: the nearest live tool is `intelligence.senate_latest`, whose
+        # payload differs.
+        deprecated=True,
         natural_description=(
             "Get real-time RSS feed of Senate trading disclosures including new "
             "filings and transaction updates"

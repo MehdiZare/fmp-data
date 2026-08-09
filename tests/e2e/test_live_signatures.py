@@ -1,10 +1,19 @@
 """Every endpoint declaration must match what the live API actually does.
 
-Opt-in: skipped unless ``FMP_TEST_API_KEY`` (or ``FMP_API_KEY``) is set, so the
-default CI matrix -- which installs no extras and has no key -- is unaffected.
-Run it before a release, or on a schedule:
+Opt-in **twice over**, and both gates are needed. The module is marked ``live``,
+which ``addopts`` deselects by default, *and* it skips unless
+``FMP_TEST_API_KEY`` (or ``FMP_API_KEY``) is set. Run it before a release, or on
+a schedule:
 
-    FMP_TEST_API_KEY=... pytest tests/e2e/ -v
+    FMP_TEST_API_KEY=... pytest tests/e2e/ -m live -v
+
+The key check alone was not enough. ``make test`` sources ``.env`` and promotes
+``FMP_API_KEY`` to ``FMP_TEST_API_KEY``, and ``testpaths`` is ``tests``, so a
+maintainer running the project's own test command with a populated ``.env``
+fired this whole suite: roughly 700 live requests -- a 275-endpoint 404 sweep
+plus a paired sentinel call per optional parameter -- against a default quota of
+250 a day. The marker is what makes "opt-in" true for ``make test`` as well as
+for CI.
 
 Why this exists: a one-off probe of all 275 declarations found 28 paths that
 return 404 for every request, three endpoints whose ``from``/``to`` are
@@ -57,10 +66,16 @@ from fmp_data.models import Endpoint, ParamLocation
 
 API_KEY = os.getenv("FMP_TEST_API_KEY") or os.getenv("FMP_API_KEY")
 
-pytestmark = pytest.mark.skipif(
-    not API_KEY,
-    reason="live API test: set FMP_TEST_API_KEY to run",
-)
+pytestmark = [
+    # Deselected by `-m "not live"` in addopts. This is the gate that holds
+    # for `make test`, which supplies a key from .env whether or not you meant
+    # to spend one; the skipif below only helps when no key exists at all.
+    pytest.mark.live,
+    pytest.mark.skipif(
+        not API_KEY,
+        reason="live API test: set FMP_TEST_API_KEY to run",
+    ),
+]
 
 BASE = "https://financialmodelingprep.com"
 

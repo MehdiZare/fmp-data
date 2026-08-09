@@ -172,6 +172,15 @@ ALTERNATIVE_ENDPOINTS_SEMANTICS = {
     "crypto_quotes": EndpointSemantics(
         client_name="alternative",
         method_name="get_crypto_quotes",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: the nearest live tool is `batch.crypto_quotes`, whose payload
+        # differs.
+        deprecated=True,
         natural_description=(
             "Get current price quotes for all available cryptocurrencies"
         ),
@@ -337,6 +346,15 @@ ALTERNATIVE_ENDPOINTS_SEMANTICS = {
     "forex_quotes": EndpointSemantics(
         client_name="alternative",
         method_name="get_forex_quotes",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: the nearest live tool is `batch.forex_quotes`, whose payload
+        # differs.
+        deprecated=True,
         natural_description=(
             "Get real-time quotes for all available forex currency pairs"
         ),
@@ -545,6 +563,15 @@ ALTERNATIVE_ENDPOINTS_SEMANTICS = {
     "commodities_quotes": EndpointSemantics(
         client_name="alternative",
         method_name="get_commodities_quotes",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: the nearest live tool is `batch.commodity_quotes`, whose payload
+        # differs.
+        deprecated=True,
         natural_description="Get current quotes for all available commodities",
         example_queries=[
             "Get all commodity prices",
