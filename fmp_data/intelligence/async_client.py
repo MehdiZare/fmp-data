@@ -43,7 +43,6 @@ from fmp_data.intelligence.endpoints import (
     SENATE_LATEST,
     SENATE_TRADES_BY_NAME,
     SENATE_TRADING,
-    SENATE_TRADING_RSS,
     STOCK_NEWS_ENDPOINT,
     STOCK_SPLITS_CALENDAR,
     STOCK_SYMBOL_NEWS_ENDPOINT,
@@ -520,9 +519,22 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         """Get Senate trading data by name"""
         return await self.client.request_async(SENATE_TRADES_BY_NAME, name=name)
 
+    @deprecated(
+        "senate-trading-rss-feed is dead. The live path senate-latest is "
+        "already shipped as get_senate_latest(); this method is a leftover "
+        "declaration, not a second feed."
+    )
     async def get_senate_trading_rss(self, page: int = 0) -> list[SenateTrade]:
-        """Get Senate trading RSS feed"""
-        return await self.client.request_async(SENATE_TRADING_RSS, page=page)
+        """Get Senate trading RSS feed
+
+        .. deprecated::
+            ``senate-trading-rss-feed`` 404s and will be removed in a future
+            version. It currently returns an empty list. Use
+            :meth:`get_senate_latest`, which serves the live ``senate-latest``
+            and returns the same :class:`
+            ~fmp_data.intelligence.models.SenateTrade` rows.
+        """
+        return []
 
     async def get_house_latest(
         self, page: int = 0, limit: int = 100

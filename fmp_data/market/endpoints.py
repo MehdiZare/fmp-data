@@ -639,7 +639,12 @@ PRE_POST_MARKET: Endpoint = Endpoint(
     name="pre_post_market",
     path="pre-post-market",
     version=APIVersion.STABLE,
-    description="Get pre/post market data",
+    description=(
+        "DEPRECATED and non-functional: pre-post-market 404s, and the "
+        "market-wide shape no longer exists. Do not select it. Live "
+        "extended-hours data is per symbol via aftermarket-quote, or "
+        "batch-aftermarket-quote with a mandatory symbols parameter."
+    ),
     mandatory_params=[],
     optional_params=[],
     response_model=PrePostMarketQuote,
@@ -716,7 +721,13 @@ TRADABLE_SEARCH: Endpoint = Endpoint(
     name="tradable_search",
     path="tradable-list",
     version=APIVersion.STABLE,
-    description="Get list of tradable securities",
+    description=(
+        "DEPRECATED and non-functional: tradable-list 404s and has no "
+        "drop-in replacement -- available-traded/list, symbol-list, "
+        "tradable-symbol-list and symbol/all all 404 too. Do not select it. "
+        "stock-list, etf-list and actively-trading-list are partial "
+        "substitutes covering different universes."
+    ),
     mandatory_params=[],
     optional_params=[
         EndpointParam(

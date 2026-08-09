@@ -654,23 +654,33 @@ class TestAsyncMarketClient:
         mock_client.request_async.assert_called_once_with(ACTIVELY_TRADING_LIST)
 
     @pytest.mark.asyncio
-    async def test_get_tradable_list(self, mock_client):
-        """Test async get_tradable_list method."""
+    async def test_get_tradable_list_is_deprecated(self, mock_client):
+        """``tradable-list`` 404s and no path variant replaces it."""
         from fmp_data.market.async_client import AsyncMarketClient
-        from fmp_data.market.endpoints import TRADABLE_SEARCH
-
-        mock_client.request_async.return_value = [
-            CompanySymbol(symbol="AAPL", name="Apple Inc.")
-        ]
 
         async_client = AsyncMarketClient(mock_client)
-        result = await async_client.get_tradable_list(limit=5, offset=10)
+        with pytest.warns(DeprecationWarning, match="get_stock_list"):
+            result = await async_client.get_tradable_list(limit=5, offset=10)
 
-        assert len(result) == 1
-        assert isinstance(result[0], CompanySymbol)
-        mock_client.request_async.assert_called_once_with(
-            TRADABLE_SEARCH, limit=5, offset=10
-        )
+        assert result == []
+        mock_client.request_async.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_get_pre_post_market_is_deprecated(self, mock_client):
+        """``pre-post-market`` 404s and the market-wide shape is gone.
+
+        It sat in the forwarding table above. There is no signature-compatible
+        replacement — live extended-hours data is per symbol — so the warning
+        must point at ``get_aftermarket_quote`` rather than imply a rename.
+        """
+        from fmp_data.market.async_client import AsyncMarketClient
+
+        async_client = AsyncMarketClient(mock_client)
+        with pytest.warns(DeprecationWarning, match="get_aftermarket_quote"):
+            result = await async_client.get_pre_post_market()
+
+        assert result == []
+        mock_client.request_async.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_get_cik_list(self, mock_client):
@@ -805,7 +815,6 @@ class TestAsyncMarketClient:
             ),
             ("get_losers", {}, "LOSERS", {}),
             ("get_most_active", {}, "MOST_ACTIVE", {}),
-            ("get_pre_post_market", {}, "PRE_POST_MARKET", {}),
             ("get_all_shares_float", {}, "ALL_SHARES_FLOAT", {}),
             ("get_available_exchanges", {}, "AVAILABLE_EXCHANGES", {}),
             ("get_available_sectors", {}, "AVAILABLE_SECTORS", {}),
@@ -2068,24 +2077,23 @@ class TestAsyncInvestmentClient:
         )
 
     @pytest.mark.asyncio
-    async def test_get_mutual_fund_holdings_formats_date(self, mock_client):
-        """Test mutual fund holdings formats date parameter."""
-        from fmp_data.investment import endpoints as investment_endpoints
+    async def test_get_mutual_fund_holdings_is_deprecated(self, mock_client):
+        """``mutual-fund-holdings`` 404s; ``etf/holdings`` serves funds too.
+
+        The date-formatting this used to assert is unreachable now — no
+        request is built at all — so what is asserted instead is that the
+        caller is pointed at :meth:`get_etf_holdings`.
+        """
         from fmp_data.investment.async_client import AsyncInvestmentClient
 
-        mock_client.request_async.return_value = []
         async_client = AsyncInvestmentClient(mock_client)
-
-        result = await async_client.get_mutual_fund_holdings(
-            "VFIAX", dt_date(2024, 1, 15)
-        )
+        with pytest.warns(DeprecationWarning, match="get_etf_holdings"):
+            result = await async_client.get_mutual_fund_holdings(
+                "VFIAX", dt_date(2024, 1, 15)
+            )
 
         assert result == []
-        mock_client.request_async.assert_called_once_with(
-            investment_endpoints.MUTUAL_FUND_HOLDINGS,
-            symbol="VFIAX",
-            date="2024-01-15",
-        )
+        mock_client.request_async.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_get_fund_disclosure_with_cik(self, mock_client):
@@ -2175,11 +2183,8 @@ class TestAsyncAlternativeMarketsClient:
         "method_name,endpoint_name",
         [
             ("get_crypto_list", "CRYPTO_LIST"),
-            ("get_crypto_quotes", "CRYPTO_QUOTES"),
             ("get_forex_list", "FOREX_LIST"),
-            ("get_forex_quotes", "FOREX_QUOTES"),
             ("get_commodities_list", "COMMODITIES_LIST"),
-            ("get_commodities_quotes", "COMMODITIES_QUOTES"),
         ],
     )
     async def test_alternative_list_endpoints(
@@ -2198,6 +2203,35 @@ class TestAsyncAlternativeMarketsClient:
         assert result == []
         endpoint = getattr(alternative_endpoints, endpoint_name)
         mock_client.request_async.assert_called_once_with(endpoint)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("method_name", "expected_match"),
+        [
+            ("get_crypto_quotes", "batch.get_crypto_quotes"),
+            ("get_forex_quotes", "batch.get_forex_quotes"),
+            ("get_commodities_quotes", "batch.get_commodity_quotes"),
+        ],
+    )
+    async def test_alternative_quotes_endpoints_are_deprecated(
+        self, mock_client, method_name, expected_match
+    ):
+        """The three ``quotes/*`` paths 404; the batch client serves them.
+
+        These sat in the forwarding table above, asserting a request that
+        could only earn a 404. They now warn, name the live batch method and
+        issue nothing.
+        """
+        from fmp_data.alternative.async_client import AsyncAlternativeMarketsClient
+
+        async_client = AsyncAlternativeMarketsClient(mock_client)
+
+        method = getattr(async_client, method_name)
+        with pytest.warns(DeprecationWarning, match=expected_match):
+            result = await method()
+
+        assert result == []
+        mock_client.request_async.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_get_crypto_historical_wraps_list_response(

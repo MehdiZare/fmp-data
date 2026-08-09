@@ -556,9 +556,9 @@ HISTORICAL_SHARE_FLOAT: Endpoint = Endpoint(
     path="historical/shares-float",
     version=APIVersion.STABLE,
     description=(
-        "Get historical share float data showing how the number of tradable shares "
-        "has changed over time. Useful for analyzing changes in stock liquidity and "
-        "institutional ownership patterns over time."
+        "DEPRECATED and non-functional: historical/shares-float 404s. Do not "
+        "select it. Use the live shares-float endpoint, which carries the same "
+        "fields but as a current snapshot rather than a time series."
     ),
     mandatory_params=[
         EndpointParam(
@@ -1014,7 +1014,11 @@ HISTORICAL_EMPLOYEE_COUNT: Endpoint = Endpoint(
     name="historical_employee_count",
     path="historical/employee-count",
     version=APIVersion.STABLE,
-    description="Get historical employee count data",
+    description=(
+        "DEPRECATED and non-functional: historical/employee-count 404s. Do "
+        "not select it. The live employee-count endpoint already returns the "
+        "full filing history and is exposed as company.get_employee_count."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
@@ -1055,7 +1059,11 @@ STOCK_SCREENER: Endpoint = Endpoint(
     name="stock_screener",
     path="stock-screener",
     version=APIVersion.STABLE,
-    description="Screen stocks based on various criteria",
+    description=(
+        "DEPRECATED and non-functional: stock-screener 404s. Do not select "
+        "it. The live company-screener endpoint is already exposed as "
+        "market.get_company_screener, with a flatter per-match payload."
+    ),
     mandatory_params=[],
     optional_params=[
         EndpointParam(

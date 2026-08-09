@@ -916,7 +916,11 @@ SENATE_TRADING_RSS: Endpoint = Endpoint(
     name="senate_trading_rss",
     path="senate-trading-rss-feed",
     version=APIVersion.STABLE,
-    description="Get Senate trading RSS feed",
+    description=(
+        "DEPRECATED and non-functional: senate-trading-rss-feed 404s. Do not "
+        "select it. The live senate-latest endpoint is already exposed as "
+        "intelligence.get_senate_latest and returns the same rows."
+    ),
     mandatory_params=[
         EndpointParam(
             name="page",

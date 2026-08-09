@@ -13,7 +13,7 @@ import warnings
 from fmp_data.client import FMPDataClient
 from fmp_data.logger import FMPLogger
 from fmp_data.mcp._compat import MCPServerType
-from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
+from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS, WITHDRAWN_TOOLS
 
 ERR = RuntimeError  # shorten
 
@@ -95,13 +95,30 @@ def _warn_if_deprecated(full_spec: str) -> None:
     usually lives in a manifest *data* file, not in a stack frame.
     """
     replacement = DEPRECATED_TOOLS.get(full_spec)
-    if replacement is None:
+    if replacement is not None:
+        message = (
+            f"MCP tool key '{full_spec}' is deprecated and will be removed in "
+            f"3.0; use '{replacement}' instead. Both names call the same "
+            f"client method, so the replacement is a drop-in."
+        )
+    elif full_spec in WITHDRAWN_TOOLS:
+        # A different failure from the alias case above, and it needs a
+        # different sentence: the endpoint is gone, so the tool answers with
+        # nothing at all, and any successor is a migration rather than a
+        # rename. Saying "drop-in" here would be untrue.
+        successor = WITHDRAWN_TOOLS[full_spec]
+        remedy = (
+            f"the closest live tool is '{successor}', but its payload differs "
+            f"-- check the fields you rely on"
+            if successor
+            else "FMP publishes no replacement"
+        )
+        message = (
+            f"MCP tool key '{full_spec}' names an endpoint FMP no longer "
+            f"serves; it returns no data and will be removed in 3.0. {remedy}."
+        )
+    else:
         return
-    message = (
-        f"MCP tool key '{full_spec}' is deprecated and will be removed in "
-        f"3.0; use '{replacement}' instead. Both names call the same client "
-        f"method, so the replacement is a drop-in."
-    )
     warnings.warn(message, DeprecationWarning, stacklevel=4)
     logger.warning(message)
 

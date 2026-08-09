@@ -53,7 +53,11 @@ ETF_HOLDING_DATES: Endpoint = Endpoint(
     name="etf_holding_dates",
     path="etf/portfolio-dates",
     version=APIVersion.STABLE,
-    description="Get ETF holding dates",
+    description=(
+        "DEPRECATED and non-functional: etf/portfolio-dates 404s. Do not "
+        "select it. Use the live funds/disclosure-dates endpoint, which "
+        "returns a date/year/quarter record per period."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
@@ -143,7 +147,11 @@ ETF_HOLDER: Endpoint = Endpoint(
     name="etf_holder",
     path="etf/holder",
     version=APIVersion.STABLE,
-    description="Get ETF holder information",
+    description=(
+        "DEPRECATED and non-functional: etf/holder 404s. Do not select it. "
+        "The closest live endpoint is funds/disclosure-holders-latest, which "
+        "returns holder/shares/change/weightPercent, not asset-level rows."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
@@ -203,7 +211,11 @@ MUTUAL_FUND_HOLDINGS: Endpoint = Endpoint(
     name="mutual_fund_holdings",
     path="mutual-fund-holdings",
     version=APIVersion.STABLE,
-    description="Get mutual fund holdings",
+    description=(
+        "DEPRECATED and non-functional: mutual-fund-holdings 404s. Do not "
+        "select it. Use the live etf/holdings endpoint, which serves mutual "
+        "fund symbols too, or funds/disclosure for full N-PORT detail."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
@@ -228,7 +240,11 @@ MUTUAL_FUND_BY_NAME: Endpoint = Endpoint(
     name="mutual_fund_by_name",
     path="mutual-fund-holdings/name",
     version=APIVersion.STABLE,
-    description="Get mutual funds by name",
+    description=(
+        "DEPRECATED and non-functional: mutual-fund-holdings/name 404s and "
+        "has no replacement -- every path variant probed also 404s. Do not "
+        "select it. search-name is a generic symbol search, not fund holdings."
+    ),
     mandatory_params=[
         EndpointParam(
             name="name",
@@ -246,7 +262,11 @@ MUTUAL_FUND_HOLDER: Endpoint = Endpoint(
     name="mutual_fund_holder",
     path="etf/holder",
     version=APIVersion.STABLE,
-    description="Get mutual fund holder information",
+    description=(
+        "DEPRECATED and non-functional: etf/holder 404s, and this endpoint "
+        "declared the same path as etf_holder. Do not select it. The closest "
+        "live endpoint is funds/disclosure-holders-latest."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",

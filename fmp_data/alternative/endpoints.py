@@ -73,8 +73,9 @@ CRYPTO_QUOTES: Endpoint = Endpoint(
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
-        "Retrieve real-time price quotes for all available cryptocurrencies "
-        "including current price, daily change, volume and other key metrics"
+        "DEPRECATED and non-functional: quotes/crypto 404s. Do not select it. "
+        "The live equivalent is the batch client's batch-crypto-quotes, which "
+        "returns symbol, price, change and volume only."
     ),
     mandatory_params=[],
     optional_params=[],
@@ -235,8 +236,9 @@ FOREX_QUOTES: Endpoint = Endpoint(
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
-        "Retrieve real-time quotes for all available forex currency pairs "
-        "including current exchange rates and daily changes"
+        "DEPRECATED and non-functional: quotes/forex 404s. Do not select it. "
+        "The live equivalent is the batch client's batch-forex-quotes, which "
+        "returns symbol, price, change and volume only."
     ),
     mandatory_params=[],
     optional_params=[],
@@ -395,8 +397,9 @@ COMMODITIES_QUOTES: Endpoint = Endpoint(
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
-        "Retrieve real-time quotes for all available commodities "
-        "including current prices, daily changes, and trading volumes"
+        "DEPRECATED and non-functional: quotes/commodity 404s. Do not select "
+        "it. The live equivalent is the batch client's batch-commodity-quotes, "
+        "which returns symbol, price, change and volume only."
     ),
     mandatory_params=[],
     optional_params=[],

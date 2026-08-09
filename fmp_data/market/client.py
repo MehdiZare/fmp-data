@@ -2,6 +2,7 @@
 from datetime import date as dt_date
 
 from fmp_data.base import EndpointGroup
+from fmp_data.helpers import deprecated
 from fmp_data.market.endpoints import (
     ACTIVELY_TRADING_LIST,
     ALL_EXCHANGE_MARKET_HOURS,
@@ -31,14 +32,12 @@ from fmp_data.market.endpoints import (
     LOSERS,
     MARKET_HOURS,
     MOST_ACTIVE,
-    PRE_POST_MARKET,
     SEARCH_COMPANY,
     SEARCH_EXCHANGE_VARIANTS,
     SEARCH_SYMBOL,
     SECTOR_PE_SNAPSHOT,
     SECTOR_PERFORMANCE,
     STOCK_LIST,
-    TRADABLE_SEARCH,
 )
 from fmp_data.market.models import (
     AvailableIndex,
@@ -107,16 +106,29 @@ class MarketClient(EndpointGroup):
         """Get list of actively trading stocks"""
         return self.client.request(ACTIVELY_TRADING_LIST)
 
+    @deprecated(
+        "tradable-list is dead and FMP publishes no drop-in replacement: "
+        "available-traded/list, symbol-list, tradable-symbol-list and "
+        "symbol/all all 404 too. get_stock_list(), get_etf_list() and "
+        "get_actively_trading_list() are partial substitutes with different "
+        "membership -- 'tradable' is not the same set as 'all stocks'."
+    )
     def get_tradable_list(
         self, limit: int | None = None, offset: int | None = None
     ) -> list[CompanySymbol]:
-        """Get list of tradable securities"""
-        params: dict[str, int] = {}
-        if limit is not None:
-            params["limit"] = limit
-        if offset is not None:
-            params["offset"] = offset
-        return self.client.request(TRADABLE_SEARCH, **params)
+        """Get list of tradable securities
+
+        .. deprecated::
+            ``tradable-list`` 404s and will be removed in a future version. It
+            currently returns an empty list. There is **no drop-in
+            replacement** — every path variant probed also 404s. The closest
+            live sources are :meth:`get_stock_list`, :meth:`get_etf_list` and
+            :meth:`get_actively_trading_list`, but each defines a different
+            universe: "tradable" is not the same set as "every listed stock",
+            so choosing one is a decision about which universe you want, not a
+            mechanical substitution.
+        """
+        return []
 
     def get_available_indexes(self) -> list[AvailableIndex]:
         """Get list of all available indexes"""
@@ -371,9 +383,27 @@ class MarketClient(EndpointGroup):
             params["exchange"] = exchange
         return self.client.request(HISTORICAL_INDUSTRY_PE, **params)
 
+    @deprecated(
+        "pre-post-market is dead, and the market-wide shape no longer exists. "
+        "Live extended-hours data is per symbol: "
+        "FMPDataClient.company.get_aftermarket_quote(symbol), or the "
+        "batch-aftermarket-quote endpoint, which requires a symbols parameter."
+    )
     def get_pre_post_market(self) -> list[PrePostMarketQuote]:
-        """Get pre/post market data"""
-        return self.client.request(PRE_POST_MARKET)
+        """Get pre/post market data
+
+        .. deprecated::
+            ``pre-post-market`` 404s and will be removed in a future version.
+            It currently returns an empty list. **The no-argument, market-wide
+            call no longer exists at FMP** — extended-hours data is per-symbol
+            now, so there is no signature-compatible replacement. Use
+            ``client.company.get_aftermarket_quote(symbol)``, or
+            ``batch-aftermarket-quote``/``batch-aftermarket-trade`` with a
+            mandatory ``symbols`` parameter for several at once. The payload
+            differs too: bid/ask price and size, not this model's ``price``
+            and ``session``.
+        """
+        return []
 
     def get_all_shares_float(self) -> list[ShareFloat]:
         """Get share float data for all companies"""

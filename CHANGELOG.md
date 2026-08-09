@@ -35,6 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`ToolFactory.create_parameter_fields` signature break** (#128) - it now takes `mandatory_params` and `optional_params` as two separate arguments instead of one concatenated list. External callers constructing an args model by hand must split their list; passing the old single sequence raises `TypeError` rather than silently mis-shaping a schema.
 
 ### Deprecated
+- **A default MCP server no longer advertises 19 tools that cannot work** - `DEFAULT_TOOLS` goes **156 → 137**. Every removed key names an FMP endpoint that returns 404 for every request, so the tool could only ever answer with nothing while still competing for an LLM's attention against the tool that does work. The catalog is unchanged at 223: all 19 stay loadable by explicit manifest until 3.0, and resolving one now emits a `DeprecationWarning`.
+  - This is **breaking for default-server users** in a minor release, in the same way and for the same reason as #136: the defect is that the tools are advertised, and it cannot be fixed while they remain advertised. If a saved prompt or hard-coded call names one, switch to the successor below or add the old key to an explicit manifest.
+  - The successors are recorded in a **new `WITHDRAWN_TOOLS` map**, deliberately *not* merged into `DEPRECATED_TOOLS`. Those mean different things: `DEPRECATED_TOOLS` is two keys for one callable, and its warning says in as many words that the replacement is a drop-in. Every `WITHDRAWN_TOOLS` successor is a *different* endpoint with a different payload, and six have no successor at all. Merging them would have made the drop-in promise false — a guard test now asserts the two maps stay disjoint and that no `WITHDRAWN_TOOLS` pair shares a `(client, method)`.
+  - The withdrawn-key warning uses its own wording: it says the endpoint is gone, names the closest live tool where one exists with an explicit "its payload differs — check the fields you rely on", and says "FMP publishes no replacement" where none does.
 - **Eight endpoints FMP no longer serves** - each 404s on the `stable` API. They now warn through the existing `@deprecated` helper, return empty **without issuing the request**, and name the closest live alternative. A call that can only earn a 404 should not cost a rate-limit slot.
 
   | Deprecated method | Closest live alternative | How it differs |
@@ -51,6 +55,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `company.COMPANY_OUTLOOK` was already orphaned — declared, but reachable from no client method and no mapping. Its description is corrected rather than left advertising a dead path to the LangChain and MCP surfaces
   - Endpoint descriptions for all eight now open with `DEPRECATED and non-functional … Do not select it`, matching the wording `intelligence` already used for `stock_news_sentiments`, so semantic search stops offering them
   - `@deprecated` and `@removed` now stamp `__fmp_deprecated__` on the wrapper, making deprecation detectable programmatically instead of by a hand-maintained list. `get_stock_news_sentiments` open-coded its warning with a function-local `import warnings`; it now uses the decorator like its neighbours
+- **Fifteen further endpoints whose live replacement the library already shipped** - these were *not* repointed, and the reason is the point. Each declares a dead path whose working equivalent is already a separate, live endpoint in this package, so repointing would have created 15 duplicate `(path, params)` pairs — exactly the duplication #130 and #136 spent two PRs removing. Nine would also have failed validation against their own `response_model`, turning a clean 404 into a runtime parse error. Each method now warns, returns empty without issuing the request, and names the method that already works:
+
+  | Deprecated method | Already shipped as | How it differs |
+  |---|---|---|
+  | `alternative.get_crypto_quotes` | `batch.get_crypto_quotes` | batch payload is `symbol`/`price`/`change`/`volume` only |
+  | `alternative.get_forex_quotes` | `batch.get_forex_quotes` | same narrowing |
+  | `alternative.get_commodities_quotes` | `batch.get_commodity_quotes` | same narrowing |
+  | `company.get_historical_share_float` | `company.get_share_float` | current snapshot, not a history |
+  | `fundamental.get_historical_rating` | `intelligence.get_ratings_historical` | `overallScore` + per-metric scores, not `ratingScore` |
+  | `intelligence.get_senate_trading_rss` | `intelligence.get_senate_latest` | same rows |
+  | `investment.get_etf_holding_dates` | `investment.get_mutual_fund_dates` | `date`/`year`/`quarter` record, not a bare date |
+  | `investment.get_mutual_fund_holdings` | `investment.get_etf_holdings` | `securityCusip`/`sharesNumber`; no `cik`/`reportedDate` |
+  | `investment.get_etf_holder` | `investment.get_fund_disclosure_holders_latest` | holder-level, not asset-level |
+  | `investment.get_mutual_fund_holder` | same | **declared the same dead path as `get_etf_holder`** — the two were duplicates of each other |
+  | `investment.get_mutual_fund_by_name` | *(none)* | a dozen path variants probed, all 404 |
+  | `market.get_tradable_list` | *(none)* | `get_stock_list`/`get_etf_list`/`get_actively_trading_list` are partial — "tradable" is a different universe |
+  | `market.get_pre_post_market` | *(none signature-compatible)* | the market-wide call is gone; extended-hours data is per symbol via `company.get_aftermarket_quote` |
+  | `company.HISTORICAL_EMPLOYEE_COUNT` | `company.get_employee_count` | orphaned declaration — no client method, no mapping |
+  | `company.STOCK_SCREENER` | `market.get_company_screener` | orphaned declaration — no client method, no mapping |
 - **Duplicate MCP tool keys, one per `(client, method)` pair from 3.0** (#136) - three company methods were advertised under two tool keys each, so an MCP client saw two tools that did exactly the same thing and an LLM had to pick between them with nothing to distinguish them. The plural key is canonical; the singular one is deprecated and **removed in 3.0**:
 
   | Deprecated key | Replacement | Method |

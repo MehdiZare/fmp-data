@@ -9,7 +9,16 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 (everything with MCP semantics, loadable via an explicit manifest), followed by
 how many of those are in `DEFAULT_TOOLS` (what a default server registers).
 The two differ where a tool is deprecated, redundant, or too heavy for the
-default set — `223` catalog tools, `156` default.
+default set — `223` catalog tools, `137` default.
+
+**Withdrawn endpoints:** 19 tools name an FMP endpoint that no longer exists.
+Probed against the live `stable` API, every one of those paths returns 404, so
+the tool can only ever answer with nothing. They remain in the catalog and stay
+loadable by explicit manifest, but they are **excluded from `DEFAULT_TOOLS`** —
+a default server should not offer a tool that cannot work. Where a live tool
+covers the same ground it is named in `WITHDRAWN_TOOLS`, but those are
+migrations rather than renames: the payloads differ, so check the fields you
+rely on. Six have no successor at all.
 
 **Tool keys:** a manifest entry may be the bare key (`profile`) or the fully
 qualified spec (`company.profile`). The bare form resolves only when exactly
@@ -21,23 +30,23 @@ always be written in full: `crypto_quotes` (`alternative.crypto_quotes` vs
 
 ## Table of Contents
 
-- [Alternative (15 tools, 15 default)](#alternative)
+- [Alternative (15 tools, 12 default)](#alternative)
 - [Batch (30 tools, 0 default)](#batch)
-- [Company (32 tools, 27 default)](#company)
+- [Company (32 tools, 21 default)](#company)
 - [Economics (7 tools, 7 default)](#economics)
-- [Fundamental (14 tools, 13 default)](#fundamental)
+- [Fundamental (14 tools, 12 default)](#fundamental)
 - [Index (6 tools, 0 default)](#index)
-- [Institutional (12 tools, 10 default)](#institutional)
-- [Intelligence (45 tools, 39 default)](#intelligence)
-- [Investment (14 tools, 14 default)](#investment)
-- [Market (23 tools, 22 default)](#market)
+- [Institutional (12 tools, 8 default)](#institutional)
+- [Intelligence (45 tools, 38 default)](#intelligence)
+- [Investment (14 tools, 9 default)](#investment)
+- [Market (23 tools, 21 default)](#market)
 - [SEC (12 tools, 0 default)](#sec)
 - [Technical (9 tools, 9 default)](#technical)
 - [Transcripts (4 tools, 0 default)](#transcripts)
 
 ## Alternative
 
-**15 tools** for alternative data access (15 default).
+**15 tools** for alternative data access (12 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -97,7 +106,7 @@ via a manifest; these return large payloads and several are CSV).
 
 ## Company
 
-**32 tools** for company information and quotes (27 default).
+**32 tools** for company information and quotes (21 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -150,7 +159,7 @@ via a manifest; these return large payloads and several are CSV).
 
 ## Fundamental
 
-**14 tools** for fundamental analysis and valuation (13 default).
+**14 tools** for fundamental analysis and valuation (12 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -184,7 +193,7 @@ via a manifest; these return large payloads and several are CSV).
 
 ## Institutional
 
-**12 tools** for institutional and insider data (10 default).
+**12 tools** for institutional and insider data (8 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -203,7 +212,7 @@ via a manifest; these return large payloads and several are CSV).
 
 ## Intelligence
 
-**45 tools** for news, sentiment, market events, and analyst ratings/grades (39 default).
+**45 tools** for news, sentiment, market events, and analyst ratings/grades (38 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -255,7 +264,7 @@ via a manifest; these return large payloads and several are CSV).
 
 ## Investment
 
-**14 tools** for ETFs and mutual funds (14 default).
+**14 tools** for ETFs and mutual funds (9 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -276,7 +285,7 @@ via a manifest; these return large payloads and several are CSV).
 
 ## Market
 
-**23 tools** for market data and search (22 default).
+**23 tools** for market data and search (21 default).
 
 | Tool Key | Description |
 |----------|-------------|

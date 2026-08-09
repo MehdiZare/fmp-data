@@ -34,7 +34,6 @@ from fmp_data.company.endpoints import (
     HISTORICAL_PRICE_DIVIDEND_ADJUSTED,
     HISTORICAL_PRICE_LIGHT,
     HISTORICAL_PRICE_NON_SPLIT_ADJUSTED,
-    HISTORICAL_SHARE_FLOAT,
     INCOME_STATEMENT_AS_REPORTED,
     INCOME_STATEMENT_GROWTH,
     INCOME_STATEMENT_TTM,
@@ -271,9 +270,25 @@ class CompanyClient(EndpointGroup):
         """Get executive compensation data for a company"""
         return self.client.request(EXECUTIVE_COMPENSATION, symbol=symbol)
 
+    @deprecated(
+        "historical/shares-float is dead. The live path shares-float is "
+        "already shipped as get_share_float(symbol); this method is a "
+        "leftover declaration, not a second data source. It returns the "
+        "current snapshot, not a time series."
+    )
     def get_historical_share_float(self, symbol: str) -> list[HistoricalShareFloat]:
-        """Get historical share float data for a company"""
-        return self.client.request(HISTORICAL_SHARE_FLOAT, symbol=symbol)
+        """Get historical share float data for a company
+
+        .. deprecated::
+            ``historical/shares-float`` 404s and will be removed in a future
+            version. It currently returns an empty list. Use
+            :meth:`get_share_float`, which serves the live ``shares-float``
+            with the same fields (``date``, ``floatShares``, ``freeFloat``,
+            ``outstandingShares``, ``source``, ``symbol``). It is not a
+            drop-in: it answers with the current snapshot rather than a
+            history, so back-fill is no longer available from FMP.
+        """
+        return []
 
     def get_product_revenue_segmentation(
         self, symbol: str, period: str = "annual"

@@ -437,6 +437,83 @@ class TestSemanticsMethodResolution:
             "crypto_quotes",
         )
 
+    def test_withdrawn_tools_resolve_but_are_never_default(self):
+        """A tool whose endpoint 404s must not be advertised by default.
+
+        It stays in the catalog so an explicit manifest keeps working, and its
+        successor -- where one exists -- must be a real, loadable spec rather
+        than a name someone hoped was right.
+        """
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tools_manifest import (
+            DEFAULT_TOOLS,
+            WITHDRAWN_TOOLS,
+        )
+
+        catalog = {tool["spec"] for tool in discover_all_tools()}
+
+        assert WITHDRAWN_TOOLS, "an empty map would make this test vacuous"
+        for spec, successor in WITHDRAWN_TOOLS.items():
+            assert spec in catalog, f"{spec} must keep resolving until 3.0"
+            assert spec not in DEFAULT_TOOLS, (
+                f"{spec} names a dead FMP endpoint; a default server would "
+                "advertise a tool that can only return empty"
+            )
+            if successor is not None:
+                assert successor in catalog, f"{spec} -> {successor} does not exist"
+                assert successor not in WITHDRAWN_TOOLS, (
+                    f"{spec} points at {successor}, which is itself withdrawn"
+                )
+
+    def test_withdrawn_and_deprecated_stay_distinct(self):
+        """The two maps mean different things and must not blur together.
+
+        ``DEPRECATED_TOOLS`` promises a drop-in: both keys call the same
+        method, and ``_warn_if_deprecated`` says so in as many words. Every
+        ``WITHDRAWN_TOOLS`` successor is a *different* endpoint with a
+        different payload. Merging them would make that promise false.
+        """
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS, WITHDRAWN_TOOLS
+
+        assert not set(DEPRECATED_TOOLS) & set(WITHDRAWN_TOOLS)
+
+        # Compare (client, method), not the bare method name: the name alone
+        # is ambiguous across clients -- alternative.get_crypto_quotes and
+        # batch.get_crypto_quotes share a name but are different callables on
+        # different endpoints, which is the whole reason one is withdrawn.
+        callable_by_spec = {
+            tool["spec"]: (tool["spec"].split(".")[0], tool["method"])
+            for tool in discover_all_tools()
+        }
+        for spec, successor in WITHDRAWN_TOOLS.items():
+            if successor is None:
+                continue
+            assert callable_by_spec[spec] != callable_by_spec[successor], (
+                f"{spec} and {successor} are the same callable, so this is an "
+                "alias and belongs in DEPRECATED_TOOLS instead"
+            )
+
+    def test_withdrawn_key_warning_does_not_promise_a_drop_in(self):
+        """The withdrawn warning must not repeat the alias wording.
+
+        Telling someone a replacement is a drop-in when the payload differs is
+        worse than saying nothing: they will swap the call and trust the
+        result.
+        """
+        from fmp_data.mcp.tool_loader import _warn_if_deprecated
+
+        with pytest.warns(DeprecationWarning) as recorded:
+            _warn_if_deprecated("company.core_information")
+        message = str(recorded[0].message)
+        assert "no longer serves" in message
+        assert "company.profile" in message
+        assert "drop-in" not in message
+
+        with pytest.warns(DeprecationWarning) as recorded:
+            _warn_if_deprecated("institutional.fail_to_deliver")
+        assert "no replacement" in str(recorded[0].message)
+
 
 class TestToolKeyNamespace:
     """One tool key per ``(client, method)`` pair (#126, #130, #136)."""

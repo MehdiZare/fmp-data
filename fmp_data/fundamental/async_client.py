@@ -19,6 +19,7 @@ from fmp_data.fundamental.models import (
     LeveredDCF,
     OwnerEarnings,
 )
+from fmp_data.helpers import deprecated
 
 
 class AsyncFundamentalClient(AsyncEndpointGroup):
@@ -103,11 +104,26 @@ class AsyncFundamentalClient(AsyncEndpointGroup):
         """Get levered DCF valuation"""
         return await self.client.request_async(endpoints.LEVERED_DCF, symbol=symbol)
 
+    @deprecated(
+        "historical-rating is dead. The live path ratings-historical is "
+        "already shipped as FMPDataClient.intelligence.get_ratings_historical"
+        "(symbol); this method is a leftover declaration. The scoring fields "
+        "differ -- overallScore and per-metric scores, not ratingScore."
+    )
     async def get_historical_rating(self, symbol: str) -> list[HistoricalRating]:
-        """Get historical company ratings"""
-        return await self.client.request_async(
-            endpoints.HISTORICAL_RATING, symbol=symbol
-        )
+        """Get historical company ratings
+
+        .. deprecated::
+            ``historical-rating`` 404s and will be removed in a future
+            version. It currently returns an empty list. Use
+            ``client.intelligence.get_ratings_historical(symbol)``, which
+            serves the live ``ratings-historical``. It is not a drop-in: that
+            payload carries ``overallScore`` plus per-metric scores
+            (``discountedCashFlowScore``, ``returnOnEquityScore``, …) where
+            this model declared ``ratingScore``, ``ratingDetails`` and
+            ``ratingRecommendation``.
+        """
+        return []
 
     async def get_discounted_cash_flow(self, symbol: str) -> list[DCF]:
         """Get discounted cash flow valuation"""
