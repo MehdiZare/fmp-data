@@ -8,13 +8,19 @@ question about a manifest entry, and each used to answer it its own way:
 * ``validate`` reported its findings and then printed a success verdict and
   exited 0 for manifests registration refuses (#161);
 * the loader skipped its duplicate check entirely under
-  ``FMP_MCP_TOOL_NAME_STYLE=spec`` (#162).
+  ``FMP_MCP_TOOL_NAME_STYLE=spec`` (#162);
+* ``list`` showed, in two of its four formats, no entry a manifest could
+  use (#163);
+* ``generate`` filtered on one of the two tables recording that an endpoint
+  is dead, so it shipped three tools that answer empty (#164).
 
 The tests here are deliberately not one-per-bug. They pin the *agreement*
 across a table of manifests -- the catalog plus every known-bad shape -- under
 both name styles, so a fourth divergence cannot be introduced without a
 failure. That is what makes #161's class structurally impossible rather than
-fixed once.
+fixed once, and the same reasoning drives
+``test_withdrawn_tools_match_the_semantics_flag``: the two retirement records
+are asserted equal rather than kept equal by hand.
 """
 
 from __future__ import annotations
