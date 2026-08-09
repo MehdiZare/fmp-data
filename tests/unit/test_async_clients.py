@@ -1945,10 +1945,34 @@ class TestAsyncInstitutionalClient:
                 {"cik": "0000320193", "year": 2024, "quarter": 1},
             ),
             (
+                "get_institutional_ownership_extract_by_quarter",
+                {"cik": "0000320193", "year": 2024, "quarter": 1},
+                "INSTITUTIONAL_OWNERSHIP_EXTRACT",
+                {"cik": "0000320193", "year": 2024, "quarter": 1},
+            ),
+            (
                 "get_institutional_ownership_analytics",
                 {
                     "symbol": "AAPL",
                     "report_date": dt_date(2024, 3, 31),
+                    "page": 2,
+                    "limit": 50,
+                },
+                "INSTITUTIONAL_OWNERSHIP_ANALYTICS",
+                {
+                    "symbol": "AAPL",
+                    "year": 2024,
+                    "quarter": 1,
+                    "page": 2,
+                    "limit": 50,
+                },
+            ),
+            (
+                "get_institutional_ownership_analytics_by_quarter",
+                {
+                    "symbol": "AAPL",
+                    "year": 2024,
+                    "quarter": 1,
                     "page": 2,
                     "limit": 50,
                 },
@@ -2000,8 +2024,34 @@ class TestAsyncInstitutionalClient:
                 },
             ),
             (
+                "get_holder_performance_summary_by_quarter",
+                {
+                    "cik": "0000320193",
+                    "year": 2024,
+                    "quarter": 1,
+                    "page": 1,
+                },
+                "HOLDER_PERFORMANCE_SUMMARY",
+                {
+                    "cik": "0000320193",
+                    "year": 2024,
+                    "quarter": 1,
+                    "page": 1,
+                },
+            ),
+            (
                 "get_holder_industry_breakdown",
                 {"cik": "0000320193", "report_date": dt_date(2024, 3, 31)},
+                "HOLDER_INDUSTRY_BREAKDOWN",
+                {
+                    "cik": "0000320193",
+                    "year": 2024,
+                    "quarter": 1,
+                },
+            ),
+            (
+                "get_holder_industry_breakdown_by_quarter",
+                {"cik": "0000320193", "year": 2024, "quarter": 1},
                 "HOLDER_INDUSTRY_BREAKDOWN",
                 {
                     "cik": "0000320193",
@@ -2016,8 +2066,20 @@ class TestAsyncInstitutionalClient:
                 {"symbol": "AAPL", "year": 2024, "quarter": 1},
             ),
             (
+                "get_symbol_positions_summary_by_quarter",
+                {"symbol": "AAPL", "year": 2024, "quarter": 1},
+                "SYMBOL_POSITIONS_SUMMARY",
+                {"symbol": "AAPL", "year": 2024, "quarter": 1},
+            ),
+            (
                 "get_industry_performance_summary",
                 {"report_date": dt_date(2024, 3, 31)},
+                "INDUSTRY_PERFORMANCE_SUMMARY",
+                {"year": 2024, "quarter": 1},
+            ),
+            (
+                "get_industry_performance_summary_by_quarter",
+                {"year": 2024, "quarter": 1},
                 "INDUSTRY_PERFORMANCE_SUMMARY",
                 {"year": 2024, "quarter": 1},
             ),
@@ -2039,6 +2101,26 @@ class TestAsyncInstitutionalClient:
         assert result == []
         endpoint = getattr(institutional_endpoints, endpoint_name)
         mock_client.request_async.assert_called_once_with(endpoint, **expected_kwargs)
+
+    @pytest.mark.asyncio
+    async def test_get_holder_performance_summary_without_date_omits_year_quarter(
+        self, mock_client
+    ):
+        """Optional report_date: without it, year/quarter are not sent (#192)."""
+        from fmp_data.institutional import endpoints as institutional_endpoints
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncInstitutionalClient(mock_client)
+
+        result = await async_client.get_holder_performance_summary("0000320193", page=0)
+
+        assert result == []
+        mock_client.request_async.assert_called_once_with(
+            institutional_endpoints.HOLDER_PERFORMANCE_SUMMARY,
+            cik="0000320193",
+            page=0,
+        )
 
 
 class TestAsyncInvestmentClient:
