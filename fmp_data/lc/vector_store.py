@@ -217,7 +217,13 @@ _ENDPOINT_TO_METHOD_ALIASES: Mapping[str, tuple[str, ...]] = {
     # economics.get_economic_indicators renames the wire ``name`` param.
     "name": ("name", "indicator_name", "query"),
     # Several clients take a single report/as-of day under a different name.
-    "date": ("date", "report_date", "holdings_date", "target_date"),
+    "date": (
+        "date",
+        "report_date",
+        "holdings_date",
+        "target_date",
+        "trade_date",
+    ),
     # sec.search_company_by_name: endpoint ``company``, method ``name``.
     "company": ("company", "name"),
 }
@@ -260,6 +266,57 @@ def resolve_client_method(
     return cast(Callable[..., Any], method)
 
 
+def resolve_dispatch_method(
+    client: Any,
+    client_name: str,
+    method_name: str,
+    endpoint_param_names: Sequence[str],
+) -> Callable[..., Any] | None:
+    """Resolve a client method only when every required param can be mapped.
+
+    Shape mismatches (e.g. Form 13F year/quarter vs report_date) return
+    ``None`` so the tool falls back to ``client.request`` + the pre-#172
+    endpoint schema.
+    """
+    method = resolve_client_method(client, client_name, method_name)
+    if method is None:
+        return None
+    if not method_dispatch_compatible(method, endpoint_param_names):
+        return None
+    return method
+
+
+def method_dispatch_compatible(
+    method: Callable[..., Any],
+    endpoint_param_names: Sequence[str],
+) -> bool:
+    """True if every required method param can be filled from endpoint params.
+
+    Shape mismatches (e.g. FORM_13F wire year/quarter vs method report_date)
+    cannot be alias-mapped; those tools must keep client.request dispatch.
+    """
+    signature = inspect.signature(method)
+    method_params = {
+        name: param
+        for name, param in signature.parameters.items()
+        if name != "self"
+        and param.kind
+        in (
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            inspect.Parameter.KEYWORD_ONLY,
+        )
+    }
+    covered: set[str] = set()
+    for ep_name in endpoint_param_names:
+        resolved = resolve_method_param_name(ep_name, set(method_params))
+        if resolved is not None:
+            covered.add(resolved)
+    for name, param in method_params.items():
+        if param.default is inspect.Parameter.empty and name not in covered:
+            return False
+    return True
+
+
 def map_tool_kwargs_to_method(
     method: Callable[..., Any], kwargs: Mapping[str, Any]
 ) -> dict[str, Any]:
@@ -299,8 +356,12 @@ def partition_params_for_method(
 
     When *method* is available, an endpoint-mandatory parameter whose mapped
     method parameter has a default becomes optional in the tool schema — the
-    method will fill it. Without a resolvable method the endpoint lists are
-    returned unchanged (the pre-#172 behaviour).
+    method will fill it. Endpoint params that do not resolve to any method
+    parameter are omitted entirely: method dispatch drops unmapped kwargs at
+    invoke time, so advertising them as required would force LLMs to supply
+    values that never reach the API (e.g. revenue ``structure``, employee
+    ``limit``). Without a resolvable method the endpoint lists are returned
+    unchanged (the pre-#172 behaviour).
     """
     if method is None:
         return list(mandatory_params), list(optional_params)
@@ -312,20 +373,23 @@ def partition_params_for_method(
     method_names = set(method_params)
 
     new_mandatory: list[Any] = []
-    new_optional: list[Any] = list(optional_params)
-    for param in mandatory_params:
+    new_optional: list[Any] = []
+
+    def place(param: Any) -> None:
         method_name = resolve_method_param_name(param.name, method_names)
         if method_name is None:
-            # Method does not accept this wire param; keep it mandatory so the
-            # schema does not silently drop a required API field for tools that
-            # still fall back to ``client.request``.
-            new_mandatory.append(param)
-            continue
+            # Cannot reach the method; omit from the tool schema.
+            return
         method_param = method_params[method_name]
         if method_param.default is inspect.Parameter.empty:
             new_mandatory.append(param)
         else:
             new_optional.append(param)
+
+    for param in mandatory_params:
+        place(param)
+    for param in optional_params:
+        place(param)
     return new_mandatory, new_optional
 
 
@@ -877,8 +941,16 @@ class EndpointVectorStore:
         try:
             semantics = info.semantics
             endpoint = info.endpoint
-            method = resolve_client_method(
-                self.client, semantics.client_name, semantics.method_name
+            ep_names = [
+                p.name
+                for p in list(endpoint.mandatory_params)
+                + list(endpoint.optional_params or [])
+            ]
+            method = resolve_dispatch_method(
+                self.client,
+                semantics.client_name,
+                semantics.method_name,
+                ep_names,
             )
             mandatory_params, optional_params = partition_params_for_method(
                 endpoint.mandatory_params,

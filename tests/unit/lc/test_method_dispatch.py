@@ -16,10 +16,16 @@ from unittest.mock import Mock
 from langchain_core.embeddings import Embeddings
 
 from fmp_data.base import BaseClient
+from fmp_data.company.endpoints import (
+    EMPLOYEE_COUNT,
+    PRODUCT_REVENUE_SEGMENTATION,
+)
+from fmp_data.institutional.endpoints import FORM_13F
 from fmp_data.lc.registry import EndpointRegistry
 from fmp_data.lc.vector_store import (
     EndpointVectorStore,
     map_tool_kwargs_to_method,
+    method_dispatch_compatible,
     method_param_aliases,
     partition_params_for_method,
     resolve_client_method,
@@ -66,6 +72,23 @@ def _sec_registry(*semantics_keys: str) -> EndpointRegistry:
     return registry
 
 
+def _institutional_registry(*semantics_keys: str) -> EndpointRegistry:
+    """Build a registry from institutional semantics table keys."""
+    from fmp_data.institutional.mapping import (
+        INSTITUTIONAL_ENDPOINT_MAP,
+        INSTITUTIONAL_ENDPOINTS_SEMANTICS,
+    )
+
+    registry = EndpointRegistry()
+    endpoints = {}
+    for key in semantics_keys:
+        sem = INSTITUTIONAL_ENDPOINTS_SEMANTICS[key]
+        endpoints[sem.method_name] = (INSTITUTIONAL_ENDPOINT_MAP[sem.method_name], sem)
+    failures = registry.register_batch(endpoints)
+    assert failures == {}, failures
+    return registry
+
+
 # ---------------------------------------------------------------------------
 # Pure helpers
 # ---------------------------------------------------------------------------
@@ -77,6 +100,19 @@ def test_method_param_aliases_cover_wire_renames() -> None:
     assert "period_length" in method_param_aliases("periodLength")
     assert "sic_code" in method_param_aliases("sicCode")
     assert "indicator_name" in method_param_aliases("name")
+
+
+def test_date_aliases_include_trade_date() -> None:
+    assert "trade_date" in method_param_aliases("date")
+    assert resolve_method_param_name("date", {"trade_date", "symbol"}) == "trade_date"
+
+
+def test_method_dispatch_compatible_rejects_uncovered_required() -> None:
+    def get_form_13f(cik: str | int, report_date: date) -> list[Any]:
+        return []
+
+    assert not method_dispatch_compatible(get_form_13f, ["cik", "year", "quarter"])
+    assert method_dispatch_compatible(get_form_13f, ["cik", "report_date"])
 
 
 def test_resolve_method_param_name_prefers_exact_then_alias() -> None:
@@ -329,3 +365,87 @@ def test_partition_industry_classification_all_optional() -> None:
     )
     assert mandatory == []
     assert {p.name for p in optional} == {"symbol", "cik", "sicCode"}
+
+
+def test_partition_omits_unmapped_when_method_active() -> None:
+    """Endpoint-only params (structure, limit) are dropped under method dispatch."""
+
+    def get_product_revenue_segmentation(
+        symbol: str, period: str = "annual"
+    ) -> list[Any]:
+        return []
+
+    def get_employee_count(symbol: str) -> list[Any]:
+        return []
+
+    rev_mandatory, rev_optional = partition_params_for_method(
+        PRODUCT_REVENUE_SEGMENTATION.mandatory_params,
+        PRODUCT_REVENUE_SEGMENTATION.optional_params or [],
+        get_product_revenue_segmentation,
+    )
+    assert {p.name for p in rev_mandatory} == {"symbol"}
+    assert {p.name for p in rev_optional} == {"period"}
+    assert "structure" not in {p.name for p in rev_mandatory + rev_optional}
+
+    emp_mandatory, emp_optional = partition_params_for_method(
+        EMPLOYEE_COUNT.mandatory_params,
+        EMPLOYEE_COUNT.optional_params or [],
+        get_employee_count,
+    )
+    assert {p.name for p in emp_mandatory} == {"symbol"}
+    assert emp_optional == []
+    assert "limit" not in {p.name for p in emp_mandatory + emp_optional}
+
+    # Without a method, pre-#172 lists are unchanged (structure/limit kept).
+    bare_mand, _bare_opt = partition_params_for_method(
+        PRODUCT_REVENUE_SEGMENTATION.mandatory_params,
+        PRODUCT_REVENUE_SEGMENTATION.optional_params or [],
+        None,
+    )
+    assert "structure" in {p.name for p in bare_mand}
+    bare_emp_mand, bare_emp_opt = partition_params_for_method(
+        EMPLOYEE_COUNT.mandatory_params,
+        EMPLOYEE_COUNT.optional_params or [],
+        None,
+    )
+    assert "limit" in {p.name for p in bare_emp_opt}
+    assert bare_emp_mand  # symbol still present
+
+
+def test_form_13f_shape_mismatch_falls_back_to_request(tmp_path: Any) -> None:
+    """FORM_13F year/quarter vs method report_date cannot be alias-mapped."""
+
+    def get_form_13f(cik: str | int, report_date: date) -> list[Any]:
+        raise AssertionError("must not call method with unmappable shape")
+
+    request = Mock(return_value=[])
+    client = cast(
+        BaseClient,
+        SimpleNamespace(
+            request=request,
+            institutional=SimpleNamespace(get_form_13f=get_form_13f),
+        ),
+    )
+    registry = _institutional_registry("form_13f")
+    store = _store_with(client, registry, tmp_path)
+    info = registry.get_endpoint("get_form_13f")
+    assert info is not None
+
+    tool = cast(Any, store.create_tool(info))
+    # Fallback keeps pre-#172 wire schema (cik/year/quarter), not report_date.
+    required = {
+        name
+        for name, field in tool.args_schema.model_fields.items()
+        if field.is_required()
+    }
+    assert required == {"cik", "year", "quarter"}
+
+    result = tool.invoke({"cik": "0001067983", "year": 2023, "quarter": 3})
+    assert result["status"] == "success"
+    request.assert_called_once()
+    assert request.call_args.args[0] is FORM_13F
+    assert request.call_args.kwargs == {
+        "cik": "0001067983",
+        "year": 2023,
+        "quarter": 3,
+    }
