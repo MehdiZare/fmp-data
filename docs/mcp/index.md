@@ -12,15 +12,22 @@ names, set `FMP_MCP_TOOL_NAME_STYLE=spec` to expose fully qualified names like
 
 MCP tools advertise the **Python client method** parameter names — the same
 names you pass to `client.company.get_profile(...)`,
-`client.sec.search_filings_by_symbol(from_date=..., to_date=...)`, and so on.
-That matches how the MCP loader resolves `client.<module>.<method>` and builds
-the tool schema from `inspect.signature`.
+`client.sec.search_by_symbol(symbol=..., from_date=..., to_date=...)`, and so
+on. The MCP loader resolves `client.<module>.<method>` and registers that
+callable; the MCP framework advertises its Python signature as the tool schema.
 
 LangChain tools built from `EndpointVectorStore` keep the **HTTP / wire** names
-from the endpoint declaration (`from`, `to`, `periodLength`, …) and map them
-onto method parameters at invoke time. The two integrations therefore may show
-different argument names for the same endpoint; both are correct for their
-dispatch path. See the LangChain section of the project README and #188.
+from the endpoint declaration (`from`, `to`, `periodLength`, …) and, when the
+method shape is compatible, map them onto method parameters at invoke time.
+The two integrations therefore may show different argument names for the same
+endpoint (e.g. `from`/`to` on LangChain vs `from_date`/`to_date` or
+`start_date`/`end_date` on MCP) — both are intentional.
+
+When shapes diverge, LangChain keeps the wire schema and falls back to
+`client.request` instead of the method. Today that is Form 13F / institutional
+holdings: wire `year`/`quarter` vs required method `report_date` (MCP still
+exposes `report_date`). See the LangChain section of the project README and
+#188.
 
 ## Guides
 
