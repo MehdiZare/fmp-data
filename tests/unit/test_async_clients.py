@@ -1617,6 +1617,64 @@ class TestAsyncInstitutionalClient:
         )
 
     @pytest.mark.asyncio
+    async def test_get_form_13f_by_quarter_sends_wire_params(self, mock_client):
+        """The wire-shaped method passes year/quarter straight through (#188)."""
+        from fmp_data.institutional import endpoints as institutional_endpoints
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncInstitutionalClient(mock_client)
+
+        result = await async_client.get_form_13f_by_quarter("0000320193", 2023, 3)
+
+        assert result == []
+        mock_client.request_async.assert_called_once_with(
+            institutional_endpoints.FORM_13F,
+            cik="0000320193",
+            year=2023,
+            quarter=3,
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_form_13f_by_quarter_handles_exception(self, mock_client):
+        """Error swallowing lives on the wire-shaped method, not the wrapper."""
+        from fmp_data.exceptions import FMPError
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.logger = MagicMock()
+        mock_client.request_async.side_effect = FMPError("boom")
+
+        async_client = AsyncInstitutionalClient(mock_client)
+        result = await async_client.get_form_13f_by_quarter("0000320193", 2023, 3)
+
+        assert result == []
+        mock_client.logger.warning.assert_called_once()
+        assert "0000320193" in mock_client.logger.warning.call_args[0][0]
+
+    @pytest.mark.asyncio
+    async def test_get_institutional_holdings_by_quarter_sends_wire_params(
+        self, mock_client
+    ):
+        """No report_date anywhere on the wire-shaped holdings method (#188)."""
+        from fmp_data.institutional import endpoints as institutional_endpoints
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncInstitutionalClient(mock_client)
+
+        result = await async_client.get_institutional_holdings_by_quarter(
+            "AAPL", 2023, 3
+        )
+
+        assert result == []
+        mock_client.request_async.assert_called_once_with(
+            institutional_endpoints.INSTITUTIONAL_HOLDINGS,
+            symbol="AAPL",
+            year=2023,
+            quarter=3,
+        )
+
+    @pytest.mark.asyncio
     async def test_search_cik_by_name_filters_results(self, mock_client):
         """Test search_cik_by_name filters by uppercased name."""
         from fmp_data.institutional.async_client import AsyncInstitutionalClient

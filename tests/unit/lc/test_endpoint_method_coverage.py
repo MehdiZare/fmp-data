@@ -14,10 +14,11 @@ This guard walks every ``(endpoint_map x semantics)`` pair that
 1. **method-dispatch compatible** — every required method param is covered
    by a wire/endpoint field (exact name or alias).
 2. **request-fallback** — a required method param has no wire source. These
-   must stay on the explicit allowlist below; a new entry is a PR failure
-   until someone decides request-fallback is intended (and adds it) or
-   aligns the shapes. The allowlist pins the *uncovered required* method
-   params so a known mismatch cannot silently gain more debt.
+   must stay on the explicit allowlist below, which is currently *empty*; a
+   new entry is a PR failure until someone decides request-fallback is
+   intended (and adds it) or aligns the shapes. The allowlist pins the
+   *uncovered required* method params so a known mismatch cannot silently
+   gain more debt.
 3. **mandatory wire dropped under method dispatch** — a mandatory endpoint
    field maps to no method parameter, so method dispatch omits it from the
    tool schema. Known cases (e.g. revenue ``structure``) are allowlisted;
@@ -26,10 +27,11 @@ This guard walks every ``(endpoint_map x semantics)`` pair that
 Optional wire fields dropped under method dispatch are intentionally out of
 scope here (they are not required for a successful call). MCP always
 registers the live Python method via ``_resolve_attr`` and does not run
-this shape gate — the two integrations can intentionally disagree on
-allowlisted fallbacks (e.g. Form 13F wire ``year``/``quarter`` vs method
-``report_date``). This guard pins LangChain's classification and that every
-semantics method still resolves on a real client.
+this shape gate, so the two integrations *could* disagree on an allowlisted
+fallback — but as of #188 nothing is allowlisted, so both dispatch through
+the same method for every tool in the catalogue. This guard pins LangChain's
+classification and that every semantics method still resolves on a real
+client.
 """
 
 from __future__ import annotations
@@ -51,7 +53,7 @@ from fmp_data.models import Endpoint, EndpointParam, ParamLocation, ParamType
 
 # Floors, not equalities: a walk that stops yielding must fail rather than
 # pass vacuously. Observed on the catalogue at time of writing: 215 triples,
-# 213 method-compatible, 2 request-fallback, 2 dropped-mandatory.
+# all 215 method-compatible, 0 request-fallback, 2 dropped-mandatory.
 _MIN_PAIRS = 200
 _MIN_METHOD_COMPATIBLE = 200
 
@@ -60,13 +62,16 @@ _MIN_METHOD_COMPATIBLE = 200
 # LangChain falls back to ``client.request`` for these (#186). Expand only
 # when a new shape mismatch is deliberate — and pin the uncovered names so
 # the known debt cannot silently grow.
-KNOWN_REQUEST_FALLBACK: frozenset[tuple[str, str, frozenset[str]]] = frozenset(
-    {
-        # Wire year/quarter cannot satisfy required method report_date.
-        ("institutional", "get_form_13f", frozenset({"report_date"})),
-        ("institutional", "get_institutional_holdings", frozenset({"report_date"})),
-    }
-)
+#
+# Empty since #188 aligned the last two entries. The institutional Form 13F
+# and symbol-positions-summary tools used to sit here because their client
+# methods required ``report_date`` while the wire takes ``year``/``quarter``;
+# they now dispatch through ``get_form_13f_by_quarter`` /
+# ``get_institutional_holdings_by_quarter``, which match the API. Keeping the
+# allowlist (rather than deleting it with the entries) is deliberate: the
+# assertions below are what make a *new* mismatch a PR failure, and an empty
+# allowlist is the strongest form of that guard.
+KNOWN_REQUEST_FALLBACK: frozenset[tuple[str, str, frozenset[str]]] = frozenset()
 _KNOWN_REQUEST_FALLBACK_METHODS: frozenset[tuple[str, str]] = frozenset(
     (client, method) for client, method, _uncovered in KNOWN_REQUEST_FALLBACK
 )

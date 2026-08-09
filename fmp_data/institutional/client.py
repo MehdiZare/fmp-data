@@ -64,36 +64,64 @@ class InstitutionalClient(EndpointGroup):
         quarter = (report_date.month - 1) // 3 + 1
         return report_date.year, quarter
 
-    def get_form_13f(self, cik: str | int, report_date: date) -> list[Form13F]:
+    def get_form_13f_by_quarter(
+        self, cik: str | int, year: int, quarter: int
+    ) -> list[Form13F]:
         """
-        Get Form 13F filing data
+        Get Form 13F filing data for a calendar quarter.
+
+        This is the shape ``/stable/institutional-ownership/extract`` actually
+        takes. ``year`` and ``quarter`` are mandatory query parameters -- the
+        API answers ``400 Query Error: Invalid or missing query parameter -
+        year`` without them -- and there is no date parameter at all. The
+        period end ``date`` is a *response* field.
+
+        :meth:`get_form_13f` is the date-shaped convenience layered over this
+        method, not the other way round. This one is what the LangChain and
+        MCP tools dispatch through, so their arguments match the wire (#188).
 
         Args:
             cik: Central Index Key (CIK)
-            report_date: Report period end date (e.g., 2023-09-30)
+            year: Filing year (e.g., 2023)
+            quarter: Calendar quarter, 1-4
 
         Returns:
             List of Form13F objects. Empty list if no records found.
         """
-        year, quarter = self._date_to_year_quarter(report_date)
         try:
             result = self.client.request(FORM_13F, cik=cik, year=year, quarter=quarter)
         except (FMPError, ValidationError) as exc:
             # API errors (404, validation, etc.) return empty list for convenience
             self.client.logger.warning(
-                f"No Form 13F data found for CIK {cik} on {report_date}: {exc!s}"
+                f"No Form 13F data found for CIK {cik} in {year} Q{quarter}: {exc!s}"
             )
             return []
 
         if isinstance(result, list):
             if not result:
                 self.client.logger.warning(
-                    "No Form 13F data found for CIK %s on %s.",
+                    "No Form 13F data found for CIK %s in %s Q%s.",
                     cik,
-                    report_date,
+                    year,
+                    quarter,
                 )
             return result
         return [result]
+
+    def get_form_13f(self, cik: str | int, report_date: date) -> list[Form13F]:
+        """
+        Get Form 13F filing data for the quarter containing ``report_date``.
+
+        Args:
+            cik: Central Index Key (CIK)
+            report_date: Any date inside the report period (e.g., 2023-09-30).
+                Only its year and calendar quarter reach the API.
+
+        Returns:
+            List of Form13F objects. Empty list if no records found.
+        """
+        year, quarter = self._date_to_year_quarter(report_date)
+        return self.get_form_13f_by_quarter(cik, year, quarter)
 
     def get_form_13f_dates(self, cik: str | int) -> list[Form13FDate]:
         """
@@ -141,6 +169,26 @@ class InstitutionalClient(EndpointGroup):
         """Get list of institutional holders"""
         return self.client.request(INSTITUTIONAL_HOLDERS, page=page, limit=limit)
 
+    def get_institutional_holdings_by_quarter(
+        self, symbol: str, year: int, quarter: int
+    ) -> list[InstitutionalHolding]:
+        """Get institutional holdings for a symbol in a calendar quarter.
+
+        The wire shape of ``/stable/institutional-ownership/
+        symbol-positions-summary``: ``year`` and ``quarter`` are mandatory and
+        the API rejects a request without them. LangChain and MCP tools
+        dispatch through this method (#188);
+        :meth:`get_institutional_holdings` is the date-shaped convenience.
+
+        Args:
+            symbol: Stock symbol
+            year: Filing year (e.g., 2023)
+            quarter: Calendar quarter, 1-4
+        """
+        return self.client.request(
+            INSTITUTIONAL_HOLDINGS, symbol=symbol, year=year, quarter=quarter
+        )
+
     def get_institutional_holdings(
         self,
         symbol: str,
@@ -168,9 +216,7 @@ class InstitutionalClient(EndpointGroup):
             year = inferred_year
         if quarter is None:
             quarter = inferred_quarter
-        return self.client.request(
-            INSTITUTIONAL_HOLDINGS, symbol=symbol, year=year, quarter=quarter
-        )
+        return self.get_institutional_holdings_by_quarter(symbol, year, quarter)
 
     def get_insider_trades(
         self, symbol: str, page: int = 0, limit: int = 100

@@ -333,17 +333,24 @@ LangChain tools built from the vector store keep **API / wire** parameter names
 (`from`, `to`, `periodLength`, `sicCode`, …). When the method shape is
 compatible, those names are mapped onto the matching client method
 (`from_date` / `start_date`, …) at invoke so method defaults and constraints
-still apply (#172 / #186). When shapes diverge (currently Form 13F /
-institutional holdings: wire `year`/`quarter` vs required method
-`report_date`), LangChain keeps the wire schema and falls back to
-`client.request` instead of the method.
+still apply (#172 / #186). If a required method parameter had no wire source,
+LangChain would keep the wire schema and fall back to `client.request` instead
+of the method — as of #188 no tool in the catalog does, so every LangChain tool
+dispatches through a client method.
 
 MCP tools expose the **Python method** parameter names instead (the signature
 of `client.<module>.<method>`). The same endpoint can therefore show
 `from`/`to` in a LangChain schema and `from_date`/`to_date` (or
-`start_date`/`end_date`) on MCP — both are intentional. On the institutional
-fallback tools the schemas diverge further: MCP exposes `report_date`,
-LangChain still asks for `year`/`quarter`.
+`start_date`/`end_date`) on MCP — both are intentional.
+
+The institutional Form 13F and symbol-positions-summary tools used to be the
+exception, because their client methods required a `report_date` the wire does
+not have. They now dispatch through `get_form_13f_by_quarter` and
+`get_institutional_holdings_by_quarter`, whose `year`/`quarter` arguments match
+the API (which rejects a request without them). The date-shaped
+`get_form_13f(cik, report_date)` and
+`get_institutional_holdings(symbol, report_date)` are unchanged and remain the
+convenient Python entry points.
 
 A catalogue-wide guard (`tests/unit/lc/test_endpoint_method_coverage.py`) fails
 CI on *new* uncovered required method parameters or newly dropped mandatory

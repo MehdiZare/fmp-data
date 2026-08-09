@@ -412,10 +412,64 @@ def test_partition_omits_unmapped_when_method_active() -> None:
     assert bare_emp_mand  # symbol still present
 
 
-def test_form_13f_shape_mismatch_falls_back_to_request(tmp_path: Any) -> None:
-    """FORM_13F year/quarter vs method report_date cannot be alias-mapped."""
+def test_form_13f_dispatches_through_wire_shaped_method(tmp_path: Any) -> None:
+    """FORM_13F now reaches a method whose signature matches the wire (#188).
 
-    def get_form_13f(cik: str | int, report_date: date) -> list[Any]:
+    ``form_13f`` semantics used to name ``get_form_13f(cik, report_date)``,
+    which no alias could fill from wire ``year``/``quarter``, so the tool fell
+    back to ``client.request``. It now names ``get_form_13f_by_quarter``,
+    which takes the wire triple as-is. The tool schema is unchanged — that is
+    the point: the same arguments now go through the client method, so its
+    error handling and post-processing apply.
+    """
+    calls: list[dict[str, Any]] = []
+
+    def get_form_13f_by_quarter(cik: str | int, year: int, quarter: int) -> list[Any]:
+        calls.append({"cik": cik, "year": year, "quarter": quarter})
+        return []
+
+    request = Mock(side_effect=AssertionError("must not fall back to request"))
+    client = cast(
+        BaseClient,
+        SimpleNamespace(
+            request=request,
+            institutional=SimpleNamespace(
+                get_form_13f_by_quarter=get_form_13f_by_quarter
+            ),
+        ),
+    )
+    registry = _institutional_registry("form_13f")
+    store = _store_with(client, registry, tmp_path)
+    info = registry.get_endpoint("get_form_13f_by_quarter")
+    assert info is not None
+
+    tool = cast(Any, store.create_tool(info))
+    required = {
+        name
+        for name, field in tool.args_schema.model_fields.items()
+        if field.is_required()
+    }
+    assert required == {"cik", "year", "quarter"}
+
+    result = tool.invoke({"cik": "0001067983", "year": 2023, "quarter": 3})
+    assert result["status"] == "success"
+    request.assert_not_called()
+    assert calls == [{"cik": "0001067983", "year": 2023, "quarter": 3}]
+
+
+def test_unmappable_method_shape_still_falls_back_to_request(tmp_path: Any) -> None:
+    """The request-fallback path stays live even with an empty allowlist.
+
+    Nothing in the catalogue needs it since #188
+    (``tests/unit/lc/test_endpoint_method_coverage.py`` asserts the allowlist
+    is empty), so without a synthetic case the fallback branch of
+    ``create_tool`` would go untested and could rot before the next shape
+    mismatch lands. Here the client's method keeps the old
+    ``report_date``-shaped signature, which wire ``year``/``quarter`` cannot
+    fill.
+    """
+
+    def get_form_13f_by_quarter(cik: str | int, report_date: date) -> list[Any]:
         raise AssertionError("must not call method with unmappable shape")
 
     request = Mock(return_value=[])
@@ -423,16 +477,18 @@ def test_form_13f_shape_mismatch_falls_back_to_request(tmp_path: Any) -> None:
         BaseClient,
         SimpleNamespace(
             request=request,
-            institutional=SimpleNamespace(get_form_13f=get_form_13f),
+            institutional=SimpleNamespace(
+                get_form_13f_by_quarter=get_form_13f_by_quarter
+            ),
         ),
     )
     registry = _institutional_registry("form_13f")
     store = _store_with(client, registry, tmp_path)
-    info = registry.get_endpoint("get_form_13f")
+    info = registry.get_endpoint("get_form_13f_by_quarter")
     assert info is not None
 
     tool = cast(Any, store.create_tool(info))
-    # Fallback keeps pre-#172 wire schema (cik/year/quarter), not report_date.
+    # Fallback keeps the pre-#172 wire schema (cik/year/quarter).
     required = {
         name
         for name, field in tool.args_schema.model_fields.items()
