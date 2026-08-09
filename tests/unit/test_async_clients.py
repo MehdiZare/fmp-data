@@ -1652,6 +1652,47 @@ class TestAsyncInstitutionalClient:
         assert "0000320193" in mock_client.logger.warning.call_args[0][0]
 
     @pytest.mark.asyncio
+    async def test_get_form_13f_by_quarter_propagates_non_api_errors(self, mock_client):
+        """Programming bugs must not look like empty 13F data (#193)."""
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.logger = MagicMock()
+        mock_client.request_async.side_effect = RuntimeError("bug")
+
+        async_client = AsyncInstitutionalClient(mock_client)
+        with pytest.raises(RuntimeError, match="bug"):
+            await async_client.get_form_13f_by_quarter("0000320193", 2023, 3)
+        mock_client.logger.warning.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_get_form_13f_dates_returns_empty_on_api_error(self, mock_client):
+        """API failures stay empty-list; same contract as the sync client (#193)."""
+        from fmp_data.exceptions import FMPError
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.logger = MagicMock()
+        mock_client.request_async.side_effect = FMPError("boom")
+
+        async_client = AsyncInstitutionalClient(mock_client)
+        result = await async_client.get_form_13f_dates("0000320193")
+
+        assert result == []
+        mock_client.logger.warning.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_form_13f_dates_propagates_non_api_errors(self, mock_client):
+        """Bare Exception is no longer swallowed on form_13f_dates (#193)."""
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.logger = MagicMock()
+        mock_client.request_async.side_effect = RuntimeError("bug")
+
+        async_client = AsyncInstitutionalClient(mock_client)
+        with pytest.raises(RuntimeError, match="bug"):
+            await async_client.get_form_13f_dates("0000320193")
+        mock_client.logger.warning.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_get_institutional_holdings_by_quarter_sends_wire_params(
         self, mock_client
     ):
