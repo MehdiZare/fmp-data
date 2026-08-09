@@ -93,6 +93,63 @@ def test_bindable_params_excludes_self_and_varargs() -> None:
     assert set(bindable_params(method)) == {"symbol", "limit"}
 
 
+def test_bindable_params_excludes_cls_on_an_unbound_classmethod() -> None:
+    """``cls`` is the receiver, not a required argument (#195).
+
+    A bound classmethod hides it, but the catalogue guard and these tests
+    pass the underlying function, where it is visible and would otherwise
+    read as a required parameter no wire field can fill.
+    """
+
+    class Holder:
+        @classmethod
+        def fetch(cls, symbol: str) -> None: ...  # pragma: no cover
+
+    unbound = Holder.__dict__["fetch"].__func__
+    assert set(bindable_params(unbound)) == {"symbol"}
+    assert uncovered_required_params(unbound, ["symbol"]) == frozenset()
+    # And the bound form, which is what runtime actually sees, agrees.
+    assert set(bindable_params(Holder.fetch)) == {"symbol"}
+
+
+def test_positional_only_required_param_blocks_dispatch() -> None:
+    """Excluded from the by-name map, but still fatal to a keyword call (#195).
+
+    Before the fix this pair reported *compatible* and then raised
+    ``TypeError: missing 1 required positional argument: 'cik'`` at invoke —
+    the exact failure the gate exists to prevent.
+    """
+
+    def method(cik: str, /, year: int = 2020) -> None: ...  # pragma: no cover
+
+    assert "cik" not in bindable_params(method)
+    assert uncovered_required_params(method, ["cik", "year"]) == frozenset({"cik"})
+    assert not method_dispatch_compatible(method, ["cik", "year"])
+
+
+def test_positional_only_with_a_default_is_harmless() -> None:
+    """It is *required*-ness that breaks a keyword call, not positional-only."""
+
+    def method(page: int = 0, /, symbol: str = "AAPL") -> None: ...  # pragma: no cover
+
+    assert uncovered_required_params(method, ["symbol"]) == frozenset()
+    assert method_dispatch_compatible(method, ["symbol"])
+
+
+def test_var_keyword_methods_do_not_receive_unmapped_wire_fields() -> None:
+    """Documented non-passthrough (#195): ``**kwargs`` is not a wildcard.
+
+    An unmapped wire name reaches no *named* parameter, so it is dropped
+    rather than smuggled into ``**kwargs``.
+    """
+
+    def method(symbol: str, **kwargs: Any) -> None: ...  # pragma: no cover
+
+    assert map_tool_kwargs_to_method(
+        method, {"symbol": "AAPL", "periodLength": "5Y"}
+    ) == {"symbol": "AAPL"}
+
+
 def test_var_keyword_does_not_make_a_method_look_required() -> None:
     """``**kwargs`` has no default; counting it would invent a required param.
 
@@ -165,6 +222,29 @@ def test_map_tool_kwargs_renames_and_drops() -> None:
     # ``to`` is dropped so the method default applies; ``bogus`` reaches no
     # parameter and would be a TypeError if passed through.
     assert mapped == {"symbol": "AAPL", "from_date": "2024-01-01"}
+
+
+def test_map_tool_kwargs_last_wins_for_aliased_names() -> None:
+    """Multiple aliases for one method param: later input keys overwrite (#195).
+
+    ``from`` and ``from_date`` both resolve to ``from_date``. Documented
+    last-wins behaviour for direct callers; well-formed tool schemas do not
+    emit both names for one field.
+    """
+
+    def method(from_date: str | None = None) -> None: ...  # pragma: no cover
+
+    # Insertion order: from first, then from_date wins.
+    mapped = map_tool_kwargs_to_method(
+        method, {"from": "2024-01-01", "from_date": "2020-01-01"}
+    )
+    assert mapped == {"from_date": "2020-01-01"}
+
+    # Reverse order: from last, so it wins.
+    mapped = map_tool_kwargs_to_method(
+        method, {"from_date": "2020-01-01", "from": "2024-01-01"}
+    )
+    assert mapped == {"from_date": "2024-01-01"}
 
 
 def test_partition_without_a_method_is_the_identity() -> None:
@@ -307,3 +387,49 @@ def test_binding_layer_imports_without_optional_extras() -> None:
     assert not offenders, (
         f"the shared binding layer must not import optional-extra modules: {offenders}"
     )
+
+
+def test_catalogue_client_methods_have_no_var_keyword() -> None:
+    """No semantics-named client method takes ``**kwargs`` (#195).
+
+    ``map_tool_kwargs_to_method`` drops unmapped wire fields even when a method
+    declares ``**kwargs``. Pinning the catalogue means a future method that
+    *does* need passthrough has to opt in consciously rather than inheriting
+    silent drop behaviour. Walk the same (client, method) pairs the endpoint
+    coverage guard uses, not every property on the client (``logger`` etc.).
+    """
+    # lc is optional; this catalogue pin needs it (core-only CI skips).
+    pytest.importorskip("langchain_core")
+    from fmp_data.client import FMPDataClient
+    from fmp_data.lc import resolve_semantics_for_endpoint
+    from fmp_data.lc.registry import get_endpoint_groups
+
+    client = FMPDataClient(api_key="dummy-key-for-var-keyword-guard")
+    try:
+        offenders: list[str] = []
+        seen: set[tuple[str, str]] = set()
+        for config in get_endpoint_groups().values():
+            semantics_map = config["semantics_map"]
+            for name in config["endpoint_map"]:
+                semantics = resolve_semantics_for_endpoint(name, semantics_map)
+                if semantics is None:
+                    continue
+                key = (semantics.client_name, semantics.method_name)
+                if key in seen:
+                    continue
+                seen.add(key)
+                method = resolve_client_method(
+                    client, semantics.client_name, semantics.method_name
+                )
+                if method is None:
+                    continue
+                for param in inspect.signature(method).parameters.values():
+                    if param.kind is inspect.Parameter.VAR_KEYWORD:
+                        offenders.append(f"{key[0]}.{key[1]}")
+        assert seen, "catalogue walk produced no methods to inspect"
+        assert not offenders, (
+            "catalogue methods with **kwargs (would need explicit passthrough "
+            f"policy): {offenders}"
+        )
+    finally:
+        client.close()
