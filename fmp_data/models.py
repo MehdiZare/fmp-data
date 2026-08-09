@@ -391,6 +391,9 @@ class Endpoint(BaseModel, Generic[T]):
         same name -- so that is rejected outright. Nothing in the package does
         it; the check exists because it is the only remaining route to the
         defect.
+
+        Stamping runs once at construction; mutating ``mandatory_params`` or
+        ``optional_params`` afterwards does not re-stamp requiredness.
         """
         optional = self.optional_params or []
         mandatory_names = {param.name for param in self.mandatory_params}

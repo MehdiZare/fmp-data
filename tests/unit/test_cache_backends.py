@@ -151,12 +151,12 @@ class TestCacheConfig:
         config = CacheConfig(
             backend="file",
             default_ttl=600,
-            ttl_overrides={"get_quote": 60},
+            ttl_overrides={"quote": 60},
             cache_dir=cache_dir,
         )
         assert config.backend == "file"
         assert config.default_ttl == 600
-        assert config.ttl_overrides == {"get_quote": 60}
+        assert config.ttl_overrides == {"quote": 60}
         assert config.cache_dir == cache_dir
 
     def test_from_env_disabled(self, monkeypatch: pytest.MonkeyPatch):

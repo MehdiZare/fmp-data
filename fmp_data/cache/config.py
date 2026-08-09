@@ -104,12 +104,14 @@ class CacheConfig(BaseModel):
                 f"{key!r} (closest endpoint: {close[0]!r})" if close else repr(key)
             )
 
+        endpoint_word = "endpoint" if len(unmatched) == 1 else "endpoints"
         warnings.warn(
-            "cache ttl_overrides names no known endpoint: "
+            f"cache ttl_overrides names no known {endpoint_word}: "
             + ", ".join(described)
             + ". These entries have no effect -- the default TTL applies to "
             "those endpoints. Override keys are Endpoint.name values; "
-            "`fmp-mcp list` and docs/api/endpoints.md enumerate them.",
+            "see docs/api/endpoints.md or the Endpoint.name values in the "
+            "endpoint registry.",
             UserWarning,
             stacklevel=2,
         )

@@ -251,6 +251,26 @@ def test_declaring_required_still_works_but_warns() -> None:
     assert param.required is True
 
 
+def test_positional_required_in_slot_four_still_works() -> None:
+    """Slot 4 stays ``required`` so old positional call sites are not shifted.
+
+    ``EndpointParam("q", loc, typ, True, "desc")`` must still put ``True`` in
+    ``required`` and ``"desc"`` in ``description``. Dropping the deprecated
+    argument from the signature would land ``True`` in ``description`` instead.
+    """
+    with pytest.warns(DeprecationWarning):
+        param = EndpointParam(
+            "q",
+            ParamLocation.QUERY,
+            ParamType.STRING,
+            True,
+            "desc",
+        )
+
+    assert param.description == "desc"
+    assert param.required is True
+
+
 def test_omitting_required_does_not_warn() -> None:
     """The new spelling is the silent one."""
     with warnings.catch_warnings():
@@ -318,7 +338,7 @@ def test_three_zero_must_not_ship_with_the_argument_still_accepted() -> None:
     On failure: delete the ``required`` parameter from ``EndpointParam.__init__``
     (which restores ``description`` to positional slot 4 and to being
     mandatory), delete ``_declared_required`` and the contradiction warning in
-    ``_derive_required``, and delete the four deprecation tests above.
+    ``_derive_required``, and delete the five deprecation tests above.
     """
     from fmp_data import __version__
 

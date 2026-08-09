@@ -46,6 +46,9 @@ def test_unknown_key_warns_and_names_it() -> None:
     message = str(record[0].message)
     assert "totally-bogus-endpoint" in message
     assert "no effect" in message
+    assert "Endpoint.name" in message
+    assert "docs/api/endpoints.md" in message
+    assert "fmp-mcp list" not in message
 
 
 def test_a_typo_suggests_the_endpoint_it_nearly_matched() -> None:
