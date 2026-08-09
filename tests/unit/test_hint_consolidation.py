@@ -40,16 +40,23 @@ MIN_SHARED_NAMES = 15
 MIN_ENDPOINTS_SCANNED = 200
 MIN_CONSTRAINED_PARAMS = 20
 
-# Floor for the same-concept-different-name guard below (#157). Observed: 36
-# candidate pairs, all instances of the one known divergence recorded in
-# _KNOWN_SAME_CONCEPT_DIVERGENCES.
-MIN_SAME_CONCEPT_CANDIDATES = 20
+# Floor for the same-concept-different-name guard below (#157). Counts pairs
+# *compared*, not pairs flagged, so that fixing the tracked divergence in
+# KNOWN_SAME_CONCEPT_DIVERGENCES does not break this guard -- see
+# _same_concept_candidates. Observed: 5188 comparisons yielding 36 candidates.
+MIN_SAME_CONCEPT_COMPARISONS = 3000
 
 #: Minimum shared substring length for two ``extraction_patterns`` entries to
 #: count as "the same underlying shape". Long enough that a shared capture
-#: group like ``(\d{4}-\d{2}-\d{2})`` (18 chars) counts; short enough that it
+#: group like ``(\d{4}-\d{2}-\d{2})`` (19 chars) counts; short enough that it
 #: is not defeated by a wrapping literal. Kept well above trivial fragments
 #: such as ``\d+`` so two unrelated numeric patterns do not collide.
+#:
+#: Scope limit: :func:`_hint_bindings` sees module-level bindings and one
+#: level of dict, so the ``ParameterHint(...)`` literals written inline
+#: inside a ``parameter_hints={...}`` argument are invisible to both this
+#: guard and #135's. Pre-existing; recorded so this file does not read as
+#: exhaustive.
 MIN_PATTERN_OVERLAP_LEN = 10
 
 # Every module that declares or re-exports hints. Import failure here is a
@@ -384,16 +391,39 @@ def _pattern_overlap(a: list[str], b: list[str]) -> bool:
 
 
 def _is_extension(a: list[str], b: list[str]) -> bool:
-    """True if one extraction_patterns list is an exact subset of the other."""
+    """True if one extraction_patterns list *strictly* refines the other.
+
+    Strict subset, not ``<=``. Equality is the degenerate case and is not a
+    refinement: two bindings with byte-identical patterns under different
+    names are the verbatim copy-paste this guard exists to catch, and
+    exempting them made the most likely duplicate shape invisible. What the
+    exemption is for is a hint that genuinely adds patterns to a shared
+    base -- there the superset is doing extra work, so the divergence is
+    deliberate. Identical patterns do no extra work by definition.
+
+    Note that a pair whose *whole* contents match is filtered out earlier by
+    the ``model_dump_json`` check; reaching here with equal patterns means
+    the examples, context_clues or natural_names have drifted, which is
+    exactly the #135 defect class -- those fields are what get rendered into
+    tool descriptions and embedding text.
+    """
     set_a, set_b = set(a), set(b)
-    return set_a <= set_b or set_b <= set_a
+    return set_a < set_b or set_b < set_a
 
 
-def _same_concept_candidates() -> list[tuple[str, str, str, str]]:
+def _same_concept_candidates() -> tuple[list[tuple[str, str, str, str]], int]:
     """Cross-module, cross-name hint pairs that look like the same concept.
 
-    Returns ``(module_a, name_a, module_b, name_b)`` tuples. See the module
-    comment above for the rule.
+    Returns ``([(module_a, name_a, module_b, name_b), ...], compared)`` where
+    ``compared`` is the number of pairs that reached the concept comparison.
+    See the module comment above for the rule.
+
+    ``compared`` is returned so the caller can floor on *how much work the
+    detector did* rather than on how many defects it found. Flooring on
+    positives couples the guard to the defect count: the moment the tracked
+    divergence is actually fixed, the floor fails and reports it as a broken
+    detector, and the obvious way out is to drop the floor to zero -- which
+    reinstates the vacuous pass the floor exists to prevent.
     """
     by_name, _, _ = _collect()
     flat = [
@@ -402,10 +432,12 @@ def _same_concept_candidates() -> list[tuple[str, str, str, str]]:
         for module_name, hint in modules.items()
     ]
     candidates: list[tuple[str, str, str, str]] = []
+    compared = 0
     for i, (name_a, mod_a, hint_a) in enumerate(flat):
         for name_b, mod_b, hint_b in flat[i + 1 :]:
             if name_a == name_b or mod_a == mod_b or hint_a is hint_b:
                 continue
+            compared += 1
             if hint_a.model_dump_json() == hint_b.model_dump_json():
                 continue  # identical contents: not a divergence
             nn_a = {n.lower() for n in hint_a.natural_names}
@@ -419,10 +451,11 @@ def _same_concept_candidates() -> list[tuple[str, str, str, str]]:
             ):
                 continue
             candidates.append((mod_a, name_a, mod_b, name_b))
-    return candidates
+    return candidates, compared
 
 
-#: Pre-existing, tracked divergence (#157's "Options" section): folding
+#: Pre-existing, tracked divergence (#157's "Options" section, now #179):
+#: folding
 #: technical/mapping.py's local FROM_DATE_HINT/TO_DATE_HINT onto the shared
 #: fmp_data.lc.hints.DATE_HINTS changes the embedding text and tool
 #: descriptions of nine indicator tools, which #157 scoped as its own
@@ -446,15 +479,17 @@ def test_no_same_concept_hint_under_a_different_name() -> None:
     added to ``KNOWN_SAME_CONCEPT_DIVERGENCES`` with a reason -- silently
     passing is not an option either way.
     """
-    candidates = _same_concept_candidates()
+    candidates, compared = _same_concept_candidates()
 
-    # Floor: a detector that finds nothing is not proof there is nothing to
-    # find. Pinned above the count observed at the time of writing so a
-    # change that breaks the comparison (e.g. an accidental early `continue`
-    # above) fails here instead of passing vacuously.
-    assert len(candidates) >= MIN_SAME_CONCEPT_CANDIDATES, (
-        f"only {len(candidates)} same-concept candidate pairs found; the "
-        "comparison in _same_concept_candidates may not be running"
+    # Floor on comparison volume, not on positives: a detector that examines
+    # nothing is not proof there is nothing to find, but a detector that
+    # examines everything and finds nothing is exactly the state this file
+    # wants to reach. An accidental early `continue` above empties `compared`
+    # and fails here; a regression that keeps comparing but stops matching is
+    # caught by the stale-allowlist assertion at the end instead.
+    assert compared >= MIN_SAME_CONCEPT_COMPARISONS, (
+        f"only {compared} hint pairs were compared; the comparison in "
+        "_same_concept_candidates may not be running"
     )
 
     seen_allowlisted: set[tuple[str, str]] = set()
@@ -466,6 +501,13 @@ def test_no_same_concept_hint_under_a_different_name() -> None:
             seen_allowlisted.add((mod_a, name_a))
         if allowed_b:
             seen_allowlisted.add((mod_b, name_b))
+        # `or`, not `and`: an allowlisted binding exempts every pair it takes
+        # part in. Deliberately loose -- the allowlisted hint is a local copy
+        # of a shared definition, so it pairs with that shared definition in
+        # every module that imports it, and requiring both sides would mean
+        # listing each of those pairs. A genuinely new drifted copy is not
+        # hidden by this: it also pairs with the shared fmp_data.lc.hints
+        # binding, which is not allowlisted, so it still trips.
         if not (allowed_a or allowed_b):
             unexpected.append(f"{mod_a}.{name_a} vs {mod_b}.{name_b}")
 
