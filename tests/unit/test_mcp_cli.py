@@ -407,6 +407,42 @@ class TestValidateSeesWhatRegistrationSees:
         assert "listed more than once" in err
         assert "FMP_MCP_TOOL_NAME_STYLE=spec" not in err
 
+    def test_spec_style_is_believed_rather_than_lectured(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A collision under ``spec`` style is not a collision at all.
+
+        The advertised name is the whole spec there, so the two
+        ``crypto_quotes`` tools are distinct and register fine. Warning
+        anyway would tell the user to set the variable they have just set --
+        the worst kind of false positive, since it lands only on the person
+        who took the earlier advice.
+        """
+        with patch.dict(os.environ, {"FMP_MCP_TOOL_NAME_STYLE": "spec"}):
+            self._validate(
+                tmp_path, ["alternative.crypto_quotes", "batch.crypto_quotes"]
+            )
+
+        assert capsys.readouterr().err == ""
+
+    def test_one_tool_twice_still_clashes_under_spec_style(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The duplicate case survives the name style, because it must.
+
+        ``profile`` and ``company.profile`` are advertised under one name
+        whichever style is in effect. This is the pair the suppression above
+        must not swallow.
+        """
+        with patch.dict(os.environ, {"FMP_MCP_TOOL_NAME_STYLE": "spec"}):
+            self._validate(tmp_path, ["profile", "company.profile"])
+
+        err = capsys.readouterr().err
+        assert "listed more than once" in err
+        # The message must not promise a refusal the loader does not make:
+        # `_validate_tool_names` skips the duplicate check under `spec`.
+        assert "refuses" not in err
+
     def test_a_clean_manifest_says_nothing(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:

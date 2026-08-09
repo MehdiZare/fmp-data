@@ -475,18 +475,24 @@ def _manifest_name_clashes(
     ``["profile", "company.profile"]`` fails at registration, and comparing
     the strings as written would miss it.
 
+    Names are computed under the **effective** ``FMP_MCP_TOOL_NAME_STYLE``,
+    not the default. Under ``spec`` the advertised name is the whole spec, so
+    the two ``crypto_quotes`` tools no longer clash -- warning about them
+    there would tell a user to set the variable they have already set.
+
     Returns
     -------
     tuple[dict[str, list[str]], dict[str, list[str]]]
         ``(duplicates, collisions)``, each advertised name to the entries as
         the user wrote them. The two need different advice: a duplicate is
-        one tool named twice and the fix is to drop one, while a collision is
-        two genuinely different tools that ``FMP_MCP_TOOL_NAME_STYLE=spec``
-        can serve at once.
+        one tool listed twice, which no name style separates, while a
+        collision is two genuinely different tools that ``spec`` style can
+        serve at once.
     """
     from fmp_data.mcp import tool_loader
 
     key_to_spec = tool_loader.build_key_to_spec(list_available_tools())
+    key_style = tool_loader._get_tool_name_style() == "key"
 
     by_name: dict[str, list[str]] = {}
     specs_by_name: dict[str, set[str]] = {}
@@ -494,7 +500,7 @@ def _manifest_name_clashes(
         resolution = tool_loader.resolve_tool_spec(entry, key_to_spec)
         if resolution.spec is None:
             continue  # unknown or ambiguous; already reported as such
-        name = _tool_name(resolution.spec)
+        name = _tool_name(resolution.spec) if key_style else resolution.spec
         by_name.setdefault(name, []).append(entry)
         specs_by_name.setdefault(name, set()).add(resolution.spec)
 
@@ -520,7 +526,11 @@ def _report_manifest_findings(
 ) -> None:
     """Print what validation found. None of it is fatal on its own."""
     if unknown:
-        print(f"Warning: Unknown tools found: {', '.join(unknown)}", file=sys.stderr)
+        print(
+            f"Warning: Unknown tools found: {', '.join(unknown)}. "
+            "Run `fmp-mcp list` to see available tools.",
+            file=sys.stderr,
+        )
 
     if ambiguous:
         print(
@@ -529,11 +539,15 @@ def _report_manifest_findings(
             file=sys.stderr,
         )
 
+    # Deliberately does not claim registration refuses this. Under the default
+    # `key` style it does; under `spec`, `_validate_tool_names` skips the
+    # duplicate check entirely, so the second registration silently shadows the
+    # first. Either way the manifest is wrong and the fix is the same.
     for name, claims in sorted((duplicates or {}).items()):
         print(
-            f"Warning: '{name}' is listed more than once ({', '.join(claims)}); "
-            "registration refuses a repeated tool name under either name "
-            "style. Drop all but one.",
+            f"Warning: '{name}' is listed more than once ({', '.join(claims)}) "
+            "-- these are the same tool. No tool-name style separates them; "
+            "drop all but one.",
             file=sys.stderr,
         )
 
