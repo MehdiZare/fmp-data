@@ -2,12 +2,25 @@
 """Tests for the deprecated decorator in fmp_data/helpers.py"""
 
 import asyncio
+from collections.abc import AsyncIterator
 import inspect
+from pathlib import Path
+import sys
+from types import FrameType
 import warnings
 
 import pytest
 
 from fmp_data.helpers import RemovedEndpointError, deprecated, removed
+
+_THIS_FILE = Path(__file__).resolve()
+
+
+def _here() -> int:
+    """The line number of the statement that called this function."""
+    frame: FrameType | None = sys._getframe(1)
+    assert frame is not None
+    return frame.f_lineno
 
 
 class TestDeprecatedDecorator:
@@ -239,6 +252,220 @@ def test_deprecated_and_removed_preserve_coroutine_ness() -> None:
     # Floor: guards against the parametrization silently shrinking (e.g. one
     # of the two branches above being dropped) and the guard passing vacuously.
     assert checked == 4, f"only {checked}/4 decorator x sync/async pairs checked"
+
+
+class TestDeprecationIsBlamedOnTheCaller:
+    """#177: the warning must name the user's call site, not the event loop.
+
+    A ``DeprecationWarning`` exists to point at the line that has to change.
+    The async wrapper called ``warnings.warn(..., stacklevel=2)`` from inside
+    the coroutine body, and a coroutine body does not run in its caller's
+    stack -- it runs wherever the loop resumed it -- so ``stacklevel=2``
+    resolved to ``asyncio/events.py``. Measured before the fix::
+
+        sync path:  DeprecationWarning at test_helpers.py
+        async path: DeprecationWarning at .../asyncio/events.py
+
+    Every test here asserts the recorded ``filename`` *is this file*, and
+    that the recorded ``lineno`` falls in the window around the call.
+    Asserting merely that a warning fired is what let the bug survive: the
+    pre-existing async tests all passed throughout.
+    """
+
+    @staticmethod
+    def _assert_blamed_here(
+        record: warnings.WarningMessage, start: int, end: int
+    ) -> None:
+        assert Path(record.filename).resolve() == _THIS_FILE, (
+            f"warning blamed on {record.filename}:{record.lineno}, "
+            f"expected {_THIS_FILE}"
+        )
+        assert start < record.lineno < end, (
+            f"warning blamed on line {record.lineno}, expected between "
+            f"{start} and {end}"
+        )
+        assert record.filename.endswith("test_helpers.py")
+
+    def test_sync_call_is_blamed_on_the_caller(self) -> None:
+        """The path that was already correct -- pinned so it stays that way."""
+
+        @deprecated("Use new_sync instead.")
+        def old_sync() -> str:
+            return "sync"
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            start = _here()
+            old_sync()
+            end = _here()
+
+        assert len(caught) == 1
+        self._assert_blamed_here(caught[0], start, end)
+
+    def test_async_call_driven_by_asyncio_run_is_blamed_on_the_caller(self) -> None:
+        """The exact shape reported in #177.
+
+        ``asyncio.run(old_async())`` makes the deprecated coroutine the task
+        coroutine itself, so *no* user frame sits below the wrapper. Before
+        the fix this reported ``asyncio/events.py``; the only user frame left
+        on the stack is the ``asyncio.run`` call, and that is the answer.
+        """
+
+        @deprecated("Use new_async instead.")
+        async def old_async() -> str:
+            return "async"
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            start = _here()
+            assert asyncio.run(old_async()) == "async"
+            end = _here()
+
+        assert len(caught) == 1
+        self._assert_blamed_here(caught[0], start, end)
+
+    def test_awaited_async_call_is_blamed_on_the_awaiting_line(self) -> None:
+        """The common shape: ``await client.old_method()`` in user code."""
+
+        @deprecated("Use new_async instead.")
+        async def old_async() -> str:
+            return "async"
+
+        holder: dict[str, int] = {}
+
+        async def caller() -> str:
+            holder["start"] = _here()
+            result = await old_async()
+            holder["end"] = _here()
+            return result
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            assert asyncio.run(caller()) == "async"
+
+        assert len(caught) == 1
+        self._assert_blamed_here(caught[0], holder["start"], holder["end"])
+
+    def test_gathered_async_call_is_blamed_on_a_frame_in_this_file(self) -> None:
+        """``asyncio.gather`` suspends the frame that built the call.
+
+        Its line is therefore unrecoverable, but the frame still driving the
+        loop is the user's, so the warning stays inside their code instead of
+        landing in ``asyncio``.
+        """
+
+        @deprecated("Use new_async instead.")
+        async def old_async() -> str:
+            return "async"
+
+        async def sibling() -> str:
+            await asyncio.sleep(0)
+            return "ok"
+
+        async def run() -> list[str]:
+            return list(await asyncio.gather(old_async(), sibling()))
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            start = _here()
+            assert asyncio.run(run()) == ["async", "ok"]
+            end = _here()
+
+        assert len(caught) == 1
+        self._assert_blamed_here(caught[0], start, end)
+
+    def test_the_warning_carries_the_callers_module_for_filterwarnings(self) -> None:
+        """``filterwarnings(module=...)`` keyed on the caller must match.
+
+        The second half of #177: a warning attributed to ``asyncio`` cannot be
+        silenced -- or escalated -- by a rule naming the user's own module.
+        ``module`` is matched by ``re.compile(...).match`` against the
+        *filename*, so the caller's file is what has to be there.
+        """
+
+        @deprecated("Use new_async instead.")
+        async def old_async() -> str:
+            return "async"
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            warnings.filterwarnings(
+                "error",
+                category=DeprecationWarning,
+                module=r".*test_helpers",
+            )
+            with pytest.raises(DeprecationWarning):
+                asyncio.run(old_async())
+
+
+class TestAsyncGeneratorsGetAnAsyncGeneratorWrapper:
+    """#177, related half: ``async def ... yield`` took the sync branch.
+
+    ``inspect.iscoroutinefunction`` is False for an async generator function,
+    so both decorators fell through to the plain ``def`` wrapper. That makes
+    ``inspect.isasyncgenfunction(wrapped)`` False and moves the warning (or
+    the raise) to generator *creation* rather than iteration -- the same
+    defect #170 fixed for coroutines. There are no async generators in
+    ``fmp_data`` today, so these define their own.
+    """
+
+    def test_deprecated_preserves_async_generator_ness(self) -> None:
+        @deprecated("Use new_stream instead.")
+        async def old_stream() -> AsyncIterator[int]:
+            yield 1
+            yield 2
+
+        assert inspect.isasyncgenfunction(old_stream)
+
+        async def consume() -> list[int]:
+            return [item async for item in old_stream()]
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            assert asyncio.run(consume()) == [1, 2]
+
+        assert len(caught) == 1
+        assert "old_stream is deprecated." in str(caught[0].message)
+        assert Path(caught[0].filename).resolve() == _THIS_FILE
+
+    def test_deprecated_async_generator_stays_silent_until_iterated(self) -> None:
+        """Creating the generator object is not using the endpoint."""
+
+        @deprecated("Use new_stream instead.")
+        async def old_stream() -> AsyncIterator[int]:
+            yield 1
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            generator = old_stream()
+
+        async def drain() -> None:
+            with pytest.warns(DeprecationWarning):
+                async for _ in generator:
+                    pass
+
+        asyncio.run(drain())
+
+    def test_removed_async_generator_raises_on_iteration_not_creation(self) -> None:
+        """Mirrors #170: raising early kills siblings in the same ``gather``."""
+
+        @removed("Discontinued.")
+        async def old_stream() -> AsyncIterator[int]:
+            raise AssertionError("body must not run")  # pragma: no cover
+            # Unreachable, and required: the ``yield`` is what makes this an
+            # async *generator* function rather than a coroutine function.
+            yield 1  # type: ignore[unreachable]  # pragma: no cover
+
+        assert inspect.isasyncgenfunction(old_stream)
+
+        generator = old_stream()  # must not raise
+
+        async def drain() -> None:
+            with pytest.raises(RemovedEndpointError):
+                async for _ in generator:
+                    pass  # pragma: no cover
+
+        asyncio.run(drain())
 
 
 def test_removed_async_lets_sibling_coroutines_start_in_asyncio_gather() -> None:
