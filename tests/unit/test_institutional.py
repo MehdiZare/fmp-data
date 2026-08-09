@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from unittest.mock import Mock, patch
+import warnings
 
 import pytest
 
@@ -700,3 +701,132 @@ class TestInstitutionalClientEnhanced:
         assert len(positions) == 1
         assert isinstance(positions[0], SymbolPositionsSummary)
         assert positions[0].symbol == "AAPL"
+
+
+class TestInstitutionalQuarterWireShape:
+    """Wire-shaped ``*_by_quarter`` siblings for the year/quarter group (#192).
+
+    #190 aligned the two catalogue tools. These five endpoints are not tools,
+    but their client methods had the same invented ``report_date``: the API
+    takes ``year``/``quarter`` and has no date parameter. Each date-shaped
+    method is now a thin delegate, which these tests pin — a delegate that
+    stops delegating is how the two shapes drift apart again.
+    """
+
+    @pytest.mark.parametrize(
+        ("date_method", "quarter_method", "args", "expected"),
+        [
+            (
+                "get_institutional_ownership_extract",
+                "get_institutional_ownership_extract_by_quarter",
+                ("0001067983",),
+                ("0001067983", 2023, 3),
+            ),
+            (
+                "get_holder_industry_breakdown",
+                "get_holder_industry_breakdown_by_quarter",
+                ("0001067983",),
+                ("0001067983", 2023, 3),
+            ),
+            (
+                "get_symbol_positions_summary",
+                "get_symbol_positions_summary_by_quarter",
+                ("AAPL",),
+                ("AAPL", 2023, 3),
+            ),
+            (
+                "get_industry_performance_summary",
+                "get_industry_performance_summary_by_quarter",
+                (),
+                (2023, 3),
+            ),
+        ],
+    )
+    def test_date_method_delegates_to_wire_shaped_sibling(
+        self, fmp_client, date_method, quarter_method, args, expected
+    ):
+        with patch.object(
+            fmp_client.institutional, quarter_method, return_value=[]
+        ) as delegate:
+            getattr(fmp_client.institutional, date_method)(
+                *args, report_date=date(2023, 8, 15)
+            )
+        # Mid-quarter date resolves to the calendar quarter containing it.
+        delegate.assert_called_once_with(*expected)
+
+    def test_analytics_delegates_and_keeps_paging(self, fmp_client):
+        with patch.object(
+            fmp_client.institutional,
+            "get_institutional_ownership_analytics_by_quarter",
+            return_value=[],
+        ) as delegate:
+            fmp_client.institutional.get_institutional_ownership_analytics(
+                "AAPL", report_date=date(2023, 8, 15), page=2, limit=25
+            )
+        delegate.assert_called_once_with("AAPL", 2023, 3, page=2, limit=25)
+
+    @patch("httpx.Client.request")
+    def test_by_quarter_sends_year_and_quarter_not_a_date(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """The wire never sees a date — that field is a response value."""
+        mock_request.return_value = mock_response(status_code=200, json_data=[])
+
+        fmp_client.institutional.get_symbol_positions_summary_by_quarter(
+            "AAPL", 2023, 3
+        )
+
+        sent = mock_request.call_args.kwargs["params"]
+        assert sent["year"] == 2023
+        assert sent["quarter"] == 3
+        assert "date" not in sent
+        assert "report_date" not in sent
+
+
+class TestHolderPerformanceSummaryInertFilter:
+    """``report_date`` on holder-performance-summary does nothing (#192).
+
+    Probed against the live API: for ``cik=0001067983`` the endpoint returns a
+    byte-identical 52-row payload (2013-06-30 … 2026-03-31) unfiltered, for
+    2023 Q3, and for 2019 Q1. A caller passing a date gets the whole history
+    while believing they selected a period, so the argument warns instead of
+    answering plausibly and wrongly. This is also why the method has no
+    ``_by_quarter`` sibling, unlike the other five.
+    """
+
+    @patch("httpx.Client.request")
+    def test_report_date_warns_and_is_still_sent(
+        self, mock_request, fmp_client, mock_response
+    ):
+        mock_request.return_value = mock_response(status_code=200, json_data=[])
+
+        with pytest.warns(UserWarning, match="has no effect"):
+            fmp_client.institutional.get_holder_performance_summary(
+                "0001067983", report_date=date(2023, 8, 15)
+            )
+
+        # Still sent, in case FMP starts honouring it.
+        sent = mock_request.call_args.kwargs["params"]
+        assert sent["year"] == 2023
+        assert sent["quarter"] == 3
+
+    @patch("httpx.Client.request")
+    def test_no_warning_without_a_report_date(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """The full-history call is the correct usage; it must stay quiet."""
+        mock_request.return_value = mock_response(status_code=200, json_data=[])
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", UserWarning)
+            fmp_client.institutional.get_holder_performance_summary("0001067983")
+
+        sent = mock_request.call_args.kwargs["params"]
+        assert "year" not in sent
+        assert "quarter" not in sent
+
+    def test_no_by_quarter_sibling_exists(self, fmp_client):
+        """Pinned: adding one would advertise a filter the API ignores."""
+        assert not hasattr(
+            fmp_client.institutional, "get_holder_performance_summary_by_quarter"
+        )

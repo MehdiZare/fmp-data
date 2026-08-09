@@ -552,3 +552,99 @@ def test_unmappable_method_shape_still_falls_back_to_request(tmp_path: Any) -> N
         "year": 2023,
         "quarter": 3,
     }
+
+
+# ---------------------------------------------------------------------------
+# Fallback is announced, not silent (#194)
+# ---------------------------------------------------------------------------
+
+
+def _fallback_store(client: Any, tmp_path: Any) -> tuple[Any, Any]:
+    """A store over *client* for the form_13f endpoint, with a mock logger."""
+    registry = _institutional_registry("form_13f")
+    store = _store_with(client, registry, tmp_path)
+    store.logger = Mock()
+    info = registry.get_endpoint("get_form_13f_by_quarter")
+    assert info is not None
+    return store, info
+
+
+def test_bare_client_fallback_is_debug_not_warning(tmp_path: Any) -> None:
+    """A store on a bare client has no sub-clients by design.
+
+    Warning here would emit one line per endpoint in the catalogue and bury
+    the two statuses that do mean something is wrong.
+    """
+    client = cast(BaseClient, SimpleNamespace(request=Mock(return_value=[])))
+    store, info = _fallback_store(client, tmp_path)
+
+    store.create_tool(info)
+
+    store.logger.warning.assert_not_called()
+    store.logger.debug.assert_called_once()
+    message = store.logger.debug.call_args[0][0]
+    assert "no 'institutional' sub-client" in message
+
+
+def test_missing_method_fallback_warns(tmp_path: Any) -> None:
+    """A sub-client that lacks the named method is a real misconfiguration."""
+    client = cast(
+        BaseClient,
+        SimpleNamespace(request=Mock(return_value=[]), institutional=SimpleNamespace()),
+    )
+    store, info = _fallback_store(client, tmp_path)
+
+    store.create_tool(info)
+
+    store.logger.warning.assert_called_once()
+    message = store.logger.warning.call_args[0][0]
+    assert "get_form_13f_by_quarter" in message
+    assert "has no callable" in message
+
+
+def test_shape_mismatch_fallback_warns_and_names_the_gap(tmp_path: Any) -> None:
+    """The warning has to say *which* required params had no wire source."""
+
+    def get_form_13f_by_quarter(cik: str, report_date: date) -> list[Any]:
+        raise AssertionError("must not be called")  # pragma: no cover
+
+    client = cast(
+        BaseClient,
+        SimpleNamespace(
+            request=Mock(return_value=[]),
+            institutional=SimpleNamespace(
+                get_form_13f_by_quarter=get_form_13f_by_quarter
+            ),
+        ),
+    )
+    store, info = _fallback_store(client, tmp_path)
+
+    store.create_tool(info)
+
+    store.logger.warning.assert_called_once()
+    message = store.logger.warning.call_args[0][0]
+    assert "report_date" in message
+    assert "client.request" in message
+
+
+def test_successful_dispatch_logs_no_fallback(tmp_path: Any) -> None:
+    """No warning, no debug line when the method binds — silence means fine."""
+
+    def get_form_13f_by_quarter(cik: str, year: int, quarter: int) -> list[Any]:
+        return []
+
+    client = cast(
+        BaseClient,
+        SimpleNamespace(
+            request=Mock(side_effect=AssertionError("must not fall back")),
+            institutional=SimpleNamespace(
+                get_form_13f_by_quarter=get_form_13f_by_quarter
+            ),
+        ),
+    )
+    store, info = _fallback_store(client, tmp_path)
+
+    store.create_tool(info)
+
+    store.logger.warning.assert_not_called()
+    store.logger.debug.assert_not_called()

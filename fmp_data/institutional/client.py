@@ -1,5 +1,6 @@
 # fmp_data/institutional/client.py
 from datetime import date
+import warnings
 
 from fmp_data.base import EndpointGroup
 from fmp_data.exceptions import FMPError, ValidationError
@@ -87,6 +88,18 @@ class InstitutionalClient(EndpointGroup):
 
         Returns:
             List of Form13F objects. Empty list if no records found.
+
+        Note:
+            **Empty on error.** Unlike most of the client, an `FMPError` or
+            `ValidationError` from the API is logged and reported as an empty
+            list rather than raised — a filer with no filing for a quarter and
+            a 404 for that quarter are not distinguishable here. Since #188
+            the LangChain tool dispatches through this method, so it inherits
+            the behaviour and answers `status: success` with empty data in
+            both cases. Kept as-is because callers depend on it and narrowing
+            it is a breaking change; revisit at 3.0 (#193). Bugs in this
+            library are *not* swallowed: only the two API exception types are
+            caught.
         """
         try:
             result = self.client.request(FORM_13F, cik=cik, year=year, quarter=quarter)
@@ -348,14 +361,24 @@ class InstitutionalClient(EndpointGroup):
             params["cik"] = cik
         return self.client.request(INSTITUTIONAL_OWNERSHIP_LATEST, **params)
 
-    def get_institutional_ownership_extract(
-        self, cik: str | int, report_date: date
+    def get_institutional_ownership_extract_by_quarter(
+        self, cik: str | int, year: int, quarter: int
     ) -> list[InstitutionalOwnershipExtract]:
-        """Get filings extract data for a report period end date"""
-        year, quarter = self._date_to_year_quarter(report_date)
+        """Get filings extract data for a calendar quarter (#192).
+
+        Wire shape of ``/institutional-ownership/extract``; ``year`` and
+        ``quarter`` are mandatory and there is no date parameter.
+        """
         return self.client.request(
             INSTITUTIONAL_OWNERSHIP_EXTRACT, cik=cik, year=year, quarter=quarter
         )
+
+    def get_institutional_ownership_extract(
+        self, cik: str | int, report_date: date
+    ) -> list[InstitutionalOwnershipExtract]:
+        """Get filings extract data for the quarter containing ``report_date``"""
+        year, quarter = self._date_to_year_quarter(report_date)
+        return self.get_institutional_ownership_extract_by_quarter(cik, year, quarter)
 
     def get_institutional_ownership_dates(
         self, cik: str | int
@@ -363,11 +386,15 @@ class InstitutionalClient(EndpointGroup):
         """Get Form 13F filing dates"""
         return self.client.request(INSTITUTIONAL_OWNERSHIP_DATES, cik=cik)
 
-    def get_institutional_ownership_analytics(
-        self, symbol: str, report_date: date, page: int = 0, limit: int = 100
+    def get_institutional_ownership_analytics_by_quarter(
+        self,
+        symbol: str,
+        year: int,
+        quarter: int,
+        page: int = 0,
+        limit: int = 100,
     ) -> list[InstitutionalOwnershipAnalytics]:
-        """Get filings extract with analytics by holder for a report period end date"""
-        year, quarter = self._date_to_year_quarter(report_date)
+        """Get filings extract with analytics by holder, for a calendar quarter."""
         return self.client.request(
             INSTITUTIONAL_OWNERSHIP_ANALYTICS,
             symbol=symbol,
@@ -377,45 +404,94 @@ class InstitutionalClient(EndpointGroup):
             limit=limit,
         )
 
+    def get_institutional_ownership_analytics(
+        self, symbol: str, report_date: date, page: int = 0, limit: int = 100
+    ) -> list[InstitutionalOwnershipAnalytics]:
+        """Analytics by holder for the quarter containing ``report_date``"""
+        year, quarter = self._date_to_year_quarter(report_date)
+        return self.get_institutional_ownership_analytics_by_quarter(
+            symbol, year, quarter, page=page, limit=limit
+        )
+
     def get_holder_performance_summary(
         self, cik: str | int, report_date: date | None = None, page: int = 0
     ) -> list[HolderPerformanceSummary]:
-        """Get holder performance summary for a report period end date"""
+        """Get holder performance summary — full history, *not* one quarter.
+
+        Warning:
+            ``report_date`` has **no effect**. The endpoint accepts ``year``
+            and ``quarter`` and ignores them: probed against the live API,
+            ``cik=0001067983`` returns a byte-identical 52-row payload
+            spanning 2013-06-30 to 2026-03-31 with no filter, with
+            ``2023 Q3``, and with ``2019 Q1``. Passing a ``report_date``
+            therefore hands you the whole history while looking like it
+            selected a period, so doing so emits a :class:`UserWarning`
+            rather than answering plausibly and wrongly (#192).
+
+            No ``_by_quarter`` sibling exists for this endpoint, unlike the
+            other five in this group: advertising a filter the API does not
+            apply would make the problem harder to see, not easier.
+
+            The parameter is still sent, and still accepted here, in case FMP
+            starts honouring it.
+        """
         params: dict[str, str | int] = {"cik": cik, "page": page}
         if report_date:
+            warnings.warn(
+                "institutional.get_holder_performance_summary(report_date=...) "
+                "has no effect: the FMP endpoint accepts year/quarter but "
+                "returns the holder's full history regardless. You are "
+                "getting every period, not the one you asked for; filter the "
+                "result by its 'date' field instead.",
+                UserWarning,
+                stacklevel=2,
+            )
             year, quarter = self._date_to_year_quarter(report_date)
             params["year"] = year
             params["quarter"] = quarter
         return self.client.request(HOLDER_PERFORMANCE_SUMMARY, **params)
 
+    def get_holder_industry_breakdown_by_quarter(
+        self, cik: str | int, year: int, quarter: int
+    ) -> list[HolderIndustryBreakdown]:
+        """Get holders industry breakdown for a calendar quarter."""
+        return self.client.request(
+            HOLDER_INDUSTRY_BREAKDOWN, cik=cik, year=year, quarter=quarter
+        )
+
     def get_holder_industry_breakdown(
         self, cik: str | int, report_date: date
     ) -> list[HolderIndustryBreakdown]:
-        """Get holders industry breakdown for a report period end date"""
+        """Holders industry breakdown for the quarter containing ``report_date``"""
         year, quarter = self._date_to_year_quarter(report_date)
-        params: dict[str, str | int] = {
-            "cik": cik,
-            "year": year,
-            "quarter": quarter,
-        }
-        return self.client.request(HOLDER_INDUSTRY_BREAKDOWN, **params)
+        return self.get_holder_industry_breakdown_by_quarter(cik, year, quarter)
+
+    def get_symbol_positions_summary_by_quarter(
+        self, symbol: str, year: int, quarter: int
+    ) -> list[SymbolPositionsSummary]:
+        """Get positions summary by symbol for a calendar quarter."""
+        return self.client.request(
+            SYMBOL_POSITIONS_SUMMARY, symbol=symbol, year=year, quarter=quarter
+        )
 
     def get_symbol_positions_summary(
         self, symbol: str, report_date: date
     ) -> list[SymbolPositionsSummary]:
-        """Get positions summary by symbol for a report period end date"""
+        """Positions summary for the quarter containing ``report_date``"""
         year, quarter = self._date_to_year_quarter(report_date)
-        params: dict[str, str | int] = {
-            "symbol": symbol,
-            "year": year,
-            "quarter": quarter,
-        }
-        return self.client.request(SYMBOL_POSITIONS_SUMMARY, **params)
+        return self.get_symbol_positions_summary_by_quarter(symbol, year, quarter)
+
+    def get_industry_performance_summary_by_quarter(
+        self, year: int, quarter: int
+    ) -> list[IndustryPerformanceSummary]:
+        """Get industry performance summary for a calendar quarter."""
+        return self.client.request(
+            INDUSTRY_PERFORMANCE_SUMMARY, year=year, quarter=quarter
+        )
 
     def get_industry_performance_summary(
         self, report_date: date
     ) -> list[IndustryPerformanceSummary]:
-        """Get industry performance summary for a report period end date"""
+        """Industry performance summary for the quarter containing ``report_date``"""
         year, quarter = self._date_to_year_quarter(report_date)
-        params: dict[str, str | int] = {"year": year, "quarter": quarter}
-        return self.client.request(INDUSTRY_PERFORMANCE_SUMMARY, **params)
+        return self.get_industry_performance_summary_by_quarter(year, quarter)

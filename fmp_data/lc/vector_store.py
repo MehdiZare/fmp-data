@@ -34,8 +34,12 @@ from fmp_data.models import ParamType
 # are imported by name in tests and downstream code.
 from fmp_data.tool_binding import (
     ENDPOINT_TO_METHOD_ALIASES,
+    DispatchStatus,
+    MethodBinding,
+    bind_client_method,
     bindable_params,
     camel_to_snake,
+    keyword_unfillable_required_params,
     map_tool_kwargs_to_method,
     method_dispatch_compatible,
     method_param_aliases,
@@ -53,13 +57,17 @@ _ENDPOINT_TO_METHOD_ALIASES = ENDPOINT_TO_METHOD_ALIASES
 
 __all__ = [
     "ENDPOINT_TO_METHOD_ALIASES",
+    "DispatchStatus",
     "EndpointVectorStore",
+    "MethodBinding",
     "SearchResult",
     "ToolFactory",
     "ToolLike",
     "VectorStoreMetadata",
+    "bind_client_method",
     "bindable_params",
     "camel_to_snake",
+    "keyword_unfillable_required_params",
     "map_tool_kwargs_to_method",
     "method_dispatch_compatible",
     "method_param_aliases",
@@ -761,6 +769,22 @@ class EndpointVectorStore:
             return {"status": "success", "data": model_dump(mode="json")}
         return {"status": "success", "data": result}
 
+    def _log_dispatch_fallback(self, binding: MethodBinding, semantics: Any) -> None:
+        """Announce a ``client.request`` fallback, at a level fitting its cause.
+
+        Split out of :meth:`create_tool` to keep that method under the
+        complexity limit, and because the level rule is the whole point of
+        #194 and deserves to be readable on its own.
+        """
+        if binding.is_dispatchable:
+            return
+        detail = binding.describe(semantics.client_name, semantics.method_name)
+        message = f"LangChain tool '{semantics.method_name}': {detail}"
+        if binding.is_expected_miss:
+            self.logger.debug(message)
+        else:
+            self.logger.warning(message)
+
     def create_tool(self, info: EndpointInfo) -> ToolLike:
         """Create a LangChain tool from endpoint info.
 
@@ -769,6 +793,13 @@ class EndpointVectorStore:
         method-level defaults and constraints apply. See #172. When the store
         holds a client without that sub-client (tests, bare ``BaseClient``),
         dispatch falls back to ``client.request(endpoint, ...)``.
+
+        A fallback is announced rather than silent (#194). The level splits on
+        whether it is expected: a bare client has no sub-clients by design and
+        would otherwise emit one warning per endpoint in the catalogue, which
+        buries the two cases that really do mean something is wrong -- a
+        ``method_name`` naming nothing, or a shape the wire fields cannot
+        fill. Those warn; the bare-client case is DEBUG.
         """
         if not info:
             raise ValueError("EndpointInfo cannot be None")
@@ -783,12 +814,14 @@ class EndpointVectorStore:
                 for p in list(endpoint.mandatory_params)
                 + list(endpoint.optional_params or [])
             ]
-            method = resolve_dispatch_method(
+            binding = bind_client_method(
                 self.client,
                 semantics.client_name,
                 semantics.method_name,
                 ep_names,
             )
+            method = binding.method
+            self._log_dispatch_fallback(binding, semantics)
             mandatory_params, optional_params = partition_params_for_method(
                 endpoint.mandatory_params,
                 endpoint.optional_params or [],

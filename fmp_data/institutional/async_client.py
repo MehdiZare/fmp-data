@@ -2,8 +2,10 @@
 """Async client for institutional activity endpoints."""
 
 from datetime import date
+import warnings
 
 from fmp_data.base import AsyncEndpointGroup
+from fmp_data.exceptions import FMPError, ValidationError
 from fmp_data.helpers import deprecated
 from fmp_data.institutional.endpoints import (
     BENEFICIAL_OWNERSHIP,
@@ -83,12 +85,22 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
 
         Returns:
             List of Form13F objects. Empty list if no records found.
+
+        Note:
+            **Empty on error**, matching the sync client — see
+            :meth:`~fmp_data.institutional.client.InstitutionalClient.get_form_13f_by_quarter`
+            for why, and for what is deliberately *not* swallowed (#193).
         """
         try:
             result = await self.client.request_async(
                 FORM_13F, cik=cik, year=year, quarter=quarter
             )
-        except Exception as exc:
+        except (FMPError, ValidationError) as exc:
+            # Narrowed from bare ``Exception`` in #193, to match the sync
+            # client. "No 13F data" is a claim about the *API's* answer; a
+            # TypeError or AttributeError in our own code is not that, and
+            # swallowing one reported an empty portfolio for what was really
+            # a bug here.
             self.client.logger.warning(
                 f"No Form 13F data found for CIK {cik} in {year} Q{quarter}: {exc!s}"
             )
@@ -135,8 +147,10 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
             result = await self.client.request_async(FORM_13F_DATES, cik=cik)
             # Ensure we always return a list
             return result if isinstance(result, list) else [result]
-        except Exception as e:
-            # Log the error but return empty list instead of raising
+        except (FMPError, ValidationError) as e:
+            # API errors (404, validation, etc.) return empty list for
+            # convenience; narrowed from bare ``Exception`` in #193 to match
+            # the sync client, so a bug in our own code still surfaces.
             self.client.logger.warning(
                 f"No Form 13F filings found for CIK {cik}: {e!s}"
             )
@@ -348,13 +362,25 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
             params["cik"] = cik
         return await self.client.request_async(INSTITUTIONAL_OWNERSHIP_LATEST, **params)
 
+    async def get_institutional_ownership_extract_by_quarter(
+        self, cik: str | int, year: int, quarter: int
+    ) -> list[InstitutionalOwnershipExtract]:
+        """Get filings extract data for a calendar quarter (#192).
+
+        Wire shape of ``/institutional-ownership/extract``; ``year`` and
+        ``quarter`` are mandatory and there is no date parameter.
+        """
+        return await self.client.request_async(
+            INSTITUTIONAL_OWNERSHIP_EXTRACT, cik=cik, year=year, quarter=quarter
+        )
+
     async def get_institutional_ownership_extract(
         self, cik: str | int, report_date: date
     ) -> list[InstitutionalOwnershipExtract]:
-        """Get filings extract data for a report period end date"""
+        """Get filings extract data for the quarter containing ``report_date``"""
         year, quarter = self._date_to_year_quarter(report_date)
-        return await self.client.request_async(
-            INSTITUTIONAL_OWNERSHIP_EXTRACT, cik=cik, year=year, quarter=quarter
+        return await self.get_institutional_ownership_extract_by_quarter(
+            cik, year, quarter
         )
 
     async def get_institutional_ownership_dates(
@@ -363,11 +389,15 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         """Get Form 13F filing dates"""
         return await self.client.request_async(INSTITUTIONAL_OWNERSHIP_DATES, cik=cik)
 
-    async def get_institutional_ownership_analytics(
-        self, symbol: str, report_date: date, page: int = 0, limit: int = 100
+    async def get_institutional_ownership_analytics_by_quarter(
+        self,
+        symbol: str,
+        year: int,
+        quarter: int,
+        page: int = 0,
+        limit: int = 100,
     ) -> list[InstitutionalOwnershipAnalytics]:
-        """Get filings extract with analytics by holder for a report period end date"""
-        year, quarter = self._date_to_year_quarter(report_date)
+        """Get filings extract with analytics by holder, for a calendar quarter."""
         return await self.client.request_async(
             INSTITUTIONAL_OWNERSHIP_ANALYTICS,
             symbol=symbol,
@@ -377,45 +407,83 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
             limit=limit,
         )
 
+    async def get_institutional_ownership_analytics(
+        self, symbol: str, report_date: date, page: int = 0, limit: int = 100
+    ) -> list[InstitutionalOwnershipAnalytics]:
+        """Analytics by holder for the quarter containing ``report_date``"""
+        year, quarter = self._date_to_year_quarter(report_date)
+        return await self.get_institutional_ownership_analytics_by_quarter(
+            symbol, year, quarter, page=page, limit=limit
+        )
+
     async def get_holder_performance_summary(
         self, cik: str | int, report_date: date | None = None, page: int = 0
     ) -> list[HolderPerformanceSummary]:
-        """Get holder performance summary for a report period end date"""
+        """Get holder performance summary -- full history, *not* one quarter.
+
+        Warning:
+            ``report_date`` has **no effect**; see the sync
+            :meth:`~fmp_data.institutional.client.InstitutionalClient.get_holder_performance_summary`
+            for the live-API evidence. Passing it emits a
+            :class:`UserWarning` (#192).
+        """
         params: dict[str, str | int] = {"cik": cik, "page": page}
         if report_date:
+            warnings.warn(
+                "institutional.get_holder_performance_summary(report_date=...) "
+                "has no effect: the FMP endpoint accepts year/quarter but "
+                "returns the holder's full history regardless. You are "
+                "getting every period, not the one you asked for; filter the "
+                "result by its 'date' field instead.",
+                UserWarning,
+                stacklevel=2,
+            )
             year, quarter = self._date_to_year_quarter(report_date)
             params["year"] = year
             params["quarter"] = quarter
         return await self.client.request_async(HOLDER_PERFORMANCE_SUMMARY, **params)
 
+    async def get_holder_industry_breakdown_by_quarter(
+        self, cik: str | int, year: int, quarter: int
+    ) -> list[HolderIndustryBreakdown]:
+        """Get holders industry breakdown for a calendar quarter."""
+        return await self.client.request_async(
+            HOLDER_INDUSTRY_BREAKDOWN, cik=cik, year=year, quarter=quarter
+        )
+
     async def get_holder_industry_breakdown(
         self, cik: str | int, report_date: date
     ) -> list[HolderIndustryBreakdown]:
-        """Get holders industry breakdown for a report period end date"""
+        """Holders industry breakdown for the quarter containing ``report_date``"""
         year, quarter = self._date_to_year_quarter(report_date)
-        params: dict[str, str | int] = {
-            "cik": cik,
-            "year": year,
-            "quarter": quarter,
-        }
-        return await self.client.request_async(HOLDER_INDUSTRY_BREAKDOWN, **params)
+        return await self.get_holder_industry_breakdown_by_quarter(cik, year, quarter)
+
+    async def get_symbol_positions_summary_by_quarter(
+        self, symbol: str, year: int, quarter: int
+    ) -> list[SymbolPositionsSummary]:
+        """Get positions summary by symbol for a calendar quarter."""
+        return await self.client.request_async(
+            SYMBOL_POSITIONS_SUMMARY, symbol=symbol, year=year, quarter=quarter
+        )
 
     async def get_symbol_positions_summary(
         self, symbol: str, report_date: date
     ) -> list[SymbolPositionsSummary]:
-        """Get positions summary by symbol for a report period end date"""
+        """Positions summary for the quarter containing ``report_date``"""
         year, quarter = self._date_to_year_quarter(report_date)
-        params: dict[str, str | int] = {
-            "symbol": symbol,
-            "year": year,
-            "quarter": quarter,
-        }
-        return await self.client.request_async(SYMBOL_POSITIONS_SUMMARY, **params)
+        return await self.get_symbol_positions_summary_by_quarter(symbol, year, quarter)
+
+    async def get_industry_performance_summary_by_quarter(
+        self, year: int, quarter: int
+    ) -> list[IndustryPerformanceSummary]:
+        """Get industry performance summary for a calendar quarter."""
+        return await self.client.request_async(
+            INDUSTRY_PERFORMANCE_SUMMARY, year=year, quarter=quarter
+        )
 
     async def get_industry_performance_summary(
         self, report_date: date
     ) -> list[IndustryPerformanceSummary]:
-        """Get industry performance summary for a report period end date"""
+        """Industry performance summary for the quarter containing ``report_date``"""
         year, quarter = self._date_to_year_quarter(report_date)
-        params: dict[str, str | int] = {"year": year, "quarter": quarter}
-        return await self.client.request_async(INDUSTRY_PERFORMANCE_SUMMARY, **params)
+        return await self.get_industry_performance_summary_by_quarter(year, quarter)

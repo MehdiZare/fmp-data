@@ -1652,6 +1652,50 @@ class TestAsyncInstitutionalClient:
         assert "0000320193" in mock_client.logger.warning.call_args[0][0]
 
     @pytest.mark.asyncio
+    async def test_get_form_13f_by_quarter_does_not_swallow_our_own_bugs(
+        self, mock_client
+    ):
+        """Narrowed from bare ``Exception`` in #193.
+
+        "No 13F data" is a claim about what the API answered. A ``TypeError``
+        in this library is not that, and reporting it as an empty portfolio
+        is how a real bug reads as a real (empty) result.
+        """
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.logger = MagicMock()
+        mock_client.request_async.side_effect = TypeError("bug in our own code")
+
+        async_client = AsyncInstitutionalClient(mock_client)
+        with pytest.raises(TypeError, match="bug in our own code"):
+            await async_client.get_form_13f_by_quarter("0000320193", 2023, 3)
+
+    @pytest.mark.asyncio
+    async def test_get_form_13f_dates_does_not_swallow_our_own_bugs(self, mock_client):
+        """Same narrowing on the dates method (#193)."""
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.logger = MagicMock()
+        mock_client.request_async.side_effect = AttributeError("bug in our own code")
+
+        async_client = AsyncInstitutionalClient(mock_client)
+        with pytest.raises(AttributeError, match="bug in our own code"):
+            await async_client.get_form_13f_dates("0000320193")
+
+    @pytest.mark.asyncio
+    async def test_get_form_13f_dates_still_empties_on_api_errors(self, mock_client):
+        """The convenience survives narrowing: API errors still return []."""
+        from fmp_data.exceptions import FMPError
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.logger = MagicMock()
+        mock_client.request_async.side_effect = FMPError("404")
+
+        async_client = AsyncInstitutionalClient(mock_client)
+        assert await async_client.get_form_13f_dates("0000320193") == []
+        mock_client.logger.warning.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_get_institutional_holdings_by_quarter_sends_wire_params(
         self, mock_client
     ):
