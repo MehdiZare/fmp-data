@@ -342,22 +342,40 @@ class TestLoaderChecksNamesUnderBothStyles:
 
 
 def _semantics_flagged_specs() -> set[str]:
-    """Every spec whose ``EndpointSemantics`` carries ``deprecated=True``.
+    """Every catalog spec whose ``EndpointSemantics`` carries ``deprecated=True``.
 
-    Derived by walking the mapping tables rather than hard-coded, so the guard
-    below measures reality instead of a list someone kept up to date.
+    Derived from the catalog rather than hard-coded, so the guard below
+    measures reality instead of a list someone kept up to date.
+
+    **Iterate the discovered catalog, never the ``*.mapping`` modules.** The
+    obvious implementation -- walk every package with a ``mapping.py``, read
+    its ``<CLIENT>_ENDPOINTS_SEMANTICS`` table, label each entry
+    ``<module>.<key>`` -- is wrong in a way that looks right.
+    ``fmp_data.lc.mapping`` is one of the 14 such modules and it **re-exports**
+    nine of the domain tables: ``lc.mapping.COMPANY_ENDPOINTS_SEMANTICS`` *is*
+    ``company.mapping.COMPANY_ENDPOINTS_SEMANTICS``, the same object. A walk
+    that derives the client from the module path therefore sees every flagged
+    endpoint a second time as ``lc.<key>`` and reports a 22-entry phantom gap
+    on top of the real one.
+
+    The trap has a bad failure mode either way: the guard fails permanently on
+    specs that are not MCP tools at all, and the natural "fix" is to special-case
+    ``lc`` out -- an exclusion by name that would mask a real future gap if
+    another module ever re-exported.
+
+    Taking the specs from ``discover_all_tools`` avoids the choice entirely.
+    Those are the MCP catalog by definition, which is what the invariant is
+    about, and each carries the ``client``/``key`` that reaches its semantics
+    object directly -- so no module path is ever parsed.
     """
-    import importlib
-
-    from fmp_data.mcp.discovery import _get_client_modules
+    from fmp_data.mcp.discovery import discover_all_tools
+    from fmp_data.mcp.tool_loader import _load_semantics
 
     flagged: set[str] = set()
-    for client in _get_client_modules():
-        mapping = importlib.import_module(f"fmp_data.{client}.mapping")
-        table = getattr(mapping, f"{client.upper()}_ENDPOINTS_SEMANTICS", None) or {}
-        for key, semantics in table.items():
-            if getattr(semantics, "deprecated", False):
-                flagged.add(f"{client}.{key}")
+    for tool in discover_all_tools():
+        semantics = _load_semantics(tool["client"], tool["key"])
+        if getattr(semantics, "deprecated", False):
+            flagged.add(tool["spec"])
     return flagged
 
 
@@ -421,6 +439,35 @@ class TestTheTwoRetirementMechanismsStayInStep:
         assert flagged, "floor: nothing is flagged"
         assert len(entries) > 100, "floor: a near-empty manifest proves nothing"
         assert sorted(set(entries) & flagged) == []
+
+    def test_no_flagged_spec_is_outside_the_mcp_catalog(self) -> None:
+        """The phantom check, pinned so the naive walk cannot come back.
+
+        ``fmp_data.lc.mapping`` re-exports nine domain semantics tables as the
+        *same objects*, so deriving the client from the walked module path
+        double-counts every flagged endpoint as ``lc.<key>``. Anyone rewriting
+        :func:`_semantics_flagged_specs` the obvious way trips this: the
+        phantoms are not in the catalog, so the assertion names them.
+        """
+        import importlib
+
+        from fmp_data.mcp.discovery import discover_all_tools
+
+        catalog = {tool["spec"] for tool in discover_all_tools()}
+        flagged = _semantics_flagged_specs()
+
+        assert flagged, "floor: nothing flagged"
+        assert flagged <= catalog, sorted(flagged - catalog)
+
+        # And the re-export that causes it is real, so this is not theory. If
+        # `lc.mapping` ever stops re-exporting, this line fails and the warning
+        # above can be deleted rather than left as folklore.
+        lc_mapping = importlib.import_module("fmp_data.lc.mapping")
+        company_mapping = importlib.import_module("fmp_data.company.mapping")
+        assert (
+            lc_mapping.COMPANY_ENDPOINTS_SEMANTICS
+            is company_mapping.COMPANY_ENDPOINTS_SEMANTICS
+        ), "lc.mapping no longer re-exports; _semantics_flagged_specs may be simplified"
 
     def test_the_three_orphans_are_the_ones_that_were_missing(self) -> None:
         """Pin the specific regression, so the sweep above cannot be gamed.
