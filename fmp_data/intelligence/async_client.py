@@ -43,7 +43,6 @@ from fmp_data.intelligence.endpoints import (
     SENATE_LATEST,
     SENATE_TRADES_BY_NAME,
     SENATE_TRADING,
-    SENATE_TRADING_RSS,
     STOCK_NEWS_ENDPOINT,
     STOCK_SPLITS_CALENDAR,
     STOCK_SYMBOL_NEWS_ENDPOINT,
@@ -317,6 +316,12 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         }
         return await self.client.request_async(STOCK_NEWS_ENDPOINT, **params)
 
+    @deprecated(
+        "The FMP API no longer supports this endpoint -- "
+        "stock-news-sentiments-rss-feed returns the legacy 403. Use "
+        "get_stock_news() for the articles themselves; FMP publishes no "
+        "stable replacement for the sentiment scores."
+    )
     async def get_stock_news_sentiments(
         self, page: int = 0
     ) -> list[StockNewsSentiment]:
@@ -325,15 +330,9 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         .. deprecated::
             This endpoint is no longer available on the FMP API and will be removed
             in a future version. It currently returns an empty list.
+            Use :meth:`get_stock_news` for the articles; the sentiment and
+            sentiment-score fields have no stable replacement.
         """
-        import warnings
-
-        warnings.warn(
-            "get_stock_news_sentiments is deprecated and will be removed in a "
-            "future version. The FMP API no longer supports this endpoint.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         return []
 
     async def get_forex_news(
@@ -520,9 +519,22 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         """Get Senate trading data by name"""
         return await self.client.request_async(SENATE_TRADES_BY_NAME, name=name)
 
+    @deprecated(
+        "senate-trading-rss-feed is dead. The live path senate-latest is "
+        "already shipped as get_senate_latest(); this method is a leftover "
+        "declaration, not a second feed."
+    )
     async def get_senate_trading_rss(self, page: int = 0) -> list[SenateTrade]:
-        """Get Senate trading RSS feed"""
-        return await self.client.request_async(SENATE_TRADING_RSS, page=page)
+        """Get Senate trading RSS feed
+
+        .. deprecated::
+            ``senate-trading-rss-feed`` 404s and will be removed in a future
+            version. It currently returns an empty list. Use
+            :meth:`get_senate_latest`, which serves the live ``senate-latest``
+            and returns the same :class:`
+            ~fmp_data.intelligence.models.SenateTrade` rows.
+        """
+        return []
 
     async def get_house_latest(
         self, page: int = 0, limit: int = 100

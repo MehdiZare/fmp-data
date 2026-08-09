@@ -94,7 +94,12 @@ ASSET_ALLOCATION: Endpoint = Endpoint(
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get 13F asset allocation data",
+    description=(
+        "DEPRECATED and non-functional: FMP no longer serves 13F asset "
+        "allocation, so this path 404s, and no stable endpoint replaces it. "
+        "Do not select it. The nearest live data is per-filer 13F holdings, "
+        "which must be aggregated by hand."
+    ),
     mandatory_params=[
         EndpointParam(
             name="date",
@@ -316,7 +321,11 @@ FAIL_TO_DELIVER: Endpoint = Endpoint(
     name="fail_to_deliver",
     path="fail_to_deliver",
     version=APIVersion.STABLE,
-    description="Get fail to deliver data",
+    description=(
+        "DEPRECATED and non-functional: FMP no longer serves fail-to-deliver "
+        "data, so this path 404s, and no stable endpoint replaces it. Do not "
+        "select it. The SEC publishes the same fails-to-deliver files itself."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",

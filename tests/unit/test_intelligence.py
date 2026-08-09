@@ -941,15 +941,13 @@ class TestMarketIntelligenceClientGovernment:
         _args, kwargs = mock_client.request.call_args
         assert kwargs["name"] == "Jerry"
 
-    def test_get_senate_trading_rss(self, fmp_client, mock_client):
-        """Test get_senate_trading_rss"""
-        mock_client.request.return_value = []
+    def test_get_senate_trading_rss_is_deprecated(self, fmp_client, mock_client):
+        """``senate-trading-rss-feed`` 404s; ``senate-latest`` is the live feed."""
+        with pytest.warns(DeprecationWarning, match="get_senate_latest"):
+            result = fmp_client.intelligence.get_senate_trading_rss(page=0)
 
-        _ = fmp_client.intelligence.get_senate_trading_rss(page=0)
-
-        mock_client.request.assert_called_once()
-        _args, kwargs = mock_client.request.call_args
-        assert kwargs["page"] == 0
+        assert result == []
+        mock_client.request.assert_not_called()
 
     def test_get_house_latest(self, fmp_client, mock_client):
         """Test get_house_latest"""

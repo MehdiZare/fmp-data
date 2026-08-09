@@ -426,8 +426,10 @@ HISTORICAL_RATING: Endpoint = Endpoint(
     path="historical-rating",
     version=APIVersion.STABLE,
     description=(
-        "Retrieve historical company ratings and scoring metrics over time "
-        "based on fundamental analysis"
+        "DEPRECATED and non-functional: historical-rating 404s. Do not select "
+        "it. The live ratings-historical endpoint is already exposed as "
+        "intelligence.get_ratings_historical, with overallScore and "
+        "per-metric scores rather than ratingScore/ratingDetails."
     ),
     mandatory_params=[
         EndpointParam(

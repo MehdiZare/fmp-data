@@ -40,6 +40,7 @@ def deprecated(reason: str = "") -> Callable[[F], F]:
                 warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
                 return await func(*args, **kwargs)
 
+            async_wrapped.__fmp_deprecated__ = True  # type: ignore[attr-defined]
             return async_wrapped  # type: ignore[return-value]
 
         @functools.wraps(func)
@@ -47,6 +48,7 @@ def deprecated(reason: str = "") -> Callable[[F], F]:
             warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
             return func(*args, **kwargs)
 
+        wrapped.__fmp_deprecated__ = True  # type: ignore[attr-defined]
         return wrapped  # type: ignore[return-value]
 
     return decorator
@@ -87,6 +89,7 @@ def removed(reason: str = "") -> Callable[[F], F]:
         def wrapped(*_args: Any, **_kwargs: Any) -> Any:
             raise RemovedEndpointError(func.__name__, reason)
 
+        wrapped.__fmp_deprecated__ = True  # type: ignore[attr-defined]
         return wrapped  # type: ignore[return-value]
 
     return decorator

@@ -6,7 +6,6 @@ from pydantic import BaseModel
 
 from fmp_data.alternative.endpoints import (
     COMMODITIES_LIST,
-    COMMODITIES_QUOTES,
     COMMODITY_HISTORICAL,
     COMMODITY_INTRADAY,
     COMMODITY_QUOTE,
@@ -14,12 +13,10 @@ from fmp_data.alternative.endpoints import (
     CRYPTO_INTRADAY,
     CRYPTO_LIST,
     CRYPTO_QUOTE,
-    CRYPTO_QUOTES,
     FOREX_HISTORICAL,
     FOREX_INTRADAY,
     FOREX_LIST,
     FOREX_QUOTE,
-    FOREX_QUOTES,
 )
 from fmp_data.alternative.models import (
     Commodity,
@@ -36,6 +33,7 @@ from fmp_data.alternative.models import (
     ForexQuote,
 )
 from fmp_data.base import EndpointGroup
+from fmp_data.helpers import deprecated
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
@@ -54,9 +52,25 @@ class AlternativeMarketsClient(EndpointGroup):
         """Get list of available cryptocurrencies"""
         return self.client.request(CRYPTO_LIST)
 
+    @deprecated(
+        "quotes/crypto is dead. The live path batch-crypto-quotes is already "
+        "shipped as FMPDataClient.batch.get_crypto_quotes(); this method is a "
+        "leftover declaration, not a second data source. The payload is "
+        "narrower -- symbol, price, change and volume only."
+    )
     def get_crypto_quotes(self) -> list[CryptoQuote]:
-        """Get cryptocurrency quotes"""
-        return self.client.request(CRYPTO_QUOTES)
+        """Get cryptocurrency quotes
+
+        .. deprecated::
+            ``quotes/crypto`` 404s and will be removed in a future version. It
+            currently returns an empty list. Use
+            ``client.batch.get_crypto_quotes()``, which serves the live
+            ``batch-crypto-quotes``. It is not a drop-in: that endpoint
+            returns only ``symbol``/``price``/``change``/``volume``, so the day
+            range, market cap and moving averages declared on
+            :class:`~fmp_data.alternative.models.CryptoQuote` are unavailable.
+        """
+        return []
 
     def get_crypto_quote(self, symbol: str) -> CryptoQuote:
         """Get cryptocurrency quote"""
@@ -90,9 +104,23 @@ class AlternativeMarketsClient(EndpointGroup):
         """Get list of available forex pairs"""
         return self.client.request(FOREX_LIST)
 
+    @deprecated(
+        "quotes/forex is dead. The live path batch-forex-quotes is already "
+        "shipped as FMPDataClient.batch.get_forex_quotes(); this method is a "
+        "leftover declaration, not a second data source. The payload is "
+        "narrower -- symbol, price, change and volume only."
+    )
     def get_forex_quotes(self) -> list[ForexQuote]:
-        """Get forex quotes"""
-        return self.client.request(FOREX_QUOTES)
+        """Get forex quotes
+
+        .. deprecated::
+            ``quotes/forex`` 404s and will be removed in a future version. It
+            currently returns an empty list. Use
+            ``client.batch.get_forex_quotes()``, which serves the live
+            ``batch-forex-quotes``. It is not a drop-in: that endpoint returns
+            only ``symbol``/``price``/``change``/``volume``.
+        """
+        return []
 
     def get_forex_quote(self, symbol: str) -> ForexQuote:
         """Get forex quote"""
@@ -126,9 +154,23 @@ class AlternativeMarketsClient(EndpointGroup):
         """Get list of available commodities"""
         return self.client.request(COMMODITIES_LIST)
 
+    @deprecated(
+        "quotes/commodity is dead. The live path batch-commodity-quotes is "
+        "already shipped as FMPDataClient.batch.get_commodity_quotes(); this "
+        "method is a leftover declaration, not a second data source. The "
+        "payload is narrower -- symbol, price, change and volume only."
+    )
     def get_commodities_quotes(self) -> list[CommodityQuote]:
-        """Get commodities quotes"""
-        return self.client.request(COMMODITIES_QUOTES)
+        """Get commodities quotes
+
+        .. deprecated::
+            ``quotes/commodity`` 404s and will be removed in a future version.
+            It currently returns an empty list. Use
+            ``client.batch.get_commodity_quotes()``, which serves the live
+            ``batch-commodity-quotes``. It is not a drop-in: that endpoint
+            returns only ``symbol``/``price``/``change``/``volume``.
+        """
+        return []
 
     def get_commodity_quote(self, symbol: str) -> CommodityQuote:
         """Get commodity quote"""

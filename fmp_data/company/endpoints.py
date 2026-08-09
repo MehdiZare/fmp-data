@@ -385,9 +385,11 @@ CORE_INFORMATION: Endpoint[CompanyCoreInformation] = Endpoint(
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
-        "Retrieve essential company information including CIK, exchange, SIC code, "
-        "state of incorporation, and fiscal year details. Provides core regulatory "
-        "and administrative information about a company."
+        "DEPRECATED and non-functional: FMP no longer serves "
+        "company-core-information, so this path 404s. Do not select it. Use "
+        "the 'profile' endpoint, which carries CIK, exchange, industry and "
+        "sector but not the SIC code, state of incorporation or fiscal-year "
+        "registration details this returned."
     ),
     mandatory_params=[
         EndpointParam(
@@ -554,9 +556,9 @@ HISTORICAL_SHARE_FLOAT: Endpoint = Endpoint(
     path="historical/shares-float",
     version=APIVersion.STABLE,
     description=(
-        "Get historical share float data showing how the number of tradable shares "
-        "has changed over time. Useful for analyzing changes in stock liquidity and "
-        "institutional ownership patterns over time."
+        "DEPRECATED and non-functional: historical/shares-float 404s. Do not "
+        "select it. Use the live shares-float endpoint, which carries the same "
+        "fields but as a current snapshot rather than a time series."
     ),
     mandatory_params=[
         EndpointParam(
@@ -767,7 +769,12 @@ PRICE_TARGET: Endpoint = Endpoint(
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get price targets",
+    description=(
+        "DEPRECATED and non-functional: FMP no longer serves price-target, so "
+        "this path 404s. Do not select it. Use 'price-target-summary' or "
+        "'price-target-consensus' for the aggregate; the per-analyst series "
+        "this returned has no replacement."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
@@ -872,7 +879,12 @@ ANALYST_RECOMMENDATIONS: Endpoint = Endpoint(
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get analyst recommendations",
+    description=(
+        "DEPRECATED and non-functional: FMP no longer serves "
+        "analyst-stock-recommendations, so this path 404s. Do not select it. "
+        "Use 'grades-consensus', which returns one current consensus tally "
+        "rather than the monthly series this returned."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
@@ -892,7 +904,12 @@ UPGRADES_DOWNGRADES: Endpoint = Endpoint(
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get upgrades and downgrades",
+    description=(
+        "DEPRECATED and non-functional: FMP no longer serves "
+        "upgrades-downgrades, so this path 404s. Do not select it. Use "
+        "'grades', which carries the same grade-change rows under different "
+        "field names."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
@@ -912,7 +929,12 @@ UPGRADES_DOWNGRADES_CONSENSUS: Endpoint[UpgradeDowngradeConsensus] = Endpoint(
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get upgrades and downgrades consensus",
+    description=(
+        "DEPRECATED and non-functional: FMP no longer serves "
+        "upgrades-downgrades-consensus, so this path 404s. Do not select it. "
+        "Use 'grades-consensus', which returns the equivalent "
+        "strongBuy/buy/hold/sell/strongSell tally."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
@@ -992,7 +1014,11 @@ HISTORICAL_EMPLOYEE_COUNT: Endpoint = Endpoint(
     name="historical_employee_count",
     path="historical/employee-count",
     version=APIVersion.STABLE,
-    description="Get historical employee count data",
+    description=(
+        "DEPRECATED and non-functional: historical/employee-count 404s. Do "
+        "not select it. The live employee-count endpoint already returns the "
+        "full filing history and is exposed as company.get_employee_count."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
@@ -1010,7 +1036,12 @@ COMPANY_OUTLOOK: Endpoint = Endpoint(
     name="company_outlook",
     path="company-outlook",
     version=APIVersion.STABLE,
-    description="Get comprehensive company outlook data",
+    description=(
+        "DEPRECATED and non-functional: FMP no longer serves company-outlook, "
+        "so this path 404s. Do not select it. Use the 'profile' endpoint for "
+        "company details; the bundled news and metrics it also returned have "
+        "no single replacement and must be fetched from their own endpoints."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
@@ -1028,7 +1059,11 @@ STOCK_SCREENER: Endpoint = Endpoint(
     name="stock_screener",
     path="stock-screener",
     version=APIVersion.STABLE,
-    description="Screen stocks based on various criteria",
+    description=(
+        "DEPRECATED and non-functional: stock-screener 404s. Do not select "
+        "it. The live company-screener endpoint is already exposed as "
+        "market.get_company_screener, with a flatter per-match payload."
+    ),
     mandatory_params=[],
     optional_params=[
         EndpointParam(

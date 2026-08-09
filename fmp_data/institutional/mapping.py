@@ -186,6 +186,14 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
     "asset_allocation": EndpointSemantics(
         client_name="institutional",
         method_name="get_asset_allocation",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: FMP publishes no replacement.
+        deprecated=True,
         natural_description=("Analyze asset allocation data from 13F filings"),
         example_queries=[
             "Show asset allocation for major institutions",
@@ -519,6 +527,14 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
     "fail_to_deliver": EndpointSemantics(
         client_name="institutional",
         method_name="get_fail_to_deliver",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: FMP publishes no replacement.
+        deprecated=True,
         natural_description=(
             "Get data on failed trade settlements (FTDs) for a security."
         ),

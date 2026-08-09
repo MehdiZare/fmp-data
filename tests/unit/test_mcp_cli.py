@@ -635,15 +635,28 @@ class TestGeneratedManifestIsUsable:
     def test_generated_manifest_documents_the_excluded_side(
         self, tmp_path: Path
     ) -> None:
-        """A dropped tool must be recoverable from the file itself."""
+        """A dropped tool must be recoverable from the file itself.
+
+        The sides swapped. ``alternative.crypto_quotes`` and
+        ``alternative.forex_quotes`` are now withdrawn -- ``quotes/crypto``
+        and ``quotes/forex`` 404 on the live API -- so they are dropped for
+        that reason, before the collision tie-break, and the ``batch.*`` side
+        survives instead of being excluded.
+
+        The ``FMP_MCP_TOOL_NAME_STYLE=spec`` guidance is correspondingly gone:
+        it exists to resolve a *surviving* ambiguity, and with one side of
+        each pair withdrawn no ambiguity reaches the manifest. The guidance
+        returns automatically if a future collision has two live sides --
+        ``test_every_dropped_spec_is_named_in_the_header`` is the exhaustive
+        guarantee that no drop, of any kind, goes unexplained.
+        """
         tools, content = self._generate(tmp_path)
 
         header = content.split("TOOLS = [", 1)[0]
-        assert "batch.crypto_quotes" in header
-        assert "batch.forex_quotes" in header
-        assert "FMP_MCP_TOOL_NAME_STYLE=spec" in header
-        assert "batch.crypto_quotes" not in tools
-        assert "alternative.crypto_quotes" in tools
+        assert "alternative.crypto_quotes" in header
+        assert "alternative.forex_quotes" in header
+        assert "alternative.crypto_quotes" not in tools
+        assert "batch.crypto_quotes" in tools
 
     def test_every_dropped_spec_is_named_in_the_header(self, tmp_path: Path) -> None:
         """The claim is "nothing disappears silently" -- hold it to all of it.
@@ -679,17 +692,23 @@ class TestGeneratedManifestIsUsable:
             assert replacement in tools
 
     def test_generated_manifest_still_covers_the_catalog(self, tmp_path: Path) -> None:
-        """Only the deprecated keys and one side of each collision may go."""
+        """Only deprecated, withdrawn, and collision losers may go.
+
+        The collision side that loses changed: ``alternative.crypto_quotes``
+        and ``alternative.forex_quotes`` are now *withdrawn* -- their paths
+        (``quotes/crypto``, ``quotes/forex``) 404 on the live API and the
+        working equivalents are the ``batch.*`` ones. They are dropped for
+        being withdrawn, before the collision tie-break runs, so the
+        ``batch.*`` side is now the one that survives rather than the one
+        excluded.
+        """
         from fmp_data.mcp.cli import list_available_tools
-        from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
+        from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS, WITHDRAWN_TOOLS
 
         tools, _ = self._generate(tmp_path)
         catalog = {tool["spec"] for tool in list_available_tools()}
 
-        assert set(tools) == catalog - set(DEPRECATED_TOOLS) - {
-            "batch.crypto_quotes",
-            "batch.forex_quotes",
-        }
+        assert set(tools) == catalog - set(DEPRECATED_TOOLS) - set(WITHDRAWN_TOOLS)
 
     def test_generated_manifest_registers_cleanly(self, tmp_path: Path) -> None:
         """The acceptance test: it must actually start a server.
@@ -737,21 +756,32 @@ class TestGeneratedManifestIsUsable:
     def test_a_default_yields_to_an_explicit_pick_of_the_other_side(
         self, tmp_path: Path
     ) -> None:
-        """Defaults must not overrule the caller, and must say when they yield.
+        """Defaults must not overrule an explicit pick.
 
-        ``batch.crypto_quotes`` is the side ``_startable_catalog`` normally
-        drops, so asking for it explicitly is the case where "an explicit
-        selection is never thinned" and "defaults are added" pull opposite
-        ways. The explicit pick wins; the default it displaced is named.
+        This used to also assert that the *displaced* default was named in the
+        header, using ``batch.crypto_quotes`` as the side
+        ``_startable_catalog`` normally dropped. That scenario no longer
+        exists: ``alternative.crypto_quotes`` is withdrawn (``quotes/crypto``
+        404s live), so it is never a candidate, and ``batch.crypto_quotes`` is
+        now the side that survives. Asking for it explicitly displaces
+        nothing, and the header is correctly silent -- there is nothing to
+        explain.
+
+        Displacement can only arise again if a collision has two live sides.
+        ``test_every_dropped_spec_is_named_in_the_header`` is the exhaustive
+        guarantee that whatever is dropped, for whatever reason, is named --
+        so the "say when they yield" half is still enforced, just not here.
+
+        What this asserts is the half that still has a scenario: an explicit
+        selection is never thinned, and defaults are added around it.
         """
-        tools, content = self._generate(
+        tools, _content = self._generate(
             tmp_path, tools=["batch.crypto_quotes"], include_defaults=True
         )
 
         assert "batch.crypto_quotes" in tools
+        # Withdrawn, so absent regardless of what was picked.
         assert "alternative.crypto_quotes" not in tools
-        header = content.split("TOOLS = [", 1)[0]
-        assert "alternative.crypto_quotes" in header
         # Defaults still arrived -- otherwise this passes for the wrong reason.
         assert len(tools) > 1
 

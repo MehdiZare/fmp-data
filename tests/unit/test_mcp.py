@@ -437,6 +437,121 @@ class TestSemanticsMethodResolution:
             "crypto_quotes",
         )
 
+    def test_withdrawn_tools_resolve_but_are_never_default(self):
+        """A tool whose endpoint 404s must not be advertised by default.
+
+        It stays in the catalog so an explicit manifest keeps working, and its
+        successor -- where one exists -- must be a real, loadable spec rather
+        than a name someone hoped was right.
+        """
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tools_manifest import (
+            DEFAULT_TOOLS,
+            WITHDRAWN_TOOLS,
+        )
+
+        catalog = {tool["spec"] for tool in discover_all_tools()}
+
+        assert WITHDRAWN_TOOLS, "an empty map would make this test vacuous"
+        for spec, successor in WITHDRAWN_TOOLS.items():
+            assert spec in catalog, f"{spec} must keep resolving until 3.0"
+            assert spec not in DEFAULT_TOOLS, (
+                f"{spec} names a dead FMP endpoint; a default server would "
+                "advertise a tool that can only return empty"
+            )
+            if successor is not None:
+                assert successor in catalog, f"{spec} -> {successor} does not exist"
+                assert successor not in WITHDRAWN_TOOLS, (
+                    f"{spec} points at {successor}, which is itself withdrawn"
+                )
+
+    def test_withdrawn_and_deprecated_stay_distinct(self):
+        """The two maps mean different things and must not blur together.
+
+        ``DEPRECATED_TOOLS`` promises a drop-in: both keys call the same
+        method, and ``_warn_if_deprecated`` says so in as many words. Every
+        ``WITHDRAWN_TOOLS`` successor is a *different* endpoint with a
+        different payload. Merging them would make that promise false.
+        """
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS, WITHDRAWN_TOOLS
+
+        assert not set(DEPRECATED_TOOLS) & set(WITHDRAWN_TOOLS)
+
+        # Compare (client, method), not the bare method name: the name alone
+        # is ambiguous across clients -- alternative.get_crypto_quotes and
+        # batch.get_crypto_quotes share a name but are different callables on
+        # different endpoints, which is the whole reason one is withdrawn.
+        callable_by_spec = {
+            tool["spec"]: (tool["spec"].split(".")[0], tool["method"])
+            for tool in discover_all_tools()
+        }
+        for spec, successor in WITHDRAWN_TOOLS.items():
+            if successor is None:
+                continue
+            assert callable_by_spec[spec] != callable_by_spec[successor], (
+                f"{spec} and {successor} are the same callable, so this is an "
+                "alias and belongs in DEPRECATED_TOOLS instead"
+            )
+
+    def test_withdrawn_key_warning_does_not_promise_a_drop_in(self):
+        """The withdrawn warning must not repeat the alias wording.
+
+        Telling someone a replacement is a drop-in when the payload differs is
+        worse than saying nothing: they will swap the call and trust the
+        result.
+        """
+        from fmp_data.mcp.tool_loader import _warn_if_deprecated
+
+        with pytest.warns(DeprecationWarning) as recorded:
+            _warn_if_deprecated("company.core_information")
+        message = str(recorded[0].message)
+        assert "no longer serves" in message
+        assert "company.profile" in message
+        assert "drop-in" not in message
+
+        with pytest.warns(DeprecationWarning) as recorded:
+            _warn_if_deprecated("institutional.fail_to_deliver")
+        assert "no replacement" in str(recorded[0].message)
+
+    def test_resolving_a_withdrawn_key_actually_warns(self):
+        """Through the gate, not around it.
+
+        The test above calls ``_warn_if_deprecated`` directly, so it asserts
+        the message and cannot see whether anything reaches it. Nothing did:
+        ``_resolved`` set ``DEPRECATED`` only from ``DEPRECATED_TOOLS``, which
+        is disjoint from ``WITHDRAWN_TOOLS``, so a withdrawn key resolved as
+        ``RESOLVED`` and the call site's ``if resolution.is_deprecated`` gate
+        was never true. The whole withdrawal branch was unreachable in
+        production while its unit test passed.
+        """
+        from fmp_data.mcp.tool_loader import ResolutionStatus, _resolved
+
+        resolution = _resolved("alternative.crypto_quotes", "alternative.crypto_quotes")
+        assert resolution.status is ResolutionStatus.WITHDRAWN
+        assert resolution.is_withdrawn
+        assert resolution.is_retired, "the gate the registration path warns behind"
+        assert resolution.is_resolved, "withdrawn tools still register until 3.0"
+        assert resolution.replacement is None, "a withdrawal has no drop-in"
+        assert resolution.successor == "batch.crypto_quotes"
+
+    def test_every_withdrawn_spec_resolves_as_withdrawn(self):
+        """No withdrawn spec may resolve as plain RESOLVED.
+
+        The sweep, so a future withdrawal cannot be added to the manifest
+        without reaching the status that makes it announce itself.
+        """
+        from fmp_data.mcp.tool_loader import ResolutionStatus, _resolved
+        from fmp_data.mcp.tools_manifest import WITHDRAWN_TOOLS
+
+        silent = [
+            spec
+            for spec in WITHDRAWN_TOOLS
+            if _resolved(spec, spec).status is not ResolutionStatus.WITHDRAWN
+        ]
+        assert not silent, f"withdrawn specs not resolving as withdrawn: {silent}"
+        assert WITHDRAWN_TOOLS, "empty manifest would make this vacuous"
+
 
 class TestToolKeyNamespace:
     """One tool key per ``(client, method)`` pair (#126, #130, #136)."""
@@ -1415,7 +1530,7 @@ class TestResolveToolSpecIsSingleSourceOfTruth:
             entry: resolve_tool_spec(entry, key_to_spec) for entry in entries
         }
 
-        unknown, ambiguous, deprecated = _classify_manifest_entries(entries)
+        unknown, ambiguous, deprecated, withdrawn = _classify_manifest_entries(entries)
 
         assert unknown == [
             entry
@@ -1431,6 +1546,15 @@ class TestResolveToolSpecIsSingleSourceOfTruth:
             (entry, resolutions[entry].replacement)
             for entry in entries
             if resolutions[entry].is_deprecated
+        ]
+        # Bucketed on status, not on `replacement is not None`. A withdrawal
+        # deliberately carries no replacement, so that truthiness test filed
+        # all 19 as healthy and `validate` blessed a manifest full of tools
+        # that can only answer empty.
+        assert withdrawn == [
+            (entry, resolutions[entry].successor)
+            for entry in entries
+            if resolutions[entry].is_withdrawn
         ]
 
     def test_validate_delegates_rather_than_reimplements(
@@ -1453,13 +1577,14 @@ class TestResolveToolSpecIsSingleSourceOfTruth:
 
         monkeypatch.setattr(tool_loader, "resolve_tool_spec", _always_unknown)
 
-        unknown, ambiguous, deprecated = _classify_manifest_entries(
+        unknown, ambiguous, deprecated, withdrawn = _classify_manifest_entries(
             ["company.profile", "company.historical_price"]
         )
 
         assert unknown == ["company.profile", "company.historical_price"]
         assert ambiguous == []
         assert deprecated == []
+        assert withdrawn == []
 
     def test_loader_delegates_rather_than_reimplements(
         self, monkeypatch: pytest.MonkeyPatch

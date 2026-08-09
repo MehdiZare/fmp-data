@@ -4,11 +4,10 @@
 from datetime import date
 
 from fmp_data.base import AsyncEndpointGroup
+from fmp_data.helpers import deprecated
 from fmp_data.institutional.endpoints import (
-    ASSET_ALLOCATION,
     BENEFICIAL_OWNERSHIP,
     CIK_MAPPER,
-    FAIL_TO_DELIVER,
     FORM_13F,
     FORM_13F_DATES,
     HOLDER_INDUSTRY_BREAKDOWN,
@@ -120,11 +119,23 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
             )
             return []
 
+    @deprecated(
+        "The FMP API no longer serves 13F asset allocation, and no stable "
+        "endpoint replaces it -- hyphen, slash and plural variants all 404. "
+        "The nearest live data is per-filer holdings via "
+        "get_institutional_holdings(), which must be aggregated by hand."
+    )
     async def get_asset_allocation(self, report_date: date) -> list[AssetAllocation]:
-        """Get 13F asset allocation data for a report period end date"""
-        return await self.client.request_async(
-            ASSET_ALLOCATION, date=report_date.strftime("%Y-%m-%d")
-        )
+        """Get 13F asset allocation data for a report period end date
+
+        .. deprecated::
+            This endpoint 404s on the FMP API and will be removed in a future
+            version. It currently returns an empty list. FMP publishes no
+            stable replacement for the pre-aggregated allocation breakdown;
+            the closest live source is per-filer 13F holdings, which you
+            would have to aggregate yourself.
+        """
+        return []
 
     async def get_institutional_holders(
         self, page: int = 0, limit: int = 100
@@ -222,13 +233,23 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         """Get beneficial ownership data for a symbol"""
         return await self.client.request_async(BENEFICIAL_OWNERSHIP, symbol=symbol)
 
+    @deprecated(
+        "The FMP API no longer serves fail-to-deliver data and publishes no "
+        "stable replacement. The underlying data is still available directly "
+        "from the SEC's own fails-to-deliver files."
+    )
     async def get_fail_to_deliver(
         self, symbol: str, page: int = 0
     ) -> list[FailToDeliver]:
-        """Get fail to deliver data for a symbol"""
-        return await self.client.request_async(
-            FAIL_TO_DELIVER, symbol=symbol, page=page
-        )
+        """Get fail to deliver data for a symbol
+
+        .. deprecated::
+            This endpoint 404s on the FMP API and will be removed in a future
+            version. It currently returns an empty list. No stable FMP
+            endpoint replaces it; the SEC publishes the same fails-to-deliver
+            data itself, which is the only remaining source.
+        """
+        return []
 
     # Insider Trading Methods
     async def get_insider_trading_latest(

@@ -170,6 +170,15 @@ INVESTMENT_ENDPOINTS_SEMANTICS = {
     "etf_holding_dates": EndpointSemantics(
         client_name="investment",
         method_name="get_etf_holding_dates",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: the nearest live tool is `investment.mutual_fund_dates`, whose
+        # payload differs.
+        deprecated=True,
         natural_description=(
             "Get a list of available portfolio dates for which ETF holdings data "
             "is available"
@@ -393,6 +402,15 @@ INVESTMENT_ENDPOINTS_SEMANTICS = {
     "etf_holder": EndpointSemantics(
         client_name="investment",
         method_name="get_etf_holder",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: the nearest live tool is
+        # `investment.fund_disclosure_holders_latest`, whose payload differs.
+        deprecated=True,
         natural_description=(
             "Get information about institutional holders of an ETF, including "
             "their holdings and position sizes"
@@ -488,6 +506,14 @@ INVESTMENT_ENDPOINTS_SEMANTICS = {
     "mutual_fund_by_name": EndpointSemantics(
         client_name="investment",
         method_name="get_mutual_fund_by_name",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: FMP publishes no replacement.
+        deprecated=True,
         natural_description=(
             "Search for mutual funds by name to get their holdings and basic "
             "information"
@@ -535,6 +561,15 @@ INVESTMENT_ENDPOINTS_SEMANTICS = {
     "mutual_fund_holder": EndpointSemantics(
         client_name="investment",
         method_name="get_mutual_fund_holder",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: the nearest live tool is
+        # `investment.fund_disclosure_holders_latest`, whose payload differs.
+        deprecated=True,
         natural_description=(
             "Get information about institutional holders of a mutual fund, "
             "including their holdings and position sizes"
@@ -587,6 +622,15 @@ INVESTMENT_ENDPOINTS_SEMANTICS = {
     "mutual_fund_holdings": EndpointSemantics(
         client_name="investment",
         method_name="get_mutual_fund_holdings",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: the nearest live tool is `investment.etf_holdings`, whose payload
+        # differs.
+        deprecated=True,
         natural_description=(
             "Get detailed holdings information for a mutual fund, including "
             "securities held, weights, and market values as of a specific date"

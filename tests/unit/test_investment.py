@@ -14,7 +14,6 @@ from fmp_data.investment.models import (
     FundDisclosureHolderLatest,
     FundDisclosureHolding,
     FundDisclosureSearchResult,
-    MutualFundHolding,
 )
 from fmp_data.investment.schema import ETFHoldingsArgs, MutualFundHoldingsArgs
 
@@ -246,22 +245,19 @@ class TestInvestmentClient:
 
     # Mutual Fund endpoint tests
     @patch("httpx.Client.request")
-    def test_get_mutual_fund_holdings(
-        self, mock_request, fmp_client, mock_response, mutual_fund_holding_data
-    ):
-        """Test fetching mutual fund holdings"""
-        mock_request.return_value = mock_response(
-            status_code=200, json_data=[mutual_fund_holding_data]
-        )
-        result = fmp_client.investment.get_mutual_fund_holdings(
-            symbol="VFIAX", holdings_date=date(2024, 1, 1)
-        )
-        assert len(result) == 1
-        holding = result[0]
-        assert isinstance(holding, MutualFundHolding)
-        assert holding.symbol == "VFIAX"
-        assert holding.asset == "AAPL"
-        assert holding.market_value == 1000000.0
+    def test_get_mutual_fund_holdings_is_deprecated(self, mock_request, fmp_client):
+        """``mutual-fund-holdings`` 404s; ``etf/holdings`` serves funds too.
+
+        The warning must point at ``get_etf_holdings`` rather than issue a
+        request that can only come back 404.
+        """
+        with pytest.warns(DeprecationWarning, match="get_etf_holdings"):
+            result = fmp_client.investment.get_mutual_fund_holdings(
+                symbol="VFIAX", holdings_date=date(2024, 1, 1)
+            )
+
+        assert result == []
+        mock_request.assert_not_called()
 
     @patch("httpx.Client.request")
     def test_get_mutual_fund_dates_omits_cik_when_absent(
