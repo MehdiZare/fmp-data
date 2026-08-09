@@ -174,11 +174,12 @@ def test_request_fallback_set_is_exactly_the_known_mismatches(
     """New shape mismatches fail until allowlisted or fixed.
 
     Method dispatch returns ``None`` (and the tool uses ``client.request``)
-    when a required method param has no wire source. That is correct for the
-    two institutional year/quarter tools; any *new* entry is almost always
-    an accidental drift between endpoint declaration and client method.
-    The allowlist also pins the uncovered required param names so known
-    debt cannot silently grow.
+    when a required method param has no wire source. ``KNOWN_REQUEST_FALLBACK``
+    is empty: every catalog tool currently dispatches through a client
+    method. Any *new* entry is almost always accidental drift between the
+    endpoint declaration and the client method, and must be justified (or
+    fixed) before landing. The allowlist also pins uncovered required
+    param names so known debt cannot silently grow.
     """
     actual_fallback: set[tuple[str, str, frozenset[str]]] = set()
     method_compatible = 0

@@ -457,6 +457,53 @@ def test_form_13f_dispatches_through_wire_shaped_method(tmp_path: Any) -> None:
     assert calls == [{"cik": "0001067983", "year": 2023, "quarter": 3}]
 
 
+def test_institutional_holdings_dispatches_through_wire_shaped_method(
+    tmp_path: Any,
+) -> None:
+    """INSTITUTIONAL_HOLDINGS reaches the matching wire-shaped method (#188).
+
+    Same story as ``form_13f``: semantics used to name a date-shaped method
+    that wire ``year``/``quarter`` could not fill. It now names
+    ``get_institutional_holdings_by_quarter`` so the tool dispatches through
+    the client method with an unchanged argument schema.
+    """
+    calls: list[dict[str, Any]] = []
+
+    def get_institutional_holdings_by_quarter(
+        symbol: str, year: int, quarter: int
+    ) -> list[Any]:
+        calls.append({"symbol": symbol, "year": year, "quarter": quarter})
+        return []
+
+    request = Mock(side_effect=AssertionError("must not fall back to request"))
+    client = cast(
+        BaseClient,
+        SimpleNamespace(
+            request=request,
+            institutional=SimpleNamespace(
+                get_institutional_holdings_by_quarter=get_institutional_holdings_by_quarter
+            ),
+        ),
+    )
+    registry = _institutional_registry("institutional_holdings")
+    store = _store_with(client, registry, tmp_path)
+    info = registry.get_endpoint("get_institutional_holdings_by_quarter")
+    assert info is not None
+
+    tool = cast(Any, store.create_tool(info))
+    required = {
+        name
+        for name, field in tool.args_schema.model_fields.items()
+        if field.is_required()
+    }
+    assert required == {"symbol", "year", "quarter"}
+
+    result = tool.invoke({"symbol": "AAPL", "year": 2023, "quarter": 3})
+    assert result["status"] == "success"
+    request.assert_not_called()
+    assert calls == [{"symbol": "AAPL", "year": 2023, "quarter": 3}]
+
+
 def test_unmappable_method_shape_still_falls_back_to_request(tmp_path: Any) -> None:
     """The request-fallback path stays live even with an empty allowlist.
 
