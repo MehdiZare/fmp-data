@@ -287,7 +287,6 @@ class TestValidValuesNormalisation:
             name="name",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Indicator",
             valid_values=list(EconomicIndicatorType),
         )
@@ -306,7 +305,6 @@ class TestValidValuesNormalisation:
             name="quarter",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=True,
             description="Fiscal quarter",
             valid_values=[1, 2, 3, 4],
         )
@@ -319,7 +317,6 @@ class TestValidValuesNormalisation:
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Symbol",
         )
 
@@ -340,7 +337,6 @@ class TestValidValuesNormalisation:
             name="quarter",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Fiscal quarter",
             valid_values=list(Quarter),
         )

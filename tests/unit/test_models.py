@@ -33,7 +33,6 @@ class TestValidateParams:
                     name="symbol",
                     location=ParamLocation.QUERY,
                     param_type=ParamType.STRING,
-                    required=True,
                     description="Stock symbol",
                 )
             ],
@@ -42,7 +41,6 @@ class TestValidateParams:
                     name="start_date",
                     location=ParamLocation.QUERY,
                     param_type=ParamType.DATE,
-                    required=False,
                     description="Start date",
                     alias="from",
                 ),
@@ -50,7 +48,6 @@ class TestValidateParams:
                     name="end_date",
                     location=ParamLocation.QUERY,
                     param_type=ParamType.DATE,
-                    required=False,
                     description="End date",
                     alias="to",
                 ),
@@ -58,7 +55,6 @@ class TestValidateParams:
                     name="limit",
                     location=ParamLocation.QUERY,
                     param_type=ParamType.INTEGER,
-                    required=False,
                     description="Number of results",
                     default=100,
                 ),
@@ -217,7 +213,6 @@ class TestBuildParamLookup:
                     name="symbol",
                     location=ParamLocation.QUERY,
                     param_type=ParamType.STRING,
-                    required=True,
                     description="Symbol",
                 )
             ],
@@ -226,7 +221,6 @@ class TestBuildParamLookup:
                     name="start_date",
                     location=ParamLocation.QUERY,
                     param_type=ParamType.DATE,
-                    required=False,
                     description="Start date",
                     alias="from",
                 )
@@ -473,12 +467,11 @@ class TestCIKRequestParam:
     """ParamType.CIK zero-pads a CIK on the way out to the API."""
 
     @staticmethod
-    def _param(required: bool = True) -> EndpointParam:
+    def _param() -> EndpointParam:
         return EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,
             param_type=ParamType.CIK,
-            required=required,
             description="CIK number",
         )
 
@@ -526,7 +519,12 @@ class TestCIKRequestParam:
             self._param().validate_value(True)
 
     def test_optional_none_stays_none(self) -> None:
-        assert self._param(required=False).validate_value(None) is None
+        """A detached param is not required, so ``None`` survives untouched.
+
+        Requiredness now comes from the ``Endpoint`` that holds the param
+        (#165); one built standalone, as here, is optional by construction.
+        """
+        assert self._param().validate_value(None) is None
 
     def test_every_cik_endpoint_param_uses_the_cik_type(self) -> None:
         """No cik param may stay ParamType.STRING.

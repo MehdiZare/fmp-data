@@ -57,7 +57,6 @@ def sample_endpoint():
                 name="symbol",
                 location=ParamLocation.QUERY,
                 param_type=ParamType.STRING,
-                required=True,
                 description="Stock symbol",
             )
         ],

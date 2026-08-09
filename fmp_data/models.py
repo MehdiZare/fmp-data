@@ -178,18 +178,110 @@ class ParamType(str, Enum):
         return datetime.fromisoformat(value)
 
 
-@dataclass
+@dataclass(init=False)
 class EndpointParam:
-    """Definition of an endpoint parameter"""
+    """Definition of an endpoint parameter.
+
+    ``required`` is **derived, not declared** (#165). A parameter is required
+    exactly when it is declared in ``Endpoint.mandatory_params`` rather than
+    ``Endpoint.optional_params``; ``Endpoint`` stamps that answer onto every
+    parameter it holds. There is therefore one representation of requiredness
+    and it cannot contradict itself -- which is what #144 was: 14 parameters
+    sat in ``optional_params`` while declaring ``required=True``.
+
+    The ``required=`` constructor argument survives for external callers until
+    3.0, but supplying it warns and its value is discarded the moment the
+    parameter is attached to an endpoint.
+    """
 
     name: str
     location: ParamLocation  # Changed from param_type to location
     param_type: ParamType  # Added to specify data type
-    required: bool
     description: str
     default: Any = None
     alias: str | None = None
     valid_values: list[Any] | None = None
+
+    def __init__(
+        self,
+        name: str,
+        location: ParamLocation,
+        param_type: ParamType,
+        required: bool | None = None,
+        description: str = "",
+        default: Any = None,
+        alias: str | None = None,
+        valid_values: list[Any] | None = None,
+    ) -> None:
+        """Construct a parameter definition.
+
+        The signature is hand-written rather than generated so the deprecated
+        ``required`` argument can keep **position 4**. Dropping it outright
+        would silently shift a positional ``EndpointParam("q", loc, typ, True,
+        "desc")`` call one slot left and land ``True`` in ``description``, so
+        the slot is held open and ignored instead. ``description`` keeps
+        position 5 for the same reason, which costs it its no-default status;
+        ``test_every_param_has_a_description`` covers what mypy no longer can.
+        """
+        if required is not None:
+            warnings.warn(
+                "EndpointParam.required is deprecated and will be removed in "
+                "3.0. Requiredness is derived from which list the parameter is "
+                "declared in -- Endpoint.mandatory_params or "
+                "Endpoint.optional_params -- and the declared flag is "
+                "discarded once the parameter is attached to an endpoint. "
+                "Drop the argument; no behaviour depends on it. "
+                "See https://github.com/MehdiZare/fmp-data/issues/165.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        self.name = name
+        self.location = location
+        self.param_type = param_type
+        self.description = description
+        self.default = default
+        self.alias = alias
+        self.valid_values = valid_values
+        #: What the caller declared, kept only to detect a contradiction.
+        self._declared_required: bool | None = required
+        #: The derived answer. ``Endpoint`` overwrites this; the declared value
+        #: is the fallback purely so a detached parameter behaves as it did
+        #: before #165.
+        self._required: bool = bool(required)
+        self.__post_init__()
+
+    def _derive_required(self, value: bool, endpoint_name: str) -> None:
+        """Stamp requiredness from list membership. Called only by ``Endpoint``.
+
+        The derived value always wins. A declared flag that disagrees is a
+        louder problem than merely using a deprecated argument -- it means the
+        definition asserts two different things -- so it gets its own warning
+        naming the endpoint, rather than being folded into the generic
+        deprecation notice already emitted at construction.
+        """
+        if self._declared_required is not None and self._declared_required != value:
+            warnings.warn(
+                f"Endpoint {endpoint_name!r} declares parameter "
+                f"{self.name!r} with required={self._declared_required!r}, "
+                f"but it sits in "
+                f"{'mandatory_params' if value else 'optional_params'}, which "
+                f"means required={value!r}. List membership wins; the flag is "
+                "ignored. Drop it (#165).",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+        self._required = value
+
+    @property
+    def required(self) -> bool:
+        """Whether this parameter must be supplied.
+
+        Read-only on purpose: a settable flag is the thing #144 was about. The
+        value is stamped by the ``Endpoint`` that holds the parameter, so a
+        parameter examined outside an endpoint reports ``False`` unless a
+        (deprecated) ``required=True`` was declared.
+        """
+        return self._required
 
     def __post_init__(self) -> None:
         """Normalise ``valid_values`` to the values that travel over the wire.
@@ -284,6 +376,38 @@ class Endpoint(BaseModel, Generic[T]):
                 stacklevel=2,
             )
         return data
+
+    @model_validator(mode="after")
+    def _derive_param_requiredness(self) -> Endpoint[T]:
+        """Stamp every parameter's requiredness from the list it sits in (#165).
+
+        This is the single point where requiredness is decided. ``EndpointParam``
+        has no stored flag to disagree with, and ``EndpointParam.required`` has
+        no setter, so the contradiction #144 catalogued is unrepresentable
+        rather than merely reconciled.
+
+        The one way a parameter could still be required and optional at once is
+        by appearing in *both* lists -- the same object, or two objects with the
+        same name -- so that is rejected outright. Nothing in the package does
+        it; the check exists because it is the only remaining route to the
+        defect.
+        """
+        optional = self.optional_params or []
+        mandatory_names = {param.name for param in self.mandatory_params}
+        duplicated = sorted(
+            {param.name for param in optional if param.name in mandatory_names}
+        )
+        if duplicated:
+            raise ValueError(
+                f"endpoint {self.name!r} declares {duplicated} in both "
+                "mandatory_params and optional_params; a parameter is one or "
+                "the other, and requiredness is derived from which"
+            )
+        for param in self.mandatory_params:
+            param._derive_required(True, self.name)
+        for param in optional:
+            param._derive_required(False, self.name)
+        return self
 
     def build_url(self, base_url: str, params: dict[str, Any]) -> str:
         """Build the complete URL for the endpoint based on URL type"""

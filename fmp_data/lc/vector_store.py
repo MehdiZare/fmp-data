@@ -88,10 +88,13 @@ class ToolFactory:
         ``Endpoint`` itself resolves the same question by list membership in
         ``validate_params``.
 
-        The ``required`` half is fixed as of #144 and held at zero by
-        ``tests/unit/test_param_required_consistency.py``; the ``default``
-        half is still live. Reading either field here would still be wrong --
-        list membership is the only thing every consumer agrees on.
+        The ``required`` half is settled as of #165: the flag is no longer
+        stored at all, and ``EndpointParam.required`` is now a read-only
+        property that ``Endpoint`` derives from these very lists. Reading it
+        here would be correct today but circular -- it would route the answer
+        through the parameter to get back the list it came from -- so the list
+        stays the direct source. The ``default`` half is still live, and
+        reading *that* would still be wrong.
 
         Optional parameters get a pydantic default so ``is_required()`` is
         false and the LLM may omit them. That default is ``param.default``
