@@ -457,6 +457,21 @@ def test_mandatory_params_are_really_mandatory() -> None:
             # payloads cannot be told apart. Skipping is honest; guessing is
             # how the row-count version got it wrong.
             continue
+        if param.valid_values and sentinel not in {
+            str(getattr(value, "value", value)) for value in param.valid_values
+        }:
+            # An enum-constrained param cannot take an arbitrary sentinel:
+            # validate_params rejects it and *raises*, so this would abort the
+            # sweep rather than fail one endpoint. A sentinel that cannot be
+            # sent proves nothing either way, so skip on the same reasoning as
+            # the no-sentinel case above.
+            #
+            # No endpoint hits this today -- SENTINELS covers only symbol,
+            # symbols, cik, exchange and year, none of which is enum-typed
+            # where it is mandatory. It is here because the failure mode is a
+            # crash rather than a red assertion, which is a poor way to learn
+            # that someone added a sentinel for an enum param.
+            continue
 
         with_status, with_body = _fetch_body(_url_for(endpoint, {param.name: sentinel}))
         # Deliberately incomplete, so validate_params would refuse to build
