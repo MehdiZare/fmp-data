@@ -8,6 +8,7 @@ from fmp_data.lc.mapping import (
     ENDPOINT_GROUPS,
 )
 from fmp_data.lc.models import EndpointSemantics
+from fmp_data.lc.registry import resolve_semantics_for_endpoint
 from fmp_data.models import Endpoint
 
 
@@ -67,8 +68,18 @@ def test_endpoint_consistency():
 
 
 def test_endpoint_group_organization():
-    """Test endpoint group organization -
-    validates semantic mappings exist for all endpoints"""
+    """Every endpoint in every group must resolve to a semantics entry.
+
+    Resolution goes through :func:`resolve_semantics_for_endpoint`, the same
+    function ``setup_registry`` uses, rather than a local reimplementation of
+    it. This test used to strip a leading ``get_`` and look the remainder up
+    directly -- rule 2 of three. An endpoint-map key that resolves by rule 1
+    (exact match) or rule 3 (``EndpointSemantics.method_name``) therefore read
+    as *missing* here while registering perfectly well in the real registry,
+    which is what ``get_form_13f_by_quarter`` hit in #188. A guard that
+    reimplements the rule it is guarding fails on correct code and, worse,
+    would pass on code the resolver rejects.
+    """
     errors = []
 
     for group_name, group_data in ENDPOINT_GROUPS.items():
@@ -78,21 +89,16 @@ def test_endpoint_group_organization():
         endpoint_map = cast(dict[str, Endpoint[Any]], group_data["endpoint_map"])
         semantics_map = cast(dict[str, EndpointSemantics], group_data["semantics_map"])
 
-        # Track missing semantic mappings for this group
-        missing_semantics = []
+        unresolved = [
+            endpoint_name
+            for endpoint_name in endpoint_map
+            if resolve_semantics_for_endpoint(endpoint_name, semantics_map) is None
+        ]
 
-        # Check each endpoint in the group
-        for endpoint_name in endpoint_map:
-            if endpoint_name.startswith("get_"):
-                semantic_name = endpoint_name[4:]
-                if semantic_name not in semantics_map:
-                    missing_semantics.append(semantic_name)
-
-        # If we found any missing mappings for this group, add to errors
-        if missing_semantics:
+        if unresolved:
             errors.append(
                 f"\nGroup '{group_name}' is missing semantic mappings for:\n"
-                f"  Endpoints: {missing_semantics}\n"
+                f"  Endpoints: {unresolved}\n"
                 f"  Available semantic mappings: {list(semantics_map.keys())}"
             )
 
@@ -101,6 +107,7 @@ def test_endpoint_group_organization():
         raise AssertionError(
             "Found endpoints without corresponding semantic mappings:\n"
             + "\n".join(errors)
-            + "\nPlease ensure all endpoints that "
-            "start with 'get_' have semantic mappings"
+            + "\nEvery endpoint-map key must resolve via "
+            "resolve_semantics_for_endpoint (exact key, get_-stripped key, or "
+            "a semantics entry whose method_name matches)."
         )

@@ -65,37 +65,60 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         quarter = (report_date.month - 1) // 3 + 1
         return report_date.year, quarter
 
-    async def get_form_13f(self, cik: str | int, report_date: date) -> list[Form13F]:
+    async def get_form_13f_by_quarter(
+        self, cik: str | int, year: int, quarter: int
+    ) -> list[Form13F]:
         """
-        Get Form 13F filing data
+        Get Form 13F filing data for a calendar quarter.
+
+        The wire shape of ``/stable/institutional-ownership/extract``: ``year``
+        and ``quarter`` are mandatory query parameters and there is no date
+        parameter. See the sync
+        :meth:`~fmp_data.institutional.client.InstitutionalClient.get_form_13f_by_quarter`.
 
         Args:
             cik: Central Index Key (CIK)
-            report_date: Report period end date (e.g., 2023-09-30)
+            year: Filing year (e.g., 2023)
+            quarter: Calendar quarter, 1-4
 
         Returns:
             List of Form13F objects. Empty list if no records found.
         """
-        year, quarter = self._date_to_year_quarter(report_date)
         try:
             result = await self.client.request_async(
                 FORM_13F, cik=cik, year=year, quarter=quarter
             )
         except Exception as exc:
             self.client.logger.warning(
-                f"No Form 13F data found for CIK {cik} on {report_date}: {exc!s}"
+                f"No Form 13F data found for CIK {cik} in {year} Q{quarter}: {exc!s}"
             )
             return []
 
         if isinstance(result, list):
             if not result:
                 self.client.logger.warning(
-                    "No Form 13F data found for CIK %s on %s.",
+                    "No Form 13F data found for CIK %s in %s Q%s.",
                     cik,
-                    report_date,
+                    year,
+                    quarter,
                 )
             return result
         return [result]
+
+    async def get_form_13f(self, cik: str | int, report_date: date) -> list[Form13F]:
+        """
+        Get Form 13F filing data for the quarter containing ``report_date``.
+
+        Args:
+            cik: Central Index Key (CIK)
+            report_date: Any date inside the report period (e.g., 2023-09-30).
+                Only its year and calendar quarter reach the API.
+
+        Returns:
+            List of Form13F objects. Empty list if no records found.
+        """
+        year, quarter = self._date_to_year_quarter(report_date)
+        return await self.get_form_13f_by_quarter(cik, year, quarter)
 
     async def get_form_13f_dates(self, cik: str | int) -> list[Form13FDate]:
         """
@@ -145,6 +168,24 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
             INSTITUTIONAL_HOLDERS, page=page, limit=limit
         )
 
+    async def get_institutional_holdings_by_quarter(
+        self, symbol: str, year: int, quarter: int
+    ) -> list[InstitutionalHolding]:
+        """Get institutional holdings for a symbol in a calendar quarter.
+
+        The wire shape of ``/stable/institutional-ownership/
+        symbol-positions-summary``: ``year`` and ``quarter`` are mandatory and
+        the API rejects a request without them (#188).
+
+        Args:
+            symbol: Stock symbol
+            year: Filing year (e.g., 2023)
+            quarter: Calendar quarter, 1-4
+        """
+        return await self.client.request_async(
+            INSTITUTIONAL_HOLDINGS, symbol=symbol, year=year, quarter=quarter
+        )
+
     async def get_institutional_holdings(
         self,
         symbol: str,
@@ -172,9 +213,7 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
             year = inferred_year
         if quarter is None:
             quarter = inferred_quarter
-        return await self.client.request_async(
-            INSTITUTIONAL_HOLDINGS, symbol=symbol, year=year, quarter=quarter
-        )
+        return await self.get_institutional_holdings_by_quarter(symbol, year, quarter)
 
     async def get_insider_trades(
         self, symbol: str, page: int = 0, limit: int = 100

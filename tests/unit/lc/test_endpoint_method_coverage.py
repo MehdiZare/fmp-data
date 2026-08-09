@@ -14,27 +14,33 @@ This guard walks every ``(endpoint_map x semantics)`` pair that
 1. **method-dispatch compatible** — every required method param is covered
    by a wire/endpoint field (exact name or alias).
 2. **request-fallback** — a required method param has no wire source. These
-   must stay on the explicit allowlist below; a new entry is a PR failure
-   until someone decides request-fallback is intended (and adds it) or
-   aligns the shapes. The allowlist pins the *uncovered required* method
-   params so a known mismatch cannot silently gain more debt.
+   must stay on the explicit allowlist below, which is currently *empty*; a
+   new entry is a PR failure until someone decides request-fallback is
+   intended (and adds it) or aligns the shapes. The allowlist pins the
+   *uncovered required* method params so a known mismatch cannot silently
+   gain more debt.
 3. **mandatory wire dropped under method dispatch** — a mandatory endpoint
    field maps to no method parameter, so method dispatch omits it from the
    tool schema. Known cases (e.g. revenue ``structure``) are allowlisted;
    new ones fail until reviewed.
 
 Optional wire fields dropped under method dispatch are intentionally out of
-scope here (they are not required for a successful call). MCP always
-registers the live Python method via ``_resolve_attr`` and does not run
-this shape gate — the two integrations can intentionally disagree on
-allowlisted fallbacks (e.g. Form 13F wire ``year``/``quarter`` vs method
-``report_date``). This guard pins LangChain's classification and that every
-semantics method still resolves on a real client.
+scope here (they are not required for a successful call). MCP registers the
+live Python method via :func:`fmp_data.tool_binding.resolve_attr` and does
+not run this shape gate, so the two integrations *could* disagree on an
+allowlisted fallback — but as of #188 nothing is allowlisted, so both
+dispatch through the same method for every tool in the catalogue. This guard
+pins LangChain's classification and that every semantics method still
+resolves on a real client.
+
+The classification helpers come from :mod:`fmp_data.tool_binding`, the same
+module the two integrations bind through. This file used to keep its own
+copies; a guard that reimplements the rule it guards can only ever check
+itself.
 """
 
 from __future__ import annotations
 
-import inspect
 from typing import Any
 
 import pytest
@@ -42,16 +48,18 @@ import pytest
 from fmp_data.client import FMPDataClient
 from fmp_data.lc import resolve_semantics_for_endpoint
 from fmp_data.lc.registry import get_endpoint_groups
-from fmp_data.lc.vector_store import (
+from fmp_data.models import Endpoint, EndpointParam, ParamLocation, ParamType
+from fmp_data.tool_binding import (
+    bindable_params,
     method_dispatch_compatible,
     resolve_client_method,
     resolve_method_param_name,
+    uncovered_required_params,
 )
-from fmp_data.models import Endpoint, EndpointParam, ParamLocation, ParamType
 
 # Floors, not equalities: a walk that stops yielding must fail rather than
 # pass vacuously. Observed on the catalogue at time of writing: 215 triples,
-# 213 method-compatible, 2 request-fallback, 2 dropped-mandatory.
+# all 215 method-compatible, 0 request-fallback, 2 dropped-mandatory.
 _MIN_PAIRS = 200
 _MIN_METHOD_COMPATIBLE = 200
 
@@ -60,13 +68,16 @@ _MIN_METHOD_COMPATIBLE = 200
 # LangChain falls back to ``client.request`` for these (#186). Expand only
 # when a new shape mismatch is deliberate — and pin the uncovered names so
 # the known debt cannot silently grow.
-KNOWN_REQUEST_FALLBACK: frozenset[tuple[str, str, frozenset[str]]] = frozenset(
-    {
-        # Wire year/quarter cannot satisfy required method report_date.
-        ("institutional", "get_form_13f", frozenset({"report_date"})),
-        ("institutional", "get_institutional_holdings", frozenset({"report_date"})),
-    }
-)
+#
+# Empty since #188 aligned the last two entries. The institutional Form 13F
+# and symbol-positions-summary tools used to sit here because their client
+# methods required ``report_date`` while the wire takes ``year``/``quarter``;
+# they now dispatch through ``get_form_13f_by_quarter`` /
+# ``get_institutional_holdings_by_quarter``, which match the API. Keeping the
+# allowlist (rather than deleting it with the entries) is deliberate: the
+# assertions below are what make a *new* mismatch a PR failure, and an empty
+# allowlist is the strongest form of that guard.
+KNOWN_REQUEST_FALLBACK: frozenset[tuple[str, str, frozenset[str]]] = frozenset()
 _KNOWN_REQUEST_FALLBACK_METHODS: frozenset[tuple[str, str]] = frozenset(
     (client, method) for client, method, _uncovered in KNOWN_REQUEST_FALLBACK
 )
@@ -96,42 +107,11 @@ def _catalog() -> list[tuple[str, Endpoint[Any], Any]]:
     return triples
 
 
-def _method_params(method: Any) -> dict[str, inspect.Parameter]:
-    return {
-        name: param
-        for name, param in inspect.signature(method).parameters.items()
-        if name != "self"
-        and param.kind
-        in (
-            inspect.Parameter.POSITIONAL_OR_KEYWORD,
-            inspect.Parameter.KEYWORD_ONLY,
-        )
-    }
-
-
 def _endpoint_param_names(endpoint: Endpoint[Any]) -> list[str]:
     return [
         p.name
         for p in list(endpoint.mandatory_params) + list(endpoint.optional_params or [])
     ]
-
-
-def _uncovered_required_method_params(
-    method: Any, endpoint_param_names: list[str]
-) -> frozenset[str]:
-    """Required method params with no wire/endpoint source (same gate as dispatch)."""
-    method_params = _method_params(method)
-    covered: set[str] = set()
-    method_names = set(method_params)
-    for ep_name in endpoint_param_names:
-        resolved = resolve_method_param_name(ep_name, method_names)
-        if resolved is not None:
-            covered.add(resolved)
-    return frozenset(
-        name
-        for name, param in method_params.items()
-        if param.default is inspect.Parameter.empty and name not in covered
-    )
 
 
 @pytest.fixture(scope="module")
@@ -169,11 +149,12 @@ def test_request_fallback_set_is_exactly_the_known_mismatches(
     """New shape mismatches fail until allowlisted or fixed.
 
     Method dispatch returns ``None`` (and the tool uses ``client.request``)
-    when a required method param has no wire source. That is correct for the
-    two institutional year/quarter tools; any *new* entry is almost always
-    an accidental drift between endpoint declaration and client method.
-    The allowlist also pins the uncovered required param names so known
-    debt cannot silently grow.
+    when a required method param has no wire source. ``KNOWN_REQUEST_FALLBACK``
+    is empty: every catalog tool currently dispatches through a client
+    method. Any *new* entry is almost always accidental drift between the
+    endpoint declaration and the client method, and must be justified (or
+    fixed) before landing. The allowlist also pins uncovered required
+    param names so known debt cannot silently grow.
     """
     actual_fallback: set[tuple[str, str, frozenset[str]]] = set()
     method_compatible = 0
@@ -193,7 +174,7 @@ def test_request_fallback_set_is_exactly_the_known_mismatches(
                 f"allowlist entry"
             )
         else:
-            uncovered = _uncovered_required_method_params(method, ep_names)
+            uncovered = uncovered_required_params(method, ep_names)
             actual_fallback.add((*method_key, uncovered))
 
     unexpected = sorted(
@@ -245,7 +226,7 @@ def test_mandatory_wire_fields_dropped_under_method_dispatch_are_allowlisted(
             # Request-fallback tools keep the full endpoint schema; drops
             # only apply under method dispatch.
             continue
-        method_names = set(_method_params(method))
+        method_names = set(bindable_params(method))
         for param in endpoint.mandatory_params:
             if resolve_method_param_name(param.name, method_names) is None:
                 actual.add((semantics.client_name, semantics.method_name, param.name))
@@ -300,9 +281,7 @@ def test_classifier_flags_uncovered_required_method_param() -> None:
     endpoint = _fake_endpoint("cik", "year", "quarter")
     ep_names = _endpoint_param_names(endpoint)
     assert not method_dispatch_compatible(method, ep_names)
-    assert _uncovered_required_method_params(method, ep_names) == frozenset(
-        {"report_date"}
-    )
+    assert uncovered_required_params(method, ep_names) == frozenset({"report_date"})
 
 
 def test_classifier_flags_dropped_mandatory_wire_field() -> None:
@@ -314,7 +293,7 @@ def test_classifier_flags_dropped_mandatory_wire_field() -> None:
     endpoint = _fake_endpoint("symbol", "structure", optional=("period",))
     ep_names = _endpoint_param_names(endpoint)
     assert method_dispatch_compatible(method, ep_names)
-    method_names = set(_method_params(method))
+    method_names = set(bindable_params(method))
     dropped = [
         p.name
         for p in endpoint.mandatory_params
@@ -332,4 +311,4 @@ def test_classifier_compatible_when_wire_covers_required_params() -> None:
     endpoint = _fake_endpoint("symbol", optional=("from",))
     ep_names = _endpoint_param_names(endpoint)
     assert method_dispatch_compatible(method, ep_names)
-    assert _uncovered_required_method_params(method, ep_names) == frozenset()
+    assert uncovered_required_params(method, ep_names) == frozenset()

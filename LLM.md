@@ -83,7 +83,8 @@ or call `model_dump()` / `model_dump_json()` for raw data.
 ## Optional integrations
 - LangChain extras: `pip install "fmp-data[langchain]"`
   - Vector store helper: `from fmp_data import create_vector_store`
-  - Tool arg names are API/wire names (`from`, `to`, …); mapped onto client methods at invoke when shapes match, else `client.request` fallback. MCP tools use Python method parameter names instead.
+  - Tool arg names are API/wire names (`from`, `to`, …); mapped onto client methods at invoke when shapes match, else `client.request` fallback (no catalog tool falls back as of 2.6). MCP tools use Python method parameter names instead.
+  - Institutional 13F tools take `year`/`quarter`, not a date: `get_form_13f_by_quarter(cik, year, quarter)` and `get_institutional_holdings_by_quarter(symbol, year, quarter)` match the API. `get_form_13f(cik, report_date)` / `get_institutional_holdings(symbol, report_date)` are date-shaped wrappers over them.
   - 2.6.0+: it returns an `EndpointVectorStore` or raises
     `VectorStoreCreationError` (importable from `fmp_data` without the extra);
     it no longer returns `None`. The exception carries `cause` and a `failures`

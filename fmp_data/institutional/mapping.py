@@ -74,11 +74,21 @@ INSTITUTIONAL_FILING_TYPES = {
     ],
 }
 INSTITUTIONAL_ENDPOINT_MAP = {
-    "get_form_13f": FORM_13F,
+    # The two ``_by_quarter`` keys name the wire-shaped client methods, not
+    # the date-shaped conveniences that wrap them. ``FORM_13F`` and
+    # ``INSTITUTIONAL_HOLDINGS`` declare mandatory ``year``/``quarter`` (the
+    # live API 400s without them and has no date parameter), while
+    # ``get_form_13f`` / ``get_institutional_holdings`` take ``report_date``
+    # and derive the pair. Pointing the map -- and the semantics
+    # ``method_name`` below -- at the wire-shaped methods is what lets
+    # LangChain dispatch through a client method instead of falling back to
+    # ``client.request``, and keeps MCP's advertised arguments equal to the
+    # ``parameter_hints`` these entries already declare (#188).
+    "get_form_13f_by_quarter": FORM_13F,
     "get_form_13f_dates": FORM_13F_DATES,
     "get_asset_allocation": ASSET_ALLOCATION,
     "get_institutional_holders": INSTITUTIONAL_HOLDERS,
-    "get_institutional_holdings": INSTITUTIONAL_HOLDINGS,
+    "get_institutional_holdings_by_quarter": INSTITUTIONAL_HOLDINGS,
     "get_insider_trades": INSIDER_TRADES,
     "get_transaction_types": TRANSACTION_TYPES,
     "get_insider_roster": INSIDER_ROSTER,
@@ -94,7 +104,7 @@ INSTITUTIONAL_ENDPOINT_MAP = {
 INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
     "form_13f": EndpointSemantics(
         client_name="institutional",
-        method_name="get_form_13f",
+        method_name="get_form_13f_by_quarter",
         natural_description=(
             "Retrieve Form 13F filings data "
             "for institutional investment managers, "
@@ -229,7 +239,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
     ),
     "institutional_holdings": EndpointSemantics(
         client_name="institutional",
-        method_name="get_institutional_holdings",
+        method_name="get_institutional_holdings_by_quarter",
         natural_description=(
             "Analyze institutional ownership for a specific security."
         ),

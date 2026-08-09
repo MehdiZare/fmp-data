@@ -254,6 +254,53 @@ class TestInstitutionalClient:
         fmp_client._logger.warning.assert_called_once()
         assert "0001067983" in fmp_client._logger.warning.call_args[0][0]
 
+    @patch("httpx.Client.request")
+    def test_get_form_13f_by_quarter(
+        self, mock_request, fmp_client, mock_response, mock_13f_filing
+    ):
+        """The wire-shaped method takes year/quarter, as the API does (#188)."""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[mock_13f_filing]
+        )
+
+        filing = fmp_client.institutional.get_form_13f_by_quarter(
+            "0001067983", year=2023, quarter=3
+        )
+        assert isinstance(filing, list)
+        assert isinstance(filing[0], Form13F)
+        assert filing[0].cik == "0001067983"
+
+        sent = mock_request.call_args.kwargs["params"]
+        assert sent["year"] == 2023
+        assert sent["quarter"] == 3
+        assert "date" not in sent
+        assert "report_date" not in sent
+
+    def test_get_form_13f_delegates_to_by_quarter(self, fmp_client):
+        """``report_date`` is a convenience over the wire shape, not a param."""
+        with patch.object(
+            fmp_client.institutional, "get_form_13f_by_quarter", return_value=[]
+        ) as by_quarter:
+            result = fmp_client.institutional.get_form_13f(
+                "0001067983", report_date=date(2023, 8, 15)
+            )
+
+        assert result == []
+        # Any date inside the period resolves to that calendar quarter.
+        by_quarter.assert_called_once_with("0001067983", 2023, 3)
+
+    def test_get_form_13f_by_quarter_returns_empty_on_error(self, fmp_client):
+        """Error swallowing lives on the method the tools actually call."""
+        fmp_client._logger = Mock()
+        with patch.object(fmp_client, "request", side_effect=FMPError("API error")):
+            result = fmp_client.institutional.get_form_13f_by_quarter(
+                "0001067983", 2023, 3
+            )
+
+        assert result == []
+        fmp_client._logger.warning.assert_called_once()
+        assert "0001067983" in fmp_client._logger.warning.call_args[0][0]
+
     def test_get_form_13f_dates_returns_empty_on_error(self, fmp_client):
         """Test get_form_13f_dates returns empty list when request fails."""
         fmp_client._logger = Mock()
@@ -313,6 +360,44 @@ class TestInstitutionalClient:
         assert holdings[0].symbol == "AAPL"
         assert holdings[0].investors_holding == 5181
         assert holdings[0].total_invested == 1988382372981.0
+
+    @patch("httpx.Client.request")
+    def test_get_institutional_holdings_by_quarter(
+        self, mock_request, fmp_client, mock_response, mock_institutional_holding
+    ):
+        """The wire-shaped holdings method takes year/quarter (#188)."""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[mock_institutional_holding]
+        )
+
+        holdings = fmp_client.institutional.get_institutional_holdings_by_quarter(
+            "AAPL", year=2024, quarter=2
+        )
+        assert isinstance(holdings, list)
+        assert holdings[0].symbol == "AAPL"
+
+        sent = mock_request.call_args.kwargs["params"]
+        assert sent["year"] == 2024
+        assert sent["quarter"] == 2
+        assert "date" not in sent
+
+    def test_get_institutional_holdings_delegates_to_by_quarter(self, fmp_client):
+        """An explicit year/quarter still wins over the derived pair."""
+        with patch.object(
+            fmp_client.institutional,
+            "get_institutional_holdings_by_quarter",
+            return_value=[],
+        ) as by_quarter:
+            fmp_client.institutional.get_institutional_holdings(
+                "AAPL", report_date=date(2024, 6, 30)
+            )
+            by_quarter.assert_called_once_with("AAPL", 2024, 2)
+
+            by_quarter.reset_mock()
+            fmp_client.institutional.get_institutional_holdings(
+                "AAPL", report_date=date(2024, 6, 30), year=2023, quarter=4
+            )
+            by_quarter.assert_called_once_with("AAPL", 2023, 4)
 
     def test_search_cik_by_name_filters_results(self, fmp_client):
         """Test search_cik_by_name filters results case-insensitively."""
