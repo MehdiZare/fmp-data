@@ -134,8 +134,10 @@ and one side of each tool-name collision. Under the default
 `FMP_MCP_TOOL_NAME_STYLE=key` a tool is advertised under its bare key, so
 `alternative.crypto_quotes` and `batch.crypto_quotes` both want to be called
 `crypto_quotes` and registration refuses the pair. Every exclusion is named in
-the generated file's header; set `FMP_MCP_TOOL_NAME_STYLE=spec` (names become
-`<client>.<key>`) and add them back to serve both sides.
+the generated file's header and printed on generation, grouped by reason: a
+deprecated key is listed beside the replacement that ships in its place, and a
+collision loser beside the `FMP_MCP_TOOL_NAME_STYLE=spec` setting (names become
+`<client>.<key>`) that lets you add both sides back.
 
 3. **Discovering available tools** - List all available tools:
 ```bash
@@ -165,7 +167,7 @@ claims it**. Two keys are claimed by two clients each — `crypto_quotes` and
 ```python
 TOOLS = [
     "alternative.crypto_quotes",  # not "crypto_quotes"
-    "batch.forex_quotes",         # not "forex_quotes"
+    "batch.forex_quotes",  # not "forex_quotes"
 ]
 ```
 

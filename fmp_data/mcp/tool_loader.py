@@ -54,7 +54,7 @@ def _get_tool_name_style() -> str:
     return style
 
 
-def _build_key_to_spec(all_tools: list[dict[str, str]]) -> dict[str, list[str]]:
+def build_key_to_spec(all_tools: list[dict[str, str]]) -> dict[str, list[str]]:
     key_to_spec: dict[str, list[str]] = {}
     for tool in all_tools:
         key = tool["key"]
@@ -206,7 +206,7 @@ def resolve_tool_spec(spec: str, key_to_spec: dict[str, list[str]]) -> Resolutio
     spec
         A bare key (``"profile"``) or a full spec (``"company.profile"``).
     key_to_spec
-        Key to claiming specs, from :func:`_build_key_to_spec`. Its values are
+        Key to claiming specs, from :func:`build_key_to_spec`. Its values are
         also the catalog, so a full spec absent from them is UNKNOWN rather
         than trusted -- a typo must not survive to a confusing import error.
 
@@ -308,7 +308,7 @@ def register_from_manifest(
 
     # Build a map from keys to full specs for auto-discovery
     all_tools = discover_all_tools()
-    key_to_spec = _build_key_to_spec(all_tools)
+    key_to_spec = build_key_to_spec(all_tools)
 
     resolved_specs: list[tuple[str, str, str]] = []
     for spec in tool_specs:

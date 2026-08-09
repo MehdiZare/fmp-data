@@ -539,6 +539,39 @@ class TestGeneratedManifestIsUsable:
         assert "batch.crypto_quotes" not in tools
         assert "alternative.crypto_quotes" in tools
 
+    def test_every_dropped_spec_is_named_in_the_header(self, tmp_path: Path) -> None:
+        """The claim is "nothing disappears silently" -- hold it to all of it.
+
+        Naming only the collision losers would leave a user diffing ``fmp-mcp
+        list`` against their manifest with unexplained absences, in the one
+        feature whose whole point is that every drop is accounted for. Checking
+        the difference exhaustively means a future exclusion rule cannot ship
+        without its explanation.
+        """
+        tools, content = self._generate(tmp_path)
+        from fmp_data.mcp.cli import list_available_tools
+
+        header = content.split("TOOLS = [", 1)[0]
+        catalog = {tool["spec"] for tool in list_available_tools()}
+        dropped = catalog - set(tools)
+
+        assert dropped, "vacuous unless something was actually dropped"
+        assert [spec for spec in sorted(dropped) if spec not in header] == []
+
+    def test_deprecated_drops_name_their_replacement(self, tmp_path: Path) -> None:
+        """A drop is only explained if it says what to use instead."""
+        from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
+
+        tools, content = self._generate(tmp_path)
+        header = content.split("TOOLS = [", 1)[0]
+
+        assert DEPRECATED_TOOLS
+        for spec, replacement in sorted(DEPRECATED_TOOLS.items()):
+            line = next(ln for ln in header.splitlines() if spec in ln)
+            assert replacement in line, line
+            # The replacement is what makes the drop lossless -- it must ship.
+            assert replacement in tools
+
     def test_generated_manifest_still_covers_the_catalog(self, tmp_path: Path) -> None:
         """Only the deprecated keys and one side of each collision may go."""
         from fmp_data.mcp.cli import list_available_tools
@@ -594,3 +627,24 @@ class TestGeneratedManifestIsUsable:
         assert "crypto_quotes" in header
         assert "FMP_MCP_TOOL_NAME_STYLE=spec" in header
         assert "crypto_quotes" in capsys.readouterr().err
+
+    def test_a_default_yields_to_an_explicit_pick_of_the_other_side(
+        self, tmp_path: Path
+    ) -> None:
+        """Defaults must not overrule the caller, and must say when they yield.
+
+        ``batch.crypto_quotes`` is the side ``_startable_catalog`` normally
+        drops, so asking for it explicitly is the case where "an explicit
+        selection is never thinned" and "defaults are added" pull opposite
+        ways. The explicit pick wins; the default it displaced is named.
+        """
+        tools, content = self._generate(
+            tmp_path, tools=["batch.crypto_quotes"], include_defaults=True
+        )
+
+        assert "batch.crypto_quotes" in tools
+        assert "alternative.crypto_quotes" not in tools
+        header = content.split("TOOLS = [", 1)[0]
+        assert "alternative.crypto_quotes" in header
+        # Defaults still arrived -- otherwise this passes for the wrong reason.
+        assert len(tools) > 1

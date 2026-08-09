@@ -368,7 +368,7 @@ class TestSemanticsMethodResolution:
     def test_ambiguous_bare_keys_are_exactly_the_documented_pair(self):
         """Bare-key resolution is only guaranteed for singly-claimed keys.
 
-        ``_build_key_to_spec`` indexes the full discovery catalogue, so a key
+        ``build_key_to_spec`` indexes the full discovery catalogue, so a key
         claimed by two clients cannot resolve from the bare form. Exactly two
         such keys exist and both name legitimate, distinct tools; callers must
         spell them ``<client>.<key>``. Any *other* collision is a namespace
@@ -403,9 +403,9 @@ class TestSemanticsMethodResolution:
 
     def test_ambiguous_bare_key_error_names_every_candidate(self):
         """The error must be actionable: list candidates, show the fix."""
-        from fmp_data.mcp.tool_loader import _build_key_to_spec, _resolve_tool_spec
+        from fmp_data.mcp.tool_loader import _resolve_tool_spec, build_key_to_spec
 
-        key_to_spec = _build_key_to_spec(
+        key_to_spec = build_key_to_spec(
             [
                 {"key": "crypto_quotes", "spec": "alternative.crypto_quotes"},
                 {"key": "crypto_quotes", "spec": "batch.crypto_quotes"},
@@ -422,9 +422,9 @@ class TestSemanticsMethodResolution:
 
     def test_full_spec_still_resolves_an_ambiguous_key(self):
         """Naming the client is the documented escape hatch; it must work."""
-        from fmp_data.mcp.tool_loader import _build_key_to_spec, _resolve_tool_spec
+        from fmp_data.mcp.tool_loader import _resolve_tool_spec, build_key_to_spec
 
-        key_to_spec = _build_key_to_spec(
+        key_to_spec = build_key_to_spec(
             [
                 {"key": "crypto_quotes", "spec": "alternative.crypto_quotes"},
                 {"key": "crypto_quotes", "spec": "batch.crypto_quotes"},
@@ -537,9 +537,9 @@ class TestToolKeyNamespace:
         self, spec: str, replacement: str
     ) -> None:
         from fmp_data.mcp.discovery import discover_all_tools
-        from fmp_data.mcp.tool_loader import _build_key_to_spec, _resolve_tool_spec
+        from fmp_data.mcp.tool_loader import _resolve_tool_spec, build_key_to_spec
 
-        key_to_spec = _build_key_to_spec(discover_all_tools())
+        key_to_spec = build_key_to_spec(discover_all_tools())
 
         with pytest.warns(DeprecationWarning) as record:
             _resolve_tool_spec(spec, key_to_spec)
@@ -551,9 +551,9 @@ class TestToolKeyNamespace:
 
     def test_resolving_a_deprecated_bare_key_warns(self) -> None:
         """The bare form resolves to the same spec, so it warns too."""
-        from fmp_data.mcp.tool_loader import _build_key_to_spec, _resolve_tool_spec
+        from fmp_data.mcp.tool_loader import _resolve_tool_spec, build_key_to_spec
 
-        key_to_spec = _build_key_to_spec(
+        key_to_spec = build_key_to_spec(
             [{"key": "executives", "spec": "company.executives"}]
         )
 
@@ -566,9 +566,9 @@ class TestToolKeyNamespace:
 
     def test_canonical_keys_do_not_warn(self) -> None:
         from fmp_data.mcp.discovery import discover_all_tools
-        from fmp_data.mcp.tool_loader import _build_key_to_spec, _resolve_tool_spec
+        from fmp_data.mcp.tool_loader import _resolve_tool_spec, build_key_to_spec
 
-        key_to_spec = _build_key_to_spec(discover_all_tools())
+        key_to_spec = build_key_to_spec(discover_all_tools())
 
         with warnings.catch_warnings():
             warnings.simplefilter("error", DeprecationWarning)
@@ -581,9 +581,9 @@ class TestToolKeyNamespace:
         ``company.profil`` never reaches ``_load_semantics``.
         """
         from fmp_data.mcp.discovery import discover_all_tools
-        from fmp_data.mcp.tool_loader import _build_key_to_spec, _resolve_tool_spec
+        from fmp_data.mcp.tool_loader import _resolve_tool_spec, build_key_to_spec
 
-        key_to_spec = _build_key_to_spec(discover_all_tools())
+        key_to_spec = build_key_to_spec(discover_all_tools())
 
         with pytest.raises(RuntimeError, match="not found in available tools"):
             _resolve_tool_spec("company.profil", key_to_spec)
@@ -734,9 +734,9 @@ class TestExampleManifests:
 
     def test_no_example_manifest_names_a_deprecated_key(self) -> None:
         from fmp_data.mcp.discovery import discover_all_tools
-        from fmp_data.mcp.tool_loader import _build_key_to_spec, resolve_tool_spec
+        from fmp_data.mcp.tool_loader import build_key_to_spec, resolve_tool_spec
 
-        key_to_spec = _build_key_to_spec(discover_all_tools())
+        key_to_spec = build_key_to_spec(discover_all_tools())
 
         offenders: list[str] = []
         for path in self._manifest_paths():
@@ -760,9 +760,9 @@ class TestExampleManifests:
         drift from registration (#149).
         """
         from fmp_data.mcp.discovery import discover_all_tools
-        from fmp_data.mcp.tool_loader import _build_key_to_spec, resolve_tool_spec
+        from fmp_data.mcp.tool_loader import build_key_to_spec, resolve_tool_spec
 
-        key_to_spec = _build_key_to_spec(discover_all_tools())
+        key_to_spec = build_key_to_spec(discover_all_tools())
 
         failures: list[str] = []
         for path in self._manifest_paths():
@@ -778,9 +778,9 @@ class TestExampleManifests:
     def test_no_example_manifest_lists_a_tool_twice(self) -> None:
         """Two names for one method is the very thing #136 removes."""
         from fmp_data.mcp.discovery import discover_all_tools
-        from fmp_data.mcp.tool_loader import _build_key_to_spec, resolve_tool_spec
+        from fmp_data.mcp.tool_loader import build_key_to_spec, resolve_tool_spec
 
-        key_to_spec = _build_key_to_spec(discover_all_tools())
+        key_to_spec = build_key_to_spec(discover_all_tools())
         method_by_spec = {tool["spec"]: tool["method"] for tool in discover_all_tools()}
 
         duplicates: list[str] = []
@@ -1319,9 +1319,9 @@ class TestResolveToolSpecIsSingleSourceOfTruth:
     @staticmethod
     def _key_to_spec() -> dict[str, list[str]]:
         from fmp_data.mcp.discovery import discover_all_tools
-        from fmp_data.mcp.tool_loader import _build_key_to_spec
+        from fmp_data.mcp.tool_loader import build_key_to_spec
 
-        return _build_key_to_spec(discover_all_tools())
+        return build_key_to_spec(discover_all_tools())
 
     @staticmethod
     def _probe_entries() -> list[str]:
@@ -1460,3 +1460,28 @@ class TestResolveToolSpecIsSingleSourceOfTruth:
         assert unknown == ["company.profile", "company.historical_price"]
         assert ambiguous == []
         assert deprecated == []
+
+    def test_loader_delegates_rather_than_reimplements(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The symmetric guard: the loader must call the pure resolver too.
+
+        ``test_registration_path_matches_the_pure_resolver_everywhere`` catches
+        a loader that *diverges*, but an identical reimplementation inside
+        ``_resolve_tool_spec`` would agree with the resolver on every input and
+        pass it -- while restoring exactly the duplication #149 removed. Only
+        stubbing can tell "calls it" from "happens to agree with it".
+        """
+        from fmp_data.mcp import tool_loader
+
+        def _always_unknown(spec: str, key_to_spec: object) -> tool_loader.Resolution:
+            return tool_loader.Resolution(
+                entry=spec,
+                status=tool_loader.ResolutionStatus.UNKNOWN,
+                message="stubbed",
+            )
+
+        monkeypatch.setattr(tool_loader, "resolve_tool_spec", _always_unknown)
+
+        with pytest.raises(RuntimeError, match="stubbed"):
+            tool_loader._resolve_tool_spec("company.profile", self._key_to_spec())
