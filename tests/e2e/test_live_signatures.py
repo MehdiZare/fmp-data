@@ -7,15 +7,35 @@ Run it before a release, or on a schedule:
     FMP_TEST_API_KEY=... pytest tests/e2e/ -v
 
 Why this exists: a one-off probe of all 275 declarations found 28 paths that
-return 404 for every request, a parameter declared under the wrong name, three
-endpoints whose ``from``/``to`` are mandatory despite being declared optional,
-and two whose ``symbol`` was modelled as a path segment when the API wants a
-query parameter. None of that was visible to the unit suite, which never calls
-the API, and VCR cassettes are gitignored so a clean checkout cannot replay
-them either. The only way to catch this class is to ask the API.
+return 404 for every request, three endpoints whose ``from``/``to`` are
+mandatory despite being declared optional, two whose ``symbol`` was modelled as
+a path segment when the API wants a query parameter, and one whose ``symbol``
+was declared ``location=PATH`` against a path with no placeholder, so it was
+sent nowhere at all. None of that was visible to the unit suite, which never
+calls the API, and VCR cassettes are gitignored so a clean checkout cannot
+replay them either. The only way to catch this class is to ask the API.
 
 Each test reports every mismatch it finds rather than stopping at the first, so
 one run gives the whole picture.
+
+Two rules this file has already learned the hard way, both of which produced
+confident, wholly wrong answers before they were fixed:
+
+**Build requests through the library, never by hand.** ``_url_for`` goes through
+``validate_params`` -> ``build_url`` -> ``get_query_params``, exactly as
+``BaseClient._execute_request`` does. A hand-rolled URL does not substitute
+``{placeholder}``s, does not honour ``param.alias`` (``CIK_SEARCH`` declares
+``query`` and sends ``cik``), and skips ``ParamType`` conversion. Each of those
+turns a working endpoint into a phantom 404 or 400.
+
+**Never infer "this parameter is optional" from a row count.** FMP defaults to
+Apple when ``symbol`` is missing, and ``AAPL`` is this file's own sample value,
+so ``key-executives`` returns byte-identical payloads with and without the
+parameter. Reading that as "the parameter is ignored" flagged 14 endpoints,
+all false, and acting on it would have made ``symbol`` optional on 13 of them --
+after which omitting it would silently hand the caller a *different company's
+data*. Compare payloads against a non-default sentinel instead; see
+:data:`SENTINELS` and ``test_mandatory_params_are_really_mandatory``.
 """
 
 from __future__ import annotations
@@ -109,6 +129,32 @@ ENTITY_SENSITIVE = {
 #: not parsed; only the HTTP status is asserted.
 CSV_CLIENTS = {"batch"}
 
+#: Second, deliberately different value per parameter, keyed by wire name.
+#:
+#: Used only by ``test_mandatory_params_are_really_mandatory``, which has to
+#: distinguish "the API ignores this parameter" from "the API substituted its
+#: own default". Both answer 200 with rows, so the value must differ from
+#: :data:`SAMPLES` for the comparison to mean anything -- and must not be
+#: ``AAPL``, which is what FMP itself falls back to.
+#:
+#: Deliberately *narrower* than :data:`SAMPLES`. A sentinel is only usable
+#: where the parameter means the same thing on every endpoint that declares
+#: it, because an invalid value makes the API fall back to its default and
+#: that is indistinguishable from the parameter being ignored -- the very
+#: confusion this table exists to resolve. ``query``, ``name`` and ``company``
+#: are therefore absent: ``query`` is a CUSIP for ``search-cusip``, an ISIN
+#: for ``search-isin`` and a ticker for ``search-exchange-variants``, and
+#: ``name`` is a company for ``mergers-acquisitions-search`` but an indicator
+#: for ``economic-indicators``. No single value is valid across those, so the
+#: endpoints keyed by them are skipped rather than guessed at.
+SENTINELS: dict[str, str] = {
+    "symbol": "MSFT",
+    "symbols": "MSFT,NVDA",
+    "cik": "0000789019",
+    "exchange": "NYSE",
+    "year": "2023",
+}
+
 #: Endpoints requiring *at least one of* several individually-optional params.
 #:
 #: ``mandatory_params``/``optional_params`` cannot express "one of these
@@ -170,12 +216,24 @@ def _fetch(url: str, parse: bool = True) -> tuple[Any, Any]:
         return type(exc).__name__, str(exc)[:100]
 
 
-def _call(endpoint: Endpoint, params: dict[str, str], parse: bool = True) -> Any:
-    """Probe ``endpoint`` through the library's own request-building code.
+def _fetch_body(url: str) -> tuple[Any, str]:
+    """Return (status, raw body text), for comparing two payloads verbatim."""
+    time.sleep(THROTTLE)
+    try:
+        with urllib.request.urlopen(url, timeout=30) as resp:  # noqa: S310
+            return resp.status, resp.read().decode(errors="replace")
+    except urllib.error.HTTPError as exc:
+        return exc.code, exc.read().decode(errors="replace")[:120]
+    except Exception as exc:
+        return type(exc).__name__, str(exc)[:100]
 
-    Building the URL by hand here would test a reimplementation rather than
-    the library, and would mis-report three ways the declaration can differ
-    from the naive form:
+
+def _url_for(endpoint: Endpoint, params: dict[str, str]) -> str:
+    """Build the request URL through the library's own code.
+
+    Building it by hand would test a reimplementation rather than the library,
+    and would mis-report three ways the declaration differs from the naive
+    form:
 
     * ``build_url`` substitutes ``{placeholder}``s, so a hand-built URL keeps
       a literal ``{interval}`` and 404s on every templated endpoint;
@@ -191,7 +249,12 @@ def _call(endpoint: Endpoint, params: dict[str, str], parse: bool = True) -> Any
     url = endpoint.build_url(BASE, validated)
     query = endpoint.get_query_params(validated)
     query["apikey"] = API_KEY or ""
-    return _fetch(f"{url}?{urllib.parse.urlencode(query)}", parse=parse)
+    return f"{url}?{urllib.parse.urlencode(query)}"
+
+
+def _call(endpoint: Endpoint, params: dict[str, str], parse: bool = True) -> Any:
+    """Probe ``endpoint`` with ``params``; see :func:`_url_for`."""
+    return _fetch(_url_for(endpoint, params), parse=parse)
 
 
 def _all_endpoints() -> list[tuple[str, str, Endpoint]]:
@@ -343,12 +406,38 @@ def test_deprecated_endpoints_are_really_dead() -> None:
 
 
 def test_mandatory_params_are_really_mandatory() -> None:
-    """Omitting a declared-mandatory param must not silently succeed.
+    """A param we force callers to supply, which the API ignores, is noise.
 
-    A param we force callers to supply, which the API does not need, is a
-    declaration that over-constrains the client for no reason.
+    **Row count cannot answer this question, and inferring from it is a bug.**
+    An earlier version of this test omitted the parameter and treated
+    200-with-rows as proof the parameter was optional. It flagged 14
+    endpoints, and every one was a false positive, because FMP substitutes its
+    own default -- Apple -- and ``AAPL`` is exactly what :data:`SAMPLES` sends:
+
+        key-executives?symbol=AAPL  -> Suhasini Chandramouli, Greg Joswiak
+        key-executives              -> Suhasini Chandramouli, Greg Joswiak
+
+    Identical payloads, so "it answered without the parameter" meant "it
+    defaulted to the same company we asked about", not "the parameter is
+    ignored". Acting on that reading would have made ``symbol`` optional on 13
+    endpoints, and a caller who then omitted it would silently receive *a
+    different company's data* -- far worse than a 400.
+
+    So the probe compares payloads against a **non-default sentinel** instead.
+    Ask for something that is definitely not the API's fallback (``MSFT``),
+    then omit the parameter:
+
+    * different payload  -> the API fell back to a default, so the parameter
+      really is required, and supplying it is what selects the entity;
+    * identical payload  -> the API ignored what we sent, which is the only
+      thing that actually means "over-declared".
+
+    The comparison is deliberately conservative. Endpoints whose payload moves
+    between two calls -- live quotes, say -- will simply differ and go
+    unflagged. That under-reports rather than cries wolf, which is the right
+    way round for an assertion nobody will read once it has failed spuriously.
     """
-    not_required: list[str] = []
+    ignored: list[str] = []
     for client, name, endpoint in ENDPOINTS:
         if name in DEPRECATED_ENDPOINTS:
             continue
@@ -356,31 +445,44 @@ def test_mandatory_params_are_really_mandatory() -> None:
             # With several mandatory params, omitting one leaves the request
             # ambiguous; single-param endpoints give a clean signal.
             continue
-        if endpoint.mandatory_params[0].location is ParamLocation.PATH:
+        param = endpoint.mandatory_params[0]
+        if param.location is ParamLocation.PATH:
             # The param IS the URL. Omitting it does not make a weaker
             # request, it makes a different one, so the answer says nothing
             # about whether the API requires it.
             continue
+        sentinel = SENTINELS.get(param.alias or param.name)
+        if sentinel is None:
+            # No value known to differ from the API's own default, so the two
+            # payloads cannot be told apart. Skipping is honest; guessing is
+            # how the row-count version got it wrong.
+            continue
+
+        with_status, with_body = _fetch_body(_url_for(endpoint, {param.name: sentinel}))
         # Deliberately incomplete, so validate_params would refuse to build
-        # it -- the point of this probe is to send what the library never
-        # would. Only a query-param endpoint reaches here, so the path is
-        # already literal and needs no substitution.
+        # it -- the point is to send what the library never would. Only a
+        # query-param endpoint reaches here, so the path needs no
+        # substitution.
         version = getattr(endpoint.version, "value", "stable")
-        status, detail = _fetch(
+        without_status, without_body = _fetch_body(
             f"{BASE}/{version}/{endpoint.path}?"
-            + urllib.parse.urlencode({"apikey": API_KEY or ""}),
-            parse=client not in CSV_CLIENTS,
+            + urllib.parse.urlencode({"apikey": API_KEY or ""})
         )
-        if status == 200 and isinstance(detail, int) and detail > 0:
-            param = endpoint.mandatory_params[0].name
-            not_required.append(
-                f"{client}.{name}: omitting mandatory '{param}' still "
-                f"returned {detail} rows"
+
+        if (
+            with_status == 200
+            and without_status == 200
+            and with_body == without_body
+            and len(with_body) > 2  # not "[]" -- two empties prove nothing
+        ):
+            ignored.append(
+                f"{client}.{name}: '{param.name}={sentinel}' and omitting it "
+                f"return byte-identical payloads, so the API ignores it"
             )
 
-    assert not not_required, (
-        "parameters declared mandatory that the API does not require:\n  "
-        + "\n  ".join(not_required)
+    assert not ignored, (
+        "parameters declared mandatory that the API demonstrably ignores -- "
+        "supplying a distinctive value changed nothing:\n  " + "\n  ".join(ignored)
     )
 
 
