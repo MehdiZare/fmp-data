@@ -116,15 +116,35 @@ def resolve_method_param_name(
     return None
 
 
-def bindable_params(method: Callable[..., Any]) -> dict[str, inspect.Parameter]:
-    """Parameters of *method* that a caller can fill by name.
+#: Parameter names that name the receiver rather than an argument. A *bound*
+#: method hides them already, which is the only case at runtime; the filter is
+#: for the unbound functions the catalogue guard and the unit tests pass in.
+#: A plain function with a parameter genuinely called ``self`` or ``cls`` would
+#: be misread here, and that is an accepted trade for not treating a
+#: classmethod's receiver as a required, unfillable argument (#195).
+_RECEIVER_NAMES = frozenset({"self", "cls"})
 
-    ``self`` is excluded (bound methods hide it anyway, but the catalogue guard
-    and the synthetic tests pass plain functions), and so are ``*args`` /
-    ``**kwargs``: they are not names a caller can target, and treating
-    ``**kwargs`` as a real parameter made a method look like it accepted
-    anything -- and, because a ``VAR_KEYWORD`` parameter has no default, like
-    it *required* a parameter literally named ``kwargs``.
+
+def bindable_params(method: Callable[..., Any]) -> dict[str, inspect.Parameter]:
+    """Parameters of *method* that a caller can fill **by name**.
+
+    Everything here dispatches with ``method(**mapped)``, so "by name" is the
+    only thing that counts. Excluded:
+
+    * ``self`` / ``cls`` -- the receiver. Bound methods hide it, which is the
+      only case at runtime, but the catalogue guard and the unit tests pass
+      plain functions. ``cls`` was missed before #195.
+    * ``*args`` / ``**kwargs`` -- not names a caller can target. Treating
+      ``**kwargs`` as a real parameter made a method look like it accepted
+      anything and, because a ``VAR_KEYWORD`` parameter has no default, like
+      it *required* a parameter literally called ``kwargs``.
+    * ``POSITIONAL_ONLY`` -- reachable only positionally, so a keyword call
+      can never fill it. Excluding it from *this* map is right; required
+      positional-only params are still treated as uncovered by
+      :func:`uncovered_required_params` (#195).
+
+    A method with ``**kwargs`` does **not** get unmapped wire fields passed
+    through: they reach no named parameter, so they are dropped.
 
     This is the definition every other function here shares. It existed in
     four hand-written copies before #188 and they were not identical; that is
@@ -133,7 +153,7 @@ def bindable_params(method: Callable[..., Any]) -> dict[str, inspect.Parameter]:
     return {
         name: param
         for name, param in inspect.signature(method).parameters.items()
-        if name != "self"
+        if name not in _RECEIVER_NAMES
         and param.kind
         in (
             inspect.Parameter.POSITIONAL_OR_KEYWORD,
@@ -152,6 +172,16 @@ def uncovered_required_params(
     a wire source, so the call cannot ``TypeError`` on a missing argument.
     Non-empty names the debt, which is what the catalogue guard reports and
     allowlists (see ``tests/unit/lc/test_endpoint_method_coverage.py``).
+
+    Two ways a required parameter goes uncovered:
+
+    * no endpoint field maps onto it (the ``report_date`` case #188 fixed), or
+    * it is ``POSITIONAL_ONLY``, so a keyword call cannot reach it at all
+      regardless of name alignment. Dispatch is ``method(**mapped)``; a
+      required positional-only parameter would pass the by-name map check
+      (it is absent from :func:`bindable_params`) and then raise
+      ``TypeError`` at invoke. Counting it here makes the gate refuse that
+      shape instead (#195).
     """
     method_params = bindable_params(method)
     names = set(method_params)
@@ -160,11 +190,20 @@ def uncovered_required_params(
         for ep_name in endpoint_param_names
         if (resolved := resolve_method_param_name(ep_name, names)) is not None
     }
-    return frozenset(
+    uncovered = frozenset(
         name
         for name, param in method_params.items()
         if param.default is inspect.Parameter.empty and name not in covered
     )
+    # Required POSITIONAL_ONLY params cannot be filled via kwargs (#195).
+    positional_only_required = frozenset(
+        name
+        for name, param in inspect.signature(method).parameters.items()
+        if name not in _RECEIVER_NAMES
+        and param.kind is inspect.Parameter.POSITIONAL_ONLY
+        and param.default is inspect.Parameter.empty
+    )
+    return uncovered | positional_only_required
 
 
 def method_dispatch_compatible(
@@ -187,6 +226,15 @@ def map_tool_kwargs_to_method(
     ``None`` values are dropped so a method default can apply — that is the
     half of #172 that makes an LLM-omitted ``from``/``to`` still work on SEC
     search methods, which default the window to the last 30 days.
+
+    Keys that reach no parameter are dropped, including when the method takes
+    ``**kwargs`` -- see :func:`bindable_params`.
+
+    When multiple input keys resolve to the same method parameter (e.g.
+    ``from`` and ``from_date`` both mapping onto ``from_date``), **last wins**:
+    later keys in *kwargs* overwrite earlier ones. Well-formed tool schemas
+    do not emit both names for one field (``extra="forbid"``); this documents
+    the direct-caller behaviour rather than inventing a second policy (#195).
     """
     method_params = set(bindable_params(method))
     mapped: dict[str, Any] = {}

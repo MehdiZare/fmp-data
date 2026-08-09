@@ -761,6 +761,59 @@ class EndpointVectorStore:
             return {"status": "success", "data": model_dump(mode="json")}
         return {"status": "success", "data": result}
 
+    def _resolve_tool_method(
+        self,
+        client_name: str,
+        method_name: str,
+        endpoint_param_names: Sequence[str],
+    ) -> Any:
+        """Resolve a dispatch method, announcing a request-fallback when none.
+
+        After :func:`resolve_dispatch_method` returns ``None`` (#194):
+
+        * no sub-client on the store's client → DEBUG (normal for a bare
+          ``BaseClient`` / test double; warning once per catalogue endpoint
+          would bury real misconfiguration)
+        * sub-client present but method missing / not callable → WARNING
+        * method present but shape incompatible → WARNING naming the uncovered
+          required params via :func:`uncovered_required_params`
+        """
+        method = resolve_dispatch_method(
+            self.client, client_name, method_name, endpoint_param_names
+        )
+        if method is not None:
+            return method
+
+        sub_client = getattr(self.client, client_name, None)
+        if sub_client is None:
+            self.logger.debug(
+                "LangChain tool '%s': no '%s' sub-client on client; "
+                "falling back to client.request",
+                method_name,
+                client_name,
+            )
+            return None
+
+        resolved = resolve_client_method(self.client, client_name, method_name)
+        if resolved is None:
+            self.logger.warning(
+                "LangChain tool '%s': client.%s has no callable '%s'; "
+                "falling back to client.request",
+                method_name,
+                client_name,
+                method_name,
+            )
+            return None
+
+        uncovered = uncovered_required_params(resolved, endpoint_param_names)
+        self.logger.warning(
+            "LangChain tool '%s': method shape incompatible "
+            "(uncovered required params: %s); falling back to client.request",
+            method_name,
+            sorted(uncovered),
+        )
+        return None
+
     def create_tool(self, info: EndpointInfo) -> ToolLike:
         """Create a LangChain tool from endpoint info.
 
@@ -769,6 +822,13 @@ class EndpointVectorStore:
         method-level defaults and constraints apply. See #172. When the store
         holds a client without that sub-client (tests, bare ``BaseClient``),
         dispatch falls back to ``client.request(endpoint, ...)``.
+
+        A fallback is announced rather than silent (#194). The level splits on
+        whether it is expected: a bare client has no sub-clients by design and
+        would otherwise emit one warning per endpoint in the catalogue, which
+        buries the two cases that really do mean something is wrong -- a
+        ``method_name`` naming nothing, or a shape the wire fields cannot
+        fill. Those warn; the bare-client case is DEBUG.
         """
         if not info:
             raise ValueError("EndpointInfo cannot be None")
@@ -783,8 +843,7 @@ class EndpointVectorStore:
                 for p in list(endpoint.mandatory_params)
                 + list(endpoint.optional_params or [])
             ]
-            method = resolve_dispatch_method(
-                self.client,
+            method = self._resolve_tool_method(
                 semantics.client_name,
                 semantics.method_name,
                 ep_names,
