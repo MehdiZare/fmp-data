@@ -968,7 +968,9 @@ class TestMCPCliDeprecationReporting:
         manifest = tmp_path / "ambiguous_manifest.py"
         manifest.write_text('TOOLS = ["crypto_quotes"]\n')
 
-        assert validate_manifest(manifest) is True
+        # False, not True: registration raises on this manifest, so blessing
+        # it was the green check #161 is about.
+        assert validate_manifest(manifest) is False
 
         err = capsys.readouterr().err
         assert "alternative.crypto_quotes" in err

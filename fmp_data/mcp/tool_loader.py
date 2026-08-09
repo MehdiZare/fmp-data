@@ -331,20 +331,81 @@ def _resolve_tool_spec(
     return full_spec, client_slug, sem_key
 
 
+def advertised_names(
+    resolved_specs: list[tuple[str, str, str]], name_style: str
+) -> dict[str, list[str]]:
+    """Advertised tool name to the resolved specs claiming it.
+
+    The one place the ``FMP_MCP_TOOL_NAME_STYLE`` rule is applied to a whole
+    manifest, so ``register_from_manifest`` and ``fmp-mcp validate`` cannot
+    disagree about which entries share a name (#162).
+    """
+    by_name: dict[str, list[str]] = {}
+    for full_spec, _, sem_key in resolved_specs:
+        name = sem_key if name_style == "key" else full_spec
+        by_name.setdefault(name, []).append(full_spec)
+    return by_name
+
+
+def split_name_clashes(
+    by_name: dict[str, list[str]],
+) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+    """Split shared advertised names into ``(duplicates, collisions)``.
+
+    The distinction the old early-return conflated (#162):
+
+    * **duplicate** -- one spec listed twice, reachable because a manifest
+      accepts both ``profile`` and ``company.profile`` for the same tool. No
+      name style separates them, so it is an error under *every* style.
+    * **collision** -- two genuinely different specs wanting one name. Only
+      possible under ``key`` style, and ``spec`` style is the documented cure,
+      so it is not an error there -- and ``advertised_names`` under ``spec``
+      never produces one, since a full spec is unique by construction.
+    """
+    duplicates: dict[str, list[str]] = {}
+    collisions: dict[str, list[str]] = {}
+    for name, specs in by_name.items():
+        if len(specs) < 2:
+            continue
+        if len(set(specs)) == 1:
+            duplicates[name] = sorted(specs)
+        else:
+            collisions[name] = sorted(set(specs))
+    return duplicates, collisions
+
+
 def _validate_tool_names(
     resolved_specs: list[tuple[str, str, str]], name_style: str
 ) -> None:
-    if name_style != "key":
-        return
-    name_counts: dict[str, int] = {}
-    for _, _, sem_key in resolved_specs:
-        name_counts[sem_key] = name_counts.get(sem_key, 0) + 1
-    duplicates = [name for name, count in name_counts.items() if count > 1]
+    """Refuse a manifest whose entries would advertise one name twice.
+
+    Runs under **both** name styles. Skipping it outright for ``spec`` (the
+    behaviour before #162) meant the style that exists to *fix* name problems
+    was the only one with no name checking: ``["profile", "company.profile"]``
+    registered ``company.profile`` twice, and whether the server object then
+    rejected the repeat or silently kept the last one was server-dependent.
+    """
+    duplicates, collisions = split_name_clashes(
+        advertised_names(resolved_specs, name_style)
+    )
     if duplicates:
         dup_list = ", ".join(sorted(duplicates))
+        # Advice must not depend on the style: no style separates one spec
+        # from itself, so "set FMP_MCP_TOOL_NAME_STYLE=spec" is useless here
+        # and actively misleading to someone already using it.
         raise ERR(
             "Duplicate tool keys detected for MCP tool names: "
-            f"{dup_list}. Set FMP_MCP_TOOL_NAME_STYLE=spec or remove duplicates."
+            f"{dup_list}. The same tool is listed more than once (a bare key "
+            f"and its '<client>.<key>' form are the same entry); remove the "
+            f"duplicates."
+        ) from None
+    if collisions:
+        pairs = "; ".join(
+            f"{name}: {', '.join(specs)}" for name, specs in sorted(collisions.items())
+        )
+        raise ERR(
+            "Duplicate tool keys detected for MCP tool names: "
+            f"{pairs}. Set FMP_MCP_TOOL_NAME_STYLE=spec or remove duplicates."
         ) from None
 
 

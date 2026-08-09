@@ -126,7 +126,17 @@ fmp-mcp generate my_manifest.py --no-defaults --tools company.quote market.gaine
 
 # Generate a manifest covering the whole catalog
 fmp-mcp generate everything.py
+
+# Bare keys work too, and are written out in their fully qualified form
+fmp-mcp generate my_manifest.py --no-defaults --tools profile quote gainers
 ```
+
+`--tools` accepts the same two entry forms a manifest does — a bare key
+(`profile`) or a fully qualified spec (`company.profile`) — resolved by the
+rule the server uses. What is *written* is always the qualified form, since it
+is unambiguous under either name style. A bare key claimed by two clients is
+reported as an ambiguity naming both candidates, not as "unknown"; an entry
+naming nothing at all is still reported as unknown and skipped.
 
 With no `--tools` filter the generated manifest covers the catalog except for
 what would stop it starting a server: deprecated tool keys (removed in 3.0),
@@ -187,6 +197,28 @@ Validate your manifest file before using:
 ```bash
 fmp-mcp validate my_manifest.py
 ```
+
+**The exit code is the verdict, and it means "this manifest can start a
+server".** `validate` exits non-zero for exactly the four things
+`register_from_manifest` refuses:
+
+| Finding | Exit code | Why |
+|---|---|---|
+| unknown entry (`company.profil`) | non-zero | resolves to nothing |
+| ambiguous bare key (`crypto_quotes`) | non-zero | claimed by two clients |
+| the same tool listed twice (`profile` **and** `company.profile`) | non-zero | one tool, two entries; no name style separates them |
+| two tools claiming one advertised name | non-zero | only under the default `FMP_MCP_TOOL_NAME_STYLE=key`; set `spec` and this stops being a clash |
+| deprecated entry | **0** | still resolves; the migration table prints |
+| withdrawn entry | **0** | still registers, answers with no data; reported |
+
+Clashes are judged under the `FMP_MCP_TOOL_NAME_STYLE` in effect, so validating
+with the variable your server runs with is what you want.
+
+> **Changed in this release.** `validate` previously printed its warnings and
+> then exited 0 regardless, so a manifest with a typo passed CI and failed at
+> server start. If you have `fmp-mcp validate` in a pipeline, a manifest with
+> any of the fatal findings above will now fail that build — which is the point,
+> but it may fail on first upgrade.
 
 ## Tips
 

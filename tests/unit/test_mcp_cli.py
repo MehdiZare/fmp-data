@@ -289,9 +289,11 @@ class TestMCPCLI:
         from fmp_data.mcp.cli import generate_manifest
 
         # Mock available tools
+        # "key" is required: selection now resolves through
+        # `resolve_tool_spec`, which is keyed on the bare key (#160).
         mock_list_tools.return_value = [
-            {"spec": "company.profile", "client": "company"},
-            {"spec": "market.gainers", "client": "market"},
+            {"spec": "company.profile", "client": "company", "key": "profile"},
+            {"spec": "market.gainers", "client": "market", "key": "gainers"},
         ]
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
