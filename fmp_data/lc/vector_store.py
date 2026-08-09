@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import date, datetime
 from enum import Enum
+import inspect
 import json
 from logging import Logger
 from pathlib import Path
@@ -186,6 +187,210 @@ class ToolFactory:
             param_fields[param.name] = (field_type, Field(**field_kwargs))
 
         return param_fields
+
+
+def _camel_to_snake(name: str) -> str:
+    """Convert ``periodLength`` / ``sicCode`` to ``period_length`` / ``sic_code``."""
+    parts: list[str] = []
+    for index, char in enumerate(name):
+        if char.isupper() and index:
+            parts.append("_")
+            parts.append(char.lower())
+        else:
+            parts.append(char.lower() if char.isupper() else char)
+    return "".join(parts)
+
+
+#: Endpoint-param name -> ordered method-param candidates.
+#:
+#: Client methods are the call surface MCP already uses
+#: (``fmp_client.<client>.<method>``). Their parameter names are ordinary
+#: Python (``from_date``, ``sic_code``, ``period_length``), while endpoint
+#: declarations keep the wire names (``from``, ``sicCode``, ``periodLength``).
+#: LangChain tools historically mirrored the wire names; #172 maps them so
+#: tools can dispatch through the method without renaming every schema field.
+_ENDPOINT_TO_METHOD_ALIASES: Mapping[str, tuple[str, ...]] = {
+    "from": ("from", "from_date", "start_date"),
+    "to": ("to", "to_date", "end_date"),
+    "start_date": ("start_date", "from_date"),
+    "end_date": ("end_date", "to_date"),
+    # economics.get_economic_indicators renames the wire ``name`` param.
+    "name": ("name", "indicator_name", "query"),
+    # Several clients take a single report/as-of day under a different name.
+    "date": (
+        "date",
+        "report_date",
+        "holdings_date",
+        "target_date",
+        "trade_date",
+    ),
+    # sec.search_company_by_name: endpoint ``company``, method ``name``.
+    "company": ("company", "name"),
+}
+
+
+def method_param_aliases(endpoint_param: str) -> tuple[str, ...]:
+    """Ordered method-parameter names that may correspond to *endpoint_param*."""
+    aliases = list(_ENDPOINT_TO_METHOD_ALIASES.get(endpoint_param, (endpoint_param,)))
+    snake = _camel_to_snake(endpoint_param)
+    if snake not in aliases:
+        aliases.append(snake)
+    return tuple(aliases)
+
+
+def resolve_method_param_name(
+    endpoint_param: str, method_params: set[str]
+) -> str | None:
+    """Pick the method parameter that should receive *endpoint_param*'s value."""
+    for candidate in method_param_aliases(endpoint_param):
+        if candidate in method_params:
+            return candidate
+    return None
+
+
+def resolve_client_method(
+    client: Any, client_name: str, method_name: str
+) -> Callable[..., Any] | None:
+    """Resolve ``client.<client_name>.<method_name>``, or ``None`` if missing.
+
+    Returns ``None`` rather than raising so tool creation still works when the
+    store holds a bare :class:`~fmp_data.base.BaseClient` (or a test double)
+    that has no sub-clients. Dispatch then falls back to ``client.request``.
+    """
+    subclient = getattr(client, client_name, None)
+    if subclient is None:
+        return None
+    method = getattr(subclient, method_name, None)
+    if method is None or not callable(method):
+        return None
+    return cast(Callable[..., Any], method)
+
+
+def resolve_dispatch_method(
+    client: Any,
+    client_name: str,
+    method_name: str,
+    endpoint_param_names: Sequence[str],
+) -> Callable[..., Any] | None:
+    """Resolve a client method only when every required param can be mapped.
+
+    Shape mismatches (e.g. Form 13F year/quarter vs report_date) return
+    ``None`` so the tool falls back to ``client.request`` + the pre-#172
+    endpoint schema.
+    """
+    method = resolve_client_method(client, client_name, method_name)
+    if method is None:
+        return None
+    if not method_dispatch_compatible(method, endpoint_param_names):
+        return None
+    return method
+
+
+def method_dispatch_compatible(
+    method: Callable[..., Any],
+    endpoint_param_names: Sequence[str],
+) -> bool:
+    """True if every required method param can be filled from endpoint params.
+
+    Shape mismatches (e.g. FORM_13F wire year/quarter vs method report_date)
+    cannot be alias-mapped; those tools must keep client.request dispatch.
+    """
+    signature = inspect.signature(method)
+    method_params = {
+        name: param
+        for name, param in signature.parameters.items()
+        if name != "self"
+        and param.kind
+        in (
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            inspect.Parameter.KEYWORD_ONLY,
+        )
+    }
+    covered: set[str] = set()
+    for ep_name in endpoint_param_names:
+        resolved = resolve_method_param_name(ep_name, set(method_params))
+        if resolved is not None:
+            covered.add(resolved)
+    for name, param in method_params.items():
+        if param.default is inspect.Parameter.empty and name not in covered:
+            return False
+    return True
+
+
+def map_tool_kwargs_to_method(
+    method: Callable[..., Any], kwargs: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Translate tool kwargs (endpoint/wire names) onto *method*'s signature.
+
+    ``None`` values are dropped so a method default can apply — that is the
+    half of #172 that makes an LLM-omitted ``from``/``to`` still work on SEC
+    search methods, which default the window to the last 30 days.
+    """
+    signature = inspect.signature(method)
+    method_params = {
+        name
+        for name, param in signature.parameters.items()
+        if name != "self"
+        and param.kind
+        in (
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            inspect.Parameter.KEYWORD_ONLY,
+        )
+    }
+    mapped: dict[str, Any] = {}
+    for endpoint_name, value in kwargs.items():
+        if value is None:
+            continue
+        method_name = resolve_method_param_name(endpoint_name, method_params)
+        if method_name is not None:
+            mapped[method_name] = value
+    return mapped
+
+
+def partition_params_for_method(
+    mandatory_params: Sequence[Any],
+    optional_params: Sequence[Any],
+    method: Callable[..., Any] | None,
+) -> tuple[list[Any], list[Any]]:
+    """Reclassify endpoint params by the client method's defaults (#172).
+
+    When *method* is available, an endpoint-mandatory parameter whose mapped
+    method parameter has a default becomes optional in the tool schema — the
+    method will fill it. Endpoint params that do not resolve to any method
+    parameter are omitted entirely: method dispatch drops unmapped kwargs at
+    invoke time, so advertising them as required would force LLMs to supply
+    values that never reach the API (e.g. revenue ``structure``, employee
+    ``limit``). Without a resolvable method the endpoint lists are returned
+    unchanged (the pre-#172 behaviour).
+    """
+    if method is None:
+        return list(mandatory_params), list(optional_params)
+
+    signature = inspect.signature(method)
+    method_params = {
+        name: param for name, param in signature.parameters.items() if name != "self"
+    }
+    method_names = set(method_params)
+
+    new_mandatory: list[Any] = []
+    new_optional: list[Any] = []
+
+    def place(param: Any) -> None:
+        method_name = resolve_method_param_name(param.name, method_names)
+        if method_name is None:
+            # Cannot reach the method; omit from the tool schema.
+            return
+        method_param = method_params[method_name]
+        if method_param.default is inspect.Parameter.empty:
+            new_mandatory.append(param)
+        else:
+            new_optional.append(param)
+
+    for param in mandatory_params:
+        place(param)
+    for param in optional_params:
+        place(param)
+    return new_mandatory, new_optional
 
 
 class ToolLike(Protocol):
@@ -720,7 +925,14 @@ class EndpointVectorStore:
         return {"status": "success", "data": result}
 
     def create_tool(self, info: EndpointInfo) -> ToolLike:
-        """Create a LangChain tool from endpoint info."""
+        """Create a LangChain tool from endpoint info.
+
+        Dispatch goes through the client method named by
+        ``EndpointSemantics.method_name`` (the same path MCP uses) so
+        method-level defaults and constraints apply. See #172. When the store
+        holds a client without that sub-client (tests, bare ``BaseClient``),
+        dispatch falls back to ``client.request(endpoint, ...)``.
+        """
         if not info:
             raise ValueError("EndpointInfo cannot be None")
         if not info.endpoint or not info.semantics:
@@ -729,10 +941,29 @@ class EndpointVectorStore:
         try:
             semantics = info.semantics
             endpoint = info.endpoint
+            ep_names = [
+                p.name
+                for p in list(endpoint.mandatory_params)
+                + list(endpoint.optional_params or [])
+            ]
+            method = resolve_dispatch_method(
+                self.client,
+                semantics.client_name,
+                semantics.method_name,
+                ep_names,
+            )
+            mandatory_params, optional_params = partition_params_for_method(
+                endpoint.mandatory_params,
+                endpoint.optional_params or [],
+                method,
+            )
 
             def endpoint_func(**kwargs: Any) -> Any:
                 try:
-                    result = self.client.request(endpoint, **kwargs)
+                    if method is not None:
+                        result = method(**map_tool_kwargs_to_method(method, kwargs))
+                    else:
+                        result = self.client.request(endpoint, **kwargs)
                     return self._serialize_result(result)
 
                 except Exception as e:
@@ -740,12 +971,17 @@ class EndpointVectorStore:
                     error_message = str(e)
                     error_type = type(e).__name__
 
-                    if "ValidationError" in error_type:
+                    # ValueError covers method-level constraints the endpoint
+                    # cannot express (e.g. SEC search_industry_classification
+                    # requiring at least one of symbol/cik/sic_code).
+                    if "ValidationError" in error_type or error_type == "ValueError":
                         # Parse validation error for better feedback
                         error_details = str(e).split("\n")
                         field_errors = [
                             line.strip() for line in error_details if "  " in line
                         ]
+                        if not field_errors:
+                            field_errors = [error_message]
 
                         return {
                             "status": "error",
@@ -792,8 +1028,8 @@ class EndpointVectorStore:
             tool_args_model = create_model(
                 f"{semantics.method_name}Args",
                 **ToolFactory.create_parameter_fields(
-                    endpoint.mandatory_params,
-                    endpoint.optional_params or [],
+                    mandatory_params,
+                    optional_params,
                     semantics.parameter_hints,
                 ),
                 __config__=ConfigDict(
