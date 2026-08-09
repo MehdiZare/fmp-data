@@ -7,8 +7,10 @@ from enum import Enum
 from typing import TYPE_CHECKING, Annotated, Any, Generic, Literal, TypeVar
 import warnings
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
+
+from fmp_data.schema import DeprecatedArgModel
 
 if TYPE_CHECKING:
     pass
@@ -251,10 +253,37 @@ class Endpoint(BaseModel, Generic[T]):
     optional_params: list[EndpointParam] | None
     response_model: type[T]
     allow_empty_on_404: bool = True
+    #: .. deprecated:: 2.7
+    #:     Removed in 3.0 (#153). Read by nothing: LangChain builds argument
+    #:     schemas dynamically from ``mandatory_params``/``optional_params``
+    #:     in ``fmp_data.lc.vector_store``, so setting this changes nothing.
+    #:     No endpoint in this package sets it any more.
     arg_model: type[BaseModel] | None = None
     example_queries: list | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _warn_deprecated_arg_model(cls, data: Any) -> Any:
+        """Warn only when a caller actually supplies an ``arg_model``.
+
+        ``arg_model=None`` is the default and stays silent, so passing it
+        explicitly -- as a few tests do to pin the field's absence -- is not
+        flagged as use of the deprecated mechanism.
+        """
+        if isinstance(data, dict) and data.get("arg_model") is not None:
+            warnings.warn(
+                "Endpoint.arg_model is deprecated and will be removed in 3.0. "
+                "It is read by nothing -- LangChain tool schemas are built "
+                "dynamically from mandatory_params/optional_params in "
+                "fmp_data.lc.vector_store. Drop the argument; no behaviour "
+                "depends on it. "
+                "See https://github.com/MehdiZare/fmp-data/issues/153.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        return data
 
     def build_url(self, base_url: str, params: dict[str, Any]) -> str:
         """Build the complete URL for the endpoint based on URL type"""
@@ -372,8 +401,12 @@ class Endpoint(BaseModel, Generic[T]):
         }
 
 
-class BaseSymbolArg(BaseModel):
-    """Base model for any endpoint requiring just a symbol"""
+class BaseSymbolArg(DeprecatedArgModel):
+    """Base model for any endpoint requiring just a symbol.
+
+    .. deprecated:: 2.7
+        Removed in 3.0 -- see :data:`fmp_data.schema.ARG_MODEL_DEPRECATION`.
+    """
 
     model_config = default_model_config
 

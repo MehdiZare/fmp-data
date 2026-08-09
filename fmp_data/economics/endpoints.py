@@ -7,14 +7,7 @@ from fmp_data.economics.models import (
     MarketRiskPremium,
     TreasuryRate,
 )
-from fmp_data.economics.schema import (
-    CommitmentOfTradersArgs,
-    CommitmentOfTradersListArgs,
-    EconomicCalendarArgs,
-    EconomicIndicatorsArgs,
-    EconomicIndicatorType,
-    TreasuryRatesArgs,
-)
+from fmp_data.economics.schema import EconomicIndicatorType
 from fmp_data.models import (
     APIVersion,
     Endpoint,
@@ -55,7 +48,6 @@ TREASURY_RATES: Endpoint = Endpoint(
         ),
     ],
     response_model=TreasuryRate,
-    arg_model=TreasuryRatesArgs,
     example_queries=[
         "What are the current Treasury rates?",
         "Get historical treasury yields",
@@ -89,7 +81,6 @@ ECONOMIC_INDICATORS: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=EconomicIndicator,
-    arg_model=EconomicIndicatorsArgs,
     example_queries=[
         "Get GDP growth rate",
         "Show inflation data",
@@ -131,7 +122,6 @@ ECONOMIC_CALENDAR: Endpoint = Endpoint(
         ),
     ],
     response_model=EconomicEvent,
-    arg_model=EconomicCalendarArgs,
     example_queries=[
         "Show economic calendar",
         "What economic releases are coming up?",
@@ -156,7 +146,6 @@ MARKET_RISK_PREMIUM: Endpoint = Endpoint(
     mandatory_params=[],
     optional_params=[],
     response_model=MarketRiskPremium,
-    arg_model=None,  # No parameters needed
     example_queries=[
         "Get market risk premium data",
         "Show country risk premiums",
@@ -202,7 +191,6 @@ COMMITMENT_OF_TRADERS_REPORT: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=CommitmentOfTradersReport,
-    arg_model=CommitmentOfTradersArgs,
     example_queries=[
         "Get COT report for KC",
         "Show commitment of traders report for NG",
@@ -244,7 +232,6 @@ COMMITMENT_OF_TRADERS_ANALYSIS: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=CommitmentOfTradersAnalysis,
-    arg_model=CommitmentOfTradersArgs,
     example_queries=[
         "Get COT analysis for KC",
         "Show COT analysis for NG between dates",
@@ -262,7 +249,6 @@ COMMITMENT_OF_TRADERS_LIST: Endpoint = Endpoint(
     mandatory_params=[],
     optional_params=[],
     response_model=CommitmentOfTradersListItem,
-    arg_model=CommitmentOfTradersListArgs,
     example_queries=[
         "List COT report symbols",
         "Show all commitment of traders contracts",

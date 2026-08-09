@@ -18,13 +18,6 @@ from fmp_data.market.models import (
     SectorPerformance,
     SectorPESnapshot,
 )
-from fmp_data.market.schema import (
-    AvailableIndexesArgs,
-    BaseSearchArg,
-    ETFListArgs,
-    SearchArgs,
-    StockListArgs,
-)
 from fmp_data.models import (
     APIVersion,
     CompanySymbol,
@@ -51,7 +44,6 @@ STOCK_LIST: Endpoint = Endpoint(
     mandatory_params=[],
     optional_params=[],
     response_model=CompanySymbol,
-    arg_model=StockListArgs,
     example_queries=[
         "Get a list of all available stocks",
         "Show me all tradable company symbols",
@@ -74,7 +66,6 @@ ETF_LIST: Endpoint = Endpoint(
     mandatory_params=[],
     optional_params=[],
     response_model=CompanySymbol,
-    arg_model=ETFListArgs,
     example_queries=[
         "List all available ETFs",
         "Show me tradable ETF symbols",
@@ -98,7 +89,6 @@ AVAILABLE_INDEXES: Endpoint = Endpoint(
     mandatory_params=[],
     optional_params=[],
     response_model=AvailableIndex,
-    arg_model=AvailableIndexesArgs,
     example_queries=[
         "List all available market indexes",
         "Show me tradable market indices",
@@ -145,7 +135,6 @@ SEARCH_COMPANY: Endpoint = Endpoint(
         ),
     ],
     response_model=CompanySearchResult,
-    arg_model=SearchArgs,
     example_queries=[
         "Search for companies with 'tech' in their name",
         "Find companies related to artificial intelligence",
@@ -190,7 +179,6 @@ CIK_SEARCH: Endpoint = Endpoint(
         ),
     ],
     response_model=CIKResult,
-    arg_model=BaseSearchArg,
     example_queries=[
         "Find company with CIK number 320193",
         "Search for company by CIK",
@@ -223,7 +211,6 @@ CUSIP_SEARCH: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=CUSIPResult,
-    arg_model=BaseSearchArg,
     example_queries=[
         "Find company by CUSIP number",
         "Search securities using CUSIP",
@@ -255,7 +242,6 @@ ISIN_SEARCH: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=ISINResult,
-    arg_model=BaseSearchArg,
     example_queries=[
         "Find company by ISIN",
         "Search using ISIN number",
@@ -662,7 +648,6 @@ ALL_SHARES_FLOAT: Endpoint = Endpoint(
     mandatory_params=[],
     optional_params=[],
     response_model=ShareFloat,
-    arg_model=StockListArgs,  # Using StockListArgs since it's a no-parameter endpoint
     example_queries=[
         "Get share float data for all companies",
         "Show market-wide float information",
