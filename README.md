@@ -102,7 +102,7 @@ config = ClientConfig(
     cache=CacheConfig(
         backend="memory",
         default_ttl=300,
-        ttl_overrides={"get_quote": 30},
+        ttl_overrides={"quote": 30},
     ),
 )
 

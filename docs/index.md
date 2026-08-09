@@ -120,7 +120,7 @@ config = ClientConfig(
         backend="file",
         default_ttl=300,
         cache_dir=".cache/fmp-data",
-        ttl_overrides={"get_quote": 30},
+        ttl_overrides={"quote": 30},
     ),
 )
 

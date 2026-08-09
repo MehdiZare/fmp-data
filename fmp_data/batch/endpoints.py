@@ -28,7 +28,6 @@ BATCH_QUOTE: Endpoint = Endpoint(
             name="symbols",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Comma-separated list of stock symbols",
         )
     ],
@@ -53,7 +52,6 @@ BATCH_QUOTE_SHORT: Endpoint = Endpoint(
             name="symbols",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Comma-separated list of stock symbols",
         )
     ],
@@ -78,7 +76,6 @@ BATCH_AFTERMARKET_TRADE: Endpoint = Endpoint(
             name="symbols",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Comma-separated list of stock symbols",
         )
     ],
@@ -103,7 +100,6 @@ BATCH_AFTERMARKET_QUOTE: Endpoint = Endpoint(
             name="symbols",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Comma-separated list of stock symbols",
         )
     ],
@@ -128,7 +124,6 @@ BATCH_EXCHANGE_QUOTE: Endpoint = Endpoint(
             name="exchange",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Exchange code (e.g., NYSE, NASDAQ)",
         )
     ],
@@ -137,7 +132,6 @@ BATCH_EXCHANGE_QUOTE: Endpoint = Endpoint(
             name="short",
             location=ParamLocation.QUERY,
             param_type=ParamType.BOOLEAN,
-            required=False,
             description="Return short quote data only",
         )
     ],
@@ -162,7 +156,6 @@ BATCH_MUTUALFUND_QUOTES: Endpoint = Endpoint(
             name="short",
             location=ParamLocation.QUERY,
             param_type=ParamType.BOOLEAN,
-            required=False,
             description="Return short quote data only",
         )
     ],
@@ -187,7 +180,6 @@ BATCH_ETF_QUOTES: Endpoint = Endpoint(
             name="short",
             location=ParamLocation.QUERY,
             param_type=ParamType.BOOLEAN,
-            required=False,
             description="Return short quote data only",
         )
     ],
@@ -212,7 +204,6 @@ BATCH_COMMODITY_QUOTES: Endpoint = Endpoint(
             name="short",
             location=ParamLocation.QUERY,
             param_type=ParamType.BOOLEAN,
-            required=False,
             description="Return short quote data only",
         )
     ],
@@ -237,7 +228,6 @@ BATCH_CRYPTO_QUOTES: Endpoint = Endpoint(
             name="short",
             location=ParamLocation.QUERY,
             param_type=ParamType.BOOLEAN,
-            required=False,
             description="Return short quote data only",
         )
     ],
@@ -262,7 +252,6 @@ BATCH_FOREX_QUOTES: Endpoint = Endpoint(
             name="short",
             location=ParamLocation.QUERY,
             param_type=ParamType.BOOLEAN,
-            required=False,
             description="Return short quote data only",
         )
     ],
@@ -287,7 +276,6 @@ BATCH_INDEX_QUOTES: Endpoint = Endpoint(
             name="short",
             location=ParamLocation.QUERY,
             param_type=ParamType.BOOLEAN,
-            required=False,
             description="Return short quote data only",
         )
     ],
@@ -311,7 +299,6 @@ BATCH_MARKET_CAP: Endpoint = Endpoint(
             name="symbols",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Comma-separated list of stock symbols",
         )
     ],
@@ -336,7 +323,6 @@ PROFILE_BULK: Endpoint = Endpoint(
             name="part",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Profile data partition identifier",
         )
     ],
@@ -416,7 +402,6 @@ ETF_HOLDER_BULK: Endpoint = Endpoint(
             name="part",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="ETF holdings partition identifier",
         )
     ],
@@ -472,7 +457,6 @@ EARNINGS_SURPRISES_BULK: Endpoint = Endpoint(
             name="year",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=True,
             description="Earnings year",
         )
     ],
@@ -492,14 +476,12 @@ INCOME_STATEMENT_BULK: Endpoint = Endpoint(
             name="year",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=True,
             description="Filing year",
         ),
         EndpointParam(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Reporting period",
             valid_values=["Q1", "Q2", "Q3", "Q4", "FY"],
         ),
@@ -520,14 +502,12 @@ INCOME_STATEMENT_GROWTH_BULK: Endpoint = Endpoint(
             name="year",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=True,
             description="Filing year",
         ),
         EndpointParam(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Reporting period",
             valid_values=["Q1", "Q2", "Q3", "Q4", "FY"],
         ),
@@ -548,14 +528,12 @@ BALANCE_SHEET_STATEMENT_BULK: Endpoint = Endpoint(
             name="year",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=True,
             description="Filing year",
         ),
         EndpointParam(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Reporting period",
             valid_values=["Q1", "Q2", "Q3", "Q4", "FY"],
         ),
@@ -576,14 +554,12 @@ BALANCE_SHEET_STATEMENT_GROWTH_BULK: Endpoint = Endpoint(
             name="year",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=True,
             description="Filing year",
         ),
         EndpointParam(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Reporting period",
             valid_values=["Q1", "Q2", "Q3", "Q4", "FY"],
         ),
@@ -604,14 +580,12 @@ CASH_FLOW_STATEMENT_BULK: Endpoint = Endpoint(
             name="year",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=True,
             description="Filing year",
         ),
         EndpointParam(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Reporting period",
             valid_values=["Q1", "Q2", "Q3", "Q4", "FY"],
         ),
@@ -632,14 +606,12 @@ CASH_FLOW_STATEMENT_GROWTH_BULK: Endpoint = Endpoint(
             name="year",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=True,
             description="Filing year",
         ),
         EndpointParam(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Reporting period",
             valid_values=["Q1", "Q2", "Q3", "Q4", "FY"],
         ),
@@ -660,7 +632,6 @@ EOD_BULK: Endpoint = Endpoint(
             name="date",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="End-of-day date",
         )
     ],
