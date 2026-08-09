@@ -310,6 +310,38 @@ def test_no_endpoint_path_returns_404() -> None:
     )
 
 
+def test_deprecated_endpoints_are_really_dead() -> None:
+    """The exemption above must stay earned, in both directions.
+
+    Skipping deprecated endpoints in the 404 sweep is only honest while they
+    really are dead. Without this, the exemption becomes a place for a mistake
+    to hide: deprecate something prematurely, or have FMP quietly revive a
+    path, and the suite goes quiet either way.
+
+    So the three states are asserted separately. Dead-and-deprecated passes
+    here. Dead-and-not-deprecated fails the test above. Alive-and-deprecated
+    fails *this* one -- and that is worth knowing, because it means the
+    library is telling users to migrate off an endpoint that still works.
+    """
+    alive: list[str] = []
+    for client, name, endpoint in ENDPOINTS:
+        if name not in DEPRECATED_ENDPOINTS:
+            continue
+        version = getattr(endpoint.version, "value", "stable")
+        params = {p.name: _sample(p) for p in endpoint.mandatory_params}
+        status, detail = _call(endpoint, params, parse=client not in CSV_CLIENTS)
+        if status == 200 and isinstance(detail, int) and detail > 0:
+            alive.append(f"{client}.{name}  {version}/{endpoint.path} -> {detail} rows")
+
+    assert not alive, (
+        "endpoints marked deprecated that the API still answers with data. "
+        "Either FMP revived the path and the deprecation should be lifted, or "
+        "it was deprecated on bad evidence -- either way the docstring is "
+        "telling users to migrate away from something that works:\n  "
+        + "\n  ".join(alive)
+    )
+
+
 def test_mandatory_params_are_really_mandatory() -> None:
     """Omitting a declared-mandatory param must not silently succeed.
 
