@@ -193,6 +193,70 @@ def test_every_arg_model_is_marked_deprecated() -> None:
     )
 
 
+def test_every_arg_model_documents_the_deprecation() -> None:
+    """Every model *says* it is deprecated, not just behaves so (#178).
+
+    The runtime ``DeprecationWarning`` only reaches someone who runs the code.
+    ``help(ETFHoldingsArgs)``, an IDE tooltip and the rendered docs all read
+    ``__doc__``, and docstrings are not inherited for documentation purposes,
+    so inheriting ``DeprecatedArgModel`` told a *reader* nothing -- and a
+    reader is the one who can still avoid the migration.
+
+    Companion to ``test_every_arg_model_is_marked_deprecated``: that one pins
+    the behaviour, this one pins the documentation.
+    """
+    models = _arg_models()
+    undocumented = sorted(
+        name
+        for name, model in models.items()
+        if ".. deprecated:: 2.7" not in (model.__doc__ or "")
+    )
+
+    assert not undocumented, (
+        "arg models whose docstring does not mention the deprecation:\n  "
+        + "\n  ".join(undocumented)
+    )
+    assert len(models) >= _MIN_ARG_MODELS, (
+        f"only found {len(models)} arg models, expected >= {_MIN_ARG_MODELS} "
+        "-- did the schema walk stop yielding?"
+    )
+
+
+def test_the_injected_note_keeps_the_models_own_docstring() -> None:
+    """The marker is appended, never substituted.
+
+    An ``__init_subclass__`` that overwrote ``__doc__`` would trade one
+    documentation gap for a worse one: the reader would learn the class is
+    deprecated and lose what it was for.
+    """
+    from fmp_data.investment.schema import ETFHoldingsArgs
+
+    doc = ETFHoldingsArgs.__doc__ or ""
+    assert "ETF holdings" in doc, "the model's own summary was replaced"
+    assert doc.index("ETF holdings") < doc.index(".. deprecated:: 2.7")
+    assert "\n\n.. deprecated:: 2.7" in doc, "the directive must be its own block"
+    assert "3.0" in doc
+
+
+def test_a_root_that_documents_itself_is_left_alone() -> None:
+    """The eight roots wrote their own marker; do not double it up."""
+    from fmp_data.schema import BaseArgModel
+
+    doc = BaseArgModel.__doc__ or ""
+    assert doc.count(".. deprecated:: 2.7") == 1
+
+
+def test_a_subclass_without_a_docstring_still_gets_one() -> None:
+    """``__doc__ = None`` has nothing to append to, so a summary is invented."""
+
+    class _UndocumentedArgs(DeprecatedArgModel):
+        pass
+
+    doc = _UndocumentedArgs.__doc__ or ""
+    assert "_UndocumentedArgs" in doc
+    assert ".. deprecated:: 2.7" in doc
+
+
 @pytest.mark.parametrize(
     ("module", "name", "kwargs"),
     [

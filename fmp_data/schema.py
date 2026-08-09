@@ -1,6 +1,7 @@
 # fmp_data/schema.py
 from datetime import date
 from enum import Enum
+import inspect
 from typing import Any
 import warnings
 
@@ -25,6 +26,17 @@ ARG_MODEL_DEPRECATION = (
     "See https://github.com/MehdiZare/fmp-data/issues/153."
 )
 
+#: Appended to every subclass docstring that does not already carry a
+#: ``.. deprecated::`` directive (#178). Sphinx renders it as an admonition,
+#: ``help()`` prints it, and IDE hover shows it -- the three places a reader
+#: who has not yet written the call looks.
+ARG_MODEL_DOC_NOTE = (
+    ".. deprecated:: 2.7\n"
+    "    Removed in 3.0. The hand-written argument models are read by\n"
+    "    nothing -- see :data:`fmp_data.schema.ARG_MODEL_DEPRECATION` and\n"
+    "    https://github.com/MehdiZare/fmp-data/issues/153."
+)
+
 
 class DeprecatedArgModel(BaseModel):
     """Common base for the deprecated hand-written argument models (#153).
@@ -33,6 +45,14 @@ class DeprecatedArgModel(BaseModel):
     on every validation, so importing the class stays silent while *using*
     one says so. ``mode="before"`` covers ``Model(...)`` and
     ``Model.model_validate(...)`` alike.
+
+    The runtime warning only reaches someone who *runs* the code. Someone
+    reading ``help(ETFHoldingsArgs)``, an IDE tooltip or the rendered docs
+    before writing the call -- the audience most able to avoid the migration
+    entirely -- saw nothing, because docstrings are not inherited for
+    documentation purposes and only the eight roots carried a marker (#178).
+    ``__init_subclass__`` appends one to every subclass instead, so the ~116
+    concrete models and any future one are covered from one place.
 
     Validation is not the only way these models get used: an "argument model"
     a downstream caller kept is most naturally handed to a tool/function
@@ -44,6 +64,27 @@ class DeprecatedArgModel(BaseModel):
 
     Scheduled for removal in 3.0 together with every model that inherits it.
     """
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        """Give every subclass its own ``.. deprecated:: 2.7`` paragraph (#178).
+
+        Rewriting ``__doc__`` at class-creation time keeps *import* silent,
+        which ``test_importing_an_arg_model_stays_silent`` pins: a warning
+        here would fire on ``import fmp_data`` and become noise users filter
+        out wholesale.
+
+        ``inspect.cleandoc`` first, because a class-body docstring carries the
+        source indentation on every line but the first; appending a directive
+        to that produces a paragraph Sphinx reads as part of the preceding
+        block. Subclasses that already state their own ``.. deprecated::``
+        -- the eight roots -- are left exactly as written.
+        """
+        super().__init_subclass__(**kwargs)
+        existing = inspect.cleandoc(cls.__doc__) if cls.__doc__ else ""
+        if ".. deprecated::" in existing:
+            return
+        summary = existing or f"Deprecated argument model ``{cls.__name__}``."
+        cls.__doc__ = f"{summary}\n\n{ARG_MODEL_DOC_NOTE}"
 
     @model_validator(mode="before")
     @classmethod
