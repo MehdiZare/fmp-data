@@ -352,6 +352,12 @@ the API (which rejects a request without them). The date-shaped
 `get_institutional_holdings(symbol, report_date)` are unchanged and remain the
 convenient Python entry points.
 
+Both integrations resolve and bind through one module, `fmp_data.tool_binding`
+— attribute-chain resolution, the wire→method name aliases, the
+required-parameter coverage gate, and the invoke-time kwargs mapping. It lives
+in the core package (no LangChain or MCP import), so the rules cannot drift
+apart between the two (#188).
+
 A catalogue-wide guard (`tests/unit/lc/test_endpoint_method_coverage.py`) fails
 CI on *new* uncovered required method parameters or newly dropped mandatory
 wire fields under method dispatch. Known cases are allowlisted in that test

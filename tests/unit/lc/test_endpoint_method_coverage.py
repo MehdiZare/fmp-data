@@ -25,18 +25,22 @@ This guard walks every ``(endpoint_map x semantics)`` pair that
    new ones fail until reviewed.
 
 Optional wire fields dropped under method dispatch are intentionally out of
-scope here (they are not required for a successful call). MCP always
-registers the live Python method via ``_resolve_attr`` and does not run
-this shape gate, so the two integrations *could* disagree on an allowlisted
-fallback — but as of #188 nothing is allowlisted, so both dispatch through
-the same method for every tool in the catalogue. This guard pins LangChain's
-classification and that every semantics method still resolves on a real
-client.
+scope here (they are not required for a successful call). MCP registers the
+live Python method via :func:`fmp_data.tool_binding.resolve_attr` and does
+not run this shape gate, so the two integrations *could* disagree on an
+allowlisted fallback — but as of #188 nothing is allowlisted, so both
+dispatch through the same method for every tool in the catalogue. This guard
+pins LangChain's classification and that every semantics method still
+resolves on a real client.
+
+The classification helpers come from :mod:`fmp_data.tool_binding`, the same
+module the two integrations bind through. This file used to keep its own
+copies; a guard that reimplements the rule it guards can only ever check
+itself.
 """
 
 from __future__ import annotations
 
-import inspect
 from typing import Any
 
 import pytest
@@ -44,12 +48,14 @@ import pytest
 from fmp_data.client import FMPDataClient
 from fmp_data.lc import resolve_semantics_for_endpoint
 from fmp_data.lc.registry import get_endpoint_groups
-from fmp_data.lc.vector_store import (
+from fmp_data.models import Endpoint, EndpointParam, ParamLocation, ParamType
+from fmp_data.tool_binding import (
+    bindable_params,
     method_dispatch_compatible,
     resolve_client_method,
     resolve_method_param_name,
+    uncovered_required_params,
 )
-from fmp_data.models import Endpoint, EndpointParam, ParamLocation, ParamType
 
 # Floors, not equalities: a walk that stops yielding must fail rather than
 # pass vacuously. Observed on the catalogue at time of writing: 215 triples,
@@ -101,42 +107,11 @@ def _catalog() -> list[tuple[str, Endpoint[Any], Any]]:
     return triples
 
 
-def _method_params(method: Any) -> dict[str, inspect.Parameter]:
-    return {
-        name: param
-        for name, param in inspect.signature(method).parameters.items()
-        if name != "self"
-        and param.kind
-        in (
-            inspect.Parameter.POSITIONAL_OR_KEYWORD,
-            inspect.Parameter.KEYWORD_ONLY,
-        )
-    }
-
-
 def _endpoint_param_names(endpoint: Endpoint[Any]) -> list[str]:
     return [
         p.name
         for p in list(endpoint.mandatory_params) + list(endpoint.optional_params or [])
     ]
-
-
-def _uncovered_required_method_params(
-    method: Any, endpoint_param_names: list[str]
-) -> frozenset[str]:
-    """Required method params with no wire/endpoint source (same gate as dispatch)."""
-    method_params = _method_params(method)
-    covered: set[str] = set()
-    method_names = set(method_params)
-    for ep_name in endpoint_param_names:
-        resolved = resolve_method_param_name(ep_name, method_names)
-        if resolved is not None:
-            covered.add(resolved)
-    return frozenset(
-        name
-        for name, param in method_params.items()
-        if param.default is inspect.Parameter.empty and name not in covered
-    )
 
 
 @pytest.fixture(scope="module")
@@ -199,7 +174,7 @@ def test_request_fallback_set_is_exactly_the_known_mismatches(
                 f"allowlist entry"
             )
         else:
-            uncovered = _uncovered_required_method_params(method, ep_names)
+            uncovered = uncovered_required_params(method, ep_names)
             actual_fallback.add((*method_key, uncovered))
 
     unexpected = sorted(
@@ -251,7 +226,7 @@ def test_mandatory_wire_fields_dropped_under_method_dispatch_are_allowlisted(
             # Request-fallback tools keep the full endpoint schema; drops
             # only apply under method dispatch.
             continue
-        method_names = set(_method_params(method))
+        method_names = set(bindable_params(method))
         for param in endpoint.mandatory_params:
             if resolve_method_param_name(param.name, method_names) is None:
                 actual.add((semantics.client_name, semantics.method_name, param.name))
@@ -306,9 +281,7 @@ def test_classifier_flags_uncovered_required_method_param() -> None:
     endpoint = _fake_endpoint("cik", "year", "quarter")
     ep_names = _endpoint_param_names(endpoint)
     assert not method_dispatch_compatible(method, ep_names)
-    assert _uncovered_required_method_params(method, ep_names) == frozenset(
-        {"report_date"}
-    )
+    assert uncovered_required_params(method, ep_names) == frozenset({"report_date"})
 
 
 def test_classifier_flags_dropped_mandatory_wire_field() -> None:
@@ -320,7 +293,7 @@ def test_classifier_flags_dropped_mandatory_wire_field() -> None:
     endpoint = _fake_endpoint("symbol", "structure", optional=("period",))
     ep_names = _endpoint_param_names(endpoint)
     assert method_dispatch_compatible(method, ep_names)
-    method_names = set(_method_params(method))
+    method_names = set(bindable_params(method))
     dropped = [
         p.name
         for p in endpoint.mandatory_params
@@ -338,4 +311,4 @@ def test_classifier_compatible_when_wire_covers_required_params() -> None:
     endpoint = _fake_endpoint("symbol", optional=("from",))
     ep_names = _endpoint_param_names(endpoint)
     assert method_dispatch_compatible(method, ep_names)
-    assert _uncovered_required_method_params(method, ep_names) == frozenset()
+    assert uncovered_required_params(method, ep_names) == frozenset()

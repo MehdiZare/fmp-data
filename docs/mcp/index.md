@@ -35,6 +35,13 @@ what the API itself requires. Both MCP and LangChain therefore advertise
 `tests/unit/lc/test_endpoint_method_coverage.py` fails CI if a new mismatch
 appears. See the LangChain section of the project README and #188.
 
+Both integrations resolve and bind through `fmp_data.tool_binding`, a core
+module with no LangChain or MCP dependency: attribute-chain resolution, the
+wire→method name aliases, the required-parameter coverage gate and the
+invoke-time kwargs mapping all live there, so the two cannot drift apart. What
+still differs between them is only what each *advertises* — method parameter
+names on MCP, wire names on LangChain.
+
 ## Guides
 
 - Setup for Claude Desktop: [Claude Desktop Setup](claude_desktop.md)
