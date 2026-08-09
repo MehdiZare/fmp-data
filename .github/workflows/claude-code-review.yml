@@ -51,34 +51,3 @@ jobs:
           prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
-
-      # Soft-fail is silent without this step: an expired/broken OAuth token
-      # still marks the job green. Surface the outcome so maintainers notice
-      # months of missing reviews (#187).
-      - name: Report Claude review soft-failure
-        if: always() && steps.claude-review.outcome == 'failure'
-        run: |
-          {
-            echo "## Claude Code Review soft-failed"
-            echo ""
-            echo "The review step exited non-zero but the job continued"
-            echo "(\`continue-on-error: true\`). Product CI in \`ci.yml\` is"
-            echo "unaffected — this check is advisory."
-            echo ""
-            echo "### Likely causes"
-            echo ""
-            echo "1. **Expired or revoked** \`CLAUDE_CODE_OAUTH_TOKEN\` secret"
-            echo "2. Action / plugin failure (rate limit, outage, bad prompt)"
-            echo ""
-            echo "### Restore the OAuth token"
-            echo ""
-            echo "1. Run \`claude setup-token\` (or the current Anthropic OAuth"
-            echo "   flow documented for \`anthropics/claude-code-action\`)."
-            echo "2. Update the repository secret"
-            echo "   \`CLAUDE_CODE_OAUTH_TOKEN\` (Settings → Secrets and"
-            echo "   variables → Actions)."
-            echo "3. Re-run this workflow on an open PR to confirm a review"
-            echo "   comment is posted."
-            echo ""
-            echo "See \`.github/CLAUDE_CODE_REVIEW.md\` for maintainer notes."
-          } >> "$GITHUB_STEP_SUMMARY"
