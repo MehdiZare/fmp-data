@@ -701,7 +701,12 @@ def _report_manifest_findings(
     duplicates: dict[str, list[str]] | None = None,
     collisions: dict[str, list[str]] | None = None,
 ) -> None:
-    """Print what validation found. None of it is fatal on its own."""
+    """Print what validation found.
+
+    Reporting only. Which findings are fatal is
+    :func:`validate_manifest`'s call, and it is made in exactly one place so
+    the verdict cannot disagree with the text printed above it (#161).
+    """
     if unknown:
         print(
             f"Warning: Unknown tools found: {', '.join(unknown)}. "
@@ -716,10 +721,10 @@ def _report_manifest_findings(
             file=sys.stderr,
         )
 
-    # Deliberately does not claim registration refuses this. Under the default
-    # `key` style it does; under `spec`, `_validate_tool_names` skips the
-    # duplicate check entirely, so the second registration silently shadows the
-    # first. Either way the manifest is wrong and the fix is the same.
+    # Registration refuses this under *every* name style since #162: one spec
+    # listed twice is one spec listed twice however names are derived. The
+    # advice deliberately does not mention FMP_MCP_TOOL_NAME_STYLE, which
+    # cannot help and is useless to someone already on `spec`.
     for name, claims in sorted((duplicates or {}).items()):
         print(
             f"Warning: '{name}' is listed more than once ({', '.join(claims)}) "
