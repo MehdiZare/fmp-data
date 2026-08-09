@@ -586,6 +586,61 @@ class TestInstitutionalClientEnhanced:
         assert extract[0].cik == "0001067983"
 
     @patch("httpx.Client.request")
+    def test_get_institutional_ownership_extract_by_quarter(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """Wire-shaped extract method takes year/quarter (#192)."""
+        mock_extract = {
+            "cik": "0001067983",
+            "date": "2023-09-30",
+            "filingDate": "2023-11-15",
+            "acceptedDate": "2023-11-15",
+            "securityCusip": "037833100",
+            "symbol": "AAPL",
+            "nameOfIssuer": "Apple Inc",
+            "titleOfClass": "COM",
+            "shares": 1000000,
+            "sharesType": "SH",
+            "putCallShare": None,
+            "value": 175000000.0,
+            "link": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001067983",
+            "finalLink": "https://www.sec.gov/Archives/edgar/data/1067983/000095012323011029/28498.xml",
+        }
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[mock_extract]
+        )
+
+        extract = (
+            fmp_client.institutional.get_institutional_ownership_extract_by_quarter(
+                "0001067983", year=2023, quarter=3
+            )
+        )
+        assert isinstance(extract, list)
+        assert extract[0].cik == "0001067983"
+
+        sent = mock_request.call_args.kwargs["params"]
+        assert sent["year"] == 2023
+        assert sent["quarter"] == 3
+        assert "date" not in sent
+        assert "report_date" not in sent
+
+    def test_get_institutional_ownership_extract_delegates_to_by_quarter(
+        self, fmp_client
+    ):
+        """report_date convenience derives year/quarter and delegates (#192)."""
+        with patch.object(
+            fmp_client.institutional,
+            "get_institutional_ownership_extract_by_quarter",
+            return_value=[],
+        ) as by_quarter:
+            result = fmp_client.institutional.get_institutional_ownership_extract(
+                "0001067983", report_date=date(2023, 8, 15)
+            )
+
+        assert result == []
+        by_quarter.assert_called_once_with("0001067983", 2023, 3)
+
+    @patch("httpx.Client.request")
     def test_get_institutional_ownership_dates(
         self, mock_request, fmp_client, mock_response
     ):
@@ -654,6 +709,134 @@ class TestInstitutionalClientEnhanced:
         assert performance[0].investor_name == "Berkshire Hathaway Inc"
         _, kwargs = mock_request.call_args
         assert kwargs["params"]["page"] == 0
+        assert "year" not in kwargs["params"]
+        assert "quarter" not in kwargs["params"]
+
+    @patch("httpx.Client.request")
+    def test_get_holder_performance_summary_by_quarter(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """Wire-shaped holder performance takes year/quarter (#192)."""
+        mock_request.return_value = mock_response(status_code=200, json_data=[])
+
+        fmp_client.institutional.get_holder_performance_summary_by_quarter(
+            "0001067983", year=2023, quarter=3, page=1
+        )
+
+        sent = mock_request.call_args.kwargs["params"]
+        assert sent["cik"] == "0001067983"
+        assert sent["year"] == 2023
+        assert sent["quarter"] == 3
+        assert sent["page"] == 1
+        assert "date" not in sent
+        assert "report_date" not in sent
+
+    def test_get_holder_performance_summary_delegates_to_by_quarter(self, fmp_client):
+        """When report_date is set, derive and call by_quarter (#192)."""
+        with patch.object(
+            fmp_client.institutional,
+            "get_holder_performance_summary_by_quarter",
+            return_value=[],
+        ) as by_quarter:
+            result = fmp_client.institutional.get_holder_performance_summary(
+                "0001067983", report_date=date(2023, 9, 30), page=2
+            )
+
+        assert result == []
+        by_quarter.assert_called_once_with("0001067983", 2023, 3, page=2)
+
+    def test_get_holder_performance_summary_without_date_skips_by_quarter(
+        self, fmp_client
+    ):
+        """Without report_date, request is made without year/quarter (#192)."""
+        with patch.object(fmp_client, "request", return_value=[]) as request:
+            with patch.object(
+                fmp_client.institutional,
+                "get_holder_performance_summary_by_quarter",
+            ) as by_quarter:
+                result = fmp_client.institutional.get_holder_performance_summary(
+                    "0001067983", page=0
+                )
+
+        assert result == []
+        by_quarter.assert_not_called()
+        # request is called with endpoint + kwargs; just ensure year/quarter absent
+        call_kwargs = request.call_args.kwargs
+        assert "year" not in call_kwargs
+        assert "quarter" not in call_kwargs
+        assert call_kwargs.get("cik") == "0001067983" or (
+            request.call_args.args and True
+        )
+        # More precise: params passed as kwargs to request
+        assert request.call_args.kwargs["cik"] == "0001067983"
+        assert request.call_args.kwargs["page"] == 0
+
+    @patch("httpx.Client.request")
+    def test_get_institutional_ownership_analytics_by_quarter(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """Wire-shaped analytics method takes year/quarter (#192)."""
+        mock_request.return_value = mock_response(status_code=200, json_data=[])
+
+        fmp_client.institutional.get_institutional_ownership_analytics_by_quarter(
+            "AAPL", year=2024, quarter=1, page=2, limit=50
+        )
+
+        sent = mock_request.call_args.kwargs["params"]
+        assert sent["symbol"] == "AAPL"
+        assert sent["year"] == 2024
+        assert sent["quarter"] == 1
+        assert sent["page"] == 2
+        assert sent["limit"] == 50
+        assert "date" not in sent
+        assert "report_date" not in sent
+
+    def test_get_institutional_ownership_analytics_delegates_to_by_quarter(
+        self, fmp_client
+    ):
+        """report_date convenience derives year/quarter and delegates (#192)."""
+        with patch.object(
+            fmp_client.institutional,
+            "get_institutional_ownership_analytics_by_quarter",
+            return_value=[],
+        ) as by_quarter:
+            result = fmp_client.institutional.get_institutional_ownership_analytics(
+                "AAPL", report_date=date(2024, 3, 31), page=2, limit=50
+            )
+
+        assert result == []
+        by_quarter.assert_called_once_with("AAPL", 2024, 1, page=2, limit=50)
+
+    @patch("httpx.Client.request")
+    def test_get_holder_industry_breakdown_by_quarter(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """Wire-shaped industry breakdown takes year/quarter (#192)."""
+        mock_request.return_value = mock_response(status_code=200, json_data=[])
+
+        fmp_client.institutional.get_holder_industry_breakdown_by_quarter(
+            "0001067983", year=2023, quarter=4
+        )
+
+        sent = mock_request.call_args.kwargs["params"]
+        assert sent["cik"] == "0001067983"
+        assert sent["year"] == 2023
+        assert sent["quarter"] == 4
+        assert "date" not in sent
+
+    def test_get_holder_industry_breakdown_delegates_to_by_quarter(self, fmp_client):
+        """report_date convenience derives year/quarter and delegates (#192)."""
+        with patch.object(
+            fmp_client.institutional,
+            "get_holder_industry_breakdown_by_quarter",
+            return_value=[],
+        ) as by_quarter:
+            result = fmp_client.institutional.get_holder_industry_breakdown(
+                "0001067983", report_date=date(2023, 12, 15)
+            )
+
+        assert result == []
+        by_quarter.assert_called_once_with("0001067983", 2023, 4)
 
     @patch("httpx.Client.request")
     def test_get_symbol_positions_summary(
@@ -700,3 +883,64 @@ class TestInstitutionalClientEnhanced:
         assert len(positions) == 1
         assert isinstance(positions[0], SymbolPositionsSummary)
         assert positions[0].symbol == "AAPL"
+
+    @patch("httpx.Client.request")
+    def test_get_symbol_positions_summary_by_quarter(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """Wire-shaped positions summary takes year/quarter (#192)."""
+        mock_request.return_value = mock_response(status_code=200, json_data=[])
+
+        fmp_client.institutional.get_symbol_positions_summary_by_quarter(
+            "AAPL", year=2024, quarter=2
+        )
+
+        sent = mock_request.call_args.kwargs["params"]
+        assert sent["symbol"] == "AAPL"
+        assert sent["year"] == 2024
+        assert sent["quarter"] == 2
+        assert "date" not in sent
+
+    def test_get_symbol_positions_summary_delegates_to_by_quarter(self, fmp_client):
+        """report_date convenience derives year/quarter and delegates (#192)."""
+        with patch.object(
+            fmp_client.institutional,
+            "get_symbol_positions_summary_by_quarter",
+            return_value=[],
+        ) as by_quarter:
+            result = fmp_client.institutional.get_symbol_positions_summary(
+                "AAPL", report_date=date(2024, 6, 30)
+            )
+
+        assert result == []
+        by_quarter.assert_called_once_with("AAPL", 2024, 2)
+
+    @patch("httpx.Client.request")
+    def test_get_industry_performance_summary_by_quarter(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """Wire-shaped industry performance takes year/quarter (#192)."""
+        mock_request.return_value = mock_response(status_code=200, json_data=[])
+
+        fmp_client.institutional.get_industry_performance_summary_by_quarter(
+            year=2024, quarter=1
+        )
+
+        sent = mock_request.call_args.kwargs["params"]
+        assert sent["year"] == 2024
+        assert sent["quarter"] == 1
+        assert "date" not in sent
+
+    def test_get_industry_performance_summary_delegates_to_by_quarter(self, fmp_client):
+        """report_date convenience derives year/quarter and delegates (#192)."""
+        with patch.object(
+            fmp_client.institutional,
+            "get_industry_performance_summary_by_quarter",
+            return_value=[],
+        ) as by_quarter:
+            result = fmp_client.institutional.get_industry_performance_summary(
+                report_date=date(2024, 3, 31)
+            )
+
+        assert result == []
+        by_quarter.assert_called_once_with(2024, 1)

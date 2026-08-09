@@ -348,14 +348,25 @@ class InstitutionalClient(EndpointGroup):
             params["cik"] = cik
         return self.client.request(INSTITUTIONAL_OWNERSHIP_LATEST, **params)
 
+    def get_institutional_ownership_extract_by_quarter(
+        self, cik: str | int, year: int, quarter: int
+    ) -> list[InstitutionalOwnershipExtract]:
+        """Get filings extract data for a calendar quarter.
+
+        Wire shape of the extract endpoint: ``year`` and ``quarter`` are the
+        query parameters the API takes. :meth:`get_institutional_ownership_extract`
+        is the date-shaped convenience layered over this method.
+        """
+        return self.client.request(
+            INSTITUTIONAL_OWNERSHIP_EXTRACT, cik=cik, year=year, quarter=quarter
+        )
+
     def get_institutional_ownership_extract(
         self, cik: str | int, report_date: date
     ) -> list[InstitutionalOwnershipExtract]:
         """Get filings extract data for a report period end date"""
         year, quarter = self._date_to_year_quarter(report_date)
-        return self.client.request(
-            INSTITUTIONAL_OWNERSHIP_EXTRACT, cik=cik, year=year, quarter=quarter
-        )
+        return self.get_institutional_ownership_extract_by_quarter(cik, year, quarter)
 
     def get_institutional_ownership_dates(
         self, cik: str | int
@@ -363,11 +374,20 @@ class InstitutionalClient(EndpointGroup):
         """Get Form 13F filing dates"""
         return self.client.request(INSTITUTIONAL_OWNERSHIP_DATES, cik=cik)
 
-    def get_institutional_ownership_analytics(
-        self, symbol: str, report_date: date, page: int = 0, limit: int = 100
+    def get_institutional_ownership_analytics_by_quarter(
+        self,
+        symbol: str,
+        year: int,
+        quarter: int,
+        page: int = 0,
+        limit: int = 100,
     ) -> list[InstitutionalOwnershipAnalytics]:
-        """Get filings extract with analytics by holder for a report period end date"""
-        year, quarter = self._date_to_year_quarter(report_date)
+        """Get filings extract with analytics by holder for a calendar quarter.
+
+        Wire shape of the analytics endpoint.
+        :meth:`get_institutional_ownership_analytics` is the date-shaped
+        convenience layered over this method.
+        """
         return self.client.request(
             INSTITUTIONAL_OWNERSHIP_ANALYTICS,
             symbol=symbol,
@@ -377,45 +397,101 @@ class InstitutionalClient(EndpointGroup):
             limit=limit,
         )
 
+    def get_institutional_ownership_analytics(
+        self, symbol: str, report_date: date, page: int = 0, limit: int = 100
+    ) -> list[InstitutionalOwnershipAnalytics]:
+        """Get filings extract with analytics by holder for a report period end date"""
+        year, quarter = self._date_to_year_quarter(report_date)
+        return self.get_institutional_ownership_analytics_by_quarter(
+            symbol, year, quarter, page=page, limit=limit
+        )
+
+    def get_holder_performance_summary_by_quarter(
+        self, cik: str | int, year: int, quarter: int, page: int = 0
+    ) -> list[HolderPerformanceSummary]:
+        """Get holder performance summary for a calendar quarter.
+
+        Wire shape when year/quarter are known. :meth:`get_holder_performance_summary`
+        is the date-shaped convenience; year/quarter are optional there because the
+        API accepts a request with only ``cik`` (and ``page``).
+        """
+        return self.client.request(
+            HOLDER_PERFORMANCE_SUMMARY,
+            cik=cik,
+            year=year,
+            quarter=quarter,
+            page=page,
+        )
+
     def get_holder_performance_summary(
         self, cik: str | int, report_date: date | None = None, page: int = 0
     ) -> list[HolderPerformanceSummary]:
-        """Get holder performance summary for a report period end date"""
-        params: dict[str, str | int] = {"cik": cik, "page": page}
-        if report_date:
-            year, quarter = self._date_to_year_quarter(report_date)
-            params["year"] = year
-            params["quarter"] = quarter
-        return self.client.request(HOLDER_PERFORMANCE_SUMMARY, **params)
+        """Get holder performance summary for a report period end date.
+
+        If ``report_date`` is omitted, the request is sent without year/quarter
+        (the API accepts that). When set, year/quarter are derived and the call
+        delegates to :meth:`get_holder_performance_summary_by_quarter`.
+        """
+        if report_date is None:
+            return self.client.request(HOLDER_PERFORMANCE_SUMMARY, cik=cik, page=page)
+        year, quarter = self._date_to_year_quarter(report_date)
+        return self.get_holder_performance_summary_by_quarter(
+            cik, year, quarter, page=page
+        )
+
+    def get_holder_industry_breakdown_by_quarter(
+        self, cik: str | int, year: int, quarter: int
+    ) -> list[HolderIndustryBreakdown]:
+        """Get holders industry breakdown for a calendar quarter.
+
+        Wire shape of the industry-breakdown endpoint.
+        :meth:`get_holder_industry_breakdown` is the date-shaped convenience.
+        """
+        return self.client.request(
+            HOLDER_INDUSTRY_BREAKDOWN, cik=cik, year=year, quarter=quarter
+        )
 
     def get_holder_industry_breakdown(
         self, cik: str | int, report_date: date
     ) -> list[HolderIndustryBreakdown]:
         """Get holders industry breakdown for a report period end date"""
         year, quarter = self._date_to_year_quarter(report_date)
-        params: dict[str, str | int] = {
-            "cik": cik,
-            "year": year,
-            "quarter": quarter,
-        }
-        return self.client.request(HOLDER_INDUSTRY_BREAKDOWN, **params)
+        return self.get_holder_industry_breakdown_by_quarter(cik, year, quarter)
+
+    def get_symbol_positions_summary_by_quarter(
+        self, symbol: str, year: int, quarter: int
+    ) -> list[SymbolPositionsSummary]:
+        """Get positions summary by symbol for a calendar quarter.
+
+        Wire shape of the symbol-positions-summary endpoint.
+        :meth:`get_symbol_positions_summary` is the date-shaped convenience.
+        """
+        return self.client.request(
+            SYMBOL_POSITIONS_SUMMARY, symbol=symbol, year=year, quarter=quarter
+        )
 
     def get_symbol_positions_summary(
         self, symbol: str, report_date: date
     ) -> list[SymbolPositionsSummary]:
         """Get positions summary by symbol for a report period end date"""
         year, quarter = self._date_to_year_quarter(report_date)
-        params: dict[str, str | int] = {
-            "symbol": symbol,
-            "year": year,
-            "quarter": quarter,
-        }
-        return self.client.request(SYMBOL_POSITIONS_SUMMARY, **params)
+        return self.get_symbol_positions_summary_by_quarter(symbol, year, quarter)
+
+    def get_industry_performance_summary_by_quarter(
+        self, year: int, quarter: int
+    ) -> list[IndustryPerformanceSummary]:
+        """Get industry performance summary for a calendar quarter.
+
+        Wire shape of the industry-performance endpoint.
+        :meth:`get_industry_performance_summary` is the date-shaped convenience.
+        """
+        return self.client.request(
+            INDUSTRY_PERFORMANCE_SUMMARY, year=year, quarter=quarter
+        )
 
     def get_industry_performance_summary(
         self, report_date: date
     ) -> list[IndustryPerformanceSummary]:
         """Get industry performance summary for a report period end date"""
         year, quarter = self._date_to_year_quarter(report_date)
-        params: dict[str, str | int] = {"year": year, "quarter": quarter}
-        return self.client.request(INDUSTRY_PERFORMANCE_SUMMARY, **params)
+        return self.get_industry_performance_summary_by_quarter(year, quarter)
