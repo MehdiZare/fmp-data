@@ -11,6 +11,7 @@ import warnings
 
 import pytest
 
+from fmp_data import helpers as helpers_mod
 from fmp_data.helpers import RemovedEndpointError, deprecated, removed
 
 _THIS_FILE = Path(__file__).resolve()
@@ -380,7 +381,8 @@ class TestDeprecationIsBlamedOnTheCaller:
         The second half of #177: a warning attributed to ``asyncio`` cannot be
         silenced -- or escalated -- by a rule naming the user's own module.
         ``module`` is matched by ``re.compile(...).match`` against the
-        *filename*, so the caller's file is what has to be there.
+        *module name* (not the filename), so the caller's ``__name__`` is what
+        has to be there.
         """
 
         @deprecated("Use new_async instead.")
@@ -396,6 +398,40 @@ class TestDeprecationIsBlamedOnTheCaller:
             )
             with pytest.raises(DeprecationWarning):
                 asyncio.run(old_async())
+
+    def test_first_caller_frame_skips_uvloop_like_internal_modules(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Non-asyncio loop frames (e.g. uvloop under uvicorn) are internal.
+
+        Real uvloop is not a CI dependency; inject fake frames whose
+        ``__name__`` is ``uvloop`` / ``uvloop.*`` so a regression that only
+        skips ``asyncio`` is caught without importing the package.
+        """
+
+        class FakeFrame:
+            __slots__ = ("f_back", "f_globals")
+
+            def __init__(self, module: str, back: "FakeFrame | None" = None) -> None:
+                self.f_globals = {"__name__": module}
+                self.f_back = back
+
+        # Tag the user frame so we can prove identity without comparing a
+        # FakeFrame to FrameType | None (mypy: comparison-overlap / unreachable).
+        user = FakeFrame("myapp.handlers")
+        user.f_globals["marker"] = "user-call-site"
+        # Nested then bare package names, matching both match arms.
+        uvloop_nested = FakeFrame("uvloop.loop", back=user)
+        uvloop_root = FakeFrame("uvloop", back=uvloop_nested)
+        # Immediate caller of _first_caller_frame (helpers itself).
+        start = FakeFrame(helpers_mod.__name__, back=uvloop_root)
+
+        monkeypatch.setattr(sys, "_getframe", lambda _depth=0: start)
+
+        found = helpers_mod._first_caller_frame()
+        assert found is not None
+        assert found.f_globals["__name__"] == "myapp.handlers"
+        assert found.f_globals.get("marker") == "user-call-site"
 
 
 class TestAsyncGeneratorsGetAnAsyncGeneratorWrapper:

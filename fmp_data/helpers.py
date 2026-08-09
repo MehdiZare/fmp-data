@@ -12,16 +12,33 @@ from fmp_data.exceptions import FMPError
 F = TypeVar("F", bound=Callable[..., Any])
 
 
+# Event-loop packages that resume coroutines and must not be blamed for a
+# DeprecationWarning raised inside one. ``asyncio`` is CPython's; ``uvloop``
+# is the drop-in used under uvicorn/FastAPI. Matched as ``name`` or ``name.*``.
+_INTERNAL_LOOP_MODULES: tuple[str, ...] = ("asyncio", "uvloop")
+
+
+def _is_internal_frame_module(module: str) -> bool:
+    """True for this helpers module and known event-loop packages."""
+    if module == __name__:
+        return True
+    for name in _INTERNAL_LOOP_MODULES:
+        if module == name or module.startswith(f"{name}."):
+            return True
+    return False
+
+
 def _first_caller_frame() -> FrameType | None:
-    """The nearest frame outside this module and outside ``asyncio``.
+    """The nearest frame outside this module and outside event-loop packages.
 
     ``stacklevel`` counts *frames*, and there is no fixed number of them
     between a warning raised inside a coroutine body and the code that asked
     for the call (#177). A coroutine body does not run in its caller's stack:
     it runs wherever the event loop resumed it, so ``stacklevel=2`` resolves
     to ``asyncio/events.py`` or ``asyncio/tasks.py`` rather than to user code.
-    Walking outward until the frame stops belonging to this module or to
-    ``asyncio`` lands on the right frame for every shape:
+    Walking outward until the frame stops belonging to this module or to a
+    known loop package (``asyncio``, ``uvloop``) lands on the right frame for
+    every shape:
 
     * ``await client.old()`` inside a user coroutine -- the awaiting frame is
       directly below the wrapper, and is the answer.
@@ -30,6 +47,8 @@ def _first_caller_frame() -> FrameType | None:
       walk skips the four ``asyncio`` frames between them and finds it.
     * ``asyncio.gather(client.old(), ...)`` -- same, via whichever user frame
       is still driving the loop.
+    * A uvloop-driven server (uvicorn/FastAPI) -- same walk, skipping
+      ``uvloop`` / ``uvloop.*`` frames instead of (or as well as) ``asyncio``.
 
     Frames are matched on their module ``__name__`` rather than on filenames:
     ``asyncio``'s C accelerator (``_asyncio.Task.__step``) contributes no
@@ -44,10 +63,7 @@ def _first_caller_frame() -> FrameType | None:
     frame: FrameType | None = sys._getframe(1)
     while frame is not None:
         module = frame.f_globals.get("__name__", "")
-        internal = (
-            module == __name__ or module == "asyncio" or module.startswith("asyncio.")
-        )
-        if not internal:
+        if not _is_internal_frame_module(module):
             return frame
         frame = frame.f_back
     return None
