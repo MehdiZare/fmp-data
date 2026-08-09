@@ -716,9 +716,18 @@ class TestListOutputIsCopyPasteable:
         the default 80 columns the spec column was cut to
         ``company.historica…``, rendering the deprecated tool and its
         replacement as the same string. Folding costs a wrapped line instead.
+
+        Requires ``rich``: the assertions below read the box-drawing
+        characters of ``_print_rich_table``, and ``overflow="fold"`` is a
+        rich setting. Without the extra, ``print_tools_table`` falls through
+        to ``_print_simple_table``, which pads rather than truncating and so
+        cannot exhibit the bug -- the reassembled column came out empty and
+        this failed for the wrong reason in a core-only install.
         """
         from contextlib import redirect_stdout
         import io
+
+        pytest.importorskip("rich", reason="the rich table is what folds")
 
         buffer = io.StringIO()
         with patch.dict(os.environ, {"COLUMNS": "80", "TERM": "dumb"}):
