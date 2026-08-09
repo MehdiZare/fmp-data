@@ -270,13 +270,32 @@ def _startable_catalog(
 
 
 def _validated_specs(tools: list[str], available_specs: set[str]) -> list[str]:
-    """An explicit selection, minus entries that name nothing in the catalog."""
+    """An explicit selection, minus entries that name nothing in the catalog.
+
+    Deprecated specs are kept -- an explicit ask is honoured -- but reported,
+    so the one path that can still put a deprecated key in a manifest says so
+    just as the default path does. Bare keys are not accepted here yet; see
+    issue #160.
+    """
+    from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
+
     selected: list[str] = []
     for tool in tools:
         if tool not in available_specs:
-            print(f"Warning: Unknown tool '{tool}', skipping", file=sys.stderr)
-        else:
-            selected.append(tool)
+            print(
+                f"Warning: Unknown tool '{tool}', skipping. "
+                "Run `fmp-mcp list` to see available tools.",
+                file=sys.stderr,
+            )
+            continue
+        replacement = DEPRECATED_TOOLS.get(tool)
+        if replacement is not None:
+            print(
+                f"Warning: '{tool}' is deprecated and is removed in 3.0; "
+                f"including it as asked. Use {replacement} instead.",
+                file=sys.stderr,
+            )
+        selected.append(tool)
     return selected
 
 
@@ -287,12 +306,20 @@ def _add_defaults(
 
     A default must not break a manifest by colliding with a spec the caller
     explicitly asked for, so it is skipped and noted rather than added.
+
+    Deprecated specs are skipped here too. The two sets are disjoint today, so
+    this is dead defence -- but it runs *after* ``_startable_catalog`` has
+    stripped deprecations, and without it a future deprecated entry in
+    ``DEFAULT_TOOLS`` would be silently reinstated into a manifest the same
+    release just cleaned.
     """
-    from fmp_data.mcp.tools_manifest import DEFAULT_TOOLS
+    from fmp_data.mcp.tools_manifest import DEFAULT_TOOLS, DEPRECATED_TOOLS
 
     claimed = {_tool_name(spec): spec for spec in selected}
     for tool in DEFAULT_TOOLS:
         if tool in selected or tool not in available_specs:
+            continue
+        if tool in DEPRECATED_TOOLS:
             continue
         name = _tool_name(tool)
         owner = claimed.get(name)
@@ -380,7 +407,7 @@ def generate_manifest(
     for tool in sorted(selected_tools):
         manifest_content += f'    "{tool}",\n'
 
-    manifest_content += "]"
+    manifest_content += "]\n"
 
     # Save manifest
     output_path.write_text(manifest_content)
@@ -436,10 +463,60 @@ def _classify_manifest_entries(
     return unknown, ambiguous, deprecated
 
 
+def _manifest_name_clashes(
+    entries: list[str],
+) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+    """Entries that would advertise one tool name twice, split by cause.
+
+    A clash is a property of the manifest as a whole, so it cannot fall out
+    of the per-entry classification above -- which is why ``validate`` was
+    blind to it while ``generate`` was not. Entries are resolved first
+    because a bare key and its qualified spec are the same tool:
+    ``["profile", "company.profile"]`` fails at registration, and comparing
+    the strings as written would miss it.
+
+    Returns
+    -------
+    tuple[dict[str, list[str]], dict[str, list[str]]]
+        ``(duplicates, collisions)``, each advertised name to the entries as
+        the user wrote them. The two need different advice: a duplicate is
+        one tool named twice and the fix is to drop one, while a collision is
+        two genuinely different tools that ``FMP_MCP_TOOL_NAME_STYLE=spec``
+        can serve at once.
+    """
+    from fmp_data.mcp import tool_loader
+
+    key_to_spec = tool_loader.build_key_to_spec(list_available_tools())
+
+    by_name: dict[str, list[str]] = {}
+    specs_by_name: dict[str, set[str]] = {}
+    for entry in entries:
+        resolution = tool_loader.resolve_tool_spec(entry, key_to_spec)
+        if resolution.spec is None:
+            continue  # unknown or ambiguous; already reported as such
+        name = _tool_name(resolution.spec)
+        by_name.setdefault(name, []).append(entry)
+        specs_by_name.setdefault(name, set()).add(resolution.spec)
+
+    duplicates = {
+        name: claims
+        for name, claims in by_name.items()
+        if len(claims) > 1 and len(specs_by_name[name]) == 1
+    }
+    collisions = {
+        name: claims
+        for name, claims in by_name.items()
+        if len(claims) > 1 and len(specs_by_name[name]) > 1
+    }
+    return duplicates, collisions
+
+
 def _report_manifest_findings(
     unknown: list[str],
     ambiguous: list[str],
     deprecated: list[tuple[str, str]],
+    duplicates: dict[str, list[str]] | None = None,
+    collisions: dict[str, list[str]] | None = None,
 ) -> None:
     """Print what validation found. None of it is fatal on its own."""
     if unknown:
@@ -449,6 +526,23 @@ def _report_manifest_findings(
         print(
             "Warning: bare keys claimed by more than one client, which fail to "
             f"resolve at registration: {'; '.join(ambiguous)}",
+            file=sys.stderr,
+        )
+
+    for name, claims in sorted((duplicates or {}).items()):
+        print(
+            f"Warning: '{name}' is listed more than once ({', '.join(claims)}); "
+            "registration refuses a repeated tool name under either name "
+            "style. Drop all but one.",
+            file=sys.stderr,
+        )
+
+    for name, claims in sorted((collisions or {}).items()):
+        print(
+            f"Warning: '{name}' is claimed by two different tools "
+            f"({', '.join(claims)}), which fails to register under the "
+            "default FMP_MCP_TOOL_NAME_STYLE=key. Set "
+            "FMP_MCP_TOOL_NAME_STYLE=spec to serve both, or drop one side.",
             file=sys.stderr,
         )
 
@@ -509,7 +603,9 @@ def validate_manifest(manifest_path: str | Path) -> bool:
             print(f"Error: Tool spec must be string, got {type(tool)}", file=sys.stderr)
             return False
 
-    _report_manifest_findings(*_classify_manifest_entries(tools))
+    _report_manifest_findings(
+        *_classify_manifest_entries(tools), *_manifest_name_clashes(tools)
+    )
 
     print(f"Manifest is valid with {len(tools)} tools")
     return True

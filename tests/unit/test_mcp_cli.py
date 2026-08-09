@@ -359,6 +359,76 @@ class TestMCPCLI:
         assert result is False
 
 
+class TestValidateSeesWhatRegistrationSees:
+    """``validate`` must not stay silent about a registration failure.
+
+    #149 removed the drift between the two per-entry rules. Name clashes are
+    the remaining asymmetry: they are a property of the manifest as a whole,
+    ``generate`` learned to report them and ``validate`` had not, so the very
+    file ``generate`` warned about validated without a word. Exiting zero on
+    these is tracked separately -- see the issue linked from the CHANGELOG --
+    but staying silent is not defensible either way.
+    """
+
+    @staticmethod
+    def _validate(tmp_path: Path, entries: list[str]) -> str:
+        from fmp_data.mcp.cli import validate_manifest
+
+        path = tmp_path / "manifest.py"
+        path.write_text(f"TOOLS = {entries!r}\n")
+        validate_manifest(path)
+        return path.name
+
+    def test_two_tools_claiming_one_name_are_reported(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The exact pair ``generate`` refuses to put in one manifest."""
+        self._validate(tmp_path, ["alternative.crypto_quotes", "batch.crypto_quotes"])
+
+        err = capsys.readouterr().err
+        assert "crypto_quotes" in err
+        assert "alternative.crypto_quotes" in err
+        assert "batch.crypto_quotes" in err
+        assert "FMP_MCP_TOOL_NAME_STYLE=spec" in err
+
+    def test_a_bare_key_and_its_own_spec_count_as_one_tool_twice(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Resolution has to happen before the comparison.
+
+        ``profile`` and ``company.profile`` are the same tool, so registration
+        refuses the pair -- but they are different strings, and comparing the
+        entries as written would see nothing. The advice differs too: no name
+        style serves one tool twice, so it must not suggest one.
+        """
+        self._validate(tmp_path, ["profile", "company.profile"])
+
+        err = capsys.readouterr().err
+        assert "listed more than once" in err
+        assert "FMP_MCP_TOOL_NAME_STYLE=spec" not in err
+
+    def test_a_clean_manifest_says_nothing(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Non-vacuity: the warnings above must not fire on anything valid."""
+        self._validate(tmp_path, ["company.profile", "market.gainers"])
+
+        assert capsys.readouterr().err == ""
+
+    def test_a_generated_manifest_draws_no_clash_warning(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The two halves of #148/#149 must agree on the same file."""
+        from fmp_data.mcp.cli import generate_manifest, validate_manifest
+
+        path = tmp_path / "generated.py"
+        generate_manifest(path)
+        capsys.readouterr()
+
+        assert validate_manifest(path) is True
+        assert capsys.readouterr().err == ""
+
+
 class TestMCPMain:
     """Test suite for MCP __main__ module."""
 
@@ -648,3 +718,49 @@ class TestGeneratedManifestIsUsable:
         assert "alternative.crypto_quotes" in header
         # Defaults still arrived -- otherwise this passes for the wrong reason.
         assert len(tools) > 1
+
+    def test_an_explicitly_requested_deprecated_key_is_kept_but_reported(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The one path that can still put a deprecated key in a manifest.
+
+        Honouring the ask and staying silent about it would make ``--tools``
+        the only place in the CLI that does -- conspicuous now that the
+        default path explains every deprecation it drops.
+        """
+        from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
+
+        spec, replacement = next(iter(sorted(DEPRECATED_TOOLS.items())))
+        tools, _ = self._generate(tmp_path, tools=[spec], include_defaults=False)
+
+        assert tools == [spec], "an explicit ask is honoured, not thinned"
+        err = capsys.readouterr().err
+        assert spec in err
+        assert replacement in err
+
+    def test_defaults_never_reinstate_a_deprecated_spec(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """``_add_defaults`` runs after deprecations were stripped.
+
+        The two tables are disjoint today, so only an injected overlap can
+        exercise this -- but without the guard a future deprecated entry in
+        ``DEFAULT_TOOLS`` would be silently put back into the manifest the
+        same release just cleaned it out of.
+        """
+        from fmp_data.mcp import tools_manifest
+
+        spec = next(iter(sorted(tools_manifest.DEPRECATED_TOOLS)))
+        monkeypatch.setattr(
+            tools_manifest, "DEFAULT_TOOLS", [*tools_manifest.DEFAULT_TOOLS, spec]
+        )
+
+        tools, _ = self._generate(tmp_path)
+
+        assert spec not in tools
+
+    def test_generated_manifest_ends_with_a_newline(self, tmp_path: Path) -> None:
+        """A generated file is someone's source file; POSIX-terminate it."""
+        _, content = self._generate(tmp_path)
+
+        assert content.endswith("]\n")
