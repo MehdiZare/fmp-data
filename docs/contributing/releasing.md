@@ -89,6 +89,34 @@ CONFLICTING PRs still reach the check) and, when present on the PR base,
 overlays the composite action from `origin/<base>` so hotfixes cut from an
 older tip cannot omit the contract.
 
+#### Guard base-pin lag for `check-pr-mergeable` (#218)
+
+Guard’s overlay is intentional and hotfix-safe (#210): a head branch that
+rewrites or weakens `check.sh` still runs the contract pinned on the PR
+**base** (typically `main` for release PRs). The tradeoff is **lag**:
+
+| Workflow | Which action copy runs | When a contract change applies |
+|---|---|---|
+| **Guard-Main-Origin** (`dev`/`hotfix-*` → `main`) | `origin/<base>` when that path exists; else head (bootstrap). Guard only targets `main`, so base is **always** `main`. | After the change is **merged into `main`** |
+| **Release-PR** (push to `dev`) | Tip of the workflow run (checkout of `dev`) | As soon as the change is **on `dev`** |
+
+Implementation: `.github/workflows/guard-main-origin.yml` step “Prefer
+mergeability action from PR base” runs
+`git checkout origin/${BASE_REF} -- .github/actions/check-pr-mergeable`
+when that path exists on the base.
+
+So tightenings such as “require `mergeable=true`” (#213) or explicit
+`tostring` extraction (#216) land on Release-PR immediately once they reach
+`dev`, but Guard keeps the previous contract until the same change is on
+`main` (normally via the next release PR). Operators reading a red/green
+mismatch between Guard and Release-PR after a contract change on `dev` only
+should check whether `main` still has the older action.
+
+**Pin strategy:** do **not** silently allow head to override base for minor
+contract updates. Changing that tradeoff (forward-compatible pin, dual-run,
+etc.) is a separate decision; document and review it rather than flipping
+the overlay in a hotfix-shaped PR.
+
 ### Related automation (not the release PR itself)
 
 - **Dev Release** (`dev-release.yml`) publishes a unique TestPyPI build on
