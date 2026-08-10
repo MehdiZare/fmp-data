@@ -14,9 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check if PR is from allowed branch
+        env:
+          # Pass through env to avoid script-injection on github.head_ref.
+          BRANCH: ${{ github.head_ref }}
         run: |
-          BRANCH="${{ github.head_ref }}"
-
           # Allow PRs from dev, hotfix, updates, or release branches
           if [[ "$BRANCH" == "dev" ]] || [[ "$BRANCH" =~ ^hotfix-.* ]] || [[ "$BRANCH" =~ ^updates-.* ]] || [[ "$BRANCH" == "release/dev-to-main" ]]; then
             echo "✅ Origin branch '$BRANCH' is allowed"
@@ -24,3 +25,56 @@ jobs:
             echo "::error::Main only accepts PRs from 'dev', 'hotfix-*', 'updates-*', or 'release/dev-to-main' branches. Current branch: $BRANCH"
             exit 1
           fi
+
+      - name: Fail when the PR has merge conflicts
+        # A CONFLICTING PR gets no merge ref. pull_request workflows that need
+        # it are simply absent from the checks list — quiet, not red — which is
+        # how a release PR can look mergeable-by-default while CI never ran.
+        # Turn that silent gap into a red X. See #202.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # GitHub computes mergeability asynchronously; UNKNOWN is common for
+          # a few seconds after open/sync. Retry before deciding.
+          for attempt in 1 2 3 4 5 6; do
+            # mergeable: true | false | null
+            # mergeable_state: clean | dirty | unstable | blocked | unknown | ...
+            STATE=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" \
+              --jq '[.mergeable, .mergeable_state] | @tsv')
+            MERGEABLE=$(echo "$STATE" | cut -f1)
+            MSTATE=$(echo "$STATE" | cut -f2)
+            echo "Attempt ${attempt}: mergeable=${MERGEABLE} mergeable_state=${MSTATE}"
+
+            case "$MSTATE" in
+              dirty)
+                echo "::error::PR #${PR_NUMBER} has merge conflicts (mergeable_state=dirty)."
+                echo "A conflicting PR has no merge ref, so other checks may never appear."
+                echo "Merge or rebase the head branch onto the latest main, then re-push."
+                echo "If this is a release PR after a squash, merge the Sync-Main-to-Dev"
+                echo "reachability PR first (#202)."
+                exit 1
+                ;;
+              unknown|"")
+                if [ "$MERGEABLE" = "false" ]; then
+                  echo "::error::PR #${PR_NUMBER} is not mergeable."
+                  exit 1
+                fi
+                sleep 5
+                continue
+                ;;
+              *)
+                if [ "$MERGEABLE" = "false" ]; then
+                  echo "::error::PR #${PR_NUMBER} is not mergeable (mergeable_state=${MSTATE})."
+                  exit 1
+                fi
+                echo "✅ PR is not conflicting (mergeable=${MERGEABLE}, mergeable_state=${MSTATE})"
+                exit 0
+                ;;
+            esac
+          done
+
+          echo "::warning::mergeable_state still unknown after retries; not blocking the job"

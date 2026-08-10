@@ -30,17 +30,50 @@ MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
 
 ## Automated Release Process
 
-### GitHub Actions Workflow
+### Happy path (dev → main)
 
-Our release process is fully automated using GitHub Actions:
+1. Land work on `dev` as usual.
+2. The **Release-PR** workflow runs on every push to `dev` and opens (or
+   reuses) a PR with head `dev` and base `main`. It fails loudly if `main` is
+   not an ancestor of `dev` — it never reports success for work it did not do
+   (#203).
+3. Add **exactly one** of `release:major` / `release:minor` / `release:patch`
+   to that PR.
+4. The **Publish-to-TestPyPI** workflow builds a unique
+   `X.Y.Z.dev{run_id}{run_attempt}` version for *each* push, uploads it, and
+   comments the version **and the commit SHA** on the PR. Install the version
+   in the latest comment — older comments point at stale artifacts (#204).
+5. Merge the release PR into `main` once CI is green and TestPyPI checks out.
+6. The **Release** workflow tags, publishes to PyPI, and creates the GitHub
+   release.
+7. The **Sync-Main-to-Dev** workflow fires on the push to `main`. It checks
+   *reachability* (`git merge-base --is-ancestor origin/main origin/dev`), not
+   content equality. After a squash-merge the trees match but the histories
+   have diverged; the workflow opens a PR that records a history-only merge
+   (`merge -s ours`) so the *next* release PR stays MERGEABLE and gets full
+   CI (#202). **Merge that sync PR with a merge commit** — squashing it would
+   recreate the divergence.
 
-1. **PR Merge**: When a PR is merged to `main`
+### Why three workflows keep each other honest
+
+| Failure mode | What used to happen | What happens now |
+|---|---|---|
+| Squash-merge `dev` → `main` | Content matched, sync no-op; next release PR opened CONFLICTING with no CI | Sync opens a reachability PR immediately after the release |
+| Release-PR automation | `create-pull-request` with no working-tree changes exited green and created nothing | `gh pr create --base main --head dev`, or a red failure if histories diverged |
+| TestPyPI re-run on the same PR | Version keyed on PR number + `skip-existing: true` → first build wins forever | Unique version per run; `skip-existing: false`; comment includes commit SHA |
+
+`Guard-Main-Origin` also fails the PR when `mergeable_state=dirty`, so a
+conflicting release PR shows a red X instead of a hole in the checks list.
+
+### GitHub Actions Workflow (on merge to main)
+
+1. **PR Merge**: When a labeled release PR is merged to `main`
 2. **Label Detection**: Action reads PR labels to determine version bump
 3. **Version Calculation**: New version is calculated based on current version + bump type
 4. **Git Tagging**: New git tag is created with the version
 5. **Release Creation**: GitHub release is created with auto-generated notes
 6. **PyPI Publishing**: Package is built and published to PyPI
-7. **Documentation**: Updated docs are deployed
+7. **History sync**: Sync-Main-to-Dev restores `main` as an ancestor of `dev`
 
 ### Required PR Labels
 

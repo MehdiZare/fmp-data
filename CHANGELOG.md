@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- **CI: three green-checks-for-work-that-did-not-happen in the release path** (#202, #203, #204).
+  - **#202 — `Sync-Main-to-Dev` now keys on history reachability, not content.** After a squash-merge release, `dev` and `main` share a tree but not an ancestor link; the old `git diff` guard saw an empty delta and correctly did nothing, so the *next* release PR opened CONFLICTING and got no merge-ref CI. The workflow now runs `git merge-base --is-ancestor origin/main origin/dev` and, when false, opens a `sync/main-to-dev` PR that records a history-only merge (`merge -s ours` when trees match) or a real merge (when a hotfix landed on `main`). `Guard-Main-Origin` also fails when `mergeable_state=dirty`, so a conflicting release PR is a red X rather than a hole in the checks list.
+  - **#203 — `Release-PR` actually opens a `dev → main` PR.** It previously used `peter-evans/create-pull-request` with no working-tree changes, which always concluded "branch is not ahead of base" and exited green while creating nothing (both 2.5.0 and 2.6.0 were cut through hand-made PRs). It now calls `gh pr create --base main --head dev` when no such PR is open, and fails if `main` is not an ancestor of `dev` instead of opening a silent CONFLICTING PR.
+  - **#204 — TestPyPI versions are unique per run, and collisions fail.** The test version was `${NEW_VERSION}.dev${PR_NUMBER}` with `skip-existing: true`, so the first push to a release PR published forever and every later green check re-advertised a stale wheel (observed on #201: `2.6.0.dev201` kept serving the pre-`a5badb4` build). The version is now `${NEW_VERSION}.dev${run_id}${run_attempt}`, `skip-existing` is off for the PR path, and the bot comment states the commit SHA the artifact was built from.
+
 ## [2.6.0] - 2026-08-09
 
 Released from `dev`. A correctness-and-contracts release: the LangChain and MCP
