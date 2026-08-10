@@ -78,13 +78,16 @@ MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
 | Release-PR automation | `create-pull-request` with no working-tree changes exited green and created nothing | `gh pr create --base main --head dev`, or a red failure if histories diverged |
 | TestPyPI re-run on the same PR | Version keyed on PR number + `skip-existing: true` → first build wins forever | Unique version per run; `skip-existing: false`; sdist version asserted; comment includes commit SHA |
 
-`Guard-Main-Origin` also fails the PR when `mergeable_state=dirty` **or** when
-mergeability never leaves `unknown` after retries, so a conflicting or
-unresolved release PR shows a red X instead of a hole in the checks list.
-Both workflows share `.github/actions/check-pr-mergeable` for that check
-(#210). Guard checks out the PR **head** (so CONFLICTING PRs still reach the
-check) and, when present on the PR base, overlays the composite action from
-`origin/<base>` so hotfixes cut from an older tip cannot omit the contract.
+`Guard-Main-Origin` also fails the PR when `mergeable_state=dirty`, when
+`mergeable` is not `true` (including empty/JSON-`null`), **or** when
+mergeability never leaves `unknown` after retries, so a conflicting,
+unproven, or unresolved release PR shows a red X instead of a hole in the
+checks list (#207, #213). Both workflows share
+`.github/actions/check-pr-mergeable` for that check (#210); Test-Matrix runs
+its mock matrix on every PR (#212). Guard checks out the PR **head** (so
+CONFLICTING PRs still reach the check) and, when present on the PR base,
+overlays the composite action from `origin/<base>` so hotfixes cut from an
+older tip cannot omit the contract.
 
 ### Related automation (not the release PR itself)
 

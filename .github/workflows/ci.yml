@@ -165,10 +165,14 @@ jobs:
       - name: 🔍 ShellCheck composite action scripts
         run: |
           set -euo pipefail
+          # Fail closed: expected action scripts must exist (do not soft-pass
+          # if .github/actions is empty or the mergeability harness moved).
+          test -f .github/actions/check-pr-mergeable/check.sh
+          test -f .github/actions/check-pr-mergeable/test-check.sh
           mapfile -t scripts < <(find .github/actions -type f -name '*.sh' | sort)
           if [ "${#scripts[@]}" -eq 0 ]; then
-            echo "No .github/actions/**/*.sh scripts found."
-            exit 0
+            echo "::error::No .github/actions/**/*.sh scripts found; shellcheck gate cannot run."
+            exit 1
           fi
           sudo apt-get update -qq
           sudo apt-get install -y -qq shellcheck

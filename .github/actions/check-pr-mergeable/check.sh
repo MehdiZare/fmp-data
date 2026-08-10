@@ -117,7 +117,9 @@ while [ "$attempt" -le "$MAX_ATTEMPTS" ]; do
           write_outputs "$MERGEABLE" "$MSTATE"
           write_summary "failed (mergeable=false, state=${MSTATE})" "$MERGEABLE" "$MSTATE"
         else
-          echo "::error::PR #${PR_NUMBER} mergeable is empty/null with mergeable_state=${MSTATE}; refusing green without mergeable=true (#213)."
+          # Empty field is the real JSON-null encoding from jq @tsv; any other
+          # non-true token is also refuse-green (defensive, #213).
+          echo "::error::PR #${PR_NUMBER} mergeable='${MERGEABLE:-}' (not true) with mergeable_state=${MSTATE}; refusing green without mergeable=true (#213)."
           write_outputs "${MERGEABLE:-null}" "$MSTATE"
           write_summary "failed (mergeable not true, state=${MSTATE})" "${MERGEABLE:-null}" "$MSTATE"
         fi
@@ -131,10 +133,10 @@ while [ "$attempt" -le "$MAX_ATTEMPTS" ]; do
   esac
 done
 
-# Fail closed: if mergeability never resolved, we cannot prove the PR is
-# non-conflicting. Exiting 0 here would reintroduce a green check while
-# merge-ref-based jobs may still be absent — the same hole this step exists
-# to close. See #202 / #207 / #210.
+# Fail closed: if mergeability never resolved to a non-unknown state with
+# mergeable=true, we cannot prove the PR is mergeable. Exiting 0 here would
+# reintroduce a green check while merge-ref-based jobs may still be absent —
+# the same hole this step exists to close. See #202 / #207 / #210 / #213.
 echo "::error::PR #${PR_NUMBER} mergeable_state still unknown after ${MAX_ATTEMPTS} attempt(s); refusing to report green."
 echo "Re-run this check, or inspect PR #${PR_NUMBER} mergeability in the UI."
 write_outputs "${MERGEABLE:-null}" "${MSTATE:-unknown}"

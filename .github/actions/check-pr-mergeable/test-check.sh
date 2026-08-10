@@ -73,11 +73,35 @@ run_case "unknown-forever" 1 $'null\tunknown' $'null\tunknown' $'null\tunknown'
 run_case "false-blocked" 1 $'false\tblocked'
 run_case "false-unknown" 1 $'false\tunknown'
 run_case "unstable-ok" 0 $'true\tunstable'
-# #213: empty/null mergeable with a resolved non-dirty state must not go green
+# #213: empty/null mergeable with a resolved non-dirty state must not go green.
+# Production: jq @tsv encodes JSON null as an empty TSV field ($'\tclean').
+# empty-*-fails is the production-faithful shape; null-*-fails is defensive
+# for a literal "null" token if extraction ever changes.
 run_case "null-clean-fails" 1 $'null\tclean'
 run_case "empty-clean-fails" 1 $'\tclean'
 run_case "null-blocked-fails" 1 $'null\tblocked'
 run_case "true-blocked-ok" 0 $'true\tblocked'
+
+# Lock the production jq @tsv extraction used by check.sh so CI fails if the
+# null→empty-field encoding (the #213 ambiguity) drifts without a mock update.
+# No network: pure jq on a fixed JSON blob.
+jq_tsv_null=$(jq -rn '([null, "clean"] | @tsv)')
+if [ "$jq_tsv_null" = $'\tclean' ]; then
+  echo "PASS: jq-tsv-null-empty-field (JSON null → empty TSV field)"
+  pass=$((pass + 1))
+else
+  printf 'FAIL: jq-tsv-null-empty-field expected empty\\tclean got %q\n' "$jq_tsv_null"
+  fail=$((fail + 1))
+fi
+# Use JSON true (not string) to mirror REST .mergeable boolean.
+jq_tsv_true=$(jq -rn '([true, "clean"] | @tsv)')
+if [ "$jq_tsv_true" = $'true\tclean' ]; then
+  echo "PASS: jq-tsv-true-field"
+  pass=$((pass + 1))
+else
+  printf 'FAIL: jq-tsv-true-field expected true\\tclean got %q\n' "$jq_tsv_true"
+  fail=$((fail + 1))
+fi
 
 # invalid max via env (before gh is called)
 set +e
