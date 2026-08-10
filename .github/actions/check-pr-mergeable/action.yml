@@ -1,5 +1,5 @@
 # Shared fail-closed PR mergeability check for Guard-Main-Origin and
-# Release-PR. See #202, #207, #210, #213.
+# Release-PR. See #202, #207, #210, #213, #218.
 #
 # Contract (do not weaken):
 # - Poll REST mergeable / mergeable_state via gh api
@@ -9,6 +9,12 @@
 # - Exit 0 only when mergeable=true (not merely not-false / not-dirty)
 #   and mergeable_state is a resolved non-dirty value (clean, unstable,
 #   blocked, …). "Not proven conflicting" is not enough (#213).
+#
+# Guard base-pin lag (#218): Guard-Main-Origin overlays this directory from
+# origin/<base> when present (hotfix-safe). Contract changes therefore apply
+# to Guard only after they ship to the PR base (typically main). Release-PR
+# uses the tip workflow on dev immediately. See docs/contributing/releasing.md
+# ("Guard base-pin lag"). Do not silently relax the pin for "minor" updates.
 name: Check PR mergeable
 description: >
   Fail-closed REST mergeability check with retries. Exits 0 only when
