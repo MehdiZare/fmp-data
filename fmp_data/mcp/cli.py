@@ -23,6 +23,34 @@ except ImportError:
     HAS_RICH = False
 
 
+def _console() -> Any:
+    """Build a :class:`rich.console.Console` that honours ``COLUMNS`` / ``LINES``.
+
+    Rich short-circuits dumb terminals (``TERM=dumb``, common in tests and
+    some CI) to a hard-coded 80x25 *before* reading ``COLUMNS``. That made
+    ``fmp-mcp list`` fold the Tool Spec column mid-name at width 80 even when
+    the environment asked for 400, so contiguous-spec assertions and
+    copy-paste of full specs failed under the conditions the #163 tests set.
+
+    Passing *both* ``width`` and ``height`` skips that short-circuit (rich only
+    honours an explicit size when both are set). Height defaults to 25 when
+    only ``COLUMNS`` is provided.
+    """
+    if not HAS_RICH:
+        raise RuntimeError("rich is not installed")
+    width: int | None = None
+    height: int | None = None
+    columns = os.environ.get("COLUMNS")
+    if columns and columns.isdigit():
+        width = int(columns)
+    lines = os.environ.get("LINES")
+    if lines and lines.isdigit():
+        height = int(lines)
+    elif width is not None:
+        height = 25
+    return Console(width=width, height=height)
+
+
 def list_available_tools() -> list[dict[str, Any]]:
     """
     Discover and list all available MCP tools from endpoint semantics.
@@ -130,7 +158,7 @@ def _print_tools_tree(tools: list[dict[str, Any]]) -> None:
         _print_tools_list(tools)
         return
 
-    console = Console()
+    console = _console()
     tree = Tree("FMP MCP Tools")
 
     # Group by client
@@ -186,7 +214,7 @@ def _print_rich_table(tools: list[dict[str, Any]]) -> None:
     resolve and answer empty -- and calling those "deprecated" would say the
     one thing that is not true of them: that a drop-in replacement exists.
     """
-    console = Console()
+    console = _console()
     table = Table(title="Available FMP MCP Tools")
     table.add_column("Tool Spec", style="cyan", overflow="fold", no_wrap=False)
     table.add_column("Client", style="green")
