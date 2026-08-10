@@ -100,7 +100,11 @@ while [ "$attempt" -le "$MAX_ATTEMPTS" ]; do
       write_summary "failed (dirty)" "$MERGEABLE" "$MSTATE"
       exit 1
       ;;
-    unknown | "")
+    # "null" is defense-in-depth: production jq maps JSON null → "unknown"
+    # (#216), but if extraction ever emits the literal token, treat it as
+    # unresolved rather than falling through to *) and going green when
+    # mergeable=true.
+    unknown | "" | null)
       if [ "$MERGEABLE" = "false" ]; then
         echo "::error::PR #${PR_NUMBER} is not mergeable."
         write_outputs "$MERGEABLE" "${MSTATE:-unknown}"

@@ -99,8 +99,9 @@ else
   printf 'FAIL: jq-tostring-true-field expected true\\tclean got %q\n' "$jq_tsv_true"
   fail=$((fail + 1))
 fi
-# true + null mergeable_state maps to unknown and must not go green (exhaust).
-run_case "true-null-state-exhausts" 1 $'true\tunknown' $'true\tunknown' $'true\tunknown'
+# Defense-in-depth: literal "null" state token (if extraction drifts) must
+# exhaust as unresolved, not hit *) and go green when mergeable=true (#216).
+run_case "true-null-state-exhausts" 1 $'true\tnull' $'true\tnull' $'true\tnull'
 
 # invalid max via env (before gh is called)
 set +e
