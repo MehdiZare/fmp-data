@@ -38,10 +38,10 @@ MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
    not an ancestor of `dev` — it never reports success for work it did not do
    (#203). On every push it also re-validates an already-open release PR:
    ancestry plus REST `mergeable` / `mergeable_state` (retried; fails closed
-   on `dirty`, non-mergeable, or still-`unknown`) must stay clean (#207).
-   That mergeability check is the shared composite action
+   on `dirty`, `mergeable` not `true`, or still-`unknown`) must stay clean
+   (#207, #213). That mergeability check is the shared composite action
    `.github/actions/check-pr-mergeable`, also used by Guard-Main-Origin
-   (#210).
+   (#210); Test-Matrix runs its mock matrix on every PR (#212).
 3. **Automation token.** Release-PR and Sync-Main-to-Dev prefer the repo
    secret `GH_TOKEN` (a fine-scoped PAT) for `gh pr create` / automation
    pushes so the `pull_request` **opened** event re-triggers Test-Matrix and

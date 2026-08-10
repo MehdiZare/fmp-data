@@ -1,16 +1,19 @@
 # Shared fail-closed PR mergeability check for Guard-Main-Origin and
-# Release-PR. See #202, #207, #210.
+# Release-PR. See #202, #207, #210, #213.
 #
 # Contract (do not weaken):
 # - Poll REST mergeable / mergeable_state via gh api
 # - Retry while mergeable_state is unknown (GitHub computes async)
-# - Fail on dirty, mergeable=false, or still-unknown after retries
-# - Exit 0 only when non-conflicting
+# - Fail on dirty, mergeable=false, empty/null mergeable (JSON null), or
+#   still-unknown after retries
+# - Exit 0 only when mergeable=true (not merely not-false / not-dirty)
+#   and mergeable_state is a resolved non-dirty value (clean, unstable,
+#   blocked, …). "Not proven conflicting" is not enough (#213).
 name: Check PR mergeable
 description: >
-  Fail-closed REST mergeability check with retries. Exits 0 only when the PR
-  is non-conflicting; refuses green on dirty, mergeable=false, or unresolved
-  unknown after retries.
+  Fail-closed REST mergeability check with retries. Exits 0 only when
+  mergeable=true; refuses green on dirty, mergeable=false, empty/null
+  mergeable, or unresolved unknown after retries.
 
 inputs:
   pr-number:

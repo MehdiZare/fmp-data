@@ -108,15 +108,24 @@ while [ "$attempt" -le "$MAX_ATTEMPTS" ]; do
       continue
       ;;
     *)
-      if [ "$MERGEABLE" = "false" ]; then
-        echo "::error::PR #${PR_NUMBER} is not mergeable (mergeable_state=${MSTATE})."
-        write_outputs "$MERGEABLE" "$MSTATE"
-        write_summary "failed (mergeable=false, state=${MSTATE})" "$MERGEABLE" "$MSTATE"
+      # Success requires mergeable=true (not merely not-false). Empty / null
+      # from JSON null via jq @tsv is ambiguous; fail closed rather than paint
+      # green without proof the PR is mergeable (#213).
+      if [ "$MERGEABLE" != "true" ]; then
+        if [ "$MERGEABLE" = "false" ]; then
+          echo "::error::PR #${PR_NUMBER} is not mergeable (mergeable_state=${MSTATE})."
+          write_outputs "$MERGEABLE" "$MSTATE"
+          write_summary "failed (mergeable=false, state=${MSTATE})" "$MERGEABLE" "$MSTATE"
+        else
+          echo "::error::PR #${PR_NUMBER} mergeable is empty/null with mergeable_state=${MSTATE}; refusing green without mergeable=true (#213)."
+          write_outputs "${MERGEABLE:-null}" "$MSTATE"
+          write_summary "failed (mergeable not true, state=${MSTATE})" "${MERGEABLE:-null}" "$MSTATE"
+        fi
         exit 1
       fi
-      echo "✅ PR #${PR_NUMBER} is not conflicting (mergeable=${MERGEABLE}, mergeable_state=${MSTATE})"
+      echo "✅ PR #${PR_NUMBER} is mergeable (mergeable=${MERGEABLE}, mergeable_state=${MSTATE})"
       write_outputs "$MERGEABLE" "$MSTATE"
-      write_summary "ok (non-conflicting)" "$MERGEABLE" "$MSTATE"
+      write_summary "ok (mergeable=true)" "$MERGEABLE" "$MSTATE"
       exit 0
       ;;
   esac

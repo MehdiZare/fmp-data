@@ -36,6 +36,13 @@ export MOCK_STATE_FILE="$tmpdir/state"
 pass=0
 fail=0
 
+indent_out() {
+  local line
+  while IFS= read -r line || [ -n "$line" ]; do
+    printf '  | %s\n' "$line"
+  done <<<"$1"
+}
+
 run_case() {
   local name="$1" expect="$2"
   shift 2
@@ -55,7 +62,7 @@ run_case() {
     pass=$((pass + 1))
   else
     echo "FAIL: $name expected exit $expect got $code"
-    echo "$out" | sed 's/^/  | /'
+    indent_out "$out"
     fail=$((fail + 1))
   fi
 }
@@ -66,6 +73,11 @@ run_case "unknown-forever" 1 $'null\tunknown' $'null\tunknown' $'null\tunknown'
 run_case "false-blocked" 1 $'false\tblocked'
 run_case "false-unknown" 1 $'false\tunknown'
 run_case "unstable-ok" 0 $'true\tunstable'
+# #213: empty/null mergeable with a resolved non-dirty state must not go green
+run_case "null-clean-fails" 1 $'null\tclean'
+run_case "empty-clean-fails" 1 $'\tclean'
+run_case "null-blocked-fails" 1 $'null\tblocked'
+run_case "true-blocked-ok" 0 $'true\tblocked'
 
 # invalid max via env (before gh is called)
 set +e
@@ -77,7 +89,7 @@ if [ "$code" -ne 0 ] && echo "$out" | grep -q 'max-attempts'; then
   pass=$((pass + 1))
 else
   echo "FAIL: invalid-max expected non-zero + message"
-  echo "$out" | sed 's/^/  | /'
+  indent_out "$out"
   fail=$((fail + 1))
 fi
 
@@ -95,7 +107,7 @@ if [ "$code" -ne 0 ] && echo "$out" | grep -q 'merge commit, not squash'; then
   pass=$((pass + 1))
 else
   echo "FAIL: conflict-guidance"
-  echo "$out" | sed 's/^/  | /'
+  indent_out "$out"
   fail=$((fail + 1))
 fi
 unset CONFLICT_GUIDANCE
@@ -119,7 +131,7 @@ if [ "$code" -ne 0 ] && echo "$out" | grep -q 'gh api failed'; then
   pass=$((pass + 1))
 else
   echo "FAIL: gh-api-error"
-  echo "$out" | sed 's/^/  | /'
+  indent_out "$out"
   fail=$((fail + 1))
 fi
 
