@@ -39,6 +39,9 @@ MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
    (#203). On every push it also re-validates an already-open release PR:
    ancestry plus REST `mergeable` / `mergeable_state` (retried; fails closed
    on `dirty`, non-mergeable, or still-`unknown`) must stay clean (#207).
+   That mergeability check is the shared composite action
+   `.github/actions/check-pr-mergeable`, also used by Guard-Main-Origin
+   (#210).
 3. **Automation token.** Release-PR and Sync-Main-to-Dev prefer the repo
    secret `GH_TOKEN` (a fine-scoped PAT) for `gh pr create` / automation
    pushes so the `pull_request` **opened** event re-triggers Test-Matrix and
@@ -78,6 +81,10 @@ MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
 `Guard-Main-Origin` also fails the PR when `mergeable_state=dirty` **or** when
 mergeability never leaves `unknown` after retries, so a conflicting or
 unresolved release PR shows a red X instead of a hole in the checks list.
+Both workflows share `.github/actions/check-pr-mergeable` for that check
+(#210). Guard checks out the PR **head** (so CONFLICTING PRs still reach the
+check) and, when present on the PR base, overlays the composite action from
+`origin/<base>` so hotfixes cut from an older tip cannot omit the contract.
 
 ### Related automation (not the release PR itself)
 

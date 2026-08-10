@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+# Local fail-closed matrix for check.sh (no network). Run:
+#   bash .github/actions/check-pr-mergeable/test-check.sh
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+CHECK="${ROOT}/check.sh"
+tmpdir=$(mktemp -d)
+trap 'rm -rf "$tmpdir"' EXIT
+
+install_mock_gh() {
+  cat >"$tmpdir/gh" <<'EOF'
+#!/usr/bin/env bash
+# mock: first line of MOCK_STATE_FILE is mergeable\tmstate, then rotate.
+state_file="${MOCK_STATE_FILE:?}"
+if [ ! -s "$state_file" ]; then
+  echo "mock gh: state file empty" >&2
+  exit 1
+fi
+line=$(head -n1 "$state_file")
+tail -n +2 "$state_file" >"${state_file}.tmp"
+mv "${state_file}.tmp" "$state_file"
+printf '%s\n' "$line"
+EOF
+  chmod +x "$tmpdir/gh"
+}
+
+install_mock_gh
+
+export PATH="$tmpdir:$PATH"
+export GH_TOKEN=fake REPO=o/r PR_NUMBER=1
+export MAX_ATTEMPTS=3 SLEEP_SECONDS=0
+export GITHUB_OUTPUT="$tmpdir/out" GITHUB_STEP_SUMMARY="$tmpdir/sum"
+export MOCK_STATE_FILE="$tmpdir/state"
+
+pass=0
+fail=0
+
+run_case() {
+  local name="$1" expect="$2"
+  shift 2
+  : >"$MOCK_STATE_FILE"
+  local line
+  for line in "$@"; do
+    printf '%s\n' "$line" >>"$MOCK_STATE_FILE"
+  done
+  : >"$GITHUB_OUTPUT"
+  : >"$GITHUB_STEP_SUMMARY"
+  set +e
+  out=$(bash "$CHECK" 2>&1)
+  code=$?
+  set -e
+  if [ "$code" -eq "$expect" ]; then
+    echo "PASS: $name (exit $code)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL: $name expected exit $expect got $code"
+    echo "$out" | sed 's/^/  | /'
+    fail=$((fail + 1))
+  fi
+}
+
+run_case "unknown->clean" 0 $'null\tunknown' $'true\tclean'
+run_case "dirty" 1 $'false\tdirty'
+run_case "unknown-forever" 1 $'null\tunknown' $'null\tunknown' $'null\tunknown'
+run_case "false-blocked" 1 $'false\tblocked'
+run_case "false-unknown" 1 $'false\tunknown'
+run_case "unstable-ok" 0 $'true\tunstable'
+
+# invalid max via env (before gh is called)
+set +e
+out=$(MAX_ATTEMPTS=0 bash "$CHECK" 2>&1)
+code=$?
+set -e
+if [ "$code" -ne 0 ] && echo "$out" | grep -q 'max-attempts'; then
+  echo "PASS: invalid-max (exit $code)"
+  pass=$((pass + 1))
+else
+  echo "FAIL: invalid-max expected non-zero + message"
+  echo "$out" | sed 's/^/  | /'
+  fail=$((fail + 1))
+fi
+
+# dirty + conflict-guidance printed
+export CONFLICT_GUIDANCE="Sync main into dev with a merge commit, not squash."
+printf '%s\n' $'false\tdirty' >"$MOCK_STATE_FILE"
+: >"$GITHUB_OUTPUT"
+: >"$GITHUB_STEP_SUMMARY"
+set +e
+out=$(bash "$CHECK" 2>&1)
+code=$?
+set -e
+if [ "$code" -ne 0 ] && echo "$out" | grep -q 'merge commit, not squash'; then
+  echo "PASS: conflict-guidance (printed on dirty)"
+  pass=$((pass + 1))
+else
+  echo "FAIL: conflict-guidance"
+  echo "$out" | sed 's/^/  | /'
+  fail=$((fail + 1))
+fi
+unset CONFLICT_GUIDANCE
+
+# API failure path: replace gh with always-fail
+cat >"$tmpdir/gh" <<'EOF'
+#!/usr/bin/env bash
+echo "HTTP 500: boom" >&2
+exit 1
+EOF
+chmod +x "$tmpdir/gh"
+export MAX_ATTEMPTS=2
+: >"$GITHUB_OUTPUT"
+: >"$GITHUB_STEP_SUMMARY"
+set +e
+out=$(bash "$CHECK" 2>&1)
+code=$?
+set -e
+if [ "$code" -ne 0 ] && echo "$out" | grep -q 'gh api failed'; then
+  echo "PASS: gh-api-error (exit $code, classified message)"
+  pass=$((pass + 1))
+else
+  echo "FAIL: gh-api-error"
+  echo "$out" | sed 's/^/  | /'
+  fail=$((fail + 1))
+fi
+
+echo ""
+echo "Results: $pass passed, $fail failed"
+[ "$fail" -eq 0 ]

@@ -1,0 +1,62 @@
+# Shared fail-closed PR mergeability check for Guard-Main-Origin and
+# Release-PR. See #202, #207, #210.
+#
+# Contract (do not weaken):
+# - Poll REST mergeable / mergeable_state via gh api
+# - Retry while mergeable_state is unknown (GitHub computes async)
+# - Fail on dirty, mergeable=false, or still-unknown after retries
+# - Exit 0 only when non-conflicting
+name: Check PR mergeable
+description: >
+  Fail-closed REST mergeability check with retries. Exits 0 only when the PR
+  is non-conflicting; refuses green on dirty, mergeable=false, or unresolved
+  unknown after retries.
+
+inputs:
+  pr-number:
+    description: Pull request number to check
+    required: true
+  repository:
+    description: "owner/repo (defaults to github.repository)"
+    required: false
+    default: ${{ github.repository }}
+  max-attempts:
+    description: Max poll attempts while mergeable_state is unknown
+    required: false
+    default: "6"
+  sleep-seconds:
+    description: Seconds between unknown retries
+    required: false
+    default: "5"
+  github-token:
+    description: Token for gh api (needs pull-requests read)
+    required: true
+  conflict-guidance:
+    description: >
+      Extra operator lines printed when mergeable_state is dirty (e.g. release
+      path: merge main into dev with a merge commit, not squash).
+    required: false
+    default: ""
+
+outputs:
+  mergeable:
+    description: Final mergeable value (true / false / null)
+    value: ${{ steps.check.outputs.mergeable }}
+  mergeable_state:
+    description: Final mergeable_state (clean / dirty / unstable / blocked / …)
+    value: ${{ steps.check.outputs.mergeable_state }}
+
+runs:
+  using: composite
+  steps:
+    - id: check
+      name: Poll REST mergeability (fail closed)
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        REPO: ${{ inputs.repository }}
+        MAX_ATTEMPTS: ${{ inputs.max-attempts }}
+        SLEEP_SECONDS: ${{ inputs.sleep-seconds }}
+        CONFLICT_GUIDANCE: ${{ inputs.conflict-guidance }}
+      run: bash "${{ github.action_path }}/check.sh"
