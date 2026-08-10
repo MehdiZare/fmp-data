@@ -97,8 +97,13 @@ rewrites or weakens `check.sh` still runs the contract pinned on the PR
 
 | Workflow | Which action copy runs | When a contract change applies |
 |---|---|---|
-| **Guard-Main-Origin** (`dev`/`hotfix-*` → `main`) | `origin/<base>` when that path exists; else head (bootstrap) | After the change is **merged into the PR base** (usually `main`) |
+| **Guard-Main-Origin** (`dev`/`hotfix-*` → `main`) | `origin/<base>` when that path exists; else head (bootstrap). Guard only targets `main`, so base is **always** `main`. | After the change is **merged into `main`** |
 | **Release-PR** (push to `dev`) | Tip of the workflow run (checkout of `dev`) | As soon as the change is **on `dev`** |
+
+Implementation: `.github/workflows/guard-main-origin.yml` step “Prefer
+mergeability action from PR base” runs
+`git checkout origin/${BASE_REF} -- .github/actions/check-pr-mergeable`
+when that path exists on the base.
 
 So tightenings such as “require `mergeable=true`” (#213) or explicit
 `tostring` extraction (#216) land on Release-PR immediately once they reach
