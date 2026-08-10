@@ -13,7 +13,7 @@ tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 
 # Bump when adding/removing PASS lines so a silent case drop fails CI (#215).
-EXPECTED_PASS=24
+EXPECTED_PASS=26
 
 install_mock_gh() {
   cat >"$tmpdir/gh" <<'EOF'
@@ -146,22 +146,30 @@ EXPECT_MERGEABLE=true EXPECT_MSTATE=dirty EXPECT_SUMMARY='failed (dirty)' \
 EXPECT_MERGEABLE=true EXPECT_MSTATE=null EXPECT_SUMMARY='failed (unknown after retries)' \
   run_case "true-null-state-exhausts" 1 $'true\tnull' $'true\tnull' $'true\tnull'
 
-# --- jq encoding locks (#216) ---
-jq_prod=$(jq -rn '([(null | tostring), ((null // "unknown") | tostring)] | @tsv)')
-if [ "$jq_prod" = $'null\tunknown' ]; then
-  echo "PASS: jq-tostring-prod-extraction (null mergeable + null state→unknown)"
-  pass=$((pass + 1))
-else
-  printf 'FAIL: jq-tostring-prod-extraction expected null\\tunknown got %q\n' "$jq_prod"
+# --- jq encoding locks via shared mergeable.jq (#216 / #223) ---
+JQ_PROG_FILE="${ROOT}/mergeable.jq"
+if [ ! -f "$JQ_PROG_FILE" ]; then
+  echo "FAIL: missing shared mergeable.jq"
   fail=$((fail + 1))
-fi
-jq_tsv_true=$(jq -rn '([(true | tostring), (("clean" // "unknown") | tostring)] | @tsv)')
-if [ "$jq_tsv_true" = $'true\tclean' ]; then
-  echo "PASS: jq-tostring-true-field"
-  pass=$((pass + 1))
 else
-  printf 'FAIL: jq-tostring-true-field expected true\\tclean got %q\n' "$jq_tsv_true"
-  fail=$((fail + 1))
+  jq_prod=$(jq -rn --argjson o '{"mergeable":null,"mergeable_state":null}' '$o | input' 2>/dev/null || true)
+  # Apply production program to a JSON object (same path check.sh uses via --jq)
+  jq_prod=$(printf '%s\n' '{"mergeable":null,"mergeable_state":null}' | jq -rf "$JQ_PROG_FILE")
+  if [ "$jq_prod" = $'null\tunknown' ]; then
+    echo "PASS: shared-jq-null-state (mergeable.jq null→null/unknown)"
+    pass=$((pass + 1))
+  else
+    printf 'FAIL: shared-jq-null-state expected null\\tunknown got %q\n' "$jq_prod"
+    fail=$((fail + 1))
+  fi
+  jq_tsv_true=$(printf '%s\n' '{"mergeable":true,"mergeable_state":"clean"}' | jq -rf "$JQ_PROG_FILE")
+  if [ "$jq_tsv_true" = $'true\tclean' ]; then
+    echo "PASS: shared-jq-true-clean (mergeable.jq)"
+    pass=$((pass + 1))
+  else
+    printf 'FAIL: shared-jq-true-clean expected true\\tclean got %q\n' "$jq_tsv_true"
+    fail=$((fail + 1))
+  fi
 fi
 
 # --- input validation (before gh) ---
@@ -382,6 +390,87 @@ else
 fi
 unset MOCK_API_COUNTER
 export API_MAX_RETRIES=3 MAX_ATTEMPTS=3
+
+# Primary REST rate-limit 403 is transient (#223)
+cat >"$tmpdir/gh" <<'EOF'
+#!/usr/bin/env bash
+counter_file="${MOCK_API_COUNTER:?}"
+n=$(cat "$counter_file" 2>/dev/null || echo 0)
+n=$((n + 1))
+echo "$n" >"$counter_file"
+if [ "$n" -eq 1 ]; then
+  echo "HTTP 403: API rate limit exceeded" >&2
+  exit 1
+fi
+state_file="${MOCK_STATE_FILE:?}"
+if [ ! -s "$state_file" ]; then
+  echo "mock gh: state file empty" >&2
+  exit 1
+fi
+line=$(head -n1 "$state_file")
+tail -n +2 "$state_file" >"${state_file}.tmp"
+mv "${state_file}.tmp" "$state_file"
+printf '%s\n' "$line"
+EOF
+chmod +x "$tmpdir/gh"
+export MOCK_API_COUNTER="$tmpdir/api_counter"
+echo 0 >"$MOCK_API_COUNTER"
+printf '%s\n' $'true\tclean' >"$MOCK_STATE_FILE"
+export MAX_ATTEMPTS=2 API_MAX_RETRIES=3 SLEEP_SECONDS=0
+: >"$GITHUB_OUTPUT"
+: >"$GITHUB_STEP_SUMMARY"
+set +e
+out=$(bash "$CHECK" 2>&1)
+code=$?
+set -e
+if [ "$code" -eq 0 ] && echo "$out" | grep -q 'Transient gh api error' \
+  && assert_outputs "gh-api-primary-rate-limit-then-success" "true" "clean" "ok (mergeable=true)"; then
+  echo "PASS: gh-api-primary-rate-limit-then-success (exit $code)"
+  pass=$((pass + 1))
+else
+  echo "FAIL: gh-api-primary-rate-limit-then-success"
+  indent_out "$out"
+  fail=$((fail + 1))
+fi
+unset MOCK_API_COUNTER
+
+# End-to-end: mock returns JSON; production mergeable.jq produces TSV (#223)
+cat >"$tmpdir/gh" <<EOF
+#!/usr/bin/env bash
+# Rotate JSON lines from MOCK_STATE_FILE, pipe through production mergeable.jq.
+state_file="\${MOCK_STATE_FILE:?}"
+if [ ! -s "\$state_file" ]; then
+  echo "mock gh: state file empty" >&2
+  exit 1
+fi
+line=\$(head -n1 "\$state_file")
+tail -n +2 "\$state_file" >"\${state_file}.tmp"
+mv "\${state_file}.tmp" "\$state_file"
+printf '%s\n' "\$line" | jq -rf "${ROOT}/mergeable.jq"
+EOF
+chmod +x "$tmpdir/gh"
+# JSON null mergeable + null state → null\tunknown → exhaust (MAX_ATTEMPTS=1)
+printf '%s\n' '{"mergeable":null,"mergeable_state":null}' >"$MOCK_STATE_FILE"
+export MAX_ATTEMPTS=1 API_MAX_RETRIES=1 SLEEP_SECONDS=0
+: >"$GITHUB_OUTPUT"
+: >"$GITHUB_STEP_SUMMARY"
+set +e
+out=$(bash "$CHECK" 2>&1)
+code=$?
+set -e
+if [ "$code" -ne 0 ] \
+  && assert_outputs "json-mock-null-state-exhausts" "null" "unknown" "failed (unknown after retries)"; then
+  echo "PASS: json-mock-null-state-exhausts (production jq path)"
+  pass=$((pass + 1))
+else
+  echo "FAIL: json-mock-null-state-exhausts"
+  indent_out "$out"
+  fail=$((fail + 1))
+fi
+
+# Restore TSV mock for any later local runs
+install_mock_gh
+export MAX_ATTEMPTS=3 API_MAX_RETRIES=3
 
 echo ""
 echo "Results: $pass passed, $fail failed (expected $EXPECTED_PASS pass)"

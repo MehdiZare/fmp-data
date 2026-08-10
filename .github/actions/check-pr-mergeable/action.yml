@@ -3,12 +3,11 @@
 #
 # Contract (do not weaken):
 # - Poll REST mergeable / mergeable_state via gh api
-# - Extract with jq tostring so JSON null mergeable is the literal token
-#   "null" (not an empty @tsv field); null mergeable_state maps to
-#   "unknown" (unresolved retry path) — operators/mocks match production (#216)
+# - Extract via shared mergeable.jq (#223): JSON null mergeable → literal
+#   "null"; null mergeable_state → "unknown" (unresolved retry path) (#216)
 # - Retry while mergeable_state is unknown (GitHub computes async)
-# - Retry only transient gh api failures (5xx / 429 / transport / secondary
-#   rate-limit 403); fail immediately on permanent 401/403/404/… (#217).
+# - Retry only transient gh api failures (5xx / 429 / transport / primary+
+#   secondary rate-limit 403); fail immediately on permanent 401/403/404/… (#217, #223).
 #   Exhausting api-max-retries aborts the whole step (does not spend further
 #   max-attempts). Does not change the mergeable=true success criteria.
 # - Fail on dirty, mergeable=false, null/empty mergeable (JSON null), or
