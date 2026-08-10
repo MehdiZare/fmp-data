@@ -36,28 +36,35 @@ MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
 2. The **Release-PR** workflow runs on every push to `dev` and opens (or
    reuses) a PR with head `dev` and base `main`. It fails loudly if `main` is
    not an ancestor of `dev` — it never reports success for work it did not do
-   (#203).
-   **Note:** PRs created with `GITHUB_TOKEN` do not re-trigger
-   `pull_request` workflows. After first open, push again to `dev` or
-   close/reopen the PR so Test-Matrix and Guard-Main-Origin appear. Adding a
-   release label still triggers TestPyPI via the `labeled` event.
-3. Add **exactly one** of `release:major` / `release:minor` / `release:patch`
+   (#203). On every push it also re-validates an already-open release PR:
+   ancestry + `mergeStateStatus` must stay clean (#207).
+3. **Automation token.** Release-PR and Sync-Main-to-Dev prefer the repo
+   secret `GH_TOKEN` (a fine-scoped PAT) for `gh pr create` / automation
+   pushes so the `pull_request` **opened** event re-triggers Test-Matrix and
+   Guard-Main-Origin (#206). If `GH_TOKEN` is unset they fall back to
+   `GITHUB_TOKEN`, which can open the PR but will **not** re-fire those
+   workflows (GitHub’s anti-recursion rule — unrelated to the Actions
+   “read/write” permission toggle). Adding a release label still triggers
+   TestPyPI via the `labeled` event either way.
+4. Add **exactly one** of `release:major` / `release:minor` / `release:patch`
    to that PR.
-4. The **Publish-to-TestPyPI** workflow builds a unique
+5. The **Publish-to-TestPyPI** workflow builds a unique
    `X.Y.Z.devN` version (`N = run_id * 1000 + run_attempt`) for *each* push,
    asserts the sdist metadata matches that version, uploads it, and comments
    the version **and the commit SHA** on the PR. Install the version in the
    latest comment — older comments point at stale artifacts (#204).
-5. Merge the release PR into `main` once CI is green and TestPyPI checks out.
-6. The **Release** workflow tags, publishes to PyPI, and creates the GitHub
+6. Merge the release PR into `main` once CI is green and TestPyPI checks out.
+7. The **Release** workflow tags, publishes to PyPI, and creates the GitHub
    release.
-7. The **Sync-Main-to-Dev** workflow fires on the push to `main`. It checks
+8. The **Sync-Main-to-Dev** workflow fires on the push to `main`. It checks
    *reachability* (`git merge-base --is-ancestor origin/main origin/dev`), not
    content equality. After a squash-merge the trees match but the histories
    have diverged; the workflow opens a PR that records a history-only merge
    (`merge -s ours`) so the *next* release PR stays MERGEABLE and gets full
    CI (#202). **Merge that sync PR with a merge commit** — squashing it would
-   recreate the divergence.
+   recreate the divergence. Concurrent main pushes do not cancel an in-flight
+   sync; human WIP on `sync/main-to-dev` is not force-pushed away; merge
+   conflicts open a tracking issue (#208).
 
 ### Why three workflows keep each other honest
 
@@ -81,6 +88,14 @@ unresolved release PR shows a red X instead of a hole in the checks list.
   versions fail the job instead of being skipped.
 - **Claude Code Review** is advisory: missing or expired OAuth tokens do not
   fail the PR. Required gates live in `ci.yml` / the branch rulesets.
+
+### Secrets used by release automation
+
+| Secret | Purpose |
+|---|---|
+| `GH_TOKEN` | Fine-scoped PAT (or App token) for Release-PR / Sync-Main-to-Dev `gh pr create` and automation branch pushes so `pull_request` CI runs on open (#206). Not the same as the automatic `GITHUB_TOKEN`. |
+| `GITHUB_TOKEN` | Automatic job token; used as fallback and for jobs that must not re-trigger workflows. |
+| OIDC / PyPI trusted publishing | Real and Test PyPI uploads (no long-lived PyPI token required when configured). |
 
 ### GitHub Actions Workflow (on merge to main)
 
