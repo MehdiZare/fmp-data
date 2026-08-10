@@ -1,5 +1,6 @@
 # fmp_data/institutional/client.py
 from datetime import date
+import warnings
 
 from fmp_data.base import EndpointGroup
 from fmp_data.exceptions import FMPError, ValidationError
@@ -54,6 +55,27 @@ from fmp_data.institutional.models import (
     InstitutionalOwnershipLatest,
     SymbolPositionsSummary,
 )
+
+#: Said once, in one place, because the sync and async clients must not drift
+#: on it -- ``async_client`` imports both this text and the helper below.
+INERT_QUARTER_FILTER_WARNING = (
+    "holder-performance-summary ignores year/quarter: the FMP endpoint "
+    "accepts them and still returns the holder's full history, so you are "
+    "getting every period rather than the one you asked for. Filter the "
+    "returned rows by their 'date' field instead."
+)
+
+
+def _warn_inert_quarter_filter(stacklevel: int) -> None:
+    """Warn that a caller-supplied quarter will not be applied (#192).
+
+    Raised from whichever public method the caller actually invoked, rather
+    than from the shared request helper, so ``stacklevel`` lands on the user's
+    line on **both** routes into it -- the date-shaped method does not delegate
+    to the ``_by_quarter`` one, precisely so the warning cannot fire twice or
+    point at this module.
+    """
+    warnings.warn(INERT_QUARTER_FILTER_WARNING, UserWarning, stacklevel=stacklevel)
 
 
 class InstitutionalClient(EndpointGroup):
@@ -406,38 +428,64 @@ class InstitutionalClient(EndpointGroup):
             symbol, year, quarter, page=page, limit=limit
         )
 
+    def _holder_performance_summary_request(
+        self,
+        cik: str | int,
+        year: int | None = None,
+        quarter: int | None = None,
+        page: int = 0,
+    ) -> list[HolderPerformanceSummary]:
+        """Issue the request. No warning -- both public methods own that."""
+        params: dict[str, str | int] = {"cik": cik, "page": page}
+        if year is not None:
+            params["year"] = year
+        if quarter is not None:
+            params["quarter"] = quarter
+        return self.client.request(HOLDER_PERFORMANCE_SUMMARY, **params)
+
     def get_holder_performance_summary_by_quarter(
         self, cik: str | int, year: int, quarter: int, page: int = 0
     ) -> list[HolderPerformanceSummary]:
-        """Get holder performance summary for a calendar quarter.
+        """Get holder performance summary -- **the quarter is not applied**.
 
-        Wire shape when year/quarter are known. :meth:`get_holder_performance_summary`
-        is the date-shaped convenience; year/quarter are optional there because the
-        API accepts a request with only ``cik`` (and ``page``).
+        Warning:
+            This endpoint accepts ``year``/``quarter`` and then ignores them.
+            It returns the holder's entire history whatever you pass, so this
+            method does not do what its name says, and calling it emits a
+            :class:`UserWarning`. Filter the returned rows by their ``date``
+            field instead.
+
+            Probed against the live API (re-checked while cutting 2.6.0):
+            ``cik=0001067983`` returns a byte-identical 52-row payload
+            spanning 2013-06-30 to 2026-03-31 with no filter, with
+            ``year=2023&quarter=3``, and with ``year=2019&quarter=1``. The
+            five sibling ``*_by_quarter`` methods were probed the same way
+            and *do* filter correctly; this one is the exception (#192).
+
+            The parameters are still sent, in case FMP starts honouring them.
         """
-        return self.client.request(
-            HOLDER_PERFORMANCE_SUMMARY,
-            cik=cik,
-            year=year,
-            quarter=quarter,
-            page=page,
-        )
+        _warn_inert_quarter_filter(stacklevel=3)
+        return self._holder_performance_summary_request(cik, year, quarter, page)
 
     def get_holder_performance_summary(
         self, cik: str | int, report_date: date | None = None, page: int = 0
     ) -> list[HolderPerformanceSummary]:
-        """Get holder performance summary for a report period end date.
+        """Get holder performance summary for a holder's full history.
 
-        If ``report_date`` is omitted, the request is sent without year/quarter
-        (the API accepts that). When set, year/quarter are derived and the call
-        delegates to :meth:`get_holder_performance_summary_by_quarter`.
+        Omitting ``report_date`` is the correct usage and is what the endpoint
+        actually supports: the request goes without year/quarter and you get
+        every period.
+
+        Warning:
+            Passing ``report_date`` does **not** select a period -- the API
+            ignores the derived year/quarter -- so it warns. See
+            :meth:`get_holder_performance_summary_by_quarter`.
         """
         if report_date is None:
-            return self.client.request(HOLDER_PERFORMANCE_SUMMARY, cik=cik, page=page)
+            return self._holder_performance_summary_request(cik, page=page)
+        _warn_inert_quarter_filter(stacklevel=3)
         year, quarter = self._date_to_year_quarter(report_date)
-        return self.get_holder_performance_summary_by_quarter(
-            cik, year, quarter, page=page
-        )
+        return self._holder_performance_summary_request(cik, year, quarter, page)
 
     def get_holder_industry_breakdown_by_quarter(
         self, cik: str | int, year: int, quarter: int

@@ -2103,6 +2103,47 @@ class TestAsyncInstitutionalClient:
         mock_client.request_async.assert_called_once_with(endpoint, **expected_kwargs)
 
     @pytest.mark.asyncio
+    async def test_holder_performance_by_quarter_warns_the_filter_is_inert(
+        self, mock_client
+    ):
+        """The async client must warn exactly as the sync one does (#192).
+
+        `holder-performance-summary` accepts year/quarter and ignores them --
+        probed live, identical 52-row payloads unfiltered, for 2023 Q3 and for
+        2019 Q1 -- so a method named `_by_quarter` promises what the API will
+        not deliver. Pinned on both clients because the warning was already
+        lost once, when #198 reworked #196 without it.
+        """
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncInstitutionalClient(mock_client)
+
+        with pytest.warns(UserWarning, match="ignores year/quarter"):
+            await async_client.get_holder_performance_summary_by_quarter(
+                "0000320193", 2024, 1
+            )
+
+        with pytest.warns(UserWarning, match="ignores year/quarter"):
+            await async_client.get_holder_performance_summary(
+                "0000320193", report_date=dt_date(2024, 3, 31)
+            )
+
+    @pytest.mark.asyncio
+    async def test_holder_performance_without_date_does_not_warn(self, mock_client):
+        """The supported call must stay silent, or the warning becomes noise."""
+        import warnings as _warnings
+
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncInstitutionalClient(mock_client)
+
+        with _warnings.catch_warnings():
+            _warnings.simplefilter("error", UserWarning)
+            await async_client.get_holder_performance_summary("0000320193")
+
+    @pytest.mark.asyncio
     async def test_get_holder_performance_summary_without_date_omits_year_quarter(
         self, mock_client
     ):

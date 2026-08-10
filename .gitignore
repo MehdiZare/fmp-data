@@ -83,3 +83,6 @@ reports/
 
 # Firecrawl example outputs
 examples/firecrawl_app/outputs/
+
+# Generated at build time by hatch-vcs (see [tool.hatch.build.hooks.vcs])
+fmp_data/_version.py

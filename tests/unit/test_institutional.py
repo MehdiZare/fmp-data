@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from unittest.mock import Mock, patch
+import warnings
 
 import pytest
 
@@ -731,19 +732,31 @@ class TestInstitutionalClientEnhanced:
         assert "date" not in sent
         assert "report_date" not in sent
 
-    def test_get_holder_performance_summary_delegates_to_by_quarter(self, fmp_client):
-        """When report_date is set, derive and call by_quarter (#192)."""
-        with patch.object(
-            fmp_client.institutional,
-            "get_holder_performance_summary_by_quarter",
-            return_value=[],
-        ) as by_quarter:
+    @patch("httpx.Client.request")
+    def test_get_holder_performance_summary_sends_derived_quarter(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """When report_date is set, the derived year/quarter reach the wire (#192).
+
+        Asserted at the request rather than by patching the ``_by_quarter``
+        sibling: the two public methods deliberately do **not** call each
+        other, so that the inert-filter warning fires once and points at the
+        caller's line on either route. A test that pins the internal call
+        would forbid that arrangement while proving nothing about the request.
+        """
+        mock_request.return_value = mock_response(status_code=200, json_data=[])
+
+        with pytest.warns(UserWarning, match="ignores year/quarter"):
             result = fmp_client.institutional.get_holder_performance_summary(
                 "0001067983", report_date=date(2023, 9, 30), page=2
             )
 
         assert result == []
-        by_quarter.assert_called_once_with("0001067983", 2023, 3, page=2)
+        sent = mock_request.call_args.kwargs["params"]
+        assert sent["cik"] == "0001067983"
+        assert sent["year"] == 2023
+        assert sent["quarter"] == 3
+        assert sent["page"] == 2
 
     def test_get_holder_performance_summary_without_date_skips_by_quarter(
         self, fmp_client
@@ -944,3 +957,94 @@ class TestInstitutionalClientEnhanced:
 
         assert result == []
         by_quarter.assert_called_once_with(2024, 1)
+
+
+class TestHolderPerformanceSummaryInertQuarterFilter:
+    """`holder-performance-summary` accepts year/quarter and ignores them (#192).
+
+    Probed against the live API while cutting 2.6.0, and re-probed before
+    these tests were written: for ``cik=0001067983`` the endpoint returns a
+    byte-identical 52-row payload spanning 2013-06-30 to 2026-03-31 with no
+    filter, with ``year=2023&quarter=3``, and with ``year=2019&quarter=1``.
+
+    That makes `get_holder_performance_summary_by_quarter` a method whose
+    *name* promises something the API does not do — a silent wrong answer,
+    and a more convincing one than the date-shaped form, which is why it
+    warns. The five sibling ``*_by_quarter`` methods were probed the same way
+    and do filter correctly; this is the only exception.
+
+    These tests exist because the warning has been lost once already: it was
+    added in #196, and #198 reworked the change without it.
+    """
+
+    def test_by_quarter_warns_that_the_quarter_is_ignored(self, fmp_client):
+        with patch.object(fmp_client, "request", return_value=[]):
+            with pytest.warns(UserWarning, match="ignores year/quarter"):
+                fmp_client.institutional.get_holder_performance_summary_by_quarter(
+                    "0001067983", 2023, 3
+                )
+
+    def test_report_date_warns_too(self, fmp_client):
+        """The date-shaped route reaches the same dead filter."""
+        with patch.object(fmp_client, "request", return_value=[]):
+            with pytest.warns(UserWarning, match="ignores year/quarter"):
+                fmp_client.institutional.get_holder_performance_summary(
+                    "0001067983", report_date=date(2023, 9, 30)
+                )
+
+    def test_the_correct_usage_stays_silent(self, fmp_client):
+        """Omitting the date is what the endpoint supports; it must not warn.
+
+        A warning here would train users to filter the whole category out,
+        taking the two real ones with it.
+        """
+        with patch.object(fmp_client, "request", return_value=[]):
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", UserWarning)
+                fmp_client.institutional.get_holder_performance_summary("0001067983")
+
+    def test_warning_is_attributed_to_the_caller_not_the_library(self, fmp_client):
+        """Both routes must blame the user's line, or the warning is unusable.
+
+        This is why the two public methods do not delegate to each other: a
+        delegating call would report `client.py` as the offender on the
+        date-shaped route (the #177 failure mode).
+        """
+        for call in (
+            lambda: fmp_client.institutional.get_holder_performance_summary_by_quarter(
+                "0001067983", 2023, 3
+            ),
+            lambda: fmp_client.institutional.get_holder_performance_summary(
+                "0001067983", report_date=date(2023, 9, 30)
+            ),
+        ):
+            with patch.object(fmp_client, "request", return_value=[]):
+                with pytest.warns(UserWarning) as record:
+                    call()
+            assert record[0].filename == __file__, (
+                f"warning blamed {record[0].filename}, not the caller"
+            )
+
+    def test_fires_once_per_call_not_twice(self, fmp_client):
+        """Delegation would double it; the shared request helper must not warn."""
+        with patch.object(fmp_client, "request", return_value=[]):
+            with pytest.warns(UserWarning) as record:
+                fmp_client.institutional.get_holder_performance_summary(
+                    "0001067983", report_date=date(2023, 9, 30)
+                )
+        inert = [r for r in record if "ignores year/quarter" in str(r.message)]
+        assert len(inert) == 1, f"expected 1 warning, got {len(inert)}"
+
+    def test_parameters_are_still_sent(self, fmp_client):
+        """Kept in the request in case FMP starts honouring them."""
+        with patch.object(fmp_client, "request", return_value=[]) as request:
+            with pytest.warns(UserWarning):
+                fmp_client.institutional.get_holder_performance_summary_by_quarter(
+                    "0001067983", 2023, 3, page=1
+                )
+        assert request.call_args.kwargs == {
+            "cik": "0001067983",
+            "page": 1,
+            "year": 2023,
+            "quarter": 3,
+        }

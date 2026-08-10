@@ -148,6 +148,14 @@ mcp = [
 [tool.hatch.version]
 source = "vcs"
 
+# Writes the resolved VCS version into the package so
+# ``fmp_data.__version__`` matches the distribution metadata. Without
+# this hook ``_version.py`` is never generated, the import in
+# ``fmp_data/__init__.py`` falls back, and every published release
+# reports "0.0.0".
+[tool.hatch.build.hooks.vcs]
+version-file = "fmp_data/_version.py"
+
 [tool.hatch.build.targets.wheel]
 packages = [
     "fmp_data",
