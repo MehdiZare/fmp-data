@@ -1,5 +1,5 @@
 # Shared fail-closed PR mergeability check for Guard-Main-Origin and
-# Release-PR. See #202, #207, #210, #213, #216, #218.
+# Release-PR. See #202, #207, #210, #213, #216, #217, #218.
 #
 # Contract (do not weaken):
 # - Poll REST mergeable / mergeable_state via gh api
@@ -7,6 +7,10 @@
 #   "null" (not an empty @tsv field); null mergeable_state maps to
 #   "unknown" (unresolved retry path) — operators/mocks match production (#216)
 # - Retry while mergeable_state is unknown (GitHub computes async)
+# - Retry only transient gh api failures (5xx / 429 / transport / secondary
+#   rate-limit 403); fail immediately on permanent 401/403/404/… (#217).
+#   Exhausting api-max-retries aborts the whole step (does not spend further
+#   max-attempts). Does not change the mergeable=true success criteria.
 # - Fail on dirty, mergeable=false, null/empty mergeable (JSON null), or
 #   still-unknown after retries
 # - Exit 0 only when mergeable=true (not merely not-false / not-dirty)
@@ -22,7 +26,8 @@ name: Check PR mergeable
 description: >
   Fail-closed REST mergeability check with retries. Exits 0 only when
   mergeable=true; refuses green on dirty, mergeable=false, null/empty
-  mergeable, or unresolved unknown after retries.
+  mergeable, or unresolved unknown after retries. Retries transient
+  gh api failures only (#217).
 
 inputs:
   pr-number:
@@ -37,9 +42,17 @@ inputs:
     required: false
     default: "6"
   sleep-seconds:
-    description: Seconds between unknown retries
+    description: Seconds between unknown retries (also bases API retry backoff)
     required: false
     default: "5"
+  api-max-retries:
+    description: >
+      Max gh api attempts per mergeability poll for transient 5xx / 429 /
+      secondary-rate-limit / transport errors. Exhausting this aborts the
+      step (does not consume further max-attempts). Permanent 401/403/404
+      fail immediately (#217).
+    required: false
+    default: "3"
   github-token:
     description: Token for gh api (needs pull-requests read)
     required: true
@@ -70,5 +83,6 @@ runs:
         REPO: ${{ inputs.repository }}
         MAX_ATTEMPTS: ${{ inputs.max-attempts }}
         SLEEP_SECONDS: ${{ inputs.sleep-seconds }}
+        API_MAX_RETRIES: ${{ inputs.api-max-retries }}
         CONFLICT_GUIDANCE: ${{ inputs.conflict-guidance }}
       run: bash "${{ github.action_path }}/check.sh"
