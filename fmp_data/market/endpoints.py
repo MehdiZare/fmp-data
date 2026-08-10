@@ -98,7 +98,11 @@ AVAILABLE_INDEXES: Endpoint = Endpoint(
     ],
 )
 SEARCH_COMPANY: Endpoint = Endpoint(
-    name="search-name",
+    # ``name`` is snake_case like every other endpoint in the catalogue;
+    # ``path`` keeps the hyphen because that is the real API path (#166).
+    # Renaming ``name`` moved this endpoint's cache-key prefix and its
+    # ``ttl_overrides`` key -- see the 2.6.0 CHANGELOG for the migration note.
+    name="search_name",
     path="search-name",
     version=APIVersion.STABLE,
     url_type=URLType.API,

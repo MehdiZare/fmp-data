@@ -345,7 +345,7 @@ class Endpoint(BaseModel, Generic[T]):
     optional_params: list[EndpointParam] | None
     response_model: type[T]
     allow_empty_on_404: bool = True
-    #: .. deprecated:: 2.7
+    #: .. deprecated:: 2.6
     #:     Removed in 3.0 (#153). Read by nothing: LangChain builds argument
     #:     schemas dynamically from ``mandatory_params``/``optional_params``
     #:     in ``fmp_data.lc.vector_store``, so setting this changes nothing.
@@ -531,7 +531,7 @@ class Endpoint(BaseModel, Generic[T]):
 class BaseSymbolArg(DeprecatedArgModel):
     """Base model for any endpoint requiring just a symbol.
 
-    .. deprecated:: 2.7
+    .. deprecated:: 2.6
         Removed in 3.0 -- see :data:`fmp_data.schema.ARG_MODEL_DEPRECATION`.
     """
 

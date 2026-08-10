@@ -1,4 +1,4 @@
-"""The hand-written argument-model layer is deprecated in 2.7, gone in 3.0.
+"""The hand-written argument-model layer is deprecated in 2.6, gone in 3.0.
 
 #153: ``Endpoint.arg_model`` was declared once, assigned ~68 times across six
 domains, and read by nothing. LangChain argument schemas are built
@@ -209,7 +209,7 @@ def test_every_arg_model_documents_the_deprecation() -> None:
     undocumented = sorted(
         name
         for name, model in models.items()
-        if ".. deprecated:: 2.7" not in (model.__doc__ or "")
+        if ".. deprecated:: 2.6" not in (model.__doc__ or "")
     )
 
     assert not undocumented, (
@@ -233,8 +233,8 @@ def test_the_injected_note_keeps_the_models_own_docstring() -> None:
 
     doc = ETFHoldingsArgs.__doc__ or ""
     assert "ETF holdings" in doc, "the model's own summary was replaced"
-    assert doc.index("ETF holdings") < doc.index(".. deprecated:: 2.7")
-    assert "\n\n.. deprecated:: 2.7" in doc, "the directive must be its own block"
+    assert doc.index("ETF holdings") < doc.index(".. deprecated:: 2.6")
+    assert "\n\n.. deprecated:: 2.6" in doc, "the directive must be its own block"
     assert "3.0" in doc
 
 
@@ -243,7 +243,7 @@ def test_a_root_that_documents_itself_is_left_alone() -> None:
     from fmp_data.schema import BaseArgModel
 
     doc = BaseArgModel.__doc__ or ""
-    assert doc.count(".. deprecated:: 2.7") == 1
+    assert doc.count(".. deprecated:: 2.6") == 1
 
 
 def test_a_subclass_without_a_docstring_still_gets_one() -> None:
@@ -254,7 +254,7 @@ def test_a_subclass_without_a_docstring_still_gets_one() -> None:
 
     doc = _UndocumentedArgs.__doc__ or ""
     assert "_UndocumentedArgs" in doc
-    assert ".. deprecated:: 2.7" in doc
+    assert ".. deprecated:: 2.6" in doc
 
 
 @pytest.mark.parametrize(

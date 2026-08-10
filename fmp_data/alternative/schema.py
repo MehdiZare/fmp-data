@@ -13,7 +13,7 @@ VALID_INTERVALS = Literal["1min", "5min", "15min", "30min", "1hour", "4hour"]
 class BaseListArgs(DeprecatedArgModel):
     """Base class for list endpoints that take no arguments.
 
-    .. deprecated:: 2.7
+    .. deprecated:: 2.6
         Removed in 3.0 -- see :data:`fmp_data.schema.ARG_MODEL_DEPRECATION`.
     """
 
@@ -23,7 +23,7 @@ class BaseListArgs(DeprecatedArgModel):
 class BaseQuoteArgs(DeprecatedArgModel):
     """Base class for quote endpoints.
 
-    .. deprecated:: 2.7
+    .. deprecated:: 2.6
         Removed in 3.0 -- see :data:`fmp_data.schema.ARG_MODEL_DEPRECATION`.
     """
 

@@ -16,7 +16,7 @@ from pydantic import (
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema
 
-#: Deprecated in 2.7, removed in 3.0 (#153). Formatted with the concrete
+#: Deprecated in 2.6, removed in 3.0 (#153). Formatted with the concrete
 #: subclass name so the warning names the model the caller actually used.
 ARG_MODEL_DEPRECATION = (
     "{name} is deprecated and will be removed in 3.0. The hand-written "
@@ -31,7 +31,7 @@ ARG_MODEL_DEPRECATION = (
 #: ``help()`` prints it, and IDE hover shows it -- the three places a reader
 #: who has not yet written the call looks.
 ARG_MODEL_DOC_NOTE = (
-    ".. deprecated:: 2.7\n"
+    ".. deprecated:: 2.6\n"
     "    Removed in 3.0. The hand-written argument models are read by\n"
     "    nothing -- see :data:`fmp_data.schema.ARG_MODEL_DEPRECATION` and\n"
     "    https://github.com/MehdiZare/fmp-data/issues/153."
@@ -66,7 +66,7 @@ class DeprecatedArgModel(BaseModel):
     """
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
-        """Give every subclass its own ``.. deprecated:: 2.7`` paragraph (#178).
+        """Give every subclass its own ``.. deprecated:: 2.6`` paragraph (#178).
 
         Rewriting ``__doc__`` at class-creation time keeps *import* silent,
         which ``test_importing_an_arg_model_stays_silent`` pins: a warning
@@ -118,7 +118,7 @@ class DeprecatedArgModel(BaseModel):
 class BaseArgModel(DeprecatedArgModel):
     """Base model for all API arguments.
 
-    .. deprecated:: 2.7
+    .. deprecated:: 2.6
         Removed in 3.0 -- see :data:`ARG_MODEL_DEPRECATION`.
     """
 

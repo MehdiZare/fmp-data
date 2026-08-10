@@ -300,6 +300,16 @@ BENEFICIAL_OWNERSHIP: Endpoint = Endpoint(
 )
 
 FAIL_TO_DELIVER: Endpoint = Endpoint(
+    # The second naming oddity #166 raised: underscores in a ``path`` where
+    # every other path in the catalogue uses hyphens, and ``name == path``.
+    # Left alone deliberately, and not for lack of checking -- probed against
+    # the live API while closing #166, ``fail_to_deliver``, ``fail-to-deliver``
+    # and ``fails-to-deliver`` all return 404 (a known-good control on the same
+    # key returned 200 in the same run). There is no live variant to rename
+    # *to*; the endpoint is withdrawn upstream, the client method is
+    # ``@deprecated`` and the tool is in ``WITHDRAWN_TOOLS`` with no successor.
+    # Changing the path here would swap one 404 for another. Goes away with the
+    # endpoint in 3.0.
     name="fail_to_deliver",
     path="fail_to_deliver",
     version=APIVersion.STABLE,
