@@ -29,6 +29,9 @@ jobs:
         uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0  # Fetch all history for proper versioning
+          # Prefer the merge/squash commit on main so the tag points at what
+          # was actually merged, not a transient pull/merge ref.
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 🐍 Set up Python
@@ -43,144 +46,180 @@ jobs:
 
       - name: 📦 Install dependencies
         run: |
-          uv pip install --system build hatch bump2version
+          uv pip install --system build hatch
 
       - name: 🏷️ Determine version bump type
         id: bump_type
         run: |
           if [[ "${{ contains(github.event.pull_request.labels.*.name, 'release:major') }}" == "true" ]]; then
-            echo "TYPE=major" >> $GITHUB_OUTPUT
+            echo "TYPE=major" >> "$GITHUB_OUTPUT"
             echo "Detected major version bump from PR labels"
           elif [[ "${{ contains(github.event.pull_request.labels.*.name, 'release:minor') }}" == "true" ]]; then
-            echo "TYPE=minor" >> $GITHUB_OUTPUT
+            echo "TYPE=minor" >> "$GITHUB_OUTPUT"
             echo "Detected minor version bump from PR labels"
           elif [[ "${{ contains(github.event.pull_request.labels.*.name, 'release:patch') }}" == "true" ]]; then
-            echo "TYPE=patch" >> $GITHUB_OUTPUT
+            echo "TYPE=patch" >> "$GITHUB_OUTPUT"
             echo "Detected patch version bump from PR labels"
+          else
+            echo "::error::No release:major/minor/patch label found (job if should have prevented this)."
+            exit 1
           fi
 
       - name: 🏷️ Get current version and calculate new version
         id: version
         run: |
+          set -euo pipefail
+
           # Get the latest tag
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           echo "Latest tag: $LATEST_TAG"
 
-          # Strip 'v' prefix if present
+          # Strip 'v' prefix if present; drop any local/pre-release suffix
           CURRENT_VERSION=${LATEST_TAG#v}
+          CURRENT_VERSION=${CURRENT_VERSION%%-*}
+          CURRENT_VERSION=${CURRENT_VERSION%%+*}
           echo "Current version: $CURRENT_VERSION"
 
           # Parse version components
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+          MAJOR=${MAJOR:-0}
+          MINOR=${MINOR:-0}
+          PATCH=${PATCH:-0}
 
           # Calculate new version based on bump type
           case "${{ steps.bump_type.outputs.TYPE }}" in
             major)
-              NEW_MAJOR=$((MAJOR + 1))
-              NEW_VERSION="${NEW_MAJOR}.0.0"
+              NEW_VERSION="$((MAJOR + 1)).0.0"
               ;;
             minor)
-              NEW_MINOR=$((MINOR + 1))
-              NEW_VERSION="${MAJOR}.${NEW_MINOR}.0"
+              NEW_VERSION="${MAJOR}.$((MINOR + 1)).0"
               ;;
             patch)
-              NEW_PATCH=$((PATCH + 1))
-              NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+              NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+              ;;
+            *)
+              echo "::error::Unknown bump type '${{ steps.bump_type.outputs.TYPE }}'"
+              exit 1
               ;;
           esac
 
+          if [ -z "$NEW_VERSION" ]; then
+            echo "::error::Calculated NEW_VERSION is empty"
+            exit 1
+          fi
+
           echo "New version: $NEW_VERSION"
-          echo "VERSION=v$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "VERSION_NUMBER=$NEW_VERSION" >> $GITHUB_OUTPUT
+          {
+            echo "VERSION=v$NEW_VERSION"
+            echo "VERSION_NUMBER=$NEW_VERSION"
+          } >> "$GITHUB_OUTPUT"
 
       - name: 🏷️ Create and push tag
         run: |
+          set -euo pipefail
           git config user.name github-actions
           git config user.email github-actions@github.com
 
           RELEASE_TAG="${{ steps.version.outputs.VERSION }}"
 
-          if git rev-parse -q --verify "refs/tags/${RELEASE_TAG}" > /dev/null; then
-            echo "Tag ${RELEASE_TAG} already exists, skipping creation"
-          else
-            git tag -a "$RELEASE_TAG" -m "Release $RELEASE_TAG"
-            git push origin "$RELEASE_TAG"
+          if [ -z "$RELEASE_TAG" ] || [ "$RELEASE_TAG" = "v" ]; then
+            echo "::error::Refusing to create empty/invalid tag '$RELEASE_TAG'"
+            exit 1
           fi
+
+          # Fail loudly if the tag already exists. The previous behaviour
+          # skipped creation, still built, and published with skip-existing —
+          # a green check that re-advertised whatever was already on PyPI.
+          if git rev-parse -q --verify "refs/tags/${RELEASE_TAG}" > /dev/null; then
+            echo "::error::Tag ${RELEASE_TAG} already exists. Refusing to re-release."
+            echo "If this is intentional, delete the tag and re-run, or bump the version."
+            exit 1
+          fi
+
+          git tag -a "$RELEASE_TAG" -m "Release $RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
 
       - name: 📦 Build distribution
         run: |
           python -m build --wheel --sdist
+          echo "Built artifacts:"
+          ls -la dist/
 
       - name: 📋 Generate release notes from PR
         id: release_notes
+        env:
+          # Untrusted PR fields via env to avoid script injection.
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
-          # Get PR body and title
-          PR_TITLE="${{ github.event.pull_request.title }}"
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
-          PR_BRANCH="${{ github.event.pull_request.head.ref }}"
+          set -euo pipefail
 
-          # Determine release type based on branch
           if [[ "$PR_BRANCH" =~ ^hotfix-.* ]]; then
             RELEASE_TYPE="🔥 Hotfix"
           else
             RELEASE_TYPE="🚀 Release"
           fi
 
-          # Get commits since last tag
+          # Get commits since last *previous* tag (HEAD is the new tag tip)
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -z "$PREV_TAG" ]; then
             COMMIT_NOTES="Initial release"
           else
-            COMMIT_NOTES=$(git log --pretty=format:"- %s" $PREV_TAG..HEAD)
+            COMMIT_NOTES=$(git log --pretty=format:"- %s" "$PREV_TAG"..HEAD)
           fi
 
-          # Combine PR info and commit notes
-          echo "NOTES<<EOF" >> $GITHUB_OUTPUT
-          echo "### $RELEASE_TYPE" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "**$PR_TITLE** (#$PR_NUMBER) by @$PR_AUTHOR" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "### 📝 Commits" >> $GITHUB_OUTPUT
-          echo "$COMMIT_NOTES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          {
+            echo "NOTES<<EOF"
+            echo "### $RELEASE_TYPE"
+            echo ""
+            echo "**$PR_TITLE** (#$PR_NUMBER) by @$PR_AUTHOR"
+            echo ""
+            echo "### 📝 Commits"
+            echo "$COMMIT_NOTES"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: 🚀 Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ steps.version.outputs.VERSION }}
           RELEASE_VERSION: ${{ steps.version.outputs.VERSION_NUMBER }}
+          RELEASE_NOTES: ${{ steps.release_notes.outputs.NOTES }}
         run: |
-          cat > release-notes.md <<'EOF'
-          ## 🎉 Release ${{ steps.version.outputs.VERSION }}
+          set -euo pipefail
 
-          ${{ steps.release_notes.outputs.NOTES }}
-
-          ### 📦 Installation
-          ```bash
-          pip install fmp-data==${{ steps.version.outputs.VERSION_NUMBER }}
-          ```
-
-          ### 🔗 Links
-          - [PyPI Package](https://pypi.org/project/fmp-data/${{ steps.version.outputs.VERSION_NUMBER }}/)
-          - [Documentation](https://mehdizare.github.io/fmp-data/)
-          EOF
+          {
+            echo "## 🎉 Release ${RELEASE_TAG}"
+            echo ""
+            echo "${RELEASE_NOTES}"
+            echo ""
+            echo "### 📦 Installation"
+            echo '```bash'
+            echo "pip install fmp-data==${RELEASE_VERSION}"
+            echo '```'
+            echo ""
+            echo "### 🔗 Links"
+            echo "- [PyPI Package](https://pypi.org/project/fmp-data/${RELEASE_VERSION}/)"
+            echo "- [Documentation](https://mehdizare.github.io/fmp-data/)"
+          } > release-notes.md
 
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
-            echo "Release $RELEASE_TAG already exists, updating notes and assets"
-            gh release upload "$RELEASE_TAG" dist/* --clobber
-            gh release edit "$RELEASE_TAG" \
-              --title "Release $RELEASE_TAG" \
-              --notes-file release-notes.md
-          else
-            gh release create "$RELEASE_TAG" dist/* \
-              --verify-tag \
-              --title "Release $RELEASE_TAG" \
-              --notes-file release-notes.md
+            echo "::error::GitHub Release $RELEASE_TAG already exists. Refusing to overwrite."
+            exit 1
           fi
 
+          gh release create "$RELEASE_TAG" dist/* \
+            --verify-tag \
+            --title "Release $RELEASE_TAG" \
+            --notes-file release-notes.md
+
       - name: 🚀 Publish to PyPI
+        # skip-existing OFF for real releases. A collision means the version
+        # is already on PyPI; reporting success while leaving that older
+        # artifact installed is the same silent-success class as #204.
         uses: pypa/gh-action-pypi-publish@v1.14.2
         with:
           packages-dir: dist/
-          skip-existing: true
+          skip-existing: false

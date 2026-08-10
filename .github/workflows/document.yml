@@ -21,10 +21,9 @@ on:
       - '.github/workflows/document.yml'
   workflow_dispatch:
 
+# Default least privilege. pages/id-token are only needed to deploy.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 env:
   PYTHON_VERSION: "3.12"
@@ -38,6 +37,8 @@ concurrency:
 jobs:
   build-docs:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -86,7 +87,7 @@ jobs:
         run: |
           echo "📦 Getting package version"
           VERSION=$(uv run python -c "import fmp_data; print(fmp_data.__version__)")
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Package version: $VERSION"
 
       - name: Build documentation
@@ -101,25 +102,29 @@ jobs:
 
       - name: Generate docs summary
         run: |
-          echo "## 📚 Documentation Build" >> $GITHUB_STEP_SUMMARY
-          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| **Tool** | uv |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Event** | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Branch** | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
-
-          if [ -d "site" ]; then
-            site_size=$(du -sh site | cut -f1)
-            echo "| **Site Size** | $site_size |" >> $GITHUB_STEP_SUMMARY
-            echo "| **Status** | ✅ Built successfully |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| **Status** | ❌ Build failed |" >> $GITHUB_STEP_SUMMARY
-          fi
+          {
+            echo "## 📚 Documentation Build"
+            echo "| Item | Value |"
+            echo "|------|-------|"
+            echo "| **Tool** | uv |"
+            echo "| **Event** | ${{ github.event_name }} |"
+            echo "| **Branch** | ${{ github.ref_name }} |"
+            if [ -d "site" ]; then
+              site_size=$(du -sh site | cut -f1)
+              echo "| **Site Size** | $site_size |"
+              echo "| **Status** | ✅ Built successfully |"
+            else
+              echo "| **Status** | ❌ Build failed |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
   deploy-docs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build-docs
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -129,13 +134,17 @@ jobs:
         uses: actions/deploy-pages@v5.0.0
 
       - name: Generate deployment summary
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
-          echo "## 🚀 Documentation Deployed" >> $GITHUB_STEP_SUMMARY
-          echo "Documentation has been successfully deployed to GitHub Pages." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🔗 **[View Documentation](${{ steps.deployment.outputs.page_url }})**" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Quick Links" >> $GITHUB_STEP_SUMMARY
-          echo "- [API Reference](${{ steps.deployment.outputs.page_url }}api/)" >> $GITHUB_STEP_SUMMARY
-          echo "- [Installation Guide](${{ steps.deployment.outputs.page_url }}installation/)" >> $GITHUB_STEP_SUMMARY
-          echo "- [Examples](${{ steps.deployment.outputs.page_url }}examples/)" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## 🚀 Documentation Deployed"
+            echo "Documentation has been successfully deployed to GitHub Pages."
+            echo ""
+            echo "🔗 **[View Documentation](${PAGE_URL})**"
+            echo ""
+            echo "### Quick Links"
+            echo "- [API Reference](${PAGE_URL}api/)"
+            echo "- [Installation Guide](${PAGE_URL}installation/)"
+            echo "- [Examples](${PAGE_URL}examples/)"
+          } >> "$GITHUB_STEP_SUMMARY"

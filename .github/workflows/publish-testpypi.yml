@@ -75,13 +75,25 @@ jobs:
             NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
           fi
 
-          # Add dev suffix with PR number for TestPyPI
-          TEST_VERSION="${NEW_VERSION}.dev${{ github.event.pull_request.number }}"
+          # Unique per workflow run *and* re-run attempt. A version keyed only
+          # on the PR number is constant across every push to that PR, so with
+          # skip-existing the first build wins forever and later green checks
+          # advertise a stale artifact. See #204.
+          # Encode run_id and run_attempt into a single .devN integer so
+          # concatenation cannot collide (e.g. 100+11 vs 1001+1).
+          DEV_N=$(( ${{ github.run_id }} * 1000 + ${{ github.run_attempt }} ))
+          TEST_VERSION="${NEW_VERSION}.dev${DEV_N}"
           TEST_TAG="v${TEST_VERSION}"
+          HEAD_SHA=$(git rev-parse HEAD)
+          HEAD_SHORT=$(git rev-parse --short HEAD)
 
-          echo "TEST_VERSION=$TEST_VERSION" >> $GITHUB_OUTPUT
-          echo "TEST_TAG=$TEST_TAG" >> $GITHUB_OUTPUT
-          echo "📦 Test version: $TEST_VERSION"
+          {
+            echo "TEST_VERSION=$TEST_VERSION"
+            echo "TEST_TAG=$TEST_TAG"
+            echo "HEAD_SHA=$HEAD_SHA"
+            echo "HEAD_SHORT=$HEAD_SHORT"
+          } >> "$GITHUB_OUTPUT"
+          echo "📦 Test version: $TEST_VERSION (commit $HEAD_SHORT)"
 
           # Create a temporary tag for hatch-vcs to pick up and reset HEAD to it
           git config user.name github-actions
@@ -92,7 +104,10 @@ jobs:
           git checkout "$TEST_TAG"
 
       - name: 📦  Build wheel & sdist
+        env:
+          EXPECTED_VERSION: ${{ steps.version.outputs.TEST_VERSION }}
         run: |
+          set -euo pipefail
           echo "🏷️ Current git state:"
           git describe --tags --always
           echo "📦 Building package..."
@@ -102,18 +117,36 @@ jobs:
           echo "📦 Build completed. Contents of dist/:"
           ls -la dist/
 
-          # Verify the version in the built package
-          echo "📋 Checking built package version:"
-          if ls dist/*.tar.gz 1> /dev/null 2>&1; then
-            tar -tf dist/*.tar.gz | grep -E "(PKG-INFO|METADATA)" | head -1 | xargs tar -xOf dist/*.tar.gz | grep "^Version:" || echo "Version not found in metadata"
+          # Fail if the artifact version does not match what we will advertise
+          # in the bot comment — otherwise green + comment can still lie.
+          shopt -s nullglob
+          sdists=(dist/*.tar.gz)
+          if [ "${#sdists[@]}" -eq 0 ]; then
+            echo "::error::No sdist found in dist/"
+            exit 1
           fi
+          SDIST="${sdists[0]}"
+          META_VERSION=$(tar -xOf "$SDIST" --wildcards '*/PKG-INFO' 2>/dev/null \
+            | awk -F': ' '/^Version:/{print $2; exit}')
+          if [ -z "${META_VERSION:-}" ]; then
+            echo "::error::Could not read Version: from sdist PKG-INFO"
+            exit 1
+          fi
+          if [ "$META_VERSION" != "$EXPECTED_VERSION" ]; then
+            echo "::error::Built version '${META_VERSION}' != expected '${EXPECTED_VERSION}'"
+            exit 1
+          fi
+          echo "📋 Built package version matches: $META_VERSION"
 
       - name: 🧪  Upload to Test PyPI
+        # skip-existing is intentionally OFF. With a unique version there is
+        # nothing legitimate to skip; a collision must fail loudly rather than
+        # report success while leaving a stale wheel installed. See #204.
         uses: pypa/gh-action-pypi-publish@v1.14.2
         with:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: dist
-          skip-existing: true
+          skip-existing: false
           verbose: true
           print-hash: true
 
@@ -122,20 +155,27 @@ jobs:
         with:
           script: |
             const version = '${{ steps.version.outputs.TEST_VERSION }}';
+            const sha = '${{ steps.version.outputs.HEAD_SHA }}';
+            const short = '${{ steps.version.outputs.HEAD_SHORT }}';
             const comment = `## 🧪 Test Release Published
 
             A test version has been published to TestPyPI for verification.
 
             **Version:** \`${version}\`
+            **Built from commit:** [\`${short}\`](${{ github.server_url }}/${{ github.repository }}/commit/${sha})
+
+            > Each push gets a **new** TestPyPI version. Install the version in
+            > this comment (not an older one) so you are verifying the code you
+            > are about to release.
 
             ### Installation
             \`\`\`bash
-            pip install -i https://test.pypi.org/simple/ fmp-data==${version}
+            pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ fmp-data==${version}
             \`\`\`
 
             ### Verification Steps
             1. Install the test package using the command above
-            2. Verify the package imports correctly
+            2. Confirm \`import fmp_data; fmp_data.__version__\` matches \`${version}\`
             3. Test key functionality
             4. Check that all dependencies are resolved
 

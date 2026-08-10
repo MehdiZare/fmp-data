@@ -1,5 +1,13 @@
 name: Release-PR
 
+# On every push to dev, ensure an open PR from dev → main exists so the
+# release checklist (labels, TestPyPI, CI) has somewhere to live.
+#
+# This deliberately does NOT use peter-evans/create-pull-request: that action
+# is for committing working-tree changes onto a new branch. Checking out dev
+# and running it without modifications always concludes "branch is not ahead
+# of base" and exits green while creating nothing. See #203.
+
 on:
   push:
     branches: [dev]
@@ -9,8 +17,9 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
+  issues: write  # gh label create
 
 jobs:
   create-release-pr:
@@ -22,33 +31,96 @@ jobs:
           fetch-depth: 0
           ref: dev
 
-      - name: Create or Update Release PR
-        uses: peter-evans/create-pull-request@v8.1.1
-        with:
-          branch: release/dev-to-main
-          base: main
-          title: "Release: dev → main"
-          body: |
-            ## Release Checklist
+      - name: Create the release PR if absent
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
 
-            This is an automated release PR from `dev` to `main`.
+          git fetch origin main dev
 
-            ### Pre-merge Checklist
-            - [ ] All CI checks pass
-            - [ ] Test PyPI validation successful
-            - [ ] Documentation is up to date
+          # Already open? Nothing to do. Head must be `dev` (not a side branch)
+          # because publish-testpypi.yml gates on head.ref == 'dev'.
+          # Do not swallow gh failures with || true — an auth/API error must
+          # not be treated as "no PR exists."
+          EXISTING=$(gh pr list --base main --head dev --state open \
+            --json number,url --jq '.[0] | select(.number != null) | "\(.number) \(.url)"')
+          if [ -n "${EXISTING:-}" ]; then
+            echo "Release PR already open: $EXISTING"
+            exit 0
+          fi
 
-            ### Release Type
-            Add one of these labels to determine version bump:
-            - `release:major` - Breaking changes
-            - `release:minor` - New features (backwards compatible)
-            - `release:patch` - Bug fixes
+          # Histories must not have diverged. If main is not an ancestor of
+          # dev, a PR would open CONFLICTING and get no CI — fail loudly so
+          # the green-check-for-nothing class of bugs (#202, #203) cannot hide.
+          if ! git merge-base --is-ancestor origin/main origin/dev; then
+            echo "::error::main is not an ancestor of dev."
+            echo "The Sync-Main-to-Dev workflow should have opened a"
+            echo "reachability PR after the last release; merge it first."
+            echo "Opening a release PR now would be CONFLICTING with no CI."
+            exit 1
+          fi
 
-            ### After Merge
-            The release workflow will automatically:
-            1. Create a new git tag
-            2. Build and publish to PyPI
-            3. Create a GitHub Release
-          labels: |
-            automated
-          delete-branch: false
+          # Nothing to release if the tips are identical.
+          if [ "$(git rev-parse origin/main)" = "$(git rev-parse origin/dev)" ]; then
+            echo "dev and main point at the same commit; nothing to release."
+            exit 0
+          fi
+
+          # AHEAD of main? (dev has commits main does not)
+          AHEAD=$(git rev-list --count origin/main..origin/dev)
+          if [ "$AHEAD" -eq 0 ]; then
+            echo "dev is not ahead of main; nothing to release."
+            exit 0
+          fi
+
+          echo "dev is $AHEAD commit(s) ahead of main; creating release PR."
+
+          gh label create automated --color "0e8a16" --description "Automated PR" 2>/dev/null || true
+
+          cat > /tmp/release-pr-body.md <<'EOF'
+          ## Release Checklist
+
+          Automated release PR from `dev` to `main`.
+
+          ### Pre-merge Checklist
+          - [ ] All CI checks pass (Test-Matrix, Guard-Main-Origin, etc.)
+          - [ ] Test PyPI validation successful (version + commit SHA in the bot comment match the tip you are releasing)
+          - [ ] Documentation is up to date
+
+          ### Populate CI on first open
+          PRs created with `GITHUB_TOKEN` do **not** re-trigger `pull_request`
+          workflows. After this PR opens, either push another commit to `dev`
+          or close and reopen this PR so Test-Matrix / Guard-Main-Origin appear.
+          Adding a release label still triggers TestPyPI (`labeled` event).
+
+          ### Release Type
+          Add **exactly one** of these labels to determine the version bump:
+          - `release:major` — Breaking changes
+          - `release:minor` — New features (backwards compatible)
+          - `release:patch` — Bug fixes
+
+          ### After Merge
+          The release workflow will automatically:
+          1. Create a new git tag
+          2. Build and publish to PyPI
+          3. Create a GitHub Release
+
+          The Sync-Main-to-Dev workflow then records the squash on `dev` so
+          the *next* release PR stays MERGEABLE. See #202 / #203.
+          EOF
+
+          URL=$(gh pr create --base main --head dev \
+            --title "Release: dev → main" \
+            --body-file /tmp/release-pr-body.md \
+            --label automated)
+          echo "Created release PR: $URL"
+          {
+            echo "## Release PR"
+            echo "Created: $URL"
+            echo ""
+            echo "Note: PRs opened with \`GITHUB_TOKEN\` do not re-trigger"
+            echo "\`pull_request\` workflows. The next push to \`dev\`, or"
+            echo "close/reopen of the PR, will populate the checks list."
+            echo "Adding a release label still triggers TestPyPI."
+          } >> "$GITHUB_STEP_SUMMARY"

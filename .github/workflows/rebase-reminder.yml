@@ -12,6 +12,8 @@ permissions:
 jobs:
   check-rebase:
     runs-on: ubuntu-latest
+    # Fork PRs cannot receive bot comments that write without a PAT; skip them.
+    if: github.event.pull_request.head.repo.fork == false
     steps:
       - name: Checkout PR head
         uses: actions/checkout@v7.0.1
@@ -26,13 +28,18 @@ jobs:
         id: check
         run: |
           BEHIND=$(git rev-list --count HEAD..origin-dev)
-          echo "behind=$BEHIND" >> $GITHUB_OUTPUT
+          echo "behind=$BEHIND" >> "$GITHUB_OUTPUT"
+          echo "Branch is $BEHIND commit(s) behind origin/dev"
 
       - name: Comment if behind
-        if: ${{ steps.check.outputs.behind != '0' && github.event.pull_request.head.repo.fork == false }}
+        if: steps.check.outputs.behind != '0'
         uses: peter-evans/create-or-update-comment@v5.0.0
         with:
           issue-number: ${{ github.event.pull_request.number }}
+          # Update the existing bot comment instead of posting a new one on
+          # every synchronize (which previously spammed the PR).
+          body-includes: '<!-- rebase-reminder-bot -->'
+          edit-mode: replace
           body: |
             <!-- rebase-reminder-bot -->
             ⚠️ This branch is **${{ steps.check.outputs.behind }} commits behind `dev`**.
@@ -43,3 +50,19 @@ jobs:
             git rebase origin/dev
             git push --force-with-lease
             ```
+
+      - name: Clear reminder when up to date
+        if: steps.check.outputs.behind == '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # Find and delete the bot's rebase reminder if the branch caught up.
+          COMMENT_IDS=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --jq '.[] | select(.body | contains("<!-- rebase-reminder-bot -->")) | .id')
+          for id in $COMMENT_IDS; do
+            echo "Deleting stale rebase reminder comment $id"
+            gh api -X DELETE "repos/${REPO}/issues/comments/${id}"
+          done
