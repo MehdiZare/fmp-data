@@ -239,7 +239,10 @@ class TestCompanySearch:
         assert isinstance(results[0], CIKResult)
 
         params = mock_request.call_args[1]["params"]
-        assert params["cik"] == "320193"
+        # Sent as 'cik', not 'query': the API rejects the latter with a 400,
+        # and zero-padded to the canonical 10 digits, which is how every
+        # other CIK-typed param in the library goes out.
+        assert params["cik"] == "0000320193"
 
     @patch("httpx.Client.request")
     def test_search_by_cusip(self, mock_request, fmp_client, mock_response):
@@ -478,18 +481,17 @@ def test_get_actively_trading_list(mock_request, fmp_client, mock_response):
 
 
 @patch("httpx.Client.request")
-def test_get_tradable_list(mock_request, fmp_client, mock_response):
-    """Test getting tradable list"""
-    response_data = [{"symbol": "AAPL", "name": "Apple Inc."}]
-    mock_request.return_value = mock_response(status_code=200, json_data=response_data)
+def test_get_tradable_list_is_deprecated(mock_request, fmp_client):
+    """``tradable-list`` 404s and no path variant replaces it.
 
-    symbols = fmp_client.market.get_tradable_list(limit=5, offset=10)
-    assert len(symbols) == 1
-    assert isinstance(symbols[0], CompanySymbol)
+    The warning must name the partial substitutes rather than pretend one of
+    them is equivalent — they cover different universes.
+    """
+    with pytest.warns(DeprecationWarning, match="get_stock_list"):
+        symbols = fmp_client.market.get_tradable_list(limit=5, offset=10)
 
-    params = mock_request.call_args[1]["params"]
-    assert params["limit"] == 5
-    assert params["offset"] == 10
+    assert symbols == []
+    mock_request.assert_not_called()
 
 
 @patch("httpx.Client.request")

@@ -1,8 +1,14 @@
 # fmp_data/sec/mapping.py
 from __future__ import annotations
 
-from fmp_data.lc.hints import SYMBOL_HINT
-from fmp_data.lc.models import EndpointSemantics, SemanticCategory
+from fmp_data.lc.hints import (
+    CIK_HINT,
+    FROM_TO_DATE_HINTS,
+    LIMIT_HINT,
+    PAGE_HINT,
+    SYMBOL_HINT,
+)
+from fmp_data.lc.models import EndpointSemantics, ParameterHint, SemanticCategory
 from fmp_data.sec.endpoints import (
     ALL_INDUSTRY_CLASSIFICATION,
     INDUSTRY_CLASSIFICATION_SEARCH,
@@ -16,6 +22,38 @@ from fmp_data.sec.endpoints import (
     SEC_FILINGS_SEARCH_SYMBOL,
     SEC_PROFILE,
     SIC_LIST,
+)
+
+# SEC-only concepts, so they live here rather than in fmp_data.lc.hints.
+FORM_TYPE_HINT = ParameterHint(
+    natural_names=["form type", "filing type", "SEC form"],
+    extraction_patterns=[
+        r"(?i)\b(10-K|10-Q|8-K|S-1|13F|DEF\s?14A)\b",
+        r"(?i)form\s+([\w\-]+)",
+    ],
+    examples=["10-K", "10-Q", "8-K", "13F"],
+    context_clues=["form", "form type", "filing type", "filed a", "annual report"],
+)
+
+SIC_CODE_HINT = ParameterHint(
+    natural_names=["SIC code", "standard industrial classification", "industry code"],
+    extraction_patterns=[
+        # Anchored on the word "sic": a bare ``\b\d{4}\b`` would claim any
+        # four-digit number in the query -- a year, or ``limit=1000``.
+        r"(?i)sic\s*(?:code)?\s*:?\s*(\d{4})",
+    ],
+    examples=["7372", "2834", "6021"],
+    context_clues=["SIC", "SIC code", "industry code", "classification code"],
+)
+
+COMPANY_NAME_HINT = ParameterHint(
+    natural_names=["company name", "company", "issuer name", "registrant"],
+    extraction_patterns=[
+        r"(?i)(?:company|issuer|registrant)\s+(?:named\s+)?\"?([\w .&\-]+)\"?",
+        r"(?i)(?:named|called)\s+\"?([\w .&\-]+)\"?",
+    ],
+    examples=["Apple", "Microsoft Corporation", "Tesla"],
+    context_clues=["company", "named", "called", "issuer", "registrant", "name"],
 )
 
 # SEC endpoints mapping
@@ -59,7 +97,11 @@ SEC_ENDPOINTS_SEMANTICS = {
             "current report",
         ],
         category=SemanticCategory.INTELLIGENCE,
-        parameter_hints={},
+        parameter_hints={
+            **FROM_TO_DATE_HINTS,
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
         response_hints={},
         use_cases=["Market data analysis", "Financial research"],
     ),
@@ -86,7 +128,11 @@ SEC_ENDPOINTS_SEMANTICS = {
             "SEC filing",
         ],
         category=SemanticCategory.INTELLIGENCE,
-        parameter_hints={},
+        parameter_hints={
+            **FROM_TO_DATE_HINTS,
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
         response_hints={},
         use_cases=["Market data analysis", "Financial research"],
     ),
@@ -114,7 +160,12 @@ SEC_ENDPOINTS_SEMANTICS = {
             "S-1",
         ],
         category=SemanticCategory.INTELLIGENCE,
-        parameter_hints={},
+        parameter_hints={
+            "formType": FORM_TYPE_HINT,
+            **FROM_TO_DATE_HINTS,
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
         response_hints={},
         use_cases=["Market data analysis", "Financial research"],
     ),
@@ -140,7 +191,12 @@ SEC_ENDPOINTS_SEMANTICS = {
             "ticker filings",
         ],
         category=SemanticCategory.INTELLIGENCE,
-        parameter_hints={},
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            **FROM_TO_DATE_HINTS,
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
         response_hints={},
         use_cases=["Market data analysis", "Financial research"],
     ),
@@ -166,7 +222,12 @@ SEC_ENDPOINTS_SEMANTICS = {
             "filing lookup",
         ],
         category=SemanticCategory.INTELLIGENCE,
-        parameter_hints={},
+        parameter_hints={
+            "cik": CIK_HINT,
+            **FROM_TO_DATE_HINTS,
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
         response_hints={},
         use_cases=["Market data analysis", "Financial research"],
     ),
@@ -192,7 +253,11 @@ SEC_ENDPOINTS_SEMANTICS = {
             "company name search",
         ],
         category=SemanticCategory.COMPANY_INFO,
-        parameter_hints={},
+        parameter_hints={
+            "company": COMPANY_NAME_HINT,
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
         response_hints={},
         use_cases=["Market data analysis", "Financial research"],
     ),
@@ -246,7 +311,7 @@ SEC_ENDPOINTS_SEMANTICS = {
             "company identifier",
         ],
         category=SemanticCategory.COMPANY_INFO,
-        parameter_hints={},
+        parameter_hints={"cik": CIK_HINT},
         response_hints={},
         use_cases=["Market data analysis", "Financial research"],
     ),
@@ -326,7 +391,11 @@ SEC_ENDPOINTS_SEMANTICS = {
             "classification search",
         ],
         category=SemanticCategory.COMPANY_INFO,
-        parameter_hints={},
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "cik": CIK_HINT,
+            "sicCode": SIC_CODE_HINT,
+        },
         response_hints={},
         use_cases=["Market data analysis", "Financial research"],
     ),
@@ -352,7 +421,7 @@ SEC_ENDPOINTS_SEMANTICS = {
             "industry data",
         ],
         category=SemanticCategory.COMPANY_INFO,
-        parameter_hints={},
+        parameter_hints={"page": PAGE_HINT, "limit": LIMIT_HINT},
         response_hints={},
         use_cases=["Market data analysis", "Financial research"],
     ),

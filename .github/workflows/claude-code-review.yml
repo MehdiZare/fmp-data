@@ -12,6 +12,12 @@ on:
 
 jobs:
   claude-review:
+    # Same-repo only. Token presence is checked in a step below — the
+    # `secrets` context is NOT allowed in job-level `if` (actionlint /
+    # GitHub validate the workflow as a failed check named after this file
+    # on every push that touches it). An empty secret previously made the
+    # action exit in ~400ms with is_error:true / cost 0, painting every PR
+    # red without posting a review (#184).
     if: github.event.pull_request.head.repo.full_name == github.repository
     # Optional: Filter by PR author
     # if: |
@@ -27,13 +33,33 @@ jobs:
       id-token: write
 
     steps:
+      - name: Check whether Claude review is configured
+        id: auth
+        env:
+          TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Claude Code Review skipped: CLAUDE_CODE_OAUTH_TOKEN is not set."
+            echo "## Claude Code Review" >> "$GITHUB_STEP_SUMMARY"
+            echo "Skipped — \`CLAUDE_CODE_OAUTH_TOKEN\` is not configured." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout repository
+        if: steps.auth.outputs.configured == 'true'
         uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 1
 
+      # continue-on-error: an *expired* token still reaches this step (the gate
+      # only sees "secret is non-empty"), and a broken review must not fail
+      # the PR. Review is advisory; required checks live in ci.yml.
       - name: Run Claude Code Review
+        if: steps.auth.outputs.configured == 'true'
         id: claude-review
+        continue-on-error: true
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

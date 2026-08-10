@@ -15,16 +15,6 @@ from fmp_data.fundamental.models import (
     LeveredDCF,
     OwnerEarnings,
 )
-from fmp_data.fundamental.schema import (
-    BalanceSheetArgs,
-    CashFlowArgs,
-    FinancialRatiosArgs,
-    IncomeStatementArgs,
-    KeyMetricsArgs,
-    LatestFinancialStatementsArgs,
-    OwnerEarningsArgs,
-    SimpleSymbolArgs,
-)
 from fmp_data.models import (
     APIVersion,
     Endpoint,
@@ -46,7 +36,6 @@ INCOME_STATEMENT: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -55,7 +44,6 @@ INCOME_STATEMENT: Endpoint = Endpoint(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=False,
             description="Period (annual, quarter)",
             default="annual",
             valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
@@ -64,13 +52,11 @@ INCOME_STATEMENT: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of results",
             default=40,
         ),
     ],
     response_model=IncomeStatement,
-    arg_model=IncomeStatementArgs,
     example_queries=[
         "Get AAPL income statement",
         "Show quarterly income statements for MSFT",
@@ -94,7 +80,6 @@ BALANCE_SHEET: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -103,7 +88,6 @@ BALANCE_SHEET: Endpoint = Endpoint(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=False,
             description="Period (annual, quarter, FY, Q1-Q4)",
             default="annual",
             valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
@@ -112,13 +96,11 @@ BALANCE_SHEET: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of results",
             default=40,
         ),
     ],
     response_model=BalanceSheet,
-    arg_model=BalanceSheetArgs,
     example_queries=[
         "Get AAPL balance sheet",
         "Show Microsoft's assets and liabilities",
@@ -141,7 +123,6 @@ CASH_FLOW: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -150,7 +131,6 @@ CASH_FLOW: Endpoint = Endpoint(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=False,
             description="Period (annual, quarter, FY, Q1-Q4)",
             default="annual",
             valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
@@ -159,13 +139,11 @@ CASH_FLOW: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of results",
             default=40,
         ),
     ],
     response_model=CashFlowStatement,
-    arg_model=CashFlowArgs,
     example_queries=[
         "Get AAPL cash flow statement",
         "Show Microsoft's operating cash flow",
@@ -188,20 +166,17 @@ LATEST_FINANCIAL_STATEMENTS: Endpoint = Endpoint(
             name="page",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=True,
             description="Page number (max 100)",
         ),
         EndpointParam(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=True,
             description="Records per page (max 250)",
         ),
     ],
     optional_params=[],
     response_model=LatestFinancialStatement,
-    arg_model=LatestFinancialStatementsArgs,
     example_queries=[
         "Get latest financial statements page 0",
         "Show the newest financial statement entries",
@@ -222,7 +197,6 @@ KEY_METRICS: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -231,7 +205,6 @@ KEY_METRICS: Endpoint = Endpoint(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=False,
             description="Period (annual, quarter, FY, Q1-Q4)",
             default="annual",
             valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
@@ -240,13 +213,11 @@ KEY_METRICS: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of results",
             default=40,
         ),
     ],
     response_model=KeyMetrics,
-    arg_model=KeyMetricsArgs,
     example_queries=[
         "Show AAPL key metrics",
         "Get Microsoft's financial KPIs",
@@ -269,7 +240,6 @@ FINANCIAL_RATIOS: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -278,7 +248,6 @@ FINANCIAL_RATIOS: Endpoint = Endpoint(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=False,
             description="Period (annual, quarter, FY, Q1-Q4)",
             default="annual",
             valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
@@ -287,13 +256,11 @@ FINANCIAL_RATIOS: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of results",
             default=40,
         ),
     ],
     response_model=FinancialRatios,
-    arg_model=FinancialRatiosArgs,
     example_queries=[
         "Get AAPL financial ratios",
         "Show Microsoft's profitability metrics",
@@ -312,7 +279,6 @@ FULL_FINANCIAL_STATEMENT: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -321,7 +287,6 @@ FULL_FINANCIAL_STATEMENT: Endpoint = Endpoint(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=False,
             description="Period (annual, quarter, FY, Q1-Q4)",
             default="annual",
             valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
@@ -330,7 +295,6 @@ FULL_FINANCIAL_STATEMENT: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of results",
             default=40,
         ),
@@ -348,7 +312,6 @@ FINANCIAL_REPORTS_DATES: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -369,7 +332,6 @@ OWNER_EARNINGS: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -378,12 +340,10 @@ OWNER_EARNINGS: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of results",
         ),
     ],
     response_model=OwnerEarnings,
-    arg_model=OwnerEarningsArgs,
     example_queries=[
         "Calculate AAPL owner earnings",
         "Get Microsoft's owner earnings",
@@ -405,13 +365,11 @@ LEVERED_DCF: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
     optional_params=[],
     response_model=LeveredDCF,
-    arg_model=SimpleSymbolArgs,
     example_queries=[
         "Calculate AAPL DCF value",
         "Get Microsoft's intrinsic value",
@@ -426,21 +384,21 @@ HISTORICAL_RATING: Endpoint = Endpoint(
     path="historical-rating",
     version=APIVersion.STABLE,
     description=(
-        "Retrieve historical company ratings and scoring metrics over time "
-        "based on fundamental analysis"
+        "DEPRECATED and non-functional: historical-rating 404s. Do not select "
+        "it. The live ratings-historical endpoint is already exposed as "
+        "intelligence.get_ratings_historical, with overallScore and "
+        "per-metric scores rather than ratingScore/ratingDetails."
     ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
     optional_params=[],
     response_model=HistoricalRating,
-    arg_model=SimpleSymbolArgs,
     example_queries=[
         "Get AAPL historical ratings",
         "Show Microsoft's rating history",
@@ -463,13 +421,11 @@ DISCOUNTED_CASH_FLOW: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
     optional_params=[],
     response_model=DCF,
-    arg_model=SimpleSymbolArgs,
     example_queries=[
         "Calculate AAPL DCF valuation",
         "Get Microsoft's intrinsic value",
@@ -492,13 +448,11 @@ CUSTOM_DISCOUNTED_CASH_FLOW: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
     optional_params=[],
     response_model=CustomDCF,
-    arg_model=SimpleSymbolArgs,
     example_queries=[
         "Get detailed DCF for AAPL",
         "Show Microsoft's cash flow projections",
@@ -521,13 +475,11 @@ CUSTOM_LEVERED_DCF: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
     optional_params=[],
     response_model=CustomLeveredDCF,
-    arg_model=SimpleSymbolArgs,
     example_queries=[
         "Calculate levered DCF for AAPL",
         "Get Microsoft's FCFE projections",

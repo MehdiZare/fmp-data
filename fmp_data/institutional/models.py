@@ -5,6 +5,8 @@ from typing import Any
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
 
+from fmp_data.models import CIK
+
 default_model_config = ConfigDict(
     populate_by_name=True,
     validate_assignment=True,
@@ -22,7 +24,7 @@ class Form13F(BaseModel):
     form_date: date = Field(description="Date of form", alias="date")
     filing_date: date = Field(alias="filingDate", description="Filing date")
     accepted_date: date = Field(alias="acceptedDate", description="Accepted date")
-    cik: str = Field(description="CIK number")
+    cik: CIK = Field(description="CIK number")
     cusip: str = Field(alias="securityCusip", description="CUSIP number")
     symbol: str | None = Field(default=None, description="Ticker symbol")
     company_name: str = Field(alias="nameOfIssuer", description="Name of issuer")
@@ -95,7 +97,7 @@ class AssetAllocation(BaseModel):
     model_config = default_model_config
 
     allocation_date: date = Field(description="Allocation date", alias="date")
-    cik: str = Field(description="Institution CIK")
+    cik: CIK = Field(description="Institution CIK")
     company_name: str = Field(alias="companyName", description="Institution name")
     asset_type: str = Field(alias="assetType", description="Type of asset")
     percentage: float = Field(description="Allocation percentage")
@@ -109,7 +111,7 @@ class InstitutionalHolder(BaseModel):
 
     model_config = default_model_config
 
-    cik: str = Field(description="CIK number")
+    cik: CIK = Field(description="CIK number")
     name: str = Field(description="Institution name")
     report_date: str | None = Field(default=None, alias="date")
     filing_date: str | None = Field(default=None)
@@ -125,7 +127,7 @@ class InstitutionalHolding(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol")
-    cik: str = Field(description="CIK number")
+    cik: CIK = Field(description="CIK number")
     report_date: date = Field(description="Report date", alias="date")
     investors_holding: int = Field(
         alias="investorsHolding", description="Number of investors holding"
@@ -217,8 +219,8 @@ class InsiderRoster(BaseModel):
     )
     symbol: str | None = Field(default=None)
     filing_date: str | None = Field(default=None)
-    reporting_cik: str | None = Field(default=None)
-    company_cik: str | None = Field(default=None)
+    reporting_cik: CIK | None = Field(default=None)
+    company_cik: CIK | None = Field(default=None)
     transaction_type: str | None = Field(default=None)
     acquisition_or_disposition: str | None = Field(default=None)
     direct_or_indirect: str | None = Field(default=None)
@@ -236,7 +238,7 @@ class InsiderStatistic(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol")
-    cik: str = Field(description="CIK number")
+    cik: CIK = Field(description="CIK number")
     year: int = Field(description="Year")
     quarter: int = Field(description="Quarter")
     acquired_transactions: int = Field(
@@ -268,14 +270,14 @@ class InsiderTrade(BaseModel):
     symbol: str = Field(description="Stock symbol")
     filing_date: datetime = Field(alias="filingDate", description="SEC filing date")
     transaction_date: date = Field(alias="transactionDate", description="Trade date")
-    reporting_cik: str = Field(alias="reportingCik", description="Reporting CIK")
+    reporting_cik: CIK = Field(alias="reportingCik", description="Reporting CIK")
     transaction_type: str = Field(
         alias="transactionType", description="Transaction type"
     )
     securities_owned: float | None = Field(
         None, alias="securitiesOwned", description="Securities owned"
     )
-    company_cik: str = Field(alias="companyCik", description="Company CIK")
+    company_cik: CIK = Field(alias="companyCik", description="Company CIK")
     reporting_name: str = Field(
         alias="reportingName", description="Reporting person name"
     )
@@ -305,7 +307,7 @@ class CIKMapping(BaseModel):
 
     model_config = default_model_config
 
-    reporting_cik: str = Field(
+    reporting_cik: CIK = Field(
         validation_alias=AliasChoices("reportingCik", "cik"),
         description="CIK number",
     )
@@ -321,7 +323,7 @@ class CIKCompanyMap(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol")
-    cik: str = Field(description="CIK number", alias="companyCik")
+    cik: CIK = Field(description="CIK number", alias="companyCik")
 
 
 class BeneficialOwnership(BaseModel):
@@ -360,7 +362,7 @@ class BeneficialOwnership(BaseModel):
         alias="typeOfReportingPerson", description="Type of reporting person"
     )
     url: str = Field(description="Name of reporting person")
-    cik: str | None = Field(default=None, description="CIK number")
+    cik: CIK | None = Field(default=None, description="CIK number")
     name_of_reporting_person: str | None = Field(default=None)
 
 
@@ -385,14 +387,14 @@ class InsiderTradingLatest(BaseModel):
     symbol: str = Field(description="Stock symbol")
     filing_date: datetime = Field(alias="filingDate", description="SEC filing date")
     transaction_date: date = Field(alias="transactionDate", description="Trade date")
-    reporting_cik: str = Field(alias="reportingCik", description="Reporting CIK")
+    reporting_cik: CIK = Field(alias="reportingCik", description="Reporting CIK")
     transaction_type: str = Field(
         alias="transactionType", description="Transaction type"
     )
     securities_owned: float | None = Field(
         None, alias="securitiesOwned", description="Securities owned"
     )
-    company_cik: str = Field(alias="companyCik", description="Company CIK")
+    company_cik: CIK = Field(alias="companyCik", description="Company CIK")
     reporting_name: str = Field(
         alias="reportingName", description="Reporting person name"
     )
@@ -425,14 +427,14 @@ class InsiderTradingSearch(BaseModel):
     symbol: str = Field(description="Stock symbol")
     filing_date: datetime = Field(alias="filingDate", description="SEC filing date")
     transaction_date: date = Field(alias="transactionDate", description="Trade date")
-    reporting_cik: str = Field(alias="reportingCik", description="Reporting CIK")
+    reporting_cik: CIK = Field(alias="reportingCik", description="Reporting CIK")
     transaction_type: str = Field(
         alias="transactionType", description="Transaction type"
     )
     securities_owned: float | None = Field(
         None, alias="securitiesOwned", description="Securities owned"
     )
-    company_cik: str = Field(alias="companyCik", description="Company CIK")
+    company_cik: CIK = Field(alias="companyCik", description="Company CIK")
     reporting_name: str = Field(
         alias="reportingName", description="Reporting person name"
     )
@@ -462,7 +464,7 @@ class InsiderTradingByName(BaseModel):
 
     model_config = default_model_config
 
-    reporting_cik: str = Field(alias="reportingCik", description="Reporting CIK")
+    reporting_cik: CIK = Field(alias="reportingCik", description="Reporting CIK")
     reporting_name: str = Field(
         alias="reportingName", description="Reporting person name"
     )
@@ -479,7 +481,7 @@ class InsiderTradingByName(BaseModel):
     securities_owned: float | None = Field(
         default=None, alias="securitiesOwned", description="Securities owned"
     )
-    company_cik: str | None = Field(
+    company_cik: CIK | None = Field(
         default=None, alias="companyCik", description="Company CIK"
     )
     type_of_owner: str | None = Field(
@@ -518,7 +520,7 @@ class InsiderTradingStatistics(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol")
-    cik: str = Field(description="CIK number")
+    cik: CIK = Field(description="CIK number")
     year: int = Field(description="Year")
     quarter: int = Field(description="Quarter")
     acquired_transactions: int = Field(
@@ -547,7 +549,7 @@ class InstitutionalOwnershipLatest(BaseModel):
 
     model_config = default_model_config
 
-    cik: str = Field(description="Institution CIK")
+    cik: CIK = Field(description="Institution CIK")
     name: str = Field(description="Institution name")
     report_date: date = Field(description="Portfolio date", alias="date")
     filing_date: datetime | None = Field(
@@ -570,7 +572,7 @@ class InstitutionalOwnershipExtract(BaseModel):
 
     model_config = default_model_config
 
-    cik: str = Field(description="Institution CIK")
+    cik: CIK = Field(description="Institution CIK")
     report_date: date = Field(description="Report date", alias="date")
     filing_date: date | None = Field(
         default=None, alias="filingDate", description="Filing date"
@@ -597,11 +599,19 @@ class InstitutionalOwnershipExtract(BaseModel):
 
 
 class InstitutionalOwnershipDates(BaseModel):
-    """Form 13F filing dates"""
+    """Form 13F filing dates.
+
+    ``cik`` is a request parameter for this endpoint, not a response field:
+    probed 2026-08-07, ``institutional-ownership/dates`` returns rows
+    containing only ``date``, ``year`` and ``quarter``. The field is kept
+    declared so that a future API addition parses under ``strict`` mode
+    rather than failing as an unexpected field; in practice it is always
+    ``None``.
+    """
 
     model_config = default_model_config
 
-    cik: str | None = Field(default=None, description="Institution CIK number")
+    cik: CIK | None = Field(default=None, description="Institution CIK number")
     report_date: date = Field(description="Filing date", alias="date")
     year: int | None = Field(default=None, description="Filing year")
     quarter: int | None = Field(default=None, description="Filing quarter")
@@ -613,7 +623,7 @@ class InstitutionalOwnershipAnalytics(BaseModel):
     model_config = default_model_config
 
     report_date: date = Field(description="Filing date", alias="date")
-    cik: str = Field(description="Institution CIK")
+    cik: CIK = Field(description="Institution CIK")
     filing_date: date | None = Field(
         default=None, alias="filingDate", description="Filing date"
     )
@@ -741,7 +751,7 @@ class HolderPerformanceSummary(BaseModel):
     model_config = default_model_config
 
     report_date: date = Field(description="Filing date", alias="date")
-    cik: str = Field(description="Institution CIK")
+    cik: CIK = Field(description="Institution CIK")
     investor_name: str = Field(alias="investorName", description="Institution name")
     portfolio_size: int = Field(alias="portfolioSize", description="Portfolio size")
     securities_added: int = Field(
@@ -845,7 +855,7 @@ class HolderIndustryBreakdown(BaseModel):
     model_config = default_model_config
 
     report_date: date = Field(description="Filing date", alias="date")
-    cik: str = Field(description="Institution CIK")
+    cik: CIK = Field(description="Institution CIK")
     investor_name: str = Field(alias="investorName", description="Investor name")
     industry_title: str = Field(alias="industryTitle", description="Industry title")
     weight: float = Field(description="Industry weight in portfolio")
@@ -880,7 +890,7 @@ class SymbolPositionsSummary(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol")
-    cik: str | None = Field(default=None, description="Company CIK")
+    cik: CIK | None = Field(default=None, description="Company CIK")
     report_date: date = Field(description="Report date", alias="date")
     investors_holding: int = Field(
         alias="investorsHolding", description="Number of investors holding"

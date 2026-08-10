@@ -2,20 +2,30 @@
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator
+
+from fmp_data.schema import DeprecatedArgModel
 
 # Constants
 VALID_INTERVALS = Literal["1min", "5min", "15min", "30min", "1hour", "4hour"]
 
 
-class BaseListArgs(BaseModel):
-    """Base class for list endpoints that take no arguments"""
+class BaseListArgs(DeprecatedArgModel):
+    """Base class for list endpoints that take no arguments.
+
+    .. deprecated:: 2.6
+        Removed in 3.0 -- see :data:`fmp_data.schema.ARG_MODEL_DEPRECATION`.
+    """
 
     pass
 
 
-class BaseQuoteArgs(BaseModel):
-    """Base class for quote endpoints"""
+class BaseQuoteArgs(DeprecatedArgModel):
+    """Base class for quote endpoints.
+
+    .. deprecated:: 2.6
+        Removed in 3.0 -- see :data:`fmp_data.schema.ARG_MODEL_DEPRECATION`.
+    """
 
     symbol: str = Field(description="Trading symbol for the instrument")
 

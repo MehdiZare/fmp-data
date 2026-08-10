@@ -7,9 +7,12 @@ Relative path: tests/unit/test_mcp.py
 
 from __future__ import annotations
 
+import logging
 import os
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
+import warnings
 
 import pytest
 
@@ -150,8 +153,14 @@ class TestToolLoader:
             "intelligence.financial_reports_dates",
         ]
 
+        catalog = [
+            {"key": "financial_reports_dates", "spec": spec} for spec in tool_specs
+        ]
+
         with patch.dict(os.environ, {"FMP_MCP_TOOL_NAME_STYLE": "key"}):
-            with patch("fmp_data.mcp.discovery.discover_all_tools", return_value=[]):
+            with patch(
+                "fmp_data.mcp.discovery.discover_all_tools", return_value=catalog
+            ):
                 with pytest.raises(RuntimeError, match="Duplicate tool keys"):
                     register_from_manifest(mcp, fmp_client, tool_specs)
 
@@ -205,7 +214,7 @@ class TestToolsManifest:
             "company.profile",
             "company.market_cap",
             "alternative.crypto_quote",
-            "company.historical_price",
+            "company.historical_prices",
         ]
 
         for tool in expected_tools:
@@ -280,11 +289,6 @@ class TestSemanticsMethodResolution:
                 "search_equity_offering",
                 INTELLIGENCE_ENDPOINTS_SEMANTICS,
                 "equity_offering_search",
-            ),
-            (
-                "search_cik_by_name",
-                INSTITUTIONAL_ENDPOINTS_SEMANTICS,
-                "cik_mapper_by_name",
             ),
             ("get_cik_mappings", INSTITUTIONAL_ENDPOINTS_SEMANTICS, "cik_mappings"),
             ("search_company", MARKET_ENDPOINTS_SEMANTICS, "search"),
@@ -361,17 +365,18 @@ class TestSemanticsMethodResolution:
             duplicates
         )
 
-    def test_discovered_tool_keys_are_unambiguous_globally(self):
-        """Key-style names resolve against *all* discovered tools, not defaults.
+    def test_ambiguous_bare_keys_are_exactly_the_documented_pair(self):
+        """Bare-key resolution is only guaranteed for singly-claimed keys.
 
-        ``_build_key_to_spec`` indexes the full discovery catalogue, so a key
-        shared by two clients raises at registration even when only one of them
-        is in ``DEFAULT_TOOLS``. The allowlist below records collisions that
-        predate this guard; it must only ever shrink. See issue #126.
+        ``build_key_to_spec`` indexes the full discovery catalogue, so a key
+        claimed by two clients cannot resolve from the bare form. Exactly two
+        such keys exist and both name legitimate, distinct tools; callers must
+        spell them ``<client>.<key>``. Any *other* collision is a namespace
+        regression and must fail here. See issue #126.
         """
         from fmp_data.mcp.discovery import discover_all_tools
 
-        known_collisions = {"crypto_quotes", "forex_quotes"}
+        documented_ambiguous = {"crypto_quotes", "forex_quotes"}
 
         tools = discover_all_tools()
         assert tools, "discover_all_tools() returned no tools"
@@ -380,18 +385,606 @@ class TestSemanticsMethodResolution:
         for tool in tools:
             by_key.setdefault(tool["spec"].split(".", 1)[1], []).append(tool["spec"])
 
-        collisions = {k: v for k, v in by_key.items() if len(v) > 1}
-        new_collisions = {
-            k: v for k, v in collisions.items() if k not in known_collisions
-        }
-        assert not new_collisions, "New ambiguous key-style tool names:\n" + "\n".join(
-            f"{k}: {v}" for k, v in new_collisions.items()
+        ambiguous = {k: sorted(v) for k, v in by_key.items() if len(v) > 1}
+
+        assert set(ambiguous) == documented_ambiguous, (
+            "Ambiguous bare tool keys changed. Expected exactly "
+            f"{sorted(documented_ambiguous)}, found "
+            f"{dict(sorted(ambiguous.items()))}"
+        )
+        assert ambiguous["crypto_quotes"] == [
+            "alternative.crypto_quotes",
+            "batch.crypto_quotes",
+        ]
+        assert ambiguous["forex_quotes"] == [
+            "alternative.forex_quotes",
+            "batch.forex_quotes",
+        ]
+
+    def test_ambiguous_bare_key_error_names_every_candidate(self):
+        """The error must be actionable: list candidates, show the fix."""
+        from fmp_data.mcp.tool_loader import _resolve_tool_spec, build_key_to_spec
+
+        key_to_spec = build_key_to_spec(
+            [
+                {"key": "crypto_quotes", "spec": "alternative.crypto_quotes"},
+                {"key": "crypto_quotes", "spec": "batch.crypto_quotes"},
+            ]
         )
 
-        stale = known_collisions - collisions.keys()
-        assert not stale, (
-            f"Allowlist entries no longer collide, remove them: {sorted(stale)}"
+        with pytest.raises(RuntimeError) as exc_info:
+            _resolve_tool_spec("crypto_quotes", key_to_spec)
+
+        message = str(exc_info.value)
+        assert "alternative.crypto_quotes" in message
+        assert "batch.crypto_quotes" in message
+        assert "<client>.<key>" in message
+
+    def test_full_spec_still_resolves_an_ambiguous_key(self):
+        """Naming the client is the documented escape hatch; it must work."""
+        from fmp_data.mcp.tool_loader import _resolve_tool_spec, build_key_to_spec
+
+        key_to_spec = build_key_to_spec(
+            [
+                {"key": "crypto_quotes", "spec": "alternative.crypto_quotes"},
+                {"key": "crypto_quotes", "spec": "batch.crypto_quotes"},
+            ]
         )
+
+        assert _resolve_tool_spec("batch.crypto_quotes", key_to_spec) == (
+            "batch.crypto_quotes",
+            "batch",
+            "crypto_quotes",
+        )
+
+    def test_withdrawn_tools_resolve_but_are_never_default(self):
+        """A tool whose endpoint 404s must not be advertised by default.
+
+        It stays in the catalog so an explicit manifest keeps working, and its
+        successor -- where one exists -- must be a real, loadable spec rather
+        than a name someone hoped was right.
+        """
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tools_manifest import (
+            DEFAULT_TOOLS,
+            WITHDRAWN_TOOLS,
+        )
+
+        catalog = {tool["spec"] for tool in discover_all_tools()}
+
+        assert WITHDRAWN_TOOLS, "an empty map would make this test vacuous"
+        for spec, successor in WITHDRAWN_TOOLS.items():
+            assert spec in catalog, f"{spec} must keep resolving until 3.0"
+            assert spec not in DEFAULT_TOOLS, (
+                f"{spec} names a dead FMP endpoint; a default server would "
+                "advertise a tool that can only return empty"
+            )
+            if successor is not None:
+                assert successor in catalog, f"{spec} -> {successor} does not exist"
+                assert successor not in WITHDRAWN_TOOLS, (
+                    f"{spec} points at {successor}, which is itself withdrawn"
+                )
+
+    def test_withdrawn_and_deprecated_stay_distinct(self):
+        """The two maps mean different things and must not blur together.
+
+        ``DEPRECATED_TOOLS`` promises a drop-in: both keys call the same
+        method, and ``_warn_if_deprecated`` says so in as many words. Every
+        ``WITHDRAWN_TOOLS`` successor is a *different* endpoint with a
+        different payload. Merging them would make that promise false.
+        """
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS, WITHDRAWN_TOOLS
+
+        assert not set(DEPRECATED_TOOLS) & set(WITHDRAWN_TOOLS)
+
+        # Compare (client, method), not the bare method name: the name alone
+        # is ambiguous across clients -- alternative.get_crypto_quotes and
+        # batch.get_crypto_quotes share a name but are different callables on
+        # different endpoints, which is the whole reason one is withdrawn.
+        callable_by_spec = {
+            tool["spec"]: (tool["spec"].split(".")[0], tool["method"])
+            for tool in discover_all_tools()
+        }
+        for spec, successor in WITHDRAWN_TOOLS.items():
+            if successor is None:
+                continue
+            assert callable_by_spec[spec] != callable_by_spec[successor], (
+                f"{spec} and {successor} are the same callable, so this is an "
+                "alias and belongs in DEPRECATED_TOOLS instead"
+            )
+
+    def test_withdrawn_key_warning_does_not_promise_a_drop_in(self):
+        """The withdrawn warning must not repeat the alias wording.
+
+        Telling someone a replacement is a drop-in when the payload differs is
+        worse than saying nothing: they will swap the call and trust the
+        result.
+        """
+        from fmp_data.mcp.tool_loader import _warn_if_deprecated
+
+        with pytest.warns(DeprecationWarning) as recorded:
+            _warn_if_deprecated("company.core_information")
+        message = str(recorded[0].message)
+        assert "no longer serves" in message
+        assert "company.profile" in message
+        assert "drop-in" not in message
+
+        with pytest.warns(DeprecationWarning) as recorded:
+            _warn_if_deprecated("institutional.fail_to_deliver")
+        assert "no replacement" in str(recorded[0].message)
+
+    def test_resolving_a_withdrawn_key_actually_warns(self):
+        """Through the gate, not around it.
+
+        The test above calls ``_warn_if_deprecated`` directly, so it asserts
+        the message and cannot see whether anything reaches it. Nothing did:
+        ``_resolved`` set ``DEPRECATED`` only from ``DEPRECATED_TOOLS``, which
+        is disjoint from ``WITHDRAWN_TOOLS``, so a withdrawn key resolved as
+        ``RESOLVED`` and the call site's ``if resolution.is_deprecated`` gate
+        was never true. The whole withdrawal branch was unreachable in
+        production while its unit test passed.
+        """
+        from fmp_data.mcp.tool_loader import ResolutionStatus, _resolved
+
+        resolution = _resolved("alternative.crypto_quotes", "alternative.crypto_quotes")
+        assert resolution.status is ResolutionStatus.WITHDRAWN
+        assert resolution.is_withdrawn
+        assert resolution.is_retired, "the gate the registration path warns behind"
+        assert resolution.is_resolved, "withdrawn tools still register until 3.0"
+        assert resolution.replacement is None, "a withdrawal has no drop-in"
+        assert resolution.successor == "batch.crypto_quotes"
+
+    def test_every_withdrawn_spec_resolves_as_withdrawn(self):
+        """No withdrawn spec may resolve as plain RESOLVED.
+
+        The sweep, so a future withdrawal cannot be added to the manifest
+        without reaching the status that makes it announce itself.
+        """
+        from fmp_data.mcp.tool_loader import ResolutionStatus, _resolved
+        from fmp_data.mcp.tools_manifest import WITHDRAWN_TOOLS
+
+        silent = [
+            spec
+            for spec in WITHDRAWN_TOOLS
+            if _resolved(spec, spec).status is not ResolutionStatus.WITHDRAWN
+        ]
+        assert not silent, f"withdrawn specs not resolving as withdrawn: {silent}"
+        assert WITHDRAWN_TOOLS, "empty manifest would make this vacuous"
+
+
+class TestToolKeyNamespace:
+    """One tool key per ``(client, method)`` pair (#126, #130, #136)."""
+
+    def test_cik_mapper_by_name_is_gone(self):
+        """#130: a tool that cannot express its own operation is removed."""
+        from fmp_data.institutional.mapping import (
+            INSTITUTIONAL_ENDPOINT_MAP,
+            INSTITUTIONAL_ENDPOINTS_SEMANTICS,
+        )
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tools_manifest import DEFAULT_TOOLS
+
+        assert "cik_mapper_by_name" not in INSTITUTIONAL_ENDPOINTS_SEMANTICS
+        assert "search_cik_by_name" not in INSTITUTIONAL_ENDPOINT_MAP
+        assert "institutional.cik_mapper_by_name" not in {
+            tool["spec"] for tool in discover_all_tools()
+        }
+        assert "institutional.cik_mapper_by_name" not in DEFAULT_TOOLS
+
+    def test_search_cik_by_name_client_methods_still_work(self):
+        """The client wrapper is the genuine interface and stays untouched."""
+        import inspect
+
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+        from fmp_data.institutional.client import InstitutionalClient
+
+        for cls in (InstitutionalClient, AsyncInstitutionalClient):
+            method = cls.search_cik_by_name
+            assert "name" in inspect.signature(method).parameters
+
+    def test_one_tool_key_per_client_method_pair(self):
+        """#136: no ``(client, method)`` may be advertised under two keys."""
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
+
+        by_pair: dict[tuple[str, str], list[str]] = {}
+        for tool in discover_all_tools():
+            by_pair.setdefault((tool["client"], tool["method"]), []).append(
+                tool["spec"]
+            )
+
+        doubled = {
+            pair: sorted(specs)
+            for pair, specs in by_pair.items()
+            if len(specs) > 1 and not any(spec in DEPRECATED_TOOLS for spec in specs)
+        }
+
+        assert doubled == {}, (
+            "Methods advertised under more than one non-deprecated tool key:\n"
+            + "\n".join(f"{pair}: {specs}" for pair, specs in sorted(doubled.items()))
+        )
+
+    def test_deprecated_keys_are_not_in_default_tools(self):
+        """The default server advertises one tool per method."""
+        from fmp_data.mcp.tools_manifest import DEFAULT_TOOLS, DEPRECATED_TOOLS
+
+        leaked = sorted(set(DEPRECATED_TOOLS) & set(DEFAULT_TOOLS))
+
+        assert leaked == [], f"Deprecated tool keys still in DEFAULT_TOOLS: {leaked}"
+
+    def test_deprecated_keys_map_to_canonical_keys_in_default_tools(self):
+        """Every replacement must actually be what the default server serves."""
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tools_manifest import DEFAULT_TOOLS, DEPRECATED_TOOLS
+
+        catalog = {tool["spec"] for tool in discover_all_tools()}
+
+        assert DEPRECATED_TOOLS == {
+            "company.executives": "company.key_executives",
+            "company.historical_price": "company.historical_prices",
+            "company.intraday_price": "company.intraday_prices",
+        }
+        for deprecated, replacement in DEPRECATED_TOOLS.items():
+            assert deprecated in catalog, f"{deprecated} must keep resolving in 2.6"
+            assert replacement in catalog
+            assert replacement in DEFAULT_TOOLS
+
+    def test_deprecated_keys_share_the_method_of_their_replacement(self):
+        """An alias must be an alias, not a rename onto a different callable."""
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
+
+        method_by_spec = {tool["spec"]: tool["method"] for tool in discover_all_tools()}
+
+        for deprecated, replacement in DEPRECATED_TOOLS.items():
+            assert method_by_spec[deprecated] == method_by_spec[replacement]
+
+    @pytest.mark.parametrize(
+        ("spec", "replacement"),
+        [
+            ("company.executives", "company.key_executives"),
+            ("company.historical_price", "company.historical_prices"),
+            ("company.intraday_price", "company.intraday_prices"),
+        ],
+    )
+    def test_resolving_a_deprecated_full_spec_warns(
+        self, spec: str, replacement: str
+    ) -> None:
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tool_loader import _resolve_tool_spec, build_key_to_spec
+
+        key_to_spec = build_key_to_spec(discover_all_tools())
+
+        with pytest.warns(DeprecationWarning) as record:
+            _resolve_tool_spec(spec, key_to_spec)
+
+        message = str(record[0].message)
+        assert spec in message
+        assert replacement in message
+        assert "3.0" in message
+
+    def test_resolving_a_deprecated_bare_key_warns(self) -> None:
+        """The bare form resolves to the same spec, so it warns too."""
+        from fmp_data.mcp.tool_loader import _resolve_tool_spec, build_key_to_spec
+
+        key_to_spec = build_key_to_spec(
+            [{"key": "executives", "spec": "company.executives"}]
+        )
+
+        with pytest.warns(DeprecationWarning, match="company.key_executives"):
+            assert _resolve_tool_spec("executives", key_to_spec) == (
+                "company.executives",
+                "company",
+                "executives",
+            )
+
+    def test_canonical_keys_do_not_warn(self) -> None:
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tool_loader import _resolve_tool_spec, build_key_to_spec
+
+        key_to_spec = build_key_to_spec(discover_all_tools())
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            _resolve_tool_spec("company.key_executives", key_to_spec)
+
+    def test_a_full_spec_typo_is_rejected_at_resolution(self) -> None:
+        """A misspelt spec must fail with the tool-name error, not an import one.
+
+        The catalog is the authority for both entry forms (#149), so
+        ``company.profil`` never reaches ``_load_semantics``.
+        """
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tool_loader import _resolve_tool_spec, build_key_to_spec
+
+        key_to_spec = build_key_to_spec(discover_all_tools())
+
+        with pytest.raises(RuntimeError, match="not found in available tools"):
+            _resolve_tool_spec("company.profil", key_to_spec)
+
+    def test_warning_is_attributed_to_the_caller_not_the_library(self) -> None:
+        """``stacklevel`` must point at the manifest author's own module.
+
+        A warning attributed to ``tool_loader.py`` is useless: it names the
+        library rather than the line to change, and no ``filterwarnings`` rule
+        keyed on the caller's module can match it.
+        """
+        from fmp_data.client import FMPDataClient
+        from fmp_data.mcp.tool_loader import register_from_manifest
+
+        client = FMPDataClient(api_key="dummy-key-for-attribute-resolution")
+        try:
+            with pytest.warns(DeprecationWarning) as record:
+                register_from_manifest(Mock(), client, ["company.historical_price"])
+        finally:
+            client.close()
+
+        assert Path(record[0].filename).name == Path(__file__).name, (
+            f"warning attributed to {record[0].filename}, expected this test file"
+        )
+
+    def test_deprecation_survives_pythons_default_warning_filters(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """The announcement must reach the server operator, not just linters.
+
+        ``stacklevel=4`` attributes the warning to whoever called
+        ``register_from_manifest``. On the dominant path that caller is
+        ``fmp_data.mcp.server.create_app`` — a *library* module — and Python's
+        default filter chain (``default::DeprecationWarning:__main__`` then
+        ``ignore::DeprecationWarning``) drops any DeprecationWarning not
+        attributed to ``__main__``. So ``python -m fmp_data.mcp``, ``fmp-mcp
+        serve`` and Claude Desktop would announce nothing at all before 3.0.
+
+        This reproduces those filters exactly and asserts the log channel still
+        carries the message. Deleting the ``logger.warning`` call fails here.
+        """
+        from fmp_data.mcp.tool_loader import _warn_if_deprecated
+
+        with warnings.catch_warnings(record=True) as shown:
+            warnings.resetwarnings()
+            warnings.filterwarnings(
+                "default", category=DeprecationWarning, module="__main__"
+            )
+            warnings.filterwarnings("ignore", category=DeprecationWarning)
+            with caplog.at_level(
+                logging.WARNING, logger="fmp_data.fmp_data.mcp.tool_loader"
+            ):
+                _warn_if_deprecated("company.historical_price")
+
+        assert shown == [], (
+            "expected the DeprecationWarning to be swallowed by the default "
+            "filters — if it is not, this test no longer proves anything"
+        )
+        logged = [r.getMessage() for r in caplog.records]
+        assert len(logged) == 1, f"expected exactly one log record, got {logged}"
+        assert "company.historical_price" in logged[0]
+        assert "company.historical_prices" in logged[0]
+        assert "3.0" in logged[0]
+
+    def test_canonical_keys_are_silent_on_both_channels(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """The log channel must not turn every canonical key into noise."""
+        from fmp_data.mcp.tool_loader import _warn_if_deprecated
+
+        with caplog.at_level(
+            logging.WARNING, logger="fmp_data.fmp_data.mcp.tool_loader"
+        ):
+            _warn_if_deprecated("company.historical_prices")
+
+        assert caplog.records == [], (
+            f"canonical key logged {[r.getMessage() for r in caplog.records]}"
+        )
+
+    def test_recommended_tools_names_no_deprecated_key(self) -> None:
+        """A public helper must not hand out a key this release deprecates."""
+        from fmp_data.mcp.discovery import get_recommended_tools
+        from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
+
+        offenders = sorted(set(get_recommended_tools()) & set(DEPRECATED_TOOLS))
+
+        assert offenders == [], (
+            f"get_recommended_tools() recommends deprecated keys: {offenders}"
+        )
+
+    def test_no_removal_reminder_missed_for_3_0(self) -> None:
+        """Breadcrumb: 3.0 must not ship with the deprecation cycle still open.
+
+        ``fmp_data.__version__`` is hatch-vcs derived and resolves to the
+        ``"0.0.0"`` fallback whenever the suite imports the source tree rather
+        than a built wheel -- which is what happens in this repo -- so it is
+        checked only when it carries a real value. The CHANGELOG is the signal
+        that actually moves in-tree: cutting 3.0 adds a released ``## [3.x.y]``
+        heading, and that is what trips this test.
+
+        On failure: drop ``DEPRECATED_TOOLS``, the ``executives`` /
+        ``historical_price`` / ``intraday_price`` semantics entries in
+        ``fmp_data/company/mapping.py``, and ``_warn_if_deprecated`` plus its
+        two call sites in ``fmp_data/mcp/tool_loader.py``.
+        """
+        import re
+
+        from fmp_data import __version__
+
+        reminder = (
+            "3.0: drop DEPRECATED_TOOLS, the three alias semantics entries, "
+            "and _warn_if_deprecated"
+        )
+
+        if __version__ != "0.0.0":
+            assert int(__version__.split(".")[0]) < 3, reminder
+
+        changelog = (Path(__file__).resolve().parents[2] / "CHANGELOG.md").read_text()
+        released_majors = {
+            int(match) for match in re.findall(r"^## \[(\d+)\.", changelog, re.M)
+        }
+
+        assert not any(major >= 3 for major in released_majors), reminder
+
+
+class TestExampleManifests:
+    """Shipped examples must demonstrate the policy, not violate it (#126, #136).
+
+    ``docs/mcp/configurations.md`` tells users to copy one of these files, so a
+    deprecated or unresolvable key here is advice to write broken manifests.
+    """
+
+    MANIFEST_DIR = Path(__file__).resolve().parents[2] / "examples/mcp/configurations"
+
+    @staticmethod
+    def _manifest_paths() -> list[Path]:
+        paths = sorted(TestExampleManifests.MANIFEST_DIR.glob("*_manifest.py"))
+        assert paths, (
+            f"No example manifests found in {TestExampleManifests.MANIFEST_DIR}"
+        )
+        return paths
+
+    @staticmethod
+    def _load_tools(path: Path) -> list[str]:
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        return load_manifest_tools(path)
+
+    def test_no_example_manifest_names_a_deprecated_key(self) -> None:
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tool_loader import build_key_to_spec, resolve_tool_spec
+
+        key_to_spec = build_key_to_spec(discover_all_tools())
+
+        offenders: list[str] = []
+        for path in self._manifest_paths():
+            for entry in self._load_tools(path):
+                resolution = resolve_tool_spec(entry, key_to_spec)
+                if resolution.is_deprecated:
+                    offenders.append(
+                        f"{path.name}: '{entry}' -> use '{resolution.replacement}'"
+                    )
+
+        assert offenders == [], (
+            "Example manifests name deprecated tool keys:\n" + "\n".join(offenders)
+        )
+
+    def test_every_example_manifest_entry_resolves(self) -> None:
+        """Catches ambiguous bare keys and typos, not just deprecation.
+
+        ``crypto_manifest.py`` listed bare ``crypto_quotes`` / ``forex_quotes``,
+        which are claimed by two clients each and raise at registration (#126).
+        The pure resolver is what the loader decides with, so this guard cannot
+        drift from registration (#149).
+        """
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tool_loader import build_key_to_spec, resolve_tool_spec
+
+        key_to_spec = build_key_to_spec(discover_all_tools())
+
+        failures: list[str] = []
+        for path in self._manifest_paths():
+            for entry in self._load_tools(path):
+                resolution = resolve_tool_spec(entry, key_to_spec)
+                if not resolution.is_resolved:
+                    failures.append(f"{path.name}: '{entry}': {resolution.message}")
+
+        assert failures == [], (
+            "Example manifest entries that do not resolve:\n" + "\n".join(failures)
+        )
+
+    def test_no_example_manifest_lists_a_tool_twice(self) -> None:
+        """Two names for one method is the very thing #136 removes."""
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tool_loader import build_key_to_spec, resolve_tool_spec
+
+        key_to_spec = build_key_to_spec(discover_all_tools())
+        method_by_spec = {tool["spec"]: tool["method"] for tool in discover_all_tools()}
+
+        duplicates: list[str] = []
+        for path in self._manifest_paths():
+            seen: dict[tuple[str, str], str] = {}
+            for entry in self._load_tools(path):
+                resolution = resolve_tool_spec(entry, key_to_spec)
+                if not resolution.is_resolved:
+                    # Unresolvable entries are test_every_example_manifest_entry
+                    # _resolves' failure to report; do not double-fail here.
+                    continue
+                full_spec = resolution.spec
+                client_slug = resolution.client
+                assert full_spec is not None and client_slug is not None
+                pair = (client_slug, method_by_spec[full_spec])
+                if pair in seen:
+                    duplicates.append(f"{path.name}: '{seen[pair]}' and '{entry}'")
+                seen[pair] = entry
+
+        assert duplicates == [], (
+            "Example manifests register the same method twice:\n"
+            + "\n".join(duplicates)
+        )
+
+
+class TestMCPCliDeprecationReporting:
+    """``fmp-mcp validate`` answers 'is my manifest future-proof?' (#136)."""
+
+    def test_validate_reports_deprecated_specs_and_still_passes(
+        self, tmp_path, capsys
+    ) -> None:
+        from fmp_data.mcp.cli import validate_manifest
+
+        manifest = tmp_path / "deprecated_manifest.py"
+        manifest.write_text('TOOLS = ["company.historical_price", "company.profile"]\n')
+
+        assert validate_manifest(manifest) is True
+
+        out = capsys.readouterr().out
+        assert "company.historical_price" in out
+        assert "company.historical_prices" in out
+        assert "3.0" in out
+
+    def test_validate_reports_a_deprecated_bare_key(self, tmp_path, capsys) -> None:
+        from fmp_data.mcp.cli import validate_manifest
+
+        manifest = tmp_path / "bare_manifest.py"
+        manifest.write_text('TOOLS = ["historical_price"]\n')
+
+        assert validate_manifest(manifest) is True
+
+        out = capsys.readouterr().out
+        assert "company.historical_prices" in out
+
+    def test_validate_is_quiet_for_a_canonical_manifest(self, tmp_path, capsys) -> None:
+        from fmp_data.mcp.cli import validate_manifest
+
+        manifest = tmp_path / "clean_manifest.py"
+        manifest.write_text('TOOLS = ["company.historical_prices"]\n')
+
+        assert validate_manifest(manifest) is True
+
+        captured = capsys.readouterr()
+        assert "Deprecated" not in captured.out
+        assert "Unknown tools" not in captured.err
+
+    def test_validate_flags_an_ambiguous_bare_key(self, tmp_path, capsys) -> None:
+        from fmp_data.mcp.cli import validate_manifest
+
+        manifest = tmp_path / "ambiguous_manifest.py"
+        manifest.write_text('TOOLS = ["crypto_quotes"]\n')
+
+        # False, not True: registration raises on this manifest, so blessing
+        # it was the green check #161 is about.
+        assert validate_manifest(manifest) is False
+
+        err = capsys.readouterr().err
+        assert "alternative.crypto_quotes" in err
+        assert "batch.crypto_quotes" in err
+
+    def test_listing_marks_deprecated_tools(self) -> None:
+        from fmp_data.mcp.cli import list_available_tools
+
+        by_spec = {tool["spec"]: tool for tool in list_available_tools()}
+
+        assert by_spec["company.historical_price"]["deprecated"] == (
+            "company.historical_prices"
+        )
+        assert by_spec["company.historical_prices"]["deprecated"] is None
 
 
 class TestIntelligenceGradesAndRatingsTools:
@@ -778,3 +1371,244 @@ class TestMCPCompat:
             cls = _compat.import_mcp_server_class()
 
         assert cls is _FastMCP
+
+
+class TestDeprecationMechanismsStaySeparate:
+    """The MCP side of #137's contract.
+
+    These live here, rather than beside the other #137 tests in
+    ``tests/unit/lc/``, because they need the ``mcp`` extra and that directory
+    is skipped without ``langchain``. No CI job installs both: the ``langchain``
+    job has no ``mcp``, and the ``mcp-server`` job runs only this file
+    (``noxfile.py``). Placed anywhere else, they would never execute.
+    """
+
+    def test_mcp_catalog_still_advertises_the_deprecated_keys(self):
+        """The flag is LangChain-side only; MCP tool keys must stay resolvable.
+
+        #137 chose the flag over deleting the entries precisely so the catalog
+        count does not move and nothing breaks without a deprecation window.
+        MCP reads the semantics tables directly, never the vector store.
+        """
+        from fmp_data.mcp.discovery import discover_all_tools
+        from tests.unit.test_deprecated_endpoint_flags import (
+            DEPRECATED_INTELLIGENCE_ENDPOINTS,
+        )
+
+        keys = {tool["key"] for tool in discover_all_tools()}
+        assert DEPRECATED_INTELLIGENCE_ENDPOINTS <= keys
+
+    def test_lc_deprecation_and_mcp_deprecated_tools_are_separate(self):
+        """Two mechanisms, deliberately disjoint -- see the comments on each.
+
+        ``DEPRECATED_TOOLS`` renames duplicate keys for methods that still
+        work; ``EndpointSemantics.deprecated`` marks endpoints that return
+        nothing. If a future change makes these overlap, that is a design
+        decision to take explicitly rather than discover.
+        """
+        from fmp_data.mcp.tools_manifest import DEPRECATED_TOOLS
+        from tests.unit.test_deprecated_endpoint_flags import (
+            DEPRECATED_INTELLIGENCE_ENDPOINTS,
+        )
+
+        # Neither side may be empty, or the disjointness below is vacuous.
+        assert DEPRECATED_TOOLS
+        assert DEPRECATED_INTELLIGENCE_ENDPOINTS
+
+        # DEPRECATED_TOOLS keys are namespaced (``company.executives``) while
+        # MCP tool keys are bare, so compare on the bare name -- the stricter
+        # reading, which fires even if the two picked the same name in
+        # different domains.
+        aliased = {spec.split(".", 1)[-1] for spec in DEPRECATED_TOOLS}
+        assert not (aliased & DEPRECATED_INTELLIGENCE_ENDPOINTS)
+
+
+class TestResolveToolSpecIsSingleSourceOfTruth:
+    """The bare-key rule is written once and consumed everywhere (#149).
+
+    ``resolve_tool_spec`` is pure: it answers *what does this entry resolve
+    to* without warning, logging or raising. The registration path adds the
+    announcement (``_warn_if_deprecated``); ``fmp-mcp validate`` and the
+    example-manifest guards add nothing. Anything that reimplements the rule
+    instead of calling the pure function must fail one of these tests.
+    """
+
+    @staticmethod
+    def _key_to_spec() -> dict[str, list[str]]:
+        from fmp_data.mcp.discovery import discover_all_tools
+        from fmp_data.mcp.tool_loader import build_key_to_spec
+
+        return build_key_to_spec(discover_all_tools())
+
+    @staticmethod
+    def _probe_entries() -> list[str]:
+        """Whole catalog (both forms) plus the entries known to be bad."""
+        from fmp_data.mcp.discovery import discover_all_tools
+
+        tools = discover_all_tools()
+        specs = sorted({tool["spec"] for tool in tools})
+        keys = sorted({tool["key"] for tool in tools})
+        return [*specs, *keys, "not_a_tool", "company.not_a_tool", "no_dot_typo"]
+
+    def test_pure_resolver_is_silent_on_a_deprecated_spec(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Validating a manifest must not spray deprecation noise."""
+        from fmp_data.mcp.tool_loader import ResolutionStatus, resolve_tool_spec
+
+        with caplog.at_level(logging.WARNING), warnings.catch_warnings():
+            warnings.simplefilter("error")
+            resolution = resolve_tool_spec(
+                "company.historical_price", self._key_to_spec()
+            )
+
+        assert caplog.records == []
+        assert resolution.status is ResolutionStatus.DEPRECATED
+        assert resolution.is_resolved
+        assert resolution.is_deprecated
+        assert resolution.spec == "company.historical_price"
+        assert resolution.client == "company"
+        assert resolution.key == "historical_price"
+        assert resolution.replacement == "company.historical_prices"
+
+    def test_resolution_names_every_candidate_when_ambiguous(self) -> None:
+        from fmp_data.mcp.tool_loader import ResolutionStatus, resolve_tool_spec
+
+        resolution = resolve_tool_spec("crypto_quotes", self._key_to_spec())
+
+        assert resolution.status is ResolutionStatus.AMBIGUOUS
+        assert not resolution.is_resolved
+        assert resolution.spec is None
+        assert resolution.candidates == (
+            "alternative.crypto_quotes",
+            "batch.crypto_quotes",
+        )
+        assert resolution.message is not None
+        assert "batch.crypto_quotes" in resolution.message
+
+    @pytest.mark.parametrize("entry", ["not_a_tool", "company.not_a_tool"])
+    def test_resolution_reports_unknown_in_either_form(self, entry: str) -> None:
+        from fmp_data.mcp.tool_loader import ResolutionStatus, resolve_tool_spec
+
+        resolution = resolve_tool_spec(entry, self._key_to_spec())
+
+        assert resolution.status is ResolutionStatus.UNKNOWN
+        assert not resolution.is_resolved
+        assert resolution.message is not None
+
+    def test_registration_path_matches_the_pure_resolver_everywhere(self) -> None:
+        """The loader may announce, but it may not decide differently."""
+        from fmp_data.mcp.tool_loader import _resolve_tool_spec, resolve_tool_spec
+
+        key_to_spec = self._key_to_spec()
+        mismatches: list[str] = []
+
+        for entry in self._probe_entries():
+            resolution = resolve_tool_spec(entry, key_to_spec)
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", DeprecationWarning)
+                    loaded = _resolve_tool_spec(entry, key_to_spec)
+            except RuntimeError:
+                if resolution.is_resolved:
+                    mismatches.append(f"{entry}: loader raised, resolver resolved")
+                continue
+            if not resolution.is_resolved:
+                mismatches.append(f"{entry}: loader resolved, resolver did not")
+            elif loaded != (resolution.spec, resolution.client, resolution.key):
+                mismatches.append(f"{entry}: {loaded} != {resolution}")
+
+        assert mismatches == [], "\n".join(mismatches)
+
+    def test_validate_classification_matches_the_pure_resolver_everywhere(
+        self,
+    ) -> None:
+        from fmp_data.mcp.cli import _classify_manifest_entries
+        from fmp_data.mcp.tool_loader import ResolutionStatus, resolve_tool_spec
+
+        entries = self._probe_entries()
+        key_to_spec = self._key_to_spec()
+        resolutions = {
+            entry: resolve_tool_spec(entry, key_to_spec) for entry in entries
+        }
+
+        unknown, ambiguous, deprecated, withdrawn = _classify_manifest_entries(entries)
+
+        assert unknown == [
+            entry
+            for entry in entries
+            if resolutions[entry].status is ResolutionStatus.UNKNOWN
+        ]
+        assert [item.split(" ", 1)[0] for item in ambiguous] == [
+            entry
+            for entry in entries
+            if resolutions[entry].status is ResolutionStatus.AMBIGUOUS
+        ]
+        assert deprecated == [
+            (entry, resolutions[entry].replacement)
+            for entry in entries
+            if resolutions[entry].is_deprecated
+        ]
+        # Bucketed on status, not on `replacement is not None`. A withdrawal
+        # deliberately carries no replacement, so that truthiness test filed
+        # all 19 as healthy and `validate` blessed a manifest full of tools
+        # that can only answer empty.
+        assert withdrawn == [
+            (entry, resolutions[entry].successor)
+            for entry in entries
+            if resolutions[entry].is_withdrawn
+        ]
+
+    def test_validate_delegates_rather_than_reimplements(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Stubbing the pure resolver must change what ``validate`` reports.
+
+        If it does not, ``cli.py`` has grown its own copy of the rule again --
+        which is exactly the drift #149 is about.
+        """
+        from fmp_data.mcp import tool_loader
+        from fmp_data.mcp.cli import _classify_manifest_entries
+
+        def _always_unknown(spec: str, key_to_spec: object) -> tool_loader.Resolution:
+            return tool_loader.Resolution(
+                entry=spec,
+                status=tool_loader.ResolutionStatus.UNKNOWN,
+                message="stubbed",
+            )
+
+        monkeypatch.setattr(tool_loader, "resolve_tool_spec", _always_unknown)
+
+        unknown, ambiguous, deprecated, withdrawn = _classify_manifest_entries(
+            ["company.profile", "company.historical_price"]
+        )
+
+        assert unknown == ["company.profile", "company.historical_price"]
+        assert ambiguous == []
+        assert deprecated == []
+        assert withdrawn == []
+
+    def test_loader_delegates_rather_than_reimplements(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The symmetric guard: the loader must call the pure resolver too.
+
+        ``test_registration_path_matches_the_pure_resolver_everywhere`` catches
+        a loader that *diverges*, but an identical reimplementation inside
+        ``_resolve_tool_spec`` would agree with the resolver on every input and
+        pass it -- while restoring exactly the duplication #149 removed. Only
+        stubbing can tell "calls it" from "happens to agree with it".
+        """
+        from fmp_data.mcp import tool_loader
+
+        def _always_unknown(spec: str, key_to_spec: object) -> tool_loader.Resolution:
+            return tool_loader.Resolution(
+                entry=spec,
+                status=tool_loader.ResolutionStatus.UNKNOWN,
+                message="stubbed",
+            )
+
+        monkeypatch.setattr(tool_loader, "resolve_tool_spec", _always_unknown)
+
+        with pytest.raises(RuntimeError, match="stubbed"):
+            tool_loader._resolve_tool_spec("company.profile", self._key_to_spec())

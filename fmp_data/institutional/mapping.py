@@ -2,7 +2,6 @@ from fmp_data.institutional.endpoints import (
     ASSET_ALLOCATION,
     BENEFICIAL_OWNERSHIP,
     CIK_MAPPER,
-    CIK_MAPPER_BY_NAME,
     FAIL_TO_DELIVER,
     FORM_13F,
     FORM_13F_DATES,
@@ -13,56 +12,22 @@ from fmp_data.institutional.endpoints import (
     INSTITUTIONAL_HOLDINGS,
     TRANSACTION_TYPES,
 )
-from fmp_data.lc.hints import LIMIT_HINT, QUARTER_HINT, YEAR_HINT
+from fmp_data.lc.hints import (
+    AS_OF_DATE_HINT,
+    CIK_HINT,
+    LIMIT_HINT,
+    PAGE_HINT,
+    QUARTER_HINT,
+    SYMBOL_HINT,
+    YEAR_HINT,
+)
 from fmp_data.lc.models import (
     EndpointSemantics,
-    ParameterHint,
     ResponseFieldInfo,
     SemanticCategory,
 )
 
 # Common parameter hints for reuse
-SYMBOL_HINT = ParameterHint(
-    natural_names=["ticker", "stock symbol", "company symbol"],
-    extraction_patterns=[
-        r"[A-Z]{1,5}",
-        r"symbol[:\s]+([A-Z]{1,5})",
-        r"(?i)for\s+([A-Z]{1,5})",
-    ],
-    examples=["AAPL", "MSFT", "TSLA"],
-    context_clues=["stock", "ticker", "symbol", "shares", "company"],
-)
-
-CIK_HINT = ParameterHint(
-    natural_names=["CIK", "SEC ID", "filing ID"],
-    extraction_patterns=[
-        r"CIK[:\s]+(\d+)",
-        r"(\d{10})",
-    ],
-    examples=["0000320193", "0000789019", "0001652044"],
-    context_clues=["CIK", "SEC identifier", "filing ID", "regulatory ID"],
-)
-
-DATE_HINT = ParameterHint(
-    natural_names=["date", "filing date", "report date"],
-    extraction_patterns=[
-        r"(\d{4}-\d{2}-\d{2})",
-        r"(\d{2}/\d{2}/\d{4})",
-    ],
-    examples=["2024-03-31", "2023-12-31", "2024-06-30"],
-    context_clues=["date", "as of", "filed on", "reported", "for period"],
-)
-
-PAGE_HINT = ParameterHint(
-    natural_names=["page number", "page", "result page"],
-    extraction_patterns=[
-        r"page[:\s]+(\d+)",
-        r"p(\d+)",
-    ],
-    examples=["0", "1", "2"],
-    context_clues=["page", "next", "previous", "results"],
-)
-
 INSTITUTIONAL_TIME_PERIODS = {
     "quarterly": {
         "patterns": [
@@ -109,17 +74,29 @@ INSTITUTIONAL_FILING_TYPES = {
     ],
 }
 INSTITUTIONAL_ENDPOINT_MAP = {
-    "get_form_13f": FORM_13F,
+    # The two ``_by_quarter`` keys name the wire-shaped client methods, not
+    # the date-shaped conveniences that wrap them. ``FORM_13F`` and
+    # ``INSTITUTIONAL_HOLDINGS`` declare mandatory ``year``/``quarter`` (the
+    # live API 400s without them and has no date parameter), while
+    # ``get_form_13f`` / ``get_institutional_holdings`` take ``report_date``
+    # and derive the pair. Pointing the map -- and the semantics
+    # ``method_name`` below -- at the wire-shaped methods is what lets
+    # LangChain dispatch through a client method instead of falling back to
+    # ``client.request``, and keeps MCP's advertised arguments equal to the
+    # ``parameter_hints`` these entries already declare (#188).
+    "get_form_13f_by_quarter": FORM_13F,
     "get_form_13f_dates": FORM_13F_DATES,
     "get_asset_allocation": ASSET_ALLOCATION,
     "get_institutional_holders": INSTITUTIONAL_HOLDERS,
-    "get_institutional_holdings": INSTITUTIONAL_HOLDINGS,
+    "get_institutional_holdings_by_quarter": INSTITUTIONAL_HOLDINGS,
     "get_insider_trades": INSIDER_TRADES,
     "get_transaction_types": TRANSACTION_TYPES,
     "get_insider_roster": INSIDER_ROSTER,
     "get_insider_statistics": INSIDER_STATISTICS,
     "get_cik_mappings": CIK_MAPPER,
-    "search_cik_by_name": CIK_MAPPER_BY_NAME,
+    # No entry for ``search_cik_by_name``: ``/stable/cik-list`` has no
+    # server-side name filter, so the client method fetches the full list and
+    # filters locally. There is no distinct endpoint to model (#130).
     "get_beneficial_ownership": BENEFICIAL_OWNERSHIP,
     "get_fail_to_deliver": FAIL_TO_DELIVER,
 }
@@ -127,7 +104,7 @@ INSTITUTIONAL_ENDPOINT_MAP = {
 INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
     "form_13f": EndpointSemantics(
         client_name="institutional",
-        method_name="get_form_13f",
+        method_name="get_form_13f_by_quarter",
         natural_description=(
             "Retrieve Form 13F filings data "
             "for institutional investment managers, "
@@ -219,6 +196,14 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
     "asset_allocation": EndpointSemantics(
         client_name="institutional",
         method_name="get_asset_allocation",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: FMP publishes no replacement.
+        deprecated=True,
         natural_description=("Analyze asset allocation data from 13F filings"),
         example_queries=[
             "Show asset allocation for major institutions",
@@ -233,7 +218,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INSTITUTIONAL,
         sub_category="Portfolio Analysis",
-        parameter_hints={"date": DATE_HINT},
+        parameter_hints={"date": AS_OF_DATE_HINT},
         response_hints={
             "asset_type": ResponseFieldInfo(
                 description="Type of asset or investment category",
@@ -254,7 +239,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
     ),
     "institutional_holdings": EndpointSemantics(
         client_name="institutional",
-        method_name="get_institutional_holdings",
+        method_name="get_institutional_holdings_by_quarter",
         natural_description=(
             "Analyze institutional ownership for a specific security."
         ),
@@ -502,47 +487,6 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
             "Compliance verification",
         ],
     ),
-    "cik_mapper_by_name": EndpointSemantics(
-        client_name="institutional",
-        method_name="search_cik_by_name",
-        natural_description=("Search for CIK numbers by company or institution name."),
-        example_queries=[
-            "Find CIK for Apple",
-            "Search CIK by company name",
-            "What's Microsoft's CIK?",
-            "Look up Tesla's CIK number",
-        ],
-        related_terms=[
-            "company search",
-            "entity lookup",
-            "name search",
-            "CIK lookup",
-        ],
-        category=SemanticCategory.INSTITUTIONAL,
-        sub_category="Reference Data",
-        parameter_hints={
-            "page": PAGE_HINT,
-            "limit": LIMIT_HINT,
-        },
-        response_hints={
-            "reporting_cik": ResponseFieldInfo(
-                description="CIK number of the entity",
-                examples=["0001166559", "0000102909"],
-                related_terms=["CIK", "SEC ID", "identifier"],
-            ),
-            "reporting_name": ResponseFieldInfo(
-                description="Name of the entity",
-                examples=["APPLE INC", "MICROSOFT CORP"],
-                related_terms=["company name", "entity name", "legal name"],
-            ),
-        },
-        use_cases=[
-            "Entity identification",
-            "Filing research",
-            "Company lookup",
-            "Data verification",
-        ],
-    ),
     "beneficial_ownership": EndpointSemantics(
         client_name="institutional",
         method_name="get_beneficial_ownership",
@@ -593,6 +537,14 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
     "fail_to_deliver": EndpointSemantics(
         client_name="institutional",
         method_name="get_fail_to_deliver",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: FMP publishes no replacement.
+        deprecated=True,
         natural_description=(
             "Get data on failed trade settlements (FTDs) for a security."
         ),

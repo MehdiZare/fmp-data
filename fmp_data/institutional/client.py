@@ -1,13 +1,13 @@
 # fmp_data/institutional/client.py
 from datetime import date
+import warnings
 
 from fmp_data.base import EndpointGroup
 from fmp_data.exceptions import FMPError, ValidationError
+from fmp_data.helpers import deprecated
 from fmp_data.institutional.endpoints import (
-    ASSET_ALLOCATION,
     BENEFICIAL_OWNERSHIP,
     CIK_MAPPER,
-    FAIL_TO_DELIVER,
     FORM_13F,
     FORM_13F_DATES,
     HOLDER_INDUSTRY_BREAKDOWN,
@@ -56,6 +56,27 @@ from fmp_data.institutional.models import (
     SymbolPositionsSummary,
 )
 
+#: Said once, in one place, because the sync and async clients must not drift
+#: on it -- ``async_client`` imports both this text and the helper below.
+INERT_QUARTER_FILTER_WARNING = (
+    "holder-performance-summary ignores year/quarter: the FMP endpoint "
+    "accepts them and still returns the holder's full history, so you are "
+    "getting every period rather than the one you asked for. Filter the "
+    "returned rows by their 'date' field instead."
+)
+
+
+def _warn_inert_quarter_filter(stacklevel: int) -> None:
+    """Warn that a caller-supplied quarter will not be applied (#192).
+
+    Raised from whichever public method the caller actually invoked, rather
+    than from the shared request helper, so ``stacklevel`` lands on the user's
+    line on **both** routes into it -- the date-shaped method does not delegate
+    to the ``_by_quarter`` one, precisely so the warning cannot fire twice or
+    point at this module.
+    """
+    warnings.warn(INERT_QUARTER_FILTER_WARNING, UserWarning, stacklevel=stacklevel)
+
 
 class InstitutionalClient(EndpointGroup):
     """Client for institutional activity endpoints"""
@@ -65,38 +86,66 @@ class InstitutionalClient(EndpointGroup):
         quarter = (report_date.month - 1) // 3 + 1
         return report_date.year, quarter
 
-    def get_form_13f(self, cik: str, report_date: date) -> list[Form13F]:
+    def get_form_13f_by_quarter(
+        self, cik: str | int, year: int, quarter: int
+    ) -> list[Form13F]:
         """
-        Get Form 13F filing data
+        Get Form 13F filing data for a calendar quarter.
+
+        This is the shape ``/stable/institutional-ownership/extract`` actually
+        takes. ``year`` and ``quarter`` are mandatory query parameters -- the
+        API answers ``400 Query Error: Invalid or missing query parameter -
+        year`` without them -- and there is no date parameter at all. The
+        period end ``date`` is a *response* field.
+
+        :meth:`get_form_13f` is the date-shaped convenience layered over this
+        method, not the other way round. This one is what the LangChain and
+        MCP tools dispatch through, so their arguments match the wire (#188).
 
         Args:
             cik: Central Index Key (CIK)
-            report_date: Report period end date (e.g., 2023-09-30)
+            year: Filing year (e.g., 2023)
+            quarter: Calendar quarter, 1-4
 
         Returns:
             List of Form13F objects. Empty list if no records found.
         """
-        year, quarter = self._date_to_year_quarter(report_date)
         try:
             result = self.client.request(FORM_13F, cik=cik, year=year, quarter=quarter)
         except (FMPError, ValidationError) as exc:
             # API errors (404, validation, etc.) return empty list for convenience
             self.client.logger.warning(
-                f"No Form 13F data found for CIK {cik} on {report_date}: {exc!s}"
+                f"No Form 13F data found for CIK {cik} in {year} Q{quarter}: {exc!s}"
             )
             return []
 
         if isinstance(result, list):
             if not result:
                 self.client.logger.warning(
-                    "No Form 13F data found for CIK %s on %s.",
+                    "No Form 13F data found for CIK %s in %s Q%s.",
                     cik,
-                    report_date,
+                    year,
+                    quarter,
                 )
             return result
         return [result]
 
-    def get_form_13f_dates(self, cik: str) -> list[Form13FDate]:
+    def get_form_13f(self, cik: str | int, report_date: date) -> list[Form13F]:
+        """
+        Get Form 13F filing data for the quarter containing ``report_date``.
+
+        Args:
+            cik: Central Index Key (CIK)
+            report_date: Any date inside the report period (e.g., 2023-09-30).
+                Only its year and calendar quarter reach the API.
+
+        Returns:
+            List of Form13F objects. Empty list if no records found.
+        """
+        year, quarter = self._date_to_year_quarter(report_date)
+        return self.get_form_13f_by_quarter(cik, year, quarter)
+
+    def get_form_13f_dates(self, cik: str | int) -> list[Form13FDate]:
         """
         Get Form 13F filing dates
 
@@ -118,17 +167,49 @@ class InstitutionalClient(EndpointGroup):
             )
             return []
 
+    @deprecated(
+        "The FMP API no longer serves 13F asset allocation, and no stable "
+        "endpoint replaces it -- hyphen, slash and plural variants all 404. "
+        "The nearest live data is per-filer holdings via "
+        "get_institutional_holdings(), which must be aggregated by hand."
+    )
     def get_asset_allocation(self, report_date: date) -> list[AssetAllocation]:
-        """Get 13F asset allocation data for a report period end date"""
-        return self.client.request(
-            ASSET_ALLOCATION, date=report_date.strftime("%Y-%m-%d")
-        )
+        """Get 13F asset allocation data for a report period end date
+
+        .. deprecated::
+            This endpoint 404s on the FMP API and will be removed in a future
+            version. It currently returns an empty list. FMP publishes no
+            stable replacement for the pre-aggregated allocation breakdown;
+            the closest live source is per-filer 13F holdings, which you
+            would have to aggregate yourself.
+        """
+        return []
 
     def get_institutional_holders(
         self, page: int = 0, limit: int = 100
     ) -> list[InstitutionalHolder]:
         """Get list of institutional holders"""
         return self.client.request(INSTITUTIONAL_HOLDERS, page=page, limit=limit)
+
+    def get_institutional_holdings_by_quarter(
+        self, symbol: str, year: int, quarter: int
+    ) -> list[InstitutionalHolding]:
+        """Get institutional holdings for a symbol in a calendar quarter.
+
+        The wire shape of ``/stable/institutional-ownership/
+        symbol-positions-summary``: ``year`` and ``quarter`` are mandatory and
+        the API rejects a request without them. LangChain and MCP tools
+        dispatch through this method (#188);
+        :meth:`get_institutional_holdings` is the date-shaped convenience.
+
+        Args:
+            symbol: Stock symbol
+            year: Filing year (e.g., 2023)
+            quarter: Calendar quarter, 1-4
+        """
+        return self.client.request(
+            INSTITUTIONAL_HOLDINGS, symbol=symbol, year=year, quarter=quarter
+        )
 
     def get_institutional_holdings(
         self,
@@ -157,9 +238,7 @@ class InstitutionalClient(EndpointGroup):
             year = inferred_year
         if quarter is None:
             quarter = inferred_quarter
-        return self.client.request(
-            INSTITUTIONAL_HOLDINGS, symbol=symbol, year=year, quarter=quarter
-        )
+        return self.get_institutional_holdings_by_quarter(symbol, year, quarter)
 
     def get_insider_trades(
         self, symbol: str, page: int = 0, limit: int = 100
@@ -219,9 +298,21 @@ class InstitutionalClient(EndpointGroup):
         """Get beneficial ownership data for a symbol"""
         return self.client.request(BENEFICIAL_OWNERSHIP, symbol=symbol)
 
+    @deprecated(
+        "The FMP API no longer serves fail-to-deliver data and publishes no "
+        "stable replacement. The underlying data is still available directly "
+        "from the SEC's own fails-to-deliver files."
+    )
     def get_fail_to_deliver(self, symbol: str, page: int = 0) -> list[FailToDeliver]:
-        """Get fail to deliver data for a symbol"""
-        return self.client.request(FAIL_TO_DELIVER, symbol=symbol, page=page)
+        """Get fail to deliver data for a symbol
+
+        .. deprecated::
+            This endpoint 404s on the FMP API and will be removed in a future
+            version. It currently returns an empty list. No stable FMP
+            endpoint replaces it; the SEC publishes the same fails-to-deliver
+            data itself, which is the only remaining source.
+        """
+        return []
 
     # Insider Trading Methods
     def get_insider_trading_latest(
@@ -271,7 +362,7 @@ class InstitutionalClient(EndpointGroup):
 
     # Form 13F Methods
     def get_institutional_ownership_latest(
-        self, cik: str | None = None, page: int = 0, limit: int = 100
+        self, cik: str | int | None = None, page: int = 0, limit: int = 100
     ) -> list[InstitutionalOwnershipLatest]:
         """Get latest institutional ownership filings"""
         params: dict[str, str | int] = {"page": page, "limit": limit}
@@ -279,26 +370,46 @@ class InstitutionalClient(EndpointGroup):
             params["cik"] = cik
         return self.client.request(INSTITUTIONAL_OWNERSHIP_LATEST, **params)
 
-    def get_institutional_ownership_extract(
-        self, cik: str, report_date: date
+    def get_institutional_ownership_extract_by_quarter(
+        self, cik: str | int, year: int, quarter: int
     ) -> list[InstitutionalOwnershipExtract]:
-        """Get filings extract data for a report period end date"""
-        year, quarter = self._date_to_year_quarter(report_date)
+        """Get filings extract data for a calendar quarter.
+
+        Wire shape of the extract endpoint: ``year`` and ``quarter`` are the
+        query parameters the API takes. :meth:`get_institutional_ownership_extract`
+        is the date-shaped convenience layered over this method.
+        """
         return self.client.request(
             INSTITUTIONAL_OWNERSHIP_EXTRACT, cik=cik, year=year, quarter=quarter
         )
 
+    def get_institutional_ownership_extract(
+        self, cik: str | int, report_date: date
+    ) -> list[InstitutionalOwnershipExtract]:
+        """Get filings extract data for a report period end date"""
+        year, quarter = self._date_to_year_quarter(report_date)
+        return self.get_institutional_ownership_extract_by_quarter(cik, year, quarter)
+
     def get_institutional_ownership_dates(
-        self, cik: str
+        self, cik: str | int
     ) -> list[InstitutionalOwnershipDates]:
         """Get Form 13F filing dates"""
         return self.client.request(INSTITUTIONAL_OWNERSHIP_DATES, cik=cik)
 
-    def get_institutional_ownership_analytics(
-        self, symbol: str, report_date: date, page: int = 0, limit: int = 100
+    def get_institutional_ownership_analytics_by_quarter(
+        self,
+        symbol: str,
+        year: int,
+        quarter: int,
+        page: int = 0,
+        limit: int = 100,
     ) -> list[InstitutionalOwnershipAnalytics]:
-        """Get filings extract with analytics by holder for a report period end date"""
-        year, quarter = self._date_to_year_quarter(report_date)
+        """Get filings extract with analytics by holder for a calendar quarter.
+
+        Wire shape of the analytics endpoint.
+        :meth:`get_institutional_ownership_analytics` is the date-shaped
+        convenience layered over this method.
+        """
         return self.client.request(
             INSTITUTIONAL_OWNERSHIP_ANALYTICS,
             symbol=symbol,
@@ -308,45 +419,127 @@ class InstitutionalClient(EndpointGroup):
             limit=limit,
         )
 
-    def get_holder_performance_summary(
-        self, cik: str, report_date: date | None = None, page: int = 0
+    def get_institutional_ownership_analytics(
+        self, symbol: str, report_date: date, page: int = 0, limit: int = 100
+    ) -> list[InstitutionalOwnershipAnalytics]:
+        """Get filings extract with analytics by holder for a report period end date"""
+        year, quarter = self._date_to_year_quarter(report_date)
+        return self.get_institutional_ownership_analytics_by_quarter(
+            symbol, year, quarter, page=page, limit=limit
+        )
+
+    def _holder_performance_summary_request(
+        self,
+        cik: str | int,
+        year: int | None = None,
+        quarter: int | None = None,
+        page: int = 0,
     ) -> list[HolderPerformanceSummary]:
-        """Get holder performance summary for a report period end date"""
+        """Issue the request. No warning -- both public methods own that."""
         params: dict[str, str | int] = {"cik": cik, "page": page}
-        if report_date:
-            year, quarter = self._date_to_year_quarter(report_date)
+        if year is not None:
             params["year"] = year
+        if quarter is not None:
             params["quarter"] = quarter
         return self.client.request(HOLDER_PERFORMANCE_SUMMARY, **params)
 
+    def get_holder_performance_summary_by_quarter(
+        self, cik: str | int, year: int, quarter: int, page: int = 0
+    ) -> list[HolderPerformanceSummary]:
+        """Get holder performance summary -- **the quarter is not applied**.
+
+        Warning:
+            This endpoint accepts ``year``/``quarter`` and then ignores them.
+            It returns the holder's entire history whatever you pass, so this
+            method does not do what its name says, and calling it emits a
+            :class:`UserWarning`. Filter the returned rows by their ``date``
+            field instead.
+
+            Probed against the live API (re-checked while cutting 2.6.0):
+            ``cik=0001067983`` returns a byte-identical 52-row payload
+            spanning 2013-06-30 to 2026-03-31 with no filter, with
+            ``year=2023&quarter=3``, and with ``year=2019&quarter=1``. The
+            five sibling ``*_by_quarter`` methods were probed the same way
+            and *do* filter correctly; this one is the exception (#192).
+
+            The parameters are still sent, in case FMP starts honouring them.
+        """
+        _warn_inert_quarter_filter(stacklevel=3)
+        return self._holder_performance_summary_request(cik, year, quarter, page)
+
+    def get_holder_performance_summary(
+        self, cik: str | int, report_date: date | None = None, page: int = 0
+    ) -> list[HolderPerformanceSummary]:
+        """Get holder performance summary for a holder's full history.
+
+        Omitting ``report_date`` is the correct usage and is what the endpoint
+        actually supports: the request goes without year/quarter and you get
+        every period.
+
+        Warning:
+            Passing ``report_date`` does **not** select a period -- the API
+            ignores the derived year/quarter -- so it warns. See
+            :meth:`get_holder_performance_summary_by_quarter`.
+        """
+        if report_date is None:
+            return self._holder_performance_summary_request(cik, page=page)
+        _warn_inert_quarter_filter(stacklevel=3)
+        year, quarter = self._date_to_year_quarter(report_date)
+        return self._holder_performance_summary_request(cik, year, quarter, page)
+
+    def get_holder_industry_breakdown_by_quarter(
+        self, cik: str | int, year: int, quarter: int
+    ) -> list[HolderIndustryBreakdown]:
+        """Get holders industry breakdown for a calendar quarter.
+
+        Wire shape of the industry-breakdown endpoint.
+        :meth:`get_holder_industry_breakdown` is the date-shaped convenience.
+        """
+        return self.client.request(
+            HOLDER_INDUSTRY_BREAKDOWN, cik=cik, year=year, quarter=quarter
+        )
+
     def get_holder_industry_breakdown(
-        self, cik: str, report_date: date
+        self, cik: str | int, report_date: date
     ) -> list[HolderIndustryBreakdown]:
         """Get holders industry breakdown for a report period end date"""
         year, quarter = self._date_to_year_quarter(report_date)
-        params: dict[str, str | int] = {
-            "cik": cik,
-            "year": year,
-            "quarter": quarter,
-        }
-        return self.client.request(HOLDER_INDUSTRY_BREAKDOWN, **params)
+        return self.get_holder_industry_breakdown_by_quarter(cik, year, quarter)
+
+    def get_symbol_positions_summary_by_quarter(
+        self, symbol: str, year: int, quarter: int
+    ) -> list[SymbolPositionsSummary]:
+        """Get positions summary by symbol for a calendar quarter.
+
+        Wire shape of the symbol-positions-summary endpoint.
+        :meth:`get_symbol_positions_summary` is the date-shaped convenience.
+        """
+        return self.client.request(
+            SYMBOL_POSITIONS_SUMMARY, symbol=symbol, year=year, quarter=quarter
+        )
 
     def get_symbol_positions_summary(
         self, symbol: str, report_date: date
     ) -> list[SymbolPositionsSummary]:
         """Get positions summary by symbol for a report period end date"""
         year, quarter = self._date_to_year_quarter(report_date)
-        params: dict[str, str | int] = {
-            "symbol": symbol,
-            "year": year,
-            "quarter": quarter,
-        }
-        return self.client.request(SYMBOL_POSITIONS_SUMMARY, **params)
+        return self.get_symbol_positions_summary_by_quarter(symbol, year, quarter)
+
+    def get_industry_performance_summary_by_quarter(
+        self, year: int, quarter: int
+    ) -> list[IndustryPerformanceSummary]:
+        """Get industry performance summary for a calendar quarter.
+
+        Wire shape of the industry-performance endpoint.
+        :meth:`get_industry_performance_summary` is the date-shaped convenience.
+        """
+        return self.client.request(
+            INDUSTRY_PERFORMANCE_SUMMARY, year=year, quarter=quarter
+        )
 
     def get_industry_performance_summary(
         self, report_date: date
     ) -> list[IndustryPerformanceSummary]:
         """Get industry performance summary for a report period end date"""
         year, quarter = self._date_to_year_quarter(report_date)
-        params: dict[str, str | int] = {"year": year, "quarter": quarter}
-        return self.client.request(INDUSTRY_PERFORMANCE_SUMMARY, **params)
+        return self.get_industry_performance_summary_by_quarter(year, quarter)

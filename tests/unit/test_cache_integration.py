@@ -97,13 +97,13 @@ class TestBaseClientCacheIntegration:
                 "cache": CacheConfig(
                     enabled=True,
                     default_ttl=300,
-                    ttl_overrides={"get_quote": 60},
+                    ttl_overrides={"quote": 60},
                 )
             }
         )
         base = BaseClient(config=config_with_overrides)
-        assert base._get_cache_ttl("get_quote") == 60
-        assert base._get_cache_ttl("get_profile") == 300
+        assert base._get_cache_ttl("quote") == 60
+        assert base._get_cache_ttl("profile") == 300
         base.close()
 
     def test_client_config_from_env_without_cache(self, monkeypatch):

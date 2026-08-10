@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import date, datetime
+from enum import Enum
 import json
 from logging import Logger
 from pathlib import Path
-from typing import Any, ClassVar, Protocol, cast
+from typing import Any, ClassVar, Literal, Protocol, cast
 
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
@@ -27,6 +28,48 @@ from fmp_data.lc.registry import EndpointInfo, EndpointRegistry
 from fmp_data.logger import FMPLogger
 from fmp_data.models import ParamType
 
+# The endpoint -> client-method binding rules live in the core package so MCP
+# and LangChain share one implementation (#188); see fmp_data/tool_binding.py.
+# Re-exported here because these names were public from this module first and
+# are imported by name in tests and downstream code.
+from fmp_data.tool_binding import (
+    ENDPOINT_TO_METHOD_ALIASES,
+    bindable_params,
+    camel_to_snake,
+    map_tool_kwargs_to_method,
+    method_dispatch_compatible,
+    method_param_aliases,
+    partition_params_for_method,
+    resolve_client_method,
+    resolve_dispatch_method,
+    resolve_method_param_name,
+    uncovered_required_params,
+)
+
+#: Deprecated aliases for the pre-#188 private names. Kept because they were
+#: importable and are cheap to keep; prefer ``fmp_data.tool_binding``.
+_camel_to_snake = camel_to_snake
+_ENDPOINT_TO_METHOD_ALIASES = ENDPOINT_TO_METHOD_ALIASES
+
+__all__ = [
+    "ENDPOINT_TO_METHOD_ALIASES",
+    "EndpointVectorStore",
+    "SearchResult",
+    "ToolFactory",
+    "ToolLike",
+    "VectorStoreMetadata",
+    "bindable_params",
+    "camel_to_snake",
+    "map_tool_kwargs_to_method",
+    "method_dispatch_compatible",
+    "method_param_aliases",
+    "partition_params_for_method",
+    "resolve_client_method",
+    "resolve_dispatch_method",
+    "resolve_method_param_name",
+    "uncovered_required_params",
+]
+
 
 class ToolFactory:
     """Helper class to modularize create_tool behavior"""
@@ -38,48 +81,151 @@ class ToolFactory:
         ParamType.BOOLEAN: bool,
         ParamType.DATE: date,
         ParamType.DATETIME: datetime,
+        # A CIK is presented to the LLM as a string; ParamType.CIK zero-pads
+        # it on the way out. Mapping it to int would strip the leading zeros
+        # the API matches on.
+        ParamType.CIK: str,
     }
 
     @staticmethod
-    def get_field_type(param_type: ParamType, optional: bool) -> Any:
+    def get_field_type(
+        param_type: ParamType,
+        optional: bool,
+        valid_values: list[Any] | None = None,
+    ) -> Any:
         """
         Map ParamType to Python type, including optional wrapper.
 
         Args:
             param_type: The parameter type from the ParamType enum
             optional: Whether the parameter is optional
+            valid_values: The endpoint's declared allowed values, if any.
+                When present, the field is narrowed to a ``Literal`` of those
+                values (#156) instead of the bare ``param_type`` mapping, so
+                the constraint the client enforces
+                (``EndpointParam.validate_value``) reaches the LLM through
+                the schema rather than being discovered on a rejected call.
 
         Returns:
             The corresponding Python type
         """
-
-        base_type = ToolFactory.PARAM_TYPE_MAPPING.get(param_type, str)
+        if valid_values:
+            # Values arrive already unwrapped: EndpointParam.__post_init__
+            # replaces Enum members with their wire value. The isinstance
+            # branch mirrors EndpointRegistry._get_type_pattern's defensive
+            # handling for callers that bypass the dataclass.
+            literal_values = tuple(
+                value.value if isinstance(value, Enum) else value
+                for value in valid_values
+            )
+            base_type: Any = Literal[literal_values]
+        else:
+            base_type = ToolFactory.PARAM_TYPE_MAPPING.get(param_type, str)
         return base_type | None if optional else base_type
 
     @staticmethod
-    def generate_description(param: Any, hint: Any | None) -> str:
-        """Generate the description string for a parameter."""
+    def get_examples_for_param(param: Any, hint: Any | None) -> list[str]:
+        """Derive the examples to advertise for a parameter.
+
+        ``valid_values`` is the client-enforced constraint
+        (``EndpointParam.validate_value``); a hint's hand-written ``examples``
+        can drift from it -- which is exactly the defect #156 fixes. When the
+        endpoint declares ``valid_values``, they are the sole source of
+        advertised schema examples, so the schema-examples guard in
+        ``tests/unit/lc/test_tool_schema.py`` is true by construction on this
+        parameter. ``test_hint_examples_are_within_valid_values`` (#150) is a
+        separate pipeline: it still checks the hand-written hint content used
+        by embedding text. Falls back to the hint's examples only when the
+        endpoint places no constraint on the value.
+        """
+        valid_values = getattr(param, "valid_values", None)
+        if valid_values:
+            return [
+                str(value.value) if isinstance(value, Enum) else str(value)
+                for value in valid_values
+            ]
         if hint:
-            return (
-                f"{param.description!s}\n"
-                f"Examples: {', '.join(str(ex) for ex in hint.examples)}\n"
-                f"Context clues: {', '.join(str(c) for c in hint.context_clues)}"
-            )
-        return str(param.description)
+            return [str(ex) for ex in hint.examples]
+        return []
+
+    @staticmethod
+    def generate_description(
+        param: Any, hint: Any | None, examples: Sequence[str] = ()
+    ) -> str:
+        """Generate the description string for a parameter."""
+        lines = [str(param.description)]
+        if examples:
+            lines.append(f"Examples: {', '.join(examples)}")
+        if hint:
+            clues = ", ".join(str(c) for c in hint.context_clues)
+            lines.append(f"Context clues: {clues}")
+        return "\n".join(lines)
 
     @staticmethod
     def create_parameter_fields(
-        params: list, parameter_hints: dict[str, Any]
+        mandatory_params: Sequence[Any],
+        optional_params: Sequence[Any],
+        parameter_hints: dict[str, Any],
     ) -> dict[str, Any]:
-        """Construct field definitions for parameters (mandatory or optional)."""
+        """Construct field definitions for an endpoint's parameters.
+
+        Mandatory-ness is taken from which list a parameter arrives in, never
+        inferred from the parameter itself. ``EndpointParam.required`` and
+        ``EndpointParam.default`` both disagreed with list membership across
+        the catalog: 14 params sat in ``optional_params`` with
+        ``required=True``, and 13 more sit in ``mandatory_params`` carrying a
+        ``default`` -- so either one would silently mis-shape a schema.
+        ``Endpoint`` itself resolves the same question by list membership in
+        ``validate_params``.
+
+        The ``required`` half is settled as of #165: the flag is no longer
+        stored at all, and ``EndpointParam.required`` is now a read-only
+        property that ``Endpoint`` derives from these very lists. Reading it
+        here would be correct today but circular -- it would route the answer
+        through the parameter to get back the list it came from -- so the list
+        stays the direct source. The ``default`` half is still live, and
+        reading *that* would still be wrong.
+
+        Optional parameters get a pydantic default so ``is_required()`` is
+        false and the LLM may omit them. That default is ``param.default``
+        rather than ``None`` whenever the endpoint declares one:
+        ``validate_params`` marks a param seen before it skips a ``None``
+        value, so passing ``None`` explicitly suppresses the default it would
+        otherwise have applied on the way out.
+
+        That last step depends on langchain forwarding fields that hold
+        explicit defaults -- see ``BaseTool._parse_input``, which has in the
+        past used the narrower ``if k in tool_input`` filter, and note that
+        ``langchain-core`` is pinned ``>=1.4.9`` with no upper bound. If it
+        ever stops forwarding them, declared defaults silently stop reaching
+        the API. ``test_omitted_optional_reaches_the_endpoint_with_its_
+        declared_default`` drives a real ``StructuredTool`` to pin it.
+        """
         param_fields: dict[str, Any] = {}
-        for param in params:
+
+        for param in mandatory_params:
             hint = parameter_hints.get(param.name)
-            description = ToolFactory.generate_description(param, hint)
+            examples = ToolFactory.get_examples_for_param(param, hint)
+            description = ToolFactory.generate_description(param, hint, examples)
             field_type = ToolFactory.get_field_type(
-                param.param_type, optional=(param.default is not None)
+                param.param_type, optional=False, valid_values=param.valid_values
             )
-            param_fields[param.name] = (field_type, Field(description=description))
+            field_kwargs: dict[str, Any] = {"description": description}
+            if examples:
+                field_kwargs["examples"] = examples
+            param_fields[param.name] = (field_type, Field(**field_kwargs))
+
+        for param in optional_params:
+            hint = parameter_hints.get(param.name)
+            examples = ToolFactory.get_examples_for_param(param, hint)
+            description = ToolFactory.generate_description(param, hint, examples)
+            field_type = ToolFactory.get_field_type(
+                param.param_type, optional=True, valid_values=param.valid_values
+            )
+            field_kwargs = {"default": param.default, "description": description}
+            if examples:
+                field_kwargs["examples"] = examples
+            param_fields[param.name] = (field_type, Field(**field_kwargs))
 
         return param_fields
 
@@ -387,11 +533,40 @@ class EndpointVectorStore:
         except Exception as e:
             raise ConfigError(f"Failed to save vector store: {e!s}") from e
 
+    @staticmethod
+    def _is_deprecated(info: EndpointInfo) -> bool:
+        """Whether an endpoint no longer returns data (#137).
+
+        Deprecated endpoints stay in the semantics tables -- their MCP tool
+        keys must keep resolving for explicit manifests, and the catalog count
+        must not move -- but they are kept out of this store entirely, because
+        an LLM that selects one gets an empty *success* it cannot tell apart
+        from "no data matched your query".
+
+        Distinct from ``fmp_data.mcp.tools_manifest.DEPRECATED_TOOLS``, which
+        maps duplicate tool *names* onto the canonical name of a method that
+        still works. See ``EndpointSemantics.deprecated``; do not merge them.
+
+        Typed ``EndpointInfo`` (#159) rather than ``Any`` with a
+        ``getattr(..., default=False)`` fallback: that combination made a
+        renamed or dropped ``deprecated`` field fail silently into "nothing is
+        deprecated" instead of a mypy error or an ``AttributeError``. Reading
+        the field directly means a rename is caught at type-check time.
+        """
+        return info.semantics.deprecated
+
     def add_endpoint(self, name: str) -> None:
-        """Add endpoint to vector store"""
+        """Add endpoint to vector store.
+
+        Deprecated endpoints are skipped -- see :meth:`_is_deprecated`.
+        """
         info = self.registry.get_endpoint(name)
         if not info:
             self.logger.warning(f"Endpoint not found in registry: {name}")
+            return
+
+        if self._is_deprecated(info):
+            self.logger.debug(f"Skipping deprecated endpoint: {name}")
             return
 
         text = self.registry.get_embedding_text(name)
@@ -404,39 +579,74 @@ class EndpointVectorStore:
         self.vector_store.add_documents([document])
         self.logger.debug(f"Added endpoint to vector store: {name}")
 
-    def add_endpoints(self, names: list[str]) -> None:
-        """Add multiple endpoints to vector store"""
+    def _classify_endpoint(self, name: str) -> tuple[str, Document | None]:
+        """Sort one endpoint into ``ok`` / ``invalid`` / ``deprecated`` / ``skip``.
+
+        Split out of :meth:`add_endpoints` purely to keep that method under the
+        complexity limit; it holds no state of its own.
+        """
+        try:
+            info = self.registry.get_endpoint(name)
+            if not info:
+                return "invalid", None
+
+            if self._is_deprecated(info):
+                return "deprecated", None
+
+            text = self.registry.get_embedding_text(name)
+            if not text:
+                self.logger.warning(f"No embedding text for endpoint: {name}")
+                return "skip", None
+
+            return "ok", Document(page_content=text, metadata={"endpoint": name})
+        except Exception as e:
+            self.logger.error(f"Error processing endpoint {name}: {e!s}")
+            return "skip", None
+
+    def add_endpoints(self, names: list[str]) -> int:
+        """Add multiple endpoints to vector store.
+
+        Deprecated endpoints are skipped -- see :meth:`_is_deprecated`. They are
+        counted separately from ``skipped_endpoints`` because being deprecated
+        is a deliberate exclusion, not a defect worth a warning.
+
+        Returns:
+            How many endpoints were actually indexed. Callers offering the whole
+            catalog get back fewer than they passed, so reporting the input
+            length would overstate the store's contents.
+        """
         if not names:
             raise ValueError("No endpoint names provided")
 
-        documents = []
-        skipped_endpoints = set()
-        invalid_endpoints = set()
+        documents: list[Document] = []
+        buckets: dict[str, set[str]] = {
+            "invalid": set(),
+            "deprecated": set(),
+            "skip": set(),
+        }
 
         for name in names:
-            try:
-                info = self.registry.get_endpoint(name)
-                if not info:
-                    invalid_endpoints.add(name)
-                    continue
+            outcome, document = self._classify_endpoint(name)
+            if document is not None:
+                documents.append(document)
+            else:
+                buckets[outcome].add(name)
 
-                text = self.registry.get_embedding_text(name)
-                if not text:
-                    self.logger.warning(f"No embedding text for endpoint: {name}")
-                    skipped_endpoints.add(name)
-                    continue
-
-                doc = Document(page_content=text, metadata={"endpoint": name})
-                documents.append(doc)
-            except Exception as e:
-                self.logger.error(f"Error processing endpoint {name}: {e!s}")
-                skipped_endpoints.add(name)
+        invalid_endpoints = buckets["invalid"]
+        skipped_endpoints = buckets["skip"]
+        deprecated_endpoints = buckets["deprecated"]
 
         if invalid_endpoints:
             self.logger.error(f"Invalid endpoints: {sorted(invalid_endpoints)}")
 
         if skipped_endpoints:
             self.logger.warning(f"Skipped endpoints: {sorted(skipped_endpoints)}")
+
+        if deprecated_endpoints:
+            self.logger.info(
+                f"Excluded {len(deprecated_endpoints)} deprecated endpoints: "
+                f"{sorted(deprecated_endpoints)}"
+            )
 
         if not documents:
             raise RuntimeError("No valid endpoints to add to vector store")
@@ -445,10 +655,22 @@ class EndpointVectorStore:
             self.vector_store.add_documents(documents)
             self.logger.info(
                 f"Added {len(documents)} endpoints to vector store "
-                f"(skipped {len(skipped_endpoints)})"
+                f"(skipped {len(skipped_endpoints)}, "
+                f"deprecated {len(deprecated_endpoints)})"
             )
         except Exception as e:
             raise RuntimeError(f"Failed to add documents to vector store: {e!s}") from e
+
+        return len(documents)
+
+    #: How many widening fetches :meth:`search` may make. A store persisted by
+    #: an earlier release still carries deprecated endpoints in its backing
+    #: index; they are filtered out here, but a plain top-k fetch lets each one
+    #: consume a slot, so ``search(query, k=3)`` would quietly return two live
+    #: endpoints -- under-recall in exactly the stale-index case this filtering
+    #: exists for. Each round doubles the window, and the loop stops as soon as
+    #: k results are live, nothing was displaced, or the index is exhausted.
+    _SEARCH_FETCH_ROUNDS = 3
 
     def search(
         self, query: str, k: int = 3, threshold: float = 0.3
@@ -462,7 +684,9 @@ class EndpointVectorStore:
             threshold: Minimum similarity score threshold (0-1)
 
         Returns:
-            List of SearchResult objects containing matches
+            List of SearchResult objects containing matches. Never more than
+            ``k``; deprecated entries in a stale index do not reduce the count
+            below ``k`` while live matches remain.
 
         Raises:
             ValueError: If invalid k or threshold values
@@ -473,27 +697,55 @@ class EndpointVectorStore:
             raise ValueError("threshold must be between 0 and 1")
 
         try:
-            results = []
-            docs_and_scores = self.vector_store.similarity_search_with_score(query, k=k)
+            fetch_k = k
+            results: list[SearchResult] = []
+            for _ in range(self._SEARCH_FETCH_ROUNDS):
+                docs_and_scores = self.vector_store.similarity_search_with_score(
+                    query, k=fetch_k
+                )
+                results, displaced = self._collect_live_results(
+                    docs_and_scores, threshold
+                )
+                index_exhausted = len(docs_and_scores) < fetch_k
+                if len(results) >= k or not displaced or index_exhausted:
+                    break
+                fetch_k *= 2
 
-            for doc, score in docs_and_scores:
-                similarity = 1 / (1 + score)
-                if similarity < threshold:
-                    continue
-
-                endpoint_name = doc.metadata.get("endpoint")
-                if not isinstance(endpoint_name, str):
-                    continue
-                info = self.registry.get_endpoint(endpoint_name)
-                if info:
-                    results.append(
-                        SearchResult(score=similarity, name=endpoint_name, info=info)
-                    )
-
-            return sorted(results, key=lambda x: x.score, reverse=True)
+            results.sort(key=lambda x: x.score, reverse=True)
+            return results[:k]
         except Exception as e:
             self.logger.error(f"Search failed: {e!s}")
             raise
+
+    def _collect_live_results(
+        self, docs_and_scores: Sequence[tuple[Any, float]], threshold: float
+    ) -> tuple[list[SearchResult], int]:
+        """Turn raw hits into results, dropping deprecated and unknown entries.
+
+        Returns the results plus how many hits were *displaced* -- dropped for
+        a reason a wider fetch can compensate for. Hits below ``threshold`` are
+        not counted: those are a genuine relevance cut, and re-fetching would
+        only surface less relevant matches.
+        """
+        results: list[SearchResult] = []
+        displaced = 0
+        for doc, score in docs_and_scores:
+            similarity = 1 / (1 + score)
+            if similarity < threshold:
+                continue
+
+            endpoint_name = doc.metadata.get("endpoint")
+            if not isinstance(endpoint_name, str):
+                displaced += 1
+                continue
+            info = self.registry.get_endpoint(endpoint_name)
+            if info is None or self._is_deprecated(info):
+                displaced += 1
+                continue
+            results.append(
+                SearchResult(score=similarity, name=endpoint_name, info=info)
+            )
+        return results, displaced
 
     def _serialize_result(self, result: Any) -> dict[str, Any]:
         """Serialize result, converting Pydantic models to JSON."""
@@ -509,8 +761,75 @@ class EndpointVectorStore:
             return {"status": "success", "data": model_dump(mode="json")}
         return {"status": "success", "data": result}
 
+    def _resolve_tool_method(
+        self,
+        client_name: str,
+        method_name: str,
+        endpoint_param_names: Sequence[str],
+    ) -> Any:
+        """Resolve a dispatch method, announcing a request-fallback when none.
+
+        After :func:`resolve_dispatch_method` returns ``None`` (#194):
+
+        * no sub-client on the store's client → DEBUG (normal for a bare
+          ``BaseClient`` / test double; warning once per catalogue endpoint
+          would bury real misconfiguration)
+        * sub-client present but method missing / not callable → WARNING
+        * method present but shape incompatible → WARNING naming the uncovered
+          required params via :func:`uncovered_required_params`
+        """
+        method = resolve_dispatch_method(
+            self.client, client_name, method_name, endpoint_param_names
+        )
+        if method is not None:
+            return method
+
+        sub_client = getattr(self.client, client_name, None)
+        if sub_client is None:
+            self.logger.debug(
+                "LangChain tool '%s': no '%s' sub-client on client; "
+                "falling back to client.request",
+                method_name,
+                client_name,
+            )
+            return None
+
+        resolved = resolve_client_method(self.client, client_name, method_name)
+        if resolved is None:
+            self.logger.warning(
+                "LangChain tool '%s': client.%s has no callable '%s'; "
+                "falling back to client.request",
+                method_name,
+                client_name,
+                method_name,
+            )
+            return None
+
+        uncovered = uncovered_required_params(resolved, endpoint_param_names)
+        self.logger.warning(
+            "LangChain tool '%s': method shape incompatible "
+            "(uncovered required params: %s); falling back to client.request",
+            method_name,
+            sorted(uncovered),
+        )
+        return None
+
     def create_tool(self, info: EndpointInfo) -> ToolLike:
-        """Create a LangChain tool from endpoint info."""
+        """Create a LangChain tool from endpoint info.
+
+        Dispatch goes through the client method named by
+        ``EndpointSemantics.method_name`` (the same path MCP uses) so
+        method-level defaults and constraints apply. See #172. When the store
+        holds a client without that sub-client (tests, bare ``BaseClient``),
+        dispatch falls back to ``client.request(endpoint, ...)``.
+
+        A fallback is announced rather than silent (#194). The level splits on
+        whether it is expected: a bare client has no sub-clients by design and
+        would otherwise emit one warning per endpoint in the catalogue, which
+        buries the two cases that really do mean something is wrong -- a
+        ``method_name`` naming nothing, or a shape the wire fields cannot
+        fill. Those warn; the bare-client case is DEBUG.
+        """
         if not info:
             raise ValueError("EndpointInfo cannot be None")
         if not info.endpoint or not info.semantics:
@@ -519,10 +838,28 @@ class EndpointVectorStore:
         try:
             semantics = info.semantics
             endpoint = info.endpoint
+            ep_names = [
+                p.name
+                for p in list(endpoint.mandatory_params)
+                + list(endpoint.optional_params or [])
+            ]
+            method = self._resolve_tool_method(
+                semantics.client_name,
+                semantics.method_name,
+                ep_names,
+            )
+            mandatory_params, optional_params = partition_params_for_method(
+                endpoint.mandatory_params,
+                endpoint.optional_params or [],
+                method,
+            )
 
             def endpoint_func(**kwargs: Any) -> Any:
                 try:
-                    result = self.client.request(endpoint, **kwargs)
+                    if method is not None:
+                        result = method(**map_tool_kwargs_to_method(method, kwargs))
+                    else:
+                        result = self.client.request(endpoint, **kwargs)
                     return self._serialize_result(result)
 
                 except Exception as e:
@@ -530,12 +867,17 @@ class EndpointVectorStore:
                     error_message = str(e)
                     error_type = type(e).__name__
 
-                    if "ValidationError" in error_type:
+                    # ValueError covers method-level constraints the endpoint
+                    # cannot express (e.g. SEC search_industry_classification
+                    # requiring at least one of symbol/cik/sic_code).
+                    if "ValidationError" in error_type or error_type == "ValueError":
                         # Parse validation error for better feedback
                         error_details = str(e).split("\n")
                         field_errors = [
                             line.strip() for line in error_details if "  " in line
                         ]
+                        if not field_errors:
+                            field_errors = [error_message]
 
                         return {
                             "status": "error",
@@ -582,7 +924,8 @@ class EndpointVectorStore:
             tool_args_model = create_model(
                 f"{semantics.method_name}Args",
                 **ToolFactory.create_parameter_fields(
-                    endpoint.mandatory_params + (endpoint.optional_params or []),
+                    mandatory_params,
+                    optional_params,
                     semantics.parameter_hints,
                 ),
                 __config__=ConfigDict(
@@ -632,6 +975,12 @@ class EndpointVectorStore:
 
         Returns:
             List of tools (formatted or unformatted based on provider)
+
+        Note:
+            Deprecated endpoints are excluded here as well as at index time
+            (:meth:`_is_deprecated`). Filtering only on the way in would leave a
+            store persisted by an earlier release still serving them, which is
+            exactly the state #137 describes.
         """
         try:
             tools: list[ToolLike] = []
@@ -645,7 +994,7 @@ class EndpointVectorStore:
                     if not isinstance(endpoint_name, str):
                         continue
                     info = self.registry.get_endpoint(endpoint_name)
-                    if info:
+                    if info and not self._is_deprecated(info):
                         tools.append(self.create_tool(info))
 
             if provider:

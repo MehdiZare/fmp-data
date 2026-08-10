@@ -47,7 +47,13 @@ from fmp_data.intelligence.endpoints import (
     STOCK_SPLITS_CALENDAR,
     TRENDING_SOCIAL_SENTIMENT_ENDPOINT,
 )
-from fmp_data.lc.hints import CIK_HINT
+from fmp_data.lc.hints import (
+    CIK_HINT,
+    DATE_HINTS,
+    LIMIT_HINT,
+    PAGE_HINT,
+    SYMBOL_HINT,
+)
 from fmp_data.lc.models import (
     EndpointSemantics,
     ParameterHint,
@@ -112,17 +118,6 @@ INTELLIGENCE_ENDPOINT_MAP = {
 }
 
 # Common parameter hints
-SYMBOL_HINT = ParameterHint(
-    natural_names=["stock", "ticker", "company", "symbol"],
-    extraction_patterns=[
-        r"(?i)for\s+([A-Z]{1,5})",
-        r"(?i)([A-Z]{1,5})(?:'s|'|\s+)",
-        r"(?i)symbol[:\s]+([A-Z]{1,5})",
-    ],
-    examples=["AAPL", "MSFT", "GOOGL"],
-    context_clues=["company", "stock", "ticker", "symbol"],
-)
-
 INCLUDE_REPORT_TIMES_HINT = ParameterHint(
     natural_names=[
         "report time",
@@ -157,46 +152,6 @@ CRYPTO_PAIR_HINT = ParameterHint(
     context_clues=["crypto", "cryptocurrency", "bitcoin", "ethereum", "trading pair"],
 )
 
-DATE_HINTS = {
-    "start_date": ParameterHint(
-        natural_names=["start date", "from date", "beginning", "since", "from"],
-        extraction_patterns=[
-            r"(\d{4}-\d{2}-\d{2})",
-            r"(?:from|since|after)\s+(\d{4}-\d{2}-\d{2})",
-        ],
-        examples=["2023-01-01", "2022-12-31"],
-        context_clues=["from", "since", "starting", "after"],
-    ),
-    "end_date": ParameterHint(
-        natural_names=["end date", "to date", "until", "through", "to"],
-        extraction_patterns=[
-            r"(?:to|until|through)\s+(\d{4}-\d{2}-\d{2})",
-            r"(\d{4}-\d{2}-\d{2})",
-        ],
-        examples=["2024-01-01", "2023-12-31"],
-        context_clues=["to", "until", "through", "ending"],
-    ),
-}
-
-PAGE_HINT = ParameterHint(
-    natural_names=["page", "page number", "result page"],
-    extraction_patterns=[
-        r"page\s*(\d+)",
-        r"(\d+)(?:st|nd|rd|th)\s+page",
-    ],
-    examples=["0", "1", "2"],
-    context_clues=["page", "next", "previous", "results"],
-)
-
-LIMIT_HINT = ParameterHint(
-    natural_names=["limit", "count", "number of results"],
-    extraction_patterns=[
-        r"limit\s*(\d+)",
-        r"(\d+)\s*results",
-    ],
-    examples=["50", "100", "200"],
-    context_clues=["limit", "maximum", "results", "entries"],
-)
 # Additional utility mappings
 SENTIMENT_SOURCES = {
     "stocktwits": {
@@ -560,6 +515,11 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
     "stock_news_sentiments": EndpointSemantics(
         client_name="intelligence",
         method_name="get_stock_news_sentiments",
+        # Retired upstream: the client method returns [] without a
+        # request. Kept in the table so the MCP tool key still
+        # resolves; `deprecated` keeps it out of the LangChain vector
+        # store so no semantic query can select it (#137).
+        deprecated=True,
         natural_description=(
             "DEPRECATED and non-functional: FMP no longer serves this "
             "endpoint, so it always returns an empty list. Do not select it "
@@ -645,6 +605,11 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
     "earnings_confirmed": EndpointSemantics(
         client_name="intelligence",
         method_name="get_earnings_confirmed",
+        # Retired upstream: the client method returns [] without a
+        # request. Kept in the table so the MCP tool key still
+        # resolves; `deprecated` keeps it out of the LangChain vector
+        # store so no semantic query can select it (#137).
+        deprecated=True,
         natural_description=(
             "DEPRECATED: empty list. Prefer earnings_calendar with "
             "include_report_times=True (confirmed + bmo/amc time)."
@@ -1309,6 +1274,11 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
     "earnings_surprises": EndpointSemantics(
         client_name="intelligence",
         method_name="get_earnings_surprises",
+        # Retired upstream: the client method returns [] without a
+        # request. Kept in the table so the MCP tool key still
+        # resolves; `deprecated` keeps it out of the LangChain vector
+        # store so no semantic query can select it (#137).
+        deprecated=True,
         natural_description=(
             "DEPRECATED: empty list. Prefer historical_earnings and "
             "compare eps vs eps_estimated."
@@ -1743,6 +1713,15 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
     "senate_trading_rss": EndpointSemantics(
         client_name="intelligence",
         method_name="get_senate_trading_rss",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: the nearest live tool is `intelligence.senate_latest`, whose
+        # payload differs.
+        deprecated=True,
         natural_description=(
             "Get real-time RSS feed of Senate trading disclosures including new "
             "filings and transaction updates"

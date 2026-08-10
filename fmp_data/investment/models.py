@@ -6,6 +6,8 @@ from decimal import Decimal
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
 
+from fmp_data.models import CIK
+
 default_model_config = ConfigDict(
     populate_by_name=True,
     validate_assignment=True,
@@ -187,7 +189,7 @@ class MutualFundHolding(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Fund symbol")
-    cik: str = Field(description="Fund CIK")
+    cik: CIK = Field(description="Fund CIK")
     name: str = Field(description="Fund name")
     asset: str = Field(description="Asset name")
     cusip: str | None = Field(description="Asset CUSIP")
@@ -219,7 +221,7 @@ class FundDisclosureHolderLatest(BaseModel):
 
     model_config = default_model_config
 
-    cik: str | None = Field(None, description="Fund CIK")
+    cik: CIK | None = Field(None, description="Fund CIK")
     holder: str = Field(description="Fund name")
     shares: float = Field(description="Number of shares")
     date_reported: dt_date = Field(alias="dateReported", description="Report date")
@@ -239,7 +241,7 @@ class FundDisclosureHolding(BaseModel):
 
     model_config = default_model_config
 
-    cik: str | None = Field(None, description="Fund CIK")
+    cik: CIK | None = Field(None, description="Fund CIK")
     date: dt_date | None = Field(None, description="Disclosure date")
     accepted_date: datetime | None = Field(
         None, alias="acceptedDate", description="Accepted timestamp"
@@ -303,7 +305,7 @@ class FundDisclosureSearchResult(BaseModel):
     model_config = default_model_config
 
     symbol: str | None = Field(None, description="Fund or ETF symbol")
-    cik: str | None = Field(None, description="Fund CIK")
+    cik: CIK | None = Field(None, description="Fund CIK")
     class_id: str | None = Field(None, alias="classId", description="Class ID")
     series_id: str | None = Field(None, alias="seriesId", description="Series ID")
     entity_name: str | None = Field(None, alias="entityName", description="Entity name")

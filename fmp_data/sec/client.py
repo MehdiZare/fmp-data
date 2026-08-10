@@ -160,7 +160,7 @@ class SECClient(EndpointGroup):
 
     def search_by_cik(
         self,
-        cik: str,
+        cik: str | int,
         page: int = 0,
         limit: int = 100,
         from_date: date | None = None,
@@ -220,7 +220,7 @@ class SECClient(EndpointGroup):
         """
         return self.client.request(SEC_COMPANY_SEARCH_SYMBOL, symbol=symbol)
 
-    def search_company_by_cik(self, cik: str) -> list[SECCompanySearchResult]:
+    def search_company_by_cik(self, cik: str | int) -> list[SECCompanySearchResult]:
         """Search SEC companies by CIK number
 
         Args:
@@ -261,7 +261,7 @@ class SECClient(EndpointGroup):
     def search_industry_classification(
         self,
         symbol: str | None = None,
-        cik: str | None = None,
+        cik: str | int | None = None,
         sic_code: str | None = None,
     ) -> list[IndustryClassification]:
         """Search industry classification data
@@ -276,7 +276,7 @@ class SECClient(EndpointGroup):
         """
         if not symbol and not cik and not sic_code:
             raise ValueError("Provide at least one of symbol, cik, or sic_code")
-        params: dict[str, str] = {}
+        params: dict[str, str | int] = {}
         if symbol:
             params["symbol"] = symbol
         if cik:

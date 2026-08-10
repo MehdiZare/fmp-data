@@ -17,10 +17,11 @@ Heavy LangChain imports are deferred so domain mapping modules can import
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NamedTuple
 
+from fmp_data.exceptions import VectorStoreCreationError
 from fmp_data.lc.models import EndpointSemantics, SemanticCategory
-from fmp_data.lc.registry import EndpointRegistry
+from fmp_data.lc.registry import EndpointRegistry, resolve_semantics_for_endpoint
 from fmp_data.lc.utils import is_langchain_available
 from fmp_data.logger import FMPLogger
 
@@ -107,37 +108,23 @@ def validate_api_keys(
     return fmp_key, openai_key
 
 
-def resolve_semantics_for_endpoint(
-    endpoint_name: str,
-    semantics_map: dict[str, EndpointSemantics],
-) -> EndpointSemantics | None:
-    """Pair an endpoint-map key with its semantics entry.
+class RegistrySetup(NamedTuple):
+    """What :func:`setup_registry` built, and what did not make it in.
 
-    Endpoint-map keys are client method names. Semantics table keys are often
-    short aliases (``crowdfunding_search`` vs ``search_crowdfunding``). Match
-    order:
+    ``register_batch`` returns a per-endpoint failure dict; ``setup_registry``
+    used to inspect it, log a summary and drop it, so the only way to learn
+    which endpoints were skipped was to parse logs (#133's closing note). It is
+    now returned alongside the registry.
 
-    1. Exact key match
-    2. Strip a leading ``get_`` prefix (historical convention)
-    3. Match ``EndpointSemantics.method_name`` (authoritative for MCP/client)
+    A ``NamedTuple`` so ``registry, failures = setup_registry(client)`` reads
+    naturally and ``result.failures`` stays self-describing.
     """
-    semantics = semantics_map.get(endpoint_name)
-    if semantics is not None:
-        return semantics
 
-    if endpoint_name.startswith("get_"):
-        semantics = semantics_map.get(endpoint_name[4:])
-        if semantics is not None:
-            return semantics
-
-    for candidate in semantics_map.values():
-        if candidate.method_name == endpoint_name:
-            return candidate
-
-    return None
+    registry: EndpointRegistry
+    failures: dict[str, str]
 
 
-def setup_registry(client: FMPDataClient) -> EndpointRegistry:
+def setup_registry(client: FMPDataClient) -> RegistrySetup:
     """
     Initialize and populate endpoint registry.
 
@@ -145,11 +132,19 @@ def setup_registry(client: FMPDataClient) -> EndpointRegistry:
         client: The FMP Data client instance
 
     Returns:
-        Configured endpoint registry
+        The configured registry, plus a mapping of endpoint name to the
+        validation error that kept it out. Empty when everything registered.
+
+    Note:
+        **Breaking in 2.6** -- this used to return a bare ``EndpointRegistry``.
+        Change ``registry = setup_registry(client)`` to
+        ``registry, failures = setup_registry(client)`` (or use
+        ``.registry``).
     """
     from fmp_data.models import Endpoint
 
     endpoint_registry = EndpointRegistry()
+    all_failures: dict[str, str] = {}
 
     # Get endpoint groups with lazy loading to avoid circular imports
     from fmp_data.lc.registry import get_endpoint_groups
@@ -183,12 +178,13 @@ def setup_registry(client: FMPDataClient) -> EndpointRegistry:
                 f"endpoints from {group_name}"
             )
             if failures:
+                all_failures.update(failures)
                 logger.warning(
                     f"Skipped {len(failures)} invalid {group_name} endpoints: "
                     f"{', '.join(sorted(failures))}"
                 )
 
-    return endpoint_registry
+    return RegistrySetup(registry=endpoint_registry, failures=all_failures)
 
 
 def create_vector_store(
@@ -199,7 +195,7 @@ def create_vector_store(
     force_create: bool = False,
     embedding_provider: EmbeddingProvider | None = None,
     embedding_model: str | None = None,
-) -> EndpointVectorStore | None:
+) -> EndpointVectorStore:
     """
     Create a vector store for endpoint semantic search.
 
@@ -213,7 +209,20 @@ def create_vector_store(
         embedding_model: Specific model name
 
     Returns:
-        Configured vector store or None if setup fails
+        Configured vector store.
+
+    Raises:
+        VectorStoreCreationError: if the store cannot be built. Carries the
+            underlying exception as ``cause`` and any endpoints skipped during
+            registration as ``failures``.
+
+    Note:
+        **Breaking in 2.6** -- this used to return ``None`` on any failure.
+        Replace ``store = create_vector_store(...); if store is None: ...``
+        with a ``try``/``except VectorStoreCreationError`` block. ``None`` was
+        reachable from exactly one place, the blanket handler below, so it
+        never distinguished one failure from another; it also swallowed the
+        errors #121/#127 made ``setup_registry`` propagate.
     """
     # Late import to avoid circular dependency and optional langchain deps
     from fmp_data.client import FMPDataClient
@@ -223,6 +232,10 @@ def create_vector_store(
     if embedding_provider is None:
         embedding_provider = EP.OPENAI
 
+    # Bound outside the try so a failure *after* registration can still report
+    # which endpoints were skipped on the way here.
+    failures: dict[str, str] = {}
+
     try:
         # Validate API keys
         fmp_key, openai_key = validate_api_keys(fmp_api_key, openai_api_key)
@@ -231,7 +244,7 @@ def create_vector_store(
         client = FMPDataClient(api_key=fmp_key)
 
         # Setup registry
-        registry = setup_registry(client)
+        registry, failures = setup_registry(client)
 
         embedding_config = EmbeddingConfig(
             provider=embedding_provider, model_name=embedding_model, api_key=openai_key
@@ -254,7 +267,9 @@ def create_vector_store(
 
     except Exception as e:
         logger.error(f"Failed to create vector store: {e}")
-        return None
+        raise VectorStoreCreationError(
+            f"Failed to create vector store: {e}", cause=e, failures=failures
+        ) from e
 
 
 def try_load_existing_store(
@@ -309,10 +324,12 @@ def create_new_store(
 
     # Get all endpoints from registry and populate store
     endpoint_names = list(registry.list_endpoints().keys())
-    vector_store.add_endpoints(endpoint_names)  # Use the actual method
+    indexed = vector_store.add_endpoints(endpoint_names)  # Use the actual method
     vector_store.save()  # Use the actual method
 
-    logger.info(f"Created new vector store with {len(endpoint_names)} endpoints")
+    # Report what was indexed, not what was offered: deprecated endpoints are
+    # filtered out on the way in (#137), so the two numbers differ.
+    logger.info(f"Created new vector store with {indexed} endpoints")
     return vector_store
 
 
@@ -322,7 +339,9 @@ __all__ = [
     "EndpointSemantics",
     "EndpointVectorStore",
     "LangChainConfig",
+    "RegistrySetup",
     "SemanticCategory",
+    "VectorStoreCreationError",
     "create_new_store",
     "create_vector_store",
     "init_langchain",

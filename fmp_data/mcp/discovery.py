@@ -95,6 +95,15 @@ def discover_client_tools(client_name: str) -> list[dict[str, Any]]:
                     "description": description,
                     "example_queries": getattr(semantics, "example_queries", []),
                     "related_terms": getattr(semantics, "related_terms", []),
+                    # Sourced from `EndpointSemantics.deprecated` (#137), which
+                    # means "FMP does not serve this any more, so the client
+                    # method short-circuits to []". That is a *withdrawal*,
+                    # not the rename `tools_manifest.DEPRECATED_TOOLS`
+                    # records, and `fmp-mcp list` has to show both facts
+                    # separately -- so this key is named for what the flag
+                    # means rather than for the field it reads, leaving
+                    # `deprecated` to mean one thing throughout the CLI (#158).
+                    "withdrawn": bool(getattr(semantics, "deprecated", False)),
                 }
             )
 
@@ -223,7 +232,7 @@ def get_recommended_tools() -> list[str]:
         "company.profile",
         "company.market_cap",
         "company.quote",
-        "company.historical_price",
+        "company.historical_prices",
         # Market data
         "market.gainers",
         "market.losers",

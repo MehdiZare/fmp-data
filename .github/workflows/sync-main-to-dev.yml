@@ -1,16 +1,28 @@
 name: Sync-Main-to-Dev
 
+# After every push to main (release squash or hotfix), ensure main's history is
+# reachable from dev. Content equality is not enough: a squash-merge leaves
+# main and dev with identical trees but divergent histories, and the *next*
+# release PR then opens CONFLICTING with no merge ref — and therefore no CI.
+# See #202.
+#
+# Token: prefer secrets.GH_TOKEN (repo PAT) for push + gh pr create so the
+# opened sync PR re-triggers pull_request CI (#206).
+
 on:
   push:
     branches: [main]
 
 concurrency:
   group: sync-main-to-dev
-  cancel-in-progress: true
+  # Do not cancel an in-flight sync when another main push lands — that race
+  # left partial force-pushes and abandoned conflict recovery (#208).
+  cancel-in-progress: false
 
 permissions:
   contents: write
   pull-requests: write
+  issues: write  # gh label create + conflict issue
 
 jobs:
   sync-main-to-dev:
@@ -19,44 +31,180 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
         with:
-          ref: main
           fetch-depth: 0
+          # PAT preferred so pushes and PRs are not GITHUB_TOKEN-attributed (#206).
+          token: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
 
-      - name: Check for differences
-        id: diff
+      - name: Ensure main is reachable from dev
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+          USING_PAT: ${{ secrets.GH_TOKEN != '' }}
         run: |
-          git fetch origin dev
-          DIFF=$(git diff origin/dev..main --stat)
-          if [ -z "$DIFF" ]; then
-            echo "No differences to sync"
-            echo "has_changes=false" >> $GITHUB_OUTPUT
+          set -euo pipefail
+
+          git fetch origin main dev
+          git fetch origin sync/main-to-dev:refs/remotes/origin/sync/main-to-dev 2>/dev/null || true
+
+          if [ "$USING_PAT" = "true" ]; then
+            echo "Using secrets.GH_TOKEN (PAT) for push / PR create (#206)."
           else
-            echo "Changes detected"
-            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "::warning::secrets.GH_TOKEN is not set; falling back to GITHUB_TOKEN. Opened sync PRs will not re-trigger pull_request workflows (#206)."
           fi
 
-      - name: Create Sync PR
-        if: steps.diff.outputs.has_changes == 'true'
-        uses: peter-evans/create-pull-request@v8.1.1
-        with:
-          branch: sync/main-to-dev
-          base: dev
-          title: "Sync: main → dev"
-          body: |
-            ## Automatic Sync
+          if git merge-base --is-ancestor origin/main origin/dev; then
+            echo "main is already an ancestor of dev; nothing to do."
+            exit 0
+          fi
 
-            This PR syncs changes from `main` back to `dev` after a release or hotfix.
+          echo "main is NOT reachable from dev — history has diverged."
 
-            ### Why is this needed?
-            - Release tags are created on `main` after merge
-            - Version bumps and release commits need to be in `dev`
-            - Prevents future merge conflicts
+          git config user.name github-actions
+          git config user.email github-actions@github.com
 
-            ### Action Required
-            - Review the changes
-            - Resolve any conflicts if present
-            - **Use Squash and Merge** to preserve linear history on `dev`
-          labels: |
-            automated
-            sync
-          delete-branch: false
+          # Start from current dev tip (do not reset a remote sync branch yet).
+          git checkout -B sync/main-to-dev origin/dev
+
+          # Labels used by the original workflow; create them if a fresh
+          # clone of the repo has none (gh pr create --label fails otherwise).
+          gh label create automated --color "0e8a16" --description "Automated PR" 2>/dev/null || true
+          gh label create sync --color "1d76db" --description "Branch history sync" 2>/dev/null || true
+
+          # Push the local tip to sync/main-to-dev without clobbering human WIP.
+          # WIP = commits on the remote branch that are not in our new tip and
+          # are not authored by github-actions (#208).
+          push_sync_branch() {
+            if git show-ref --verify --quiet refs/remotes/origin/sync/main-to-dev; then
+              if git merge-base --is-ancestor origin/sync/main-to-dev HEAD; then
+                echo "Fast-forwarding origin/sync/main-to-dev."
+                git push origin HEAD:refs/heads/sync/main-to-dev
+                return
+              fi
+
+              # Would need a non-FF update. Refuse if remote has non-bot commits
+              # our new tip does not contain (human conflict resolution WIP).
+              HUMAN_WIP=$(git log --format='%H %an' HEAD..origin/sync/main-to-dev \
+                | grep -v ' github-actions$' || true)
+              if [ -n "$HUMAN_WIP" ]; then
+                echo "::error::sync/main-to-dev has human commits not in the new tip; refusing to force-push."
+                echo "$HUMAN_WIP"
+                echo "Finish or abandon that work, then re-run this workflow."
+                exit 1
+              fi
+
+              echo "Updating automation tip on sync/main-to-dev (force-with-lease)."
+              git push --force-with-lease=refs/heads/sync/main-to-dev:refs/remotes/origin/sync/main-to-dev \
+                origin HEAD:refs/heads/sync/main-to-dev
+            else
+              git push -u origin HEAD:refs/heads/sync/main-to-dev
+            fi
+          }
+
+          open_or_update_pr() {
+            local title="$1"
+            local body_file="$2"
+            push_sync_branch
+            local existing
+            existing=$(gh pr list --base dev --head sync/main-to-dev --state open \
+              --json number --jq '.[0].number // empty')
+            if [ -n "$existing" ]; then
+              echo "Sync PR #${existing} already open; branch updated."
+              gh pr edit "$existing" --title "$title" --body-file "$body_file"
+            else
+              gh pr create --base dev --head sync/main-to-dev \
+                --title "$title" \
+                --body-file "$body_file" \
+                --label automated --label sync
+            fi
+          }
+
+          if git diff --quiet origin/dev origin/main; then
+            # Post-squash release: trees match, only history needs recording.
+            # -s ours produces a merge commit with zero content change so the
+            # next dev → main PR stays MERGEABLE.
+            git merge -s ours origin/main \
+              -m "chore: merge main into dev after release (history sync)"
+
+            cat > /tmp/sync-pr-body.md <<'EOF'
+          ## Automatic Sync
+
+          `main` was not an ancestor of `dev`. This PR restores reachability so
+          the next `dev → main` release PR stays MERGEABLE and gets full CI.
+
+          ### Why this is not a content sync
+          After a squash-merge release, trees are usually identical but histories
+          diverge. Comparing content (`git diff`) misses that; comparing
+          reachability (`git merge-base --is-ancestor`) catches it at the right
+          moment — right after the release — instead of as 20+ conflicts on the
+          next release PR. See #202.
+
+          ### Action required
+          - Review (content may be empty for a pure history merge)
+          - Merge into `dev` (a merge commit keeps the ancestry link; squash would re-create the problem)
+          EOF
+
+            open_or_update_pr "Sync: main → dev (history reachability)" /tmp/sync-pr-body.md
+          else
+            # Hotfix (or other content) landed on main that dev does not have.
+            if git merge origin/main \
+              -m "chore: merge main into dev (sync after release/hotfix)"; then
+              cat > /tmp/sync-pr-body.md <<'EOF'
+          ## Automatic Sync
+
+          `main` was not an ancestor of `dev` and carried content `dev` did not
+          have (hotfix or direct-to-main commit). This PR merges that content
+          back so histories stay connected. See #202.
+
+          ### Action required
+          - Review the content delta
+          - Merge into `dev` (prefer a merge commit so the ancestry link is kept)
+          EOF
+              open_or_update_pr "Sync: main → dev" /tmp/sync-pr-body.md
+            else
+              # Do NOT force-push origin/dev over sync/main-to-dev or open an
+              # empty "CONFLICTS" PR. After abort the tip equals origin/dev, so
+              # create would fail or rewrite a good open reachability PR to an
+              # empty tip. Fail loud, open a tracking issue, leave any existing
+              # sync branch alone (#205 / #208).
+              echo "::error::Merge conflicts while syncing main → dev."
+              echo "Manual resolution is required. Do not squash the eventual sync."
+              git merge --abort || true
+
+              {
+                echo "## Sync main → dev blocked by merge conflicts"
+                echo ""
+                echo "\`main\` is not an ancestor of \`dev\` and a content merge"
+                echo "produced conflicts. This job did **not** rewrite"
+                echo "\`sync/main-to-dev\` (so any open history-reachability PR"
+                echo "is left intact)."
+                echo ""
+                echo "### Action required"
+                echo "1. \`git fetch origin && git checkout -B sync/main-to-dev origin/dev\`"
+                echo "2. \`git merge origin/main\` and resolve conflicts"
+                echo "3. Push and open (or update) a PR into \`dev\`"
+                echo "4. Merge with a **merge commit** (not squash) so ancestry is kept"
+                echo ""
+                echo "Until this lands, the next \`dev → main\` release PR will open"
+                echo "CONFLICTING and get no CI. See #202 / #208."
+                echo ""
+                echo "Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              } | tee /tmp/sync-conflict.md >> "$GITHUB_STEP_SUMMARY"
+
+              # Open (or update) a tracking issue so conflict recovery is not
+              # buried in a cancelled/failed job log (#208).
+              ISSUE_TITLE="Sync main → dev blocked by merge conflicts"
+              EXISTING_ISSUE=$(gh issue list --state open --search "in:title Sync main → dev blocked by merge conflicts" \
+                --json number --jq '.[0].number // empty' || true)
+              if [ -n "${EXISTING_ISSUE:-}" ]; then
+                gh issue comment "$EXISTING_ISSUE" --body-file /tmp/sync-conflict.md
+                echo "Updated tracking issue #${EXISTING_ISSUE}"
+              else
+                ISSUE_URL=$(gh issue create \
+                  --title "$ISSUE_TITLE" \
+                  --body-file /tmp/sync-conflict.md \
+                  --label automated || true)
+                echo "Opened tracking issue: ${ISSUE_URL:-failed}"
+              fi
+
+              exit 1
+            fi
+          fi

@@ -33,12 +33,6 @@ from fmp_data.company.models import (
     UpgradeDowngrade,
     UpgradeDowngradeConsensus,
 )
-from fmp_data.company.schema import (
-    BaseSymbolArg,
-    GeographicRevenueArgs,
-    ProductRevenueArgs,
-    SymbolChangesArgs,
-)
 from fmp_data.fundamental.models import (
     AsReportedBalanceSheet,
     AsReportedCashFlowStatement,
@@ -74,7 +68,6 @@ QUOTE: Endpoint[Quote] = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -92,7 +85,6 @@ SIMPLE_QUOTE: Endpoint[SimpleQuote] = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -110,13 +102,11 @@ AFTERMARKET_TRADE: Endpoint[AftermarketTrade] = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
     optional_params=[],
     response_model=AftermarketTrade,
-    arg_model=BaseSymbolArg,
 )
 
 AFTERMARKET_QUOTE: Endpoint[AftermarketQuote] = Endpoint(
@@ -129,13 +119,11 @@ AFTERMARKET_QUOTE: Endpoint[AftermarketQuote] = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
     optional_params=[],
     response_model=AftermarketQuote,
-    arg_model=BaseSymbolArg,
 )
 
 STOCK_PRICE_CHANGE: Endpoint[StockPriceChange] = Endpoint(
@@ -148,13 +136,11 @@ STOCK_PRICE_CHANGE: Endpoint[StockPriceChange] = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
     optional_params=[],
     response_model=StockPriceChange,
-    arg_model=BaseSymbolArg,
 )
 
 HISTORICAL_PRICE: Endpoint = Endpoint(
@@ -167,7 +153,6 @@ HISTORICAL_PRICE: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -176,7 +161,6 @@ HISTORICAL_PRICE: Endpoint = Endpoint(
             name="start_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
             description="Start date",
             alias="from",
         ),
@@ -184,7 +168,6 @@ HISTORICAL_PRICE: Endpoint = Endpoint(
             name="end_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
             description="End date",
             alias="to",
         ),
@@ -202,7 +185,6 @@ HISTORICAL_PRICE_LIGHT: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -211,7 +193,6 @@ HISTORICAL_PRICE_LIGHT: Endpoint = Endpoint(
             name="start_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
             description="Start date",
             alias="from",
         ),
@@ -219,7 +200,6 @@ HISTORICAL_PRICE_LIGHT: Endpoint = Endpoint(
             name="end_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
             description="End date",
             alias="to",
         ),
@@ -237,7 +217,6 @@ HISTORICAL_PRICE_NON_SPLIT_ADJUSTED: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -246,7 +225,6 @@ HISTORICAL_PRICE_NON_SPLIT_ADJUSTED: Endpoint = Endpoint(
             name="start_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
             description="Start date",
             alias="from",
         ),
@@ -254,7 +232,6 @@ HISTORICAL_PRICE_NON_SPLIT_ADJUSTED: Endpoint = Endpoint(
             name="end_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
             description="End date",
             alias="to",
         ),
@@ -272,7 +249,6 @@ HISTORICAL_PRICE_DIVIDEND_ADJUSTED: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -281,7 +257,6 @@ HISTORICAL_PRICE_DIVIDEND_ADJUSTED: Endpoint = Endpoint(
             name="start_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
             description="Start date",
             alias="from",
         ),
@@ -289,7 +264,6 @@ HISTORICAL_PRICE_DIVIDEND_ADJUSTED: Endpoint = Endpoint(
             name="end_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
             description="End date",
             alias="to",
         ),
@@ -307,14 +281,12 @@ INTRADAY_PRICE: Endpoint = Endpoint(
             name="interval",
             location=ParamLocation.PATH,
             param_type=ParamType.STRING,
-            required=True,
             description="Time interval (1min, 5min, 15min, 30min, 1hour, 4hour)",
         ),
         EndpointParam(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         ),
     ],
@@ -323,7 +295,6 @@ INTRADAY_PRICE: Endpoint = Endpoint(
             name="start_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
             description="Start date",
             alias="from",
         ),
@@ -331,7 +302,6 @@ INTRADAY_PRICE: Endpoint = Endpoint(
             name="end_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
             description="End date",
             alias="to",
         ),
@@ -339,7 +309,6 @@ INTRADAY_PRICE: Endpoint = Endpoint(
             name="nonadjusted",
             location=ParamLocation.QUERY,
             param_type=ParamType.BOOLEAN,
-            required=False,
             description="Use non-adjusted data",
         ),
     ],
@@ -362,13 +331,11 @@ PROFILE: Endpoint[CompanyProfile] = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
     optional_params=[],
     response_model=CompanyProfile,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "Get Apple's company profile",
         "Show me Microsoft's company information",
@@ -385,22 +352,22 @@ CORE_INFORMATION: Endpoint[CompanyCoreInformation] = Endpoint(
     url_type=URLType.API,
     method=HTTPMethod.GET,
     description=(
-        "Retrieve essential company information including CIK, exchange, SIC code, "
-        "state of incorporation, and fiscal year details. Provides core regulatory "
-        "and administrative information about a company."
+        "DEPRECATED and non-functional: FMP no longer serves "
+        "company-core-information, so this path 404s. Do not select it. Use "
+        "the 'profile' endpoint, which carries CIK, exchange, industry and "
+        "sector but not the SIC code, state of incorporation or fiscal-year "
+        "registration details this returned."
     ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
     optional_params=[],
     response_model=CompanyCoreInformation,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "Get core information for Apple",
         "Show me Tesla's basic company details",
@@ -429,13 +396,11 @@ KEY_EXECUTIVES: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
     optional_params=[],
     response_model=CompanyExecutive,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "Who are Apple's key executives?",
         "Get Microsoft's management team",
@@ -459,13 +424,11 @@ EXECUTIVE_COMPENSATION: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Company symbol",
         )
     ],
     optional_params=[],
     response_model=ExecutiveCompensation,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "What is Apple CEO's compensation?",
         "Show Microsoft executive pay",
@@ -491,7 +454,6 @@ EMPLOYEE_COUNT: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -500,12 +462,10 @@ EMPLOYEE_COUNT: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Maximum number of employee count records to return",
         ),
     ],
     response_model=EmployeeCount,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "How many employees does Apple have?",
         "Show Microsoft's employee count history",
@@ -533,13 +493,11 @@ COMPANY_NOTES: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
     optional_params=[],
     response_model=CompanyNote,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "Get financial notes for Apple",
         "Show me Microsoft's company disclosures",
@@ -554,22 +512,20 @@ HISTORICAL_SHARE_FLOAT: Endpoint = Endpoint(
     path="historical/shares-float",
     version=APIVersion.STABLE,
     description=(
-        "Get historical share float data showing how the number of tradable shares "
-        "has changed over time. Useful for analyzing changes in stock liquidity and "
-        "institutional ownership patterns over time."
+        "DEPRECATED and non-functional: historical/shares-float 404s. Do not "
+        "select it. Use the live shares-float endpoint, which carries the same "
+        "fields but as a current snapshot rather than a time series."
     ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Company symbol",
         )
     ],
     optional_params=[],
     response_model=HistoricalShareFloat,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "Show historical share float for Tesla",
         "How has Apple's share float changed over time?",
@@ -594,14 +550,12 @@ PRODUCT_REVENUE_SEGMENTATION: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Company symbol",
         ),
         EndpointParam(
             name="structure",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Data structure format",
             default="flat",
         ),
@@ -609,7 +563,6 @@ PRODUCT_REVENUE_SEGMENTATION: Endpoint = Endpoint(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Annual or quarterly data",
             default="annual",
             valid_values=["annual", "quarter"],
@@ -617,7 +570,6 @@ PRODUCT_REVENUE_SEGMENTATION: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=ProductRevenueSegment,
-    arg_model=ProductRevenueArgs,
     example_queries=[
         "Show Apple's revenue by product",
         "How is Microsoft's revenue split between products?",
@@ -641,14 +593,12 @@ GEOGRAPHIC_REVENUE_SEGMENTATION: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Company symbol",
         ),
         EndpointParam(
             name="structure",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Data structure format",
             default="flat",
         ),
@@ -656,7 +606,6 @@ GEOGRAPHIC_REVENUE_SEGMENTATION: Endpoint = Endpoint(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Annual or quarterly data",
             default="annual",
             valid_values=["annual", "quarter"],
@@ -664,7 +613,6 @@ GEOGRAPHIC_REVENUE_SEGMENTATION: Endpoint = Endpoint(
     ],
     optional_params=[],
     response_model=GeographicRevenueSegment,
-    arg_model=GeographicRevenueArgs,
     example_queries=[
         "Show Apple's revenue by region",
         "How is Microsoft's revenue split geographically?",
@@ -686,7 +634,6 @@ SYMBOL_CHANGES: Endpoint = Endpoint(
     mandatory_params=[],
     optional_params=[],
     response_model=SymbolChange,
-    arg_model=SymbolChangesArgs,
     example_queries=[
         "Show recent stock symbol changes",
         "List companies that changed their tickers",
@@ -710,13 +657,11 @@ SHARE_FLOAT: Endpoint[ShareFloat] = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Company symbol",
         )
     ],
     optional_params=[],
     response_model=ShareFloat,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "What is Apple's share float?",
         "Get Microsoft's floating shares",
@@ -736,7 +681,6 @@ MARKET_CAP: Endpoint[MarketCapitalization] = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -754,7 +698,6 @@ HISTORICAL_MARKET_CAP: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -767,13 +710,17 @@ PRICE_TARGET: Endpoint = Endpoint(
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get price targets",
+    description=(
+        "DEPRECATED and non-functional: FMP no longer serves price-target, so "
+        "this path 404s. Do not select it. Use 'price-target-summary' or "
+        "'price-target-consensus' for the aggregate; the per-analyst series "
+        "this returned has no replacement."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol",
         )
     ],
@@ -793,7 +740,6 @@ PRICE_TARGET_SUMMARY: Endpoint[PriceTargetSummary] = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol",
         )
     ],
@@ -813,7 +759,6 @@ PRICE_TARGET_CONSENSUS: Endpoint[PriceTargetConsensus] = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol",
         )
     ],
@@ -833,14 +778,12 @@ ANALYST_ESTIMATES: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol",
         ),
         EndpointParam(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Estimate period (annual or quarter)",
             valid_values=["annual", "quarter"],
         ),
@@ -850,7 +793,6 @@ ANALYST_ESTIMATES: Endpoint = Endpoint(
             name="page",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Page number for pagination",
             default=0,
         ),
@@ -858,7 +800,6 @@ ANALYST_ESTIMATES: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of results per page",
             default=10,
         ),
@@ -872,13 +813,17 @@ ANALYST_RECOMMENDATIONS: Endpoint = Endpoint(
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get analyst recommendations",
+    description=(
+        "DEPRECATED and non-functional: FMP no longer serves "
+        "analyst-stock-recommendations, so this path 404s. Do not select it. "
+        "Use 'grades-consensus', which returns one current consensus tally "
+        "rather than the monthly series this returned."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol",
         )
     ],
@@ -892,13 +837,17 @@ UPGRADES_DOWNGRADES: Endpoint = Endpoint(
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get upgrades and downgrades",
+    description=(
+        "DEPRECATED and non-functional: FMP no longer serves "
+        "upgrades-downgrades, so this path 404s. Do not select it. Use "
+        "'grades', which carries the same grade-change rows under different "
+        "field names."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol",
         )
     ],
@@ -912,13 +861,17 @@ UPGRADES_DOWNGRADES_CONSENSUS: Endpoint[UpgradeDowngradeConsensus] = Endpoint(
     version=APIVersion.STABLE,
     url_type=URLType.API,
     method=HTTPMethod.GET,
-    description="Get upgrades and downgrades consensus",
+    description=(
+        "DEPRECATED and non-functional: FMP no longer serves "
+        "upgrades-downgrades-consensus, so this path 404s. Do not select it. "
+        "Use 'grades-consensus', which returns the equivalent "
+        "strongBuy/buy/hold/sell/strongSell tally."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol",
         )
     ],
@@ -936,7 +889,6 @@ COMPANY_PEERS: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol",
         )
     ],
@@ -954,8 +906,7 @@ PROFILE_CIK: Endpoint[CompanyProfile] = Endpoint(
         EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=True,
+            param_type=ParamType.CIK,
             description="Company CIK number",
         )
     ],
@@ -974,14 +925,12 @@ DELISTED_COMPANIES: Endpoint = Endpoint(
             name="page",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Page number for pagination",
         ),
         EndpointParam(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of results per page",
         ),
     ],
@@ -992,13 +941,16 @@ HISTORICAL_EMPLOYEE_COUNT: Endpoint = Endpoint(
     name="historical_employee_count",
     path="historical/employee-count",
     version=APIVersion.STABLE,
-    description="Get historical employee count data",
+    description=(
+        "DEPRECATED and non-functional: historical/employee-count 404s. Do "
+        "not select it. The live employee-count endpoint already returns the "
+        "full filing history and is exposed as company.get_employee_count."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Company symbol",
         )
     ],
@@ -1010,13 +962,17 @@ COMPANY_OUTLOOK: Endpoint = Endpoint(
     name="company_outlook",
     path="company-outlook",
     version=APIVersion.STABLE,
-    description="Get comprehensive company outlook data",
+    description=(
+        "DEPRECATED and non-functional: FMP no longer serves company-outlook, "
+        "so this path 404s. Do not select it. Use the 'profile' endpoint for "
+        "company details; the bundled news and metrics it also returned have "
+        "no single replacement and must be fetched from their own endpoints."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Company symbol",
         )
     ],
@@ -1028,133 +984,119 @@ STOCK_SCREENER: Endpoint = Endpoint(
     name="stock_screener",
     path="stock-screener",
     version=APIVersion.STABLE,
-    description="Screen stocks based on various criteria",
+    description=(
+        "DEPRECATED and non-functional: stock-screener 404s. Do not select "
+        "it. The live company-screener endpoint is already exposed as "
+        "market.get_company_screener, with a flatter per-match payload."
+    ),
     mandatory_params=[],
     optional_params=[
         EndpointParam(
             name="market_cap_more_than",
             location=ParamLocation.QUERY,
             param_type=ParamType.FLOAT,
-            required=False,
             description="Market cap greater than",
         ),
         EndpointParam(
             name="market_cap_less_than",
             location=ParamLocation.QUERY,
             param_type=ParamType.FLOAT,
-            required=False,
             description="Market cap less than",
         ),
         EndpointParam(
             name="price_more_than",
             location=ParamLocation.QUERY,
             param_type=ParamType.FLOAT,
-            required=False,
             description="Price greater than",
         ),
         EndpointParam(
             name="price_less_than",
             location=ParamLocation.QUERY,
             param_type=ParamType.FLOAT,
-            required=False,
             description="Price less than",
         ),
         EndpointParam(
             name="beta_more_than",
             location=ParamLocation.QUERY,
             param_type=ParamType.FLOAT,
-            required=False,
             description="Beta greater than",
         ),
         EndpointParam(
             name="beta_less_than",
             location=ParamLocation.QUERY,
             param_type=ParamType.FLOAT,
-            required=False,
             description="Beta less than",
         ),
         EndpointParam(
             name="volume_more_than",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Volume greater than",
         ),
         EndpointParam(
             name="volume_less_than",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Volume less than",
         ),
         EndpointParam(
             name="dividend_more_than",
             location=ParamLocation.QUERY,
             param_type=ParamType.FLOAT,
-            required=False,
             description="Dividend yield greater than",
         ),
         EndpointParam(
             name="dividend_less_than",
             location=ParamLocation.QUERY,
             param_type=ParamType.FLOAT,
-            required=False,
             description="Dividend yield less than",
         ),
         EndpointParam(
             name="is_etf",
             location=ParamLocation.QUERY,
             param_type=ParamType.BOOLEAN,
-            required=False,
             description="Filter for ETFs",
         ),
         EndpointParam(
             name="is_fund",
             location=ParamLocation.QUERY,
             param_type=ParamType.BOOLEAN,
-            required=False,
             description="Filter for funds",
         ),
         EndpointParam(
             name="is_actively_trading",
             location=ParamLocation.QUERY,
             param_type=ParamType.BOOLEAN,
-            required=False,
             description="Filter for actively trading stocks",
         ),
         EndpointParam(
             name="sector",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=False,
             description="Filter by sector",
         ),
         EndpointParam(
             name="industry",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=False,
             description="Filter by industry",
         ),
         EndpointParam(
             name="country",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=False,
             description="Filter by country",
         ),
         EndpointParam(
             name="exchange",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=False,
             description="Filter by exchange",
         ),
         EndpointParam(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of results to return",
         ),
     ],
@@ -1172,7 +1114,6 @@ MERGERS_ACQUISITIONS_LATEST: Endpoint = Endpoint(
             name="page",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Page number for pagination",
             default=0,
         ),
@@ -1180,7 +1121,6 @@ MERGERS_ACQUISITIONS_LATEST: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of results per page",
             default=100,
         ),
@@ -1198,7 +1138,6 @@ MERGERS_ACQUISITIONS_SEARCH: Endpoint = Endpoint(
             name="name",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Company name to search for",
         )
     ],
@@ -1207,7 +1146,6 @@ MERGERS_ACQUISITIONS_SEARCH: Endpoint = Endpoint(
             name="page",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Page number for pagination",
             default=0,
         ),
@@ -1215,7 +1153,6 @@ MERGERS_ACQUISITIONS_SEARCH: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of results per page",
             default=100,
         ),
@@ -1233,7 +1170,6 @@ EXECUTIVE_COMPENSATION_BENCHMARK: Endpoint = Endpoint(
             name="year",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=True,
             description="Year for compensation data",
         )
     ],
@@ -1256,7 +1192,6 @@ COMPANY_DIVIDENDS: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -1265,7 +1200,6 @@ COMPANY_DIVIDENDS: Endpoint = Endpoint(
             name="from_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
             description="Start date for dividend history (YYYY-MM-DD)",
             alias="from",
         ),
@@ -1273,7 +1207,6 @@ COMPANY_DIVIDENDS: Endpoint = Endpoint(
             name="to_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
             description="End date for dividend history (YYYY-MM-DD)",
             alias="to",
         ),
@@ -1281,12 +1214,10 @@ COMPANY_DIVIDENDS: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of dividend records to return",
         ),
     ],
     response_model=DividendEvent,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "Get Apple's dividend history",
         "Show Microsoft's dividend payments",
@@ -1311,7 +1242,6 @@ COMPANY_EARNINGS: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -1320,13 +1250,11 @@ COMPANY_EARNINGS: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of earnings reports to return",
             default=20,
         ),
     ],
     response_model=EarningEvent,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "Get Apple's earnings history",
         "Show Tesla's earnings reports",
@@ -1351,7 +1279,6 @@ COMPANY_SPLITS: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -1360,7 +1287,6 @@ COMPANY_SPLITS: Endpoint = Endpoint(
             name="from_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
             description="Start date for split history (YYYY-MM-DD)",
             alias="from",
         ),
@@ -1368,7 +1294,6 @@ COMPANY_SPLITS: Endpoint = Endpoint(
             name="to_date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
             description="End date for split history (YYYY-MM-DD)",
             alias="to",
         ),
@@ -1376,12 +1301,10 @@ COMPANY_SPLITS: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of split records to return",
         ),
     ],
     response_model=StockSplitEvent,
-    arg_model=BaseSymbolArg,
     example_queries=[
         "Get Apple's stock split history",
         "Show Tesla's stock splits",
@@ -1406,7 +1329,6 @@ INCOME_STATEMENT_TTM: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -1415,7 +1337,6 @@ INCOME_STATEMENT_TTM: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of periods to return",
         )
     ],
@@ -1437,7 +1358,6 @@ BALANCE_SHEET_TTM: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -1446,7 +1366,6 @@ BALANCE_SHEET_TTM: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of periods to return",
         )
     ],
@@ -1468,7 +1387,6 @@ CASH_FLOW_TTM: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -1477,7 +1395,6 @@ CASH_FLOW_TTM: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of periods to return",
         )
     ],
@@ -1499,7 +1416,6 @@ KEY_METRICS_TTM: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -1522,7 +1438,6 @@ FINANCIAL_RATIOS_TTM: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -1545,7 +1460,6 @@ FINANCIAL_SCORES: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -1568,7 +1482,6 @@ ENTERPRISE_VALUES: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -1577,7 +1490,6 @@ ENTERPRISE_VALUES: Endpoint = Endpoint(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=False,
             description="Period type (annual, quarter, FY, Q1-Q4)",
             default="annual",
             valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
@@ -1586,7 +1498,6 @@ ENTERPRISE_VALUES: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of periods to return",
             default=20,
         ),
@@ -1609,7 +1520,6 @@ INCOME_STATEMENT_GROWTH: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -1618,7 +1528,6 @@ INCOME_STATEMENT_GROWTH: Endpoint = Endpoint(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=False,
             description="Period type (annual, quarter, FY, Q1-Q4)",
             default="annual",
             valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
@@ -1627,7 +1536,6 @@ INCOME_STATEMENT_GROWTH: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of periods to return",
             default=20,
         ),
@@ -1650,7 +1558,6 @@ BALANCE_SHEET_GROWTH: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -1659,7 +1566,6 @@ BALANCE_SHEET_GROWTH: Endpoint = Endpoint(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=False,
             description="Period type (annual, quarter, FY, Q1-Q4)",
             default="annual",
             valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
@@ -1668,7 +1574,6 @@ BALANCE_SHEET_GROWTH: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of periods to return",
             default=20,
         ),
@@ -1691,7 +1596,6 @@ CASH_FLOW_GROWTH: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -1700,7 +1604,6 @@ CASH_FLOW_GROWTH: Endpoint = Endpoint(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=False,
             description="Period type (annual, quarter, FY, Q1-Q4)",
             default="annual",
             valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
@@ -1709,7 +1612,6 @@ CASH_FLOW_GROWTH: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of periods to return",
             default=20,
         ),
@@ -1732,7 +1634,6 @@ FINANCIAL_GROWTH: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -1741,7 +1642,6 @@ FINANCIAL_GROWTH: Endpoint = Endpoint(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=False,
             description="Period type (annual, quarter, FY, Q1-Q4)",
             default="annual",
             valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
@@ -1750,7 +1650,6 @@ FINANCIAL_GROWTH: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of periods to return",
             default=20,
         ),
@@ -1773,21 +1672,18 @@ FINANCIAL_REPORTS_JSON: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         ),
         EndpointParam(
             name="year",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=True,
             description="Report year",
         ),
         EndpointParam(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Report period (FY or Q1-Q4)",
             default="FY",
             valid_values=["FY", "Q1", "Q2", "Q3", "Q4"],
@@ -1812,21 +1708,18 @@ FINANCIAL_REPORTS_XLSX: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         ),
         EndpointParam(
             name="year",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=True,
             description="Report year",
         ),
         EndpointParam(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Report period (FY or Q1-Q4)",
             default="FY",
             valid_values=["FY", "Q1", "Q2", "Q3", "Q4"],
@@ -1851,7 +1744,6 @@ INCOME_STATEMENT_AS_REPORTED: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -1860,7 +1752,6 @@ INCOME_STATEMENT_AS_REPORTED: Endpoint = Endpoint(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=False,
             description="Period type (annual or quarter)",
             default="annual",
             valid_values=["annual", "quarter"],
@@ -1869,7 +1760,6 @@ INCOME_STATEMENT_AS_REPORTED: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of periods to return",
             default=10,
         ),
@@ -1892,7 +1782,6 @@ BALANCE_SHEET_AS_REPORTED: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -1901,7 +1790,6 @@ BALANCE_SHEET_AS_REPORTED: Endpoint = Endpoint(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=False,
             description="Period type (annual or quarter)",
             default="annual",
             valid_values=["annual", "quarter"],
@@ -1910,7 +1798,6 @@ BALANCE_SHEET_AS_REPORTED: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of periods to return",
             default=10,
         ),
@@ -1933,7 +1820,6 @@ CASH_FLOW_AS_REPORTED: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -1942,7 +1828,6 @@ CASH_FLOW_AS_REPORTED: Endpoint = Endpoint(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=False,
             description="Period type (annual or quarter)",
             default="annual",
             valid_values=["annual", "quarter"],
@@ -1951,7 +1836,6 @@ CASH_FLOW_AS_REPORTED: Endpoint = Endpoint(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=False,
             description="Number of periods to return",
             default=10,
         ),

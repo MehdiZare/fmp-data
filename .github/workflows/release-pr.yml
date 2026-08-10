@@ -1,5 +1,17 @@
 name: Release-PR
 
+# On every push to dev, ensure an open PR from dev → main exists so the
+# release checklist (labels, TestPyPI, CI) has somewhere to live.
+#
+# This deliberately does NOT use peter-evans/create-pull-request: that action
+# is for committing working-tree changes onto a new branch. Checking out dev
+# and running it without modifications always concludes "branch is not ahead
+# of base" and exits green while creating nothing. See #203.
+#
+# Token: prefer secrets.GH_TOKEN (repo PAT) so the pull_request "opened"
+# event re-triggers Test-Matrix / Guard-Main-Origin. secrets.GITHUB_TOKEN
+# alone does not. See #206.
+
 on:
   push:
     branches: [dev]
@@ -9,8 +21,9 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
+  issues: write  # gh label create
 
 jobs:
   create-release-pr:
@@ -22,33 +35,161 @@ jobs:
           fetch-depth: 0
           ref: dev
 
-      - name: Create or Update Release PR
-        uses: peter-evans/create-pull-request@v8.1.1
+      - name: Create or re-validate the release PR
+        id: plan
+        env:
+          # secrets.GH_TOKEN = workflow-triggering PAT (preferred).
+          # secrets.GITHUB_TOKEN = automatic job token (fallback; CI will not
+          # re-fire on PRs it opens — see #206).
+          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+          # Boolean only — never interpolate the secret into the script body.
+          USING_PAT: ${{ secrets.GH_TOKEN != '' }}
+        run: |
+          set -euo pipefail
+
+          git fetch origin main dev
+
+          if [ "$USING_PAT" = "true" ]; then
+            echo "Using secrets.GH_TOKEN (PAT) so opened PRs trigger pull_request CI."
+          else
+            echo "::warning::secrets.GH_TOKEN is not set; falling back to GITHUB_TOKEN. PRs opened this way will not re-trigger pull_request workflows (#206)."
+          fi
+
+          # Head must be `dev` (not a side branch) because publish-testpypi.yml
+          # gates on head.ref == 'dev'.
+          # Do not swallow gh failures — an auth/API error must not be treated
+          # as "no PR exists."
+          EXISTING_JSON=$(gh pr list --base main --head dev --state open \
+            --json number,url)
+          EXISTING_NUM=$(echo "$EXISTING_JSON" | jq -r '.[0].number // empty')
+
+          check_ancestry() {
+            if ! git merge-base --is-ancestor origin/main origin/dev; then
+              echo "::error::main is not an ancestor of dev."
+              echo "The Sync-Main-to-Dev workflow should have opened a"
+              echo "reachability PR after the last release; merge it first."
+              echo "A release PR now would be CONFLICTING with no merge-ref CI."
+              exit 1
+            fi
+          }
+
+          if [ -n "${EXISTING_NUM:-}" ]; then
+            EXISTING_URL=$(echo "$EXISTING_JSON" | jq -r '.[0].url')
+
+            echo "Release PR already open: #${EXISTING_NUM} ${EXISTING_URL}"
+
+            # Re-check health on every push — not only on create (#207).
+            # An already-open PR can go CONFLICTING after a squash-merge while
+            # this job would otherwise paint green forever with "already open."
+            # Mergeability is checked in the next step via the shared action
+            # (.github/actions/check-pr-mergeable) so it cannot drift from
+            # Guard-Main-Origin (#210).
+            check_ancestry
+
+            {
+              echo "action=revalidate"
+              echo "pr_number=${EXISTING_NUM}"
+              echo "pr_url=${EXISTING_URL}"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          check_ancestry
+
+          # Nothing to release if the tips are identical.
+          if [ "$(git rev-parse origin/main)" = "$(git rev-parse origin/dev)" ]; then
+            echo "dev and main point at the same commit; nothing to release."
+            echo "action=noop" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # AHEAD of main? (dev has commits main does not)
+          AHEAD=$(git rev-list --count origin/main..origin/dev)
+          if [ "$AHEAD" -eq 0 ]; then
+            echo "dev is not ahead of main; nothing to release."
+            echo "action=noop" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "dev is $AHEAD commit(s) ahead of main; creating release PR."
+
+          gh label create automated --color "0e8a16" --description "Automated PR" 2>/dev/null || true
+
+          cat > /tmp/release-pr-body.md <<'EOF'
+          ## Release Checklist
+
+          Automated release PR from `dev` to `main`.
+
+          ### Pre-merge Checklist
+          - [ ] All CI checks pass (Test-Matrix, Guard-Main-Origin, etc.)
+          - [ ] Test PyPI validation successful (version + commit SHA in the bot comment match the tip you are releasing)
+          - [ ] Documentation is up to date
+
+          ### Release Type
+          Add **exactly one** of these labels to determine the version bump:
+          - `release:major` — Breaking changes
+          - `release:minor` — New features (backwards compatible)
+          - `release:patch` — Bug fixes
+
+          ### After Merge
+          The release workflow will automatically:
+          1. Create a new git tag
+          2. Build and publish to PyPI
+          3. Create a GitHub Release
+
+          The Sync-Main-to-Dev workflow then records the squash on `dev` so
+          the *next* release PR stays MERGEABLE. See #202 / #203 / #206.
+          EOF
+
+          URL=$(gh pr create --base main --head dev \
+            --title "Release: dev → main" \
+            --body-file /tmp/release-pr-body.md \
+            --label automated)
+          echo "Created release PR: $URL"
+          {
+            echo "action=created"
+            echo "pr_url=${URL}"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "## Release PR"
+            echo "Created: $URL"
+            echo ""
+            if [ "$USING_PAT" = "true" ]; then
+              echo "Opened with \`secrets.GH_TOKEN\` — \`pull_request\` workflows should run on this open (#206)."
+            else
+              echo "Opened with \`GITHUB_TOKEN\` — \`pull_request\` workflows will **not** re-fire."
+              echo "Push again to \`dev\` or close/reopen so Test-Matrix appears, or set \`secrets.GH_TOKEN\`."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail when the open release PR has merge conflicts
+        # Same fail-closed REST contract as Guard-Main-Origin (#207 / #210).
+        if: steps.plan.outputs.action == 'revalidate'
+        id: mergeable
+        uses: ./.github/actions/check-pr-mergeable
         with:
-          branch: release/dev-to-main
-          base: main
-          title: "Release: dev → main"
-          body: |
-            ## Release Checklist
+          pr-number: ${{ steps.plan.outputs.pr_number }}
+          github-token: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+          # Preserve #207 operator copy: squash-merging the release PR without
+          # a merge-commit sync leaves the next release CONFLICTING.
+          conflict-guidance: |
+            For a release PR (dev → main): sync main into dev with a merge
+            commit (not squash), then re-push. See #202 / #207.
 
-            This is an automated release PR from `dev` to `main`.
-
-            ### Pre-merge Checklist
-            - [ ] All CI checks pass
-            - [ ] Test PyPI validation successful
-            - [ ] Documentation is up to date
-
-            ### Release Type
-            Add one of these labels to determine version bump:
-            - `release:major` - Breaking changes
-            - `release:minor` - New features (backwards compatible)
-            - `release:patch` - Bug fixes
-
-            ### After Merge
-            The release workflow will automatically:
-            1. Create a new git tag
-            2. Build and publish to PyPI
-            3. Create a GitHub Release
-          labels: |
-            automated
-          delete-branch: false
+      - name: Summarize revalidated release PR
+        if: steps.plan.outputs.action == 'revalidate'
+        env:
+          PR_URL: ${{ steps.plan.outputs.pr_url }}
+          MERGEABLE: ${{ steps.mergeable.outputs.mergeable }}
+          MSTATE: ${{ steps.mergeable.outputs.mergeable_state }}
+        run: |
+          set -euo pipefail
+          echo "Existing release PR is healthy; nothing to create."
+          {
+            echo "## Release PR"
+            echo "Already open and healthy: ${PR_URL}"
+            echo ""
+            echo "- mergeable: \`${MERGEABLE}\`"
+            echo "- mergeable_state: \`${MSTATE}\`"
+            echo "- main is an ancestor of dev: yes"
+          } >> "$GITHUB_STEP_SUMMARY"

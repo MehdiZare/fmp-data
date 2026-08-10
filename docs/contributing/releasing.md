@@ -30,17 +30,121 @@ MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
 
 ## Automated Release Process
 
-### GitHub Actions Workflow
+### Happy path (dev → main)
 
-Our release process is fully automated using GitHub Actions:
+1. Land work on `dev` as usual.
+2. The **Release-PR** workflow runs on every push to `dev` and opens (or
+   reuses) a PR with head `dev` and base `main`. It fails loudly if `main` is
+   not an ancestor of `dev` — it never reports success for work it did not do
+   (#203). On every push it also re-validates an already-open release PR:
+   ancestry plus REST `mergeable` / `mergeable_state` (retried; fails closed
+   on `dirty`, `mergeable` not `true`, or still-`unknown`) must stay clean
+   (#207, #213). That mergeability check is the shared composite action
+   `.github/actions/check-pr-mergeable`, also used by Guard-Main-Origin
+   (#210); Test-Matrix runs its mock matrix on every PR (#212).
+3. **Automation token.** Release-PR and Sync-Main-to-Dev prefer the repo
+   secret `GH_TOKEN` (a fine-scoped PAT) for `gh pr create` / automation
+   pushes so the `pull_request` **opened** event re-triggers Test-Matrix and
+   Guard-Main-Origin (#206). If `GH_TOKEN` is unset they fall back to
+   `GITHUB_TOKEN`, which can open the PR but will **not** re-fire those
+   workflows (GitHub’s anti-recursion rule — unrelated to the Actions
+   “read/write” permission toggle). Adding a release label still triggers
+   TestPyPI via the `labeled` event either way.
+4. Add **exactly one** of `release:major` / `release:minor` / `release:patch`
+   to that PR.
+5. The **Publish-to-TestPyPI** workflow builds a unique
+   `X.Y.Z.devN` version (`N = run_id * 1000 + run_attempt`) for *each* push,
+   asserts the sdist metadata matches that version, uploads it, and comments
+   the version **and the commit SHA** on the PR. Install the version in the
+   latest comment — older comments point at stale artifacts (#204).
+6. Merge the release PR into `main` once CI is green and TestPyPI checks out.
+7. The **Release** workflow tags, publishes to PyPI, and creates the GitHub
+   release.
+8. The **Sync-Main-to-Dev** workflow fires on the push to `main`. It checks
+   *reachability* (`git merge-base --is-ancestor origin/main origin/dev`), not
+   content equality. After a squash-merge the trees match but the histories
+   have diverged; the workflow opens a PR that records a history-only merge
+   (`merge -s ours`) so the *next* release PR stays MERGEABLE and gets full
+   CI (#202). **Merge that sync PR with a merge commit** — squashing it would
+   recreate the divergence. Concurrent main pushes do not cancel an in-flight
+   sync; human WIP on `sync/main-to-dev` is not force-pushed away; merge
+   conflicts open a tracking issue (#208).
 
-1. **PR Merge**: When a PR is merged to `main`
+### Why three workflows keep each other honest
+
+| Failure mode | What used to happen | What happens now |
+|---|---|---|
+| Squash-merge `dev` → `main` | Content matched, sync no-op; next release PR opened CONFLICTING with no CI | Sync opens a reachability PR immediately after the release |
+| Release-PR automation | `create-pull-request` with no working-tree changes exited green and created nothing | `gh pr create --base main --head dev`, or a red failure if histories diverged |
+| TestPyPI re-run on the same PR | Version keyed on PR number + `skip-existing: true` → first build wins forever | Unique version per run; `skip-existing: false`; sdist version asserted; comment includes commit SHA |
+
+`Guard-Main-Origin` also fails the PR when `mergeable_state=dirty`, when
+`mergeable` is not `true` (including empty/JSON-`null`), **or** when
+mergeability never leaves `unknown` after retries, so a conflicting,
+unproven, or unresolved release PR shows a red X instead of a hole in the
+checks list (#207, #213). Both workflows share
+`.github/actions/check-pr-mergeable` for that check (#210); Test-Matrix runs
+its mock matrix on every PR (#212). Guard checks out the PR **head** (so
+CONFLICTING PRs still reach the check) and, when present on the PR base,
+overlays the composite action from `origin/<base>` so hotfixes cut from an
+older tip cannot omit the contract.
+
+#### Guard base-pin lag for `check-pr-mergeable` (#218)
+
+Guard’s overlay is intentional and hotfix-safe (#210): a head branch that
+rewrites or weakens `check.sh` still runs the contract pinned on the PR
+**base** (typically `main` for release PRs). The tradeoff is **lag**:
+
+| Workflow | Which action copy runs | When a contract change applies |
+|---|---|---|
+| **Guard-Main-Origin** (`dev`/`hotfix-*` → `main`) | `origin/<base>` when that path exists; else head (bootstrap). Guard only targets `main`, so base is **always** `main`. | After the change is **merged into `main`** |
+| **Release-PR** (push to `dev`) | Tip of the workflow run (checkout of `dev`) | As soon as the change is **on `dev`** |
+
+Implementation: `.github/workflows/guard-main-origin.yml` step “Prefer
+mergeability action from PR base” runs
+`git checkout origin/${BASE_REF} -- .github/actions/check-pr-mergeable`
+when that path exists on the base.
+
+So tightenings such as “require `mergeable=true`” (#213) or explicit
+`tostring` extraction (#216) land on Release-PR immediately once they reach
+`dev`, but Guard keeps the previous contract until the same change is on
+`main` (normally via the next release PR). Operators reading a red/green
+mismatch between Guard and Release-PR after a contract change on `dev` only
+should check whether `main` still has the older action.
+
+**Pin strategy:** do **not** silently allow head to override base for minor
+contract updates. Changing that tradeoff (forward-compatible pin, dual-run,
+etc.) is a separate decision; document and review it rather than flipping
+the overlay in a hotfix-shaped PR.
+
+### Related automation (not the release PR itself)
+
+- **Dev Release** (`dev-release.yml`) publishes a unique TestPyPI build on
+  every push to `dev` (`X.Y.Z.devN` with `N = run_id * 1000 + run_attempt`).
+  Re-runs never silently re-serve a previous wheel.
+- **Release** (`release.yml`) tags, creates the GitHub Release, and publishes
+  to PyPI after a labeled `dev → main` merge. Existing tags / releases / PyPI
+  versions fail the job instead of being skipped.
+- **Claude Code Review** is advisory: missing or expired OAuth tokens do not
+  fail the PR. Required gates live in `ci.yml` / the branch rulesets.
+
+### Secrets used by release automation
+
+| Secret | Purpose |
+|---|---|
+| `GH_TOKEN` | Fine-scoped PAT (or App token) for Release-PR / Sync-Main-to-Dev `gh pr create` and automation branch pushes so `pull_request` CI runs on open (#206). Not the same as the automatic `GITHUB_TOKEN`. |
+| `GITHUB_TOKEN` | Automatic job token; used as fallback and for jobs that must not re-trigger workflows. |
+| OIDC / PyPI trusted publishing | Real and Test PyPI uploads (no long-lived PyPI token required when configured). |
+
+### GitHub Actions Workflow (on merge to main)
+
+1. **PR Merge**: When a labeled release PR is merged to `main`
 2. **Label Detection**: Action reads PR labels to determine version bump
 3. **Version Calculation**: New version is calculated based on current version + bump type
 4. **Git Tagging**: New git tag is created with the version
 5. **Release Creation**: GitHub release is created with auto-generated notes
 6. **PyPI Publishing**: Package is built and published to PyPI
-7. **Documentation**: Updated docs are deployed
+7. **History sync**: Sync-Main-to-Dev restores `main` as an ancestor of `dev`
 
 ### Required PR Labels
 
@@ -56,44 +160,11 @@ Our release process is fully automated using GitHub Actions:
 - `bug`: Bug fixes
 - `feature`: New features
 
-### Example Workflow
+### Example Workflow (illustrative shape only)
 
-```yaml
-# .github/workflows/release.yml
-name: Release
-
-on:
-  pull_request:
-    types: [closed]
-    branches: [ main ]
-
-jobs:
-  release:
-    if: |
-      github.event.pull_request.merged == true &&
-      (contains(github.event.pull_request.labels.*.name, 'release:major') ||
-       contains(github.event.pull_request.labels.*.name, 'release:minor') ||
-       contains(github.event.pull_request.labels.*.name, 'release:patch'))
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6.0.2
-      - name: Setup Python
-        uses: actions/setup-python@v6.2.0
-        with:
-          python-version: '3.14'
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v8.0.0
-
-      - name: Build distribution
-        run: python -m build --wheel --sdist
-
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.13.0
-        with:
-          packages-dir: dist/
-          skip-existing: true
-```
+The live release path lives in `.github/workflows/release.yml`. Do not copy
+`skip-existing: true` from older snippets — real releases fail on version
+collisions rather than reporting a green no-op.
 
 ## Manual Release Process
 

@@ -32,7 +32,6 @@ def sample_endpoints() -> dict[str, Endpoint[Any]]:
                     name="symbol",
                     location=ParamLocation.PATH,
                     param_type=ParamType.STRING,
-                    required=True,
                     description="Stock symbol",
                 )
             ],
@@ -41,7 +40,6 @@ def sample_endpoints() -> dict[str, Endpoint[Any]]:
                     name="date",
                     location=ParamLocation.QUERY,
                     param_type=ParamType.DATE,
-                    required=False,
                     description="Historical date",
                 )
             ],

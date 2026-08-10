@@ -14,7 +14,6 @@ from fmp_data.company.endpoints import (
     AFTERMARKET_QUOTE,
     AFTERMARKET_TRADE,
     ANALYST_ESTIMATES,
-    ANALYST_RECOMMENDATIONS,
     BALANCE_SHEET_AS_REPORTED,
     BALANCE_SHEET_GROWTH,
     BALANCE_SHEET_TTM,
@@ -26,7 +25,6 @@ from fmp_data.company.endpoints import (
     COMPANY_NOTES,
     COMPANY_PEERS,
     COMPANY_SPLITS,
-    CORE_INFORMATION,
     EMPLOYEE_COUNT,
     ENTERPRISE_VALUES,
     EXECUTIVE_COMPENSATION,
@@ -42,7 +40,6 @@ from fmp_data.company.endpoints import (
     HISTORICAL_PRICE_DIVIDEND_ADJUSTED,
     HISTORICAL_PRICE_LIGHT,
     HISTORICAL_PRICE_NON_SPLIT_ADJUSTED,
-    HISTORICAL_SHARE_FLOAT,
     INCOME_STATEMENT_AS_REPORTED,
     INCOME_STATEMENT_GROWTH,
     INCOME_STATEMENT_TTM,
@@ -52,7 +49,6 @@ from fmp_data.company.endpoints import (
     MARKET_CAP,
     MERGERS_ACQUISITIONS_LATEST,
     MERGERS_ACQUISITIONS_SEARCH,
-    PRICE_TARGET,
     PRICE_TARGET_CONSENSUS,
     PRICE_TARGET_SUMMARY,
     PRODUCT_REVENUE_SEGMENTATION,
@@ -63,8 +59,6 @@ from fmp_data.company.endpoints import (
     SIMPLE_QUOTE,
     STOCK_PRICE_CHANGE,
     SYMBOL_CHANGES,
-    UPGRADES_DOWNGRADES,
-    UPGRADES_DOWNGRADES_CONSENSUS,
 )
 from fmp_data.company.models import (
     AftermarketQuote,
@@ -115,6 +109,7 @@ from fmp_data.fundamental.models import (
     IncomeStatement,
     KeyMetricsTTM,
 )
+from fmp_data.helpers import deprecated
 from fmp_data.intelligence.models import DividendEvent, EarningEvent, StockSplitEvent
 from fmp_data.models import MarketCapitalization
 
@@ -151,10 +146,24 @@ class AsyncCompanyClient(AsyncEndpointGroup):
             raise FMPNotFound(cik)
         return profile
 
+    @deprecated(
+        "The FMP API no longer serves company-core-information. Use "
+        "get_profile(symbol), which is live but returns a flatter payload -- "
+        "it carries cik, exchange, industry and sector, and does not carry "
+        "the registration fields such as the SIC and state of incorporation."
+    )
     async def get_core_information(self, symbol: str) -> CompanyCoreInformation | None:
-        """Get core company information"""
-        result = await self.client.request_async(CORE_INFORMATION, symbol=symbol)
-        return self._unwrap_single(result, CompanyCoreInformation, allow_none=True)
+        """Get core company information
+
+        .. deprecated::
+            ``company-core-information`` 404s on the FMP API and will be
+            removed in a future version. It currently returns ``None``.
+            Use :meth:`get_profile` instead. It is not a drop-in: ``profile``
+            is a flatter record and does not carry the registration-detail
+            fields this model declares, so read the fields you need from
+            :class:`~fmp_data.company.models.CompanyProfile` directly.
+        """
+        return None
 
     async def get_executives(self, symbol: str) -> list[CompanyExecutive]:
         """Get company executives information"""
@@ -265,11 +274,27 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         """Get executive compensation data for a company"""
         return await self.client.request_async(EXECUTIVE_COMPENSATION, symbol=symbol)
 
+    @deprecated(
+        "historical/shares-float is dead. The live path shares-float is "
+        "already shipped as get_share_float(symbol); this method is a "
+        "leftover declaration, not a second data source. It returns the "
+        "current snapshot, not a time series."
+    )
     async def get_historical_share_float(
         self, symbol: str
     ) -> list[HistoricalShareFloat]:
-        """Get historical share float data for a company"""
-        return await self.client.request_async(HISTORICAL_SHARE_FLOAT, symbol=symbol)
+        """Get historical share float data for a company
+
+        .. deprecated::
+            ``historical/shares-float`` 404s and will be removed in a future
+            version. It currently returns an empty list. Use
+            :meth:`get_share_float`, which serves the live ``shares-float``
+            with the same fields (``date``, ``floatShares``, ``freeFloat``,
+            ``outstandingShares``, ``source``, ``symbol``). It is not a
+            drop-in: it answers with the current snapshot rather than a
+            history, so back-fill is no longer available from FMP.
+        """
+        return []
 
     async def get_product_revenue_segmentation(
         self, symbol: str, period: str = "annual"
@@ -329,9 +354,24 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         """Get historical market capitalization data"""
         return await self.client.request_async(HISTORICAL_MARKET_CAP, symbol=symbol)
 
+    @deprecated(
+        "The FMP API no longer serves the price-target series. Use "
+        "get_price_target_summary(symbol) or get_price_target_consensus"
+        "(symbol) -- both are live, but they are aggregates, not the "
+        "per-analyst time series this method returned."
+    )
     async def get_price_target(self, symbol: str) -> list[PriceTarget]:
-        """Get price targets"""
-        return await self.client.request_async(PRICE_TARGET, symbol=symbol)
+        """Get price targets
+
+        .. deprecated::
+            ``price-target`` 404s on the FMP API and will be removed in a
+            future version. It currently returns an empty list.
+            Use :meth:`get_price_target_summary` or
+            :meth:`get_price_target_consensus`. Neither is a drop-in: this
+            method yielded one row per analyst target, and both replacements
+            return a single aggregated record with no per-analyst detail.
+        """
+        return []
 
     async def get_price_target_summary(self, symbol: str) -> PriceTargetSummary:
         """Get price target summary"""
@@ -359,24 +399,68 @@ class AsyncCompanyClient(AsyncEndpointGroup):
             limit=limit,
         )
 
+    @deprecated(
+        "The FMP API no longer serves analyst-stock-recommendations. Use "
+        "FMPDataClient.intelligence.get_grades_consensus(symbol), which is "
+        "live but returns a single consensus tally (strongBuy/buy/hold/sell/"
+        "strongSell counts), not the monthly recommendation series."
+    )
     async def get_analyst_recommendations(
         self, symbol: str
     ) -> list[AnalystRecommendation]:
-        """Get analyst recommendations"""
-        return await self.client.request_async(ANALYST_RECOMMENDATIONS, symbol=symbol)
+        """Get analyst recommendations
 
+        .. deprecated::
+            ``analyst-stock-recommendations`` 404s on the FMP API and will be
+            removed in a future version. It currently returns an empty list.
+            Use ``client.intelligence.get_grades_consensus(symbol)``. It is
+            not a drop-in: this method returned one row per month with
+            rolling counts, and the replacement returns one current consensus
+            record.
+        """
+        return []
+
+    @deprecated(
+        "The FMP API no longer serves upgrades-downgrades. Use "
+        "FMPDataClient.intelligence.get_grades(symbol), which is live and "
+        "carries the same grade changes under different field names "
+        "(gradingCompany/previousGrade/newGrade rather than "
+        "gradingCompany/previousGrade/newGrade plus action and priceTarget)."
+    )
     async def get_upgrades_downgrades(self, symbol: str) -> list[UpgradeDowngrade]:
-        """Get upgrades and downgrades"""
-        return await self.client.request_async(UPGRADES_DOWNGRADES, symbol=symbol)
+        """Get upgrades and downgrades
 
+        .. deprecated::
+            ``upgrades-downgrades`` 404s on the FMP API and will be removed in
+            a future version. It currently returns an empty list.
+            Use ``client.intelligence.get_grades(symbol)``, which returns the
+            same class of grade-change rows via
+            :class:`~fmp_data.intelligence.models.StockGrade`. It is not a
+            drop-in: the field names differ and the action/price-target
+            columns this model declared are absent.
+        """
+        return []
+
+    @deprecated(
+        "The FMP API no longer serves upgrades-downgrades-consensus. Use "
+        "FMPDataClient.intelligence.get_grades_consensus(symbol), which is "
+        "live and returns the equivalent consensus tally."
+    )
     async def get_upgrades_downgrades_consensus(
         self, symbol: str
     ) -> UpgradeDowngradeConsensus | None:
-        """Get upgrades and downgrades consensus"""
-        result = await self.client.request_async(
-            UPGRADES_DOWNGRADES_CONSENSUS, symbol=symbol
-        )
-        return self._unwrap_single(result, UpgradeDowngradeConsensus, allow_none=True)
+        """Get upgrades and downgrades consensus
+
+        .. deprecated::
+            ``upgrades-downgrades-consensus`` 404s on the FMP API and will be
+            removed in a future version. It currently returns ``None``.
+            Use ``client.intelligence.get_grades_consensus(symbol)``, which
+            returns :class:`
+            ~fmp_data.intelligence.models.StockGradesConsensus` --  the same
+            strongBuy/buy/hold/sell/strongSell tally under a different model,
+            without this model's derived ``consensus`` label.
+        """
+        return None
 
     async def get_company_peers(self, symbol: str) -> list[CompanyPeer]:
         """Get company peers"""

@@ -5,6 +5,8 @@ from typing import Any
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
+from fmp_data.models import CIK
+
 default_model_config = ConfigDict(
     populate_by_name=True,
     validate_assignment=True,
@@ -24,7 +26,7 @@ class FinancialStatementBase(BaseModel):
     reported_currency: str = Field(
         alias="reportedCurrency", description="Currency used"
     )
-    cik: str = Field(description="SEC CIK number")
+    cik: CIK = Field(description="SEC CIK number")
     filing_date: datetime = Field(alias="filingDate", description="SEC filing date")
     accepted_date: datetime = Field(
         alias="acceptedDate", description="SEC acceptance date"
@@ -2831,7 +2833,7 @@ class FinancialReport(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
-    cik: str = Field(description="CIK number")
+    cik: CIK = Field(description="CIK number")
     year: int = Field(description="Report year")
     period: str = Field(description="Report period")
     url: str = Field(description="Report URL")

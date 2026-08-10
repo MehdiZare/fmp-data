@@ -7,6 +7,7 @@ lazy imports to avoid circular dependencies.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from enum import Enum
 from logging import Logger
 import re
 from typing import TYPE_CHECKING, Any, TypedDict
@@ -26,11 +27,187 @@ class GroupConfig(TypedDict):
     endpoint_map: dict[str, Endpoint[Any]]
     semantics_map: dict[str, EndpointSemantics]
     category: SemanticCategory
+    client: str
+
+
+def resolve_semantics_for_endpoint(
+    endpoint_name: str,
+    semantics_map: dict[str, EndpointSemantics],
+) -> EndpointSemantics | None:
+    """Pair an endpoint-map key with its semantics entry.
+
+    Endpoint-map keys are client method names. Semantics table keys are often
+    short aliases (``crowdfunding_search`` vs ``search_crowdfunding``). Match
+    order:
+
+    1. Exact key match
+    2. Strip a leading ``get_`` prefix (historical convention)
+    3. Match ``EndpointSemantics.method_name`` (authoritative for MCP/client)
+
+    Re-exported from ``fmp_data.lc`` for backwards compatibility. It lives here
+    because ``_partition_by_category`` has to answer the same question before a
+    group even exists, and ``fmp_data.lc`` imports this module.
+    """
+    semantics = semantics_map.get(endpoint_name)
+    if semantics is not None:
+        return semantics
+
+    if endpoint_name.startswith("get_"):
+        semantics = semantics_map.get(endpoint_name[4:])
+        if semantics is not None:
+            return semantics
+
+    for candidate in semantics_map.values():
+        if candidate.method_name == endpoint_name:
+            return candidate
+
+    return None
+
+
+# Method names that two client modules both define. The registry is a flat
+# ``name -> EndpointInfo`` map and LangChain tool names come from
+# ``semantics.method_name``, so only one client can own each of these -- two
+# tools called ``get_profile`` cannot coexist in one toolkit whatever the
+# registry does. Listing them here keeps the later client from silently
+# overwriting the earlier one's entry in ``setup_registry``.
+#
+# This is a stopgap, not the policy. #126 tracks the batch/alternative quote
+# duplication and #136 the duplicate-tool-key question behind the sec pair;
+# the next PR settles the tool-key namespace with a deprecation cycle, and
+# this mapping should shrink -- ideally to empty -- when it lands. Nothing
+# here is renamed or deprecated in the meantime.
+#
+# MCP is unaffected: it addresses tools as ``"<client>.<key>"``, so all four
+# stay reachable there. ``test_pending_collision_exclusions_are_real`` pins
+# this mapping and asserts each entry genuinely collides.
+PENDING_COLLISION_EXCLUSIONS: dict[str, frozenset[str]] = {
+    # ``alternative`` owns both of these. See #126.
+    "batch": frozenset({"get_crypto_quotes", "get_forex_quotes"}),
+    # ``company`` owns ``get_profile``; ``market`` owns ``search_by_cik``.
+    # See #136.
+    "sec": frozenset({"get_profile", "search_by_cik"}),
+}
+
+# Suffix used when a client module has to be split across several groups.
+# Kept explicit rather than derived from the enum name so a new category is a
+# deliberate decision; ``test_every_category_has_a_group_slug`` fails if one is
+# added without a slug.
+_CATEGORY_SLUGS: dict[SemanticCategory, str] = {
+    SemanticCategory.ALTERNATIVE_DATA: "alternative",
+    SemanticCategory.COMPANY_INFO: "company",
+    SemanticCategory.ECONOMIC: "economic",
+    SemanticCategory.FUNDAMENTAL_ANALYSIS: "fundamental",
+    SemanticCategory.INSTITUTIONAL: "institutional",
+    SemanticCategory.INTELLIGENCE: "intelligence",
+    SemanticCategory.INVESTMENT_PRODUCTS: "investment",
+    SemanticCategory.MARKET_DATA: "market",
+    SemanticCategory.TECHNICAL_ANALYSIS: "technical",
+    SemanticCategory.UNKNOWN_CATEGORY: "unknown",
+}
+
+
+def _drop_collisions(
+    client: str,
+    endpoint_map: dict[str, Endpoint[Any]],
+    semantics_map: dict[str, EndpointSemantics],
+) -> tuple[dict[str, Endpoint[Any]], dict[str, EndpointSemantics]]:
+    """Strip a client's colliding method names from both of its maps.
+
+    Both maps, not just the endpoint map: the guard tests cross-check them
+    against each other, so removing an endpoint while leaving its semantics
+    behind would read as a deleted endpoint rather than a declared exclusion.
+    """
+    excluded = PENDING_COLLISION_EXCLUSIONS.get(client)
+    if not excluded:
+        return endpoint_map, semantics_map
+    return (
+        {name: ep for name, ep in endpoint_map.items() if name not in excluded},
+        {
+            key: semantics
+            for key, semantics in semantics_map.items()
+            if semantics.method_name not in excluded
+        },
+    )
+
+
+def _partition_by_category(
+    client: str,
+    endpoint_map: dict[str, Endpoint[Any]],
+    semantics_map: dict[str, EndpointSemantics],
+) -> dict[str, GroupConfig]:
+    """Split one client module into one group per category it declares.
+
+    A group carries exactly one category, because
+    ``ValidationRuleRegistry.validate_category`` compares each semantics'
+    declared ``category`` against the category of whichever rule wins the
+    longest-prefix match -- and a group's endpoint-map keys are exact matches
+    for its own endpoints, so its own rule always wins. A module whose entries
+    declare several categories therefore needs several groups.
+
+    A module is *not* required to be one group, and forcing it to be one was
+    the alternative to this function: rewriting the divergent entries'
+    categories to match a chosen group. That corrupts the field the semantic
+    search runs on -- ``batch.income_statement_bulk`` would stop answering to
+    "fundamentals" -- so the container is split instead of the data.
+
+    Derived rather than hand-listed so a category change in a mapping module
+    repartitions automatically instead of silently re-drifting. Uniform
+    modules -- all nine that predate #129, plus ``index`` and
+    ``transcripts`` -- come back as a single group named after the client,
+    unchanged; only ``batch`` (5 categories) and ``sec`` (2) actually split.
+    """
+    endpoints, semantics = _drop_collisions(client, endpoint_map, semantics_map)
+
+    # Bucket semantics first: their declared category is what defines a group.
+    # Iteration order of the semantics map fixes group order, so the result is
+    # deterministic and stable across runs.
+    by_category: dict[SemanticCategory, GroupConfig] = {}
+    for key, entry in semantics.items():
+        bucket = by_category.setdefault(
+            entry.category,
+            {
+                "endpoint_map": {},
+                "semantics_map": {},
+                "category": entry.category,
+                "client": client,
+            },
+        )
+        bucket["semantics_map"][key] = entry
+
+    if not by_category:
+        return {}
+
+    # An endpoint follows the semantics that selects it. An endpoint with no
+    # semantics has no category to follow; park it in the first bucket rather
+    # than dropping it, so ``test_every_endpoint_has_semantics`` still sees it
+    # -- silently shrinking the guarded universe is the #121 failure mode.
+    fallback = next(iter(by_category.values()))
+    for name, endpoint in endpoints.items():
+        selected = resolve_semantics_for_endpoint(name, semantics)
+        bucket = (
+            by_category.get(selected.category, fallback)
+            if selected is not None
+            else fallback
+        )
+        bucket["endpoint_map"][name] = endpoint
+
+    if len(by_category) == 1:
+        return {client: next(iter(by_category.values()))}
+
+    return {
+        f"{client}_{_CATEGORY_SLUGS[category]}": config
+        for category, config in by_category.items()
+    }
 
 
 def _get_endpoint_groups() -> dict[str, GroupConfig]:
     """
     Lazily load endpoint groups to avoid circular imports.
+
+    Groups are derived from the client mapping modules by
+    ``_partition_by_category``, never hand-listed with a chosen category: a
+    group carries exactly one category and a module may declare several, in
+    which case it contributes several groups. See that function for why.
 
     Returns:
         Dictionary of endpoint groups with their mappings
@@ -40,6 +217,7 @@ def _get_endpoint_groups() -> dict[str, GroupConfig]:
         ALTERNATIVE_ENDPOINT_MAP,
         ALTERNATIVE_ENDPOINTS_SEMANTICS,
     )
+    from fmp_data.batch.mapping import BATCH_ENDPOINT_MAP, BATCH_ENDPOINTS_SEMANTICS
     from fmp_data.company.mapping import (
         COMPANY_ENDPOINT_MAP,
         COMPANY_ENDPOINTS_SEMANTICS,
@@ -52,6 +230,7 @@ def _get_endpoint_groups() -> dict[str, GroupConfig]:
         FUNDAMENTAL_ENDPOINT_MAP,
         FUNDAMENTAL_ENDPOINTS_SEMANTICS,
     )
+    from fmp_data.index.mapping import INDEX_ENDPOINT_MAP, INDEX_ENDPOINTS_SEMANTICS
     from fmp_data.institutional.mapping import (
         INSTITUTIONAL_ENDPOINT_MAP,
         INSTITUTIONAL_ENDPOINTS_SEMANTICS,
@@ -65,58 +244,43 @@ def _get_endpoint_groups() -> dict[str, GroupConfig]:
         INVESTMENT_ENDPOINTS_SEMANTICS,
     )
     from fmp_data.market.mapping import MARKET_ENDPOINT_MAP, MARKET_ENDPOINTS_SEMANTICS
+    from fmp_data.sec.mapping import SEC_ENDPOINT_MAP, SEC_ENDPOINTS_SEMANTICS
     from fmp_data.technical.mapping import (
         TECHNICAL_ENDPOINT_MAP,
         TECHNICAL_ENDPOINTS_SEMANTICS,
     )
+    from fmp_data.transcripts.mapping import (
+        TRANSCRIPTS_ENDPOINT_MAP,
+        TRANSCRIPTS_ENDPOINTS_SEMANTICS,
+    )
 
-    return {
-        "alternative": {
-            "endpoint_map": ALTERNATIVE_ENDPOINT_MAP,
-            "semantics_map": ALTERNATIVE_ENDPOINTS_SEMANTICS,
-            "category": SemanticCategory.ALTERNATIVE_DATA,
-        },
-        "company": {
-            "endpoint_map": COMPANY_ENDPOINT_MAP,
-            "semantics_map": COMPANY_ENDPOINTS_SEMANTICS,
-            "category": SemanticCategory.COMPANY_INFO,
-        },
-        "economics": {
-            "endpoint_map": ECONOMICS_ENDPOINT_MAP,
-            "semantics_map": ECONOMICS_ENDPOINTS_SEMANTICS,
-            "category": SemanticCategory.ECONOMIC,
-        },
-        "fundamental": {
-            "endpoint_map": FUNDAMENTAL_ENDPOINT_MAP,
-            "semantics_map": FUNDAMENTAL_ENDPOINTS_SEMANTICS,
-            "category": SemanticCategory.FUNDAMENTAL_ANALYSIS,
-        },
-        "market": {
-            "endpoint_map": MARKET_ENDPOINT_MAP,
-            "semantics_map": MARKET_ENDPOINTS_SEMANTICS,
-            "category": SemanticCategory.MARKET_DATA,
-        },
-        "technical": {
-            "endpoint_map": TECHNICAL_ENDPOINT_MAP,
-            "semantics_map": TECHNICAL_ENDPOINTS_SEMANTICS,
-            "category": SemanticCategory.TECHNICAL_ANALYSIS,
-        },
-        "institutional": {
-            "endpoint_map": INSTITUTIONAL_ENDPOINT_MAP,
-            "semantics_map": INSTITUTIONAL_ENDPOINTS_SEMANTICS,
-            "category": SemanticCategory.INSTITUTIONAL,
-        },
-        "intelligence": {
-            "endpoint_map": INTELLIGENCE_ENDPOINT_MAP,
-            "semantics_map": INTELLIGENCE_ENDPOINTS_SEMANTICS,
-            "category": SemanticCategory.INTELLIGENCE,
-        },
-        "investment": {
-            "endpoint_map": INVESTMENT_ENDPOINT_MAP,
-            "semantics_map": INVESTMENT_ENDPOINTS_SEMANTICS,
-            "category": SemanticCategory.INVESTMENT_PRODUCTS,
-        },
-    }
+    # Order decides who wins a cross-client method-name collision and, on a
+    # prefix-length tie, which rule claims a method -- so the nine clients that
+    # predate #129 stay ahead of the four it adds.
+    clients: list[tuple[str, dict[str, Any], dict[str, EndpointSemantics]]] = [
+        ("alternative", ALTERNATIVE_ENDPOINT_MAP, ALTERNATIVE_ENDPOINTS_SEMANTICS),
+        ("company", COMPANY_ENDPOINT_MAP, COMPANY_ENDPOINTS_SEMANTICS),
+        ("economics", ECONOMICS_ENDPOINT_MAP, ECONOMICS_ENDPOINTS_SEMANTICS),
+        ("fundamental", FUNDAMENTAL_ENDPOINT_MAP, FUNDAMENTAL_ENDPOINTS_SEMANTICS),
+        ("market", MARKET_ENDPOINT_MAP, MARKET_ENDPOINTS_SEMANTICS),
+        ("technical", TECHNICAL_ENDPOINT_MAP, TECHNICAL_ENDPOINTS_SEMANTICS),
+        (
+            "institutional",
+            INSTITUTIONAL_ENDPOINT_MAP,
+            INSTITUTIONAL_ENDPOINTS_SEMANTICS,
+        ),
+        ("intelligence", INTELLIGENCE_ENDPOINT_MAP, INTELLIGENCE_ENDPOINTS_SEMANTICS),
+        ("investment", INVESTMENT_ENDPOINT_MAP, INVESTMENT_ENDPOINTS_SEMANTICS),
+        ("batch", BATCH_ENDPOINT_MAP, BATCH_ENDPOINTS_SEMANTICS),
+        ("index", INDEX_ENDPOINT_MAP, INDEX_ENDPOINTS_SEMANTICS),
+        ("sec", SEC_ENDPOINT_MAP, SEC_ENDPOINTS_SEMANTICS),
+        ("transcripts", TRANSCRIPTS_ENDPOINT_MAP, TRANSCRIPTS_ENDPOINTS_SEMANTICS),
+    ]
+
+    groups: dict[str, GroupConfig] = {}
+    for client, endpoint_map, semantics_map in clients:
+        groups.update(_partition_by_category(client, endpoint_map, semantics_map))
+    return groups
 
 
 # Lazy property to get ENDPOINT_GROUPS only when needed
@@ -269,7 +433,18 @@ class EndpointBasedRule(ValidationRule):
         match param_type:
             case "string":
                 if valid_values:
-                    return [f"^({'|'.join(map(str, valid_values))}))$"]
+                    # Values arrive already unwrapped: EndpointParam.__post_init__
+                    # replaces Enum members with their wire value. The Enum branch
+                    # is kept for direct callers of this staticmethod, and the
+                    # str() guards a non-str enum value -- re.escape raises
+                    # TypeError when handed an int.
+                    alternatives = "|".join(
+                        re.escape(
+                            str(value.value) if isinstance(value, Enum) else str(value)
+                        )
+                        for value in valid_values
+                    )
+                    return [f"^({alternatives})$"]
                 return [r"^.+$"]
             case "integer":
                 return [r"^\d+$"]
@@ -281,6 +456,10 @@ class EndpointBasedRule(ValidationRule):
                 return [r"^\d{4}-\d{2}-\d{2}$"]
             case "datetime":
                 return [r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$"]
+            case "cik":
+                # Matched against the caller's raw value, before ParamType.CIK
+                # zero-pads it, so an unpadded 320193 must pass too.
+                return [r"^\d{1,10}$"]
             case _:
                 return []
 

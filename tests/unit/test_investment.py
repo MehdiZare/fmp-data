@@ -1,4 +1,5 @@
 from datetime import date
+from typing import get_args
 from unittest.mock import patch
 
 import pytest
@@ -13,8 +14,42 @@ from fmp_data.investment.models import (
     FundDisclosureHolderLatest,
     FundDisclosureHolding,
     FundDisclosureSearchResult,
-    MutualFundHolding,
 )
+from fmp_data.investment.schema import ETFHoldingsArgs, MutualFundHoldingsArgs
+
+
+class TestInvestmentArgSchemas:
+    """The holdings arg models must keep their wire field name and parsing.
+
+    ``date`` is both the field name and, via the ``dt_date`` alias, its own
+    annotation -- the clash that made this module un-importable in #139. The
+    field name is the wire contract, so renaming it to dodge the clash would
+    be a silent breaking change. These assertions pin the shape the fix
+    preserved; nothing else in the suite constructs these models.
+    """
+
+    @pytest.mark.parametrize("model", [ETFHoldingsArgs, MutualFundHoldingsArgs])
+    def test_holdings_date_field_name_and_type(self, model):
+        """Field is named ``date``, annotated ``datetime.date``, parses ISO."""
+        # Requiredness is asserted in test_arg_model_consistency.py, against
+        # each model's own endpoint -- the two legitimately differ now (#143):
+        # ETF_HOLDINGS declares `date` optional and ETFHoldingsArgs follows,
+        # MUTUAL_FUND_HOLDINGS declares it mandatory and its model follows.
+        # This test pins only the shape they still share, so it stays
+        # parametrized over both.
+        assert "date" in model.model_fields
+        annotation = model.model_fields["date"].annotation
+        assert annotation is date or date in get_args(annotation)
+
+        parsed = model(symbol="SPY", date="2024-01-15")
+        assert parsed.date == date(2024, 1, 15)
+
+        schema = model.model_json_schema()["properties"]["date"]
+        # An optional field renders as anyOf[{date}, {null}] rather than a
+        # flat schema, so read the date branch out of whichever shape applies.
+        branches = schema.get("anyOf", [schema])
+        assert any(branch.get("format") == "date" for branch in branches)
+        assert schema["examples"] == ["2024-01-15"]
 
 
 class TestInvestmentClient:
@@ -210,22 +245,58 @@ class TestInvestmentClient:
 
     # Mutual Fund endpoint tests
     @patch("httpx.Client.request")
-    def test_get_mutual_fund_holdings(
-        self, mock_request, fmp_client, mock_response, mutual_fund_holding_data
+    def test_get_mutual_fund_holdings_is_deprecated(self, mock_request, fmp_client):
+        """``mutual-fund-holdings`` 404s; ``etf/holdings`` serves funds too.
+
+        The warning must point at ``get_etf_holdings`` rather than issue a
+        request that can only come back 404.
+        """
+        with pytest.warns(DeprecationWarning, match="get_etf_holdings"):
+            result = fmp_client.investment.get_mutual_fund_holdings(
+                symbol="VFIAX", holdings_date=date(2024, 1, 1)
+            )
+
+        assert result == []
+        mock_request.assert_not_called()
+
+    @patch("httpx.Client.request")
+    def test_get_mutual_fund_dates_omits_cik_when_absent(
+        self, mock_request, fmp_client, mock_response
     ):
-        """Test fetching mutual fund holdings"""
-        mock_request.return_value = mock_response(
-            status_code=200, json_data=[mutual_fund_holding_data]
-        )
-        result = fmp_client.investment.get_mutual_fund_holdings(
-            symbol="VFIAX", holdings_date=date(2024, 1, 1)
-        )
-        assert len(result) == 1
-        holding = result[0]
-        assert isinstance(holding, MutualFundHolding)
-        assert holding.symbol == "VFIAX"
-        assert holding.asset == "AAPL"
-        assert holding.market_value == 1000000.0
+        """cik is optional; omitting it must not put a cik on the query."""
+        mock_request.return_value = mock_response(status_code=200, json_data=[])
+
+        fmp_client.investment.get_mutual_fund_dates(symbol="VFIAX")
+
+        params = mock_request.call_args.kwargs["params"]
+        assert params["symbol"] == "VFIAX"
+        assert "cik" not in params
+
+    @patch("httpx.Client.request")
+    def test_get_mutual_fund_dates_zero_pads_an_integer_cik(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """The end-to-end reason ParamType.CIK exists.
+
+        A plain STRING param would put ``320193`` on the wire, which FMP
+        matches against nothing — the request succeeds and comes back empty.
+        """
+        mock_request.return_value = mock_response(status_code=200, json_data=[])
+
+        fmp_client.investment.get_mutual_fund_dates(symbol="VFIAX", cik=320193)
+
+        assert mock_request.call_args.kwargs["params"]["cik"] == "0000320193"
+
+    @patch("httpx.Client.request")
+    def test_get_mutual_fund_dates_pads_a_numeric_string_cik(
+        self, mock_request, fmp_client, mock_response
+    ):
+        """Outbound, an unpadded string is padded too — see _convert_to_cik."""
+        mock_request.return_value = mock_response(status_code=200, json_data=[])
+
+        fmp_client.investment.get_mutual_fund_dates(symbol="VFIAX", cik="320193")
+
+        assert mock_request.call_args.kwargs["params"]["cik"] == "0000320193"
 
     @patch("httpx.Client.request")
     def test_get_fund_disclosure_holders_latest(

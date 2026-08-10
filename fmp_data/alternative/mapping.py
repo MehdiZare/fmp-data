@@ -18,6 +18,7 @@ from fmp_data.alternative.endpoints import (
     FOREX_QUOTE,
     FOREX_QUOTES,
 )
+from fmp_data.lc.hints import DATE_HINTS, INTERVAL_HINT
 from fmp_data.lc.models import (
     EndpointSemantics,
     ParameterHint,
@@ -79,37 +80,6 @@ SYMBOL_HINTS = {
         context_clues=["gold", "oil", "silver", "commodity", "metal", "energy"],
     ),
 }
-
-DATE_HINTS = {
-    "start_date": ParameterHint(
-        natural_names=["start date", "from date", "beginning", "since"],
-        extraction_patterns=[
-            r"(\d{4}-\d{2}-\d{2})",
-            r"(?:from|since|after)\s+(\d{4}-\d{2}-\d{2})",
-        ],
-        examples=["2023-01-01", "2022-12-31"],
-        context_clues=["from", "since", "starting", "beginning", "after"],
-    ),
-    "end_date": ParameterHint(  # Changed from "to_date"
-        natural_names=["end date", "to date", "until", "through"],
-        extraction_patterns=[
-            r"(?:to|until|through)\s+(\d{4}-\d{2}-\d{2})",
-            r"(\d{4}-\d{2}-\d{2})",
-        ],
-        examples=["2024-01-01", "2023-12-31"],
-        context_clues=["to", "until", "through", "ending"],
-    ),
-}
-
-INTERVAL_HINT = ParameterHint(
-    natural_names=["timeframe", "interval", "period"],
-    extraction_patterns=[
-        r"(\d+)\s*(?:minute|min|hour|hr)",
-        r"(?:1min|5min|15min|30min|1hour|4hour)",
-    ],
-    examples=["1min", "5min", "1hour"],
-    context_clues=["minute", "hour", "interval", "timeframe"],
-)
 
 ALTERNATIVE_ENDPOINTS_SEMANTICS = {
     # Crypto endpoints
@@ -202,6 +172,15 @@ ALTERNATIVE_ENDPOINTS_SEMANTICS = {
     "crypto_quotes": EndpointSemantics(
         client_name="alternative",
         method_name="get_crypto_quotes",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: the nearest live tool is `batch.crypto_quotes`, whose payload
+        # differs.
+        deprecated=True,
         natural_description=(
             "Get current price quotes for all available cryptocurrencies"
         ),
@@ -367,6 +346,15 @@ ALTERNATIVE_ENDPOINTS_SEMANTICS = {
     "forex_quotes": EndpointSemantics(
         client_name="alternative",
         method_name="get_forex_quotes",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: the nearest live tool is `batch.forex_quotes`, whose payload
+        # differs.
+        deprecated=True,
         natural_description=(
             "Get real-time quotes for all available forex currency pairs"
         ),
@@ -575,6 +563,15 @@ ALTERNATIVE_ENDPOINTS_SEMANTICS = {
     "commodities_quotes": EndpointSemantics(
         client_name="alternative",
         method_name="get_commodities_quotes",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: the nearest live tool is `batch.commodity_quotes`, whose payload
+        # differs.
+        deprecated=True,
         natural_description="Get current quotes for all available commodities",
         example_queries=[
             "Get all commodity prices",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date as dt_date
+from datetime import datetime
 from decimal import Decimal
 import json
 import math
@@ -22,7 +23,7 @@ from pydantic import (
 )
 from pydantic.alias_generators import to_camel
 
-from fmp_data.models import ShareFloat
+from fmp_data.models import CIK, ShareFloat
 
 
 def coerce_volume_value(value: Any) -> Any:
@@ -107,7 +108,7 @@ class CompanyProfile(BaseModel):
     volume: int | None = Field(None, description="Trading volume")
     company_name: str | None = Field(None, description="Company name")
     currency: str | None = Field(None, description="Trading currency")
-    cik: str | None = Field(None, description="CIK number")
+    cik: CIK | None = Field(None, description="CIK number")
     isin: str | None = Field(None, description="ISIN number")
     cusip: str | None = Field(None, description="CUSIP number")
     exchange: str | None = Field(None, description="Stock exchange")
@@ -281,7 +282,7 @@ class CompanyCoreInformation(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Stock symbol (ticker)")
-    cik: str = Field(description="CIK number")
+    cik: CIK = Field(description="CIK number")
     exchange: str | None = Field(None, description="Exchange name")
     sic_code: str | None = Field(None, description="SIC code")
     sic_group: str | None = Field(None, description="SIC group")
@@ -319,7 +320,7 @@ class CompanyNote(BaseModel):
     model_config = default_model_config
 
     title: str = Field(description="Note title")
-    cik: str = Field(description="CIK number")
+    cik: CIK = Field(description="CIK number")
     symbol: str = Field(description="Stock symbol")
     exchange: str = Field(description="Exchange name")
 
@@ -330,7 +331,7 @@ class EmployeeCount(BaseModel):
     model_config = default_model_config
 
     symbol: str = Field(description="Company symbol")
-    cik: str = Field(description="CIK number")
+    cik: CIK = Field(description="CIK number")
     acceptance_time: datetime = Field(description="Filing acceptance time")
     period_of_report: str = Field(description="Report period")
     company_name: str | None = Field(None, description="Company name")
@@ -550,7 +551,7 @@ class ExecutiveCompensation(BaseModel):
 
     model_config = default_model_config
 
-    cik: str = Field(description="SEC CIK number")
+    cik: CIK = Field(description="SEC CIK number")
     symbol: str = Field(description="Company symbol")
     company_name: str | None = Field(
         None, alias="companyName", description="Company name"
@@ -558,7 +559,7 @@ class ExecutiveCompensation(BaseModel):
     industry_title: str | None = Field(
         None, alias="industryTitle", description="Industry classification"
     )
-    filing_date: date = Field(alias="filingDate", description="SEC filing date")
+    filing_date: dt_date = Field(alias="filingDate", description="SEC filing date")
     accepted_date: datetime = Field(
         alias="acceptedDate", description="SEC acceptance date"
     )
@@ -639,7 +640,7 @@ class SymbolChange(BaseModel):
 
     model_config = default_model_config
 
-    change_date: date = Field(
+    change_date: dt_date = Field(
         description="Date when the symbol change occurred", alias="date"
     )
     name: str = Field(alias="companyName", description="Company or security name")
@@ -982,11 +983,11 @@ class MergerAcquisition(BaseModel):
     acceptanceTime: str | None = Field(None, description="Acceptance time")
     url: str | None = Field(None, description="URL to filing")
     symbol: str | None = Field(None, description="Company symbol")
-    cik: str | None = Field(None, description="Company CIK number")
+    cik: CIK | None = Field(None, description="Company CIK number")
     targeted_symbol: str | None = Field(
         None, alias="targetedSymbol", description="Targeted company symbol"
     )
-    targeted_cik: str | None = Field(
+    targeted_cik: CIK | None = Field(
         None, alias="targetedCik", description="Targeted company CIK number"
     )
     transaction_date: str | None = Field(

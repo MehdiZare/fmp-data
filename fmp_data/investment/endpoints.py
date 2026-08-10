@@ -33,7 +33,6 @@ ETF_HOLDINGS: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         ),
     ],
@@ -42,7 +41,6 @@ ETF_HOLDINGS: Endpoint = Endpoint(
             name="date",
             location=ParamLocation.QUERY,
             param_type=ParamType.DATE,
-            required=False,
             description="Holdings date (YYYY-MM-DD)",
         ),
     ],
@@ -53,13 +51,16 @@ ETF_HOLDING_DATES: Endpoint = Endpoint(
     name="etf_holding_dates",
     path="etf/portfolio-dates",
     version=APIVersion.STABLE,
-    description="Get ETF holding dates",
+    description=(
+        "DEPRECATED and non-functional: etf/portfolio-dates 404s. Do not "
+        "select it. Use the live funds/disclosure-dates endpoint, which "
+        "returns a date/year/quarter record per period."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="ETF Symbol",
         )
     ],
@@ -77,7 +78,6 @@ ETF_INFO: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="ETF Symbol",
         )
     ],
@@ -95,7 +95,6 @@ ETF_SECTOR_WEIGHTINGS: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="ETF Symbol",
         )
     ],
@@ -113,7 +112,6 @@ ETF_COUNTRY_WEIGHTINGS: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="ETF Symbol",
         )
     ],
@@ -131,7 +129,6 @@ ETF_EXPOSURE: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="ETF Symbol",
         )
     ],
@@ -143,13 +140,16 @@ ETF_HOLDER: Endpoint = Endpoint(
     name="etf_holder",
     path="etf/holder",
     version=APIVersion.STABLE,
-    description="Get ETF holder information",
+    description=(
+        "DEPRECATED and non-functional: etf/holder 404s. Do not select it. "
+        "The closest live endpoint is funds/disclosure-holders-latest, which "
+        "returns holder/shares/change/weightPercent, not asset-level rows."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -168,7 +168,6 @@ MUTUAL_FUND_DATES: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Fund or ETF symbol",
         ),
     ],
@@ -176,32 +175,48 @@ MUTUAL_FUND_DATES: Endpoint = Endpoint(
         EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=False,
+            param_type=ParamType.CIK,
             description="Fund CIK",
         ),
     ],
     response_model=PortfolioDate,
 )
 
+# The `date` param below disagrees with ETF_HOLDINGS' on both counts: it is
+# declared mandatory rather than optional, and ParamType.STRING rather than
+# ParamType.DATE (STRING skips date validation and coercion, so a malformed
+# date reaches the API as-is instead of failing locally -- the #131/#134
+# drift class).
+#
+# Neither is corrected here, because neither can be *verified*. Probed on
+# 2026-08-08: this path returns 404 for every request, every symbol, with and
+# without `date`, as do `funds/holdings`, `mutual-fund/holdings` and
+# `fund-holdings`. Meanwhile `etf/holdings?symbol=VFIAX` -- a mutual fund --
+# returns 200 with 509 rows, suggesting FMP consolidated both product types
+# onto etf/holdings. What to do about that is #152; editing these
+# declarations to match an endpoint that never answers would be a guess
+# dressed up as a fix. Revisit this param and MutualFundHoldingsArgs.date
+# together once #152 settles where this endpoint should point.
 MUTUAL_FUND_HOLDINGS: Endpoint = Endpoint(
     name="mutual_fund_holdings",
     path="mutual-fund-holdings",
     version=APIVersion.STABLE,
-    description="Get mutual fund holdings",
+    description=(
+        "DEPRECATED and non-functional: mutual-fund-holdings 404s. Do not "
+        "select it. Use the live etf/holdings endpoint, which serves mutual "
+        "fund symbols too, or funds/disclosure for full N-PORT detail."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
-            location=ParamLocation.PATH,
+            location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Fund symbol",
         ),
         EndpointParam(
             name="date",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Holdings date",
         ),
     ],
@@ -213,13 +228,16 @@ MUTUAL_FUND_BY_NAME: Endpoint = Endpoint(
     name="mutual_fund_by_name",
     path="mutual-fund-holdings/name",
     version=APIVersion.STABLE,
-    description="Get mutual funds by name",
+    description=(
+        "DEPRECATED and non-functional: mutual-fund-holdings/name 404s and "
+        "has no replacement -- every path variant probed also 404s. Do not "
+        "select it. search-name is a generic symbol search, not fund holdings."
+    ),
     mandatory_params=[
         EndpointParam(
             name="name",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Fund name",
         )
     ],
@@ -231,13 +249,16 @@ MUTUAL_FUND_HOLDER: Endpoint = Endpoint(
     name="mutual_fund_holder",
     path="etf/holder",
     version=APIVersion.STABLE,
-    description="Get mutual fund holder information",
+    description=(
+        "DEPRECATED and non-functional: etf/holder 404s, and this endpoint "
+        "declared the same path as etf_holder. Do not select it. The closest "
+        "live endpoint is funds/disclosure-holders-latest."
+    ),
     mandatory_params=[
         EndpointParam(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Stock symbol (ticker)",
         )
     ],
@@ -255,7 +276,6 @@ FUNDS_DISCLOSURE_HOLDERS_LATEST: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Fund or ETF symbol",
         )
     ],
@@ -273,21 +293,18 @@ FUNDS_DISCLOSURE: Endpoint = Endpoint(
             name="symbol",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Fund or ETF symbol",
         ),
         EndpointParam(
             name="year",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=True,
             description="Disclosure year",
         ),
         EndpointParam(
             name="quarter",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            required=True,
             description="Disclosure quarter (1-4)",
         ),
     ],
@@ -295,8 +312,7 @@ FUNDS_DISCLOSURE: Endpoint = Endpoint(
         EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,
-            param_type=ParamType.STRING,
-            required=False,
+            param_type=ParamType.CIK,
             description="Fund CIK",
         ),
     ],
@@ -313,7 +329,6 @@ FUNDS_DISCLOSURE_HOLDERS_SEARCH: Endpoint = Endpoint(
             name="name",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            required=True,
             description="Fund or ETF name",
         )
     ],

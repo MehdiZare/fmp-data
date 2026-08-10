@@ -102,7 +102,7 @@ config = ClientConfig(
     cache=CacheConfig(
         backend="memory",
         default_ttl=300,
-        ttl_overrides={"get_quote": 30},
+        ttl_overrides={"quote": 30},
     ),
 )
 
@@ -223,13 +223,19 @@ For the full MCP catalog, run `fmp-mcp list` or see [docs/mcp/tools.md](https://
 ### Quick Start with Vector Store
 
 ```python
-from fmp_data import create_vector_store
+from fmp_data import VectorStoreCreationError, create_vector_store
 
-# Initialize the vector store
-vector_store = create_vector_store(
-    fmp_api_key="YOUR_FMP_API_KEY",  # pragma: allowlist secret
-    openai_api_key="YOUR_OPENAI_API_KEY",  # pragma: allowlist secret
-)
+# Initialize the vector store. Raises VectorStoreCreationError if it cannot be
+# built; the exception carries the underlying `cause` and a `failures` dict of
+# any endpoints skipped during registration.
+try:
+    vector_store = create_vector_store(
+        fmp_api_key="YOUR_FMP_API_KEY",  # pragma: allowlist secret
+        openai_api_key="YOUR_OPENAI_API_KEY",  # pragma: allowlist secret
+    )
+except VectorStoreCreationError as exc:
+    print(f"Could not build the vector store: {exc.cause}")
+    raise
 
 # Example queries
 queries = [
@@ -292,7 +298,7 @@ vector_store = create_vector_store(
     cache_dir=config.vector_store_path,
     embedding_provider=config.embedding_provider,
     embedding_model=config.embedding_model,
-)
+)  # raises VectorStoreCreationError on failure -- see the example above
 
 # Search for relevant endpoints
 results = vector_store.search("show me Tesla's financial metrics")
@@ -320,6 +326,42 @@ export FMP_EMBEDDING_MODEL=text-embedding-3-small
 - Relevance scoring for search results
 - Automatic caching of embeddings
 - Persistent vector store for faster lookups
+
+### Tool argument names (LangChain vs MCP)
+
+LangChain tools built from the vector store keep **API / wire** parameter names
+(`from`, `to`, `periodLength`, `sicCode`, …). When the method shape is
+compatible, those names are mapped onto the matching client method
+(`from_date` / `start_date`, …) at invoke so method defaults and constraints
+still apply (#172 / #186). If a required method parameter had no wire source,
+LangChain would keep the wire schema and fall back to `client.request` instead
+of the method — as of #188 no tool in the catalog does, so every LangChain tool
+dispatches through a client method.
+
+MCP tools expose the **Python method** parameter names instead (the signature
+of `client.<module>.<method>`). The same endpoint can therefore show
+`from`/`to` in a LangChain schema and `from_date`/`to_date` (or
+`start_date`/`end_date`) on MCP — both are intentional.
+
+The institutional Form 13F and symbol-positions-summary tools used to be the
+exception, because their client methods required a `report_date` the wire does
+not have. They now dispatch through `get_form_13f_by_quarter` and
+`get_institutional_holdings_by_quarter`, whose `year`/`quarter` arguments match
+the API (which rejects a request without them). The date-shaped
+`get_form_13f(cik, report_date)` and
+`get_institutional_holdings(symbol, report_date)` are unchanged and remain the
+convenient Python entry points.
+
+Both integrations resolve and bind through one module, `fmp_data.tool_binding`
+— attribute-chain resolution, the wire→method name aliases, the
+required-parameter coverage gate, and the invoke-time kwargs mapping. It lives
+in the core package (no LangChain or MCP import), so the rules cannot drift
+apart between the two (#188).
+
+A catalogue-wide guard (`tests/unit/lc/test_endpoint_method_coverage.py`) fails
+CI on *new* uncovered required method parameters or newly dropped mandatory
+wire fields under method dispatch. Known cases are allowlisted in that test
+(#188).
 
 ## Quick Start
 

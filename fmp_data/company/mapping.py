@@ -32,15 +32,15 @@ from fmp_data.company.endpoints import (
     UPGRADES_DOWNGRADES_CONSENSUS,
 )
 from fmp_data.company.hints import (
-    CIK_HINT,
     FLOAT_RESPONSE_HINTS,
-    INTERVAL_HINT,
     NONADJUSTED_HINT,
     PROFILE_RESPONSE_HINTS,
     STRUCTURE_HINT,
 )
 from fmp_data.lc.hints import (
+    CIK_HINT,
     DATE_HINTS,
+    INTERVAL_HINT,
     LIMIT_HINT,
     PAGE_HINT,
     PERIOD_HINT,
@@ -154,6 +154,14 @@ COMPANY_ENDPOINTS_SEMANTICS = {
     "core_information": EndpointSemantics(
         client_name="company",
         method_name="get_core_information",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: the nearest live tool is `company.profile`, whose payload differs.
+        deprecated=True,
         natural_description=(
             "Get essential company information including CIK number, exchange listing, "
             "SIC code, state of incorporation, and fiscal year details"
@@ -448,6 +456,15 @@ COMPANY_ENDPOINTS_SEMANTICS = {
     "historical_share_float": EndpointSemantics(
         client_name="company",
         method_name="get_historical_share_float",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: the nearest live tool is `company.share_float`, whose payload
+        # differs.
+        deprecated=True,
         natural_description=(
             "Get historical share float data showing how the number of tradable shares "
             "has changed over time"
@@ -1223,6 +1240,15 @@ COMPANY_ENDPOINTS_SEMANTICS = {
     "price_target": EndpointSemantics(
         client_name="company",
         method_name="get_price_target",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: the nearest live tool is `company.price_target_summary`, whose
+        # payload differs.
+        deprecated=True,
         natural_description=(
             "Retrieve analyst price targets "
             "for a specific stock, including target prices, "
@@ -1315,6 +1341,15 @@ COMPANY_ENDPOINTS_SEMANTICS = {
     "upgrades_downgrades": EndpointSemantics(
         client_name="company",
         method_name="get_upgrades_downgrades",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: the nearest live tool is `intelligence.grades`, whose payload
+        # differs.
+        deprecated=True,
         natural_description=(
             "Access stock rating changes including upgrades, downgrades, and "
             "rating adjustments with analyst and firm information"
@@ -1357,6 +1392,15 @@ COMPANY_ENDPOINTS_SEMANTICS = {
     "upgrades_downgrades_consensus": EndpointSemantics(
         client_name="company",
         method_name="get_upgrades_downgrades_consensus",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: the nearest live tool is `intelligence.grades_consensus`, whose
+        # payload differs.
+        deprecated=True,
         natural_description=(
             "Get aggregated rating consensus data including buy/sell/hold counts "
             "and overall recommendation trends"
@@ -1524,6 +1568,15 @@ COMPANY_ENDPOINTS_SEMANTICS = {
     "analyst_recommendations": EndpointSemantics(
         client_name="company",
         method_name="get_analyst_recommendations",
+        # Withdrawn upstream: FMP no longer serves this endpoint, so the
+        # client method returns empty without a request. Kept in the table
+        # so the MCP tool key still resolves; `deprecated` is what keeps it
+        # out of the LangChain vector store, so no semantic query can
+        # select it (#137). The endpoint `description` is not embedded --
+        # only these semantics are -- so wording alone would not exclude it.
+        # Migration: the nearest live tool is `intelligence.grades_consensus`, whose
+        # payload differs.
+        deprecated=True,
         natural_description=(
             "Retrieve analyst buy/sell/hold recommendations and consensus ratings "
             "for stocks including detailed rating breakdowns"

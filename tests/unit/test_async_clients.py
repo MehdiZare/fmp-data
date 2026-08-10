@@ -135,20 +135,22 @@ class TestAsyncCompanyClient:
         assert result.symbol == "AAPL"
 
     @pytest.mark.asyncio
-    async def test_get_core_information_empty_returns_none(self, mock_client):
-        """Test get_core_information returns None on empty response."""
-        from fmp_data.company import endpoints as company_endpoints
+    async def test_get_core_information_is_deprecated_and_never_calls_api(
+        self, mock_client
+    ):
+        """``company-core-information`` 404s, so the call must not be made.
+
+        The method warns and returns ``None`` without touching the network:
+        issuing the request would spend a rate-limit slot to earn a 404.
+        """
         from fmp_data.company.async_client import AsyncCompanyClient
 
-        mock_client.request_async.return_value = []
-
         async_client = AsyncCompanyClient(mock_client)
-        result = await async_client.get_core_information("AAPL")
+        with pytest.warns(DeprecationWarning, match="get_profile"):
+            result = await async_client.get_core_information("AAPL")
 
         assert result is None
-        mock_client.request_async.assert_called_once_with(
-            company_endpoints.CORE_INFORMATION, symbol="AAPL"
-        )
+        mock_client.request_async.assert_not_called()
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -512,32 +514,45 @@ class TestAsyncCompanyClient:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_get_upgrades_downgrades_consensus_list_returns_first(
-        self, mock_client
-    ):
-        """Test upgrades/downgrades consensus returns first list item."""
+    async def test_get_upgrades_downgrades_consensus_is_deprecated(self, mock_client):
+        """``upgrades-downgrades-consensus`` 404s, so no request is issued.
+
+        The unwrap-a-list and unwrap-an-object cases this used to cover are
+        unreachable now: there is no response left to unwrap. What matters
+        instead is that the caller is pointed at ``get_grades_consensus``.
+        """
         from fmp_data.company.async_client import AsyncCompanyClient
 
-        sentinel = MagicMock()
-        mock_client.request_async.return_value = [sentinel]
-
         async_client = AsyncCompanyClient(mock_client)
-        result = await async_client.get_upgrades_downgrades_consensus("AAPL")
+        with pytest.warns(DeprecationWarning, match="get_grades_consensus"):
+            result = await async_client.get_upgrades_downgrades_consensus("AAPL")
 
-        assert result is sentinel
+        assert result is None
+        mock_client.request_async.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_get_upgrades_downgrades_consensus_object(self, mock_client):
-        """Test upgrades/downgrades consensus accepts non-list response."""
+    async def test_get_analyst_recommendations_is_deprecated(self, mock_client):
+        """``analyst-stock-recommendations`` 404s, so no request is issued."""
         from fmp_data.company.async_client import AsyncCompanyClient
 
-        sentinel = MagicMock()
-        mock_client.request_async.return_value = sentinel
+        async_client = AsyncCompanyClient(mock_client)
+        with pytest.warns(DeprecationWarning, match="get_grades_consensus"):
+            result = await async_client.get_analyst_recommendations("AAPL")
+
+        assert result == []
+        mock_client.request_async.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_get_upgrades_downgrades_is_deprecated(self, mock_client):
+        """``upgrades-downgrades`` 404s, so no request is issued."""
+        from fmp_data.company.async_client import AsyncCompanyClient
 
         async_client = AsyncCompanyClient(mock_client)
-        result = await async_client.get_upgrades_downgrades_consensus("AAPL")
+        with pytest.warns(DeprecationWarning, match="get_grades"):
+            result = await async_client.get_upgrades_downgrades("AAPL")
 
-        assert result is sentinel
+        assert result == []
+        mock_client.request_async.assert_not_called()
 
 
 class TestAsyncMarketClient:
@@ -639,23 +654,33 @@ class TestAsyncMarketClient:
         mock_client.request_async.assert_called_once_with(ACTIVELY_TRADING_LIST)
 
     @pytest.mark.asyncio
-    async def test_get_tradable_list(self, mock_client):
-        """Test async get_tradable_list method."""
+    async def test_get_tradable_list_is_deprecated(self, mock_client):
+        """``tradable-list`` 404s and no path variant replaces it."""
         from fmp_data.market.async_client import AsyncMarketClient
-        from fmp_data.market.endpoints import TRADABLE_SEARCH
-
-        mock_client.request_async.return_value = [
-            CompanySymbol(symbol="AAPL", name="Apple Inc.")
-        ]
 
         async_client = AsyncMarketClient(mock_client)
-        result = await async_client.get_tradable_list(limit=5, offset=10)
+        with pytest.warns(DeprecationWarning, match="get_stock_list"):
+            result = await async_client.get_tradable_list(limit=5, offset=10)
 
-        assert len(result) == 1
-        assert isinstance(result[0], CompanySymbol)
-        mock_client.request_async.assert_called_once_with(
-            TRADABLE_SEARCH, limit=5, offset=10
-        )
+        assert result == []
+        mock_client.request_async.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_get_pre_post_market_is_deprecated(self, mock_client):
+        """``pre-post-market`` 404s and the market-wide shape is gone.
+
+        It sat in the forwarding table above. There is no signature-compatible
+        replacement — live extended-hours data is per symbol — so the warning
+        must point at ``get_aftermarket_quote`` rather than imply a rename.
+        """
+        from fmp_data.market.async_client import AsyncMarketClient
+
+        async_client = AsyncMarketClient(mock_client)
+        with pytest.warns(DeprecationWarning, match="get_aftermarket_quote"):
+            result = await async_client.get_pre_post_market()
+
+        assert result == []
+        mock_client.request_async.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_get_cik_list(self, mock_client):
@@ -790,7 +815,6 @@ class TestAsyncMarketClient:
             ),
             ("get_losers", {}, "LOSERS", {}),
             ("get_most_active", {}, "MOST_ACTIVE", {}),
-            ("get_pre_post_market", {}, "PRE_POST_MARKET", {}),
             ("get_all_shares_float", {}, "ALL_SHARES_FLOAT", {}),
             ("get_available_exchanges", {}, "AVAILABLE_EXCHANGES", {}),
             ("get_available_sectors", {}, "AVAILABLE_SECTORS", {}),
@@ -1593,6 +1617,105 @@ class TestAsyncInstitutionalClient:
         )
 
     @pytest.mark.asyncio
+    async def test_get_form_13f_by_quarter_sends_wire_params(self, mock_client):
+        """The wire-shaped method passes year/quarter straight through (#188)."""
+        from fmp_data.institutional import endpoints as institutional_endpoints
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncInstitutionalClient(mock_client)
+
+        result = await async_client.get_form_13f_by_quarter("0000320193", 2023, 3)
+
+        assert result == []
+        mock_client.request_async.assert_called_once_with(
+            institutional_endpoints.FORM_13F,
+            cik="0000320193",
+            year=2023,
+            quarter=3,
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_form_13f_by_quarter_handles_exception(self, mock_client):
+        """Error swallowing lives on the wire-shaped method, not the wrapper."""
+        from fmp_data.exceptions import FMPError
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.logger = MagicMock()
+        mock_client.request_async.side_effect = FMPError("boom")
+
+        async_client = AsyncInstitutionalClient(mock_client)
+        result = await async_client.get_form_13f_by_quarter("0000320193", 2023, 3)
+
+        assert result == []
+        mock_client.logger.warning.assert_called_once()
+        assert "0000320193" in mock_client.logger.warning.call_args[0][0]
+
+    @pytest.mark.asyncio
+    async def test_get_form_13f_by_quarter_propagates_non_api_errors(self, mock_client):
+        """Programming bugs must not look like empty 13F data (#193)."""
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.logger = MagicMock()
+        mock_client.request_async.side_effect = RuntimeError("bug")
+
+        async_client = AsyncInstitutionalClient(mock_client)
+        with pytest.raises(RuntimeError, match="bug"):
+            await async_client.get_form_13f_by_quarter("0000320193", 2023, 3)
+        mock_client.logger.warning.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_get_form_13f_dates_returns_empty_on_api_error(self, mock_client):
+        """API failures stay empty-list; same contract as the sync client (#193)."""
+        from fmp_data.exceptions import FMPError
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.logger = MagicMock()
+        mock_client.request_async.side_effect = FMPError("boom")
+
+        async_client = AsyncInstitutionalClient(mock_client)
+        result = await async_client.get_form_13f_dates("0000320193")
+
+        assert result == []
+        mock_client.logger.warning.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_form_13f_dates_propagates_non_api_errors(self, mock_client):
+        """Bare Exception is no longer swallowed on form_13f_dates (#193)."""
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.logger = MagicMock()
+        mock_client.request_async.side_effect = RuntimeError("bug")
+
+        async_client = AsyncInstitutionalClient(mock_client)
+        with pytest.raises(RuntimeError, match="bug"):
+            await async_client.get_form_13f_dates("0000320193")
+        mock_client.logger.warning.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_get_institutional_holdings_by_quarter_sends_wire_params(
+        self, mock_client
+    ):
+        """No report_date anywhere on the wire-shaped holdings method (#188)."""
+        from fmp_data.institutional import endpoints as institutional_endpoints
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncInstitutionalClient(mock_client)
+
+        result = await async_client.get_institutional_holdings_by_quarter(
+            "AAPL", 2023, 3
+        )
+
+        assert result == []
+        mock_client.request_async.assert_called_once_with(
+            institutional_endpoints.INSTITUTIONAL_HOLDINGS,
+            symbol="AAPL",
+            year=2023,
+            quarter=3,
+        )
+
+    @pytest.mark.asyncio
     async def test_search_cik_by_name_filters_results(self, mock_client):
         """Test search_cik_by_name filters by uppercased name."""
         from fmp_data.institutional.async_client import AsyncInstitutionalClient
@@ -1731,12 +1854,6 @@ class TestAsyncInstitutionalClient:
         "method_name,kwargs,endpoint_name,expected_kwargs",
         [
             (
-                "get_asset_allocation",
-                {"report_date": dt_date(2024, 6, 30)},
-                "ASSET_ALLOCATION",
-                {"date": "2024-06-30"},
-            ),
-            (
                 "get_institutional_holders",
                 {"page": 1, "limit": 10},
                 "INSTITUTIONAL_HOLDERS",
@@ -1760,12 +1877,6 @@ class TestAsyncInstitutionalClient:
                 {"symbol": "AAPL"},
                 "BENEFICIAL_OWNERSHIP",
                 {"symbol": "AAPL"},
-            ),
-            (
-                "get_fail_to_deliver",
-                {"symbol": "AAPL", "page": 3},
-                "FAIL_TO_DELIVER",
-                {"symbol": "AAPL", "page": 3},
             ),
         ],
     )
@@ -1793,6 +1904,38 @@ class TestAsyncInstitutionalClient:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
+        "method_name,kwargs,expected_match",
+        [
+            (
+                "get_asset_allocation",
+                {"report_date": dt_date(2024, 6, 30)},
+                "13F asset allocation",
+            ),
+            ("get_fail_to_deliver", {"symbol": "AAPL", "page": 3}, "fail-to-deliver"),
+        ],
+    )
+    async def test_institutional_dead_endpoints_warn_without_calling(
+        self, mock_client, method_name, kwargs, expected_match
+    ):
+        """Both paths 404 and have no stable replacement.
+
+        These used to sit in the forwarding table above, asserting that the
+        request was issued -- a request that could only ever earn a 404. They
+        now warn and return empty without spending a rate-limit slot.
+        """
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        async_client = AsyncInstitutionalClient(mock_client)
+
+        method = getattr(async_client, method_name)
+        with pytest.warns(DeprecationWarning, match=expected_match):
+            result = await method(**kwargs)
+
+        assert result == []
+        mock_client.request_async.assert_not_called()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
         "method_name,kwargs,endpoint_name,expected_kwargs",
         [
             (
@@ -1802,10 +1945,34 @@ class TestAsyncInstitutionalClient:
                 {"cik": "0000320193", "year": 2024, "quarter": 1},
             ),
             (
+                "get_institutional_ownership_extract_by_quarter",
+                {"cik": "0000320193", "year": 2024, "quarter": 1},
+                "INSTITUTIONAL_OWNERSHIP_EXTRACT",
+                {"cik": "0000320193", "year": 2024, "quarter": 1},
+            ),
+            (
                 "get_institutional_ownership_analytics",
                 {
                     "symbol": "AAPL",
                     "report_date": dt_date(2024, 3, 31),
+                    "page": 2,
+                    "limit": 50,
+                },
+                "INSTITUTIONAL_OWNERSHIP_ANALYTICS",
+                {
+                    "symbol": "AAPL",
+                    "year": 2024,
+                    "quarter": 1,
+                    "page": 2,
+                    "limit": 50,
+                },
+            ),
+            (
+                "get_institutional_ownership_analytics_by_quarter",
+                {
+                    "symbol": "AAPL",
+                    "year": 2024,
+                    "quarter": 1,
                     "page": 2,
                     "limit": 50,
                 },
@@ -1857,8 +2024,34 @@ class TestAsyncInstitutionalClient:
                 },
             ),
             (
+                "get_holder_performance_summary_by_quarter",
+                {
+                    "cik": "0000320193",
+                    "year": 2024,
+                    "quarter": 1,
+                    "page": 1,
+                },
+                "HOLDER_PERFORMANCE_SUMMARY",
+                {
+                    "cik": "0000320193",
+                    "year": 2024,
+                    "quarter": 1,
+                    "page": 1,
+                },
+            ),
+            (
                 "get_holder_industry_breakdown",
                 {"cik": "0000320193", "report_date": dt_date(2024, 3, 31)},
+                "HOLDER_INDUSTRY_BREAKDOWN",
+                {
+                    "cik": "0000320193",
+                    "year": 2024,
+                    "quarter": 1,
+                },
+            ),
+            (
+                "get_holder_industry_breakdown_by_quarter",
+                {"cik": "0000320193", "year": 2024, "quarter": 1},
                 "HOLDER_INDUSTRY_BREAKDOWN",
                 {
                     "cik": "0000320193",
@@ -1873,8 +2066,20 @@ class TestAsyncInstitutionalClient:
                 {"symbol": "AAPL", "year": 2024, "quarter": 1},
             ),
             (
+                "get_symbol_positions_summary_by_quarter",
+                {"symbol": "AAPL", "year": 2024, "quarter": 1},
+                "SYMBOL_POSITIONS_SUMMARY",
+                {"symbol": "AAPL", "year": 2024, "quarter": 1},
+            ),
+            (
                 "get_industry_performance_summary",
                 {"report_date": dt_date(2024, 3, 31)},
+                "INDUSTRY_PERFORMANCE_SUMMARY",
+                {"year": 2024, "quarter": 1},
+            ),
+            (
+                "get_industry_performance_summary_by_quarter",
+                {"year": 2024, "quarter": 1},
                 "INDUSTRY_PERFORMANCE_SUMMARY",
                 {"year": 2024, "quarter": 1},
             ),
@@ -1896,6 +2101,67 @@ class TestAsyncInstitutionalClient:
         assert result == []
         endpoint = getattr(institutional_endpoints, endpoint_name)
         mock_client.request_async.assert_called_once_with(endpoint, **expected_kwargs)
+
+    @pytest.mark.asyncio
+    async def test_holder_performance_by_quarter_warns_the_filter_is_inert(
+        self, mock_client
+    ):
+        """The async client must warn exactly as the sync one does (#192).
+
+        `holder-performance-summary` accepts year/quarter and ignores them --
+        probed live, identical 52-row payloads unfiltered, for 2023 Q3 and for
+        2019 Q1 -- so a method named `_by_quarter` promises what the API will
+        not deliver. Pinned on both clients because the warning was already
+        lost once, when #198 reworked #196 without it.
+        """
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncInstitutionalClient(mock_client)
+
+        with pytest.warns(UserWarning, match="ignores year/quarter"):
+            await async_client.get_holder_performance_summary_by_quarter(
+                "0000320193", 2024, 1
+            )
+
+        with pytest.warns(UserWarning, match="ignores year/quarter"):
+            await async_client.get_holder_performance_summary(
+                "0000320193", report_date=dt_date(2024, 3, 31)
+            )
+
+    @pytest.mark.asyncio
+    async def test_holder_performance_without_date_does_not_warn(self, mock_client):
+        """The supported call must stay silent, or the warning becomes noise."""
+        import warnings as _warnings
+
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncInstitutionalClient(mock_client)
+
+        with _warnings.catch_warnings():
+            _warnings.simplefilter("error", UserWarning)
+            await async_client.get_holder_performance_summary("0000320193")
+
+    @pytest.mark.asyncio
+    async def test_get_holder_performance_summary_without_date_omits_year_quarter(
+        self, mock_client
+    ):
+        """Optional report_date: without it, year/quarter are not sent (#192)."""
+        from fmp_data.institutional import endpoints as institutional_endpoints
+        from fmp_data.institutional.async_client import AsyncInstitutionalClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncInstitutionalClient(mock_client)
+
+        result = await async_client.get_holder_performance_summary("0000320193", page=0)
+
+        assert result == []
+        mock_client.request_async.assert_called_once_with(
+            institutional_endpoints.HOLDER_PERFORMANCE_SUMMARY,
+            cik="0000320193",
+            page=0,
+        )
 
 
 class TestAsyncInvestmentClient:
@@ -1960,6 +2226,32 @@ class TestAsyncInvestmentClient:
         assert result is None
 
     @pytest.mark.asyncio
+    async def test_get_mutual_fund_dates_omits_cik_when_absent(self, mock_client):
+        """cik is optional and must not be sent when the caller omits it."""
+        from fmp_data.investment.async_client import AsyncInvestmentClient
+
+        mock_client.request_async.return_value = []
+
+        async_client = AsyncInvestmentClient(mock_client)
+        await async_client.get_mutual_fund_dates("VFIAX")
+
+        _, kwargs = mock_client.request_async.call_args
+        assert kwargs == {"symbol": "VFIAX"}
+
+    @pytest.mark.asyncio
+    async def test_get_mutual_fund_dates_forwards_integer_cik(self, mock_client):
+        """An int cik must reach the request layer for ParamType.CIK to pad it."""
+        from fmp_data.investment.async_client import AsyncInvestmentClient
+
+        mock_client.request_async.return_value = []
+
+        async_client = AsyncInvestmentClient(mock_client)
+        await async_client.get_mutual_fund_dates("VFIAX", cik=320193)
+
+        _, kwargs = mock_client.request_async.call_args
+        assert kwargs == {"symbol": "VFIAX", "cik": 320193}
+
+    @pytest.mark.asyncio
     async def test_get_etf_info_empty_list_returns_none(self, mock_client):
         """Test get_etf_info handles empty list responses."""
         from fmp_data.investment.async_client import AsyncInvestmentClient
@@ -2007,24 +2299,23 @@ class TestAsyncInvestmentClient:
         )
 
     @pytest.mark.asyncio
-    async def test_get_mutual_fund_holdings_formats_date(self, mock_client):
-        """Test mutual fund holdings formats date parameter."""
-        from fmp_data.investment import endpoints as investment_endpoints
+    async def test_get_mutual_fund_holdings_is_deprecated(self, mock_client):
+        """``mutual-fund-holdings`` 404s; ``etf/holdings`` serves funds too.
+
+        The date-formatting this used to assert is unreachable now — no
+        request is built at all — so what is asserted instead is that the
+        caller is pointed at :meth:`get_etf_holdings`.
+        """
         from fmp_data.investment.async_client import AsyncInvestmentClient
 
-        mock_client.request_async.return_value = []
         async_client = AsyncInvestmentClient(mock_client)
-
-        result = await async_client.get_mutual_fund_holdings(
-            "VFIAX", dt_date(2024, 1, 15)
-        )
+        with pytest.warns(DeprecationWarning, match="get_etf_holdings"):
+            result = await async_client.get_mutual_fund_holdings(
+                "VFIAX", dt_date(2024, 1, 15)
+            )
 
         assert result == []
-        mock_client.request_async.assert_called_once_with(
-            investment_endpoints.MUTUAL_FUND_HOLDINGS,
-            symbol="VFIAX",
-            date="2024-01-15",
-        )
+        mock_client.request_async.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_get_fund_disclosure_with_cik(self, mock_client):
@@ -2114,11 +2405,8 @@ class TestAsyncAlternativeMarketsClient:
         "method_name,endpoint_name",
         [
             ("get_crypto_list", "CRYPTO_LIST"),
-            ("get_crypto_quotes", "CRYPTO_QUOTES"),
             ("get_forex_list", "FOREX_LIST"),
-            ("get_forex_quotes", "FOREX_QUOTES"),
             ("get_commodities_list", "COMMODITIES_LIST"),
-            ("get_commodities_quotes", "COMMODITIES_QUOTES"),
         ],
     )
     async def test_alternative_list_endpoints(
@@ -2137,6 +2425,35 @@ class TestAsyncAlternativeMarketsClient:
         assert result == []
         endpoint = getattr(alternative_endpoints, endpoint_name)
         mock_client.request_async.assert_called_once_with(endpoint)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("method_name", "expected_match"),
+        [
+            ("get_crypto_quotes", "batch.get_crypto_quotes"),
+            ("get_forex_quotes", "batch.get_forex_quotes"),
+            ("get_commodities_quotes", "batch.get_commodity_quotes"),
+        ],
+    )
+    async def test_alternative_quotes_endpoints_are_deprecated(
+        self, mock_client, method_name, expected_match
+    ):
+        """The three ``quotes/*`` paths 404; the batch client serves them.
+
+        These sat in the forwarding table above, asserting a request that
+        could only earn a 404. They now warn, name the live batch method and
+        issue nothing.
+        """
+        from fmp_data.alternative.async_client import AsyncAlternativeMarketsClient
+
+        async_client = AsyncAlternativeMarketsClient(mock_client)
+
+        method = getattr(async_client, method_name)
+        with pytest.warns(DeprecationWarning, match=expected_match):
+            result = await method()
+
+        assert result == []
+        mock_client.request_async.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_get_crypto_historical_wraps_list_response(

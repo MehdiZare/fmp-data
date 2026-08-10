@@ -15,7 +15,7 @@ TOOLS = [
     "losers",
     "most_active",
     # Price history
-    "historical_price",
+    "historical_prices",
     # Cryptocurrency support
     "crypto_quote",
 ]

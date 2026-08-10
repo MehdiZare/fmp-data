@@ -48,7 +48,7 @@ jobs:
           uv tool install nox
 
           # Ensure we're in the repo root
-          cd $GITHUB_WORKSPACE
+          cd "$GITHUB_WORKSPACE"
 
           # Run tests for each feature group with correct nox syntax
           echo "Running tests for Python ${{ matrix.python }}"
@@ -110,49 +110,87 @@ jobs:
       - name: 🔐 Install detect-secrets
         run: pip install detect-secrets
 
-      - name: 🔍 Scan cassettes for secrets  # pragma: allowlist secret
+      # pragma: allowlist secret — step scans VCR cassettes for leaked API keys
+      - name: 🔍 Scan cassettes for leaked credentials
         run: |
+          set -euo pipefail
           CASSETTE_DIR="tests/integration/vcr_cassettes"
 
           # Skip scan when no cassettes are checked in
           if [ ! -d "$CASSETTE_DIR" ] || [ -z "$(find "$CASSETTE_DIR" -name '*.yaml' 2>/dev/null)" ]; then
-            echo "No cassette YAML files found — skipping secret scan."
+            echo "No cassette YAML files found — skipping credential scan."
             exit 0
           fi
 
-          # Scan cassette YAML files, excluding Python test files
+          # Scan cassette YAML only. Cassettes must never contain live API keys;
+          # any finding is a hard failure. (Previously --baseline was passed and
+          # the Python step claimed to filter "NEW" findings, but it never
+          # compared hashes against the baseline — it failed on any result.
+          # Baseline is for the rest of the tree via pre-commit; cassettes are
+          # zero-tolerance.)
           detect-secrets scan \
             "$CASSETTE_DIR" \
             --exclude-files '.*\.py$' \
-            --baseline .secrets.baseline \
             > /tmp/scan-results.json
 
-          # Compare against baseline — fail only on NEW findings
-          NEW_SECRETS=$(python3 -c "
+          python3 - <<'PY'
           import json, sys
-          with open('/tmp/scan-results.json') as f:
+          with open("/tmp/scan-results.json") as f:
               results = json.load(f)
-          findings = results.get('results', {})
+          findings = results.get("results", {})
           total = sum(len(v) for v in findings.values())
           if total > 0:
-              for path, secrets in findings.items():
-                  for s in secrets:
-                      line = s.get('line_number', '?')
-                      stype = s.get('type', 'unknown')
-                      print(f'::error file={path},line={line}::Potential secret ({stype}) found in cassette')
+              for path, items in findings.items():
+                  for item in items:
+                      line = item.get("line_number", "?")
+                      stype = item.get("type", "unknown")
+                      print(
+                          f"::error file={path},line={line}::"
+                          f"Potential credential ({stype}) found in cassette"
+                      )
               sys.exit(1)
-          print('No new secrets detected in cassettes')
-          ")
+          print("No credentials detected in cassettes")
+          PY
+
+  # Fail-closed mergeability action unit matrix + shellcheck (#212).
+  # Cheap (no network); runs on every PR so Guard/Release contract cannot
+  # regress silently. Path-filtered would miss cross-cutting edits.
+  actions-shell:
+    name: Actions shell checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🛎️  Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: 🔍 ShellCheck composite action scripts
+        run: |
+          set -euo pipefail
+          # Fail closed: expected action scripts must exist (do not soft-pass
+          # if .github/actions is empty or the mergeability harness moved).
+          test -f .github/actions/check-pr-mergeable/check.sh
+          test -f .github/actions/check-pr-mergeable/test-check.sh
+          mapfile -t scripts < <(find .github/actions -type f -name '*.sh' | sort)
+          if [ "${#scripts[@]}" -eq 0 ]; then
+            echo "::error::No .github/actions/**/*.sh scripts found; shellcheck gate cannot run."
+            exit 1
+          fi
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq shellcheck
+          shellcheck --version
+          shellcheck "${scripts[@]}"
+
+      - name: 🧪 check-pr-mergeable mock matrix
+        run: bash .github/actions/check-pr-mergeable/test-check.sh
 
   test-matrix-expected:
     name: Test-MatrixExpected
     runs-on: ubuntu-latest
-    needs: [tests, coverage, secret-scan]
+    needs: [tests, coverage, secret-scan, actions-shell]
     if: ${{ always() }}
     steps:
       - name: ✅ Verify matrix results
         run: |
-          if [[ "${{ needs.tests.result }}" != "success" || "${{ needs.coverage.result }}" != "success" || "${{ needs.secret-scan.result }}" != "success" ]]; then
+          if [[ "${{ needs.tests.result }}" != "success" || "${{ needs.coverage.result }}" != "success" || "${{ needs.secret-scan.result }}" != "success" || "${{ needs.actions-shell.result }}" != "success" ]]; then
             echo "Upstream checks failed"
             exit 1
           fi

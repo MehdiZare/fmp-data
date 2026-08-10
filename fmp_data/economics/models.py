@@ -1,5 +1,6 @@
 # fmp_data/economics/models.py
-from datetime import date, datetime
+from datetime import date as dt_date
+from datetime import datetime
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
@@ -18,7 +19,7 @@ class TreasuryRate(BaseModel):
 
     model_config = default_model_config
 
-    rate_date: date = Field(..., alias="date")
+    rate_date: dt_date = Field(..., alias="date")
     month_1: float | None = Field(None, alias="month1")
     month_2: float | None = Field(None, alias="month2")
     month_3: float | None = Field(None, alias="month3")
@@ -38,7 +39,7 @@ class EconomicIndicator(BaseModel):
 
     model_config = default_model_config
 
-    indicator_date: date = Field(..., alias="date")
+    indicator_date: dt_date = Field(..., alias="date")
     value: float
     name: str | None = None
 

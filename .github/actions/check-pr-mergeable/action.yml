@@ -1,0 +1,87 @@
+# Shared fail-closed PR mergeability check for Guard-Main-Origin and
+# Release-PR. See #202, #207, #210, #213, #216, #217, #218.
+#
+# Contract (do not weaken):
+# - Poll REST mergeable / mergeable_state via gh api
+# - Extract via shared mergeable.jq (#223): JSON null mergeable → literal
+#   "null"; null mergeable_state → "unknown" (unresolved retry path) (#216)
+# - Retry while mergeable_state is unknown (GitHub computes async)
+# - Retry only transient gh api failures (5xx / 429 / transport / primary+
+#   secondary rate-limit 403); fail immediately on permanent 401/403/404/… (#217, #223).
+#   Exhausting api-max-retries aborts the whole step (does not spend further
+#   max-attempts). Does not change the mergeable=true success criteria.
+# - Fail on dirty, mergeable=false, null/empty mergeable (JSON null), or
+#   still-unknown after retries
+# - Exit 0 only when mergeable=true (not merely not-false / not-dirty)
+#   and mergeable_state is a resolved non-dirty value (clean, unstable,
+#   blocked, …). "Not proven conflicting" is not enough (#213).
+#
+# Guard base-pin lag (#218): Guard-Main-Origin overlays this directory from
+# origin/<base> when present (hotfix-safe). Contract changes therefore apply
+# to Guard only after they ship to the PR base (typically main). Release-PR
+# uses the tip workflow on dev immediately. See docs/contributing/releasing.md
+# ("Guard base-pin lag"). Do not silently relax the pin for "minor" updates.
+name: Check PR mergeable
+description: >
+  Fail-closed REST mergeability check with retries. Exits 0 only when
+  mergeable=true; refuses green on dirty, mergeable=false, null/empty
+  mergeable, or unresolved unknown after retries. Retries transient
+  gh api failures only (#217).
+
+inputs:
+  pr-number:
+    description: Pull request number to check
+    required: true
+  repository:
+    description: "owner/repo (defaults to github.repository)"
+    required: false
+    default: ${{ github.repository }}
+  max-attempts:
+    description: Max poll attempts while mergeable_state is unknown
+    required: false
+    default: "6"
+  sleep-seconds:
+    description: Seconds between unknown retries (also bases API retry backoff)
+    required: false
+    default: "5"
+  api-max-retries:
+    description: >
+      Max gh api attempts per mergeability poll for transient 5xx / 429 /
+      secondary-rate-limit / transport errors. Exhausting this aborts the
+      step (does not consume further max-attempts). Permanent 401/403/404
+      fail immediately (#217).
+    required: false
+    default: "3"
+  github-token:
+    description: Token for gh api (needs pull-requests read)
+    required: true
+  conflict-guidance:
+    description: >
+      Extra operator lines printed when mergeable_state is dirty (e.g. release
+      path: merge main into dev with a merge commit, not squash).
+    required: false
+    default: ""
+
+outputs:
+  mergeable:
+    description: Final mergeable value (true / false / null)
+    value: ${{ steps.check.outputs.mergeable }}
+  mergeable_state:
+    description: Final mergeable_state (clean / dirty / unstable / blocked / …)
+    value: ${{ steps.check.outputs.mergeable_state }}
+
+runs:
+  using: composite
+  steps:
+    - id: check
+      name: Poll REST mergeability (fail closed)
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        REPO: ${{ inputs.repository }}
+        MAX_ATTEMPTS: ${{ inputs.max-attempts }}
+        SLEEP_SECONDS: ${{ inputs.sleep-seconds }}
+        API_MAX_RETRIES: ${{ inputs.api-max-retries }}
+        CONFLICT_GUIDANCE: ${{ inputs.conflict-guidance }}
+      run: bash "${{ github.action_path }}/check.sh"

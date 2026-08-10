@@ -79,7 +79,6 @@ def test_endpoint():
                 name="symbol",
                 location=ParamLocation.PATH,
                 param_type=ParamType.STRING,
-                required=True,
                 description="Stock symbol (ticker)",
             ),
         ],
@@ -88,7 +87,6 @@ def test_endpoint():
                 name="limit",
                 location=ParamLocation.QUERY,
                 param_type=ParamType.STRING,
-                required=True,
                 description="Result limit",
             )
         ],

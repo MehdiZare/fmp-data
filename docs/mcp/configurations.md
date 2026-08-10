@@ -1,6 +1,6 @@
 # MCP Configuration Examples
 
-Example MCP (Model Context Protocol) manifests live in `examples/mcp_configurations/`.
+Example MCP (Model Context Protocol) manifests live in `examples/mcp/configurations/`.
 Use them to scope which tools are exposed to Claude or other MCP clients. If you
 installed from PyPI, copy the manifests from the repo or create your own.
 
@@ -80,7 +80,7 @@ fmp-mcp list --client market
 #### Using with Python module execution
 ```bash
 export FMP_API_KEY=your_api_key_here  # pragma: allowlist secret
-export FMP_MCP_MANIFEST=examples/mcp_configurations/trading_manifest.py
+export FMP_MCP_MANIFEST=examples/mcp/configurations/trading_manifest.py
 python -m fmp_data.mcp
 ```
 
@@ -88,7 +88,7 @@ python -m fmp_data.mcp
 ```bash
 FMP_API_KEY=your_api_key mcp dev python -c "
 from fmp_data.mcp.server import create_app
-app = create_app("examples/mcp_configurations/research_manifest.py")
+app = create_app("examples/mcp/configurations/research_manifest.py")
 app.run()
 "
 ```
@@ -98,7 +98,7 @@ app.run()
 from fmp_data.mcp.server import create_app
 
 # Load a specific configuration
-app = create_app(tools="examples/mcp_configurations/minimal_manifest.py")
+app = create_app(tools="examples/mcp/configurations/minimal_manifest.py")
 app.run()
 ```
 
@@ -123,7 +123,51 @@ fmp-mcp generate my_manifest.py --tools company.profile company.quote
 
 # Generate manifest without default tools
 fmp-mcp generate my_manifest.py --no-defaults --tools company.quote market.gainers
+
+# Generate a manifest covering the whole catalog
+fmp-mcp generate everything.py
+
+# Bare keys work too, and are written out in their fully qualified form
+fmp-mcp generate my_manifest.py --no-defaults --tools profile quote gainers
 ```
+
+`--tools` accepts the same two entry forms a manifest does — a bare key
+(`profile`) or a fully qualified spec (`company.profile`) — resolved by the
+rule the server uses. What is *written* is always the qualified form, since it
+is unambiguous under either name style. A bare key claimed by two clients is
+reported as an ambiguity naming both candidates, not as "unknown"; an entry
+naming nothing at all is still reported as unknown and skipped.
+
+> **Changed in this release.** If **nothing** in an explicit `--tools`
+> selection resolves, `generate` now writes no file and exits non-zero, naming
+> each failed entry and why. It previously wrote `TOOLS = []` and exited 0.
+> A single bad entry among good ones is still just a warning.
+>
+> This holds **whether or not `--no-defaults` is passed**. The default tools
+> are not an answer to an ask that named only tools which do not exist, so
+> they no longer top up an otherwise-empty selection and turn the failure
+> into a success.
+>
+> **Also changed:** if an explicit `--tools` selection contains both sides of
+> a name collision, `generate` writes no file and exits non-zero under the
+> default `FMP_MCP_TOOL_NAME_STYLE=key`, because that pair cannot register.
+> Neither side is silently dropped — drop one yourself, or set
+> `FMP_MCP_TOOL_NAME_STYLE=spec`, under which both are advertised at their
+> full spec and the manifest is written. `generate` and `validate` reach the
+> same verdict under either style, so `generate && validate` no longer fails
+> on a file `generate` just reported as successfully written.
+
+With no `--tools` filter the generated manifest covers the catalog except for
+what would stop it starting a *useful* server: tool keys FMP no longer serves
+(they return no data on every call), deprecated tool keys (removed in 3.0),
+and one side of each tool-name collision. Under the default
+`FMP_MCP_TOOL_NAME_STYLE=key` a tool is advertised under its bare key, so
+`alternative.crypto_quotes` and `batch.crypto_quotes` both want to be called
+`crypto_quotes` and registration refuses the pair. Every exclusion is named in
+the generated file's header and printed on generation, grouped by reason: a
+deprecated key is listed beside the replacement that ships in its place, and a
+collision loser beside the `FMP_MCP_TOOL_NAME_STYLE=spec` setting (names become
+`<client>.<key>`) that lets you add both sides back.
 
 3. **Discovering available tools** - List all available tools:
 ```bash
@@ -143,12 +187,91 @@ fmp-mcp list --format json > tools.json
 Tip: set `FMP_MCP_TOOL_NAME_STYLE=spec` to expose fully qualified tool names
 (`client.key`) and avoid naming collisions when multiple tools share a key.
 
+> **Changed in this release — `list` output shape.** Every format now emits
+> the **fully qualified spec** (`company.profile`), not the bare key, so what
+> you read can be pasted straight into a manifest or `--tools` without
+> guessing which client owns it. Previously the table and tree showed bare
+> keys, which are ambiguous for `crypto_quotes` and `forex_quotes` — the two
+> keys claimed by two clients each — and so could not be copied safely.
+> The table also gained a **`Retirement`** column.
+>
+> This changes output any script parsing `fmp-mcp list` will see. `--format
+> json` remains the stable interface for programmatic use.
+>
+> One rough edge: at an 80-column terminal the table wraps a long spec across
+> two lines rather than truncating it. Nothing is lost and the specs remain
+> distinguishable, but a spec that wraps is not directly copy-pasteable — use
+> `--format json`, or a wider terminal, if you are copying.
+
+> **Reading the `Retirement` column.** Three different things can be true of
+> a tool key, and they are labelled apart because each asks something
+> different of you:
+>
+> | Label | Meaning | What to do |
+> |---|---|---|
+> | *(blank)* | Live tool. | Nothing. |
+> | `DEPRECATED -> other.spec` | A second **name** for a method that still serves real data. Stops resolving in 3.0. | Swap the name; the replacement is a drop-in. |
+> | `WITHDRAWN, nearest live tool other.spec` | FMP no longer serves this endpoint. It resolves and registers, but can only ever answer `[]`. | Move to the named tool — and check its fields, the payload differs. |
+> | `WITHDRAWN, no replacement` | Same, and FMP publishes nothing equivalent. | Drop the tool. |
+>
+> In `--format json` these are three fields: `deprecated` (the replacement
+> spec, or `null`), `withdrawn` (boolean) and `successor` (the nearest live
+> spec for a withdrawal, or `null`). `deprecated` keeps the meaning it has
+> always had — withdrawals are **not** folded into it.
+
+### Bare keys vs. fully qualified specs
+
+A manifest entry may be the bare tool key (`profile`) or the fully qualified
+spec (`company.profile`). A bare key resolves **only when exactly one client
+claims it**. Two keys are claimed by two clients each — `crypto_quotes` and
+`forex_quotes`, by `alternative` and `batch` — and must be written in full:
+
+```python
+TOOLS = [
+    "alternative.crypto_quotes",  # not "crypto_quotes"
+    "batch.forex_quotes",  # not "forex_quotes"
+]
+```
+
+Using the bare form for either raises at registration with an error naming
+every candidate.
+
+Naming **both** halves of a colliding pair is a separate failure. Under the
+default `FMP_MCP_TOOL_NAME_STYLE=key`, the advertised tool name is just the
+key, so `alternative.crypto_quotes` and `batch.crypto_quotes` in one manifest
+both want to be called `crypto_quotes` and registration is refused. To expose
+both at once, set `FMP_MCP_TOOL_NAME_STYLE=spec` (see the tip above) so each
+tool is advertised under its fully qualified name.
+
 ## Validation
 
 Validate your manifest file before using:
 ```bash
 fmp-mcp validate my_manifest.py
 ```
+
+**The exit code is the verdict, and it means "this manifest can start a
+server".** `validate` exits non-zero for exactly the four things
+`register_from_manifest` refuses:
+
+| Finding | Exit code | Why |
+|---|---|---|
+| unknown entry (`company.profil`) | non-zero | resolves to nothing |
+| ambiguous bare key (`crypto_quotes`) | non-zero | claimed by two clients |
+| the same tool listed twice (`profile` **and** `company.profile`) | non-zero | one tool, two entries; no name style separates them |
+| two tools claiming one advertised name | non-zero | only under the default `FMP_MCP_TOOL_NAME_STYLE=key`; set `spec` and this stops being a clash |
+| deprecated entry | **0** | still resolves; the migration table prints |
+| withdrawn entry | **0** | still registers, answers with no data; reported |
+| `TOOLS = []` | **0** | an empty manifest starts a server with no tools — useless, but not broken, and `validate`'s verdict is "can this start a server". `generate` nonetheless *refuses to write* one, because there the emptiness is a failed ask with named reasons |
+
+Clashes are judged under the `FMP_MCP_TOOL_NAME_STYLE` in effect, so validating
+with the variable your server runs with is what you want.
+
+> **Changed in this release.** `validate` previously printed its warnings and
+> then exited 0 regardless, so a manifest with a typo passed CI and failed at
+> server start. If you have `fmp-mcp validate` in a pipeline, a manifest with
+> any of the fatal findings above will now fail that build — which is the point,
+> but it may fail on first upgrade.
 
 ## Tips
 

@@ -9,27 +9,44 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 (everything with MCP semantics, loadable via an explicit manifest), followed by
 how many of those are in `DEFAULT_TOOLS` (what a default server registers).
 The two differ where a tool is deprecated, redundant, or too heavy for the
-default set — `224` catalog tools, `159` default.
+default set — `223` catalog tools, `137` default.
+
+**Withdrawn endpoints:** 19 tools name an FMP endpoint that no longer exists.
+Probed against the live `stable` API, every one of those paths returns 404, so
+the tool can only ever answer with nothing. They remain in the catalog and stay
+loadable by explicit manifest, but they are **excluded from `DEFAULT_TOOLS`** —
+a default server should not offer a tool that cannot work. Where a live tool
+covers the same ground it is named in `WITHDRAWN_TOOLS`, but those are
+migrations rather than renames: the payloads differ, so check the fields you
+rely on. Six have no successor at all.
+
+**Tool keys:** a manifest entry may be the bare key (`profile`) or the fully
+qualified spec (`company.profile`). The bare form resolves only when exactly
+one client claims that key. Two keys are claimed by two clients each and must
+always be written in full: `crypto_quotes` (`alternative.crypto_quotes` vs
+`batch.crypto_quotes`) and `forex_quotes` (`alternative.forex_quotes` vs
+`batch.forex_quotes`). Rows marked *Deprecated* below still resolve but emit a
+`DeprecationWarning` and are removed in 3.0.
 
 ## Table of Contents
 
-- [Alternative (15 tools, 15 default)](#alternative)
+- [Alternative (15 tools, 12 default)](#alternative)
 - [Batch (30 tools, 0 default)](#batch)
-- [Company (32 tools, 30 default)](#company)
+- [Company (32 tools, 21 default)](#company)
 - [Economics (7 tools, 7 default)](#economics)
-- [Fundamental (14 tools, 13 default)](#fundamental)
+- [Fundamental (14 tools, 12 default)](#fundamental)
 - [Index (6 tools, 0 default)](#index)
-- [Institutional (13 tools, 10 default)](#institutional)
-- [Intelligence (45 tools, 39 default)](#intelligence)
-- [Investment (14 tools, 14 default)](#investment)
-- [Market (23 tools, 22 default)](#market)
+- [Institutional (12 tools, 8 default)](#institutional)
+- [Intelligence (45 tools, 38 default)](#intelligence)
+- [Investment (14 tools, 9 default)](#investment)
+- [Market (23 tools, 21 default)](#market)
 - [SEC (12 tools, 0 default)](#sec)
 - [Technical (9 tools, 9 default)](#technical)
 - [Transcripts (4 tools, 0 default)](#transcripts)
 
 ## Alternative
 
-**15 tools** for alternative data access (15 default).
+**15 tools** for alternative data access (12 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -89,7 +106,7 @@ via a manifest; these return large payloads and several are CSV).
 
 ## Company
 
-**32 tools** for company information and quotes (30 default).
+**32 tools** for company information and quotes (21 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -102,13 +119,13 @@ via a manifest; these return large payloads and several are CSV).
 | `core_information` | Get essential company information including CIK number, exchange listing, SIC code, state of incorporation, and fiscal year details |
 | `employee_count` | Get historical employee count data showing how company workforce has changed over time |
 | `executive_compensation` | Get detailed executive compensation information including salary, bonuses, stock awards, and total compensation packages for company leaders |
-| `executives` | Get detailed information about company's key executives including their names, titles, compensation, and tenure. |
+| `executives` | *Deprecated — use `key_executives`; removed in 3.0.* Get detailed information about company's key executives including their names, titles, compensation, and tenure. |
 | `geographic_revenue_segmentation` | Get revenue breakdown by geographic regions, showing how company revenue is distributed across different countries and regions |
 | `historical_market_cap` | Retrieve historical market capitalization data to track changes in company value over time |
-| `historical_price` | Retrieve historical daily price data including open, high, low, close, and adjusted prices with volume information . |
+| `historical_price` | *Deprecated — use `historical_prices`; removed in 3.0.* Retrieve historical daily price data including open, high, low, close, and adjusted prices with volume information . |
 | `historical_prices` | Retrieve historical price data including OHLCV (Open, High, Low, Close, Volume) information for detailed technical and performance analysis. |
 | `historical_share_float` | Get historical share float data showing how the number of tradable shares has changed over time |
-| `intraday_price` | Get intraday price data at various intervals (1min to 4hour) for detailed analysis of price movements within the trading day |
+| `intraday_price` | *Deprecated — use `intraday_prices`; removed in 3.0.* Get intraday price data at various intervals (1min to 4hour) for detailed analysis of price movements within the trading day |
 | `intraday_prices` | Get intraday price data with minute-by-minute or hourly intervals |
 | `key_executives` | Get detailed information about company's key executives including their names, titles, tenure, and basic compensation data |
 | `market_cap` | Get current market capitalization data for a company, including total market value and related metrics |
@@ -142,7 +159,7 @@ via a manifest; these return large payloads and several are CSV).
 
 ## Fundamental
 
-**14 tools** for fundamental analysis and valuation (13 default).
+**14 tools** for fundamental analysis and valuation (12 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -176,13 +193,12 @@ via a manifest; these return large payloads and several are CSV).
 
 ## Institutional
 
-**13 tools** for institutional and insider data (10 default).
+**12 tools** for institutional and insider data (8 default).
 
 | Tool Key | Description |
 |----------|-------------|
 | `asset_allocation` | Analyze asset allocation data from 13F filings |
 | `beneficial_ownership` | Retrieve beneficial ownership information including voting rights and dispositive power for major shareholders of a company. |
-| `cik_mapper_by_name` | Search for CIK numbers by company or institution name. |
 | `cik_mappings` | Get a comprehensive mapping between CIK numbers and company/institution names. |
 | `fail_to_deliver` | Get data on failed trade settlements (FTDs) for a security. |
 | `form_13f` | Retrieve Form 13F filings data for institutional investment managers, including detailed holdings information, share quantities, and market values. |
@@ -196,7 +212,7 @@ via a manifest; these return large payloads and several are CSV).
 
 ## Intelligence
 
-**45 tools** for news, sentiment, market events, and analyst ratings/grades (39 default).
+**45 tools** for news, sentiment, market events, and analyst ratings/grades (38 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -248,7 +264,7 @@ via a manifest; these return large payloads and several are CSV).
 
 ## Investment
 
-**14 tools** for ETFs and mutual funds (14 default).
+**14 tools** for ETFs and mutual funds (9 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -269,7 +285,7 @@ via a manifest; these return large payloads and several are CSV).
 
 ## Market
 
-**23 tools** for market data and search (22 default).
+**23 tools** for market data and search (21 default).
 
 | Tool Key | Description |
 |----------|-------------|
