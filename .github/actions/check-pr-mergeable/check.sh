@@ -64,8 +64,11 @@ while [ "$attempt" -le "$MAX_ATTEMPTS" ]; do
   gh_err_file=$(mktemp)
   # Explicit tostring keeps operators/logs/mocks 1:1 with JSON null (#216).
   # Bare @tsv encodes JSON null as an empty field, which is easy to misread.
+  # mergeable_state null → "unknown" so we stay on the unresolved retry path
+  # (fail closed). A literal "null" token would otherwise hit *) and could go
+  # green when mergeable=true (#216 follow-up).
   if ! STATE=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" \
-    --jq '[(.mergeable | tostring), (.mergeable_state // "null")] | @tsv' \
+    --jq '[(.mergeable | tostring), ((.mergeable_state // "unknown") | tostring)] | @tsv' \
     2>"$gh_err_file"); then
     gh_err=$(cat "$gh_err_file" 2>/dev/null || true)
     rm -f "$gh_err_file"

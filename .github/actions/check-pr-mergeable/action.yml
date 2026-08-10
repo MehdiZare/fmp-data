@@ -3,8 +3,9 @@
 #
 # Contract (do not weaken):
 # - Poll REST mergeable / mergeable_state via gh api
-# - Extract with jq tostring so JSON null is the literal token "null"
-#   (not an empty @tsv field) — operators/mocks match production (#216)
+# - Extract with jq tostring so JSON null mergeable is the literal token
+#   "null" (not an empty @tsv field); null mergeable_state maps to
+#   "unknown" (unresolved retry path) — operators/mocks match production (#216)
 # - Retry while mergeable_state is unknown (GitHub computes async)
 # - Fail on dirty, mergeable=false, null/empty mergeable (JSON null), or
 #   still-unknown after retries

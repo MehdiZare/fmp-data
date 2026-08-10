@@ -82,28 +82,16 @@ run_case "empty-clean-fails" 1 $'\tclean'
 run_case "null-blocked-fails" 1 $'null\tblocked'
 run_case "true-blocked-ok" 0 $'true\tblocked'
 
-# Lock the production jq extraction used by check.sh (#216): JSON null must
-# stringify to the literal token "null", not an empty TSV field. No network.
-jq_tsv_null=$(jq -rn '([(null | tostring), "clean"] | @tsv)')
-if [ "$jq_tsv_null" = $'null\tclean' ]; then
-  echo "PASS: jq-tostring-null-token (JSON null → literal null field)"
+# Lock the production jq extraction used by check.sh (#216). No network.
+jq_prod=$(jq -rn '([(null | tostring), ((null // "unknown") | tostring)] | @tsv)')
+if [ "$jq_prod" = $'null\tunknown' ]; then
+  echo "PASS: jq-tostring-prod-extraction (null mergeable + null state→unknown)"
   pass=$((pass + 1))
 else
-  printf 'FAIL: jq-tostring-null-token expected null\\tclean got %q\n' "$jq_tsv_null"
+  printf 'FAIL: jq-tostring-prod-extraction expected null\\tunknown got %q\n' "$jq_prod"
   fail=$((fail + 1))
 fi
-# Bare @tsv null→empty is the pre-#216 ambiguity; keep a canary so a silent
-# revert of tostring is obvious (encoding lock, not a success-path contract).
-jq_tsv_bare_null=$(jq -rn '([null, "clean"] | @tsv)')
-if [ "$jq_tsv_bare_null" = $'\tclean' ]; then
-  echo "PASS: jq-bare-tsv-null-empty-canary (documents pre-#216 ambiguity)"
-  pass=$((pass + 1))
-else
-  printf 'FAIL: jq-bare-tsv-null-empty-canary expected empty\\tclean got %q\n' "$jq_tsv_bare_null"
-  fail=$((fail + 1))
-fi
-# Use JSON true (not string) to mirror REST .mergeable boolean + tostring.
-jq_tsv_true=$(jq -rn '([(true | tostring), "clean"] | @tsv)')
+jq_tsv_true=$(jq -rn '([(true | tostring), (("clean" // "unknown") | tostring)] | @tsv)')
 if [ "$jq_tsv_true" = $'true\tclean' ]; then
   echo "PASS: jq-tostring-true-field"
   pass=$((pass + 1))
@@ -111,6 +99,8 @@ else
   printf 'FAIL: jq-tostring-true-field expected true\\tclean got %q\n' "$jq_tsv_true"
   fail=$((fail + 1))
 fi
+# true + null mergeable_state maps to unknown and must not go green (exhaust).
+run_case "true-null-state-exhausts" 1 $'true\tunknown' $'true\tunknown' $'true\tunknown'
 
 # invalid max via env (before gh is called)
 set +e
