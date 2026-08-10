@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Fail-closed REST mergeability poll for a single PR.
-# Invoked by .github/actions/check-pr-mergeable (see #202, #207, #210).
+# Invoked by .github/actions/check-pr-mergeable (see #202, #207, #210, #216).
 #
 # Required env:
 #   GH_TOKEN, PR_NUMBER, REPO
@@ -56,13 +56,17 @@ write_summary() {
 # seconds after open/sync. Retry before deciding.
 attempt=1
 while [ "$attempt" -le "$MAX_ATTEMPTS" ]; do
-  # mergeable: true | false | null
+  # mergeable: true | false | null  (REST JSON; extracted via tostring so JSON
+  # null is the literal token "null", not an empty TSV field — #216)
   # mergeable_state: clean | dirty | unstable | blocked | unknown | ...
   # Capture API failures explicitly so operators see "gh api failed" rather
   # than a bare non-zero exit with no step summary (#210 follow-up hardening).
   gh_err_file=$(mktemp)
+  # Explicit tostring keeps operators/logs/mocks 1:1 with JSON null (#216).
+  # Bare @tsv encodes JSON null as an empty field, which is easy to misread.
   if ! STATE=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" \
-    --jq '[.mergeable, .mergeable_state] | @tsv' 2>"$gh_err_file"); then
+    --jq '[(.mergeable | tostring), (.mergeable_state // "null")] | @tsv' \
+    2>"$gh_err_file"); then
     gh_err=$(cat "$gh_err_file" 2>/dev/null || true)
     rm -f "$gh_err_file"
     echo "::error::gh api failed for PR #${PR_NUMBER} in ${REPO} (cannot evaluate mergeability)."
@@ -108,17 +112,17 @@ while [ "$attempt" -le "$MAX_ATTEMPTS" ]; do
       continue
       ;;
     *)
-      # Success requires mergeable=true (not merely not-false). Empty / null
-      # from JSON null via jq @tsv is ambiguous; fail closed rather than paint
-      # green without proof the PR is mergeable (#213).
+      # Success requires mergeable=true (not merely not-false). JSON null is
+      # the literal token "null" after tostring extraction; empty is defensive
+      # only. Fail closed rather than paint green without proof (#213, #216).
       if [ "$MERGEABLE" != "true" ]; then
         if [ "$MERGEABLE" = "false" ]; then
           echo "::error::PR #${PR_NUMBER} is not mergeable (mergeable_state=${MSTATE})."
           write_outputs "$MERGEABLE" "$MSTATE"
           write_summary "failed (mergeable=false, state=${MSTATE})" "$MERGEABLE" "$MSTATE"
         else
-          # Empty field is the real JSON-null encoding from jq @tsv; any other
-          # non-true token is also refuse-green (defensive, #213).
+          # "null" is the real JSON-null encoding after tostring (#216); empty
+          # or any other non-true token is also refuse-green (defensive, #213).
           echo "::error::PR #${PR_NUMBER} mergeable='${MERGEABLE:-}' (not true) with mergeable_state=${MSTATE}; refusing green without mergeable=true (#213)."
           write_outputs "${MERGEABLE:-null}" "$MSTATE"
           write_summary "failed (mergeable not true, state=${MSTATE})" "${MERGEABLE:-null}" "$MSTATE"

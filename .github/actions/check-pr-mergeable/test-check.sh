@@ -73,33 +73,42 @@ run_case "unknown-forever" 1 $'null\tunknown' $'null\tunknown' $'null\tunknown'
 run_case "false-blocked" 1 $'false\tblocked'
 run_case "false-unknown" 1 $'false\tunknown'
 run_case "unstable-ok" 0 $'true\tunstable'
-# #213: empty/null mergeable with a resolved non-dirty state must not go green.
-# Production: jq @tsv encodes JSON null as an empty TSV field ($'\tclean').
-# empty-*-fails is the production-faithful shape; null-*-fails is defensive
-# for a literal "null" token if extraction ever changes.
+# #213 / #216: null mergeable with a resolved non-dirty state must not go green.
+# Production after #216: jq tostring encodes JSON null as the literal "null"
+# token ($'null\tclean'). empty-*-fails remains defensive for a drifted
+# extraction that still emits an empty field.
 run_case "null-clean-fails" 1 $'null\tclean'
 run_case "empty-clean-fails" 1 $'\tclean'
 run_case "null-blocked-fails" 1 $'null\tblocked'
 run_case "true-blocked-ok" 0 $'true\tblocked'
 
-# Lock the production jq @tsv extraction used by check.sh so CI fails if the
-# null→empty-field encoding (the #213 ambiguity) drifts without a mock update.
-# No network: pure jq on a fixed JSON blob.
-jq_tsv_null=$(jq -rn '([null, "clean"] | @tsv)')
-if [ "$jq_tsv_null" = $'\tclean' ]; then
-  echo "PASS: jq-tsv-null-empty-field (JSON null → empty TSV field)"
+# Lock the production jq extraction used by check.sh (#216): JSON null must
+# stringify to the literal token "null", not an empty TSV field. No network.
+jq_tsv_null=$(jq -rn '([(null | tostring), "clean"] | @tsv)')
+if [ "$jq_tsv_null" = $'null\tclean' ]; then
+  echo "PASS: jq-tostring-null-token (JSON null → literal null field)"
   pass=$((pass + 1))
 else
-  printf 'FAIL: jq-tsv-null-empty-field expected empty\\tclean got %q\n' "$jq_tsv_null"
+  printf 'FAIL: jq-tostring-null-token expected null\\tclean got %q\n' "$jq_tsv_null"
   fail=$((fail + 1))
 fi
-# Use JSON true (not string) to mirror REST .mergeable boolean.
-jq_tsv_true=$(jq -rn '([true, "clean"] | @tsv)')
-if [ "$jq_tsv_true" = $'true\tclean' ]; then
-  echo "PASS: jq-tsv-true-field"
+# Bare @tsv null→empty is the pre-#216 ambiguity; keep a canary so a silent
+# revert of tostring is obvious (encoding lock, not a success-path contract).
+jq_tsv_bare_null=$(jq -rn '([null, "clean"] | @tsv)')
+if [ "$jq_tsv_bare_null" = $'\tclean' ]; then
+  echo "PASS: jq-bare-tsv-null-empty-canary (documents pre-#216 ambiguity)"
   pass=$((pass + 1))
 else
-  printf 'FAIL: jq-tsv-true-field expected true\\tclean got %q\n' "$jq_tsv_true"
+  printf 'FAIL: jq-bare-tsv-null-empty-canary expected empty\\tclean got %q\n' "$jq_tsv_bare_null"
+  fail=$((fail + 1))
+fi
+# Use JSON true (not string) to mirror REST .mergeable boolean + tostring.
+jq_tsv_true=$(jq -rn '([(true | tostring), "clean"] | @tsv)')
+if [ "$jq_tsv_true" = $'true\tclean' ]; then
+  echo "PASS: jq-tostring-true-field"
+  pass=$((pass + 1))
+else
+  printf 'FAIL: jq-tostring-true-field expected true\\tclean got %q\n' "$jq_tsv_true"
   fail=$((fail + 1))
 fi
 

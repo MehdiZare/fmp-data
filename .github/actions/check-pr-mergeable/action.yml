@@ -1,10 +1,12 @@
 # Shared fail-closed PR mergeability check for Guard-Main-Origin and
-# Release-PR. See #202, #207, #210, #213, #218.
+# Release-PR. See #202, #207, #210, #213, #216, #218.
 #
 # Contract (do not weaken):
 # - Poll REST mergeable / mergeable_state via gh api
+# - Extract with jq tostring so JSON null is the literal token "null"
+#   (not an empty @tsv field) — operators/mocks match production (#216)
 # - Retry while mergeable_state is unknown (GitHub computes async)
-# - Fail on dirty, mergeable=false, empty/null mergeable (JSON null), or
+# - Fail on dirty, mergeable=false, null/empty mergeable (JSON null), or
 #   still-unknown after retries
 # - Exit 0 only when mergeable=true (not merely not-false / not-dirty)
 #   and mergeable_state is a resolved non-dirty value (clean, unstable,
@@ -18,7 +20,7 @@
 name: Check PR mergeable
 description: >
   Fail-closed REST mergeability check with retries. Exits 0 only when
-  mergeable=true; refuses green on dirty, mergeable=false, empty/null
+  mergeable=true; refuses green on dirty, mergeable=false, null/empty
   mergeable, or unresolved unknown after retries.
 
 inputs:
