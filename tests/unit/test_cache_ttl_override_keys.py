@@ -5,12 +5,13 @@
 not an error, not a warning and not visible -- the override just never applies,
 and the only symptom is request volume that quietly disagrees with the config.
 
-This was found while establishing the blast radius of #166, which proposes
-renaming ``market.search-name``. That rename cannot be made safely while a
-newly-unmatched override key fails silently: the user would lose their TTL
-setting with nothing to tell them. The rename is deferred to 3.0; this half is
-worth having on its own, and it is what turns the rename from silent into
-announced.
+This was found while establishing the blast radius of #166, which renamed
+``market.search-name`` to ``search_name``. That rename could not be made
+safely while a newly-unmatched override key failed silently: the user would
+lose their TTL setting with nothing to tell them. This check is what turned
+the rename from silent into announced, and it shipped first, in the same
+2.6.0 release -- so a user whose ``ttl_overrides={"search-name": ...}`` stops
+matching is told, and told the new name.
 
 Warned, never raised: config is carried across versions, and a stale override
 is not a reason to stop a client being constructed.
@@ -36,7 +37,7 @@ def test_the_catalogue_is_not_empty() -> None:
     assert len(known) >= 250, (
         f"only {len(known)} endpoint names found; has the walk stopped working?"
     )
-    assert "search-name" in known
+    assert "search_name" in known
 
 
 def test_unknown_key_warns_and_names_it() -> None:
@@ -54,15 +55,32 @@ def test_unknown_key_warns_and_names_it() -> None:
 def test_a_typo_suggests_the_endpoint_it_nearly_matched() -> None:
     """The failure mode this exists for is a typo, so name the near miss.
 
-    ``serch-name`` against ``search-name`` is the shape a user actually hits,
+    ``serch_name`` against ``search_name`` is the shape a user actually hits,
     and it is one character from working.
     """
     with pytest.warns(UserWarning) as record:
-        CacheConfig(ttl_overrides={"serch-name": 60})
+        CacheConfig(ttl_overrides={"serch_name": 60})
 
     message = str(record[0].message)
-    assert "serch-name" in message
+    assert "serch_name" in message
+    assert "search_name" in message
+
+
+def test_the_pre_2_6_search_name_key_warns_and_names_its_replacement() -> None:
+    """The #166 rename's migration path, pinned.
+
+    A user upgrading to 2.6.0 with ``ttl_overrides={"search-name": ...}``
+    carried over from 2.5 has a key that no longer matches anything. This is
+    the whole reason the rename was safe to make: they are told, by name, and
+    the suggestion is the exact string they need to change it to.
+    """
+    with pytest.warns(UserWarning) as record:
+        CacheConfig(ttl_overrides={"search-name": 900})
+
+    message = str(record[0].message)
     assert "search-name" in message
+    assert "search_name" in message
+    assert "no effect" in message
 
 
 def test_a_key_with_no_near_match_is_still_reported() -> None:
@@ -77,9 +95,9 @@ def test_known_keys_stay_silent() -> None:
     """The common case must not become noise users learn to filter."""
     with warnings.catch_warnings():
         warnings.simplefilter("error", UserWarning)
-        config = CacheConfig(ttl_overrides={"search-name": 900, "quote": 30})
+        config = CacheConfig(ttl_overrides={"search_name": 900, "quote": 30})
 
-    assert config.ttl_overrides == {"search-name": 900, "quote": 30}
+    assert config.ttl_overrides == {"search_name": 900, "quote": 30}
 
 
 def test_no_overrides_skips_the_catalogue_walk_entirely() -> None:
@@ -141,8 +159,8 @@ def test_the_ttl_lookup_still_reads_the_key_it_warned_about() -> None:
     from fmp_data.base import BaseClient
 
     client = object.__new__(BaseClient)
-    client._cache_ttl_overrides = {"search-name": 900}
+    client._cache_ttl_overrides = {"search_name": 900}
     client._cache_default_ttl = 300
 
-    assert client._get_cache_ttl("search-name") == 900
+    assert client._get_cache_ttl("search_name") == 900
     assert client._get_cache_ttl("serch-name") == 300

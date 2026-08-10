@@ -239,7 +239,7 @@ def test_a_param_cannot_be_in_both_lists() -> None:
 
 
 def test_declaring_required_still_works_but_warns() -> None:
-    """Deprecated in 2.7, not gone: an external definition must still import."""
+    """Deprecated in 2.6, not gone: an external definition must still import."""
     with pytest.warns(DeprecationWarning) as record:
         param = _param(required=True)
 

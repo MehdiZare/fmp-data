@@ -30,7 +30,7 @@ class SearchArgs(SearchArg, PaginationArg):
 class BaseSearchArg(DeprecatedArgModel):
     """Base model for search-type endpoints.
 
-    .. deprecated:: 2.7
+    .. deprecated:: 2.6
         Removed in 3.0 -- see :data:`fmp_data.schema.ARG_MODEL_DEPRECATION`.
     """
 
@@ -40,7 +40,7 @@ class BaseSearchArg(DeprecatedArgModel):
 class BaseExchangeArg(DeprecatedArgModel):
     """Base model for exchange-related queries.
 
-    .. deprecated:: 2.7
+    .. deprecated:: 2.6
         Removed in 3.0 -- see :data:`fmp_data.schema.ARG_MODEL_DEPRECATION`.
     """
 
@@ -173,7 +173,7 @@ class MarketMoversArgs(BaseArgModel):
 class QuoteArgs(DeprecatedArgModel):
     """Arguments for getting stock quotes.
 
-    .. deprecated:: 2.7
+    .. deprecated:: 2.6
         Removed in 3.0 -- see :data:`fmp_data.schema.ARG_MODEL_DEPRECATION`.
     """
 
@@ -183,7 +183,7 @@ class QuoteArgs(DeprecatedArgModel):
 class MarketCapArgs(DeprecatedArgModel):
     """Arguments for getting market capitalization data.
 
-    .. deprecated:: 2.7
+    .. deprecated:: 2.6
         Removed in 3.0 -- see :data:`fmp_data.schema.ARG_MODEL_DEPRECATION`.
     """
 

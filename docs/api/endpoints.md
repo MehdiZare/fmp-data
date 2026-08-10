@@ -120,7 +120,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 | `cusip_search` | `/stable/search-cusip` | Search for companies by their CUSIP (Committee on Uniform Securities Identification Procedures) number. Helps identify securities using their unique identifier. |
 | `search_exchange_variants` | `/stable/search-exchange-variants` | Search for exchange trading variants of a company |
 | `isin_search` | `/stable/search-isin` | Search for companies by their ISIN (International Securities Identification Number). Used to find securities using their globally unique identifier. |
-| `search-name` | `/stable/search-name` | Search for companies by name, ticker, or other identifiers. Returns matching companies with their basic information including symbol, name, and exchange. Useful for finding companies based on keywords or partial matches. |
+| `search_name` | `/stable/search-name` | Search for companies by name, ticker, or other identifiers. Returns matching companies with their basic information including symbol, name, and exchange. Useful for finding companies based on keywords or partial matches. |
 | `search_symbol` | `/stable/search-symbol` | Search for security symbols across all asset types |
 | `sector_pe_snapshot` | `/stable/sector-pe-snapshot` | Get sector PE snapshot data |
 | `sector_performance` | `/stable/sector-performance-snapshot` | Get sector performance data |
