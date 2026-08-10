@@ -20,7 +20,7 @@ repos:
   # assert-with-message wrapping, so running both fights over the same lines.
   # Keep this rev in sync with the ruff pin in uv.lock.
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.1
+    rev: v0.16.2
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
