@@ -136,28 +136,137 @@ else
 fi
 unset CONFLICT_GUIDANCE
 
-# API failure path: replace gh with always-fail
+# API failure path: always-fail 500 exhausts transient retries (#217)
 cat >"$tmpdir/gh" <<'EOF'
 #!/usr/bin/env bash
 echo "HTTP 500: boom" >&2
 exit 1
 EOF
 chmod +x "$tmpdir/gh"
-export MAX_ATTEMPTS=2
+export MAX_ATTEMPTS=2 API_MAX_RETRIES=2 SLEEP_SECONDS=0
 : >"$GITHUB_OUTPUT"
 : >"$GITHUB_STEP_SUMMARY"
 set +e
 out=$(bash "$CHECK" 2>&1)
 code=$?
 set -e
-if [ "$code" -ne 0 ] && echo "$out" | grep -q 'gh api failed'; then
-  echo "PASS: gh-api-error (exit $code, classified message)"
+if [ "$code" -ne 0 ] && echo "$out" | grep -q 'gh api failed' \
+  && echo "$out" | grep -q 'transient errors exhausted'; then
+  echo "PASS: gh-api-error-transient-exhausted (exit $code)"
   pass=$((pass + 1))
 else
-  echo "FAIL: gh-api-error"
+  echo "FAIL: gh-api-error-transient-exhausted"
   indent_out "$out"
   fail=$((fail + 1))
 fi
+
+# Permanent 401 fails immediately (no "retrying in" / exhausted wording)
+cat >"$tmpdir/gh" <<'EOF'
+#!/usr/bin/env bash
+echo "HTTP 401: Bad credentials" >&2
+exit 1
+EOF
+chmod +x "$tmpdir/gh"
+export API_MAX_RETRIES=3 SLEEP_SECONDS=0
+: >"$GITHUB_OUTPUT"
+: >"$GITHUB_STEP_SUMMARY"
+set +e
+out=$(bash "$CHECK" 2>&1)
+code=$?
+set -e
+if [ "$code" -ne 0 ] && echo "$out" | grep -q 'permanent error' \
+  && ! echo "$out" | grep -q 'retrying in'; then
+  echo "PASS: gh-api-error-permanent-no-retry (exit $code)"
+  pass=$((pass + 1))
+else
+  echo "FAIL: gh-api-error-permanent-no-retry"
+  indent_out "$out"
+  fail=$((fail + 1))
+fi
+
+# Flaky then success: first call 503, second returns true\tclean (#217)
+cat >"$tmpdir/gh" <<'EOF'
+#!/usr/bin/env bash
+# First invocation fails transiently; subsequent read mergeable\tmstate lines.
+counter_file="${MOCK_API_COUNTER:?}"
+n=$(cat "$counter_file" 2>/dev/null || echo 0)
+n=$((n + 1))
+echo "$n" >"$counter_file"
+if [ "$n" -eq 1 ]; then
+  echo "HTTP 503: service unavailable" >&2
+  exit 1
+fi
+state_file="${MOCK_STATE_FILE:?}"
+if [ ! -s "$state_file" ]; then
+  echo "mock gh: state file empty" >&2
+  exit 1
+fi
+line=$(head -n1 "$state_file")
+tail -n +2 "$state_file" >"${state_file}.tmp"
+mv "${state_file}.tmp" "$state_file"
+printf '%s\n' "$line"
+EOF
+chmod +x "$tmpdir/gh"
+export MOCK_API_COUNTER="$tmpdir/api_counter"
+echo 0 >"$MOCK_API_COUNTER"
+printf '%s\n' $'true\tclean' >"$MOCK_STATE_FILE"
+export MAX_ATTEMPTS=2 API_MAX_RETRIES=3 SLEEP_SECONDS=0
+: >"$GITHUB_OUTPUT"
+: >"$GITHUB_STEP_SUMMARY"
+set +e
+out=$(bash "$CHECK" 2>&1)
+code=$?
+set -e
+if [ "$code" -eq 0 ] && echo "$out" | grep -q 'Transient gh api error'; then
+  echo "PASS: gh-api-flaky-then-success (exit $code)"
+  pass=$((pass + 1))
+else
+  echo "FAIL: gh-api-flaky-then-success"
+  indent_out "$out"
+  fail=$((fail + 1))
+fi
+
+# Secondary rate limit is HTTP 403-shaped but must retry (#217 follow-up)
+cat >"$tmpdir/gh" <<'EOF'
+#!/usr/bin/env bash
+counter_file="${MOCK_API_COUNTER:?}"
+n=$(cat "$counter_file" 2>/dev/null || echo 0)
+n=$((n + 1))
+echo "$n" >"$counter_file"
+if [ "$n" -eq 1 ]; then
+  echo "HTTP 403: You have exceeded a secondary rate limit" >&2
+  exit 1
+fi
+state_file="${MOCK_STATE_FILE:?}"
+if [ ! -s "$state_file" ]; then
+  echo "mock gh: state file empty" >&2
+  exit 1
+fi
+line=$(head -n1 "$state_file")
+tail -n +2 "$state_file" >"${state_file}.tmp"
+mv "${state_file}.tmp" "$state_file"
+printf '%s\n' "$line"
+EOF
+chmod +x "$tmpdir/gh"
+echo 0 >"$MOCK_API_COUNTER"
+printf '%s\n' $'true\tclean' >"$MOCK_STATE_FILE"
+export MAX_ATTEMPTS=2 API_MAX_RETRIES=3 SLEEP_SECONDS=0
+: >"$GITHUB_OUTPUT"
+: >"$GITHUB_STEP_SUMMARY"
+set +e
+out=$(bash "$CHECK" 2>&1)
+code=$?
+set -e
+if [ "$code" -eq 0 ] && echo "$out" | grep -q 'Transient gh api error'; then
+  echo "PASS: gh-api-secondary-rate-limit-then-success (exit $code)"
+  pass=$((pass + 1))
+else
+  echo "FAIL: gh-api-secondary-rate-limit-then-success"
+  indent_out "$out"
+  fail=$((fail + 1))
+fi
+unset MOCK_API_COUNTER
+export API_MAX_RETRIES=3
 
 echo ""
 echo "Results: $pass passed, $fail failed"

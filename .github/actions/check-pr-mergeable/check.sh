@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Fail-closed REST mergeability poll for a single PR.
-# Invoked by .github/actions/check-pr-mergeable (see #202, #207, #210, #216).
+# Invoked by .github/actions/check-pr-mergeable (see #202, #207, #210, #216, #217).
 #
 # Required env:
 #   GH_TOKEN, PR_NUMBER, REPO
 # Optional env:
 #   MAX_ATTEMPTS (default 6), SLEEP_SECONDS (default 5)
+#   API_MAX_RETRIES (default 3) — bounded retries for transient gh api failures
 #   CONFLICT_GUIDANCE — extra operator lines on dirty (workflow-specific)
 #   GITHUB_OUTPUT, GITHUB_STEP_SUMMARY (set by Actions)
 set -euo pipefail
@@ -14,6 +15,7 @@ PR_NUMBER="${PR_NUMBER:?PR_NUMBER is required}"
 REPO="${REPO:?REPO is required}"
 MAX_ATTEMPTS="${MAX_ATTEMPTS:-6}"
 SLEEP_SECONDS="${SLEEP_SECONDS:-5}"
+API_MAX_RETRIES="${API_MAX_RETRIES:-3}"
 CONFLICT_GUIDANCE="${CONFLICT_GUIDANCE:-}"
 
 if ! [[ "$MAX_ATTEMPTS" =~ ^[1-9][0-9]*$ ]]; then
@@ -22,6 +24,10 @@ if ! [[ "$MAX_ATTEMPTS" =~ ^[1-9][0-9]*$ ]]; then
 fi
 if ! [[ "$SLEEP_SECONDS" =~ ^[0-9]+$ ]]; then
   echo "::error::sleep-seconds must be a non-negative integer (got: ${SLEEP_SECONDS})"
+  exit 1
+fi
+if ! [[ "$API_MAX_RETRIES" =~ ^[1-9][0-9]*$ ]]; then
+  echo "::error::api-max-retries must be a positive integer (got: ${API_MAX_RETRIES})"
   exit 1
 fi
 
@@ -52,6 +58,100 @@ write_summary() {
   fi
 }
 
+# Permanent API failures must fail closed immediately (no retry storm on bad
+# token / missing PR). Transient 5xx / rate-limit / transport blips may retry
+# within API_MAX_RETRIES (#217). Success criteria still require mergeable=true.
+#
+# Exhausting API_MAX_RETRIES aborts the whole step (does not consume further
+# MAX_ATTEMPTS unknown-poll budget) — fail closed when we cannot talk to the API.
+is_transient_gh_error() {
+  local err="$1"
+  # Secondary rate limits often surface as HTTP 403 with this wording (#217).
+  if echo "$err" | grep -Eqi 'secondary rate limit|exceeded a secondary rate'; then
+    return 0
+  fi
+  # gh prints "HTTP NNN:" for API status errors; match common transient codes.
+  if echo "$err" | grep -Eqi 'HTTP[[:space:]]+(408|425|429|500|502|503|504)\b'; then
+    return 0
+  fi
+  # Transport / client blips (no durable authorization or not-found signal).
+  if echo "$err" | grep -Eqi \
+    'connection (reset|refused|timed out)|tls handshake|i/o timeout|temporary failure|network is unreachable|EOF|broken pipe|dial tcp'; then
+    return 0
+  fi
+  return 1
+}
+
+is_permanent_gh_error() {
+  local err="$1"
+  # Secondary rate limit is 403-shaped but transient — not permanent.
+  if echo "$err" | grep -Eqi 'secondary rate limit|exceeded a secondary rate'; then
+    return 1
+  fi
+  if echo "$err" | grep -Eqi 'HTTP[[:space:]]+(401|403|404|410|422)\b'; then
+    return 0
+  fi
+  return 1
+}
+
+# Fetch mergeable\tmstate into STATE. Retries only transient gh failures.
+# Returns 0 on success; 1 after permanent error or exhausted transient retries.
+# On failure the caller must exit the step (API exhaustion aborts the check).
+fetch_state() {
+  local api_try=1
+  local gh_err_file gh_err backoff
+  while [ "$api_try" -le "$API_MAX_RETRIES" ]; do
+    gh_err_file=$(mktemp)
+    # Explicit tostring keeps operators/logs/mocks 1:1 with JSON null (#216).
+    # mergeable_state null → "unknown" so we stay on the unresolved retry path
+    # (fail closed). A literal "null" token would otherwise hit *) and could go
+    # green when mergeable=true (#216 follow-up).
+    if STATE=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" \
+      --jq '[(.mergeable | tostring), ((.mergeable_state // "unknown") | tostring)] | @tsv' \
+      2>"$gh_err_file"); then
+      rm -f "$gh_err_file"
+      return 0
+    fi
+    gh_err=$(cat "$gh_err_file" 2>/dev/null || true)
+    rm -f "$gh_err_file"
+
+    if is_permanent_gh_error "$gh_err"; then
+      echo "::error::gh api failed for PR #${PR_NUMBER} in ${REPO} (permanent error; not retrying)."
+      if [ -n "$gh_err" ]; then
+        echo "$gh_err"
+      fi
+      return 1
+    fi
+
+    if ! is_transient_gh_error "$gh_err"; then
+      # Unknown shape: fail closed without retrying (safer than infinite hope).
+      echo "::error::gh api failed for PR #${PR_NUMBER} in ${REPO} (cannot evaluate mergeability)."
+      if [ -n "$gh_err" ]; then
+        echo "$gh_err"
+      fi
+      return 1
+    fi
+
+    if [ "$api_try" -eq "$API_MAX_RETRIES" ]; then
+      echo "::error::gh api failed for PR #${PR_NUMBER} in ${REPO} after ${API_MAX_RETRIES} attempt(s) (transient errors exhausted)."
+      if [ -n "$gh_err" ]; then
+        echo "$gh_err"
+      fi
+      return 1
+    fi
+
+    # Bounded linear backoff: SLEEP_SECONDS * attempt (0 when sleep is 0 for tests).
+    backoff=$((SLEEP_SECONDS * api_try))
+    echo "Transient gh api error (attempt ${api_try}/${API_MAX_RETRIES}); retrying in ${backoff}s..."
+    if [ -n "$gh_err" ]; then
+      echo "$gh_err"
+    fi
+    sleep "$backoff"
+    api_try=$((api_try + 1))
+  done
+  return 1
+}
+
 # GitHub computes mergeability asynchronously; unknown is common for a few
 # seconds after open/sync. Retry before deciding.
 attempt=1
@@ -59,28 +159,11 @@ while [ "$attempt" -le "$MAX_ATTEMPTS" ]; do
   # mergeable: true | false | null  (REST JSON; extracted via tostring so JSON
   # null is the literal token "null", not an empty TSV field — #216)
   # mergeable_state: clean | dirty | unstable | blocked | unknown | ...
-  # Capture API failures explicitly so operators see "gh api failed" rather
-  # than a bare non-zero exit with no step summary (#210 follow-up hardening).
-  gh_err_file=$(mktemp)
-  # Explicit tostring keeps operators/logs/mocks 1:1 with JSON null (#216).
-  # Bare @tsv encodes JSON null as an empty field, which is easy to misread.
-  # mergeable_state null → "unknown" so we stay on the unresolved retry path
-  # (fail closed). A literal "null" token would otherwise hit *) and could go
-  # green when mergeable=true (#216 follow-up).
-  if ! STATE=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" \
-    --jq '[(.mergeable | tostring), ((.mergeable_state // "unknown") | tostring)] | @tsv' \
-    2>"$gh_err_file"); then
-    gh_err=$(cat "$gh_err_file" 2>/dev/null || true)
-    rm -f "$gh_err_file"
-    echo "::error::gh api failed for PR #${PR_NUMBER} in ${REPO} (cannot evaluate mergeability)."
-    if [ -n "$gh_err" ]; then
-      echo "$gh_err"
-    fi
+  if ! fetch_state; then
     write_outputs "null" "api_error"
     write_summary "failed (gh api error)" "null" "api_error"
     exit 1
   fi
-  rm -f "$gh_err_file"
   MERGEABLE=$(echo "$STATE" | cut -f1)
   MSTATE=$(echo "$STATE" | cut -f2)
   echo "Attempt ${attempt}/${MAX_ATTEMPTS}: PR #${PR_NUMBER} mergeable=${MERGEABLE} mergeable_state=${MSTATE}"
