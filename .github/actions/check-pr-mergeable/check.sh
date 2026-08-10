@@ -6,16 +6,25 @@
 #   GH_TOKEN, PR_NUMBER, REPO
 # Optional env:
 #   MAX_ATTEMPTS (default 6), SLEEP_SECONDS (default 5)
-#   API_MAX_RETRIES (default 3) — bounded retries for transient gh api failures
+#   API_MAX_RETRIES (default 3) — max gh api attempts per poll for transient failures
 #   CONFLICT_GUIDANCE — extra operator lines on dirty (workflow-specific)
 #   GITHUB_OUTPUT, GITHUB_STEP_SUMMARY (set by Actions)
 set -euo pipefail
+
+ACTION_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Single shared jq program used by check.sh and the mock matrix (#223).
+MERGEABLE_JQ="${ACTION_DIR}/mergeable.jq"
+if [ ! -f "$MERGEABLE_JQ" ]; then
+  echo "::error::missing shared jq extraction program: ${MERGEABLE_JQ}"
+  exit 1
+fi
+MERGEABLE_JQ_PROG="$(cat "$MERGEABLE_JQ")"
 
 PR_NUMBER="${PR_NUMBER:?PR_NUMBER is required}"
 REPO="${REPO:?REPO is required}"
 MAX_ATTEMPTS="${MAX_ATTEMPTS:-6}"
 SLEEP_SECONDS="${SLEEP_SECONDS:-5}"
-API_MAX_RETRIES="${API_MAX_RETRIES:-3}"
+API_MAX_RETRIES="${API_MAX_RETRIES:-3}"  # max gh api attempts per poll (not "retries after first")
 CONFLICT_GUIDANCE="${CONFLICT_GUIDANCE:-}"
 
 if ! [[ "$MAX_ATTEMPTS" =~ ^[1-9][0-9]*$ ]]; then
@@ -64,10 +73,20 @@ write_summary() {
 #
 # Exhausting API_MAX_RETRIES aborts the whole step (does not consume further
 # MAX_ATTEMPTS unknown-poll budget) — fail closed when we cannot talk to the API.
+is_rate_limit_gh_error() {
+  local err="$1"
+  # Primary + secondary rate limits (often HTTP 403 with rate-limit wording).
+  # Real authz 403s do not include these phrases and stay permanent (#223).
+  if echo "$err" | grep -Eqi \
+    'secondary rate limit|exceeded a secondary rate|API rate limit exceeded|rate limit exceeded|x-ratelimit-remaining'; then
+    return 0
+  fi
+  return 1
+}
+
 is_transient_gh_error() {
   local err="$1"
-  # Secondary rate limits often surface as HTTP 403 with this wording (#217).
-  if echo "$err" | grep -Eqi 'secondary rate limit|exceeded a secondary rate'; then
+  if is_rate_limit_gh_error "$err"; then
     return 0
   fi
   # gh prints "HTTP NNN:" for API status errors; match common transient codes.
@@ -84,8 +103,8 @@ is_transient_gh_error() {
 
 is_permanent_gh_error() {
   local err="$1"
-  # Secondary rate limit is 403-shaped but transient — not permanent.
-  if echo "$err" | grep -Eqi 'secondary rate limit|exceeded a secondary rate'; then
+  # Rate limits are 403-shaped but transient — not permanent (#217 / #223).
+  if is_rate_limit_gh_error "$err"; then
     return 1
   fi
   if echo "$err" | grep -Eqi 'HTTP[[:space:]]+(401|403|404|410|422)\b'; then
@@ -107,7 +126,7 @@ fetch_state() {
     # (fail closed). A literal "null" token would otherwise hit *) and could go
     # green when mergeable=true (#216 follow-up).
     if STATE=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" \
-      --jq '[(.mergeable | tostring), ((.mergeable_state // "unknown") | tostring)] | @tsv' \
+      --jq "$MERGEABLE_JQ_PROG" \
       2>"$gh_err_file"); then
       rm -f "$gh_err_file"
       return 0
