@@ -65,6 +65,17 @@ MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
 `Guard-Main-Origin` also fails the PR when `mergeable_state=dirty`, so a
 conflicting release PR shows a red X instead of a hole in the checks list.
 
+### Related automation (not the release PR itself)
+
+- **Dev Release** (`dev-release.yml`) publishes a unique TestPyPI build on
+  every push to `dev` (`X.Y.Z.dev{run_id}{run_attempt}`). Re-runs never
+  silently re-serve a previous wheel.
+- **Release** (`release.yml`) tags, creates the GitHub Release, and publishes
+  to PyPI after a labeled `dev → main` merge. Existing tags / releases / PyPI
+  versions fail the job instead of being skipped.
+- **Claude Code Review** is advisory: missing or expired OAuth tokens do not
+  fail the PR. Required gates live in `ci.yml` / the branch rulesets.
+
 ### GitHub Actions Workflow (on merge to main)
 
 1. **PR Merge**: When a labeled release PR is merged to `main`

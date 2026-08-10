@@ -48,7 +48,7 @@ jobs:
           uv tool install nox
 
           # Ensure we're in the repo root
-          cd $GITHUB_WORKSPACE
+          cd "$GITHUB_WORKSPACE"
 
           # Run tests for each feature group with correct nox syntax
           echo "Running tests for Python ${{ matrix.python }}"
@@ -110,39 +110,47 @@ jobs:
       - name: 🔐 Install detect-secrets
         run: pip install detect-secrets
 
-      - name: 🔍 Scan cassettes for secrets  # pragma: allowlist secret
+      # pragma: allowlist secret — step scans VCR cassettes for leaked API keys
+      - name: 🔍 Scan cassettes for leaked credentials
         run: |
+          set -euo pipefail
           CASSETTE_DIR="tests/integration/vcr_cassettes"
 
           # Skip scan when no cassettes are checked in
           if [ ! -d "$CASSETTE_DIR" ] || [ -z "$(find "$CASSETTE_DIR" -name '*.yaml' 2>/dev/null)" ]; then
-            echo "No cassette YAML files found — skipping secret scan."
+            echo "No cassette YAML files found — skipping credential scan."
             exit 0
           fi
 
-          # Scan cassette YAML files, excluding Python test files
+          # Scan cassette YAML only. Cassettes must never contain live API keys;
+          # any finding is a hard failure. (Previously --baseline was passed and
+          # the Python step claimed to filter "NEW" findings, but it never
+          # compared hashes against the baseline — it failed on any result.
+          # Baseline is for the rest of the tree via pre-commit; cassettes are
+          # zero-tolerance.)
           detect-secrets scan \
             "$CASSETTE_DIR" \
             --exclude-files '.*\.py$' \
-            --baseline .secrets.baseline \
             > /tmp/scan-results.json
 
-          # Compare against baseline — fail only on NEW findings
-          NEW_SECRETS=$(python3 -c "
+          python3 - <<'PY'
           import json, sys
-          with open('/tmp/scan-results.json') as f:
+          with open("/tmp/scan-results.json") as f:
               results = json.load(f)
-          findings = results.get('results', {})
+          findings = results.get("results", {})
           total = sum(len(v) for v in findings.values())
           if total > 0:
-              for path, secrets in findings.items():
-                  for s in secrets:
-                      line = s.get('line_number', '?')
-                      stype = s.get('type', 'unknown')
-                      print(f'::error file={path},line={line}::Potential secret ({stype}) found in cassette')
+              for path, items in findings.items():
+                  for item in items:
+                      line = item.get("line_number", "?")
+                      stype = item.get("type", "unknown")
+                      print(
+                          f"::error file={path},line={line}::"
+                          f"Potential credential ({stype}) found in cassette"
+                      )
               sys.exit(1)
-          print('No new secrets detected in cassettes')
-          ")
+          print("No credentials detected in cassettes")
+          PY
 
   test-matrix-expected:
     name: Test-MatrixExpected

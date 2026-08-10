@@ -1,5 +1,13 @@
 name: Dev Release
 
+# Publishes a TestPyPI build on every push to `dev`. Distinct from
+# Publish-to-TestPyPI (which only runs on labeled release PRs into main):
+# this is a continuous "what's on the tip of dev" channel.
+#
+# Version is unique per workflow run so re-runs and force-pushes cannot
+# silently re-advertise a stale wheel via skip-existing (same failure
+# shape as #204).
+
 on:
   push:
     branches:
@@ -48,7 +56,7 @@ jobs:
 
           if [ "$PR_JSON" = "[]" ]; then
             echo "No open PR from dev to main found"
-            echo "RELEASE_TYPE=minor" >> $GITHUB_OUTPUT
+            echo "RELEASE_TYPE=minor" >> "$GITHUB_OUTPUT"
           else
             PR_NUMBER=$(echo "$PR_JSON" | jq -r '.[0].number')
             LABELS=$(echo "$PR_JSON" | jq -r '.[0].labels[].name' 2>/dev/null || echo "")
@@ -56,16 +64,16 @@ jobs:
             echo "Found PR #$PR_NUMBER with labels: $LABELS"
 
             if echo "$LABELS" | grep -q "release:major"; then
-              echo "RELEASE_TYPE=major" >> $GITHUB_OUTPUT
+              echo "RELEASE_TYPE=major" >> "$GITHUB_OUTPUT"
               echo "🏷️ Release type: MAJOR"
             elif echo "$LABELS" | grep -q "release:minor"; then
-              echo "RELEASE_TYPE=minor" >> $GITHUB_OUTPUT
+              echo "RELEASE_TYPE=minor" >> "$GITHUB_OUTPUT"
               echo "🏷️ Release type: MINOR"
             elif echo "$LABELS" | grep -q "release:patch"; then
-              echo "RELEASE_TYPE=patch" >> $GITHUB_OUTPUT
+              echo "RELEASE_TYPE=patch" >> "$GITHUB_OUTPUT"
               echo "🏷️ Release type: PATCH"
             else
-              echo "RELEASE_TYPE=minor" >> $GITHUB_OUTPUT
+              echo "RELEASE_TYPE=minor" >> "$GITHUB_OUTPUT"
               echo "🏷️ Release type: minor (default)"
             fi
           fi
@@ -77,29 +85,40 @@ jobs:
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           CURRENT_VERSION=${LATEST_TAG#v}
 
-          # Parse version components
+          # Parse version components (strip any pre-release suffix)
+          CURRENT_VERSION=${CURRENT_VERSION%%-*}
+          CURRENT_VERSION=${CURRENT_VERSION%%+*}
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+          MAJOR=${MAJOR:-0}
+          MINOR=${MINOR:-0}
+          PATCH=${PATCH:-0}
 
-          # Create dev version with commit count since last tag
-          COMMIT_COUNT=$(git rev-list --count ${LATEST_TAG}..HEAD 2>/dev/null || echo "1")
-
-          # Calculate version based on release type from PR labels
+          # Calculate base version based on release type from PR labels
           RELEASE_TYPE="${{ steps.pr_labels.outputs.RELEASE_TYPE }}"
 
           if [ "$RELEASE_TYPE" = "major" ]; then
-            DEV_VERSION="$((MAJOR + 1)).0.0.dev${COMMIT_COUNT}"
+            BASE_VERSION="$((MAJOR + 1)).0.0"
           elif [ "$RELEASE_TYPE" = "patch" ]; then
-            DEV_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1)).dev${COMMIT_COUNT}"
+            BASE_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
           else
             # Default to minor
-            DEV_VERSION="${MAJOR}.$((MINOR + 1)).0.dev${COMMIT_COUNT}"
+            BASE_VERSION="${MAJOR}.$((MINOR + 1)).0"
           fi
 
+          # Unique per run *and* re-run attempt. A version keyed only on
+          # commit-count-since-tag collides on workflow re-runs and on
+          # force-pushes that preserve commit count; with skip-existing
+          # that advertised a stale wheel as success (#204 same shape).
+          DEV_VERSION="${BASE_VERSION}.dev${{ github.run_id }}${{ github.run_attempt }}"
           DEV_TAG="v${DEV_VERSION}"
+          HEAD_SHORT=$(git rev-parse --short HEAD)
 
-          echo "DEV_VERSION=$DEV_VERSION" >> $GITHUB_OUTPUT
-          echo "DEV_TAG=$DEV_TAG" >> $GITHUB_OUTPUT
-          echo "📦 Dev version: $DEV_VERSION (based on $RELEASE_TYPE release)"
+          {
+            echo "DEV_VERSION=$DEV_VERSION"
+            echo "DEV_TAG=$DEV_TAG"
+            echo "HEAD_SHORT=$HEAD_SHORT"
+          } >> "$GITHUB_OUTPUT"
+          echo "📦 Dev version: $DEV_VERSION (based on $RELEASE_TYPE release, commit $HEAD_SHORT)"
 
           # Create a temporary tag for hatch-vcs
           git config user.name github-actions
@@ -124,23 +143,25 @@ jobs:
           fi
 
       - name: 🧪  Upload to Test PyPI
+        # skip-existing OFF: unique version means a collision is a real bug
+        # and must fail, not silently succeed with a stale artifact.
         uses: pypa/gh-action-pypi-publish@v1.14.2
         with:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: dist
-          skip-existing: true
+          skip-existing: false
           verbose: true
 
       - name: 📝  Create summary
         run: |
-          echo "## 🧪 Dev Release Published" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** \`${{ steps.version.outputs.DEV_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Installation" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "pip install -i https://test.pypi.org/simple/ fmp-data==${{ steps.version.outputs.DEV_VERSION }}" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Changes" >> $GITHUB_STEP_SUMMARY
-          echo "Published from commit: \`$(git rev-parse --short HEAD)\`" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## 🧪 Dev Release Published"
+            echo ""
+            echo "**Version:** \`${{ steps.version.outputs.DEV_VERSION }}\`"
+            echo "**Commit:** \`${{ steps.version.outputs.HEAD_SHORT }}\`"
+            echo ""
+            echo "### Installation"
+            echo "\`\`\`bash"
+            echo "pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ fmp-data==${{ steps.version.outputs.DEV_VERSION }}"
+            echo "\`\`\`"
+          } >> "$GITHUB_STEP_SUMMARY"
