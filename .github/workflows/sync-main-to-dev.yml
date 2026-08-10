@@ -7,7 +7,9 @@ name: Sync-Main-to-Dev
 # See #202.
 #
 # Token: prefer secrets.GH_TOKEN (repo PAT) for push + gh pr create so the
-# opened sync PR re-triggers pull_request CI (#206).
+# opened sync PR re-triggers pull_request CI (#206). After open/update, enable
+# auto-merge with a *merge commit* (never squash) so green Test-Matrix lands
+# the PR without a human babysitting.
 
 on:
   push:
@@ -99,6 +101,24 @@ jobs:
             fi
           }
 
+          # Enable auto-merge with a merge commit only. Squash would re-break
+          # ancestry (the whole reason this PR exists). Failures here are
+          # warnings: the PR is still open for a human if auto-merge is
+          # unavailable (repo setting, permissions, or checks not yet queued).
+          enable_auto_merge() {
+            local pr_number="$1"
+            if [ -z "$pr_number" ]; then
+              echo "::warning::No sync PR number; cannot enable auto-merge."
+              return 0
+            fi
+            if gh pr merge "$pr_number" --auto --merge; then
+              echo "Auto-merge (merge commit) enabled on #${pr_number}."
+            else
+              echo "::warning::Could not enable auto-merge on #${pr_number}."
+              echo "Merge it manually with a merge commit (not squash) once checks are green."
+            fi
+          }
+
           open_or_update_pr() {
             local title="$1"
             local body_file="$2"
@@ -109,11 +129,22 @@ jobs:
             if [ -n "$existing" ]; then
               echo "Sync PR #${existing} already open; branch updated."
               gh pr edit "$existing" --title "$title" --body-file "$body_file"
+              enable_auto_merge "$existing"
             else
-              gh pr create --base dev --head sync/main-to-dev \
+              # gh pr create prints a URL; resolve the number for auto-merge.
+              local created_url created
+              created_url=$(gh pr create --base dev --head sync/main-to-dev \
                 --title "$title" \
                 --body-file "$body_file" \
-                --label automated --label sync
+                --label automated --label sync)
+              created=$(gh pr list --base dev --head sync/main-to-dev --state open \
+                --json number --jq '.[0].number // empty')
+              if [ -z "$created" ]; then
+                echo "::error::Opened a sync PR (${created_url:-no url}) but could not resolve its number."
+                exit 1
+              fi
+              echo "Opened sync PR #${created}: ${created_url}"
+              enable_auto_merge "$created"
             fi
           }
 
@@ -124,23 +155,28 @@ jobs:
             git merge -s ours origin/main \
               -m "chore: merge main into dev after release (history sync)"
 
+            # Body must stay indented for YAML; strip the common prefix after.
             cat > /tmp/sync-pr-body.md <<'EOF'
-          ## Automatic Sync
+            ## Automatic Sync
 
-          `main` was not an ancestor of `dev`. This PR restores reachability so
-          the next `dev → main` release PR stays MERGEABLE and gets full CI.
+            `main` was not an ancestor of `dev`. This PR restores reachability so
+            the next `dev → main` release PR stays MERGEABLE and gets full CI.
 
-          ### Why this is not a content sync
-          After a squash-merge release, trees are usually identical but histories
-          diverge. Comparing content (`git diff`) misses that; comparing
-          reachability (`git merge-base --is-ancestor`) catches it at the right
-          moment — right after the release — instead of as 20+ conflicts on the
-          next release PR. See #202.
+            ### Why this is not a content sync
+            After a squash-merge release, trees are usually identical but histories
+            diverge. Comparing content (`git diff`) misses that; comparing
+            reachability (`git merge-base --is-ancestor`) catches it at the right
+            moment — right after the release — instead of as 20+ conflicts on the
+            next release PR. See #202.
 
-          ### Action required
-          - Review (content may be empty for a pure history merge)
-          - Merge into `dev` (a merge commit keeps the ancestry link; squash would re-create the problem)
-          EOF
+            ### Merge policy
+            - Auto-merge is enabled with a **merge commit** when required checks
+              (Test-Matrix) are green. Do **not** squash — that re-creates the
+              ancestry break this PR fixes.
+            - Content is usually empty for a pure history merge; review only if
+              the diff is non-empty (unexpected).
+            EOF
+            sed -i 's/^            //' /tmp/sync-pr-body.md
 
             open_or_update_pr "Sync: main → dev (history reachability)" /tmp/sync-pr-body.md
           else
@@ -148,16 +184,19 @@ jobs:
             if git merge origin/main \
               -m "chore: merge main into dev (sync after release/hotfix)"; then
               cat > /tmp/sync-pr-body.md <<'EOF'
-          ## Automatic Sync
+              ## Automatic Sync
 
-          `main` was not an ancestor of `dev` and carried content `dev` did not
-          have (hotfix or direct-to-main commit). This PR merges that content
-          back so histories stay connected. See #202.
+              `main` was not an ancestor of `dev` and carried content `dev` did not
+              have (hotfix or direct-to-main commit). This PR merges that content
+              back so histories stay connected. See #202.
 
-          ### Action required
-          - Review the content delta
-          - Merge into `dev` (prefer a merge commit so the ancestry link is kept)
-          EOF
+              ### Merge policy
+              - Review the content delta before it lands (auto-merge waits for
+                Test-Matrix).
+              - Auto-merge uses a **merge commit** only — do not squash, or the
+                ancestry link is lost again.
+              EOF
+              sed -i 's/^              //' /tmp/sync-pr-body.md
               open_or_update_pr "Sync: main → dev" /tmp/sync-pr-body.md
             else
               # Do NOT force-push origin/dev over sync/main-to-dev or open an
