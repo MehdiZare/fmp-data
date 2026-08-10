@@ -65,10 +65,12 @@ MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
    content equality. After a squash-merge the trees match but the histories
    have diverged; the workflow opens a PR that records a history-only merge
    (`merge -s ours`) so the *next* release PR stays MERGEABLE and gets full
-   CI (#202). **Merge that sync PR with a merge commit** — squashing it would
-   recreate the divergence. Concurrent main pushes do not cancel an in-flight
-   sync; human WIP on `sync/main-to-dev` is not force-pushed away; merge
-   conflicts open a tracking issue (#208).
+   CI (#202). It then enables **auto-merge with a merge commit** so the PR
+   lands when Test-Matrix is green — no human babysitting on the happy path.
+   **Never squash** that PR (it would recreate the divergence). Concurrent
+   main pushes do not cancel an in-flight sync; human WIP on
+   `sync/main-to-dev` is not force-pushed away; merge conflicts open a
+   tracking issue (#208).
 
 ### Why three workflows keep each other honest
 
@@ -132,9 +134,20 @@ the overlay in a hotfix-shaped PR.
 
 | Secret | Purpose |
 |---|---|
-| `GH_TOKEN` | Fine-scoped PAT (or App token) for Release-PR / Sync-Main-to-Dev `gh pr create` and automation branch pushes so `pull_request` CI runs on open (#206). Not the same as the automatic `GITHUB_TOKEN`. |
+| `GH_TOKEN` | Fine-scoped PAT (or App token) for Release-PR / Sync-Main-to-Dev `gh pr create`, automation branch pushes, and sync-PR auto-merge so `pull_request` CI runs on open (#206) and the history-sync PR can land without a babysitter. Not the same as the automatic `GITHUB_TOKEN`. |
 | `GITHUB_TOKEN` | Automatic job token; used as fallback and for jobs that must not re-trigger workflows. |
 | OIDC / PyPI trusted publishing | Real and Test PyPI uploads (no long-lived PyPI token required when configured). |
+
+### Branch protection notes (sync PR)
+
+- **Protect Dev** requires the Test-Matrix Python jobs (`tests (3.10)` …
+  `tests (3.14)`), blocks force-pushes and branch deletion, and allows
+  merge/squash/rebase methods. Sync automation always requests a **merge
+  commit** via `gh pr merge --auto --merge`.
+- **Signed commits are not required on `dev`.** Requiring verified signatures
+  forced every automation PR (and most human ones) through admin bypass,
+  including the post-release history-sync PR. Quality gates remain the
+  status checks; re-enabling signatures needs a signing key in CI first.
 
 ### GitHub Actions Workflow (on merge to main)
 

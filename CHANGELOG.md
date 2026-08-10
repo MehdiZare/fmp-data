@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- **CI: post-release main→dev sync auto-merges and no longer needs admin bypass.**
+  Sync-Main-to-Dev enables `gh pr merge --auto --merge` on the history-reachability
+  PR so green Test-Matrix lands it without a human. Squash is never requested
+  (it would re-break ancestry). Protect Dev dropped `required_signatures`, which
+  had made every unsigned automation commit need `--admin` despite green checks;
+  required Test-Matrix jobs, no force-push, and no branch deletion remain.
+
 ## [2.6.0] - 2026-08-10
 
 Released from `dev`. A correctness-and-contracts release: the LangChain and MCP
