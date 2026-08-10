@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **CI: harden check-pr-mergeable mock matrix** (#215). Matrix asserts `GITHUB_OUTPUT` / step summary on success and key failure paths; adds `true\tunknown` exhausted, `true\tdirty` short-circuit, invalid `SLEEP_SECONDS` / `API_MAX_RETRIES`, unknown-shape API errors; locks expected PASS count so silent case drops fail CI.
 - **CI: retry transient gh api failures in check-pr-mergeable** (#217). Bounded `api-max-retries` (default 3) with linear backoff for HTTP 408/425/429/5xx and transport blips; permanent 401/403/404/410/422 fail immediately. Does not change the `mergeable=true` success criteria. Mock matrix covers flaky-then-success and permanent no-retry.
 - **CI: explicit mergeable extraction (no `@tsv` null→empty)** (#216). `check-pr-mergeable` now extracts REST `.mergeable` with `jq tostring` so JSON `null` is the literal token `null` in logs, outputs, and mocks (bare `@tsv` encoded null as an empty field). Fail-closed contract unchanged: green only when `mergeable=true`.
 - **CI: document Guard base-pin lag for mergeability contract** (#218). Guard-Main-Origin overlays `.github/actions/check-pr-mergeable` from `origin/<base>` when present; contract tightenings therefore apply to Guard only after they land on the PR base (usually `main`), while Release-PR on `dev` picks them up immediately. Documented in `docs/contributing/releasing.md` and `action.yml` so operators can explain Guard vs Release-PR mismatches after a `dev`-only contract change.
