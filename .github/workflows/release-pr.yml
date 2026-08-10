@@ -36,6 +36,7 @@ jobs:
           ref: dev
 
       - name: Create or re-validate the release PR
+        id: plan
         env:
           # secrets.GH_TOKEN = workflow-triggering PAT (preferred).
           # secrets.GITHUB_TOKEN = automatic job token (fallback; CI will not
@@ -72,58 +73,6 @@ jobs:
             fi
           }
 
-          # REST mergeability (true|false|null + clean|dirty|unknown|...) with
-          # retries — same fail-closed contract as Guard-Main-Origin. GraphQL
-          # mergeStateStatus is UPPERCASE (DIRTY); a single snapshot can also
-          # be UNKNOWN right after open/sync. Do not paint green on unknown.
-          # See #202 / #207.
-          check_pr_mergeability() {
-            local num="$1"
-            local repo="${GITHUB_REPOSITORY}"
-            local mergeable="" mstate=""
-
-            for attempt in 1 2 3 4 5 6; do
-              # mergeable: true | false | null
-              # mergeable_state: clean | dirty | unstable | blocked | unknown | ...
-              STATE=$(gh api "repos/${repo}/pulls/${num}" \
-                --jq '[.mergeable, .mergeable_state] | @tsv')
-              mergeable=$(echo "$STATE" | cut -f1)
-              mstate=$(echo "$STATE" | cut -f2)
-              echo "Attempt ${attempt}: PR #${num} mergeable=${mergeable} mergeable_state=${mstate}"
-
-              case "$mstate" in
-                dirty)
-                  echo "::error::Release PR #${num} has merge conflicts (mergeable_state=dirty)."
-                  echo "Sync main into dev (merge commit, not squash), then re-push."
-                  echo "See #202 / #207."
-                  exit 1
-                  ;;
-                unknown|"")
-                  if [ "$mergeable" = "false" ]; then
-                    echo "::error::Release PR #${num} is not mergeable."
-                    exit 1
-                  fi
-                  sleep 5
-                  continue
-                  ;;
-                *)
-                  if [ "$mergeable" = "false" ]; then
-                    echo "::error::Release PR #${num} is not mergeable (mergeable_state=${mstate})."
-                    exit 1
-                  fi
-                  # Export for step summary (caller uses these names).
-                  MERGEABLE_OUT="$mergeable"
-                  MSTATE_OUT="$mstate"
-                  return 0
-                  ;;
-              esac
-            done
-
-            echo "::error::Release PR #${num} mergeable_state still unknown after retries; refusing to report healthy."
-            echo "Re-run Release-PR, or inspect PR #${num} mergeability in the UI. See #207."
-            exit 1
-          }
-
           if [ -n "${EXISTING_NUM:-}" ]; then
             EXISTING_URL=$(echo "$EXISTING_JSON" | jq -r '.[0].url')
 
@@ -132,18 +81,16 @@ jobs:
             # Re-check health on every push — not only on create (#207).
             # An already-open PR can go CONFLICTING after a squash-merge while
             # this job would otherwise paint green forever with "already open."
+            # Mergeability is checked in the next step via the shared action
+            # (.github/actions/check-pr-mergeable) so it cannot drift from
+            # Guard-Main-Origin (#210).
             check_ancestry
-            check_pr_mergeability "$EXISTING_NUM"
 
-            echo "Existing release PR is healthy; nothing to create."
             {
-              echo "## Release PR"
-              echo "Already open and healthy: ${EXISTING_URL}"
-              echo ""
-              echo "- mergeable: \`${MERGEABLE_OUT}\`"
-              echo "- mergeable_state: \`${MSTATE_OUT}\`"
-              echo "- main is an ancestor of dev: yes"
-            } >> "$GITHUB_STEP_SUMMARY"
+              echo "action=revalidate"
+              echo "pr_number=${EXISTING_NUM}"
+              echo "pr_url=${EXISTING_URL}"
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -152,6 +99,7 @@ jobs:
           # Nothing to release if the tips are identical.
           if [ "$(git rev-parse origin/main)" = "$(git rev-parse origin/dev)" ]; then
             echo "dev and main point at the same commit; nothing to release."
+            echo "action=noop" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -159,6 +107,7 @@ jobs:
           AHEAD=$(git rev-list --count origin/main..origin/dev)
           if [ "$AHEAD" -eq 0 ]; then
             echo "dev is not ahead of main; nothing to release."
+            echo "action=noop" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -198,6 +147,10 @@ jobs:
             --label automated)
           echo "Created release PR: $URL"
           {
+            echo "action=created"
+            echo "pr_url=${URL}"
+          } >> "$GITHUB_OUTPUT"
+          {
             echo "## Release PR"
             echo "Created: $URL"
             echo ""
@@ -207,4 +160,31 @@ jobs:
               echo "Opened with \`GITHUB_TOKEN\` — \`pull_request\` workflows will **not** re-fire."
               echo "Push again to \`dev\` or close/reopen so Test-Matrix appears, or set \`secrets.GH_TOKEN\`."
             fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail when the open release PR has merge conflicts
+        # Same fail-closed REST contract as Guard-Main-Origin (#207 / #210).
+        if: steps.plan.outputs.action == 'revalidate'
+        id: mergeable
+        uses: ./.github/actions/check-pr-mergeable
+        with:
+          pr-number: ${{ steps.plan.outputs.pr_number }}
+          github-token: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Summarize revalidated release PR
+        if: steps.plan.outputs.action == 'revalidate'
+        env:
+          PR_URL: ${{ steps.plan.outputs.pr_url }}
+          MERGEABLE: ${{ steps.mergeable.outputs.mergeable }}
+          MSTATE: ${{ steps.mergeable.outputs.mergeable_state }}
+        run: |
+          set -euo pipefail
+          echo "Existing release PR is healthy; nothing to create."
+          {
+            echo "## Release PR"
+            echo "Already open and healthy: ${PR_URL}"
+            echo ""
+            echo "- mergeable: \`${MERGEABLE}\`"
+            echo "- mergeable_state: \`${MSTATE}\`"
+            echo "- main is an ancestor of dev: yes"
           } >> "$GITHUB_STEP_SUMMARY"
