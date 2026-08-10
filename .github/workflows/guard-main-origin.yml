@@ -30,11 +30,30 @@ jobs:
       # the PR is CONFLICTING — the merge ref is absent then, and a default
       # checkout would fail before our fail-closed mergeability check can
       # paint a clear red X. See #202 / #210.
+      #
+      # Then prefer the composite action from the PR *base* (main) when present,
+      # so a hotfix cut from an older tip (or a head that rewrites check.sh)
+      # cannot omit/weaken the fail-closed contract. Fall back to head's copy
+      # only while base has not yet received #210 (first release bootstrap).
       - name: Checkout PR head (for local composite action)
         uses: actions/checkout@v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 1
+          fetch-depth: 0
+
+      - name: Prefer mergeability action from PR base
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          ACTION_PATH=".github/actions/check-pr-mergeable"
+          if git cat-file -e "origin/${BASE_REF}:${ACTION_PATH}/action.yml" 2>/dev/null; then
+            git checkout "origin/${BASE_REF}" -- "$ACTION_PATH"
+            echo "Using ${ACTION_PATH} from origin/${BASE_REF} (pinned contract)."
+          else
+            echo "origin/${BASE_REF} does not yet contain ${ACTION_PATH}; using head copy (bootstrap until first merge to base)."
+          fi
 
       - name: Fail when the PR has merge conflicts
         # A CONFLICTING PR gets no merge ref. pull_request workflows that need

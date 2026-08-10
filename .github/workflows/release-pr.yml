@@ -170,6 +170,11 @@ jobs:
         with:
           pr-number: ${{ steps.plan.outputs.pr_number }}
           github-token: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+          # Preserve #207 operator copy: squash-merging the release PR without
+          # a merge-commit sync leaves the next release CONFLICTING.
+          conflict-guidance: |
+            For a release PR (dev → main): sync main into dev with a merge
+            commit (not squash), then re-push. See #202 / #207.
 
       - name: Summarize revalidated release PR
         if: steps.plan.outputs.action == 'revalidate'

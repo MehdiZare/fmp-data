@@ -6,6 +6,7 @@
 #   GH_TOKEN, PR_NUMBER, REPO
 # Optional env:
 #   MAX_ATTEMPTS (default 6), SLEEP_SECONDS (default 5)
+#   CONFLICT_GUIDANCE — extra operator lines on dirty (workflow-specific)
 #   GITHUB_OUTPUT, GITHUB_STEP_SUMMARY (set by Actions)
 set -euo pipefail
 
@@ -13,6 +14,7 @@ PR_NUMBER="${PR_NUMBER:?PR_NUMBER is required}"
 REPO="${REPO:?REPO is required}"
 MAX_ATTEMPTS="${MAX_ATTEMPTS:-6}"
 SLEEP_SECONDS="${SLEEP_SECONDS:-5}"
+CONFLICT_GUIDANCE="${CONFLICT_GUIDANCE:-}"
 
 if ! [[ "$MAX_ATTEMPTS" =~ ^[1-9][0-9]*$ ]]; then
   echo "::error::max-attempts must be a positive integer (got: ${MAX_ATTEMPTS})"
@@ -56,8 +58,22 @@ attempt=1
 while [ "$attempt" -le "$MAX_ATTEMPTS" ]; do
   # mergeable: true | false | null
   # mergeable_state: clean | dirty | unstable | blocked | unknown | ...
-  STATE=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" \
-    --jq '[.mergeable, .mergeable_state] | @tsv')
+  # Capture API failures explicitly so operators see "gh api failed" rather
+  # than a bare non-zero exit with no step summary (#210 follow-up hardening).
+  gh_err_file=$(mktemp)
+  if ! STATE=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" \
+    --jq '[.mergeable, .mergeable_state] | @tsv' 2>"$gh_err_file"); then
+    gh_err=$(cat "$gh_err_file" 2>/dev/null || true)
+    rm -f "$gh_err_file"
+    echo "::error::gh api failed for PR #${PR_NUMBER} in ${REPO} (cannot evaluate mergeability)."
+    if [ -n "$gh_err" ]; then
+      echo "$gh_err"
+    fi
+    write_outputs "null" "api_error"
+    write_summary "failed (gh api error)" "null" "api_error"
+    exit 1
+  fi
+  rm -f "$gh_err_file"
   MERGEABLE=$(echo "$STATE" | cut -f1)
   MSTATE=$(echo "$STATE" | cut -f2)
   echo "Attempt ${attempt}/${MAX_ATTEMPTS}: PR #${PR_NUMBER} mergeable=${MERGEABLE} mergeable_state=${MSTATE}"
@@ -69,6 +85,10 @@ while [ "$attempt" -le "$MAX_ATTEMPTS" ]; do
       echo "Resolve conflicts (merge or rebase the head onto the base), then re-push."
       echo "If this is a release PR after a squash, merge the Sync-Main-to-Dev"
       echo "reachability PR first (#202)."
+      if [ -n "$CONFLICT_GUIDANCE" ]; then
+        # shellcheck disable=SC2001
+        echo "$CONFLICT_GUIDANCE" | sed 's/^/  /'
+      fi
       write_outputs "$MERGEABLE" "$MSTATE"
       write_summary "failed (dirty)" "$MERGEABLE" "$MSTATE"
       exit 1

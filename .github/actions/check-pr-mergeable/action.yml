@@ -31,6 +31,12 @@ inputs:
   github-token:
     description: Token for gh api (needs pull-requests read)
     required: true
+  conflict-guidance:
+    description: >
+      Extra operator lines printed when mergeable_state is dirty (e.g. release
+      path: merge main into dev with a merge commit, not squash).
+    required: false
+    default: ""
 
 outputs:
   mergeable:
@@ -52,4 +58,5 @@ runs:
         REPO: ${{ inputs.repository }}
         MAX_ATTEMPTS: ${{ inputs.max-attempts }}
         SLEEP_SECONDS: ${{ inputs.sleep-seconds }}
+        CONFLICT_GUIDANCE: ${{ inputs.conflict-guidance }}
       run: bash "${{ github.action_path }}/check.sh"

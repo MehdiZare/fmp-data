@@ -82,7 +82,9 @@ MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
 mergeability never leaves `unknown` after retries, so a conflicting or
 unresolved release PR shows a red X instead of a hole in the checks list.
 Both workflows share `.github/actions/check-pr-mergeable` for that check
-(#210).
+(#210). Guard checks out the PR **head** (so CONFLICTING PRs still reach the
+check) and, when present on the PR base, overlays the composite action from
+`origin/<base>` so hotfixes cut from an older tip cannot omit the contract.
 
 ### Related automation (not the release PR itself)
 
