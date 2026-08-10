@@ -109,7 +109,9 @@ jobs:
           # commit-count-since-tag collides on workflow re-runs and on
           # force-pushes that preserve commit count; with skip-existing
           # that advertised a stale wheel as success (#204 same shape).
-          DEV_VERSION="${BASE_VERSION}.dev${{ github.run_id }}${{ github.run_attempt }}"
+          # Single .devN integer avoids run_id||run_attempt concatenation collisions.
+          DEV_N=$(( ${{ github.run_id }} * 1000 + ${{ github.run_attempt }} ))
+          DEV_VERSION="${BASE_VERSION}.dev${DEV_N}"
           DEV_TAG="v${DEV_VERSION}"
           HEAD_SHORT=$(git rev-parse --short HEAD)
 
@@ -126,7 +128,10 @@ jobs:
           git tag -a "$DEV_TAG" -m "Dev release $DEV_TAG"
 
       - name: 📦  Build wheel & sdist
+        env:
+          EXPECTED_VERSION: ${{ steps.version.outputs.DEV_VERSION }}
         run: |
+          set -euo pipefail
           echo "🏷️ Current git state:"
           git describe --tags --always
           echo "📦 Building package..."
@@ -136,11 +141,24 @@ jobs:
           echo "📦 Build completed. Contents of dist/:"
           ls -la dist/
 
-          # Verify the version in the built package
-          echo "📋 Checking built package version:"
-          if ls dist/*.tar.gz 1> /dev/null 2>&1; then
-            tar -tf dist/*.tar.gz | grep -E "(PKG-INFO|METADATA)" | head -1 | xargs tar -xOf dist/*.tar.gz | grep "^Version:" || echo "Version not found in metadata"
+          shopt -s nullglob
+          sdists=(dist/*.tar.gz)
+          if [ "${#sdists[@]}" -eq 0 ]; then
+            echo "::error::No sdist found in dist/"
+            exit 1
           fi
+          SDIST="${sdists[0]}"
+          META_VERSION=$(tar -xOf "$SDIST" --wildcards '*/PKG-INFO' 2>/dev/null \
+            | awk -F': ' '/^Version:/{print $2; exit}')
+          if [ -z "${META_VERSION:-}" ]; then
+            echo "::error::Could not read Version: from sdist PKG-INFO"
+            exit 1
+          fi
+          if [ "$META_VERSION" != "$EXPECTED_VERSION" ]; then
+            echo "::error::Built version '${META_VERSION}' != expected '${EXPECTED_VERSION}'"
+            exit 1
+          fi
+          echo "📋 Built package version matches: $META_VERSION"
 
       - name: 🧪  Upload to Test PyPI
         # skip-existing OFF: unique version means a collision is a real bug

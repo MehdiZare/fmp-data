@@ -41,8 +41,10 @@ jobs:
 
           # Already open? Nothing to do. Head must be `dev` (not a side branch)
           # because publish-testpypi.yml gates on head.ref == 'dev'.
+          # Do not swallow gh failures with || true — an auth/API error must
+          # not be treated as "no PR exists."
           EXISTING=$(gh pr list --base main --head dev --state open \
-            --json number,url --jq '.[0] | select(.number != null) | "\(.number) \(.url)"' || true)
+            --json number,url --jq '.[0] | select(.number != null) | "\(.number) \(.url)"')
           if [ -n "${EXISTING:-}" ]; then
             echo "Release PR already open: $EXISTING"
             exit 0
@@ -82,9 +84,15 @@ jobs:
           Automated release PR from `dev` to `main`.
 
           ### Pre-merge Checklist
-          - [ ] All CI checks pass
+          - [ ] All CI checks pass (Test-Matrix, Guard-Main-Origin, etc.)
           - [ ] Test PyPI validation successful (version + commit SHA in the bot comment match the tip you are releasing)
           - [ ] Documentation is up to date
+
+          ### Populate CI on first open
+          PRs created with `GITHUB_TOKEN` do **not** re-trigger `pull_request`
+          workflows. After this PR opens, either push another commit to `dev`
+          or close and reopen this PR so Test-Matrix / Guard-Main-Origin appear.
+          Adding a release label still triggers TestPyPI (`labeled` event).
 
           ### Release Type
           Add **exactly one** of these labels to determine the version bump:

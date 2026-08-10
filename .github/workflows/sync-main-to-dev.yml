@@ -118,26 +118,32 @@ jobs:
           EOF
               open_or_update_pr "Sync: main → dev" /tmp/sync-pr-body.md
             else
+              # Do NOT force-push origin/dev over sync/main-to-dev or open an
+              # empty "CONFLICTS" PR. After abort the tip equals origin/dev, so
+              # create would fail or rewrite a good open reachability PR to an
+              # empty tip. Fail loud with recovery steps; leave any existing
+              # sync branch alone.
               echo "::error::Merge conflicts while syncing main → dev."
-              echo "Manual resolution is required on branch sync/main-to-dev."
+              echo "Manual resolution is required. Do not squash the eventual sync."
               git merge --abort || true
 
-              cat > /tmp/sync-pr-body.md <<'EOF'
-          ## Automatic Sync — conflicts
-
-          `main` is not an ancestor of `dev` and a real merge produced conflicts.
-
-          ### Action required
-          1. Check out `sync/main-to-dev`
-          2. Merge (or rebase) `origin/main` and resolve conflicts
-          3. Push and merge this PR into `dev`
-
-          Until this lands, the next `dev → main` release PR will open
-          CONFLICTING and get no CI. See #202.
-          EOF
-              open_or_update_pr \
-                "Sync: main → dev (CONFLICTS — manual resolution required)" \
-                /tmp/sync-pr-body.md
+              {
+                echo "## Sync main → dev blocked by merge conflicts"
+                echo ""
+                echo "\`main\` is not an ancestor of \`dev\` and a content merge"
+                echo "produced conflicts. This job did **not** rewrite"
+                echo "\`sync/main-to-dev\` (so any open history-reachability PR"
+                echo "is left intact)."
+                echo ""
+                echo "### Action required"
+                echo "1. \`git fetch origin && git checkout -B sync/main-to-dev origin/dev\`"
+                echo "2. \`git merge origin/main\` and resolve conflicts"
+                echo "3. Push and open (or update) a PR into \`dev\`"
+                echo "4. Merge with a **merge commit** (not squash) so ancestry is kept"
+                echo ""
+                echo "Until this lands, the next \`dev → main\` release PR will open"
+                echo "CONFLICTING and get no CI. See #202."
+              } | tee /tmp/sync-conflict.md >> "$GITHUB_STEP_SUMMARY"
               exit 1
             fi
           fi

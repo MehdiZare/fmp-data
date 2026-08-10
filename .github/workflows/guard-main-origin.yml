@@ -77,4 +77,10 @@ jobs:
             esac
           done
 
-          echo "::warning::mergeable_state still unknown after retries; not blocking the job"
+          # Fail closed: if mergeability never resolved, we cannot prove the PR
+          # is non-conflicting. Exiting 0 here would reintroduce a green check
+          # while merge-ref-based jobs may still be absent — the same hole this
+          # step exists to close. See #202.
+          echo "::error::mergeable_state still unknown after retries; refusing to report green."
+          echo "Re-run this check, or inspect PR #${PR_NUMBER} mergeability in the UI."
+          exit 1

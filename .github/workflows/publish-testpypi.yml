@@ -79,8 +79,10 @@ jobs:
           # on the PR number is constant across every push to that PR, so with
           # skip-existing the first build wins forever and later green checks
           # advertise a stale artifact. See #204.
-          # PEP 440 allows a single .devN integer; run_id + run_attempt is unique.
-          TEST_VERSION="${NEW_VERSION}.dev${{ github.run_id }}${{ github.run_attempt }}"
+          # Encode run_id and run_attempt into a single .devN integer so
+          # concatenation cannot collide (e.g. 100+11 vs 1001+1).
+          DEV_N=$(( ${{ github.run_id }} * 1000 + ${{ github.run_attempt }} ))
+          TEST_VERSION="${NEW_VERSION}.dev${DEV_N}"
           TEST_TAG="v${TEST_VERSION}"
           HEAD_SHA=$(git rev-parse HEAD)
           HEAD_SHORT=$(git rev-parse --short HEAD)
@@ -102,7 +104,10 @@ jobs:
           git checkout "$TEST_TAG"
 
       - name: 📦  Build wheel & sdist
+        env:
+          EXPECTED_VERSION: ${{ steps.version.outputs.TEST_VERSION }}
         run: |
+          set -euo pipefail
           echo "🏷️ Current git state:"
           git describe --tags --always
           echo "📦 Building package..."
@@ -112,11 +117,26 @@ jobs:
           echo "📦 Build completed. Contents of dist/:"
           ls -la dist/
 
-          # Verify the version in the built package
-          echo "📋 Checking built package version:"
-          if ls dist/*.tar.gz 1> /dev/null 2>&1; then
-            tar -tf dist/*.tar.gz | grep -E "(PKG-INFO|METADATA)" | head -1 | xargs tar -xOf dist/*.tar.gz | grep "^Version:" || echo "Version not found in metadata"
+          # Fail if the artifact version does not match what we will advertise
+          # in the bot comment — otherwise green + comment can still lie.
+          shopt -s nullglob
+          sdists=(dist/*.tar.gz)
+          if [ "${#sdists[@]}" -eq 0 ]; then
+            echo "::error::No sdist found in dist/"
+            exit 1
           fi
+          SDIST="${sdists[0]}"
+          META_VERSION=$(tar -xOf "$SDIST" --wildcards '*/PKG-INFO' 2>/dev/null \
+            | awk -F': ' '/^Version:/{print $2; exit}')
+          if [ -z "${META_VERSION:-}" ]; then
+            echo "::error::Could not read Version: from sdist PKG-INFO"
+            exit 1
+          fi
+          if [ "$META_VERSION" != "$EXPECTED_VERSION" ]; then
+            echo "::error::Built version '${META_VERSION}' != expected '${EXPECTED_VERSION}'"
+            exit 1
+          fi
+          echo "📋 Built package version matches: $META_VERSION"
 
       - name: 🧪  Upload to Test PyPI
         # skip-existing is intentionally OFF. With a unique version there is

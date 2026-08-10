@@ -37,12 +37,17 @@ MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
    reuses) a PR with head `dev` and base `main`. It fails loudly if `main` is
    not an ancestor of `dev` — it never reports success for work it did not do
    (#203).
+   **Note:** PRs created with `GITHUB_TOKEN` do not re-trigger
+   `pull_request` workflows. After first open, push again to `dev` or
+   close/reopen the PR so Test-Matrix and Guard-Main-Origin appear. Adding a
+   release label still triggers TestPyPI via the `labeled` event.
 3. Add **exactly one** of `release:major` / `release:minor` / `release:patch`
    to that PR.
 4. The **Publish-to-TestPyPI** workflow builds a unique
-   `X.Y.Z.dev{run_id}{run_attempt}` version for *each* push, uploads it, and
-   comments the version **and the commit SHA** on the PR. Install the version
-   in the latest comment — older comments point at stale artifacts (#204).
+   `X.Y.Z.devN` version (`N = run_id * 1000 + run_attempt`) for *each* push,
+   asserts the sdist metadata matches that version, uploads it, and comments
+   the version **and the commit SHA** on the PR. Install the version in the
+   latest comment — older comments point at stale artifacts (#204).
 5. Merge the release PR into `main` once CI is green and TestPyPI checks out.
 6. The **Release** workflow tags, publishes to PyPI, and creates the GitHub
    release.
@@ -60,16 +65,17 @@ MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
 |---|---|---|
 | Squash-merge `dev` → `main` | Content matched, sync no-op; next release PR opened CONFLICTING with no CI | Sync opens a reachability PR immediately after the release |
 | Release-PR automation | `create-pull-request` with no working-tree changes exited green and created nothing | `gh pr create --base main --head dev`, or a red failure if histories diverged |
-| TestPyPI re-run on the same PR | Version keyed on PR number + `skip-existing: true` → first build wins forever | Unique version per run; `skip-existing: false`; comment includes commit SHA |
+| TestPyPI re-run on the same PR | Version keyed on PR number + `skip-existing: true` → first build wins forever | Unique version per run; `skip-existing: false`; sdist version asserted; comment includes commit SHA |
 
-`Guard-Main-Origin` also fails the PR when `mergeable_state=dirty`, so a
-conflicting release PR shows a red X instead of a hole in the checks list.
+`Guard-Main-Origin` also fails the PR when `mergeable_state=dirty` **or** when
+mergeability never leaves `unknown` after retries, so a conflicting or
+unresolved release PR shows a red X instead of a hole in the checks list.
 
 ### Related automation (not the release PR itself)
 
 - **Dev Release** (`dev-release.yml`) publishes a unique TestPyPI build on
-  every push to `dev` (`X.Y.Z.dev{run_id}{run_attempt}`). Re-runs never
-  silently re-serve a previous wheel.
+  every push to `dev` (`X.Y.Z.devN` with `N = run_id * 1000 + run_attempt`).
+  Re-runs never silently re-serve a previous wheel.
 - **Release** (`release.yml`) tags, creates the GitHub Release, and publishes
   to PyPI after a labeled `dev → main` merge. Existing tags / releases / PyPI
   versions fail the job instead of being skipped.
@@ -100,44 +106,11 @@ conflicting release PR shows a red X instead of a hole in the checks list.
 - `bug`: Bug fixes
 - `feature`: New features
 
-### Example Workflow
+### Example Workflow (illustrative shape only)
 
-```yaml
-# .github/workflows/release.yml
-name: Release
-
-on:
-  pull_request:
-    types: [closed]
-    branches: [ main ]
-
-jobs:
-  release:
-    if: |
-      github.event.pull_request.merged == true &&
-      (contains(github.event.pull_request.labels.*.name, 'release:major') ||
-       contains(github.event.pull_request.labels.*.name, 'release:minor') ||
-       contains(github.event.pull_request.labels.*.name, 'release:patch'))
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6.0.2
-      - name: Setup Python
-        uses: actions/setup-python@v6.2.0
-        with:
-          python-version: '3.14'
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v8.0.0
-
-      - name: Build distribution
-        run: python -m build --wheel --sdist
-
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.13.0
-        with:
-          packages-dir: dist/
-          skip-existing: true
-```
+The live release path lives in `.github/workflows/release.yml`. Do not copy
+`skip-existing: true` from older snippets — real releases fail on version
+collisions rather than reporting a green no-op.
 
 ## Manual Release Process
 
