@@ -37,7 +37,8 @@ MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
    reuses) a PR with head `dev` and base `main`. It fails loudly if `main` is
    not an ancestor of `dev` — it never reports success for work it did not do
    (#203). On every push it also re-validates an already-open release PR:
-   ancestry + `mergeStateStatus` must stay clean (#207).
+   ancestry plus REST `mergeable` / `mergeable_state` (retried; fails closed
+   on `dirty`, non-mergeable, or still-`unknown`) must stay clean (#207).
 3. **Automation token.** Release-PR and Sync-Main-to-Dev prefer the repo
    secret `GH_TOKEN` (a fine-scoped PAT) for `gh pr create` / automation
    pushes so the `pull_request` **opened** event re-triggers Test-Matrix and
