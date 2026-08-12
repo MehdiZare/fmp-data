@@ -69,7 +69,8 @@ None. No FMP path we ship was newly retired by this changelog window.
   - **`CompanyRating` score columns.** `rating-bulk` headers
     `discountedCashFlowScore` / `returnOnEquityScore` / `returnOnAssetsScore`
     / `debtToEquityScore` / `priceToEarningsScore` / `priceToBookScore` are
-    now typed attributes.
+    now typed attributes. Fractional CSV cells such as ``"3.0"`` coerce to
+    ``int`` so ``parse_csv_models`` does not skip the whole company row.
 
 ### Fixed
 

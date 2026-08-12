@@ -1,8 +1,16 @@
 # fmp_data/fundamental/models.py
 from datetime import datetime
-from typing import Any
+import math
+from typing import Annotated, Any
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    model_validator,
+)
 from pydantic.alias_generators import to_camel
 
 from fmp_data.models import CIK
@@ -14,6 +22,40 @@ default_model_config = ConfigDict(
     extra="allow",
     alias_generator=to_camel,
 )
+
+
+def coerce_rating_score(value: Any) -> Any:
+    """Coerce rating-bulk score cells to int.
+
+    ``rating-bulk`` CSV may emit a whole score as ``"3"`` or ``"3.0"``. A
+    strict ``int`` field rejects the latter and ``parse_csv_models`` then
+    skips the entire company row. Empty cells are already ``None``.
+    Non-numeric / non-finite values pass through so they still fail
+    validation instead of becoming ``0``.
+    """
+    if value is None:
+        return None
+    if isinstance(value, int | float):
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, float) and not math.isfinite(value):
+            return value
+        return int(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return None
+        try:
+            number = float(stripped)
+        except ValueError:
+            return value
+        if not math.isfinite(number):
+            return value
+        return int(number)
+    return value
+
+
+RatingScore = Annotated[int | None, BeforeValidator(coerce_rating_score)]
 
 
 class FinancialStatementBase(BaseModel):
@@ -2637,32 +2679,32 @@ class CompanyRating(BaseModel):
     date: datetime = Field(description="Rating date")
     rating: str = Field(description="Overall rating")
     recommendation: str | None = Field(None, description="Investment recommendation")
-    discounted_cash_flow_score: int | None = Field(
+    discounted_cash_flow_score: RatingScore = Field(
         default=None,
         alias="discountedCashFlowScore",
         description="Discounted cash flow score from rating-bulk",
     )
-    return_on_equity_score: int | None = Field(
+    return_on_equity_score: RatingScore = Field(
         default=None,
         alias="returnOnEquityScore",
         description="Return on equity score from rating-bulk",
     )
-    return_on_assets_score: int | None = Field(
+    return_on_assets_score: RatingScore = Field(
         default=None,
         alias="returnOnAssetsScore",
         description="Return on assets score from rating-bulk",
     )
-    debt_to_equity_score: int | None = Field(
+    debt_to_equity_score: RatingScore = Field(
         default=None,
         alias="debtToEquityScore",
         description="Debt to equity score from rating-bulk",
     )
-    price_to_earnings_score: int | None = Field(
+    price_to_earnings_score: RatingScore = Field(
         default=None,
         alias="priceToEarningsScore",
         description="Price to earnings score from rating-bulk",
     )
-    price_to_book_score: int | None = Field(
+    price_to_book_score: RatingScore = Field(
         default=None,
         alias="priceToBookScore",
         description="Price to book score from rating-bulk",

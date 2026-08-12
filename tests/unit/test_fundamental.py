@@ -301,19 +301,52 @@ class TestFundamentalEndpoints(unittest.TestCase):
                 "symbol": "AAPL",
                 "date": "2026-08-12",
                 "rating": "A-",
-                "discountedCashFlowScore": 3,
-                "returnOnEquityScore": 4,
-                "returnOnAssetsScore": 4,
-                "debtToEquityScore": 2,
-                "priceToEarningsScore": 3,
-                "priceToBookScore": 3,
+                "discountedCashFlowScore": 1,
+                "returnOnEquityScore": 2,
+                "returnOnAssetsScore": 3,
+                "debtToEquityScore": 4,
+                "priceToEarningsScore": 5,
+                "priceToBookScore": 6,
+            }
+        )
+        self.assertEqual(rating.discounted_cash_flow_score, 1)
+        self.assertEqual(rating.return_on_equity_score, 2)
+        self.assertEqual(rating.return_on_assets_score, 3)
+        self.assertEqual(rating.debt_to_equity_score, 4)
+        self.assertEqual(rating.price_to_earnings_score, 5)
+        self.assertEqual(rating.price_to_book_score, 6)
+        self.assertFalse(rating.__pydantic_extra__)
+        dumped = rating.model_dump(by_alias=True)
+        self.assertEqual(dumped["discountedCashFlowScore"], 1)
+        self.assertEqual(dumped["returnOnEquityScore"], 2)
+        self.assertEqual(dumped["returnOnAssetsScore"], 3)
+        self.assertEqual(dumped["debtToEquityScore"], 4)
+        self.assertEqual(dumped["priceToEarningsScore"], 5)
+        self.assertEqual(dumped["priceToBookScore"], 6)
+
+    def test_company_rating_scores_optional_without_bulk_columns(self):
+        """Letter-grade-only payloads leave every score unset."""
+        rating = CompanyRating.model_validate(
+            {"symbol": "AAPL", "date": "2026-08-12", "rating": "A-"}
+        )
+        self.assertIsNone(rating.discounted_cash_flow_score)
+        self.assertIsNone(rating.return_on_equity_score)
+        self.assertIsNone(rating.return_on_assets_score)
+        self.assertIsNone(rating.debt_to_equity_score)
+        self.assertIsNone(rating.price_to_earnings_score)
+        self.assertIsNone(rating.price_to_book_score)
+
+    def test_company_rating_coerces_fractional_csv_score_strings(self):
+        """\"3.0\" score cells must not drop the row (parse_csv_models skip)."""
+        rating = CompanyRating.model_validate(
+            {
+                "symbol": "AAPL",
+                "date": "2026-08-12",
+                "rating": "A-",
+                "discountedCashFlowScore": "3.0",
             }
         )
         self.assertEqual(rating.discounted_cash_flow_score, 3)
-        self.assertEqual(rating.return_on_equity_score, 4)
-        dumped = rating.model_dump(by_alias=True)
-        self.assertEqual(dumped["discountedCashFlowScore"], 3)
-        self.assertEqual(dumped["priceToBookScore"], 3)
 
     def test_get_financial_reports_dates(self):
         """Test getting financial report dates"""

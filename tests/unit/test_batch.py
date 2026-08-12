@@ -242,13 +242,19 @@ class TestBatchClient:
             "symbol,date,rating,discountedCashFlowScore,returnOnEquityScore,"
             "returnOnAssetsScore,debtToEquityScore,priceToEarningsScore,"
             "priceToBookScore\n"
-            "AAPL,2026-08-12,A-,3,4,4,2,3,3\n"
+            "AAPL,2026-08-12,A-,1,2.0,3,4,5,6\n"
         )
         results = parse_csv_models(csv_text.encode("utf-8"), CompanyRating)
         assert len(results) == 1
-        assert results[0].rating == "A-"
-        assert results[0].discounted_cash_flow_score == 3
-        assert results[0].price_to_book_score == 3
+        rating = results[0]
+        assert rating.rating == "A-"
+        assert rating.discounted_cash_flow_score == 1
+        assert rating.return_on_equity_score == 2
+        assert rating.return_on_assets_score == 3
+        assert rating.debt_to_equity_score == 4
+        assert rating.price_to_earnings_score == 5
+        assert rating.price_to_book_score == 6
+        assert not rating.__pydantic_extra__
 
     def test_parse_csv_rows_empty(self):
         """Empty CSV input returns no rows."""

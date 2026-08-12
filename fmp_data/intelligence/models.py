@@ -459,10 +459,7 @@ class SenateTrade(BaseModel):
     senate_id: str | None = Field(
         None,
         alias="senateID",
-        description=(
-            "FMP entity id for the senator. The wire key is senateID even "
-            "on House rows, where FMP reused the same identifier."
-        ),
+        description="FMP entity id for the senator (wire key senateID).",
     )
     disclosure_date: datetime | None = Field(
         None,
