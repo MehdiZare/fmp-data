@@ -24,23 +24,30 @@ default_model_config = ConfigDict(
 )
 
 
+def _integral_int(number: float, original: Any) -> Any:
+    """Return ``int(number)`` only when ``number`` is a finite whole value."""
+    if not math.isfinite(number):
+        return original
+    if number != int(number):
+        raise ValueError(f"rating score must be a whole number, got {original!r}")
+    return int(number)
+
+
 def coerce_rating_score(value: Any) -> Any:
     """Coerce rating-bulk score cells to int.
 
     ``rating-bulk`` CSV may emit a whole score as ``"3"`` or ``"3.0"``. A
     strict ``int`` field rejects the latter and ``parse_csv_models`` then
     skips the entire company row. Empty cells are already ``None``.
-    Non-numeric / non-finite values pass through so they still fail
-    validation instead of becoming ``0``.
+    Non-numeric, non-finite, or non-integral values (``"3.5"``) pass
+    through so they still fail validation instead of being truncated.
     """
     if value is None:
         return None
+    if isinstance(value, bool):
+        return value
     if isinstance(value, int | float):
-        if isinstance(value, bool):
-            return value
-        if isinstance(value, float) and not math.isfinite(value):
-            return value
-        return int(value)
+        return _integral_int(float(value), value)
     if isinstance(value, str):
         stripped = value.strip()
         if not stripped:
@@ -49,9 +56,7 @@ def coerce_rating_score(value: Any) -> Any:
             number = float(stripped)
         except ValueError:
             return value
-        if not math.isfinite(number):
-            return value
-        return int(number)
+        return _integral_int(number, value)
     return value
 
 

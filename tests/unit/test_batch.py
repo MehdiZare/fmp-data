@@ -256,6 +256,114 @@ class TestBatchClient:
         assert rating.price_to_book_score == 6
         assert not rating.__pydantic_extra__
 
+    def test_parse_csv_models_unknown_header_warns_once(self, caplog):
+        """Unknown bulk headers honor FMP_VALIDATION_MODE=warn (#232)."""
+        import logging
+
+        from fmp_data.base import _extra_field_warnings_seen
+
+        warning_key = ("rating-bulk", ("overallScore",))
+        _extra_field_warnings_seen.discard(warning_key)
+        csv_text = "symbol,date,rating,overallScore\nAAPL,2026-08-12,A-,7\n"
+
+        with caplog.at_level(logging.WARNING, logger="fmp_data.base"):
+            first = parse_csv_models(
+                csv_text.encode("utf-8"),
+                CompanyRating,
+                validation_mode="warn",
+                endpoint_name="rating-bulk",
+            )
+            second = parse_csv_models(
+                csv_text.encode("utf-8"),
+                CompanyRating,
+                validation_mode="warn",
+                endpoint_name="rating-bulk",
+            )
+
+        assert len(first) == 1
+        assert first[0].__pydantic_extra__ is not None
+        assert first[0].__pydantic_extra__["overallScore"] == "7"
+        assert len(second) == 1
+        assert caplog.text.count("Unknown response fields detected") == 1
+        _extra_field_warnings_seen.discard(warning_key)
+
+    def test_parse_csv_models_unknown_header_strict_raises(self):
+        """Unknown bulk headers fail closed under FMP_VALIDATION_MODE=strict."""
+        from fmp_data.exceptions import ValidationError
+
+        csv_text = "symbol,date,rating,overallScore\nAAPL,2026-08-12,A-,7\n"
+        with pytest.raises(ValidationError, match="Unexpected fields"):
+            parse_csv_models(
+                csv_text.encode("utf-8"),
+                CompanyRating,
+                validation_mode="strict",
+                endpoint_name="rating-bulk",
+            )
+
+    def test_parse_csv_models_unknown_header_lenient_silent(self, caplog):
+        """Lenient mode keeps extras without warning."""
+        import logging
+
+        csv_text = "symbol,date,rating,overallScore\nAAPL,2026-08-12,A-,7\n"
+        with caplog.at_level(logging.WARNING, logger="fmp_data.base"):
+            results = parse_csv_models(
+                csv_text.encode("utf-8"),
+                CompanyRating,
+                validation_mode="lenient",
+                endpoint_name="rating-bulk",
+            )
+
+        assert len(results) == 1
+        assert results[0].__pydantic_extra__ is not None
+        assert results[0].__pydantic_extra__["overallScore"] == "7"
+        assert "Unknown response fields detected" not in caplog.text
+
+    def test_parse_csv_models_invalid_cell_strict_raises(self):
+        """A bad cell fails the request in strict mode instead of dropping a row."""
+        from pydantic import BaseModel
+
+        from fmp_data.exceptions import ValidationError
+
+        class SimpleRow(BaseModel):
+            symbol: str
+            value: int
+
+        csv_text = "symbol,value\nAAPL,not-a-number\n"
+        with pytest.raises(ValidationError, match="Invalid CSV row"):
+            parse_csv_models(
+                csv_text.encode("utf-8"),
+                SimpleRow,
+                validation_mode="strict",
+                endpoint_name="dummy-bulk",
+            )
+
+    def test_parse_csv_models_fractional_rating_score_still_yields_row(self):
+        """A coercible ``\"3.0\"`` score cell still produces a row (#232)."""
+        csv_text = (
+            "symbol,date,rating,discountedCashFlowScore\nAAPL,2026-08-12,A-,3.0\n"
+        )
+        results = parse_csv_models(csv_text.encode("utf-8"), CompanyRating)
+        assert len(results) == 1
+        assert results[0].discounted_cash_flow_score == 3
+
+    def test_parse_csv_models_non_integral_score_skips_row(self, caplog):
+        """Non-integral scores must not truncate; warn mode skips the row."""
+        import logging
+
+        csv_text = (
+            "symbol,date,rating,discountedCashFlowScore\nAAPL,2026-08-12,A-,3.5\n"
+        )
+        with caplog.at_level(logging.WARNING, logger="fmp_data.batch._csv_utils"):
+            results = parse_csv_models(
+                csv_text.encode("utf-8"),
+                CompanyRating,
+                validation_mode="warn",
+                endpoint_name="rating-bulk",
+            )
+
+        assert results == []
+        assert "Skipping invalid CompanyRating row" in caplog.text
+
     def test_parse_csv_rows_empty(self):
         """Empty CSV input returns no rows."""
         assert parse_csv_rows(b"") == []
@@ -660,28 +768,28 @@ class TestAsyncBatchClient:
     """Tests for async batch client validation error handling"""
 
     @pytest.mark.asyncio
-    async def test_upgrades_downgrades_consensus_bulk_with_invalid_rows(self):
+    async def test_upgrades_downgrades_consensus_bulk_with_invalid_rows(self, caplog):
         """Test async upgrades/downgrades consensus handles validation errors"""
+        import logging
+
         from fmp_data.batch.async_client import AsyncBatchClient
+        from fmp_data.config import ClientConfig
 
-        # Create mock client
         mock_client = Mock()
-        mock_client.logger = Mock()
+        mock_client.config = ClientConfig(api_key="test", validation_mode="warn")
+        mock_client.request_async = AsyncMock()
 
-        # Mock CSV response with one invalid row (invalid number format)
         csv_text = (
             "symbol,strongBuy,buy,hold,sell,strongSell,consensus\n"
-            "INVALID,NOT_A_NUMBER,1,1,0,0,Buy\n"  # Invalid: strongBuy should be int
+            "INVALID,NOT_A_NUMBER,1,1,0,0,Buy\n"
             "AAPL,1,29,11,4,0,Buy\n"
         )
-        # Async client expects bytes
-        mock_client.request_async = AsyncMock(return_value=csv_text.encode("utf-8"))
+        mock_client.request_async.return_value = csv_text.encode("utf-8")
 
         async_batch = AsyncBatchClient(mock_client)
-        results = await async_batch.get_upgrades_downgrades_consensus_bulk()
+        with caplog.at_level(logging.WARNING, logger="fmp_data.batch._csv_utils"):
+            results = await async_batch.get_upgrades_downgrades_consensus_bulk()
 
-        # Should skip invalid row and return only valid one
         assert len(results) == 1
         assert results[0].symbol == "AAPL"
-        # Should have logged a warning about the invalid row
-        mock_client.logger.warning.assert_called()
+        assert "Skipping invalid" in caplog.text

@@ -89,6 +89,16 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Fixed
 
+- **CSV bulk parsing now honors `FMP_VALIDATION_MODE` (#232).** `parse_csv_models`
+  used `model.model_validate` directly, so unknown bulk headers (`overallScore`
+  on `rating-bulk`, a misspelled diluted-PE column) landed in
+  `__pydantic_extra__` with no warn and no failure. They now share the JSON
+  extras policy (`warn` / `strict` / `lenient`), keyed per bulk endpoint +
+  field set. Invalid cells still retry URL fields, then **skip the row** in
+  `lenient`/`warn` (logged) or **fail the request** in `strict`. Default mode
+  is unchanged (`warn`). `rating-bulk` scores coerce only whole values
+  (`"3.0"` → `3`); `"3.5"` is no longer truncated to `3`.
+
 - **CI: post-release main→dev sync auto-merges and no longer needs admin bypass.**
   Sync-Main-to-Dev enables `gh pr merge --auto --merge` on the history-reachability
   PR so green Test-Matrix lands it without a human. Squash is never requested
