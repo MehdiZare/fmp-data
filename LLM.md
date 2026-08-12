@@ -96,6 +96,8 @@ or call `model_dump()` / `model_dump_json()` for raw data.
   - CLI: `fmp-mcp setup` or `fmp-mcp`
   - Server API: `from fmp_data.mcp.server import create_app`
   - Tool catalog: `fmp-mcp list` (MCP tools are the endpoints with tool semantics)
+  - FMP also hosts a remote MCP (28 dataset tools). That is not this package;
+    see `docs/mcp/hosted.md`.
 
 ## Pointers
 - Examples: `examples/`

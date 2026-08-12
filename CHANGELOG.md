@@ -50,6 +50,13 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Added
 
+- **FMP hosted MCP vs `fmp-mcp` positioning (#230).** Docs-only: we are not
+  wrapping FMP's remote MCP URL. README + `docs/mcp/index.md` point at
+  `docs/mcp/hosted.md`, which records the 2026-08-12 decision (A+D: position
+  + coverage matrix), a live `tools/list` of **28** dataset tools (changelog
+  said 27; `tipranks` is a paid add-on), and when to use hosted MCP vs this
+  package. No runtime helper, no FastMCP dependency, no CI smoke.
+
 - **FMP changelog alignment (#229).** Three confirmed 2026 wire gaps, the
   leftover 2025-10 delisted-companies wiring (#233), plus the older-note
   re-probe above. Live `/stable` checks used the current API key on

@@ -129,7 +129,15 @@ export FMP_CACHE_REDIS_URL=redis://localhost:6379/0
 
 ## MCP Server (Claude Desktop Integration)
 
-Model Context Protocol (MCP) server provides financial data access through a standardized protocol, enabling Claude Desktop to query FMP data seamlessly.
+`fmp-mcp` is this package's **local** Model Context Protocol server. It exposes
+our typed client as stdio tools for Claude Desktop and other MCP hosts.
+
+FMP also ships a **hosted** MCP server at
+`https://financialmodelingprep.com/mcp` (28 dataset-oriented tools, API key in
+the URL). That is a different product. Use hosted MCP for a zero-install
+agent connector; use `fmp-mcp` for the broader MCP tool catalog, manifests,
+and typed local control. Comparison and coverage matrix:
+[docs/mcp/hosted.md](docs/mcp/hosted.md).
 
 ### Quick Setup for Claude Desktop
 
