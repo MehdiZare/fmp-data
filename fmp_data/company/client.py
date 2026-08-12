@@ -344,7 +344,8 @@ class CompanyClient(EndpointGroup):
             limit: Number of results per page (default 100)
 
         Returns:
-            Slim delisted rows (symbol, name, exchange, IPO and delist dates).
+            List of slim delisted rows (symbol, companyName, exchange,
+            IPO and delist dates).
         """
         return self.client.request(DELISTED_COMPANIES, page=page, limit=limit)
 

@@ -657,7 +657,7 @@ class DelistedCompany(BaseModel):
 
     model_config = default_model_config
 
-    symbol: str = Field(description="Former trading symbol")
+    symbol: str = Field(min_length=1, description="Former trading symbol")
     company_name: str | None = Field(
         None, alias="companyName", description="Company name"
     )

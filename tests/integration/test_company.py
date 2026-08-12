@@ -421,6 +421,8 @@ class TestCompanyEndpoints(BaseTestCase):
             assert first.symbol
             assert first.company_name is not None
             assert first.exchange is not None
+            assert first.ipo_date is None or isinstance(first.ipo_date, date)
+            assert isinstance(first.delisted_date, date)
 
     def test_get_price_target(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting price targets"""

@@ -919,20 +919,26 @@ DELISTED_COMPANIES: Endpoint = Endpoint(
     name="delisted_companies",
     path="delisted-companies",
     version=APIVersion.STABLE,
-    description="Get list of delisted companies",
+    description=(
+        "Get companies FMP reports as delisted. Live rows are the slim "
+        "five-field shape (symbol, companyName, exchange, ipoDate, "
+        "delistedDate), not a company profile."
+    ),
     mandatory_params=[],
     optional_params=[
         EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            description="Page number for pagination",
+            description="Page number for pagination (0-based)",
+            default=0,
         ),
         EndpointParam(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
             description="Number of results per page",
+            default=100,
         ),
     ],
     response_model=DelistedCompany,

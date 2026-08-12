@@ -11,14 +11,14 @@ how many of those are in `DEFAULT_TOOLS` (what a default server registers).
 The two differ where a tool is deprecated, redundant, or too heavy for the
 default set — `224` catalog tools, `138` default.
 
-**Withdrawn endpoints:** 19 tools name an FMP endpoint that no longer exists.
+**Withdrawn endpoints:** 22 tools name an FMP endpoint that no longer exists.
 Probed against the live `stable` API, every one of those paths returns 404, so
 the tool can only ever answer with nothing. They remain in the catalog and stay
 loadable by explicit manifest, but they are **excluded from `DEFAULT_TOOLS`** —
 a default server should not offer a tool that cannot work. Where a live tool
 covers the same ground it is named in `WITHDRAWN_TOOLS`, but those are
 migrations rather than renames: the payloads differ, so check the fields you
-rely on. Six have no successor at all.
+rely on. Seven have no successor at all.
 
 **Tool keys:** a manifest entry may be the bare key (`profile`) or the fully
 qualified spec (`company.profile`). The bare form resolves only when exactly

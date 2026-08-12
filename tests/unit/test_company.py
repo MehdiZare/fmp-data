@@ -2,8 +2,10 @@ from datetime import date, datetime
 from typing import Any
 from unittest.mock import Mock, patch
 
+from pydantic import ValidationError
 import pytest
 
+from fmp_data.base import BaseClient
 from fmp_data.company import CompanyClient
 from fmp_data.company.endpoints import DELISTED_COMPANIES
 from fmp_data.company.models import (
@@ -815,6 +817,46 @@ class TestDelistedCompanies:
         assert dumped["companyName"] == "Vision Values Holdings Limited"
         assert dumped["ipoDate"] == date(2026, 5, 27)
         assert dumped["delistedDate"] == date(2026, 8, 17)
+
+    def test_delisted_endpoint_parses_slim_row_not_profile(self):
+        """CI lock: the leftover CompanyProfile binding must not return."""
+        slim = {
+            "symbol": "2958.HK",
+            "companyName": "Vision Values Holdings Limited",
+            "exchange": "HKSE",
+            "ipoDate": "2026-05-27",
+            "delistedDate": "2026-08-17",
+        }
+
+        assert DELISTED_COMPANIES.response_model is DelistedCompany
+        rows = BaseClient._process_response(DELISTED_COMPANIES, [slim])
+
+        assert len(rows) == 1
+        row = rows[0]
+        assert type(row) is DelistedCompany
+        assert row.symbol == "2958.HK"
+        assert row.company_name == "Vision Values Holdings Limited"
+        assert row.ipo_date == date(2026, 5, 27)
+        assert row.delisted_date == date(2026, 8, 17)
+
+    def test_delisted_company_optional_fields_may_be_absent(self):
+        row = DelistedCompany.model_validate({"symbol": "XYZ"})
+        assert row.symbol == "XYZ"
+        assert row.company_name is None
+        assert row.exchange is None
+        assert row.ipo_date is None
+        assert row.delisted_date is None
+
+    def test_delisted_company_rejects_empty_symbol(self):
+        with pytest.raises(ValidationError):
+            DelistedCompany.model_validate({"symbol": ""})
+        with pytest.raises(ValidationError):
+            DelistedCompany.model_validate({"symbol": "   "})
+
+    def test_delisted_endpoint_applies_page_limit_defaults(self):
+        params = DELISTED_COMPANIES.validate_params({})
+        assert params["page"] == 0
+        assert params["limit"] == 100
 
     def test_get_delisted_companies(self, fmp_client, mock_client):
         mock_client.request.return_value = [

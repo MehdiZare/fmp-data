@@ -50,9 +50,10 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Added
 
-- **FMP changelog alignment (#229).** Three confirmed 2026 wire gaps plus the
-  older-note re-probe above. Live `/stable` checks used the current API key
-  on 2026-08-12.
+- **FMP changelog alignment (#229).** Three confirmed 2026 wire gaps, the
+  leftover 2025-10 delisted-companies wiring (#233), plus the older-note
+  re-probe above. Live `/stable` checks used the current API key on
+  2026-08-12.
 
   - **Diluted P/E on ratios.** `FinancialRatios` and `FinancialRatiosTTM` now
     declare the diluted PE / diluted PEG pair FMP added on 2026-07-30
@@ -76,8 +77,8 @@ None. No FMP path we ship was newly retired by this changelog window.
     declaration used `CompanyProfile` and had no client method. Sync and
     async clients now expose `get_delisted_companies(page=0, limit=100)`
     returning `DelistedCompany` (`symbol`, `companyName`, `exchange`,
-    `ipoDate`, `delistedDate`). MCP/LangChain: `company.delisted_companies`
-    (in `DEFAULT_TOOLS`).
+    `ipoDate`, `delistedDate`). MCP: `company.delisted_companies` (in
+    `DEFAULT_TOOLS`). LangChain indexes the same semantics key.
 
 ### Fixed
 

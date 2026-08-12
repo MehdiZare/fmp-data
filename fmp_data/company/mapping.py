@@ -564,12 +564,27 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         response_hints={
             "symbol": ResponseFieldInfo(
                 description="Former trading symbol",
-                examples=["FB", "TWTR"],
+                examples=["EDAP", "2958.HK"],
                 related_terms=["ticker", "old symbol", "delisted ticker"],
+            ),
+            "company_name": ResponseFieldInfo(
+                description="Company name as FMP reports it",
+                examples=["EDAP TMS S.A.", "Vision Values Holdings Limited"],
+                related_terms=["name", "issuer"],
+            ),
+            "exchange": ResponseFieldInfo(
+                description="Exchange the symbol last traded on",
+                examples=["NASDAQ", "HKSE"],
+                related_terms=["listing venue", "last exchange"],
+            ),
+            "ipo_date": ResponseFieldInfo(
+                description="Original IPO date",
+                examples=["1997-08-01", "2026-05-27"],
+                related_terms=["listing date", "IPO"],
             ),
             "delisted_date": ResponseFieldInfo(
                 description="Date the symbol was delisted",
-                examples=["2026-08-17"],
+                examples=["2026-07-28", "2026-05-27"],
                 related_terms=["delist date", "removal date"],
             ),
         },

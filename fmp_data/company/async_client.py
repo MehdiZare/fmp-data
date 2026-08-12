@@ -350,7 +350,8 @@ class AsyncCompanyClient(AsyncEndpointGroup):
             limit: Number of results per page (default 100)
 
         Returns:
-            Slim delisted rows (symbol, name, exchange, IPO and delist dates).
+            List of slim delisted rows (symbol, companyName, exchange,
+            IPO and delist dates).
         """
         return await self.client.request_async(
             DELISTED_COMPANIES, page=page, limit=limit

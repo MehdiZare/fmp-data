@@ -14,7 +14,7 @@ from pathlib import Path
 import re
 
 from fmp_data.mcp.discovery import discover_all_tools
-from fmp_data.mcp.tools_manifest import DEFAULT_TOOLS
+from fmp_data.mcp.tools_manifest import DEFAULT_TOOLS, WITHDRAWN_TOOLS
 
 DOC_PATH = Path(__file__).resolve().parents[2] / "docs" / "mcp" / "tools.md"
 
@@ -133,6 +133,29 @@ def test_documented_totals_match_the_catalog() -> None:
 
     assert f"`{catalog_total}` catalog tools" in text
     assert f"`{default_total}` default" in text
+
+
+_NO_SUCCESSOR_WORDS = {
+    6: "Six",
+    7: "Seven",
+    8: "Eight",
+    9: "Nine",
+    10: "Ten",
+}
+
+
+def test_withdrawn_preamble_counts_match_source() -> None:
+    """The withdrawn-endpoint prose must track WITHDRAWN_TOOLS, not rot."""
+    text = DOC_PATH.read_text()
+    withdrawn = len(WITHDRAWN_TOOLS)
+    no_successor = sum(value is None for value in WITHDRAWN_TOOLS.values())
+    word = _NO_SUCCESSOR_WORDS.get(no_successor)
+
+    assert f"{withdrawn} tools name an FMP endpoint that no longer exists" in text
+    assert word is not None, (
+        f"add a word mapping for {no_successor} withdrawn tools with no successor"
+    )
+    assert f"{word} have no successor at all" in text
 
 
 def test_per_section_counts_match_the_catalog() -> None:

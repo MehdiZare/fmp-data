@@ -274,6 +274,20 @@ class TestAsyncCompanyClient:
         )
 
     @pytest.mark.asyncio
+    async def test_get_delisted_companies_defaults(self, mock_client):
+        """Async delisted list uses the same page=0 / limit=100 defaults."""
+        from fmp_data.company.async_client import AsyncCompanyClient
+        from fmp_data.company.endpoints import DELISTED_COMPANIES
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncCompanyClient(mock_client)
+        await async_client.get_delisted_companies()
+
+        mock_client.request_async.assert_called_once_with(
+            DELISTED_COMPANIES, page=0, limit=100
+        )
+
+    @pytest.mark.asyncio
     async def test_get_dividends_with_limit(self, mock_client):
         """Test async get_dividends with limit."""
         from fmp_data.company import endpoints as company_endpoints
