@@ -1,5 +1,6 @@
 # fmp_data/fundamental/models.py
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 import math
 from typing import Annotated, Any
 
@@ -47,17 +48,23 @@ def coerce_rating_score(value: Any) -> Any:
         return None
     if isinstance(value, bool):
         return value
-    if isinstance(value, int | float):
-        return _integral_int(float(value), value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return _integral_int(value, value)
     if isinstance(value, str):
         stripped = value.strip()
         if not stripped:
             return None
         try:
-            number = float(stripped)
-        except ValueError:
+            number = Decimal(stripped)
+        except InvalidOperation:
             return value
-        return _integral_int(number, value)
+        if not number.is_finite():
+            return value
+        if number != number.to_integral_value():
+            raise ValueError(f"rating score must be a whole number, got {value!r}")
+        return int(number)
     return value
 
 
