@@ -50,5 +50,14 @@ def test_hosted_doc_lists_every_probed_tool() -> None:
 
 def test_hosted_doc_records_twenty_eight_tools() -> None:
     text = DOC_PATH.read_text()
-    assert "28" in text
+    assert "**28** dataset tools" in text
     assert len(HOSTED_MCP_TOOLS) == 28
+    matrix_rows = [
+        line
+        for line in text.splitlines()
+        if line.startswith("| `")
+        and any(f"`{name}`" in line for name in HOSTED_MCP_TOOLS)
+    ]
+    assert len(matrix_rows) == 28, (
+        f"hosted.md matrix rows {len(matrix_rows)} != probed tool count 28"
+    )

@@ -18,7 +18,7 @@ Always say **FMP hosted MCP** vs **`fmp-mcp` (this package)**. Do not write
 | Zero-install agent in Claude Connectors, Cursor, or Cloudflare Workers AI | **FMP hosted MCP** |
 | Small tool list (one tool per dataset, ~28 tools) | **FMP hosted MCP** |
 | Typed Python models, offline/local process, manifests, LangChain | **`fmp-mcp` / this client** |
-| Broad catalog (~223 tools, 137 default) and method-shaped arguments | **`fmp-mcp`** |
+| Broad catalog (current counts in [tools.md](tools.md)) and method-shaped arguments | **`fmp-mcp`** |
 | Bulk CSV, cache backends, validation modes, rate limits | **this Python client** (not either MCP) |
 
 They are complementary. Hosted MCP is the "plug the URL into an agent" path.
@@ -31,7 +31,7 @@ They are complementary. Hosted MCP is the "plug the URL into an agent" path.
 |---|---|---|
 | Where it runs | Local process (`fmp-mcp` CLI, stdio) | `https://financialmodelingprep.com/mcp` |
 | Auth | `FMP_API_KEY` in env / config | API key in the query string (`?apikey=`) |
-| Tool surface | ~223 catalog / 137 default, one tool per endpoint | **28** dataset tools (live 2026-08-12; changelog 2026-03-27 said 27) |
+| Tool surface | One tool per endpoint; current catalog/default counts in [tools.md](tools.md) | **28** dataset tools (live 2026-08-12; changelog 2026-03-27 said 27) |
 | How a call is shaped | Python method args (`symbol`, `from_date`, …) | `endpoint` enum + shared params (`symbol`, `from_date`, …) |
 | Data path | Our client + Pydantic models | Their server → their REST (opaque) |
 | Billing | Caller's FMP key / plan | Same |
@@ -49,9 +49,11 @@ async with Client(url) as client:
     print(await client.call_tool("quote", {"endpoint": "quote", "symbol": "AAPL"}))
 ```
 
-`fastmcp` is **their** snippet, not a dependency of this package. Prefer env
-interpolation over pasting the key into a committed URL. A key in the query
-string will appear in proxy and access logs.
+`fastmcp` is **their** snippet, not a dependency of this package. Their
+published example omits `endpoint` and pastes a literal key; the live
+inputSchema requires `endpoint`, and a key in the query string will appear
+in proxy and access logs and in any connector config that stores the URL.
+Prefer env interpolation. Do not commit the keyed URL.
 
 ## Decision (#230)
 
@@ -108,7 +110,7 @@ Hosted `endpoint` values are FMP path slugs, not our `client.method` specs.
 | `form13F` | 8 | `institutional.form_13f*` / holdings-by-quarter | Hosted marks Ultimate/Enterprise |
 | `insiderTrades` | 6 | `institutional` insider tools | |
 | `secFilings` | 12 | `sec` / `intelligence` filings tools | |
-| `earningsTranscript` | 4 | `intelligence` transcript tools | Hosted marks Ultimate/Enterprise |
+| `earningsTranscript` | 4 | `transcripts.*` (`latest_transcripts`, `transcript`, `transcript_dates`, `transcript_symbols`) | 4 catalog / 0 default — large payloads, load via manifest. Hosted marks Ultimate/Enterprise |
 | `etfAndMutualFunds` | 9 | `investment.*` | |
 | `indexes` | 15 | `index.*` + historical constituents | |
 | `marketPerformance` | 11 | `market` gainers/losers/actives, sector/industry performance | |
