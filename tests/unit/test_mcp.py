@@ -748,9 +748,7 @@ class TestToolKeyNamespace:
                 "default", category=DeprecationWarning, module="__main__"
             )
             warnings.filterwarnings("ignore", category=DeprecationWarning)
-            with caplog.at_level(
-                logging.WARNING, logger="fmp_data.fmp_data.mcp.tool_loader"
-            ):
+            with caplog.at_level(logging.WARNING, logger="fmp_data.mcp.tool_loader"):
                 _warn_if_deprecated("company.historical_price")
 
         assert shown == [], (
@@ -769,9 +767,7 @@ class TestToolKeyNamespace:
         """The log channel must not turn every canonical key into noise."""
         from fmp_data.mcp.tool_loader import _warn_if_deprecated
 
-        with caplog.at_level(
-            logging.WARNING, logger="fmp_data.fmp_data.mcp.tool_loader"
-        ):
+        with caplog.at_level(logging.WARNING, logger="fmp_data.mcp.tool_loader"):
             _warn_if_deprecated("company.historical_prices")
 
         assert caplog.records == [], (

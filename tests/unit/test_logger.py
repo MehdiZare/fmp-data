@@ -363,6 +363,23 @@ class TestFMPLogger:
         named_logger = fmp_logger.get_logger("test.module")
         assert named_logger.name == "fmp_data.test.module"
 
+    def test_get_logger_does_not_double_package_prefix(self):
+        """get_logger(__name__) must not emit fmp_data.fmp_data.* (#238)."""
+        fmp_logger = FMPLogger()
+
+        assert fmp_logger.get_logger("fmp_data.base").name == "fmp_data.base"
+        assert fmp_logger.get_logger("fmp_data").name == "fmp_data"
+        assert fmp_logger.get_logger("fmp_data.mcp.tool_loader").name == (
+            "fmp_data.mcp.tool_loader"
+        )
+
+    def test_get_logger_module_name_is_visible_to_caplog(self, caplog):
+        """Operators and tests filtering fmp_data.base must see extras warnings."""
+        log = FMPLogger().get_logger("fmp_data.base")
+        with caplog.at_level(logging.WARNING, logger="fmp_data.base"):
+            log.warning("Unknown response fields detected")
+        assert "Unknown response fields detected" in caplog.text
+
     def test_get_logger_without_name(self):
         """Test getting logger without name"""
         fmp_logger = FMPLogger()
