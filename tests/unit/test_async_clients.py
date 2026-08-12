@@ -13,6 +13,7 @@ from fmp_data.company.models import (
     AftermarketQuote,
     AftermarketTrade,
     CompanyProfile,
+    DelistedCompany,
     IntradayPrice,
     Quote,
     SimpleQuote,
@@ -245,6 +246,32 @@ class TestAsyncCompanyClient:
 
         assert isinstance(result, StockPriceChange)
         assert result.one_day == 2.1008
+
+    @pytest.mark.asyncio
+    async def test_get_delisted_companies(self, mock_client):
+        """Async delisted list forwards page/limit."""
+        from fmp_data.company.async_client import AsyncCompanyClient
+        from fmp_data.company.endpoints import DELISTED_COMPANIES
+
+        mock_client.request_async.return_value = [
+            DelistedCompany.model_validate(
+                {
+                    "symbol": "2958.HK",
+                    "companyName": "Vision Values Holdings Limited",
+                    "exchange": "HKSE",
+                    "ipoDate": "2026-05-27",
+                    "delistedDate": "2026-08-17",
+                }
+            )
+        ]
+        async_client = AsyncCompanyClient(mock_client)
+        result = await async_client.get_delisted_companies(page=0, limit=2)
+
+        assert len(result) == 1
+        assert result[0].symbol == "2958.HK"
+        mock_client.request_async.assert_called_once_with(
+            DELISTED_COMPANIES, page=0, limit=2
+        )
 
     @pytest.mark.asyncio
     async def test_get_dividends_with_limit(self, mock_client):

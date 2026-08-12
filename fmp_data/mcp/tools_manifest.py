@@ -114,7 +114,7 @@ DEFAULT_TOOLS: list[str] = [
     "alternative.forex_intraday",
     "alternative.forex_list",
     "alternative.forex_quote",
-    # Company (21 tools) - Company Information and Quotes
+    # Company (22 tools) - Company Information and Quotes
     # Dead FMP endpoints intentionally omitted (see DEPRECATED_TOOLS):
     # analyst_recommendations, core_information, price_target,
     # upgrades_downgrades, upgrades_downgrades_consensus,
@@ -122,6 +122,7 @@ DEFAULT_TOOLS: list[str] = [
     # price_target_summary, grades and share_float respectively.
     "company.analyst_estimates",
     "company.company_notes",
+    "company.delisted_companies",
     "company.employee_count",
     "company.executive_compensation",
     "company.aftermarket_quote",

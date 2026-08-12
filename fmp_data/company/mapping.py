@@ -8,6 +8,7 @@ from fmp_data.company.endpoints import (
     ANALYST_RECOMMENDATIONS,
     COMPANY_NOTES,
     CORE_INFORMATION,
+    DELISTED_COMPANIES,
     EMPLOYEE_COUNT,
     EXECUTIVE_COMPENSATION,
     GEOGRAPHIC_REVENUE_SEGMENTATION,
@@ -80,6 +81,7 @@ COMPANY_ENDPOINT_MAP = {
     "get_product_revenue_segmentation": PRODUCT_REVENUE_SEGMENTATION,
     "get_geographic_revenue_segmentation": GEOGRAPHIC_REVENUE_SEGMENTATION,
     "get_symbol_changes": SYMBOL_CHANGES,
+    "get_delisted_companies": DELISTED_COMPANIES,
 }
 
 # Complete semantic definitions for all endpoints
@@ -534,6 +536,47 @@ COMPANY_ENDPOINTS_SEMANTICS = {
             "Historical data analysis",
             "Market research",
             "Database maintenance",
+        ],
+    ),
+    "delisted_companies": EndpointSemantics(
+        client_name="company",
+        method_name="get_delisted_companies",
+        natural_description=(
+            "Get companies FMP reports as delisted, including the last "
+            "exchange, IPO date, and delist date"
+        ),
+        example_queries=[
+            "List recently delisted companies",
+            "Which symbols were delisted?",
+            "Get delisted stocks",
+            "Show companies that left the exchange",
+            "Find delisted tickers",
+        ],
+        related_terms=[
+            "delisted",
+            "delisting",
+            "removed from exchange",
+            "dead ticker",
+            "former listing",
+        ],
+        category=SemanticCategory.COMPANY_INFO,
+        parameter_hints={"page": PAGE_HINT, "limit": LIMIT_HINT},
+        response_hints={
+            "symbol": ResponseFieldInfo(
+                description="Former trading symbol",
+                examples=["FB", "TWTR"],
+                related_terms=["ticker", "old symbol", "delisted ticker"],
+            ),
+            "delisted_date": ResponseFieldInfo(
+                description="Date the symbol was delisted",
+                examples=["2026-08-17"],
+                related_terms=["delist date", "removal date"],
+            ),
+        },
+        use_cases=[
+            "Corporate action tracking",
+            "Historical universe maintenance",
+            "Survivorship-bias checks",
         ],
     ),
     "executives": EndpointSemantics(

@@ -9,7 +9,7 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 (everything with MCP semantics, loadable via an explicit manifest), followed by
 how many of those are in `DEFAULT_TOOLS` (what a default server registers).
 The two differ where a tool is deprecated, redundant, or too heavy for the
-default set — `223` catalog tools, `137` default.
+default set — `224` catalog tools, `138` default.
 
 **Withdrawn endpoints:** 19 tools name an FMP endpoint that no longer exists.
 Probed against the live `stable` API, every one of those paths returns 404, so
@@ -32,7 +32,7 @@ always be written in full: `crypto_quotes` (`alternative.crypto_quotes` vs
 
 - [Alternative (15 tools, 12 default)](#alternative)
 - [Batch (30 tools, 0 default)](#batch)
-- [Company (32 tools, 21 default)](#company)
+- [Company (33 tools, 22 default)](#company)
 - [Economics (7 tools, 7 default)](#economics)
 - [Fundamental (14 tools, 12 default)](#fundamental)
 - [Index (6 tools, 0 default)](#index)
@@ -106,7 +106,7 @@ via a manifest; these return large payloads and several are CSV).
 
 ## Company
 
-**32 tools** for company information and quotes (21 default).
+**33 tools** for company information and quotes (22 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -117,6 +117,7 @@ via a manifest; these return large payloads and several are CSV).
 | `company_logo_url` | Get the URL of the company's official logo image for use in applications, websites, or documentation |
 | `company_notes` | Retrieve company financial notes and disclosures from SEC filings, providing additional context and explanations about financial statements |
 | `core_information` | Get essential company information including CIK number, exchange listing, SIC code, state of incorporation, and fiscal year details |
+| `delisted_companies` | Get companies FMP reports as delisted, including the last exchange, IPO date, and delist date |
 | `employee_count` | Get historical employee count data showing how company workforce has changed over time |
 | `executive_compensation` | Get detailed executive compensation information including salary, bonuses, stock awards, and total compensation packages for company leaders |
 | `executives` | *Deprecated — use `key_executives`; removed in 3.0.* Get detailed information about company's key executives including their names, titles, compensation, and tenure. |

@@ -12,6 +12,7 @@ from fmp_data.company.models import (
     CompanyOutlook,
     CompanyPeer,
     CompanyProfile,
+    DelistedCompany,
     EmployeeCount,
     ExecutiveCompensation,
     ExecutiveCompensationBenchmark,
@@ -934,7 +935,7 @@ DELISTED_COMPANIES: Endpoint = Endpoint(
             description="Number of results per page",
         ),
     ],
-    response_model=CompanyProfile,
+    response_model=DelistedCompany,
 )
 
 HISTORICAL_EMPLOYEE_COUNT: Endpoint = Endpoint(
