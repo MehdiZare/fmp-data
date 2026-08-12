@@ -39,7 +39,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 | `core_information` | `/stable/company-core-information` | Retrieve essential company information including CIK, exchange, SIC code, state of incorporation, and fiscal year details. Provides core regulatory and administrative information about a company. |
 | `company_notes` | `/stable/company-notes` | Retrieve company financial notes and disclosures. These notes provide additional context and detailed explanations about company financial statements and important events. |
 | `company_outlook` | `/stable/company-outlook` | Get comprehensive company outlook data |
-| `delisted_companies` | `/stable/delisted-companies` | Get list of delisted companies |
+| `delisted_companies` | `/stable/delisted-companies` | Slim delist list: symbol, companyName, exchange, ipoDate, delistedDate |
 | `company_dividends` | `/stable/dividends` | Get historical dividend payments for a specific company. Includes ex-dividend dates, payment dates, and dividend amounts. |
 | `company_earnings` | `/stable/earnings` | Get historical earnings reports for a specific company. Includes actual EPS, estimated EPS, revenue, and earnings dates. |
 | `employee_count` | `/stable/employee-count` | Get historical employee count data for a company. Tracks how the company's workforce has changed over time, providing insights into company growth and operational scale. |

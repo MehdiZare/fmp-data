@@ -15,6 +15,7 @@ from fmp_data.company.models import (
     CompanyNote,
     CompanyPeer,
     CompanyProfile,
+    DelistedCompany,
     EmployeeCount,
     ExecutiveCompensation,
     ExecutiveCompensationBenchmark,
@@ -404,6 +405,24 @@ class TestCompanyEndpoints(BaseTestCase):
                 assert isinstance(first_change.new_symbol, str)
                 assert isinstance(first_change.change_date, date)
                 assert isinstance(first_change.name, str)
+
+    def test_get_delisted_companies(
+        self, fmp_client: FMPDataClient, vcr_instance: vcr.VCR
+    ):
+        """Test getting the slim delisted-companies list."""
+        with vcr_instance.use_cassette("company/delisted_companies.yaml"):
+            rows = self._handle_rate_limit(
+                fmp_client.company.get_delisted_companies, page=0, limit=2
+            )
+            assert isinstance(rows, list)
+            assert len(rows) > 0
+            assert all(isinstance(row, DelistedCompany) for row in rows)
+            first = rows[0]
+            assert first.symbol
+            assert first.company_name is not None
+            assert first.exchange is not None
+            assert first.ipo_date is None or isinstance(first.ipo_date, date)
+            assert isinstance(first.delisted_date, date)
 
     def test_get_price_target(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting price targets"""

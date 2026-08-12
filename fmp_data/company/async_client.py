@@ -25,6 +25,7 @@ from fmp_data.company.endpoints import (
     COMPANY_NOTES,
     COMPANY_PEERS,
     COMPANY_SPLITS,
+    DELISTED_COMPANIES,
     EMPLOYEE_COUNT,
     ENTERPRISE_VALUES,
     EXECUTIVE_COMPENSATION,
@@ -70,6 +71,7 @@ from fmp_data.company.models import (
     CompanyNote,
     CompanyPeer,
     CompanyProfile,
+    DelistedCompany,
     EmployeeCount,
     ExecutiveCompensation,
     ExecutiveCompensationBenchmark,
@@ -337,6 +339,23 @@ class AsyncCompanyClient(AsyncEndpointGroup):
     async def get_symbol_changes(self) -> list[SymbolChange]:
         """Get symbol change history"""
         return await self.client.request_async(SYMBOL_CHANGES)
+
+    async def get_delisted_companies(
+        self, page: int = 0, limit: int = 100
+    ) -> list[DelistedCompany]:
+        """Get companies FMP reports as delisted.
+
+        Args:
+            page: Page number for pagination (default 0)
+            limit: Number of results per page (default 100)
+
+        Returns:
+            List of slim delisted rows (symbol, companyName, exchange,
+            IPO and delist dates).
+        """
+        return await self.client.request_async(
+            DELISTED_COMPANIES, page=page, limit=limit
+        )
 
     async def get_share_float(self, symbol: str) -> ShareFloat:
         """Get current share float data for a company"""

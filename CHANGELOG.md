@@ -26,12 +26,12 @@ out of scope.
 | Company screener | Pagination | `page` (optional, omitted when unset) | `market.get_company_screener(..., page=None)` |
 | Senate / House trades | Entity id | `senateID` (same key on House rows) | `SenateTrade.senate_id` / `HouseDisclosure.senate_id` |
 | Ratings bulk | Score columns | `discountedCashFlowScore`, `returnOnEquityScore`, `returnOnAssetsScore`, `debtToEquityScore`, `priceToEarningsScore`, `priceToBookScore` | `CompanyRating.*_score` |
+| Delisted companies | Slim delist list | `/stable/delisted-companies` (`page`, `limit`) | `company.get_delisted_companies` → `DelistedCompany` |
 
 #### Updated (path or contract still matches; no caller change)
 
 | FMP note | Path probed | Result |
 |---|---|---|
-| Delisted companies architecture (2025-10) | `/stable/delisted-companies` | 200. Slim row `{symbol, companyName, exchange, ipoDate, delistedDate}`. Path unchanged. No Python client method — the endpoint declaration still uses `CompanyProfile`, which is the wrong shape (pre-existing; not wired). |
 | Exchange directory taxonomy (2025-06) | `/stable/available-exchanges` | 200. Keys `exchange`, `name`, `countryName`, `countryCode`, `delay`, `symbolSuffix` — already on `ExchangeSymbol`. |
 | Exchange variants (2025-05/06) | `/stable/search-exchange-variants?query=Apple` | 200. Profile-shaped rows still parse as `CompanySearchResult`. |
 | DCF valuations bulk naming (2025-06) | `/stable/dcf-bulk` | 200. Headers `symbol,date,dcf,Stock Price`. Client still remaps `Stock Price` → `stockPrice`. |
@@ -50,9 +50,10 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Added
 
-- **FMP changelog alignment (#229).** Three confirmed 2026 wire gaps plus the
-  older-note re-probe above. Live `/stable` checks used the current API key
-  on 2026-08-12.
+- **FMP changelog alignment (#229).** Three confirmed 2026 wire gaps, the
+  leftover 2025-10 delisted-companies wiring (#233), plus the older-note
+  re-probe above. Live `/stable` checks used the current API key on
+  2026-08-12.
 
   - **Diluted P/E on ratios.** `FinancialRatios` and `FinancialRatiosTTM` now
     declare the diluted PE / diluted PEG pair FMP added on 2026-07-30
@@ -71,6 +72,13 @@ None. No FMP path we ship was newly retired by this changelog window.
     / `debtToEquityScore` / `priceToEarningsScore` / `priceToBookScore` are
     now typed attributes. Fractional CSV cells such as ``"3.0"`` coerce to
     ``int`` so ``parse_csv_models`` does not skip the whole company row.
+  - **`company.get_delisted_companies`.** The 2025-10 delisted-companies
+    architecture sync left a live `/stable/delisted-companies` path whose
+    declaration used `CompanyProfile` and had no client method. Sync and
+    async clients now expose `get_delisted_companies(page=0, limit=100)`
+    returning `DelistedCompany` (`symbol`, `companyName`, `exchange`,
+    `ipoDate`, `delistedDate`). MCP: `company.delisted_companies` (in
+    `DEFAULT_TOOLS`). LangChain indexes the same semantics key.
 
 ### Fixed
 
