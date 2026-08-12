@@ -10,7 +10,9 @@ from fmp_data.fundamental.endpoints import (
     OWNER_EARNINGS,
 )
 from fmp_data.fundamental.models import (
+    CompanyRating,
     FinancialRatios,
+    FinancialRatiosTTM,
     FinancialReportDate,
     FinancialStatementFull,
     IncomeStatement,
@@ -257,6 +259,61 @@ class TestFundamentalEndpoints(unittest.TestCase):
         self.assertIsInstance(ratio, FinancialRatios)
         assert ratio.current_ratio is not None
         self.assertAlmostEqual(ratio.current_ratio, 0.8673125765340832)
+
+    def test_financial_ratios_diluted_pe_alias_round_trip(self):
+        """Diluted PE / PEG are first-class fields, not extras (#229)."""
+        ratio = FinancialRatios.model_validate(
+            {
+                "symbol": "AAPL",
+                "priceToEarningsDilutedRatio": 34.24,
+                "priceToEarningsDilutedGrowthRatio": 1.51,
+            }
+        )
+        assert ratio.price_to_earnings_diluted_ratio is not None
+        assert ratio.price_to_earnings_diluted_growth_ratio is not None
+        self.assertAlmostEqual(ratio.price_to_earnings_diluted_ratio, 34.24)
+        self.assertAlmostEqual(ratio.price_to_earnings_diluted_growth_ratio, 1.51)
+        dumped = ratio.model_dump(by_alias=True)
+        self.assertAlmostEqual(dumped["priceToEarningsDilutedRatio"], 34.24)
+        self.assertAlmostEqual(dumped["priceToEarningsDilutedGrowthRatio"], 1.51)
+
+    def test_financial_ratios_ttm_diluted_pe_alias_round_trip(self):
+        """TTM diluted PE / PEG aliases match the 2026-07-30 wire keys."""
+        ratio = FinancialRatiosTTM.model_validate(
+            {
+                "symbol": "AAPL",
+                "priceToEarningsDilutedRatioTTM": 34.64,
+                "priceToEarningsDilutedGrowthRatioTTM": 1.07,
+            }
+        )
+        assert ratio.price_to_earnings_diluted_ratio_ttm is not None
+        assert ratio.price_to_earnings_diluted_growth_ratio_ttm is not None
+        self.assertAlmostEqual(ratio.price_to_earnings_diluted_ratio_ttm, 34.64)
+        self.assertAlmostEqual(ratio.price_to_earnings_diluted_growth_ratio_ttm, 1.07)
+        dumped = ratio.model_dump(by_alias=True)
+        self.assertAlmostEqual(dumped["priceToEarningsDilutedRatioTTM"], 34.64)
+        self.assertAlmostEqual(dumped["priceToEarningsDilutedGrowthRatioTTM"], 1.07)
+
+    def test_company_rating_bulk_score_alias_round_trip(self):
+        """rating-bulk score columns bind on CompanyRating (#229 re-probe)."""
+        rating = CompanyRating.model_validate(
+            {
+                "symbol": "AAPL",
+                "date": "2026-08-12",
+                "rating": "A-",
+                "discountedCashFlowScore": 3,
+                "returnOnEquityScore": 4,
+                "returnOnAssetsScore": 4,
+                "debtToEquityScore": 2,
+                "priceToEarningsScore": 3,
+                "priceToBookScore": 3,
+            }
+        )
+        self.assertEqual(rating.discounted_cash_flow_score, 3)
+        self.assertEqual(rating.return_on_equity_score, 4)
+        dumped = rating.model_dump(by_alias=True)
+        self.assertEqual(dumped["discountedCashFlowScore"], 3)
+        self.assertEqual(dumped["priceToBookScore"], 3)
 
     def test_get_financial_reports_dates(self):
         """Test getting financial report dates"""

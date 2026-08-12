@@ -1099,10 +1099,20 @@ class FinancialRatios(BaseModel):
         alias="priceToEarningsRatio",
         description="Price to earnings ratio",
     )
+    price_to_earnings_diluted_ratio: float | None = Field(
+        default=None,
+        alias="priceToEarningsDilutedRatio",
+        description="Price to diluted earnings ratio",
+    )
     price_to_earnings_growth_ratio: float | None = Field(
         default=None,
         alias="priceToEarningsGrowthRatio",
         description="Price to earnings growth ratio (PEG)",
+    )
+    price_to_earnings_diluted_growth_ratio: float | None = Field(
+        default=None,
+        alias="priceToEarningsDilutedGrowthRatio",
+        description="Price to diluted earnings growth ratio (diluted PEG)",
     )
     forward_price_to_earnings_growth_ratio: float | None = Field(
         default=None,
@@ -1365,10 +1375,20 @@ class FinancialRatiosTTM(BaseModel):
         alias="priceToEarningsRatioTTM",
         description="Price to earnings ratio TTM",
     )
+    price_to_earnings_diluted_ratio_ttm: float | None = Field(
+        default=None,
+        alias="priceToEarningsDilutedRatioTTM",
+        description="Price to diluted earnings ratio TTM",
+    )
     price_to_earnings_growth_ratio_ttm: float | None = Field(
         default=None,
         alias="priceToEarningsGrowthRatioTTM",
         description="Price to earnings growth ratio TTM",
+    )
+    price_to_earnings_diluted_growth_ratio_ttm: float | None = Field(
+        default=None,
+        alias="priceToEarningsDilutedGrowthRatioTTM",
+        description="Price to diluted earnings growth ratio TTM",
     )
     forward_price_to_earnings_growth_ratio_ttm: float | None = Field(
         default=None,
@@ -2617,7 +2637,36 @@ class CompanyRating(BaseModel):
     date: datetime = Field(description="Rating date")
     rating: str = Field(description="Overall rating")
     recommendation: str | None = Field(None, description="Investment recommendation")
-    # Add more fields as needed
+    discounted_cash_flow_score: int | None = Field(
+        default=None,
+        alias="discountedCashFlowScore",
+        description="Discounted cash flow score from rating-bulk",
+    )
+    return_on_equity_score: int | None = Field(
+        default=None,
+        alias="returnOnEquityScore",
+        description="Return on equity score from rating-bulk",
+    )
+    return_on_assets_score: int | None = Field(
+        default=None,
+        alias="returnOnAssetsScore",
+        description="Return on assets score from rating-bulk",
+    )
+    debt_to_equity_score: int | None = Field(
+        default=None,
+        alias="debtToEquityScore",
+        description="Debt to equity score from rating-bulk",
+    )
+    price_to_earnings_score: int | None = Field(
+        default=None,
+        alias="priceToEarningsScore",
+        description="Price to earnings score from rating-bulk",
+    )
+    price_to_book_score: int | None = Field(
+        default=None,
+        alias="priceToBookScore",
+        description="Price to book score from rating-bulk",
+    )
 
 
 class EnterpriseValue(BaseModel):

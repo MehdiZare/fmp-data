@@ -882,6 +882,7 @@ class TestMarketIntelligenceClientGovernment:
         """Test get_senate_latest"""
         mock_data = {
             "symbol": "AAPL",
+            "senateID": "W000802",
             "disclosureDate": "2025-01-08",
             "transactionDate": "2024-12-19",
             "firstName": "Sheldon",
@@ -899,12 +900,14 @@ class TestMarketIntelligenceClientGovernment:
         }
         mock_client.request.return_value = [SenateTrade(**mock_data)]
 
-        _ = fmp_client.intelligence.get_senate_latest(page=0, limit=100)
+        result = fmp_client.intelligence.get_senate_latest(page=0, limit=100)
 
         mock_client.request.assert_called_once()
         _args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 0
         assert kwargs["limit"] == 100
+        assert result[0].senate_id == "W000802"
+        assert result[0].model_dump(by_alias=True)["senateID"] == "W000802"
 
     def test_get_senate_trading(self, fmp_client, mock_client):
         """Test get_senate_trading"""
@@ -953,6 +956,7 @@ class TestMarketIntelligenceClientGovernment:
         """Test get_house_latest"""
         mock_data = {
             "symbol": "AAPL",
+            "senateID": "P000197",
             "disclosureDate": "2025-02-03",
             "transactionDate": "2025-01-03",
             "firstName": "Michael",
@@ -970,12 +974,14 @@ class TestMarketIntelligenceClientGovernment:
         }
         mock_client.request.return_value = [HouseDisclosure(**mock_data)]
 
-        _ = fmp_client.intelligence.get_house_latest(page=0, limit=100)
+        result = fmp_client.intelligence.get_house_latest(page=0, limit=100)
 
         mock_client.request.assert_called_once()
         _args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 0
         assert kwargs["limit"] == 100
+        assert result[0].senate_id == "P000197"
+        assert result[0].model_dump(by_alias=True)["senateID"] == "P000197"
 
     def test_get_house_disclosure(self, fmp_client, mock_client):
         """Test get_house_disclosure"""
@@ -1011,6 +1017,34 @@ class TestMarketIntelligenceClientGovernment:
         mock_client.request.assert_called_once()
         _args, kwargs = mock_client.request.call_args
         assert kwargs["name"] == "James"
+
+    def test_senate_trade_senate_id_alias_round_trip(self):
+        """senateID is a first-class SenateTrade field (#229)."""
+        trade = SenateTrade.model_validate(
+            {
+                "symbol": "AAPL",
+                "senateID": "T000278",
+                "firstName": "Tommy",
+                "lastName": "Tuberville",
+                "link": "https://example.com/filing",
+            }
+        )
+        assert trade.senate_id == "T000278"
+        assert trade.model_dump(by_alias=True)["senateID"] == "T000278"
+
+    def test_house_disclosure_keeps_wire_senate_id(self):
+        """House rows keep FMP's senateID key, not a house_id rename (#229)."""
+        row = HouseDisclosure.model_validate(
+            {
+                "symbol": "INTC",
+                "senateID": "P000197",
+                "firstName": "Nancy",
+                "lastName": "Pelosi",
+                "link": "https://example.com/filing",
+            }
+        )
+        assert row.senate_id == "P000197"
+        assert row.model_dump(by_alias=True)["senateID"] == "P000197"
 
 
 class TestMarketIntelligenceClientFundraising:

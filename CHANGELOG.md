@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### FMP API surface (scan this first)
+
+Source: FMP public changelog
+([docs/changelog](https://site.financialmodelingprep.com/developer/docs/changelog))
+plus a live `/stable` probe on 2026-08-12. Marketing-only items (dashboard,
+localization, Insights Hub, plan add-ons) and FMP's hosted MCP product are
+out of scope.
+
+#### New (now first-class in this client)
+
+| Surface | What you get | Wire key / param | Client |
+|---|---|---|---|
+| Financial ratios | Diluted P/E | `priceToEarningsDilutedRatio` | `FinancialRatios.price_to_earnings_diluted_ratio` |
+| Financial ratios | Diluted PEG | `priceToEarningsDilutedGrowthRatio` | `FinancialRatios.price_to_earnings_diluted_growth_ratio` |
+| Ratios TTM (+ `ratios-ttm-bulk`) | Diluted P/E TTM | `priceToEarningsDilutedRatioTTM` | `FinancialRatiosTTM.price_to_earnings_diluted_ratio_ttm` |
+| Ratios TTM (+ `ratios-ttm-bulk`) | Diluted PEG TTM | `priceToEarningsDilutedGrowthRatioTTM` | `FinancialRatiosTTM.price_to_earnings_diluted_growth_ratio_ttm` |
+| Company screener | Pagination | `page` (optional, omitted when unset) | `market.get_company_screener(..., page=None)` |
+| Senate / House trades | Entity id | `senateID` (same key on House rows) | `SenateTrade.senate_id` / `HouseDisclosure.senate_id` |
+| Ratings bulk | Score columns | `discountedCashFlowScore`, `returnOnEquityScore`, `returnOnAssetsScore`, `debtToEquityScore`, `priceToEarningsScore`, `priceToBookScore` | `CompanyRating.*_score` |
+
+#### Updated (path or contract still matches; no caller change)
+
+| FMP note | Path probed | Result |
+|---|---|---|
+| Delisted companies architecture (2025-10) | `/stable/delisted-companies` | 200. Slim row `{symbol, companyName, exchange, ipoDate, delistedDate}`. Path unchanged. No Python client method — the endpoint declaration still uses `CompanyProfile`, which is the wrong shape (pre-existing; not wired). |
+| Exchange directory taxonomy (2025-06) | `/stable/available-exchanges` | 200. Keys `exchange`, `name`, `countryName`, `countryCode`, `delay`, `symbolSuffix` — already on `ExchangeSymbol`. |
+| Exchange variants (2025-05/06) | `/stable/search-exchange-variants?query=Apple` | 200. Profile-shaped rows still parse as `CompanySearchResult`. |
+| DCF valuations bulk naming (2025-06) | `/stable/dcf-bulk` | 200. Headers `symbol,date,dcf,Stock Price`. Client still remaps `Stock Price` → `stockPrice`. |
+| Historical S&P 500 symbol naming (2025-06) | `/stable/historical-sp500-constituent` | 200. `symbol` present; `HistoricalIndexConstituent` still parses. |
+| Stock ratings bulk field standardization (2025-06) | `/stable/rating-bulk` | 200. Score columns now typed on `CompanyRating` (see New). |
+| CUSIP on fund disclosure holders (2025-10) | `/stable/funds/disclosure-holders-latest` | Only `securityCusip`. Already modeled; no second key. |
+| ETF `isActivelyTrading` (2025-12) | `/stable/etf/info` | Present. Already modeled. |
+| Splits calendar `splitType` (2025-11) | `/stable/splits-calendar` | Present (may be `null`). Already modeled. |
+| Earnings `includeReportTimes` (2026-06) | `/stable/earnings-calendar?includeReportTimes=true` | Extra fields `confirmed`, `fiscalPeriod`, `fiscalYear`, `periodEnding`, `time`, `lastUpdated` already modeled. |
+| Profile bulk `part=0..3` (2024-10) | `/stable/profile-bulk?part=0` | 200. Multi-part scheme unchanged. |
+| Legacy route auth-gate (2025-08) | `/api/v3/profile/AAPL` | 403. No remaining live client path uses `APIVersion.V3`. The one leftover `V4` declaration is the already-withdrawn `stock-news-sentiments`. |
+
+#### Deprecated / withdrawn in this pass
+
+None. No FMP path we ship was newly retired by this changelog window.
+
+### Added
+
+- **FMP changelog alignment (#229).** Three confirmed 2026 wire gaps plus the
+  older-note re-probe above. Live `/stable` checks used the current API key
+  on 2026-08-12.
+
+  - **Diluted P/E on ratios.** `FinancialRatios` and `FinancialRatiosTTM` now
+    declare the diluted PE / diluted PEG pair FMP added on 2026-07-30
+    (`priceToEarningsDilutedRatio`, `priceToEarningsDilutedGrowthRatio`, and
+    the `*TTM` names on TTM + `ratios-ttm-bulk`). They previously landed only
+    in `__pydantic_extra__` and could warn under `FMP_VALIDATION_MODE=warn`.
+  - **Screener `page`.** `market.get_company_screener` / async accept optional
+    `page: int | None = None`. Unset is omitted from the request (existing
+    callers keep the same wire). `page=0` is sent. Live: `limit=2&page=0`
+    and `limit=2&page=1` return distinct first rows.
+  - **`senateID` on Senate and House trades.** `SenateTrade.senate_id` and
+    `HouseDisclosure.senate_id` alias `senateID`. The wire name is kept on
+    House rows (Pelosi → `P000197`); we do not invent `house_id`.
+  - **`CompanyRating` score columns.** `rating-bulk` headers
+    `discountedCashFlowScore` / `returnOnEquityScore` / `returnOnAssetsScore`
+    / `debtToEquityScore` / `priceToEarningsScore` / `priceToBookScore` are
+    now typed attributes.
+
 ### Fixed
 
 - **CI: post-release main→dev sync auto-merges and no longer needs admin bypass.**

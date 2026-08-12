@@ -855,6 +855,15 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             description="Number of results to return",
         ),
         EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description=(
+                "Zero-based page of screener results. Omitted from the "
+                "request when unset so existing callers keep their wire shape."
+            ),
+        ),
+        EndpointParam(
             name="include_all_share_classes",
             location=ParamLocation.QUERY,
             param_type=ParamType.BOOLEAN,

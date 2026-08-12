@@ -456,6 +456,14 @@ class SenateTrade(BaseModel):
     model_config = default_model_config
 
     symbol: str | None = Field(None, description="Stock symbol")
+    senate_id: str | None = Field(
+        None,
+        alias="senateID",
+        description=(
+            "FMP entity id for the senator. The wire key is senateID even "
+            "on House rows, where FMP reused the same identifier."
+        ),
+    )
     disclosure_date: datetime | None = Field(
         None,
         validation_alias=AliasChoices("disclosureDate", "dateRecieved"),
@@ -502,6 +510,14 @@ class HouseDisclosure(BaseModel):
         None,
         validation_alias=AliasChoices("symbol", "ticker"),
         description="Stock symbol",
+    )
+    senate_id: str | None = Field(
+        None,
+        alias="senateID",
+        description=(
+            "FMP entity id for the member. The wire key is senateID on "
+            "House rows as well (e.g. Pelosi is P000197)."
+        ),
     )
     disclosure_date: datetime | None = Field(
         None, alias="disclosureDate", description="Date of disclosure"

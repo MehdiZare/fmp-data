@@ -536,6 +536,25 @@ def test_get_company_screener(mock_request, fmp_client, mock_response):
     assert params["isEtf"] is False
     assert params["sector"] == "Technology"
     assert params["limit"] == 5
+    assert "page" not in params
+
+
+@patch("httpx.Client.request")
+def test_get_company_screener_forwards_page(mock_request, fmp_client, mock_response):
+    """Screener page is forwarded only when set, including page=0 (#229)."""
+    response_data = [{"symbol": "AAPL", "name": "Apple Inc.", "currency": "USD"}]
+    mock_request.return_value = mock_response(status_code=200, json_data=response_data)
+
+    fmp_client.market.get_company_screener(limit=2, page=0)
+    params = mock_request.call_args[1]["params"]
+    assert params["limit"] == 2
+    assert params["page"] == 0
+
+    mock_request.reset_mock()
+    mock_request.return_value = mock_response(status_code=200, json_data=response_data)
+    fmp_client.market.get_company_screener(limit=2, page=1)
+    params = mock_request.call_args[1]["params"]
+    assert params["page"] == 1
 
 
 class TestIPOEndpoints:
