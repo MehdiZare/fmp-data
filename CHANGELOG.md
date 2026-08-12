@@ -48,6 +48,16 @@ out of scope.
 
 None. No FMP path we ship was newly retired by this changelog window.
 
+### Changed
+
+- **List-returning requests are `list[T]` without collapsing `request()` (#235).**
+  `BaseClient.request` stays `Endpoint[T] -> T | list[T]`. List endpoints
+  (company delisted / symbol-changes / M&A and the rest of the company list
+  surface) are now `Endpoint[T]` for the row type and go through
+  `request_list` / `EndpointGroup._unwrap_list` instead of copying the
+  `PROFILE_CIK` single-object pattern. A lone object from FMP becomes
+  `[row]`; an empty list stays empty.
+
 ### Added
 
 - **FMP hosted MCP vs `fmp-mcp` positioning (#230).** Docs-only: we are not

@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 from pydantic import ValidationError
 import pytest
 
-from fmp_data.base import BaseClient
+from fmp_data.base import BaseClient, EndpointGroup
 from fmp_data.company import CompanyClient
 from fmp_data.company.endpoints import DELISTED_COMPANIES
 from fmp_data.company.models import (
@@ -829,7 +829,10 @@ class TestDelistedCompanies:
         }
 
         assert DELISTED_COMPANIES.response_model is DelistedCompany
-        rows = BaseClient._process_response(DELISTED_COMPANIES, [slim])
+        rows = EndpointGroup._unwrap_list(
+            BaseClient._process_response(DELISTED_COMPANIES, [slim]),
+            DelistedCompany,
+        )
 
         assert len(rows) == 1
         row = rows[0]
@@ -886,6 +889,27 @@ class TestDelistedCompanies:
         mock_client.request.assert_called_once_with(
             DELISTED_COMPANIES, page=0, limit=100
         )
+
+    def test_get_delisted_companies_wraps_single_row(self, fmp_client, mock_client):
+        """A lone object from request() is still list[DelistedCompany] (#235)."""
+        row = DelistedCompany.model_validate(
+            {
+                "symbol": "2958.HK",
+                "companyName": "Vision Values Holdings Limited",
+                "exchange": "HKSE",
+                "ipoDate": "2026-05-27",
+                "delistedDate": "2026-08-17",
+            }
+        )
+        mock_client.request.return_value = row
+
+        result = fmp_client.get_delisted_companies()
+
+        assert result == [row]
+
+    def test_delisted_endpoint_is_parameterized_row_type(self):
+        """List endpoints bind T as the row, not list[T] (#235)."""
+        assert DELISTED_COMPANIES.response_model is DelistedCompany
 
 
 class TestExecutiveCompensationBenchmark:

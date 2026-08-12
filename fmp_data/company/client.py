@@ -160,15 +160,21 @@ class CompanyClient(EndpointGroup):
 
     def get_executives(self, symbol: str) -> list[CompanyExecutive]:
         """Get company executives information"""
-        return self.client.request(KEY_EXECUTIVES, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(KEY_EXECUTIVES, symbol=symbol), CompanyExecutive
+        )
 
     def get_employee_count(self, symbol: str) -> list[EmployeeCount]:
         """Get company employee count history"""
-        return self.client.request(EMPLOYEE_COUNT, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(EMPLOYEE_COUNT, symbol=symbol), EmployeeCount
+        )
 
     def get_company_notes(self, symbol: str) -> list[CompanyNote]:
         """Get company financial notes"""
-        return self.client.request(COMPANY_NOTES, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(COMPANY_NOTES, symbol=symbol), CompanyNote
+        )
 
     def get_company_logo_url(self, symbol: str) -> str:
         """Get the company logo URL"""
@@ -259,18 +265,24 @@ class CompanyClient(EndpointGroup):
         """
         start_date = _format_date(from_date)
         end_date = _format_date(to_date)
-        return self.client.request(
-            INTRADAY_PRICE,
-            symbol=symbol,
-            interval=interval,
-            start_date=start_date,
-            end_date=end_date,
-            nonadjusted=nonadjusted,
+        return self._unwrap_list(
+            self.client.request(
+                INTRADAY_PRICE,
+                symbol=symbol,
+                interval=interval,
+                start_date=start_date,
+                end_date=end_date,
+                nonadjusted=nonadjusted,
+            ),
+            IntradayPrice,
         )
 
     def get_executive_compensation(self, symbol: str) -> list[ExecutiveCompensation]:
         """Get executive compensation data for a company"""
-        return self.client.request(EXECUTIVE_COMPENSATION, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(EXECUTIVE_COMPENSATION, symbol=symbol),
+            ExecutiveCompensation,
+        )
 
     @deprecated(
         "historical/shares-float is dead. The live path shares-float is "
@@ -304,11 +316,14 @@ class CompanyClient(EndpointGroup):
         Returns:
             List of product revenue segments by fiscal year
         """
-        return self.client.request(
-            PRODUCT_REVENUE_SEGMENTATION,
-            symbol=symbol,
-            structure="flat",
-            period=period,
+        return self._unwrap_list(
+            self.client.request(
+                PRODUCT_REVENUE_SEGMENTATION,
+                symbol=symbol,
+                structure="flat",
+                period=period,
+            ),
+            ProductRevenueSegment,
         )
 
     def get_geographic_revenue_segmentation(
@@ -323,16 +338,19 @@ class CompanyClient(EndpointGroup):
         Returns:
             List of geographic revenue segments by fiscal year
         """
-        return self.client.request(
-            GEOGRAPHIC_REVENUE_SEGMENTATION,
-            symbol=symbol,
-            structure="flat",
-            period=period,
+        return self._unwrap_list(
+            self.client.request(
+                GEOGRAPHIC_REVENUE_SEGMENTATION,
+                symbol=symbol,
+                structure="flat",
+                period=period,
+            ),
+            GeographicRevenueSegment,
         )
 
     def get_symbol_changes(self) -> list[SymbolChange]:
         """Get symbol change history"""
-        return self.client.request(SYMBOL_CHANGES)
+        return self._unwrap_list(self.client.request(SYMBOL_CHANGES), SymbolChange)
 
     def get_delisted_companies(
         self, page: int = 0, limit: int = 100
@@ -347,7 +365,10 @@ class CompanyClient(EndpointGroup):
             List of slim delisted rows (symbol, companyName, exchange,
             IPO and delist dates).
         """
-        return self.client.request(DELISTED_COMPANIES, page=page, limit=limit)
+        return self._unwrap_list(
+            self.client.request(DELISTED_COMPANIES, page=page, limit=limit),
+            DelistedCompany,
+        )
 
     def get_share_float(self, symbol: str) -> ShareFloat:
         """Get current share float data for a company"""
@@ -361,7 +382,10 @@ class CompanyClient(EndpointGroup):
 
     def get_historical_market_cap(self, symbol: str) -> list[MarketCapitalization]:
         """Get historical market capitalization data"""
-        return self.client.request(HISTORICAL_MARKET_CAP, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(HISTORICAL_MARKET_CAP, symbol=symbol),
+            MarketCapitalization,
+        )
 
     @deprecated(
         "The FMP API no longer serves the price-target series. Use "
@@ -400,12 +424,15 @@ class CompanyClient(EndpointGroup):
         limit: int = 10,
     ) -> list[AnalystEstimate]:
         """Get analyst estimates"""
-        return self.client.request(
-            ANALYST_ESTIMATES,
-            symbol=symbol,
-            period=period,
-            page=page,
-            limit=limit,
+        return self._unwrap_list(
+            self.client.request(
+                ANALYST_ESTIMATES,
+                symbol=symbol,
+                period=period,
+                page=page,
+                limit=limit,
+            ),
+            AnalystEstimate,
         )
 
     @deprecated(
@@ -471,7 +498,9 @@ class CompanyClient(EndpointGroup):
 
     def get_company_peers(self, symbol: str) -> list[CompanyPeer]:
         """Get company peers"""
-        return self.client.request(COMPANY_PEERS, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(COMPANY_PEERS, symbol=symbol), CompanyPeer
+        )
 
     def get_mergers_acquisitions_latest(
         self, page: int = 0, limit: int = 100
@@ -485,7 +514,10 @@ class CompanyClient(EndpointGroup):
         Returns:
             List of recent M&A transactions
         """
-        return self.client.request(MERGERS_ACQUISITIONS_LATEST, page=page, limit=limit)
+        return self._unwrap_list(
+            self.client.request(MERGERS_ACQUISITIONS_LATEST, page=page, limit=limit),
+            MergerAcquisition,
+        )
 
     def get_mergers_acquisitions_search(
         self, name: str, page: int = 0, limit: int = 100
@@ -500,8 +532,11 @@ class CompanyClient(EndpointGroup):
         Returns:
             List of M&A transactions matching the search
         """
-        return self.client.request(
-            MERGERS_ACQUISITIONS_SEARCH, name=name, page=page, limit=limit
+        return self._unwrap_list(
+            self.client.request(
+                MERGERS_ACQUISITIONS_SEARCH, name=name, page=page, limit=limit
+            ),
+            MergerAcquisition,
         )
 
     def get_executive_compensation_benchmark(
@@ -515,7 +550,10 @@ class CompanyClient(EndpointGroup):
         Returns:
             List of executive compensation benchmarks by industry
         """
-        return self.client.request(EXECUTIVE_COMPENSATION_BENCHMARK, year=year)
+        return self._unwrap_list(
+            self.client.request(EXECUTIVE_COMPENSATION_BENCHMARK, year=year),
+            ExecutiveCompensationBenchmark,
+        )
 
     def get_historical_prices_light(
         self,
@@ -637,7 +675,9 @@ class CompanyClient(EndpointGroup):
             params["to_date"] = end_date
         if limit is not None:
             params["limit"] = limit
-        return self.client.request(COMPANY_DIVIDENDS, **params)
+        return self._unwrap_list(
+            self.client.request(COMPANY_DIVIDENDS, **params), DividendEvent
+        )
 
     def get_earnings(self, symbol: str, limit: int = 20) -> list[EarningEvent]:
         """Get historical earnings reports for a specific company
@@ -649,7 +689,10 @@ class CompanyClient(EndpointGroup):
         Returns:
             List of EarningEvent objects containing earnings history
         """
-        return self.client.request(COMPANY_EARNINGS, symbol=symbol, limit=limit)
+        return self._unwrap_list(
+            self.client.request(COMPANY_EARNINGS, symbol=symbol, limit=limit),
+            EarningEvent,
+        )
 
     def get_stock_splits(
         self,
@@ -678,7 +721,9 @@ class CompanyClient(EndpointGroup):
             params["to_date"] = end_date
         if limit is not None:
             params["limit"] = limit
-        return self.client.request(COMPANY_SPLITS, **params)
+        return self._unwrap_list(
+            self.client.request(COMPANY_SPLITS, **params), StockSplitEvent
+        )
 
     # Financial Statement Methods
     def get_income_statement_ttm(
@@ -693,7 +738,10 @@ class CompanyClient(EndpointGroup):
         Returns:
             List of TTM income statement data
         """
-        return self.client.request(INCOME_STATEMENT_TTM, symbol=symbol, limit=limit)
+        return self._unwrap_list(
+            self.client.request(INCOME_STATEMENT_TTM, symbol=symbol, limit=limit),
+            IncomeStatement,
+        )
 
     def get_balance_sheet_ttm(
         self, symbol: str, limit: int | None = None
@@ -707,7 +755,10 @@ class CompanyClient(EndpointGroup):
         Returns:
             List of TTM balance sheet data
         """
-        return self.client.request(BALANCE_SHEET_TTM, symbol=symbol, limit=limit)
+        return self._unwrap_list(
+            self.client.request(BALANCE_SHEET_TTM, symbol=symbol, limit=limit),
+            BalanceSheet,
+        )
 
     def get_cash_flow_ttm(
         self, symbol: str, limit: int | None = None
@@ -721,7 +772,10 @@ class CompanyClient(EndpointGroup):
         Returns:
             List of TTM cash flow data
         """
-        return self.client.request(CASH_FLOW_TTM, symbol=symbol, limit=limit)
+        return self._unwrap_list(
+            self.client.request(CASH_FLOW_TTM, symbol=symbol, limit=limit),
+            CashFlowStatement,
+        )
 
     def get_key_metrics_ttm(self, symbol: str) -> list[KeyMetricsTTM]:
         """Get trailing twelve months (TTM) key financial metrics
@@ -732,7 +786,9 @@ class CompanyClient(EndpointGroup):
         Returns:
             List of TTM key metrics
         """
-        return self.client.request(KEY_METRICS_TTM, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(KEY_METRICS_TTM, symbol=symbol), KeyMetricsTTM
+        )
 
     def get_financial_ratios_ttm(self, symbol: str) -> list[FinancialRatiosTTM]:
         """Get trailing twelve months (TTM) financial ratios
@@ -743,7 +799,9 @@ class CompanyClient(EndpointGroup):
         Returns:
             List of TTM financial ratios
         """
-        return self.client.request(FINANCIAL_RATIOS_TTM, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(FINANCIAL_RATIOS_TTM, symbol=symbol), FinancialRatiosTTM
+        )
 
     def get_financial_scores(self, symbol: str) -> list[FinancialScore]:
         """Get comprehensive financial health scores
@@ -754,7 +812,9 @@ class CompanyClient(EndpointGroup):
         Returns:
             List of financial scores including Altman Z-Score and Piotroski Score
         """
-        return self.client.request(FINANCIAL_SCORES, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(FINANCIAL_SCORES, symbol=symbol), FinancialScore
+        )
 
     def get_enterprise_values(
         self, symbol: str, period: str = "annual", limit: int = 20
@@ -769,8 +829,11 @@ class CompanyClient(EndpointGroup):
         Returns:
             List of enterprise value data
         """
-        return self.client.request(
-            ENTERPRISE_VALUES, symbol=symbol, period=period, limit=limit
+        return self._unwrap_list(
+            self.client.request(
+                ENTERPRISE_VALUES, symbol=symbol, period=period, limit=limit
+            ),
+            EnterpriseValue,
         )
 
     def get_income_statement_growth(
@@ -786,8 +849,11 @@ class CompanyClient(EndpointGroup):
         Returns:
             List of income statement growth data
         """
-        return self.client.request(
-            INCOME_STATEMENT_GROWTH, symbol=symbol, period=period, limit=limit
+        return self._unwrap_list(
+            self.client.request(
+                INCOME_STATEMENT_GROWTH, symbol=symbol, period=period, limit=limit
+            ),
+            FinancialGrowth,
         )
 
     def get_balance_sheet_growth(
@@ -803,8 +869,11 @@ class CompanyClient(EndpointGroup):
         Returns:
             List of balance sheet growth data
         """
-        return self.client.request(
-            BALANCE_SHEET_GROWTH, symbol=symbol, period=period, limit=limit
+        return self._unwrap_list(
+            self.client.request(
+                BALANCE_SHEET_GROWTH, symbol=symbol, period=period, limit=limit
+            ),
+            FinancialGrowth,
         )
 
     def get_cash_flow_growth(
@@ -820,8 +889,11 @@ class CompanyClient(EndpointGroup):
         Returns:
             List of cash flow growth data
         """
-        return self.client.request(
-            CASH_FLOW_GROWTH, symbol=symbol, period=period, limit=limit
+        return self._unwrap_list(
+            self.client.request(
+                CASH_FLOW_GROWTH, symbol=symbol, period=period, limit=limit
+            ),
+            FinancialGrowth,
         )
 
     def get_financial_growth(
@@ -837,8 +909,11 @@ class CompanyClient(EndpointGroup):
         Returns:
             List of comprehensive financial growth data
         """
-        return self.client.request(
-            FINANCIAL_GROWTH, symbol=symbol, period=period, limit=limit
+        return self._unwrap_list(
+            self.client.request(
+                FINANCIAL_GROWTH, symbol=symbol, period=period, limit=limit
+            ),
+            FinancialGrowth,
         )
 
     def get_financial_reports_json(
@@ -910,8 +985,11 @@ class CompanyClient(EndpointGroup):
         Returns:
             List of as-reported income statements
         """
-        return self.client.request(
-            INCOME_STATEMENT_AS_REPORTED, symbol=symbol, period=period, limit=limit
+        return self._unwrap_list(
+            self.client.request(
+                INCOME_STATEMENT_AS_REPORTED, symbol=symbol, period=period, limit=limit
+            ),
+            AsReportedIncomeStatement,
         )
 
     def get_balance_sheet_as_reported(
@@ -927,8 +1005,11 @@ class CompanyClient(EndpointGroup):
         Returns:
             List of as-reported balance sheets
         """
-        return self.client.request(
-            BALANCE_SHEET_AS_REPORTED, symbol=symbol, period=period, limit=limit
+        return self._unwrap_list(
+            self.client.request(
+                BALANCE_SHEET_AS_REPORTED, symbol=symbol, period=period, limit=limit
+            ),
+            AsReportedBalanceSheet,
         )
 
     def get_cash_flow_as_reported(
@@ -944,6 +1025,9 @@ class CompanyClient(EndpointGroup):
         Returns:
             List of as-reported cash flow statements
         """
-        return self.client.request(
-            CASH_FLOW_AS_REPORTED, symbol=symbol, period=period, limit=limit
+        return self._unwrap_list(
+            self.client.request(
+                CASH_FLOW_AS_REPORTED, symbol=symbol, period=period, limit=limit
+            ),
+            AsReportedCashFlowStatement,
         )

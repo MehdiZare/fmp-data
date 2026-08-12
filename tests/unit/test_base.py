@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict
 import pytest
 
 from fmp_data.base import (
+    AsyncEndpointGroup,
     BaseClient,
     EndpointGroup,
     _sanitize_error_details,
@@ -1106,3 +1107,53 @@ class TestUnwrapSingle:
         result = EndpointGroup._unwrap_single(items, SampleResponse)
         assert isinstance(result, SampleResponse)
         assert result.test == "first"
+
+
+class TestUnwrapList:
+    """List counterpart of _unwrap_single (#235)."""
+
+    def test_unwrap_list_passes_through_list(self):
+        items = [SampleResponse(test="first"), SampleResponse(test="second")]
+        assert EndpointGroup._unwrap_list(items, SampleResponse) is items
+
+    def test_unwrap_list_wraps_single_item(self):
+        item = SampleResponse(test="data")
+        result = EndpointGroup._unwrap_list(item, SampleResponse)
+        assert result == [item]
+
+    def test_unwrap_list_empty_list_stays_empty(self):
+        assert EndpointGroup._unwrap_list([], SampleResponse) == []
+
+    def test_async_group_matches_sync(self):
+        item = SampleResponse(test="data")
+        assert AsyncEndpointGroup._unwrap_list(item, SampleResponse) == [item]
+
+
+class TestRequestList:
+    """BaseClient.request_list is Endpoint[T] -> list[T] (#235)."""
+
+    def test_request_list_wraps_single_object(self, base_client, test_endpoint):
+        item = SampleResponse(test="data")
+        with patch.object(base_client, "request", return_value=item) as request:
+            result = base_client.request_list(test_endpoint, symbol="AAPL")
+
+        assert result == [item]
+        request.assert_called_once_with(test_endpoint, symbol="AAPL")
+
+    def test_request_list_keeps_list(self, base_client, test_endpoint):
+        items = [SampleResponse(test="a"), SampleResponse(test="b")]
+        with patch.object(base_client, "request", return_value=items):
+            assert base_client.request_list(test_endpoint, symbol="AAPL") is items
+
+    @pytest.mark.asyncio
+    async def test_request_async_list_wraps_single_object(
+        self, base_client, test_endpoint
+    ):
+        item = SampleResponse(test="data")
+        with patch.object(
+            base_client, "request_async", return_value=item
+        ) as request_async:
+            result = await base_client.request_async_list(test_endpoint, symbol="AAPL")
+
+        assert result == [item]
+        request_async.assert_called_once_with(test_endpoint, symbol="AAPL")

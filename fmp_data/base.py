@@ -39,6 +39,22 @@ from fmp_data.rate_limit import AsyncFMPRateLimiter, FMPRateLimiter, QuotaConfig
 T = TypeVar("T")
 ValidationMode = Literal["lenient", "warn", "strict"]
 
+
+def _unwrap_list_result(result: T | list[T], _model: type[T]) -> list[T]:
+    """Normalize ``request()`` output to ``list[T]``.
+
+    List endpoints are declared ``Endpoint[T]`` (the row type). ``request``
+    remains ``T | list[T]`` so single-item callers can still use
+    ``_unwrap_single``. Wrapping a lone ``T`` as ``[T]`` matches FMP
+    payloads that return one object instead of a one-element array (#235).
+
+    ``_model`` is the row type, kept so callers match ``_unwrap_single``.
+    """
+    if isinstance(result, list):
+        return result
+    return [result]
+
+
 logger = FMPLogger().get_logger(__name__)
 
 # Context variable for request-scoped rate limit retry tracking.
@@ -364,6 +380,20 @@ class BaseClient:
 
         # This should never be reached due to reraise=True, but satisfies type checker
         raise FMPError("Request failed after all retry attempts")
+
+    def request_list(self, endpoint: Endpoint[T], **kwargs: Any) -> list[T]:
+        """Request a list-returning endpoint as ``list[T]``.
+
+        ``request`` stays ``Endpoint[T] -> T | list[T]`` so single-item
+        callers can keep ``_unwrap_single``. List endpoints should be
+        declared ``Endpoint[T]`` (the row type) and go through this
+        helper or ``EndpointGroup._unwrap_list`` instead of copying the
+        ``PROFILE_CIK`` single-object pattern (#235).
+        """
+        return _unwrap_list_result(
+            self.request(endpoint, **kwargs),
+            endpoint.response_model,
+        )
 
     def _execute_request(self, endpoint: Endpoint[T], **kwargs: Any) -> T | list[T]:
         """
@@ -908,6 +938,13 @@ class BaseClient:
         # This should never be reached due to reraise=True
         raise FMPError("Async request failed after all retry attempts")
 
+    async def request_async_list(self, endpoint: Endpoint[T], **kwargs: Any) -> list[T]:
+        """Async counterpart of :meth:`request_list` (#235)."""
+        return _unwrap_list_result(
+            await self.request_async(endpoint, **kwargs),
+            endpoint.response_model,
+        )
+
     async def _execute_request_async(
         self, endpoint: Endpoint[T], **kwargs: Any
     ) -> T | list[T]:
@@ -1104,6 +1141,11 @@ class EndpointGroup:
             return cast(T, result[0])
         return cast(T, result)
 
+    @staticmethod
+    def _unwrap_list(result: T | list[T], model: type[T]) -> list[T]:
+        """Normalize a ``request()`` result to ``list[T]`` (#235)."""
+        return _unwrap_list_result(result, model)
+
 
 class AsyncEndpointGroup:
     """Abstract base class for async endpoint groups.
@@ -1182,3 +1224,8 @@ class AsyncEndpointGroup:
                 )
             return cast(T, result[0])
         return cast(T, result)
+
+    @staticmethod
+    def _unwrap_list(result: T | list[T], model: type[T]) -> list[T]:
+        """Normalize a ``request_async()`` result to ``list[T]`` (#235)."""
+        return _unwrap_list_result(result, model)
