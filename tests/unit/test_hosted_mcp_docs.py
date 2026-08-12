@@ -52,12 +52,14 @@ def test_hosted_doc_records_twenty_eight_tools() -> None:
     text = DOC_PATH.read_text()
     assert "**28** dataset tools" in text
     assert len(HOSTED_MCP_TOOLS) == 28
-    matrix_rows = [
-        line
+    matrix_names = [
+        line.split("|", 2)[1].strip().strip("`")
         for line in text.splitlines()
         if line.startswith("| `")
-        and any(f"`{name}`" in line for name in HOSTED_MCP_TOOLS)
     ]
-    assert len(matrix_rows) == 28, (
-        f"hosted.md matrix rows {len(matrix_rows)} != probed tool count 28"
+    assert len(matrix_names) == len(set(matrix_names)), (
+        f"hosted.md matrix has duplicate tool rows: {matrix_names}"
+    )
+    assert set(matrix_names) == set(HOSTED_MCP_TOOLS), (
+        f"hosted.md matrix {sorted(matrix_names)} != probed {sorted(HOSTED_MCP_TOOLS)}"
     )

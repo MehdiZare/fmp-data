@@ -40,13 +40,19 @@ They are complementary. Hosted MCP is the "plug the URL into an agent" path.
 Their Python example (from [their docs](https://site.financialmodelingprep.com/developer/docs/mcp-server)):
 
 ```python
+import asyncio
 import os
 from fastmcp import Client
 
-url = "https://financialmodelingprep.com/mcp?apikey=" + os.environ["FMP_API_KEY"]
-async with Client(url) as client:
-    print(await client.list_tools())
-    print(await client.call_tool("quote", {"endpoint": "quote", "symbol": "AAPL"}))
+
+async def main() -> None:
+    url = "https://financialmodelingprep.com/mcp?apikey=" + os.environ["FMP_API_KEY"]
+    async with Client(url) as client:
+        print(await client.list_tools())
+        print(await client.call_tool("quote", {"endpoint": "quote", "symbol": "AAPL"}))
+
+
+asyncio.run(main())
 ```
 
 `fastmcp` is **their** snippet, not a dependency of this package. Their
