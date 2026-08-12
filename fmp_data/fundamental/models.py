@@ -1,5 +1,6 @@
 # fmp_data/fundamental/models.py
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 import math
 from typing import Annotated, Any
 
@@ -24,33 +25,45 @@ default_model_config = ConfigDict(
 )
 
 
+def _integral_int(number: float, original: Any) -> Any:
+    """Return ``int(number)`` only when ``number`` is a finite whole value."""
+    if not math.isfinite(number):
+        return original
+    if number != int(number):
+        raise ValueError(f"rating score must be a whole number, got {original!r}")
+    return int(number)
+
+
 def coerce_rating_score(value: Any) -> Any:
     """Coerce rating-bulk score cells to int.
 
     ``rating-bulk`` CSV may emit a whole score as ``"3"`` or ``"3.0"``. A
     strict ``int`` field rejects the latter and ``parse_csv_models`` then
     skips the entire company row. Empty cells are already ``None``.
-    Non-numeric / non-finite values pass through so they still fail
-    validation instead of becoming ``0``.
+    Non-integral values (``"3.5"``) raise so they fail validation instead
+    of being truncated. Non-numeric or non-finite values pass through and
+    still fail the ``int`` field.
     """
     if value is None:
         return None
-    if isinstance(value, int | float):
-        if isinstance(value, bool):
-            return value
-        if isinstance(value, float) and not math.isfinite(value):
-            return value
-        return int(value)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return _integral_int(value, value)
     if isinstance(value, str):
         stripped = value.strip()
         if not stripped:
             return None
         try:
-            number = float(stripped)
-        except ValueError:
+            number = Decimal(stripped)
+        except InvalidOperation:
             return value
-        if not math.isfinite(number):
+        if not number.is_finite():
             return value
+        if number != number.to_integral_value():
+            raise ValueError(f"rating score must be a whole number, got {value!r}")
         return int(number)
     return value
 

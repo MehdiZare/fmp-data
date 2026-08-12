@@ -348,6 +348,43 @@ class TestFundamentalEndpoints(unittest.TestCase):
         )
         self.assertEqual(rating.discounted_cash_flow_score, 3)
 
+    def test_company_rating_rejects_non_integral_score(self):
+        """\"3.5\" must not silently become 3 (#231 review / #232)."""
+        from pydantic import ValidationError as PydanticValidationError
+
+        with self.assertRaises(PydanticValidationError):
+            CompanyRating.model_validate(
+                {
+                    "symbol": "AAPL",
+                    "date": "2026-08-12",
+                    "rating": "A-",
+                    "discountedCashFlowScore": "3.5",
+                }
+            )
+        with self.assertRaises(PydanticValidationError):
+            CompanyRating.model_validate(
+                {
+                    "symbol": "AAPL",
+                    "date": "2026-08-12",
+                    "rating": "A-",
+                    "discountedCashFlowScore": 3.5,
+                }
+            )
+
+    def test_company_rating_rejects_high_precision_fractional_score_text(self):
+        """float() would round this to 3.0; Decimal must still reject it."""
+        from pydantic import ValidationError as PydanticValidationError
+
+        with self.assertRaises(PydanticValidationError):
+            CompanyRating.model_validate(
+                {
+                    "symbol": "AAPL",
+                    "date": "2026-08-12",
+                    "rating": "A-",
+                    "discountedCashFlowScore": "3.0000000000000001",
+                }
+            )
+
     def test_get_financial_reports_dates(self):
         """Test getting financial report dates"""
         # Configure mock to return model instances

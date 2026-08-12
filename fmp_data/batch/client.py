@@ -1,13 +1,15 @@
 # fmp_data/batch/client.py
 from datetime import date
-import logging
 from typing import Any, TypeVar
 
 from pydantic import BaseModel
-from pydantic import ValidationError as PydanticValidationError
 
 from fmp_data.base import EndpointGroup
-from fmp_data.batch._csv_utils import parse_csv_models, parse_csv_rows
+from fmp_data.batch._csv_utils import (
+    parse_csv_model_rows,
+    parse_csv_models,
+    parse_csv_rows,
+)
 from fmp_data.batch.endpoints import (
     BALANCE_SHEET_STATEMENT_BULK,
     BALANCE_SHEET_STATEMENT_GROWTH_BULK,
@@ -70,7 +72,6 @@ from fmp_data.fundamental.models import (
 from fmp_data.investment.models import ETFHolding
 from fmp_data.models import Endpoint
 
-logger = logging.getLogger(__name__)
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
@@ -92,6 +93,16 @@ class BatchClient(EndpointGroup):
                 actual_type=type(result).__name__,
             )
         return result
+
+    def _parse_csv(
+        self, raw: bytes, model: type[ModelT], endpoint: Endpoint
+    ) -> list[ModelT]:
+        return parse_csv_models(
+            raw,
+            model,
+            validation_mode=self.client.config.validation_mode,
+            endpoint_name=endpoint.name,
+        )
 
     def get_quotes(self, symbols: list[str]) -> list[BatchQuote]:
         """Get real-time quotes for multiple symbols
@@ -252,46 +263,46 @@ class BatchClient(EndpointGroup):
     def get_profile_bulk(self, part: str) -> list[CompanyProfile]:
         """Get company profile data in bulk"""
         raw = self._request_csv(PROFILE_BULK, part=part)
-        return parse_csv_models(raw, CompanyProfile)
+        return self._parse_csv(raw, CompanyProfile, PROFILE_BULK)
 
     def get_dcf_bulk(self) -> list[DCF]:
         """Get discounted cash flow valuations in bulk"""
         raw = self._request_csv(DCF_BULK)
         rows = parse_csv_rows(raw)
-        results: list[DCF] = []
         for row in rows:
             if "Stock Price" in row and "stockPrice" not in row:
                 row["stockPrice"] = row.pop("Stock Price")
-            try:
-                results.append(DCF.model_validate(row))
-            except PydanticValidationError as exc:
-                logger.warning("Skipping invalid DCF row %s: %s", row, exc)
-        return results
+        return parse_csv_model_rows(
+            rows,
+            DCF,
+            validation_mode=self.client.config.validation_mode,
+            endpoint_name=DCF_BULK.name,
+        )
 
     def get_rating_bulk(self) -> list[CompanyRating]:
         """Get stock ratings in bulk"""
         raw = self._request_csv(RATING_BULK)
-        return parse_csv_models(raw, CompanyRating)
+        return self._parse_csv(raw, CompanyRating, RATING_BULK)
 
     def get_scores_bulk(self) -> list[FinancialScore]:
         """Get financial scores in bulk"""
         raw = self._request_csv(SCORES_BULK)
-        return parse_csv_models(raw, FinancialScore)
+        return self._parse_csv(raw, FinancialScore, SCORES_BULK)
 
     def get_ratios_ttm_bulk(self) -> list[FinancialRatiosTTM]:
         """Get trailing twelve month financial ratios in bulk"""
         raw = self._request_csv(RATIOS_TTM_BULK)
-        return parse_csv_models(raw, FinancialRatiosTTM)
+        return self._parse_csv(raw, FinancialRatiosTTM, RATIOS_TTM_BULK)
 
     def get_price_target_summary_bulk(self) -> list[PriceTargetSummary]:
         """Get bulk price target summaries"""
         raw = self._request_csv(PRICE_TARGET_SUMMARY_BULK)
-        return parse_csv_models(raw, PriceTargetSummary)
+        return self._parse_csv(raw, PriceTargetSummary, PRICE_TARGET_SUMMARY_BULK)
 
     def get_etf_holder_bulk(self, part: str) -> list[ETFHolding]:
         """Get bulk ETF holdings"""
         raw = self._request_csv(ETF_HOLDER_BULK, part=part)
-        return parse_csv_models(raw, ETFHolding)
+        return self._parse_csv(raw, ETFHolding, ETF_HOLDER_BULK)
 
     def get_upgrades_downgrades_consensus_bulk(
         self,
@@ -299,41 +310,46 @@ class BatchClient(EndpointGroup):
         """Get bulk upgrades/downgrades consensus data"""
         raw = self._request_csv(UPGRADES_DOWNGRADES_CONSENSUS_BULK)
         rows = [row for row in parse_csv_rows(raw) if row.get("symbol")]
-        return [UpgradeDowngradeConsensus.model_validate(row) for row in rows]
+        return parse_csv_model_rows(
+            rows,
+            UpgradeDowngradeConsensus,
+            validation_mode=self.client.config.validation_mode,
+            endpoint_name=UPGRADES_DOWNGRADES_CONSENSUS_BULK.name,
+        )
 
     def get_key_metrics_ttm_bulk(self) -> list[KeyMetricsTTM]:
         """Get bulk trailing twelve month key metrics"""
         raw = self._request_csv(KEY_METRICS_TTM_BULK)
-        return parse_csv_models(raw, KeyMetricsTTM)
+        return self._parse_csv(raw, KeyMetricsTTM, KEY_METRICS_TTM_BULK)
 
     def get_peers_bulk(self) -> list[PeersBulk]:
         """Get bulk peer lists"""
         raw = self._request_csv(PEERS_BULK)
-        return parse_csv_models(raw, PeersBulk)
+        return self._parse_csv(raw, PeersBulk, PEERS_BULK)
 
     def get_earnings_surprises_bulk(self, year: int) -> list[EarningsSurpriseBulk]:
         """Get bulk earnings surprises for a given year"""
         raw = self._request_csv(EARNINGS_SURPRISES_BULK, year=year)
-        return parse_csv_models(raw, EarningsSurpriseBulk)
+        return self._parse_csv(raw, EarningsSurpriseBulk, EARNINGS_SURPRISES_BULK)
 
     def get_income_statement_bulk(
         self, year: int, period: str
     ) -> list[IncomeStatement]:
         """Get bulk income statements"""
         raw = self._request_csv(INCOME_STATEMENT_BULK, year=year, period=period)
-        return parse_csv_models(raw, IncomeStatement)
+        return self._parse_csv(raw, IncomeStatement, INCOME_STATEMENT_BULK)
 
     def get_income_statement_growth_bulk(
         self, year: int, period: str
     ) -> list[FinancialGrowth]:
         """Get bulk income statement growth data"""
         raw = self._request_csv(INCOME_STATEMENT_GROWTH_BULK, year=year, period=period)
-        return parse_csv_models(raw, FinancialGrowth)
+        return self._parse_csv(raw, FinancialGrowth, INCOME_STATEMENT_GROWTH_BULK)
 
     def get_balance_sheet_bulk(self, year: int, period: str) -> list[BalanceSheet]:
         """Get bulk balance sheet statements"""
         raw = self._request_csv(BALANCE_SHEET_STATEMENT_BULK, year=year, period=period)
-        return parse_csv_models(raw, BalanceSheet)
+        return self._parse_csv(raw, BalanceSheet, BALANCE_SHEET_STATEMENT_BULK)
 
     def get_balance_sheet_growth_bulk(
         self, year: int, period: str
@@ -342,12 +358,14 @@ class BatchClient(EndpointGroup):
         raw = self._request_csv(
             BALANCE_SHEET_STATEMENT_GROWTH_BULK, year=year, period=period
         )
-        return parse_csv_models(raw, FinancialGrowth)
+        return self._parse_csv(
+            raw, FinancialGrowth, BALANCE_SHEET_STATEMENT_GROWTH_BULK
+        )
 
     def get_cash_flow_bulk(self, year: int, period: str) -> list[CashFlowStatement]:
         """Get bulk cash flow statements"""
         raw = self._request_csv(CASH_FLOW_STATEMENT_BULK, year=year, period=period)
-        return parse_csv_models(raw, CashFlowStatement)
+        return self._parse_csv(raw, CashFlowStatement, CASH_FLOW_STATEMENT_BULK)
 
     def get_cash_flow_growth_bulk(
         self, year: int, period: str
@@ -356,10 +374,10 @@ class BatchClient(EndpointGroup):
         raw = self._request_csv(
             CASH_FLOW_STATEMENT_GROWTH_BULK, year=year, period=period
         )
-        return parse_csv_models(raw, FinancialGrowth)
+        return self._parse_csv(raw, FinancialGrowth, CASH_FLOW_STATEMENT_GROWTH_BULK)
 
     def get_eod_bulk(self, target_date: date) -> list[EODBulk]:
         """Get bulk end-of-day prices"""
         date_param = target_date.strftime("%Y-%m-%d")
         raw = self._request_csv(EOD_BULK, date=date_param)
-        return parse_csv_models(raw, EODBulk)
+        return self._parse_csv(raw, EODBulk, EOD_BULK)

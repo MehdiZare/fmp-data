@@ -217,9 +217,9 @@ class ClientConfig(BaseModel):
     validation_mode: Literal["lenient", "warn", "strict"] = Field(
         default="warn",
         description=(
-            "Response validation policy. "
+            "Response validation policy for JSON and bulk CSV extras. "
             "'lenient' ignores unknown fields, "
-            "'warn' logs unknown fields, "
+            "'warn' logs unknown fields once per endpoint+field set, "
             "'strict' raises on unknown fields."
         ),
     )
