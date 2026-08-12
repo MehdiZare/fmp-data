@@ -89,6 +89,14 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Fixed
 
+- **`FMPLogger.get_logger(__name__)` no longer doubles `fmp_data.` (#238).**
+  The root logger is already `fmp_data`; `getChild(__name__)` was emitting
+  `fmp_data.fmp_data.base`, so `caplog` and log aggregators filtering
+  `fmp_data.base` missed extras / HTTP warnings. Qualified `fmp_data.*`
+  names are now used as-is. If you already filtered the doubled name
+  (`fmp_data.fmp_data.*`), switch to `fmp_data.*`. Handler and filter
+  attachment is unchanged.
+
 - **CSV bulk parsing now honors `FMP_VALIDATION_MODE` (#232).** `parse_csv_models`
   used `model.model_validate` directly, so unknown bulk headers (`overallScore`
   on `rating-bulk`, a misspelled diluted-PE column) landed in

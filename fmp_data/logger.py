@@ -298,18 +298,30 @@ class FMPLogger:
             self._add_default_console_handler()
 
     def get_logger(self, name: str | None = None) -> logging.Logger:
-        """
-        Get a logger instance with the given name
+        """Return a child of the package logger.
+
+        ``get_logger(__name__)`` must land on ``fmp_data.base``, not
+        ``fmp_data.fmp_data.base``. The root is already
+        ``logging.getLogger("fmp_data")``; ``getChild("fmp_data.base")``
+        would prefix an already-qualified module name (#238).
+
+        Handlers and filters stay on the root logger. Children propagate
+        to it unchanged.
 
         Args:
-            name: Optional name for the logger
+            name: Optional logger name. A fully-qualified ``fmp_data.*``
+                name (or ``"fmp_data"`` itself) is used as-is. Any other
+                name is added as a child of ``fmp_data``.
 
         Returns:
             logging.Logger: Logger instance
         """
-        if name:
-            return self._logger.getChild(name)
-        return self._logger
+        if not name or name == "fmp_data":
+            return self._logger
+        prefix = "fmp_data."
+        if name.startswith(prefix):
+            return self._logger.getChild(name[len(prefix) :])
+        return self._logger.getChild(name)
 
     def _add_default_console_handler(self) -> None:
         """Add default console handler with a reasonable format"""
