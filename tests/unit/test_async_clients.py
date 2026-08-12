@@ -288,6 +288,70 @@ class TestAsyncCompanyClient:
         )
 
     @pytest.mark.asyncio
+    async def test_get_delisted_companies_wraps_single_row(self, mock_client):
+        """A lone object from request_async() is still list[DelistedCompany]."""
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        row = object()
+        mock_client.request_async.return_value = row
+        result = await AsyncCompanyClient(mock_client).get_delisted_companies()
+        assert result == [row]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "method_name,kwargs",
+        [
+            ("get_executives", {"symbol": "AAPL"}),
+            ("get_employee_count", {"symbol": "AAPL"}),
+            ("get_company_notes", {"symbol": "AAPL"}),
+            ("get_intraday_prices", {"symbol": "AAPL"}),
+            ("get_executive_compensation", {"symbol": "AAPL"}),
+            ("get_product_revenue_segmentation", {"symbol": "AAPL"}),
+            ("get_geographic_revenue_segmentation", {"symbol": "AAPL"}),
+            ("get_symbol_changes", {}),
+            ("get_delisted_companies", {}),
+            ("get_historical_market_cap", {"symbol": "AAPL"}),
+            ("get_analyst_estimates", {"symbol": "AAPL"}),
+            ("get_company_peers", {"symbol": "AAPL"}),
+            ("get_mergers_acquisitions_latest", {}),
+            ("get_mergers_acquisitions_search", {"name": "Apple"}),
+            ("get_executive_compensation_benchmark", {"year": 2023}),
+            ("get_dividends", {"symbol": "AAPL"}),
+            ("get_earnings", {"symbol": "AAPL"}),
+            ("get_stock_splits", {"symbol": "AAPL"}),
+            ("get_income_statement_ttm", {"symbol": "AAPL"}),
+            ("get_balance_sheet_ttm", {"symbol": "AAPL"}),
+            ("get_cash_flow_ttm", {"symbol": "AAPL"}),
+            ("get_key_metrics_ttm", {"symbol": "AAPL"}),
+            ("get_financial_ratios_ttm", {"symbol": "AAPL"}),
+            ("get_financial_scores", {"symbol": "AAPL"}),
+            ("get_enterprise_values", {"symbol": "AAPL"}),
+            ("get_income_statement_growth", {"symbol": "AAPL"}),
+            ("get_balance_sheet_growth", {"symbol": "AAPL"}),
+            ("get_cash_flow_growth", {"symbol": "AAPL"}),
+            ("get_financial_growth", {"symbol": "AAPL"}),
+            ("get_income_statement_as_reported", {"symbol": "AAPL"}),
+            ("get_balance_sheet_as_reported", {"symbol": "AAPL"}),
+            ("get_cash_flow_as_reported", {"symbol": "AAPL"}),
+        ],
+    )
+    async def test_list_methods_wrap_single_and_keep_empty(
+        self, mock_client, method_name, kwargs
+    ):
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        async_client = AsyncCompanyClient(mock_client)
+        method = getattr(async_client, method_name)
+        row = object()
+
+        mock_client.request_async.return_value = row
+        assert await method(**kwargs) == [row]
+
+        mock_client.request_async.return_value = []
+        assert await method(**kwargs) == []
+        mock_client.request_async.assert_called()
+
+    @pytest.mark.asyncio
     async def test_get_dividends_with_limit(self, mock_client):
         """Test async get_dividends with limit."""
         from fmp_data.company import endpoints as company_endpoints

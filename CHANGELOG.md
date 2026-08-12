@@ -51,12 +51,12 @@ None. No FMP path we ship was newly retired by this changelog window.
 ### Changed
 
 - **List-returning requests are `list[T]` without collapsing `request()` (#235).**
-  `BaseClient.request` stays `Endpoint[T] -> T | list[T]`. List endpoints
-  (company delisted / symbol-changes / M&A and the rest of the company list
-  surface) are now `Endpoint[T]` for the row type and go through
-  `request_list` / `EndpointGroup._unwrap_list` instead of copying the
-  `PROFILE_CIK` single-object pattern. A lone object from FMP becomes
-  `[row]`; an empty list stays empty.
+  `BaseClient.request` stays `Endpoint[T] -> T | list[T]`. Company list
+  methods stay on `request()` (so existing mocks still work) and normalize
+  through `EndpointGroup._unwrap_list`. `request_list` / `request_async_list`
+  are the typed `Endpoint[T] -> list[T]` façade for callers that do not
+  need to mock `request`. A lone object becomes `[row]`; an empty list
+  stays empty.
 
 ### Added
 

@@ -1121,6 +1121,13 @@ class TestUnwrapList:
         result = EndpointGroup._unwrap_list(item, SampleResponse)
         assert result == [item]
 
+    def test_unwrap_list_recognizes_row_type_before_list(self):
+        """A lone row is wrapped even though the fallback is list-shaped."""
+        item = SampleResponse(test="data")
+        assert EndpointGroup._unwrap_list(item, SampleResponse) == [item]
+        items = [item]
+        assert EndpointGroup._unwrap_list(items, SampleResponse) is items
+
     def test_unwrap_list_empty_list_stays_empty(self):
         assert EndpointGroup._unwrap_list([], SampleResponse) == []
 
@@ -1157,3 +1164,12 @@ class TestRequestList:
 
         assert result == [item]
         request_async.assert_called_once_with(test_endpoint, symbol="AAPL")
+
+    @pytest.mark.asyncio
+    async def test_request_async_list_keeps_list(self, base_client, test_endpoint):
+        items = [SampleResponse(test="a"), SampleResponse(test="b")]
+        with patch.object(base_client, "request_async", return_value=items):
+            assert (
+                await base_client.request_async_list(test_endpoint, symbol="AAPL")
+                is items
+            )
