@@ -18,6 +18,7 @@ from fmp_data.batch.models import (
     PeersBulk,
 )
 from fmp_data.company.models import CompanyProfile
+from fmp_data.fundamental.models import CompanyRating, FinancialRatiosTTM
 
 
 class TestBatchModels:
@@ -222,6 +223,38 @@ class TestBatchClient:
         assert len(results) == 1
         assert results[0].symbol == "APPX"
         assert results[0].website is None
+
+    def test_ratios_ttm_bulk_parses_diluted_pe_headers(self):
+        """ratios-ttm-bulk CSV headers bind on FinancialRatiosTTM (#229)."""
+        csv_text = (
+            "symbol,priceToEarningsDilutedRatioTTM,"
+            "priceToEarningsDilutedGrowthRatioTTM\n"
+            "AAPL,34.64,1.07\n"
+        )
+        results = parse_csv_models(csv_text.encode("utf-8"), FinancialRatiosTTM)
+        assert len(results) == 1
+        assert results[0].price_to_earnings_diluted_ratio_ttm == 34.64
+        assert results[0].price_to_earnings_diluted_growth_ratio_ttm == 1.07
+
+    def test_rating_bulk_parses_standardized_score_headers(self):
+        """rating-bulk score columns bind on CompanyRating (#229)."""
+        csv_text = (
+            "symbol,date,rating,discountedCashFlowScore,returnOnEquityScore,"
+            "returnOnAssetsScore,debtToEquityScore,priceToEarningsScore,"
+            "priceToBookScore\n"
+            "AAPL,2026-08-12,A-,1,2.0,3,4,5,6\n"
+        )
+        results = parse_csv_models(csv_text.encode("utf-8"), CompanyRating)
+        assert len(results) == 1
+        rating = results[0]
+        assert rating.rating == "A-"
+        assert rating.discounted_cash_flow_score == 1
+        assert rating.return_on_equity_score == 2
+        assert rating.return_on_assets_score == 3
+        assert rating.debt_to_equity_score == 4
+        assert rating.price_to_earnings_score == 5
+        assert rating.price_to_book_score == 6
+        assert not rating.__pydantic_extra__
 
     def test_parse_csv_rows_empty(self):
         """Empty CSV input returns no rows."""

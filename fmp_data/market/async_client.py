@@ -186,9 +186,14 @@ class AsyncMarketClient(AsyncEndpointGroup):
         country: str | None = None,
         exchange: str | None = None,
         limit: int | None = None,
+        page: int | None = None,
         include_all_share_classes: bool | None = None,
     ) -> list[CompanySearchResult]:
-        """Screen companies based on various criteria"""
+        """Screen companies based on various criteria.
+
+        ``page`` is omitted from the request when unset so existing callers
+        keep the same wire shape. Pass ``0`` or a later page to paginate.
+        """
         params = {
             "market_cap_more_than": market_cap_more_than,
             "market_cap_less_than": market_cap_less_than,
@@ -208,6 +213,7 @@ class AsyncMarketClient(AsyncEndpointGroup):
             "country": country,
             "exchange": exchange,
             "limit": limit,
+            "page": page,
             "include_all_share_classes": include_all_share_classes,
         }
         params = {key: value for key, value in params.items() if value is not None}

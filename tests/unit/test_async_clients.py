@@ -728,6 +728,32 @@ class TestAsyncMarketClient:
         )
 
     @pytest.mark.asyncio
+    async def test_get_company_screener_forwards_page(self, mock_client):
+        """Async screener omits page when unset and forwards 0 when set."""
+        from fmp_data.market.async_client import AsyncMarketClient
+        from fmp_data.market.endpoints import COMPANY_SCREENER
+
+        mock_client.request_async.return_value = [
+            CompanySearchResult(symbol="AAPL", name="Apple Inc.")
+        ]
+        async_client = AsyncMarketClient(mock_client)
+
+        await async_client.get_company_screener(limit=2)
+        mock_client.request_async.assert_called_once_with(COMPANY_SCREENER, limit=2)
+
+        mock_client.request_async.reset_mock()
+        await async_client.get_company_screener(limit=2, page=0)
+        mock_client.request_async.assert_called_once_with(
+            COMPANY_SCREENER, limit=2, page=0
+        )
+
+        mock_client.request_async.reset_mock()
+        await async_client.get_company_screener(limit=2, page=1)
+        mock_client.request_async.assert_called_once_with(
+            COMPANY_SCREENER, limit=2, page=1
+        )
+
+    @pytest.mark.asyncio
     async def test_search_company_with_filters(self, mock_client):
         """Test async search_company method with optional filters."""
         from fmp_data.market.async_client import AsyncMarketClient
