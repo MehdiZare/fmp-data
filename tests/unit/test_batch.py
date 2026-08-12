@@ -290,6 +290,7 @@ class TestBatchClient:
             if record.getMessage() == "Unknown response fields detected"
         ]
         assert len(extras) == 1
+        assert extras[0].name == "fmp_data.base"
         _extra_field_warnings_seen.discard(warning_key)
 
     def test_parse_csv_models_unknown_header_strict_raises(self):

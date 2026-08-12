@@ -378,7 +378,22 @@ class TestFMPLogger:
         log = FMPLogger().get_logger("fmp_data.base")
         with caplog.at_level(logging.WARNING, logger="fmp_data.base"):
             log.warning("Unknown response fields detected")
-        assert "Unknown response fields detected" in caplog.text
+        extras = [
+            record
+            for record in caplog.records
+            if record.getMessage() == "Unknown response fields detected"
+        ]
+        assert len(extras) == 1
+        assert extras[0].name == "fmp_data.base"
+
+    def test_get_logger_qualified_name_is_stdlib_logger(self):
+        """Qualified names must be the same object operators already filter."""
+        fmp_logger = FMPLogger()
+        named = fmp_logger.get_logger("fmp_data.base")
+        assert named is logging.getLogger("fmp_data.base")
+        from fmp_data.base import logger as base_logger
+
+        assert base_logger.name == "fmp_data.base"
 
     def test_get_logger_without_name(self):
         """Test getting logger without name"""

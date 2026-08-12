@@ -757,6 +757,7 @@ class TestToolKeyNamespace:
         )
         logged = [r.getMessage() for r in caplog.records]
         assert len(logged) == 1, f"expected exactly one log record, got {logged}"
+        assert caplog.records[0].name == "fmp_data.mcp.tool_loader"
         assert "company.historical_price" in logged[0]
         assert "company.historical_prices" in logged[0]
         assert "3.0" in logged[0]
