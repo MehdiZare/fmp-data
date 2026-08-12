@@ -39,6 +39,26 @@ from fmp_data.rate_limit import AsyncFMPRateLimiter, FMPRateLimiter, QuotaConfig
 T = TypeVar("T")
 ValidationMode = Literal["lenient", "warn", "strict"]
 
+
+def _unwrap_list_result(result: T | list[T], model: type[T]) -> list[T]:
+    """Normalize ``request()`` output to ``list[T]``.
+
+    List endpoints are declared ``Endpoint[T]`` (the row type). ``request``
+    remains ``T | list[T]`` so single-item callers can still use
+    ``_unwrap_single``. A lone row becomes ``[row]``. An empty list stays
+    empty (unlike ``_unwrap_single``, which raises).
+
+    ``model`` is a type witness for ``T``. A value that is already an
+    instance of ``model`` is wrapped first so a list-like row type is
+    not treated as an already-unwrapped ``list[T]``.
+    """
+    if isinstance(result, model):
+        return [result]
+    if isinstance(result, list):
+        return result
+    return [result]
+
+
 logger = FMPLogger().get_logger(__name__)
 
 # Context variable for request-scoped rate limit retry tracking.
@@ -364,6 +384,20 @@ class BaseClient:
 
         # This should never be reached due to reraise=True, but satisfies type checker
         raise FMPError("Request failed after all retry attempts")
+
+    def request_list(self, endpoint: Endpoint[T], **kwargs: Any) -> list[T]:
+        """Request a list-returning endpoint as ``list[T]``.
+
+        ``request`` stays ``Endpoint[T] -> T | list[T]``. Use this helper
+        when the caller wants ``list[T]`` directly. Client methods that
+        still call ``request()`` (so tests can mock it) should normalize
+        with ``EndpointGroup._unwrap_list`` instead of ``_unwrap_single``.
+        An empty list stays empty.
+        """
+        return _unwrap_list_result(
+            self.request(endpoint, **kwargs),
+            endpoint.response_model,
+        )
 
     def _execute_request(self, endpoint: Endpoint[T], **kwargs: Any) -> T | list[T]:
         """
@@ -908,6 +942,13 @@ class BaseClient:
         # This should never be reached due to reraise=True
         raise FMPError("Async request failed after all retry attempts")
 
+    async def request_async_list(self, endpoint: Endpoint[T], **kwargs: Any) -> list[T]:
+        """Async counterpart of :meth:`request_list`."""
+        return _unwrap_list_result(
+            await self.request_async(endpoint, **kwargs),
+            endpoint.response_model,
+        )
+
     async def _execute_request_async(
         self, endpoint: Endpoint[T], **kwargs: Any
     ) -> T | list[T]:
@@ -1104,6 +1145,16 @@ class EndpointGroup:
             return cast(T, result[0])
         return cast(T, result)
 
+    @staticmethod
+    def _unwrap_list(result: T | list[T], model: type[T]) -> list[T]:
+        """Normalize a ``request()`` result to ``list[T]``.
+
+        A lone row becomes ``[row]``. An empty list stays empty.
+        ``model`` is the row type (type witness; also used to recognize a
+        lone row).
+        """
+        return _unwrap_list_result(result, model)
+
 
 class AsyncEndpointGroup:
     """Abstract base class for async endpoint groups.
@@ -1182,3 +1233,13 @@ class AsyncEndpointGroup:
                 )
             return cast(T, result[0])
         return cast(T, result)
+
+    @staticmethod
+    def _unwrap_list(result: T | list[T], model: type[T]) -> list[T]:
+        """Normalize a ``request_async()`` result to ``list[T]``.
+
+        A lone row becomes ``[row]``. An empty list stays empty.
+        ``model`` is the row type (type witness; also used to recognize a
+        lone row).
+        """
+        return _unwrap_list_result(result, model)

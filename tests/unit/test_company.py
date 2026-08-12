@@ -5,12 +5,20 @@ from unittest.mock import Mock, patch
 from pydantic import ValidationError
 import pytest
 
-from fmp_data.base import BaseClient
+from fmp_data.base import BaseClient, EndpointGroup
 from fmp_data.company import CompanyClient
-from fmp_data.company.endpoints import DELISTED_COMPANIES
+from fmp_data.company.endpoints import (
+    COMPANY_PEERS,
+    DELISTED_COMPANIES,
+    INCOME_STATEMENT_TTM,
+    KEY_EXECUTIVES,
+    MERGERS_ACQUISITIONS_LATEST,
+    SYMBOL_CHANGES,
+)
 from fmp_data.company.models import (
     AnalystEstimate,
     CompanyExecutive,
+    CompanyPeer,
     CompanyProfile,
     DelistedCompany,
     ExecutiveCompensationBenchmark,
@@ -21,7 +29,9 @@ from fmp_data.company.models import (
     PriceTargetSummary,
     Quote,
     SimpleQuote,
+    SymbolChange,
 )
+from fmp_data.fundamental.models import IncomeStatement
 from fmp_data.intelligence.models import DividendEvent, EarningEvent, StockSplitEvent
 from fmp_data.models import CompanySymbol
 
@@ -829,7 +839,10 @@ class TestDelistedCompanies:
         }
 
         assert DELISTED_COMPANIES.response_model is DelistedCompany
-        rows = BaseClient._process_response(DELISTED_COMPANIES, [slim])
+        rows = EndpointGroup._unwrap_list(
+            BaseClient._process_response(DELISTED_COMPANIES, [slim]),
+            DelistedCompany,
+        )
 
         assert len(rows) == 1
         row = rows[0]
@@ -886,6 +899,27 @@ class TestDelistedCompanies:
         mock_client.request.assert_called_once_with(
             DELISTED_COMPANIES, page=0, limit=100
         )
+
+    def test_get_delisted_companies_wraps_single_row(self, fmp_client, mock_client):
+        """A lone object from request() is still list[DelistedCompany] (#235)."""
+        row = DelistedCompany.model_validate(
+            {
+                "symbol": "2958.HK",
+                "companyName": "Vision Values Holdings Limited",
+                "exchange": "HKSE",
+                "ipoDate": "2026-05-27",
+                "delistedDate": "2026-08-17",
+            }
+        )
+        mock_client.request.return_value = row
+
+        result = fmp_client.get_delisted_companies()
+
+        assert result == [row]
+
+    def test_delisted_endpoint_is_parameterized_row_type(self):
+        """List endpoints bind T as the row, not list[T] (#235)."""
+        assert DELISTED_COMPANIES.response_model is DelistedCompany
 
 
 class TestExecutiveCompensationBenchmark:
@@ -1427,3 +1461,75 @@ class TestCompanyCalendarEndpoints:
         assert all(isinstance(div, DividendEvent) for div in result)
         assert result[0].dividend == 0.25
         assert result[1].dividend == 0.24
+
+
+# Company list methods that go through _unwrap_list. Keep this table in
+# lockstep with new list-returning company methods so patch coverage and
+# wrap-single stay on the mechanical wrappers.
+_COMPANY_LIST_UNWRAP_CASES = [
+    ("get_executives", {"symbol": "AAPL"}),
+    ("get_employee_count", {"symbol": "AAPL"}),
+    ("get_company_notes", {"symbol": "AAPL"}),
+    ("get_intraday_prices", {"symbol": "AAPL"}),
+    ("get_executive_compensation", {"symbol": "AAPL"}),
+    ("get_product_revenue_segmentation", {"symbol": "AAPL"}),
+    ("get_geographic_revenue_segmentation", {"symbol": "AAPL"}),
+    ("get_symbol_changes", {}),
+    ("get_delisted_companies", {}),
+    ("get_historical_market_cap", {"symbol": "AAPL"}),
+    ("get_analyst_estimates", {"symbol": "AAPL"}),
+    ("get_company_peers", {"symbol": "AAPL"}),
+    ("get_mergers_acquisitions_latest", {}),
+    ("get_mergers_acquisitions_search", {"name": "Apple"}),
+    ("get_executive_compensation_benchmark", {"year": 2023}),
+    ("get_dividends", {"symbol": "AAPL"}),
+    ("get_earnings", {"symbol": "AAPL"}),
+    ("get_stock_splits", {"symbol": "AAPL"}),
+    ("get_income_statement_ttm", {"symbol": "AAPL"}),
+    ("get_balance_sheet_ttm", {"symbol": "AAPL"}),
+    ("get_cash_flow_ttm", {"symbol": "AAPL"}),
+    ("get_key_metrics_ttm", {"symbol": "AAPL"}),
+    ("get_financial_ratios_ttm", {"symbol": "AAPL"}),
+    ("get_financial_scores", {"symbol": "AAPL"}),
+    ("get_enterprise_values", {"symbol": "AAPL"}),
+    ("get_income_statement_growth", {"symbol": "AAPL"}),
+    ("get_balance_sheet_growth", {"symbol": "AAPL"}),
+    ("get_cash_flow_growth", {"symbol": "AAPL"}),
+    ("get_financial_growth", {"symbol": "AAPL"}),
+    ("get_income_statement_as_reported", {"symbol": "AAPL"}),
+    ("get_balance_sheet_as_reported", {"symbol": "AAPL"}),
+    ("get_cash_flow_as_reported", {"symbol": "AAPL"}),
+]
+
+
+class TestCompanyListUnwrap:
+    """Mechanical _unwrap_list wrappers on CompanyClient (#235)."""
+
+    @pytest.mark.parametrize("method_name,kwargs", _COMPANY_LIST_UNWRAP_CASES)
+    def test_list_methods_wrap_single_and_keep_empty(
+        self, fmp_client, mock_client, method_name, kwargs
+    ):
+        row = object()
+        method = getattr(fmp_client, method_name)
+
+        mock_client.request.return_value = row
+        assert method(**kwargs) == [row]
+
+        mock_client.request.return_value = []
+        assert method(**kwargs) == []
+        mock_client.request.assert_called()
+
+    @pytest.mark.parametrize(
+        "endpoint,row_type",
+        [
+            (DELISTED_COMPANIES, DelistedCompany),
+            (SYMBOL_CHANGES, SymbolChange),
+            (MERGERS_ACQUISITIONS_LATEST, MergerAcquisition),
+            (COMPANY_PEERS, CompanyPeer),
+            (KEY_EXECUTIVES, CompanyExecutive),
+            (INCOME_STATEMENT_TTM, IncomeStatement),
+        ],
+    )
+    def test_list_endpoints_bind_row_type(self, endpoint, row_type):
+        """List endpoints bind T as the row, not list[T]."""
+        assert endpoint.response_model is row_type

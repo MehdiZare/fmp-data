@@ -48,6 +48,16 @@ out of scope.
 
 None. No FMP path we ship was newly retired by this changelog window.
 
+### Changed
+
+- **List-returning requests are `list[T]` without collapsing `request()` (#235).**
+  `BaseClient.request` stays `Endpoint[T] -> T | list[T]`. Company list
+  methods stay on `request()` (so existing mocks still work) and normalize
+  through `EndpointGroup._unwrap_list`. `request_list` / `request_async_list`
+  are the typed `Endpoint[T] -> list[T]` façade for callers that do not
+  need to mock `request`. A lone object becomes `[row]`; an empty list
+  stays empty.
+
 ### Added
 
 - **FMP hosted MCP vs `fmp-mcp` positioning (#230).** Docs-only: we are not
