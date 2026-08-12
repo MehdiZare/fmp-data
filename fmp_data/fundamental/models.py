@@ -39,8 +39,9 @@ def coerce_rating_score(value: Any) -> Any:
     ``rating-bulk`` CSV may emit a whole score as ``"3"`` or ``"3.0"``. A
     strict ``int`` field rejects the latter and ``parse_csv_models`` then
     skips the entire company row. Empty cells are already ``None``.
-    Non-numeric, non-finite, or non-integral values (``"3.5"``) pass
-    through so they still fail validation instead of being truncated.
+    Non-integral values (``"3.5"``) raise so they fail validation instead
+    of being truncated. Non-numeric or non-finite values pass through and
+    still fail the ``int`` field.
     """
     if value is None:
         return None

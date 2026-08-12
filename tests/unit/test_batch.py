@@ -256,17 +256,17 @@ class TestBatchClient:
         assert rating.price_to_book_score == 6
         assert not rating.__pydantic_extra__
 
-    def test_parse_csv_models_unknown_header_warns_once(self, caplog):
+    def test_parse_csv_models_unknown_header_warns_once(self):
         """Unknown bulk headers honor FMP_VALIDATION_MODE=warn (#232)."""
-        import logging
-
         from fmp_data.base import _extra_field_warnings_seen
 
         warning_key = ("rating-bulk", ("overallScore",))
         _extra_field_warnings_seen.discard(warning_key)
         csv_text = "symbol,date,rating,overallScore\nAAPL,2026-08-12,A-,7\n"
 
-        with caplog.at_level(logging.WARNING, logger="fmp_data.base"):
+        # Patch the module logger. FMPLogger().get_logger(__name__) is not
+        # logging.getLogger("fmp_data.base") — caplog on that name stays empty.
+        with patch("fmp_data.base.logger") as mock_logger:
             first = parse_csv_models(
                 csv_text.encode("utf-8"),
                 CompanyRating,
@@ -284,7 +284,10 @@ class TestBatchClient:
         assert first[0].__pydantic_extra__ is not None
         assert first[0].__pydantic_extra__["overallScore"] == "7"
         assert len(second) == 1
-        assert caplog.text.count("Unknown response fields detected") == 1
+        assert mock_logger.warning.call_count == 1
+        assert mock_logger.warning.call_args.args[0] == (
+            "Unknown response fields detected"
+        )
         _extra_field_warnings_seen.discard(warning_key)
 
     def test_parse_csv_models_unknown_header_strict_raises(self):
@@ -300,12 +303,10 @@ class TestBatchClient:
                 endpoint_name="rating-bulk",
             )
 
-    def test_parse_csv_models_unknown_header_lenient_silent(self, caplog):
+    def test_parse_csv_models_unknown_header_lenient_silent(self):
         """Lenient mode keeps extras without warning."""
-        import logging
-
         csv_text = "symbol,date,rating,overallScore\nAAPL,2026-08-12,A-,7\n"
-        with caplog.at_level(logging.WARNING, logger="fmp_data.base"):
+        with patch("fmp_data.base.logger") as mock_logger:
             results = parse_csv_models(
                 csv_text.encode("utf-8"),
                 CompanyRating,
@@ -316,7 +317,7 @@ class TestBatchClient:
         assert len(results) == 1
         assert results[0].__pydantic_extra__ is not None
         assert results[0].__pydantic_extra__["overallScore"] == "7"
-        assert "Unknown response fields detected" not in caplog.text
+        mock_logger.warning.assert_not_called()
 
     def test_parse_csv_models_invalid_cell_strict_raises(self):
         """A bad cell fails the request in strict mode instead of dropping a row."""
