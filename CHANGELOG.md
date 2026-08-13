@@ -230,6 +230,10 @@ None. No FMP path we ship was newly retired by this changelog window.
 - **VCR sanitization no longer logs the raw API key (#252 FMP-SEC-009).**
   DEBUG logs method/host/path only. Cassette leak assertions name
   file/line/credential type, not the captured value.
+- **Company intraday ``interval`` is whitelisted and path params are encoded
+  (#252 FMP-SEC-010).** ``../../stable/profile`` is rejected; remaining path
+  segments are percent-encoded so httpx cannot normalize them into another
+  endpoint.
 
 ## [2.6.0] - 2026-08-10
 

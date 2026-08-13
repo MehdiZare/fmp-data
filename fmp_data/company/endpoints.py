@@ -283,6 +283,7 @@ INTRADAY_PRICE: Endpoint[IntradayPrice] = Endpoint(
             location=ParamLocation.PATH,
             param_type=ParamType.STRING,
             description="Time interval (1min, 5min, 15min, 30min, 1hour, 4hour)",
+            valid_values=["1min", "5min", "15min", "30min", "1hour", "4hour"],
         ),
         EndpointParam(
             name="symbol",
