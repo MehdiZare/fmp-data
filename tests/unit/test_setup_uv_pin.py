@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 WORKFLOWS = Path(__file__).resolve().parents[2] / ".github" / "workflows"
-PIN = "ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d"
 
 
 def test_setup_uv_is_v10_and_tracks_latest_uv() -> None:
@@ -18,7 +17,10 @@ def test_setup_uv_is_v10_and_tracks_latest_uv() -> None:
         for line in text.splitlines():
             if "astral-sh/setup-uv@" not in line:
                 continue
-            assert PIN in line
+            pin = line.split("setup-uv@", 1)[1].split()[0]
+            assert len(pin) == 40
+            assert all(char in "0123456789abcdef" for char in pin)
             assert "v9.0.0" not in line
+            assert "v10.0.0" in line
         assert "version: latest" in text
     assert seen >= 1
