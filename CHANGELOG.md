@@ -172,10 +172,12 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Security
 
-- **``pip-audit --strict`` runs against a hashed extras export (#252 FMP-SEC-008).**
-  ``nox -s security`` audits ``.github/requirements-audit.txt`` (langchain,
-  mcp, cache-redis plus their resolved graph) instead of an unlocked
-  session environment. Unpinned requirements fail the session.
+- **``pip-audit --strict`` audits a live extras export (#252 FMP-SEC-008).**
+  ``nox -s security`` runs ``uv export`` for the published extras
+  (langchain, mcp, cache-redis) and audits that pin set. There is no
+  committed hashed lock — a ``pyproject.toml`` floor bump is enough to
+  pick up newer deps. Nox installs the ``dev`` group from pyproject
+  instead of a second, stale pin list.
 
 - **Isolated PyPI publishing and immutable Actions pins (#252).** Release,
   Dev-Release, and Publish-to-TestPyPI now build in a job with no OIDC token
