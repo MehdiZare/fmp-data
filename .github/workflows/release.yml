@@ -50,9 +50,9 @@ jobs:
         with:
           enable-cache: false
 
-      - name: 📦 Install pinned build frontend and backend
+      - name: 📦 Install build frontend and backend (version floors)
         run: |
-          uv pip install --system --require-hashes -r .github/requirements-build.txt
+          uv pip install --system -r .github/requirements-build.txt
 
       - name: 🏷️ Determine version bump type
         id: bump_type

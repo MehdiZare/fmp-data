@@ -52,9 +52,9 @@ jobs:
         with:
           enable-cache: true
 
-      - name: 📦  Install pinned build frontend and backend
+      - name: 📦  Install build frontend and backend (version floors)
         run: |
-          uv pip install --system --require-hashes -r .github/requirements-build.txt
+          uv pip install --system -r .github/requirements-build.txt
 
       - name: 🔍  Check for PR with release labels
         id: pr_labels
