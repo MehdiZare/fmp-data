@@ -7,44 +7,54 @@ name: Dev Release
 # Version is unique per workflow run so re-runs and force-pushes cannot
 # silently re-advertise a stale wheel via skip-existing (same failure
 # shape as #204).
+#
+# workflow_dispatch is bound to refs/heads/dev. An arbitrary ref cannot
+# be published under this Trusted Publisher identity (#252 FMP-SEC-003).
 
 on:
   push:
     branches:
       - dev
-  workflow_dispatch:  # Allow manual triggering
+  workflow_dispatch:
 
 permissions:
-  id-token: write              # OIDC → Trusted Publishing
-  contents: read               # Read repository contents
-  pull-requests: read          # Read PR labels for version calculation
+  contents: read
 
 jobs:
-  dev-release:
+  build:
+    if: github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      version: ${{ steps.version.outputs.DEV_VERSION }}
+      head_short: ${{ steps.version.outputs.HEAD_SHORT }}
     env:
       PYTHON_VERSION: "3.12"
 
     steps:
       - name: 🛎️  Checkout repository
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0  # Needed for version calculation
           fetch-tags: true
+          ref: refs/heads/dev
+          persist-credentials: false
 
       - name: 🐍  Set up Python
-        uses: actions/setup-python@v7.0.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: ⚡  Install uv (with cache)
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
         with:
           enable-cache: true
 
-      - name: 📦  Install build tools
+      - name: 📦  Install pinned build frontend
         run: |
-          uv pip install --system build hatch
+          uv pip install --system --require-hashes -r .github/requirements-build.txt
 
       - name: 🔍  Check for PR with release labels
         id: pr_labels
@@ -160,10 +170,43 @@ jobs:
           fi
           echo "📋 Built package version matches: $META_VERSION"
 
+          (cd dist && sha256sum ./* > ../SHA256SUMS)
+          cat SHA256SUMS
+
+      - name: 📤 Upload dist artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: python-package-dist
+          path: |
+            dist/
+            SHA256SUMS
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/fmp-data/${{ needs.build.outputs.version }}/
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: 📥 Download dist artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: python-package-dist
+
+      - name: 🔐 Verify artifact checksums
+        run: |
+          set -euo pipefail
+          (cd dist && sha256sum -c ../SHA256SUMS)
+
       - name: 🧪  Upload to Test PyPI
         # skip-existing OFF: unique version means a collision is a real bug
         # and must fail, not silently succeed with a stale artifact.
-        uses: pypa/gh-action-pypi-publish@v1.14.2
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # v1.14.2
         with:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: dist
@@ -175,11 +218,11 @@ jobs:
           {
             echo "## 🧪 Dev Release Published"
             echo ""
-            echo "**Version:** \`${{ steps.version.outputs.DEV_VERSION }}\`"
-            echo "**Commit:** \`${{ steps.version.outputs.HEAD_SHORT }}\`"
+            echo "**Version:** \`${{ needs.build.outputs.version }}\`"
+            echo "**Commit:** \`${{ needs.build.outputs.head_short }}\`"
             echo ""
             echo "### Installation"
             echo "\`\`\`bash"
-            echo "pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ fmp-data==${{ steps.version.outputs.DEV_VERSION }}"
+            echo "pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ fmp-data==${{ needs.build.outputs.version }}"
             echo "\`\`\`"
           } >> "$GITHUB_STEP_SUMMARY"

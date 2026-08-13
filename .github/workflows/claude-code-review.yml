@@ -49,7 +49,7 @@ jobs:
 
       - name: Checkout repository
         if: steps.auth.outputs.configured == 'true'
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 1
 
@@ -60,7 +60,7 @@ jobs:
         if: steps.auth.outputs.configured == 'true'
         id: claude-review
         continue-on-error: true
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@239e3a730883eeb5c53db12b0fc9573b3024b126  # v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
