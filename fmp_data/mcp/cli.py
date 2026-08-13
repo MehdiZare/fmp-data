@@ -378,6 +378,43 @@ def _manifest_header(
     return "\n".join(lines)
 
 
+_GENERATE_SUFFIXES = {".json", ".yaml", ".yml", ".toml", ".py"}
+
+
+def _normalize_generate_path(path: Path) -> Path:
+    """Choose a write path whose suffix ``load_manifest_tools`` understands."""
+    if path.suffix == "":
+        return path.with_suffix(".json")
+    if path.suffix.lower() not in _GENERATE_SUFFIXES:
+        raise ValueError(f"{path}: generate writes .json, .yaml, .yml, .toml, or .py")
+    return path
+
+
+def _render_generated_manifest(
+    path: Path,
+    tools: list[str],
+    deprecated: list[str],
+    excluded: list[str],
+    collisions: dict[str, list[str]],
+    withdrawn: list[str],
+) -> str:
+    """Serialize ``tools`` in the format implied by ``path.suffix``."""
+    sorted_tools = sorted(tools)
+    suffix = path.suffix.lower()
+    if suffix == ".json":
+        return json.dumps({"tools": sorted_tools}, indent=2) + "\n"
+    if suffix in {".yaml", ".yml"}:
+        lines = ["tools:"]
+        lines.extend(f'  - "{spec}"' for spec in sorted_tools)
+        return "\n".join(lines) + "\n"
+    if suffix == ".toml":
+        quoted = ", ".join(json.dumps(spec) for spec in sorted_tools)
+        return f"tools = [{quoted}]\n"
+    header = _manifest_header(deprecated, excluded, collisions, withdrawn)
+    body = "\n".join(f'    "{spec}",' for spec in sorted_tools)
+    return f"{header}\nTOOLS = [\n{body}\n]\n"
+
+
 def _startable_catalog(
     available_specs: set[str],
     excluded: list[str],
@@ -620,7 +657,11 @@ def generate_manifest(
     Parameters
     ----------
     output_path
-        Path to save the manifest file
+        Path to save the manifest. The suffix chooses the format:
+        ``.json`` (preferred), ``.yaml`` / ``.yml``, ``.toml``, or
+        legacy ``.py``. A path with no suffix is written as ``.json``.
+        Other suffixes are refused. A ``.py`` file is still a data-only
+        ``TOOLS = ["..."]`` assignment, never executed.
     tools
         List of tool specs to include (if None, includes the whole catalog)
     include_defaults
@@ -634,6 +675,11 @@ def generate_manifest(
         failed entry has been printed to stderr.
     """
     output_path = Path(output_path)
+    try:
+        output_path = _normalize_generate_path(output_path)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return False
 
     # Get available tools
     available_tools = list_available_tools()
@@ -692,16 +738,14 @@ def generate_manifest(
             )
             return False
 
-    # Generate manifest content
-    manifest_content = (
-        _manifest_header(deprecated, excluded, collisions, withdrawn) + "\nTOOLS = [\n"
+    manifest_content = _render_generated_manifest(
+        output_path,
+        selected_tools,
+        deprecated,
+        excluded,
+        collisions,
+        withdrawn,
     )
-    for tool in sorted(selected_tools):
-        manifest_content += f'    "{tool}",\n'
-
-    manifest_content += "]\n"
-
-    # Save manifest
     output_path.write_text(manifest_content)
     print(f"Manifest saved to: {output_path}")
     print(f"Total tools: {len(selected_tools)}")
@@ -1194,7 +1238,13 @@ def main() -> None:
 
     # Generate manifest command
     gen_parser = subparsers.add_parser("generate", help="Generate manifest file")
-    gen_parser.add_argument("output", help="Output file path")
+    gen_parser.add_argument(
+        "output",
+        help=(
+            "Output file path. Suffix selects the format: .json (preferred), "
+            ".yaml, .toml, or legacy .py. No suffix writes <name>.json."
+        ),
+    )
     gen_parser.add_argument("--tools", nargs="+", help="Specific tools to include")
     gen_parser.add_argument(
         "--no-defaults", action="store_true", help="Exclude default tools"

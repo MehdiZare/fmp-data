@@ -133,19 +133,24 @@ TOOLS = [
 ]
 ```
 
-2. **Using the CLI tool** - Generate a manifest with specific tools:
+2. **Using the CLI tool** - Generate a manifest with specific tools.
+   The suffix chooses the format (``.json`` preferred; ``.yaml`` / ``.toml``
+   / legacy ``.py`` still work):
 ```bash
-# Generate manifest with specific tools
-fmp-mcp generate my_manifest.py --tools company.profile company.quote
+# Generate a JSON manifest (preferred)
+fmp-mcp generate my_manifest.json --tools company.profile company.quote
 
-# Generate manifest without default tools
-fmp-mcp generate my_manifest.py --no-defaults --tools company.quote market.gainers
+# Generate without default tools
+fmp-mcp generate my_manifest.json --no-defaults --tools company.quote market.gainers
 
-# Generate a manifest covering the whole catalog
-fmp-mcp generate everything.py
+# Whole catalog
+fmp-mcp generate everything.json
 
 # Bare keys work too, and are written out in their fully qualified form
-fmp-mcp generate my_manifest.py --no-defaults --tools profile quote gainers
+fmp-mcp generate my_manifest.json --no-defaults --tools profile quote gainers
+
+# Legacy Python (still parsed as data, never executed)
+fmp-mcp generate my_manifest.py --tools company.profile company.quote
 ```
 
 `--tools` accepts the same two entry forms a manifest does — a bare key
