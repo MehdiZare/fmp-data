@@ -194,6 +194,13 @@ None. No FMP path we ship was newly retired by this changelog window.
   Existing generated and example `.py` manifests keep working. A file
   that previously ran arbitrary code as "validation" now fails closed.
 
+### Fixed
+
+- **`_unwrap_list_result` refuses a bytes file (#253).** `request_list` already
+  raised `TypeError` for `Endpoint[bytes]`, but the shared unwrap helper still
+  treated `isinstance(payload, bytes)` as a lone row and returned `[bytes]`.
+  Quote-list unwrap is unchanged.
+
 ## [2.6.0] - 2026-08-10
 
 Released from `dev`. A correctness-and-contracts release: the LangChain and MCP

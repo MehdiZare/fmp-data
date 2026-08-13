@@ -187,10 +187,18 @@ class TestRequestCsvIsTheBytesHelper:
         assert all(not isinstance(row, bytes) for row in rows)
         mock_client.request_async.assert_awaited_once_with(PROFILE_BULK, part="0")
 
-    def test_unwrap_list_would_wrap_bytes_as_a_single_row(self) -> None:
-        """``isinstance(payload, bytes)`` is true, so unwrap is the wrong helper."""
+    def test_unwrap_list_refuses_bytes(self) -> None:
+        """``isinstance(payload, bytes)`` is true; unwrap must not wrap a file."""
         raw = b"symbol,name\nAAPL,Apple\n"
-        assert _unwrap_list_result(raw, bytes) == [raw]
+        with pytest.raises(TypeError, match="not a list row type"):
+            _unwrap_list_result(raw, bytes)
+
+    def test_endpoint_group_unwrap_list_refuses_bytes(self) -> None:
+        from fmp_data.base import EndpointGroup
+
+        raw = b"PK\x03\x04xlsx"
+        with pytest.raises(TypeError, match="not a list row type"):
+            EndpointGroup._unwrap_list(raw, bytes)
 
 
 def _base_client() -> BaseClient:

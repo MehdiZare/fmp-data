@@ -60,7 +60,16 @@ def _unwrap_list_result(result: T | list[T], model: type[T]) -> list[T]:
     ``model`` is a type witness for ``T``. A value that is already an
     instance of ``model`` is wrapped first so a list-like row type is
     not treated as an already-unwrapped ``list[T]``.
+
+    ``model is bytes`` is refused. ``isinstance(payload, bytes)`` is
+    true, so the wrap-first branch would turn a CSV/XLSX body into
+    ``[bytes]``. Use ``request()`` or a dedicated bytes helper.
     """
+    if model is bytes:
+        raise TypeError(
+            "bytes is not a list row type; use request() or a dedicated "
+            "bytes helper, not _unwrap_list"
+        )
     if isinstance(result, model):
         return [result]
     if isinstance(result, list):
