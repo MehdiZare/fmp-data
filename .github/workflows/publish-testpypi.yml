@@ -57,7 +57,7 @@ jobs:
         with:
           enable-cache: false
 
-      - name: 📦  Install pinned build frontend
+      - name: 📦  Install pinned build frontend and backend
         run: |
           uv pip install --system --require-hashes -r .github/requirements-build.txt
 
@@ -117,7 +117,7 @@ jobs:
           git describe --tags --always
           echo "📦 Building package..."
 
-          python -m build --wheel --sdist
+          python -m build --no-isolation --wheel --sdist
 
           echo "📦 Build completed. Contents of dist/:"
           ls -la dist/
@@ -293,7 +293,7 @@ jobs:
         run: |
           set -euo pipefail
           uv pip install --system --require-hashes -r .github/requirements-build.txt
-          python -m build --wheel --sdist
+          python -m build --no-isolation --wheel --sdist
           (cd dist && sha256sum ./* > ../SHA256SUMS)
           cat SHA256SUMS
 

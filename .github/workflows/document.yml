@@ -79,8 +79,8 @@ jobs:
           uv sync --group docs
 
           # Install git for version detection
-          echo "📦 Installing git and hatchling for versioning"
-          uv pip install --system hatchling hatch-vcs
+          echo "📦 Installing hashed hatchling/hatch-vcs for versioning"
+          uv pip install --system --require-hashes -r .github/requirements-build.txt
 
       - name: Get package version
         id: version

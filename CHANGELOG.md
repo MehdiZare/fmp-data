@@ -176,8 +176,10 @@ None. No FMP path we ship was newly retired by this changelog window.
   Dev-Release, and Publish-to-TestPyPI now build in a job with no OIDC token
   and publish from a second job that only downloads hashed artifacts. Publish
   jobs use the `pypi` / `testpypi` GitHub environments. All external
-  `uses:` entries are pinned to full commit SHAs. The PEP 517 frontend is
-  installed from `.github/requirements-build.txt` with `--require-hashes`.
+  `uses:` entries are pinned to full commit SHAs. The PEP 517 frontend
+  (`build`) and backend (`hatchling`, `hatch-vcs`) are installed from
+  `.github/requirements-build.txt` with `--require-hashes`, and builds run
+  `--no-isolation` so isolation cannot fetch an unpinned backend.
   `workflow_dispatch` on Dev-Release is bound to `refs/heads/dev`. The
   TestPyPI PR path requires `head.repo.full_name == github.repository`.
   Tag-based TestPyPI publishes no longer `skip-existing`. **Before the next

@@ -50,7 +50,7 @@ jobs:
         with:
           enable-cache: false
 
-      - name: 📦 Install pinned build frontend
+      - name: 📦 Install pinned build frontend and backend
         run: |
           uv pip install --system --require-hashes -r .github/requirements-build.txt
 
@@ -150,7 +150,7 @@ jobs:
           EXPECTED_VERSION: ${{ steps.version.outputs.VERSION_NUMBER }}
         run: |
           set -euo pipefail
-          python -m build --wheel --sdist
+          python -m build --no-isolation --wheel --sdist
           echo "Built artifacts:"
           ls -la dist/
 
