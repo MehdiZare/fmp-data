@@ -1,5 +1,7 @@
 # fmp_data/intelligence/mapping.py
 
+from typing import Any
+
 from fmp_data.intelligence.endpoints import (
     CROWDFUNDING_BY_CIK,
     CROWDFUNDING_RSS,
@@ -60,9 +62,10 @@ from fmp_data.lc.models import (
     ResponseFieldInfo,
     SemanticCategory,
 )
+from fmp_data.models import Endpoint
 
 # Endpoint to method mapping
-INTELLIGENCE_ENDPOINT_MAP = {
+INTELLIGENCE_ENDPOINT_MAP: dict[str, Endpoint[Any]] = {
     # Calendar endpoints
     "get_earnings_calendar": EARNINGS_CALENDAR,
     "get_earnings_confirmed": EARNINGS_CONFIRMED,

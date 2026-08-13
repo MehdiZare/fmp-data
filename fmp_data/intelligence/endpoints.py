@@ -43,7 +43,7 @@ from fmp_data.models import (
     URLType,
 )
 
-EARNINGS_CALENDAR: Endpoint = Endpoint(
+EARNINGS_CALENDAR: Endpoint[EarningEvent] = Endpoint(
     name="earnings_calendar",
     path="earnings-calendar",
     version=APIVersion.STABLE,
@@ -80,7 +80,7 @@ EARNINGS_CALENDAR: Endpoint = Endpoint(
     response_model=EarningEvent,
 )
 
-EARNINGS_CONFIRMED: Endpoint = Endpoint(
+EARNINGS_CONFIRMED: Endpoint[EarningConfirmed] = Endpoint(
     name="earnings_confirmed",
     path="earning-calendar-confirmed",
     version=APIVersion.STABLE,
@@ -107,7 +107,7 @@ EARNINGS_CONFIRMED: Endpoint = Endpoint(
     response_model=EarningConfirmed,
 )
 
-EARNINGS_SURPRISES: Endpoint = Endpoint(
+EARNINGS_SURPRISES: Endpoint[EarningSurprise] = Endpoint(
     name="earnings_surprises",
     path="earnings-surprises",
     version=APIVersion.STABLE,
@@ -126,7 +126,7 @@ EARNINGS_SURPRISES: Endpoint = Endpoint(
     response_model=EarningSurprise,
 )
 
-HISTORICAL_EARNINGS: Endpoint = Endpoint(
+HISTORICAL_EARNINGS: Endpoint[EarningEvent] = Endpoint(
     name="historical_earnings",
     path="earnings",
     version=APIVersion.STABLE,
@@ -162,7 +162,7 @@ HISTORICAL_EARNINGS: Endpoint = Endpoint(
     response_model=EarningEvent,
 )
 
-DIVIDENDS_CALENDAR: Endpoint = Endpoint(
+DIVIDENDS_CALENDAR: Endpoint[DividendEvent] = Endpoint(
     name="dividends_calendar",
     path="dividends-calendar",
     version=APIVersion.STABLE,
@@ -189,7 +189,7 @@ DIVIDENDS_CALENDAR: Endpoint = Endpoint(
     response_model=DividendEvent,
 )
 
-STOCK_SPLITS_CALENDAR: Endpoint = Endpoint(
+STOCK_SPLITS_CALENDAR: Endpoint[StockSplitEvent] = Endpoint(
     name="stock_splits_calendar",
     path="splits-calendar",
     version=APIVersion.STABLE,
@@ -216,7 +216,7 @@ STOCK_SPLITS_CALENDAR: Endpoint = Endpoint(
     response_model=StockSplitEvent,
 )
 
-IPO_CALENDAR: Endpoint = Endpoint(
+IPO_CALENDAR: Endpoint[IPOEvent] = Endpoint(
     name="ipo_calendar",
     path="ipos-calendar",
     version=APIVersion.STABLE,
@@ -243,7 +243,7 @@ IPO_CALENDAR: Endpoint = Endpoint(
     response_model=IPOEvent,
 )
 
-FMP_ARTICLES_ENDPOINT: Endpoint = Endpoint(
+FMP_ARTICLES_ENDPOINT: Endpoint[FMPArticle] = Endpoint(
     name="fmp_articles",
     path="fmp-articles",
     version=APIVersion.STABLE,
@@ -268,7 +268,7 @@ FMP_ARTICLES_ENDPOINT: Endpoint = Endpoint(
     response_model=FMPArticle,
 )
 
-GENERAL_NEWS_ENDPOINT: Endpoint = Endpoint(
+GENERAL_NEWS_ENDPOINT: Endpoint[GeneralNewsArticle] = Endpoint(
     name="general_news",
     path="news/general-latest",
     version=APIVersion.STABLE,
@@ -307,7 +307,7 @@ GENERAL_NEWS_ENDPOINT: Endpoint = Endpoint(
     response_model=GeneralNewsArticle,
 )
 
-STOCK_NEWS_ENDPOINT: Endpoint = Endpoint(
+STOCK_NEWS_ENDPOINT: Endpoint[StockNewsArticle] = Endpoint(
     name="stock_news",
     path="news/stock-latest",
     version=APIVersion.STABLE,
@@ -346,7 +346,7 @@ STOCK_NEWS_ENDPOINT: Endpoint = Endpoint(
     response_model=StockNewsArticle,
 )
 
-STOCK_SYMBOL_NEWS_ENDPOINT: Endpoint = Endpoint(
+STOCK_SYMBOL_NEWS_ENDPOINT: Endpoint[StockNewsArticle] = Endpoint(
     name="stock_news_symbol",
     path="news/stock",
     version=APIVersion.STABLE,
@@ -392,7 +392,7 @@ STOCK_SYMBOL_NEWS_ENDPOINT: Endpoint = Endpoint(
     response_model=StockNewsArticle,
 )
 
-STOCK_NEWS_SENTIMENTS_ENDPOINT: Endpoint = Endpoint(
+STOCK_NEWS_SENTIMENTS_ENDPOINT: Endpoint[StockNewsSentiment] = Endpoint(
     name="stock_news_sentiments",
     path="stock-news-sentiments-rss-feed",
     version=APIVersion.V4,
@@ -409,7 +409,7 @@ STOCK_NEWS_SENTIMENTS_ENDPOINT: Endpoint = Endpoint(
     response_model=StockNewsSentiment,
 )
 
-FOREX_NEWS_ENDPOINT: Endpoint = Endpoint(
+FOREX_NEWS_ENDPOINT: Endpoint[ForexNewsArticle] = Endpoint(
     name="forex_news",
     path="news/forex-latest",
     version=APIVersion.STABLE,
@@ -448,7 +448,7 @@ FOREX_NEWS_ENDPOINT: Endpoint = Endpoint(
     response_model=ForexNewsArticle,
 )
 
-CRYPTO_NEWS_ENDPOINT: Endpoint = Endpoint(
+CRYPTO_NEWS_ENDPOINT: Endpoint[CryptoNewsArticle] = Endpoint(
     name="crypto_news",
     path="news/crypto-latest",
     version=APIVersion.STABLE,
@@ -487,7 +487,7 @@ CRYPTO_NEWS_ENDPOINT: Endpoint = Endpoint(
     response_model=CryptoNewsArticle,
 )
 
-FOREX_SYMBOL_NEWS_ENDPOINT: Endpoint = Endpoint(
+FOREX_SYMBOL_NEWS_ENDPOINT: Endpoint[ForexNewsArticle] = Endpoint(
     name="forex_news_symbol",
     path="news/forex",
     version=APIVersion.STABLE,
@@ -534,7 +534,7 @@ FOREX_SYMBOL_NEWS_ENDPOINT: Endpoint = Endpoint(
     response_model=ForexNewsArticle,
 )
 
-CRYPTO_SYMBOL_NEWS_ENDPOINT: Endpoint = Endpoint(
+CRYPTO_SYMBOL_NEWS_ENDPOINT: Endpoint[CryptoNewsArticle] = Endpoint(
     name="crypto_news_symbol",
     path="news/crypto",
     version=APIVersion.STABLE,
@@ -581,7 +581,7 @@ CRYPTO_SYMBOL_NEWS_ENDPOINT: Endpoint = Endpoint(
     response_model=CryptoNewsArticle,
 )
 
-PRESS_RELEASES_ENDPOINT: Endpoint = Endpoint(
+PRESS_RELEASES_ENDPOINT: Endpoint[PressRelease] = Endpoint(
     name="press_releases",
     path="news/press-releases-latest",
     version=APIVersion.STABLE,
@@ -620,7 +620,7 @@ PRESS_RELEASES_ENDPOINT: Endpoint = Endpoint(
     response_model=PressRelease,
 )
 
-PRESS_RELEASES_BY_SYMBOL_ENDPOINT: Endpoint = Endpoint(
+PRESS_RELEASES_BY_SYMBOL_ENDPOINT: Endpoint[PressReleaseBySymbol] = Endpoint(
     name="press_releases_by_symbol",
     path="news/press-releases",
     version=APIVersion.STABLE,
@@ -667,7 +667,7 @@ PRESS_RELEASES_BY_SYMBOL_ENDPOINT: Endpoint = Endpoint(
     response_model=PressReleaseBySymbol,
 )
 
-HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT: Endpoint = Endpoint(
+HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT: Endpoint[HistoricalSocialSentiment] = Endpoint(
     name="historical_social_sentiment",
     path="historical/social-sentiment",
     version=APIVersion.STABLE,
@@ -691,7 +691,7 @@ HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT: Endpoint = Endpoint(
     response_model=HistoricalSocialSentiment,
 )
 
-TRENDING_SOCIAL_SENTIMENT_ENDPOINT: Endpoint = Endpoint(
+TRENDING_SOCIAL_SENTIMENT_ENDPOINT: Endpoint[TrendingSocialSentiment] = Endpoint(
     name="trending_social_sentiment",
     path="social-sentiments/trending",
     version=APIVersion.STABLE,
@@ -714,7 +714,7 @@ TRENDING_SOCIAL_SENTIMENT_ENDPOINT: Endpoint = Endpoint(
     response_model=TrendingSocialSentiment,
 )
 
-SOCIAL_SENTIMENT_CHANGES_ENDPOINT: Endpoint = Endpoint(
+SOCIAL_SENTIMENT_CHANGES_ENDPOINT: Endpoint[SocialSentimentChanges] = Endpoint(
     name="social_sentiment_changes",
     path="social-sentiments/change",
     version=APIVersion.STABLE,
@@ -772,7 +772,7 @@ ESG_RATINGS: Endpoint[ESGRating] = Endpoint(
     response_model=ESGRating,
 )
 
-ESG_BENCHMARK: Endpoint = Endpoint(
+ESG_BENCHMARK: Endpoint[ESGBenchmark] = Endpoint(
     name="esg_benchmark",
     path="esg-benchmark",
     version=APIVersion.STABLE,
@@ -783,7 +783,7 @@ ESG_BENCHMARK: Endpoint = Endpoint(
 )
 
 # Government Trading Endpoints
-SENATE_LATEST: Endpoint = Endpoint(
+SENATE_LATEST: Endpoint[SenateTrade] = Endpoint(
     name="senate_latest",
     path="senate-latest",
     version=APIVersion.STABLE,
@@ -808,7 +808,7 @@ SENATE_LATEST: Endpoint = Endpoint(
     response_model=SenateTrade,
 )
 
-SENATE_TRADING: Endpoint = Endpoint(
+SENATE_TRADING: Endpoint[SenateTrade] = Endpoint(
     name="senate_trading",
     path="senate-trades",
     version=APIVersion.STABLE,
@@ -825,7 +825,7 @@ SENATE_TRADING: Endpoint = Endpoint(
     response_model=SenateTrade,
 )
 
-SENATE_TRADES_BY_NAME: Endpoint = Endpoint(
+SENATE_TRADES_BY_NAME: Endpoint[SenateTrade] = Endpoint(
     name="senate_trades_by_name",
     path="senate-trades-by-name",
     version=APIVersion.STABLE,
@@ -842,7 +842,7 @@ SENATE_TRADES_BY_NAME: Endpoint = Endpoint(
     response_model=SenateTrade,
 )
 
-SENATE_TRADING_RSS: Endpoint = Endpoint(
+SENATE_TRADING_RSS: Endpoint[SenateTrade] = Endpoint(
     name="senate_trading_rss",
     path="senate-trading-rss-feed",
     version=APIVersion.STABLE,
@@ -864,7 +864,7 @@ SENATE_TRADING_RSS: Endpoint = Endpoint(
     response_model=SenateTrade,
 )
 
-HOUSE_LATEST: Endpoint = Endpoint(
+HOUSE_LATEST: Endpoint[HouseDisclosure] = Endpoint(
     name="house_latest",
     path="house-latest",
     version=APIVersion.STABLE,
@@ -889,7 +889,7 @@ HOUSE_LATEST: Endpoint = Endpoint(
     response_model=HouseDisclosure,
 )
 
-HOUSE_DISCLOSURE: Endpoint = Endpoint(
+HOUSE_DISCLOSURE: Endpoint[HouseDisclosure] = Endpoint(
     name="house_disclosure",
     path="house-trades",
     version=APIVersion.STABLE,
@@ -906,7 +906,7 @@ HOUSE_DISCLOSURE: Endpoint = Endpoint(
     response_model=HouseDisclosure,
 )
 
-HOUSE_TRADES_BY_NAME: Endpoint = Endpoint(
+HOUSE_TRADES_BY_NAME: Endpoint[HouseDisclosure] = Endpoint(
     name="house_trades_by_name",
     path="house-trades-by-name",
     version=APIVersion.STABLE,
@@ -924,7 +924,7 @@ HOUSE_TRADES_BY_NAME: Endpoint = Endpoint(
 )
 
 # Fundraising Endpoints
-CROWDFUNDING_RSS: Endpoint = Endpoint(
+CROWDFUNDING_RSS: Endpoint[CrowdfundingOffering] = Endpoint(
     name="crowdfunding_rss",
     path="crowdfunding-offerings-latest",
     version=APIVersion.STABLE,
@@ -949,7 +949,7 @@ CROWDFUNDING_RSS: Endpoint = Endpoint(
     response_model=CrowdfundingOffering,
 )
 
-CROWDFUNDING_SEARCH: Endpoint = Endpoint(
+CROWDFUNDING_SEARCH: Endpoint[CrowdfundingOfferingSearchItem] = Endpoint(
     name="crowdfunding_search",
     path="crowdfunding-offerings-search",
     version=APIVersion.STABLE,
@@ -966,7 +966,7 @@ CROWDFUNDING_SEARCH: Endpoint = Endpoint(
     response_model=CrowdfundingOfferingSearchItem,
 )
 
-CROWDFUNDING_BY_CIK: Endpoint = Endpoint(
+CROWDFUNDING_BY_CIK: Endpoint[CrowdfundingOffering] = Endpoint(
     name="crowdfunding_by_cik",
     path="crowdfunding-offerings",
     version=APIVersion.STABLE,
@@ -983,7 +983,7 @@ CROWDFUNDING_BY_CIK: Endpoint = Endpoint(
     response_model=CrowdfundingOffering,
 )
 
-EQUITY_OFFERING_RSS: Endpoint = Endpoint(
+EQUITY_OFFERING_RSS: Endpoint[EquityOffering] = Endpoint(
     name="equity_offering_rss",
     path="fundraising-latest",
     version=APIVersion.STABLE,
@@ -1015,7 +1015,7 @@ EQUITY_OFFERING_RSS: Endpoint = Endpoint(
     response_model=EquityOffering,
 )
 
-EQUITY_OFFERING_SEARCH: Endpoint = Endpoint(
+EQUITY_OFFERING_SEARCH: Endpoint[EquityOfferingSearchItem] = Endpoint(
     name="equity_offering_search",
     path="fundraising-search",
     version=APIVersion.STABLE,
@@ -1032,7 +1032,7 @@ EQUITY_OFFERING_SEARCH: Endpoint = Endpoint(
     response_model=EquityOfferingSearchItem,
 )
 
-EQUITY_OFFERING_BY_CIK: Endpoint = Endpoint(
+EQUITY_OFFERING_BY_CIK: Endpoint[EquityOffering] = Endpoint(
     name="equity_offering_by_cik",
     path="fundraising",
     version=APIVersion.STABLE,
@@ -1067,7 +1067,7 @@ RATINGS_SNAPSHOT: Endpoint[RatingsSnapshot] = Endpoint(
     response_model=RatingsSnapshot,
 )
 
-RATINGS_HISTORICAL: Endpoint = Endpoint(
+RATINGS_HISTORICAL: Endpoint[HistoricalRating] = Endpoint(
     name="ratings_historical",
     path="ratings-historical",
     version=APIVersion.STABLE,
@@ -1092,7 +1092,7 @@ RATINGS_HISTORICAL: Endpoint = Endpoint(
     response_model=HistoricalRating,
 )
 
-PRICE_TARGET_NEWS: Endpoint = Endpoint(
+PRICE_TARGET_NEWS: Endpoint[PriceTargetNews] = Endpoint(
     name="price_target_news",
     path="price-target-news",
     version=APIVersion.STABLE,
@@ -1117,7 +1117,7 @@ PRICE_TARGET_NEWS: Endpoint = Endpoint(
     response_model=PriceTargetNews,
 )
 
-PRICE_TARGET_LATEST_NEWS: Endpoint = Endpoint(
+PRICE_TARGET_LATEST_NEWS: Endpoint[PriceTargetNews] = Endpoint(
     name="price_target_latest_news",
     path="price-target-latest-news",
     version=APIVersion.STABLE,
@@ -1135,7 +1135,7 @@ PRICE_TARGET_LATEST_NEWS: Endpoint = Endpoint(
     response_model=PriceTargetNews,
 )
 
-GRADES: Endpoint = Endpoint(
+GRADES: Endpoint[StockGrade] = Endpoint(
     name="grades",
     path="grades",
     version=APIVersion.STABLE,
@@ -1160,7 +1160,7 @@ GRADES: Endpoint = Endpoint(
     response_model=StockGrade,
 )
 
-GRADES_HISTORICAL: Endpoint = Endpoint(
+GRADES_HISTORICAL: Endpoint[HistoricalStockGrade] = Endpoint(
     name="grades_historical",
     path="grades-historical",
     version=APIVersion.STABLE,
@@ -1202,7 +1202,7 @@ GRADES_CONSENSUS: Endpoint[StockGradesConsensus] = Endpoint(
     response_model=StockGradesConsensus,
 )
 
-GRADES_NEWS: Endpoint = Endpoint(
+GRADES_NEWS: Endpoint[StockGradeNews] = Endpoint(
     name="grades_news",
     path="grades-news",
     version=APIVersion.STABLE,
@@ -1227,7 +1227,7 @@ GRADES_NEWS: Endpoint = Endpoint(
     response_model=StockGradeNews,
 )
 
-GRADES_LATEST_NEWS: Endpoint = Endpoint(
+GRADES_LATEST_NEWS: Endpoint[StockGradeNews] = Endpoint(
     name="grades_latest_news",
     path="grades-latest-news",
     version=APIVersion.STABLE,

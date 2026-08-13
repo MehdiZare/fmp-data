@@ -1,6 +1,8 @@
 # fmp_data/company/mapping.py
 from __future__ import annotations
 
+from typing import Any
+
 from fmp_data.company.endpoints import (
     AFTERMARKET_QUOTE,
     AFTERMARKET_TRADE,
@@ -48,9 +50,10 @@ from fmp_data.lc.hints import (
     SYMBOL_HINT,
 )
 from fmp_data.lc.models import EndpointSemantics, ResponseFieldInfo, SemanticCategory
+from fmp_data.models import Endpoint
 
 # Company endpoints mapping
-COMPANY_ENDPOINT_MAP = {
+COMPANY_ENDPOINT_MAP: dict[str, Endpoint[Any]] = {
     # Price Target endpoints
     "get_price_target": PRICE_TARGET,
     "get_price_target_summary": PRICE_TARGET_SUMMARY,

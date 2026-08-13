@@ -79,7 +79,10 @@ class TechnicalClient(EndpointGroup):
             params["from"] = start_date.strftime("%Y-%m-%d")
         if end_date:
             params["to"] = end_date.strftime("%Y-%m-%d")
-        return self.client.request(endpoint, **params)
+        return self._unwrap_list(
+            self.client.request(endpoint, **params),
+            endpoint.response_model,
+        )
 
     def get_sma(
         self,

@@ -1,3 +1,5 @@
+from typing import Any
+
 from fmp_data.institutional.endpoints import (
     ASSET_ALLOCATION,
     BENEFICIAL_OWNERSHIP,
@@ -26,6 +28,7 @@ from fmp_data.lc.models import (
     ResponseFieldInfo,
     SemanticCategory,
 )
+from fmp_data.models import Endpoint
 
 # Common parameter hints for reuse
 INSTITUTIONAL_TIME_PERIODS = {
@@ -73,7 +76,7 @@ INSTITUTIONAL_FILING_TYPES = {
         "Holdings report",
     ],
 }
-INSTITUTIONAL_ENDPOINT_MAP = {
+INSTITUTIONAL_ENDPOINT_MAP: dict[str, Endpoint[Any]] = {
     # The two ``_by_quarter`` keys name the wire-shaped client methods, not
     # the date-shaped conveniences that wrap them. ``FORM_13F`` and
     # ``INSTITUTIONAL_HOLDINGS`` declare mandatory ``year``/``quarter`` (the

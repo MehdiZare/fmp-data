@@ -1,5 +1,7 @@
 # fmp_data/investment/mapping.py
 
+from typing import Any
+
 from fmp_data.investment.endpoints import (
     ETF_COUNTRY_WEIGHTINGS,
     ETF_EXPOSURE,
@@ -29,6 +31,7 @@ from fmp_data.lc.models import (
     ResponseFieldInfo,
     SemanticCategory,
 )
+from fmp_data.models import Endpoint
 
 # Common parameter hints
 FUND_NAME_HINT = ParameterHint(
@@ -98,7 +101,7 @@ INVESTMENT_CALCULATIONS = {
 }
 
 # Endpoint mappings
-INVESTMENT_ENDPOINT_MAP = {
+INVESTMENT_ENDPOINT_MAP: dict[str, Endpoint[Any]] = {
     "get_etf_holdings": ETF_HOLDINGS,
     "get_etf_holding_dates": ETF_HOLDING_DATES,
     "get_etf_info": ETF_INFO,

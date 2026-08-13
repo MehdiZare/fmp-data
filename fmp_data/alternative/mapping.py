@@ -1,6 +1,8 @@
 # fmp_data/alternative/mapping.py
 from __future__ import annotations
 
+from typing import Any
+
 from fmp_data.alternative.endpoints import (
     COMMODITIES_LIST,
     COMMODITIES_QUOTES,
@@ -25,27 +27,28 @@ from fmp_data.lc.models import (
     ResponseFieldInfo,
     SemanticCategory,
 )
+from fmp_data.models import Endpoint
 
 # Create method name mapping
-ALTERNATIVE_ENDPOINT_MAP = {
-    f"get_{name}": endpoint
-    for name, endpoint in {
-        "crypto_list": CRYPTO_LIST,
-        "crypto_quotes": CRYPTO_QUOTES,
-        "crypto_quote": CRYPTO_QUOTE,
-        "crypto_historical": CRYPTO_HISTORICAL,
-        "crypto_intraday": CRYPTO_INTRADAY,
-        "forex_list": FOREX_LIST,
-        "forex_quotes": FOREX_QUOTES,
-        "forex_quote": FOREX_QUOTE,
-        "forex_historical": FOREX_HISTORICAL,
-        "forex_intraday": FOREX_INTRADAY,
-        "commodities_list": COMMODITIES_LIST,
-        "commodities_quotes": COMMODITIES_QUOTES,
-        "commodity_quote": COMMODITY_QUOTE,
-        "commodity_historical": COMMODITY_HISTORICAL,
-        "commodity_intraday": COMMODITY_INTRADAY,
-    }.items()
+_ALTERNATIVE_ENDPOINTS: dict[str, Endpoint[Any]] = {
+    "crypto_list": CRYPTO_LIST,
+    "crypto_quotes": CRYPTO_QUOTES,
+    "crypto_quote": CRYPTO_QUOTE,
+    "crypto_historical": CRYPTO_HISTORICAL,
+    "crypto_intraday": CRYPTO_INTRADAY,
+    "forex_list": FOREX_LIST,
+    "forex_quotes": FOREX_QUOTES,
+    "forex_quote": FOREX_QUOTE,
+    "forex_historical": FOREX_HISTORICAL,
+    "forex_intraday": FOREX_INTRADAY,
+    "commodities_list": COMMODITIES_LIST,
+    "commodities_quotes": COMMODITIES_QUOTES,
+    "commodity_quote": COMMODITY_QUOTE,
+    "commodity_historical": COMMODITY_HISTORICAL,
+    "commodity_intraday": COMMODITY_INTRADAY,
+}
+ALTERNATIVE_ENDPOINT_MAP: dict[str, Endpoint[Any]] = {
+    f"get_{name}": endpoint for name, endpoint in _ALTERNATIVE_ENDPOINTS.items()
 }
 
 # Common parameter hints

@@ -1,3 +1,5 @@
+from typing import Any
+
 from fmp_data.lc.hints import DATE_HINTS, PERIOD_LENGTH_HINT, SYMBOL_HINT
 from fmp_data.lc.models import (
     EndpointSemantics,
@@ -5,6 +7,7 @@ from fmp_data.lc.models import (
     ResponseFieldInfo,
     SemanticCategory,
 )
+from fmp_data.models import Endpoint
 from fmp_data.technical.endpoints import (
     ADX,
     DEMA,
@@ -361,7 +364,7 @@ TECHNICAL_ENDPOINTS_SEMANTICS = {
 }
 
 # Endpoint mappings
-TECHNICAL_ENDPOINT_MAP = {
+TECHNICAL_ENDPOINT_MAP: dict[str, Endpoint[Any]] = {
     "get_sma": SMA,
     "get_ema": EMA,
     "get_wma": WMA,

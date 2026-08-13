@@ -2,6 +2,7 @@
 """Async client for investment products endpoints."""
 
 from datetime import date
+from typing import cast
 import warnings
 
 from fmp_data.base import AsyncEndpointGroup
@@ -30,6 +31,7 @@ from fmp_data.investment.models import (
     FundDisclosureSearchResult,
     MutualFundHolder,
     MutualFundHolding,
+    PortfolioDate,
 )
 from fmp_data.logger import FMPLogger
 
@@ -47,7 +49,9 @@ class AsyncInvestmentClient(AsyncEndpointGroup):
         params: dict[str, str] = {"symbol": symbol}
         if holdings_date is not None:
             params["date"] = holdings_date.strftime("%Y-%m-%d")
-        return await self.client.request_async(ETF_HOLDINGS, **params)
+        return self._unwrap_list(
+            await self.client.request_async(ETF_HOLDINGS, **params), ETFHolding
+        )
 
     @deprecated(
         "etf/portfolio-dates is dead. The live path funds/disclosure-dates is "
@@ -79,11 +83,16 @@ class AsyncInvestmentClient(AsyncEndpointGroup):
             ETFInfo object if found, or None if no data/error occurs
         """
         try:
-            result = await self.client.request_async(ETF_INFO, symbol=symbol)
-            if isinstance(result, list):
-                return result[0] if result else None
+            result = cast(
+                object, await self.client.request_async(ETF_INFO, symbol=symbol)
+            )
             if isinstance(result, ETFInfo):
                 return result
+            if isinstance(result, list):
+                return cast(
+                    ETFInfo | None,
+                    self._unwrap_single(result, ETFInfo, allow_none=True),
+                )
             warnings.warn(
                 f"Unexpected result type from ETF_INFO: {type(result)}", stacklevel=2
             )
@@ -97,17 +106,25 @@ class AsyncInvestmentClient(AsyncEndpointGroup):
 
     async def get_etf_sector_weightings(self, symbol: str) -> list[ETFSectorWeighting]:
         """Get ETF sector weightings"""
-        return await self.client.request_async(ETF_SECTOR_WEIGHTINGS, symbol=symbol)
+        return self._unwrap_list(
+            await self.client.request_async(ETF_SECTOR_WEIGHTINGS, symbol=symbol),
+            ETFSectorWeighting,
+        )
 
     async def get_etf_country_weightings(
         self, symbol: str
     ) -> list[ETFCountryWeighting]:
         """Get ETF country weightings"""
-        return await self.client.request_async(ETF_COUNTRY_WEIGHTINGS, symbol=symbol)
+        return self._unwrap_list(
+            await self.client.request_async(ETF_COUNTRY_WEIGHTINGS, symbol=symbol),
+            ETFCountryWeighting,
+        )
 
     async def get_etf_exposure(self, symbol: str) -> list[ETFExposure]:
         """Get ETF stock exposure"""
-        return await self.client.request_async(ETF_EXPOSURE, symbol=symbol)
+        return self._unwrap_list(
+            await self.client.request_async(ETF_EXPOSURE, symbol=symbol), ETFExposure
+        )
 
     @deprecated(
         "etf/holder is dead and FMP publishes nothing with this shape. "
@@ -136,7 +153,7 @@ class AsyncInvestmentClient(AsyncEndpointGroup):
     # Mutual Fund methods
     async def get_mutual_fund_dates(
         self, symbol: str, cik: str | int | None = None
-    ) -> list[date]:
+    ) -> list[PortfolioDate]:
         """Get mutual fund/ETF disclosure dates
 
         Args:
@@ -144,16 +161,19 @@ class AsyncInvestmentClient(AsyncEndpointGroup):
             cik: Optional fund CIK
 
         Returns:
-            List of disclosure dates
+            List of disclosure date records
         """
         params: dict[str, str | int] = {"symbol": symbol}
         if cik is not None:
             params["cik"] = cik
-        return await self.client.request_async(MUTUAL_FUND_DATES, **params)
+        return self._unwrap_list(
+            await self.client.request_async(MUTUAL_FUND_DATES, **params),
+            PortfolioDate,
+        )
 
     async def get_fund_disclosure_dates(
         self, symbol: str, cik: str | int | None = None
-    ) -> list[date]:
+    ) -> list[PortfolioDate]:
         """Get mutual fund/ETF disclosure dates"""
         return await self.get_mutual_fund_dates(symbol=symbol, cik=cik)
 
@@ -222,8 +242,11 @@ class AsyncInvestmentClient(AsyncEndpointGroup):
         self, symbol: str
     ) -> list[FundDisclosureHolderLatest]:
         """Get latest mutual fund/ETF disclosure holders"""
-        return await self.client.request_async(
-            FUNDS_DISCLOSURE_HOLDERS_LATEST, symbol=symbol
+        return self._unwrap_list(
+            await self.client.request_async(
+                FUNDS_DISCLOSURE_HOLDERS_LATEST, symbol=symbol
+            ),
+            FundDisclosureHolderLatest,
         )
 
     async def get_fund_disclosure(
@@ -237,12 +260,16 @@ class AsyncInvestmentClient(AsyncEndpointGroup):
         }
         if cik is not None:
             params["cik"] = cik
-        return await self.client.request_async(FUNDS_DISCLOSURE, **params)
+        return self._unwrap_list(
+            await self.client.request_async(FUNDS_DISCLOSURE, **params),
+            FundDisclosureHolding,
+        )
 
     async def search_fund_disclosure_holders(
         self, name: str
     ) -> list[FundDisclosureSearchResult]:
         """Search mutual fund/ETF disclosure holders by name"""
-        return await self.client.request_async(
-            FUNDS_DISCLOSURE_HOLDERS_SEARCH, name=name
+        return self._unwrap_list(
+            await self.client.request_async(FUNDS_DISCLOSURE_HOLDERS_SEARCH, name=name),
+            FundDisclosureSearchResult,
         )

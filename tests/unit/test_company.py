@@ -8,28 +8,45 @@ import pytest
 from fmp_data.base import BaseClient, EndpointGroup
 from fmp_data.company import CompanyClient
 from fmp_data.company.endpoints import (
+    ANALYST_RECOMMENDATIONS,
+    COMPANY_OUTLOOK,
     COMPANY_PEERS,
     DELISTED_COMPANIES,
+    HISTORICAL_EMPLOYEE_COUNT,
+    HISTORICAL_PRICE,
+    HISTORICAL_PRICE_DIVIDEND_ADJUSTED,
+    HISTORICAL_PRICE_LIGHT,
+    HISTORICAL_PRICE_NON_SPLIT_ADJUSTED,
+    HISTORICAL_SHARE_FLOAT,
     INCOME_STATEMENT_TTM,
     KEY_EXECUTIVES,
     MERGERS_ACQUISITIONS_LATEST,
+    PRICE_TARGET,
+    STOCK_SCREENER,
     SYMBOL_CHANGES,
+    UPGRADES_DOWNGRADES,
 )
 from fmp_data.company.models import (
     AnalystEstimate,
+    AnalystRecommendation,
     CompanyExecutive,
+    CompanyOutlook,
     CompanyPeer,
     CompanyProfile,
     DelistedCompany,
+    EmployeeCount,
     ExecutiveCompensationBenchmark,
     HistoricalData,
     HistoricalPrice,
+    HistoricalShareFloat,
     IntradayPrice,
     MergerAcquisition,
+    PriceTarget,
     PriceTargetSummary,
     Quote,
     SimpleQuote,
     SymbolChange,
+    UpgradeDowngrade,
 )
 from fmp_data.fundamental.models import IncomeStatement
 from fmp_data.intelligence.models import DividendEvent, EarningEvent, StockSplitEvent
@@ -1532,4 +1549,73 @@ class TestCompanyListUnwrap:
     )
     def test_list_endpoints_bind_row_type(self, endpoint, row_type):
         """List endpoints bind T as the row, not list[T]."""
+        assert endpoint.response_model is row_type
+
+
+class TestCompanyHistoricalEODUnwrap:
+    """Historical EOD helpers unwrap rows then wrap HistoricalData (#242)."""
+
+    @pytest.fixture
+    def historical_price_data(self):
+        return {
+            "date": "2024-01-05T00:00:00",
+            "open": 149.00,
+            "high": 151.00,
+            "low": 148.50,
+            "close": 150.25,
+            "volume": 82034567,
+            "change": 2.25,
+            "changePercent": 1.5,
+            "vwap": 149.92,
+        }
+
+    @pytest.mark.parametrize(
+        "endpoint",
+        [
+            HISTORICAL_PRICE,
+            HISTORICAL_PRICE_LIGHT,
+            HISTORICAL_PRICE_NON_SPLIT_ADJUSTED,
+            HISTORICAL_PRICE_DIVIDEND_ADJUSTED,
+        ],
+    )
+    def test_historical_price_endpoints_bind_row_type(self, endpoint):
+        assert endpoint.response_model is HistoricalPrice
+
+    def test_get_historical_prices_wraps_lone_row(
+        self, fmp_client, mock_client, historical_price_data
+    ):
+        row = HistoricalPrice(**historical_price_data)
+        mock_client.request.return_value = row
+
+        result = fmp_client.get_historical_prices("AAPL")
+
+        assert isinstance(result, HistoricalData)
+        assert result.symbol == "AAPL"
+        assert result.historical == [row]
+
+    def test_get_historical_prices_empty_list_stays_empty(
+        self, fmp_client, mock_client
+    ):
+        mock_client.request.return_value = []
+
+        result = fmp_client.get_historical_prices("AAPL")
+
+        assert isinstance(result, HistoricalData)
+        assert result.symbol == "AAPL"
+        assert result.historical == []
+
+    @pytest.mark.parametrize(
+        "endpoint,row_type",
+        [
+            (HISTORICAL_SHARE_FLOAT, HistoricalShareFloat),
+            (PRICE_TARGET, PriceTarget),
+            (ANALYST_RECOMMENDATIONS, AnalystRecommendation),
+            (UPGRADES_DOWNGRADES, UpgradeDowngrade),
+            (HISTORICAL_EMPLOYEE_COUNT, EmployeeCount),
+            (STOCK_SCREENER, CompanyProfile),
+            (COMPANY_OUTLOOK, CompanyOutlook),
+        ],
+    )
+    def test_leftover_company_endpoints_bind_row_type(self, endpoint, row_type):
+        """Leftover company declarations bind T as the payload/row type."""
         assert endpoint.response_model is row_type

@@ -78,6 +78,7 @@ from fmp_data.company.models import (
     FinancialReportJSON,
     GeographicRevenueSegment,
     HistoricalData,
+    HistoricalPrice,
     HistoricalShareFloat,
     IntradayPrice,
     MergerAcquisition,
@@ -243,12 +244,11 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         if end_date:
             params["end_date"] = end_date
 
-        result = await self.client.request_async(HISTORICAL_PRICE, **params)
-
-        if isinstance(result, list):
-            return HistoricalData(symbol=symbol, historical=result)
-        else:
-            return HistoricalData(symbol=symbol, historical=[result])
+        rows = self._unwrap_list(
+            await self.client.request_async(HISTORICAL_PRICE, **params),
+            HistoricalPrice,
+        )
+        return HistoricalData(symbol=symbol, historical=rows)
 
     async def get_intraday_prices(
         self,
@@ -597,12 +597,11 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         if end_date:
             params["end_date"] = end_date
 
-        result = await self.client.request_async(HISTORICAL_PRICE_LIGHT, **params)
-
-        if isinstance(result, list):
-            return HistoricalData(symbol=symbol, historical=result)
-        else:
-            return HistoricalData(symbol=symbol, historical=[result])
+        rows = self._unwrap_list(
+            await self.client.request_async(HISTORICAL_PRICE_LIGHT, **params),
+            HistoricalPrice,
+        )
+        return HistoricalData(symbol=symbol, historical=rows)
 
     async def get_historical_prices_non_split_adjusted(
         self,
@@ -628,14 +627,13 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         if end_date:
             params["end_date"] = end_date
 
-        result = await self.client.request_async(
-            HISTORICAL_PRICE_NON_SPLIT_ADJUSTED, **params
+        rows = self._unwrap_list(
+            await self.client.request_async(
+                HISTORICAL_PRICE_NON_SPLIT_ADJUSTED, **params
+            ),
+            HistoricalPrice,
         )
-
-        if isinstance(result, list):
-            return HistoricalData(symbol=symbol, historical=result)
-        else:
-            return HistoricalData(symbol=symbol, historical=[result])
+        return HistoricalData(symbol=symbol, historical=rows)
 
     async def get_historical_prices_dividend_adjusted(
         self,
@@ -661,14 +659,13 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         if end_date:
             params["end_date"] = end_date
 
-        result = await self.client.request_async(
-            HISTORICAL_PRICE_DIVIDEND_ADJUSTED, **params
+        rows = self._unwrap_list(
+            await self.client.request_async(
+                HISTORICAL_PRICE_DIVIDEND_ADJUSTED, **params
+            ),
+            HistoricalPrice,
         )
-
-        if isinstance(result, list):
-            return HistoricalData(symbol=symbol, historical=result)
-        else:
-            return HistoricalData(symbol=symbol, historical=[result])
+        return HistoricalData(symbol=symbol, historical=rows)
 
     async def get_dividends(
         self,

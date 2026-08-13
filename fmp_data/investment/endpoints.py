@@ -23,7 +23,7 @@ from fmp_data.models import (
 )
 
 # ETF endpoints
-ETF_HOLDINGS: Endpoint = Endpoint(
+ETF_HOLDINGS: Endpoint[ETFHolding] = Endpoint(
     name="etf_holdings",
     path="etf/holdings",
     version=APIVersion.STABLE,
@@ -47,7 +47,7 @@ ETF_HOLDINGS: Endpoint = Endpoint(
     response_model=ETFHolding,
 )
 
-ETF_HOLDING_DATES: Endpoint = Endpoint(
+ETF_HOLDING_DATES: Endpoint[ETFPortfolioDate] = Endpoint(
     name="etf_holding_dates",
     path="etf/portfolio-dates",
     version=APIVersion.STABLE,
@@ -68,7 +68,7 @@ ETF_HOLDING_DATES: Endpoint = Endpoint(
     response_model=ETFPortfolioDate,
 )
 
-ETF_INFO: Endpoint = Endpoint(
+ETF_INFO: Endpoint[ETFInfo] = Endpoint(
     name="etf_info",
     path="etf/info",
     version=APIVersion.STABLE,
@@ -85,7 +85,7 @@ ETF_INFO: Endpoint = Endpoint(
     response_model=ETFInfo,
 )
 
-ETF_SECTOR_WEIGHTINGS: Endpoint = Endpoint(
+ETF_SECTOR_WEIGHTINGS: Endpoint[ETFSectorWeighting] = Endpoint(
     name="etf_sector_weightings",
     path="etf/sector-weightings",
     version=APIVersion.STABLE,
@@ -102,7 +102,7 @@ ETF_SECTOR_WEIGHTINGS: Endpoint = Endpoint(
     response_model=ETFSectorWeighting,
 )
 
-ETF_COUNTRY_WEIGHTINGS: Endpoint = Endpoint(
+ETF_COUNTRY_WEIGHTINGS: Endpoint[ETFCountryWeighting] = Endpoint(
     name="etf_country_weightings",
     path="etf/country-weightings",
     version=APIVersion.STABLE,
@@ -119,7 +119,7 @@ ETF_COUNTRY_WEIGHTINGS: Endpoint = Endpoint(
     response_model=ETFCountryWeighting,
 )
 
-ETF_EXPOSURE: Endpoint = Endpoint(
+ETF_EXPOSURE: Endpoint[ETFExposure] = Endpoint(
     name="etf_exposure",
     path="etf/asset-exposure",
     version=APIVersion.STABLE,
@@ -136,7 +136,7 @@ ETF_EXPOSURE: Endpoint = Endpoint(
     response_model=ETFExposure,
 )
 
-ETF_HOLDER: Endpoint = Endpoint(
+ETF_HOLDER: Endpoint[ETFHolder] = Endpoint(
     name="etf_holder",
     path="etf/holder",
     version=APIVersion.STABLE,
@@ -158,7 +158,7 @@ ETF_HOLDER: Endpoint = Endpoint(
 )
 
 # Mutual Fund endpoints
-MUTUAL_FUND_DATES: Endpoint = Endpoint(
+MUTUAL_FUND_DATES: Endpoint[PortfolioDate] = Endpoint(
     name="mutual_fund_dates",
     path="funds/disclosure-dates",
     version=APIVersion.STABLE,
@@ -197,7 +197,7 @@ MUTUAL_FUND_DATES: Endpoint = Endpoint(
 # declarations to match an endpoint that never answers would be a guess
 # dressed up as a fix. Revisit this param and MutualFundHoldingsArgs.date
 # together once #152 settles where this endpoint should point.
-MUTUAL_FUND_HOLDINGS: Endpoint = Endpoint(
+MUTUAL_FUND_HOLDINGS: Endpoint[MutualFundHolding] = Endpoint(
     name="mutual_fund_holdings",
     path="mutual-fund-holdings",
     version=APIVersion.STABLE,
@@ -224,7 +224,7 @@ MUTUAL_FUND_HOLDINGS: Endpoint = Endpoint(
     response_model=MutualFundHolding,
 )
 
-MUTUAL_FUND_BY_NAME: Endpoint = Endpoint(
+MUTUAL_FUND_BY_NAME: Endpoint[MutualFundHolding] = Endpoint(
     name="mutual_fund_by_name",
     path="mutual-fund-holdings/name",
     version=APIVersion.STABLE,
@@ -245,7 +245,7 @@ MUTUAL_FUND_BY_NAME: Endpoint = Endpoint(
     response_model=MutualFundHolding,
 )
 
-MUTUAL_FUND_HOLDER: Endpoint = Endpoint(
+MUTUAL_FUND_HOLDER: Endpoint[MutualFundHolder] = Endpoint(
     name="mutual_fund_holder",
     path="etf/holder",
     version=APIVersion.STABLE,
@@ -266,7 +266,7 @@ MUTUAL_FUND_HOLDER: Endpoint = Endpoint(
     response_model=MutualFundHolder,
 )
 
-FUNDS_DISCLOSURE_HOLDERS_LATEST: Endpoint = Endpoint(
+FUNDS_DISCLOSURE_HOLDERS_LATEST: Endpoint[FundDisclosureHolderLatest] = Endpoint(
     name="funds_disclosure_holders_latest",
     path="funds/disclosure-holders-latest",
     version=APIVersion.STABLE,
@@ -283,7 +283,7 @@ FUNDS_DISCLOSURE_HOLDERS_LATEST: Endpoint = Endpoint(
     response_model=FundDisclosureHolderLatest,
 )
 
-FUNDS_DISCLOSURE: Endpoint = Endpoint(
+FUNDS_DISCLOSURE: Endpoint[FundDisclosureHolding] = Endpoint(
     name="funds_disclosure",
     path="funds/disclosure",
     version=APIVersion.STABLE,
@@ -319,7 +319,7 @@ FUNDS_DISCLOSURE: Endpoint = Endpoint(
     response_model=FundDisclosureHolding,
 )
 
-FUNDS_DISCLOSURE_HOLDERS_SEARCH: Endpoint = Endpoint(
+FUNDS_DISCLOSURE_HOLDERS_SEARCH: Endpoint[FundDisclosureSearchResult] = Endpoint(
     name="funds_disclosure_holders_search",
     path="funds/disclosure-holders-search",
     version=APIVersion.STABLE,

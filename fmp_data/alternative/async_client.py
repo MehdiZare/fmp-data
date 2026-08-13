@@ -22,19 +22,22 @@ from fmp_data.alternative.endpoints import (
 )
 from fmp_data.alternative.models import (
     Commodity,
+    CommodityHistoricalPrice,
     CommodityIntradayPrice,
     CommodityPriceHistory,
     CommodityQuote,
     CryptoHistoricalData,
+    CryptoHistoricalPrice,
     CryptoIntradayPrice,
     CryptoPair,
     CryptoQuote,
+    ForexHistoricalPrice,
     ForexIntradayPrice,
     ForexPair,
     ForexPriceHistory,
     ForexQuote,
 )
-from fmp_data.base import AsyncEndpointGroup
+from fmp_data.base import AsyncEndpointGroup, EndpointGroup
 from fmp_data.helpers import deprecated
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
@@ -44,15 +47,18 @@ class AsyncAlternativeMarketsClient(AsyncEndpointGroup):
     """Async client for alternative markets endpoints."""
 
     @staticmethod
-    def _wrap_history(symbol: str, result: object, model: type[ModelT]) -> ModelT:
-        if isinstance(result, list):
-            return model.model_validate({"symbol": symbol, "historical": result})
-        return model.model_validate(result)
+    def _wrap_history(
+        symbol: str, result: object, container: type[ModelT], row_type: type
+    ) -> ModelT:
+        rows = EndpointGroup._unwrap_list(result, row_type)
+        return container.model_validate({"symbol": symbol, "historical": rows})
 
     # Cryptocurrency methods
     async def get_crypto_list(self) -> list[CryptoPair]:
         """Get list of available cryptocurrencies"""
-        return await self.client.request_async(CRYPTO_LIST)
+        return self._unwrap_list(
+            await self.client.request_async(CRYPTO_LIST), CryptoPair
+        )
 
     @deprecated(
         "quotes/crypto is dead. The live path batch-crypto-quotes is already "
@@ -93,20 +99,25 @@ class AsyncAlternativeMarketsClient(AsyncEndpointGroup):
             params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         result = await self.client.request_async(CRYPTO_HISTORICAL, **params)
-        return self._wrap_history(symbol, result, CryptoHistoricalData)
+        return self._wrap_history(
+            symbol, result, CryptoHistoricalData, CryptoHistoricalPrice
+        )
 
     async def get_crypto_intraday(
         self, symbol: str, interval: str = "5min"
     ) -> list[CryptoIntradayPrice]:
         """Get cryptocurrency intraday prices"""
-        return await self.client.request_async(
-            CRYPTO_INTRADAY, symbol=symbol, interval=interval
+        return self._unwrap_list(
+            await self.client.request_async(
+                CRYPTO_INTRADAY, symbol=symbol, interval=interval
+            ),
+            CryptoIntradayPrice,
         )
 
     # Forex methods
     async def get_forex_list(self) -> list[ForexPair]:
         """Get list of available forex pairs"""
-        return await self.client.request_async(FOREX_LIST)
+        return self._unwrap_list(await self.client.request_async(FOREX_LIST), ForexPair)
 
     @deprecated(
         "quotes/forex is dead. The live path batch-forex-quotes is already "
@@ -145,20 +156,27 @@ class AsyncAlternativeMarketsClient(AsyncEndpointGroup):
             params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         result = await self.client.request_async(FOREX_HISTORICAL, **params)
-        return self._wrap_history(symbol, result, ForexPriceHistory)
+        return self._wrap_history(
+            symbol, result, ForexPriceHistory, ForexHistoricalPrice
+        )
 
     async def get_forex_intraday(
         self, symbol: str, interval: str = "5min"
     ) -> list[ForexIntradayPrice]:
         """Get forex intraday prices"""
-        return await self.client.request_async(
-            FOREX_INTRADAY, symbol=symbol, interval=interval
+        return self._unwrap_list(
+            await self.client.request_async(
+                FOREX_INTRADAY, symbol=symbol, interval=interval
+            ),
+            ForexIntradayPrice,
         )
 
     # Commodities methods
     async def get_commodities_list(self) -> list[Commodity]:
         """Get list of available commodities"""
-        return await self.client.request_async(COMMODITIES_LIST)
+        return self._unwrap_list(
+            await self.client.request_async(COMMODITIES_LIST), Commodity
+        )
 
     @deprecated(
         "quotes/commodity is dead. The live path batch-commodity-quotes is "
@@ -197,12 +215,17 @@ class AsyncAlternativeMarketsClient(AsyncEndpointGroup):
             params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         result = await self.client.request_async(COMMODITY_HISTORICAL, **params)
-        return self._wrap_history(symbol, result, CommodityPriceHistory)
+        return self._wrap_history(
+            symbol, result, CommodityPriceHistory, CommodityHistoricalPrice
+        )
 
     async def get_commodity_intraday(
         self, symbol: str, interval: str = "5min"
     ) -> list[CommodityIntradayPrice]:
         """Get commodity intraday prices"""
-        return await self.client.request_async(
-            COMMODITY_INTRADAY, symbol=symbol, interval=interval
+        return self._unwrap_list(
+            await self.client.request_async(
+                COMMODITY_INTRADAY, symbol=symbol, interval=interval
+            ),
+            CommodityIntradayPrice,
         )
