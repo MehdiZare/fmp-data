@@ -401,6 +401,12 @@ class BaseClient:
         # This should never be reached due to reraise=True, but satisfies type checker
         raise FMPError("Request failed after all retry attempts")
 
+    @overload
+    def request_list(self, endpoint: Endpoint[bytes], **kwargs: Any) -> NoReturn: ...
+
+    @overload
+    def request_list(self, endpoint: Endpoint[T], **kwargs: Any) -> list[T]: ...
+
     def request_list(self, endpoint: Endpoint[T], **kwargs: Any) -> list[T]:
         """Request a list-returning endpoint as ``list[T]``.
 
@@ -977,8 +983,22 @@ class BaseClient:
         # This should never be reached due to reraise=True
         raise FMPError("Async request failed after all retry attempts")
 
+    @overload
+    async def request_async_list(
+        self, endpoint: Endpoint[bytes], **kwargs: Any
+    ) -> NoReturn: ...
+
+    @overload
+    async def request_async_list(
+        self, endpoint: Endpoint[T], **kwargs: Any
+    ) -> list[T]: ...
+
     async def request_async_list(self, endpoint: Endpoint[T], **kwargs: Any) -> list[T]:
-        """Async counterpart of :meth:`request_list`."""
+        """Async counterpart of :meth:`request_list`.
+
+        Raises:
+            TypeError: If ``endpoint.response_model is bytes``.
+        """
         _refuse_bytes_list_request(endpoint)
         return _unwrap_list_result(
             await self.request_async(endpoint, **kwargs),
