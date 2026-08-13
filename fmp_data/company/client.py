@@ -926,15 +926,17 @@ class CompanyClient(EndpointGroup):
             "period": period,
         }
         result = self.client.request(FINANCIAL_REPORTS_JSON, **params)
-        if isinstance(result, FinancialReportJSON):
-            return result.model_dump(mode="json")
-        if not isinstance(result, dict):
+        # request() is T | list[T]; widen so a mock dict stays legal.
+        payload: object = result
+        if isinstance(payload, FinancialReportJSON):
+            return payload.model_dump(mode="json")
+        if not isinstance(payload, dict):
             raise InvalidResponseTypeError(
                 endpoint_name="financial_reports_json",
                 expected_type="dict or FinancialReportJSON",
-                actual_type=type(result).__name__,
+                actual_type=type(payload).__name__,
             )
-        return result
+        return payload
 
     def get_financial_reports_xlsx(
         self, symbol: str, year: int, period: str = "FY"

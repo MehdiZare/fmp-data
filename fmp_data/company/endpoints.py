@@ -1664,7 +1664,7 @@ FINANCIAL_GROWTH: Endpoint[FinancialGrowth] = Endpoint(
     response_model=FinancialGrowth,
 )
 
-FINANCIAL_REPORTS_JSON: Endpoint = Endpoint(
+FINANCIAL_REPORTS_JSON: Endpoint[FinancialReportJSON] = Endpoint(
     name="financial_reports_json",
     path="financial-reports-json",
     version=APIVersion.STABLE,
@@ -1700,7 +1700,7 @@ FINANCIAL_REPORTS_JSON: Endpoint = Endpoint(
     response_model=FinancialReportJSON,
 )
 
-FINANCIAL_REPORTS_XLSX: Endpoint = Endpoint(
+FINANCIAL_REPORTS_XLSX: Endpoint[bytes] = Endpoint(
     name="financial_reports_xlsx",
     path="financial-reports-xlsx",
     version=APIVersion.STABLE,

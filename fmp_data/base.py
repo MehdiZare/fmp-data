@@ -40,6 +40,15 @@ T = TypeVar("T")
 ValidationMode = Literal["lenient", "warn", "strict"]
 
 
+def _refuse_bytes_list_request(endpoint: Endpoint[T]) -> None:
+    """``request_list`` is for row lists, not file downloads."""
+    if endpoint.response_model is bytes:
+        raise TypeError(
+            f"{endpoint.name} returns bytes; use request() or a dedicated "
+            "bytes helper, not request_list()"
+        )
+
+
 def _unwrap_list_result(result: T | list[T], model: type[T]) -> list[T]:
     """Normalize ``request()`` output to ``list[T]``.
 
@@ -354,6 +363,12 @@ class BaseClient:
             return exc.response.status_code >= 500
         return False
 
+    @overload
+    def request(self, endpoint: Endpoint[bytes], **kwargs: Any) -> bytes: ...
+
+    @overload
+    def request(self, endpoint: Endpoint[T], **kwargs: Any) -> T | list[T]: ...
+
     @log_api_call()
     def request(self, endpoint: Endpoint[T], **kwargs: Any) -> T | list[T]:
         """
@@ -364,7 +379,8 @@ class BaseClient:
             **kwargs: Arbitrary keyword arguments passed as request parameters.
 
         Returns:
-            Either a single Pydantic model of type T or a list of T.
+            ``bytes`` for ``Endpoint[bytes]``. Otherwise a single model of
+            type T or a list of T.
         """
         _rate_limit_retry_count.set(0)  # Reset counter at start of new request
 
@@ -388,12 +404,19 @@ class BaseClient:
     def request_list(self, endpoint: Endpoint[T], **kwargs: Any) -> list[T]:
         """Request a list-returning endpoint as ``list[T]``.
 
-        ``request`` stays ``Endpoint[T] -> T | list[T]``. Use this helper
+        ``request`` stays ``Endpoint[T] -> T | list[T]`` except for
+        ``Endpoint[bytes]``, which overloads to ``bytes``. Use this helper
         when the caller wants ``list[T]`` directly. Client methods that
         still call ``request()`` (so tests can mock it) should normalize
         with ``EndpointGroup._unwrap_list`` instead of ``_unwrap_single``.
         An empty list stays empty.
+
+        Raises:
+            TypeError: If ``endpoint.response_model is bytes``. A file
+                payload is not a row list; ``isinstance(payload, bytes)``
+                would wrap it as ``[bytes]``.
         """
+        _refuse_bytes_list_request(endpoint)
         return _unwrap_list_result(
             self.request(endpoint, **kwargs),
             endpoint.response_model,
@@ -919,9 +942,21 @@ class BaseClient:
             )
         raise ValueError(f"Unsupported response model: {model!r}")
 
+    @overload
+    async def request_async(
+        self, endpoint: Endpoint[bytes], **kwargs: Any
+    ) -> bytes: ...
+
+    @overload
+    async def request_async(
+        self, endpoint: Endpoint[T], **kwargs: Any
+    ) -> T | list[T]: ...
+
     async def request_async(self, endpoint: Endpoint[T], **kwargs: Any) -> T | list[T]:
         """
-        Make async request with rate limiting and retry logic, returning T or list[T].
+        Make async request with rate limiting and retry logic.
+
+        Returns ``bytes`` for ``Endpoint[bytes]``. Otherwise T or list[T].
         """
         _rate_limit_retry_count.set(0)  # Reset counter at start of new request
 
@@ -944,6 +979,7 @@ class BaseClient:
 
     async def request_async_list(self, endpoint: Endpoint[T], **kwargs: Any) -> list[T]:
         """Async counterpart of :meth:`request_list`."""
+        _refuse_bytes_list_request(endpoint)
         return _unwrap_list_result(
             await self.request_async(endpoint, **kwargs),
             endpoint.response_model,

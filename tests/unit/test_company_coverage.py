@@ -1,6 +1,7 @@
 """Additional tests for company client to improve coverage"""
 
 from datetime import date
+from typing import get_type_hints
 from unittest.mock import patch
 
 import pytest
@@ -610,6 +611,37 @@ class TestNewModelFields:
         assert ma.transaction_date == "2024-06-15"
         assert ma.accepted_date == "2024-06-10"
         assert ma.link == "https://sec.gov/filing/123"
+
+
+class TestFinancialReportsEndpointBindings:
+    """Company financial-report downloads are the last bare Endpoints (#250)."""
+
+    def test_json_endpoint_is_parameterized(self) -> None:
+        from fmp_data.company import endpoints as company_endpoints
+        from fmp_data.models import Endpoint
+
+        hints = get_type_hints(company_endpoints)
+        assert hints["FINANCIAL_REPORTS_JSON"] == Endpoint[FinancialReportJSON]
+        assert (
+            company_endpoints.FINANCIAL_REPORTS_JSON.response_model
+            is FinancialReportJSON
+        )
+
+    def test_xlsx_endpoint_is_bytes_and_returns_bytes_not_list(
+        self, fmp_client
+    ) -> None:
+        from fmp_data.company import endpoints as company_endpoints
+        from fmp_data.models import Endpoint
+
+        hints = get_type_hints(company_endpoints)
+        assert hints["FINANCIAL_REPORTS_XLSX"] == Endpoint[bytes]
+        assert company_endpoints.FINANCIAL_REPORTS_XLSX.response_model is bytes
+
+        raw = b"PK\x03\x04xlsx"
+        with patch.object(fmp_client.company.client, "request", return_value=raw):
+            result = fmp_client.company.get_financial_reports_xlsx("AAPL", 2024)
+        assert type(result) is bytes
+        assert result == raw
 
 
 class TestFinancialReportsJSONClient:

@@ -963,15 +963,17 @@ class AsyncCompanyClient(AsyncEndpointGroup):
             "period": period,
         }
         result = await self.client.request_async(FINANCIAL_REPORTS_JSON, **params)
-        if isinstance(result, FinancialReportJSON):
-            return result.model_dump(mode="json")
-        if not isinstance(result, dict):
+        # request_async() is T | list[T]; widen so a mock dict stays legal.
+        payload: object = result
+        if isinstance(payload, FinancialReportJSON):
+            return payload.model_dump(mode="json")
+        if not isinstance(payload, dict):
             raise InvalidResponseTypeError(
                 endpoint_name="financial_reports_json",
                 expected_type="dict or FinancialReportJSON",
-                actual_type=type(result).__name__,
+                actual_type=type(payload).__name__,
             )
-        return result
+        return payload
 
     async def get_financial_reports_xlsx(
         self, symbol: str, year: int, period: str = "FY"
