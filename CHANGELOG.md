@@ -170,6 +170,20 @@ None. No FMP path we ship was newly retired by this changelog window.
   had made every unsigned automation commit need `--admin` despite green checks;
   required Test-Matrix jobs, no force-push, and no branch deletion remain.
 
+### Security
+
+- **Isolated PyPI publishing and immutable Actions pins (#252).** Release,
+  Dev-Release, and Publish-to-TestPyPI now build in a job with no OIDC token
+  and publish from a second job that only downloads hashed artifacts. Publish
+  jobs use the `pypi` / `testpypi` GitHub environments. All external
+  `uses:` entries are pinned to full commit SHAs. The PEP 517 frontend is
+  installed from `.github/requirements-build.txt` with `--require-hashes`.
+  `workflow_dispatch` on Dev-Release is bound to `refs/heads/dev`. The
+  TestPyPI PR path requires `head.repo.full_name == github.repository`.
+  Tag-based TestPyPI publishes no longer `skip-existing`. **Before the next
+  release**, set the PyPI and TestPyPI Trusted Publisher environment names
+  to `pypi` and `testpypi` to match the workflows.
+
 ## [2.6.0] - 2026-08-10
 
 Released from `dev`. A correctness-and-contracts release: the LangChain and MCP

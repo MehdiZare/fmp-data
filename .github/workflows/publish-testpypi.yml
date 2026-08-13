@@ -15,46 +15,51 @@ on:
       - 'v*.*.*dev*'           # Dev releases (v1.2.3dev1)
 
 permissions:
-  id-token: write              # OIDC → Trusted Publishing
-  pull-requests: write         # Comment on PRs
-  contents: read               # Read repository contents
-  issues: write                # Use Issues API for PR comments
+  contents: read
 
 jobs:
   test-release-build:
-    # Only run for PRs from dev with release labels
+    # Same-repo `dev` only. Forks named `dev` must not mint a TestPyPI OIDC
+    # token even if a maintainer adds a release label (#252 FMP-SEC-003).
     if: |
       github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.head.ref == 'dev' &&
       (contains(github.event.pull_request.labels.*.name, 'release:major') ||
        contains(github.event.pull_request.labels.*.name, 'release:minor') ||
        contains(github.event.pull_request.labels.*.name, 'release:patch'))
 
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.TEST_VERSION }}
+      head_sha: ${{ steps.version.outputs.HEAD_SHA }}
+      head_short: ${{ steps.version.outputs.HEAD_SHORT }}
     env:
       PYTHON_VERSION: "3.12"
 
     steps:
       - name: 🛎️  Checkout repository
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0  # Needed for version calculation
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
 
       - name: 🐍  Set up Python
-        uses: actions/setup-python@v7.0.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: ⚡  Install uv
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
         with:
           enable-cache: false
 
-      - name: 📦  Install build tools
+      - name: 📦  Install pinned build frontend
         run: |
-          uv pip install --system build hatch
+          uv pip install --system --require-hashes -r .github/requirements-build.txt
 
       - name: 🏷️  Calculate and create test version tag
         id: version
@@ -138,11 +143,46 @@ jobs:
           fi
           echo "📋 Built package version matches: $META_VERSION"
 
+          (cd dist && sha256sum ./* > ../SHA256SUMS)
+          cat SHA256SUMS
+
+      - name: 📤 Upload dist artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: test-release-dist
+          path: |
+            dist/
+            SHA256SUMS
+          if-no-files-found: error
+
+  test-release-publish:
+    needs: test-release-build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/fmp-data/${{ needs.test-release-build.outputs.version }}/
+    permissions:
+      id-token: write
+      pull-requests: write
+      issues: write
+      contents: read
+
+    steps:
+      - name: 📥 Download dist artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: test-release-dist
+
+      - name: 🔐 Verify artifact checksums
+        run: |
+          set -euo pipefail
+          (cd dist && sha256sum -c ../SHA256SUMS)
+
       - name: 🧪  Upload to Test PyPI
         # skip-existing is intentionally OFF. With a unique version there is
         # nothing legitimate to skip; a collision must fail loudly rather than
         # report success while leaving a stale wheel installed. See #204.
-        uses: pypa/gh-action-pypi-publish@v1.14.2
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # v1.14.2
         with:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: dist
@@ -151,12 +191,12 @@ jobs:
           print-hash: true
 
       - name: 📝  Comment on PR
-        uses: actions/github-script@v9.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
         with:
           script: |
-            const version = '${{ steps.version.outputs.TEST_VERSION }}';
-            const sha = '${{ steps.version.outputs.HEAD_SHA }}';
-            const short = '${{ steps.version.outputs.HEAD_SHORT }}';
+            const version = '${{ needs.test-release-build.outputs.version }}';
+            const sha = '${{ needs.test-release-build.outputs.head_sha }}';
+            const short = '${{ needs.test-release-build.outputs.head_short }}';
             const comment = `## 🧪 Test Release Published
 
             A test version has been published to TestPyPI for verification.
@@ -211,38 +251,73 @@ jobs:
               });
             }
 
-  # Original job for tag-based releases
-  publish-prerelease:
+  prerelease-build:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       PYTHON_VERSION: "3.12"
 
     steps:
       - name: 🛎️  Checkout repository
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0  # Needed for hatch-vcs versioning
           persist-credentials: false
 
       - name: 🐍  Set up Python
-        uses: actions/setup-python@v7.0.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: ⚡  Install uv
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
         with:
           enable-cache: false
 
       - name: 📦  Build wheel & sdist
         run: |
-          uv pip install --system build hatch
+          set -euo pipefail
+          uv pip install --system --require-hashes -r .github/requirements-build.txt
           python -m build --wheel --sdist
+          (cd dist && sha256sum ./* > ../SHA256SUMS)
+          cat SHA256SUMS
+
+      - name: 📤 Upload dist artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: prerelease-dist
+          path: |
+            dist/
+            SHA256SUMS
+          if-no-files-found: error
+
+  prerelease-publish:
+    needs: prerelease-build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: 📥 Download dist artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: prerelease-dist
+
+      - name: 🔐 Verify artifact checksums
+        run: |
+          set -euo pipefail
+          (cd dist && sha256sum -c ../SHA256SUMS)
 
       - name: 🚀  Upload to Test PyPI
-        uses: pypa/gh-action-pypi-publish@v1.14.2
+        # skip-existing OFF: a colliding prerelease tag is a real bug, not
+        # a reason to advertise whatever was already on TestPyPI (#252).
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # v1.14.2
         with:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: dist
-          skip-existing: true
+          skip-existing: false

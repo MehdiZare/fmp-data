@@ -6,13 +6,13 @@ on:
     branches:
       - main
 
+# Least privilege at workflow scope. Each job raises only what it needs.
+# Build/tag/GitHub Release: contents: write. Publish: id-token: write only.
 permissions:
-  contents: write
-  id-token: write
-  pull-requests: read
+  contents: read
 
 jobs:
-  release:
+  build:
     # Only run if PR was merged and has a release label
     if: |
       github.event.pull_request.merged == true &&
@@ -21,12 +21,18 @@ jobs:
        contains(github.event.pull_request.labels.*.name, 'release:patch'))
 
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
+      version_number: ${{ steps.version.outputs.VERSION_NUMBER }}
     env:
       PYTHON_VERSION: "3.14"
 
     steps:
       - name: 🛎️ Checkout repository
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0  # Fetch all history for proper versioning
           # Prefer the merge/squash commit on main so the tag points at what
@@ -35,18 +41,18 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 🐍 Set up Python
-        uses: actions/setup-python@v7.0.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: ⚡ Install uv
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
         with:
           enable-cache: false
 
-      - name: 📦 Install dependencies
+      - name: 📦 Install pinned build frontend
         run: |
-          uv pip install --system build hatch
+          uv pip install --system --require-hashes -r .github/requirements-build.txt
 
       - name: 🏷️ Determine version bump type
         id: bump_type
@@ -140,10 +146,35 @@ jobs:
           git push origin "$RELEASE_TAG"
 
       - name: 📦 Build distribution
+        env:
+          EXPECTED_VERSION: ${{ steps.version.outputs.VERSION_NUMBER }}
         run: |
+          set -euo pipefail
           python -m build --wheel --sdist
           echo "Built artifacts:"
           ls -la dist/
+
+          shopt -s nullglob
+          sdists=(dist/*.tar.gz)
+          if [ "${#sdists[@]}" -eq 0 ]; then
+            echo "::error::No sdist found in dist/"
+            exit 1
+          fi
+          SDIST="${sdists[0]}"
+          META_VERSION=$(tar -xOf "$SDIST" --wildcards '*/PKG-INFO' 2>/dev/null \
+            | awk -F': ' '/^Version:/{print $2; exit}')
+          if [ -z "${META_VERSION:-}" ]; then
+            echo "::error::Could not read Version: from sdist PKG-INFO"
+            exit 1
+          fi
+          if [ "$META_VERSION" != "$EXPECTED_VERSION" ]; then
+            echo "::error::Built version '${META_VERSION}' != expected '${EXPECTED_VERSION}'"
+            exit 1
+          fi
+          echo "📋 Built package version matches: $META_VERSION"
+
+          (cd dist && sha256sum ./* > ../SHA256SUMS)
+          cat SHA256SUMS
 
       - name: 📋 Generate release notes from PR
         id: release_notes
@@ -215,11 +246,43 @@ jobs:
             --title "Release $RELEASE_TAG" \
             --notes-file release-notes.md
 
+      - name: 📤 Upload dist artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: python-package-dist
+          path: |
+            dist/
+            SHA256SUMS
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/fmp-data/${{ needs.build.outputs.version_number }}/
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: 📥 Download dist artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: python-package-dist
+
+      - name: 🔐 Verify artifact checksums
+        run: |
+          set -euo pipefail
+          # SHA256SUMS was written from inside dist/, so verify there.
+          (cd dist && sha256sum -c ../SHA256SUMS)
+          ls -la dist
+
       - name: 🚀 Publish to PyPI
         # skip-existing OFF for real releases. A collision means the version
         # is already on PyPI; reporting success while leaving that older
         # artifact installed is the same silent-success class as #204.
-        uses: pypa/gh-action-pypi-publish@v1.14.2
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # v1.14.2
         with:
           packages-dir: dist/
           skip-existing: false

@@ -123,10 +123,16 @@ the overlay in a hotfix-shaped PR.
 
 - **Dev Release** (`dev-release.yml`) publishes a unique TestPyPI build on
   every push to `dev` (`X.Y.Z.devN` with `N = run_id * 1000 + run_attempt`).
-  Re-runs never silently re-serve a previous wheel.
-- **Release** (`release.yml`) tags, creates the GitHub Release, and publishes
-  to PyPI after a labeled `dev → main` merge. Existing tags / releases / PyPI
-  versions fail the job instead of being skipped.
+  Re-runs never silently re-serve a previous wheel. Build and publish are
+  separate jobs; only publish holds `id-token: write`, behind the `testpypi`
+  environment. `workflow_dispatch` is bound to `refs/heads/dev`.
+- **Release** (`release.yml`) tags and creates the GitHub Release in a
+  `contents: write` build job, then publishes to PyPI from a second job that
+  only downloads the hashed artifacts and has `id-token: write` (environment
+  `pypi`). Existing tags / releases / PyPI versions fail the job instead of
+  being skipped.
+- External Actions are pinned to full commit SHAs. The PEP 517 frontend is
+  installed from `.github/requirements-build.txt` with `--require-hashes`.
 - **Claude Code Review** is advisory: missing or expired OAuth tokens do not
   fail the PR. Required gates live in `ci.yml` / the branch rulesets.
 
@@ -136,7 +142,7 @@ the overlay in a hotfix-shaped PR.
 |---|---|
 | `GH_TOKEN` | Fine-scoped PAT (or App token) for Release-PR / Sync-Main-to-Dev `gh pr create`, automation branch pushes, and sync-PR auto-merge so `pull_request` CI runs on open (#206) and the history-sync PR can land without a babysitter. Not the same as the automatic `GITHUB_TOKEN`. |
 | `GITHUB_TOKEN` | Automatic job token; used as fallback and for jobs that must not re-trigger workflows. |
-| OIDC / PyPI trusted publishing | Real and Test PyPI uploads (no long-lived PyPI token required when configured). |
+| OIDC / PyPI trusted publishing | Real and Test PyPI uploads (no long-lived PyPI token required when configured). The GitHub environments **must** be named `pypi` and `testpypi` in the matching PyPI / TestPyPI Trusted Publisher entries, or the OIDC exchange will fail. |
 
 ### Branch protection notes (sync PR)
 
