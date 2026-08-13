@@ -25,6 +25,21 @@ def test_scrub_api_key_removes_header_and_uri_value() -> None:
     assert "apikey" not in {k.lower() for k in scrubbed.headers}
 
 
+def test_scrub_api_key_debug_log_does_not_include_the_key(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    request = Request(
+        method="GET",
+        uri="https://financialmodelingprep.com/stable/quote?symbol=AAPL&apikey=REAL_KEY",
+        body="",
+        headers={"Accept": ["application/json"]},
+    )
+    caplog.set_level("DEBUG", logger="tests.integration.conftest")
+    scrub_api_key(request)
+    assert "REAL_KEY" not in caplog.text
+    assert "quote" in caplog.text
+
+
 def test_scrub_response_secrets_masks_query_json_and_headers(monkeypatch) -> None:
     monkeypatch.setattr("tests.integration.conftest.VCR_RECORD_MODE", "new_episodes")
     monkeypatch.setenv("FMP_TEST_API_KEY", "SECRET_API_KEY")
@@ -102,16 +117,12 @@ def test_no_api_key_leaks_in_cassettes() -> None:
             for match in _APIKEY_QUERY_RE.finditer(line):
                 value = match.group(1)
                 if value not in _SAFE_API_KEY_VALUES:
-                    violations.append(
-                        f"{relative}:{lineno}  apikey={value} (query string)"
-                    )
+                    violations.append(f"{relative}:{lineno}  query-string apikey")
 
             for match in _APIKEY_JSON_RE.finditer(line):
                 value = match.group(1)
                 if value not in _SAFE_API_KEY_VALUES:
-                    violations.append(
-                        f"{relative}:{lineno}  apikey={value} (JSON body)"
-                    )
+                    violations.append(f"{relative}:{lineno}  JSON-body apikey")
 
     assert not violations, (
         f"Found {len(violations)} API key leak(s) in VCR cassettes:\n"

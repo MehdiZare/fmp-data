@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import time
 from typing import Any
+from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
 import pytest
@@ -75,7 +76,14 @@ def drop_unauthorized_response(response: dict | None) -> dict | None:
 
 def scrub_api_key(request: Request) -> Request:
     """Remove API key for recording only"""
-    logger.debug(f"Original request URI: {request.uri}")
+    parsed = urlsplit(request.uri)
+    logger.debug(
+        "Scrubbing %s %s://%s%s",
+        request.method,
+        parsed.scheme,
+        parsed.netloc,
+        parsed.path,
+    )
 
     # Don't modify the actual request, just create a scrubbed copy for recording
     scrubbed_uri = request.uri
