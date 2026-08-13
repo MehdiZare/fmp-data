@@ -127,7 +127,7 @@ venv: .venv/.installed ## Create .venv and install dev dependencies if missing
 
 test: venv ## Run tests
 	@echo "$(BOLD)$(BLUE)🧪 Running tests...$(RESET)"
-	@set -a; [ -f .env ] && . ./.env; set +a; \
+	@eval "$$(python3 scripts/export_dotenv.py .env)"; \
 		if [ -z "$$FMP_TEST_API_KEY" ] && [ -n "$$FMP_API_KEY" ]; then export FMP_TEST_API_KEY="$$FMP_API_KEY"; fi; \
 		if [ -z "$$FMP_API_KEY" ] && [ -n "$$FMP_TEST_API_KEY" ]; then export FMP_API_KEY="$$FMP_TEST_API_KEY"; fi; \
 		. .venv/bin/activate && pytest -q $(PYTEST_XDIST_ARGS)
@@ -140,7 +140,7 @@ test-integration: test-integration-replay ## Alias for replay integration tests
 
 test-integration-replay: venv ## Run integration tests using VCR replay mode (fast, deterministic)
 	@echo "$(BOLD)$(BLUE)🧪 Running integration tests (VCR replay)...$(RESET)"
-	@set -a; [ -f .env ] && . ./.env; set +a; \
+	@eval "$$(python3 scripts/export_dotenv.py .env)"; \
 		if [ -z "$$FMP_TEST_API_KEY" ] && [ -n "$$FMP_API_KEY" ]; then export FMP_TEST_API_KEY="$$FMP_API_KEY"; fi; \
 		if [ -z "$$FMP_API_KEY" ] && [ -n "$$FMP_TEST_API_KEY" ]; then export FMP_API_KEY="$$FMP_TEST_API_KEY"; fi; \
 		export FMP_VCR_RECORD=none; \
@@ -148,7 +148,7 @@ test-integration-replay: venv ## Run integration tests using VCR replay mode (fa
 
 test-integration-record: venv ## Record/update integration VCR cassettes (set TESTS=path/to/test.py for targeted refresh)
 	@echo "$(BOLD)$(YELLOW)🎥 Recording integration cassettes...$(RESET)"
-	@set -a; [ -f .env ] && . ./.env; set +a; \
+	@eval "$$(python3 scripts/export_dotenv.py .env)"; \
 		if [ -z "$$FMP_TEST_API_KEY" ] && [ -n "$$FMP_API_KEY" ]; then export FMP_TEST_API_KEY="$$FMP_API_KEY"; fi; \
 		if [ -z "$$FMP_API_KEY" ] && [ -n "$$FMP_TEST_API_KEY" ]; then export FMP_API_KEY="$$FMP_TEST_API_KEY"; fi; \
 		if [ -z "$$FMP_TEST_API_KEY" ]; then echo "$(YELLOW)FMP_TEST_API_KEY is required for recording.$(RESET)" && exit 1; fi; \

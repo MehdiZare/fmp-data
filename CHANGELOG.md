@@ -242,6 +242,9 @@ None. No FMP path we ship was newly retired by this changelog window.
   advisories; supported versions and target response times are documented.
 - **Tag-based TestPyPI builds require the tag to sit on ``main`` or ``dev``
   (#252 FMP-SEC-003).** A tag of an unrelated commit no longer publishes.
+- **Makefile loads ``.env`` as data, not as shell (#252 FMP-SEC-011).**
+  ``test`` / integration targets call ``scripts/export_dotenv.py`` instead of
+  ``set -a; . ./.env``.
 
 ## [2.6.0] - 2026-08-10
 
