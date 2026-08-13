@@ -84,20 +84,25 @@ class AsyncBatchClient(AsyncEndpointGroup):
     classes in a single API call.
     """
 
-    async def _request_csv(self, endpoint: Endpoint, **params: Any) -> bytes:
+    async def _request_csv(self, endpoint: Endpoint[bytes], **params: Any) -> bytes:
+        """Fetch a bulk CSV/bytes payload. Do not route these through _unwrap_list."""
+        # request_async() is typed T | list[T]; widen so a mock bytearray
+        # (not in the union) can be coerced and a mistaken list[bytes]
+        # is rejected.
         result = await self.client.request_async(endpoint, **params)
-        if isinstance(result, bytearray):
-            return bytes(result)
-        if not isinstance(result, bytes):
+        payload: object = result
+        if isinstance(payload, bytearray):
+            return bytes(payload)
+        if not isinstance(payload, bytes):
             raise InvalidResponseTypeError(
                 endpoint_name=endpoint.name,
                 expected_type="bytes",
-                actual_type=type(result).__name__,
+                actual_type=type(payload).__name__,
             )
-        return result
+        return payload
 
     def _parse_csv(
-        self, raw: bytes, model: type[ModelT], endpoint: Endpoint
+        self, raw: bytes, model: type[ModelT], endpoint: Endpoint[bytes]
     ) -> list[ModelT]:
         return parse_csv_models(
             raw,
