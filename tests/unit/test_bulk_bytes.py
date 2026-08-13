@@ -11,16 +11,17 @@ import ast
 from pathlib import Path
 from types import UnionType
 from typing import Union, get_args, get_origin, get_type_hints
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from fmp_data.base import _unwrap_list_result
+from fmp_data.base import BaseClient, _unwrap_list_result
 from fmp_data.batch import endpoints as batch_endpoints
 from fmp_data.batch.async_client import AsyncBatchClient
 from fmp_data.batch.client import BatchClient
 from fmp_data.batch.endpoints import BATCH_QUOTE, PROFILE_BULK
 from fmp_data.batch.models import BatchQuote
+from fmp_data.config import ClientConfig
 from fmp_data.exceptions import InvalidResponseTypeError
 from fmp_data.models import Endpoint
 
@@ -190,6 +191,128 @@ class TestRequestCsvIsTheBytesHelper:
         """``isinstance(payload, bytes)`` is true, so unwrap is the wrong helper."""
         raw = b"symbol,name\nAAPL,Apple\n"
         assert _unwrap_list_result(raw, bytes) == [raw]
+
+
+def _base_client() -> BaseClient:
+    return BaseClient(ClientConfig(api_key="test_key", base_url="https://api.test.com"))
+
+
+def _overload_return_annotations(method_name: str) -> list[ast.expr]:
+    source = (_REPO_ROOT / "fmp_data" / "base.py").read_text(encoding="utf-8")
+    tree = ast.parse(source, filename="fmp_data/base.py")
+    returns: list[ast.expr] = []
+    for node in tree.body:
+        if not isinstance(node, ast.ClassDef) or node.name != "BaseClient":
+            continue
+        for item in node.body:
+            if not isinstance(item, ast.FunctionDef | ast.AsyncFunctionDef):
+                continue
+            if item.name != method_name:
+                continue
+            if any(
+                (isinstance(dec, ast.Name) and dec.id == "overload")
+                or (isinstance(dec, ast.Attribute) and dec.attr == "overload")
+                for dec in item.decorator_list
+            ):
+                if item.returns is not None:
+                    returns.append(item.returns)
+    return returns
+
+
+def _annotation_names(expr: ast.expr) -> set[str]:
+    return {node.id for node in ast.walk(expr) if isinstance(node, ast.Name)}
+
+
+class TestRequestBytesOverloadAndListRefusal:
+    """``request(Endpoint[bytes]) -> bytes``; ``request_list`` refuses bytes (#249)."""
+
+    @pytest.mark.parametrize("method_name", ["request", "request_async"])
+    def test_bytes_overload_returns_bytes(self, method_name: str) -> None:
+        returns = _overload_return_annotations(method_name)
+        assert returns, f"expected overloads on BaseClient.{method_name}"
+        first = returns[0]
+        assert isinstance(first, ast.Name) and first.id == "bytes", (
+            f"first BaseClient.{method_name} overload must return bytes"
+        )
+        assert any("list" in _annotation_names(expr) for expr in returns[1:]), (
+            f"expected the T | list[T] overload to remain on BaseClient.{method_name}"
+        )
+
+    @pytest.mark.parametrize("method_name", ["request_list", "request_async_list"])
+    def test_list_helper_bytes_overload_is_noreturn(self, method_name: str) -> None:
+        returns = _overload_return_annotations(method_name)
+        assert returns, f"expected overloads on BaseClient.{method_name}"
+        first = returns[0]
+        assert isinstance(first, ast.Name) and first.id == "NoReturn", (
+            f"first BaseClient.{method_name} overload must return NoReturn"
+        )
+        assert any("list" in _annotation_names(expr) for expr in returns[1:]), (
+            f"expected the list[T] overload to remain on BaseClient.{method_name}"
+        )
+
+    def test_request_bytes_endpoint_returns_bytes_not_list(self) -> None:
+        client = _base_client()
+        response = Mock()
+        response.status_code = 200
+        response.content = _CSV_BYTES
+        response.close = Mock()
+        with patch.object(client.client, "request", return_value=response):
+            result = client.request(PROFILE_BULK, part="0")
+        assert type(result) is bytes
+        assert result == _CSV_BYTES
+
+    @pytest.mark.asyncio
+    async def test_request_async_bytes_endpoint_returns_bytes_not_list(self) -> None:
+        client = _base_client()
+        response = Mock()
+        response.status_code = 200
+        response.content = _CSV_BYTES
+        response.raise_for_status = Mock()
+        response.aclose = AsyncMock()
+        mock_http = Mock()
+        mock_http.request = AsyncMock(return_value=response)
+        with patch.object(client, "_setup_async_client", return_value=mock_http):
+            result = await client.request_async(PROFILE_BULK, part="0")
+        assert type(result) is bytes
+        assert result == _CSV_BYTES
+
+    def test_request_list_refuses_profile_bulk(self) -> None:
+        client = _base_client()
+        with (
+            patch.object(client, "request") as request,
+            pytest.raises(TypeError, match="profile_bulk"),
+        ):
+            client.request_list(PROFILE_BULK, part="0")
+        request.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_request_async_list_refuses_profile_bulk(self) -> None:
+        client = _base_client()
+        with (
+            patch.object(client, "request_async") as request_async,
+            pytest.raises(TypeError, match="profile_bulk"),
+        ):
+            await client.request_async_list(PROFILE_BULK, part="0")
+        request_async.assert_not_called()
+
+    def test_request_list_still_unwraps_quote_lists(self) -> None:
+        client = _base_client()
+        quote = BatchQuote(symbol="AAPL")
+        with patch.object(client, "request", return_value=quote) as request:
+            result = client.request_list(BATCH_QUOTE, symbols=["AAPL"])
+        assert result == [quote]
+        request.assert_called_once_with(BATCH_QUOTE, symbols=["AAPL"])
+
+    @pytest.mark.asyncio
+    async def test_request_async_list_still_unwraps_quote_lists(self) -> None:
+        client = _base_client()
+        quote = BatchQuote(symbol="AAPL")
+        with patch.object(
+            client, "request_async", new=AsyncMock(return_value=quote)
+        ) as request_async:
+            result = await client.request_async_list(BATCH_QUOTE, symbols=["AAPL"])
+        assert result == [quote]
+        request_async.assert_awaited_once_with(BATCH_QUOTE, symbols=["AAPL"])
 
 
 def test_request_signature_stays_union() -> None:

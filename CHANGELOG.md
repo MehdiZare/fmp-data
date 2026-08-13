@@ -82,6 +82,19 @@ None. No FMP path we ship was newly retired by this changelog window.
   `FINANCIAL_REPORTS_XLSX` is unchanged: company XLSX download, still a
   bare `Endpoint`, not `_request_csv`.
 
+- **`request(Endpoint[bytes])` is `bytes`; `request_list` refuses bytes
+  (#249).** `request()` / `request_async()` overload to `bytes` for file
+  downloads and stay `T | list[T]` for every other `T`.
+  `request_list` / `request_async_list` overload to `NoReturn` and raise
+  `TypeError` on `response_model is bytes` instead of wrapping the file
+  as `[bytes]`. Quote lists still unwrap to `list[T]`.
+
+- **Company financial-report endpoints are `Endpoint[T]` (#250).**
+  `FINANCIAL_REPORTS_JSON` is `Endpoint[FinancialReportJSON]`;
+  `FINANCIAL_REPORTS_XLSX` is `Endpoint[bytes]`. Client methods keep
+  their existing type checks and still return `dict` / `bytes`. XLSX
+  stays off batch `_request_csv`.
+
 ### Added
 
 - **FMP hosted MCP vs `fmp-mcp` positioning (#230).** Docs-only: we are not

@@ -963,15 +963,17 @@ class AsyncCompanyClient(AsyncEndpointGroup):
             "period": period,
         }
         result = await self.client.request_async(FINANCIAL_REPORTS_JSON, **params)
-        if isinstance(result, FinancialReportJSON):
-            return result.model_dump(mode="json")
-        if not isinstance(result, dict):
+        # Widen so a mock dict is not an illegal FinancialReportJSON | list.
+        payload: object = result
+        if isinstance(payload, FinancialReportJSON):
+            return payload.model_dump(mode="json")
+        if not isinstance(payload, dict):
             raise InvalidResponseTypeError(
                 endpoint_name="financial_reports_json",
                 expected_type="dict or FinancialReportJSON",
-                actual_type=type(result).__name__,
+                actual_type=type(payload).__name__,
             )
-        return result
+        return payload
 
     async def get_financial_reports_xlsx(
         self, symbol: str, year: int, period: str = "FY"
@@ -992,13 +994,15 @@ class AsyncCompanyClient(AsyncEndpointGroup):
             "period": period,
         }
         result = await self.client.request_async(FINANCIAL_REPORTS_XLSX, **params)
-        if not isinstance(result, bytes | bytearray):
+        # Widen so a mock bytearray stays legal next to the bytes overload.
+        payload: object = result
+        if not isinstance(payload, bytes | bytearray):
             raise InvalidResponseTypeError(
                 endpoint_name="financial_reports_xlsx",
                 expected_type="bytes",
-                actual_type=type(result).__name__,
+                actual_type=type(payload).__name__,
             )
-        return bytes(result)
+        return bytes(payload)
 
     async def get_income_statement_as_reported(
         self, symbol: str, period: str = "annual", limit: int = 10
