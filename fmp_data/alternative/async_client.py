@@ -37,7 +37,7 @@ from fmp_data.alternative.models import (
     ForexPriceHistory,
     ForexQuote,
 )
-from fmp_data.base import AsyncEndpointGroup, EndpointGroup
+from fmp_data.base import AsyncEndpointGroup
 from fmp_data.helpers import deprecated
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
@@ -50,7 +50,7 @@ class AsyncAlternativeMarketsClient(AsyncEndpointGroup):
     def _wrap_history(
         symbol: str, result: object, container: type[ModelT], row_type: type
     ) -> ModelT:
-        rows = EndpointGroup._unwrap_list(result, row_type)
+        rows = AsyncEndpointGroup._unwrap_list(result, row_type)
         return container.model_validate({"symbol": symbol, "historical": rows})
 
     # Cryptocurrency methods

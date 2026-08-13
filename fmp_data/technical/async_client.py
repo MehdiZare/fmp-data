@@ -2,7 +2,7 @@
 """Async client for technical analysis endpoints."""
 
 from datetime import date
-from typing import Any, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel
 
@@ -57,7 +57,7 @@ class AsyncTechnicalClient(AsyncEndpointGroup):
         interval: str | None,
         start_date: date | None,
         end_date: date | None,
-    ) -> list[Any]:
+    ) -> list[T]:
         """Generic helper to fetch technical indicator data
 
         Args:

@@ -65,6 +65,8 @@ None. No FMP path we ship was newly retired by this changelog window.
   `request()` / `request_async()` with `_unwrap_list`. Company historical
   EOD helpers unwrap rows then wrap `HistoricalData`. `request()` stays
   `T | list[T]`. Methods are not switched to `request_list`.
+  `get_mutual_fund_dates` / `get_fund_disclosure_dates` are annotated
+  `list[PortfolioDate]` (runtime already returned `PortfolioDate` rows).
 
 ### Added
 
