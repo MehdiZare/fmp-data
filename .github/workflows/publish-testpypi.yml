@@ -266,6 +266,19 @@ jobs:
           fetch-depth: 0  # Needed for hatch-vcs versioning
           persist-credentials: false
 
+      - name: Require tag commit reachable from main or dev
+        run: |
+          set -euo pipefail
+          git fetch origin main dev
+          HEAD="$(git rev-parse HEAD)"
+          if git merge-base --is-ancestor "$HEAD" origin/main \
+            || git merge-base --is-ancestor "$HEAD" origin/dev; then
+            echo "Tag $HEAD is reachable from origin/main or origin/dev"
+          else
+            echo "::error::Tag commit $HEAD is not an ancestor of origin/main or origin/dev (#252 FMP-SEC-003)"
+            exit 1
+          fi
+
       - name: 🐍  Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:

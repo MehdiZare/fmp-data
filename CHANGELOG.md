@@ -236,6 +236,8 @@ None. No FMP path we ship was newly retired by this changelog window.
   endpoint.
 - **Added ``SECURITY.md`` (#252 FMP-SEC-013).** Private disclosure via GitHub
   advisories; supported versions and target response times are documented.
+- **Tag-based TestPyPI builds require the tag to sit on ``main`` or ``dev``
+  (#252 FMP-SEC-003).** A tag of an unrelated commit no longer publishes.
 
 ## [2.6.0] - 2026-08-10
 
