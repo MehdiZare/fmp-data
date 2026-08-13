@@ -234,6 +234,8 @@ None. No FMP path we ship was newly retired by this changelog window.
   (#252 FMP-SEC-010).** ``../../stable/profile`` is rejected; remaining path
   segments are percent-encoded so httpx cannot normalize them into another
   endpoint.
+- **Added ``SECURITY.md`` (#252 FMP-SEC-013).** Private disclosure via GitHub
+  advisories; supported versions and target response times are documented.
 
 ## [2.6.0] - 2026-08-10
 
