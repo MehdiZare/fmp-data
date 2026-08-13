@@ -48,16 +48,53 @@ def _default_http_headers() -> dict[str, str]:
     }
 
 
+def _origin(url: httpx.URL) -> tuple[str, str, int | None]:
+    """Scheme, host, and defaulted port so ``:443`` matches a bare HTTPS URL."""
+    scheme = url.scheme.lower()
+    host = (url.host or "").lower()
+    port = url.port
+    if port is None:
+        if scheme == "https":
+            port = 443
+        elif scheme == "http":
+            port = 80
+    return scheme, host, port
+
+
+def _resolve_redirect_target(response: httpx.Response) -> httpx.URL | None:
+    """Next hop URL. Prefer ``next_request``; else resolve ``Location`` as httpx does.
+
+    With ``follow_redirects=True`` the response hook runs *before* httpx
+    builds ``next_request``, so a Location-only 302 is the production case
+    (#252 FMP-SEC-004).
+    """
+    nxt = response.next_request
+    if nxt is not None:
+        return nxt.url
+    if not response.has_redirect_location:
+        return None
+    try:
+        url = httpx.URL(response.headers["Location"])
+    except httpx.InvalidURL:
+        return None
+    src = response.request.url
+    if url.scheme and not url.host:
+        url = url.copy_with(host=src.host)
+    if url.is_relative_url:
+        url = src.join(url)
+    return url
+
+
 def _reject_cross_origin_redirect(response: httpx.Response) -> None:
     """Refuse a 3xx that would send the next hop to another origin."""
-    nxt = response.next_request
-    if nxt is None:
+    target = _resolve_redirect_target(response)
+    if target is None:
         return
-    src, dst = response.request.url, nxt.url
-    if (src.scheme, src.host, src.port) != (dst.scheme, dst.host, dst.port):
+    src = response.request.url
+    if _origin(src) != _origin(target):
         raise FMPError(
             "Refusing cross-origin redirect "
-            f"from {src.scheme}://{src.host} to {dst.scheme}://{dst.host}"
+            f"from {src.scheme}://{src.host} to {target.scheme}://{target.host}"
         )
 
 
