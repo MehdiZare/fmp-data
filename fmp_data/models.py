@@ -5,6 +5,7 @@ from datetime import date as dt_date
 from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Annotated, Any, Generic, Literal, TypeVar
+from urllib.parse import quote
 import warnings
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
@@ -14,6 +15,24 @@ from fmp_data.schema import DeprecatedArgModel
 
 if TYPE_CHECKING:
     pass
+
+
+def _safe_path_segment(value: str) -> str:
+    """Percent-encode a path parameter and reject traversal (#252 FMP-SEC-010)."""
+    lowered = value.replace("\\", "/").lower()
+    if (
+        "/" in value
+        or "\\" in value
+        or "%2f" in lowered
+        or "%5c" in lowered
+        or value in {".", ".."}
+        or any(part in {"", ".", ".."} for part in value.replace("\\", "/").split("/"))
+    ):
+        raise _get_validation_error()(
+            f"Invalid path parameter {value!r}: separators and '.' / '..' "
+            "are not allowed"
+        )
+    return quote(value, safe="")
 
 
 def _get_validation_error() -> type[Exception]:
@@ -415,9 +434,11 @@ class Endpoint(BaseModel, Generic[T]):
     def build_url(self, base_url: str, params: dict[str, Any]) -> str:
         """Build the complete URL for the endpoint based on URL type"""
         path = self.path
-        for param in self.mandatory_params:
+        for param in self.mandatory_params + (self.optional_params or []):
             if param.location == ParamLocation.PATH and param.name in params:
-                path = path.replace(f"{{{param.name}}}", str(params[param.name]))
+                path = path.replace(
+                    f"{{{param.name}}}", _safe_path_segment(str(params[param.name]))
+                )
 
         if self.url_type == URLType.API and self.version:
             return f"{base_url}/{self.version.value}/{path}"
