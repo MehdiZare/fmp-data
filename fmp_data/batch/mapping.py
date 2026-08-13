@@ -1,6 +1,8 @@
 # fmp_data/batch/mapping.py
 from __future__ import annotations
 
+from typing import Any
+
 from fmp_data.batch.endpoints import (
     BALANCE_SHEET_STATEMENT_BULK,
     BALANCE_SHEET_STATEMENT_GROWTH_BULK,
@@ -41,6 +43,7 @@ from fmp_data.lc.hints import (
     YEAR_HINT,
 )
 from fmp_data.lc.models import EndpointSemantics, ParameterHint, SemanticCategory
+from fmp_data.models import Endpoint
 
 # Batch-only concepts, so they live here rather than in fmp_data.lc.hints.
 SHORT_HINT = ParameterHint(
@@ -63,7 +66,7 @@ PART_HINT = ParameterHint(
 )
 
 # Batch endpoints mapping
-BATCH_ENDPOINT_MAP = {
+BATCH_ENDPOINT_MAP: dict[str, Endpoint[Any]] = {
     "get_quotes": BATCH_QUOTE,
     "get_quotes_short": BATCH_QUOTE_SHORT,
     "get_aftermarket_trades": BATCH_AFTERMARKET_TRADE,

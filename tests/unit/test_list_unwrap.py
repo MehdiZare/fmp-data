@@ -14,6 +14,10 @@ from fmp_data.alternative.models import (
     CryptoPair,
     ForexPriceHistory,
 )
+from fmp_data.batch.async_client import AsyncBatchClient
+from fmp_data.batch.client import BatchClient
+from fmp_data.batch.endpoints import BATCH_MARKET_CAP, BATCH_QUOTE
+from fmp_data.batch.models import BatchMarketCap, BatchQuote
 from fmp_data.economics.async_client import AsyncEconomicsClient
 from fmp_data.economics.client import EconomicsClient
 from fmp_data.economics.endpoints import ECONOMIC_INDICATORS, TREASURY_RATES
@@ -22,6 +26,10 @@ from fmp_data.fundamental.async_client import AsyncFundamentalClient
 from fmp_data.fundamental.client import FundamentalClient
 from fmp_data.fundamental.endpoints import INCOME_STATEMENT, KEY_METRICS
 from fmp_data.fundamental.models import IncomeStatement, KeyMetrics
+from fmp_data.index.async_client import AsyncIndexClient
+from fmp_data.index.client import IndexClient
+from fmp_data.index.endpoints import HISTORICAL_SP500, SP500_CONSTITUENTS
+from fmp_data.index.models import HistoricalIndexConstituent, IndexConstituent
 from fmp_data.institutional.async_client import AsyncInstitutionalClient
 from fmp_data.institutional.client import InstitutionalClient
 from fmp_data.institutional.endpoints import FORM_13F_DATES, INSTITUTIONAL_HOLDERS
@@ -43,10 +51,27 @@ from fmp_data.market.endpoints import (
 )
 from fmp_data.market.models import MarketHours
 from fmp_data.models import CompanySymbol
+from fmp_data.sec.async_client import AsyncSECClient
+from fmp_data.sec.client import SECClient
+from fmp_data.sec.endpoints import SEC_FILINGS_8K, SEC_PROFILE, SIC_LIST
+from fmp_data.sec.models import SECFiling8K, SECProfile, SICCode
 from fmp_data.technical.async_client import AsyncTechnicalClient
 from fmp_data.technical.client import TechnicalClient
 from fmp_data.technical.endpoints import SMA
 from fmp_data.technical.models import SMAIndicator
+from fmp_data.transcripts.async_client import AsyncTranscriptsClient
+from fmp_data.transcripts.client import TranscriptsClient
+from fmp_data.transcripts.endpoints import (
+    EARNINGS_TRANSCRIPT,
+    LATEST_TRANSCRIPTS,
+    TRANSCRIPT_DATES,
+    TRANSCRIPT_SYMBOLS,
+)
+from fmp_data.transcripts.models import (
+    EarningsTranscript,
+    TranscriptDate,
+    TranscriptSymbol,
+)
 
 
 @pytest.fixture
@@ -123,6 +148,45 @@ _TECHNICAL_CASES = [
     ("get_sma", {"symbol": "AAPL"}),
     ("get_ema", {"symbol": "AAPL"}),
     ("get_rsi", {"symbol": "AAPL"}),
+]
+
+_INDEX_CASES: list[tuple[str, dict[str, object]]] = [
+    ("get_sp500_constituents", {}),
+    ("get_nasdaq_constituents", {}),
+    ("get_dowjones_constituents", {}),
+    ("get_historical_sp500", {}),
+    ("get_historical_nasdaq", {}),
+    ("get_historical_dowjones", {}),
+]
+
+_SEC_CASES: list[tuple[str, dict[str, object]]] = [
+    ("get_latest_8k", {}),
+    ("get_latest_financials", {}),
+    ("search_by_form_type", {"form_type": "8-K"}),
+    ("search_by_symbol", {"symbol": "AAPL"}),
+    ("search_company_by_name", {"name": "Apple"}),
+    ("search_company_by_symbol", {"symbol": "AAPL"}),
+    ("get_sic_codes", {}),
+    ("search_industry_classification", {"symbol": "AAPL"}),
+    ("get_all_industry_classification", {}),
+]
+
+_TRANSCRIPTS_CASES: list[tuple[str, dict[str, object]]] = [
+    ("get_latest", {}),
+    ("get_transcript", {"symbol": "AAPL", "year": 2024, "quarter": 1}),
+    ("get_available_dates", {"symbol": "AAPL"}),
+    ("get_available_symbols", {}),
+]
+
+_BATCH_CASES: list[tuple[str, dict[str, object]]] = [
+    ("get_quotes", {"symbols": ["AAPL"]}),
+    ("get_quotes_short", {"symbols": ["AAPL"]}),
+    ("get_aftermarket_trades", {"symbols": ["AAPL"]}),
+    ("get_aftermarket_quotes", {"symbols": ["AAPL"]}),
+    ("get_exchange_quotes", {"exchange": "NASDAQ"}),
+    ("get_etf_quotes", {}),
+    ("get_crypto_quotes", {}),
+    ("get_market_caps", {"symbols": ["AAPL"]}),
 ]
 
 
@@ -375,6 +439,84 @@ class TestAlternativeHistoryUnwrap:
         mock_validate.assert_called_with({"symbol": kwargs["symbol"], "historical": []})
 
 
+class TestIndexListUnwrap:
+    @pytest.mark.parametrize("method_name,kwargs", _INDEX_CASES)
+    def test_list_methods_wrap_single_and_keep_empty(
+        self, mock_client, method_name, kwargs
+    ):
+        _assert_wrap_single_and_empty(IndexClient(mock_client), method_name, kwargs)
+
+
+class TestSECListUnwrap:
+    @pytest.mark.parametrize("method_name,kwargs", _SEC_CASES)
+    def test_list_methods_wrap_single_and_keep_empty(
+        self, mock_client, method_name, kwargs
+    ):
+        _assert_wrap_single_and_empty(SECClient(mock_client), method_name, kwargs)
+
+
+class TestTranscriptsListUnwrap:
+    @pytest.mark.parametrize("method_name,kwargs", _TRANSCRIPTS_CASES)
+    def test_list_methods_wrap_single_and_keep_empty(
+        self, mock_client, method_name, kwargs
+    ):
+        _assert_wrap_single_and_empty(
+            TranscriptsClient(mock_client), method_name, kwargs
+        )
+
+
+class TestBatchListUnwrap:
+    @pytest.mark.parametrize("method_name,kwargs", _BATCH_CASES)
+    def test_list_methods_wrap_single_and_keep_empty(
+        self, mock_client, method_name, kwargs
+    ):
+        _assert_wrap_single_and_empty(BatchClient(mock_client), method_name, kwargs)
+
+
+class TestAsyncIndexListUnwrap:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("method_name,kwargs", _INDEX_CASES)
+    async def test_list_methods_wrap_single_and_keep_empty(
+        self, mock_client, method_name, kwargs
+    ):
+        await _assert_wrap_single_and_empty_async(
+            AsyncIndexClient(mock_client), method_name, kwargs
+        )
+
+
+class TestAsyncSECListUnwrap:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("method_name,kwargs", _SEC_CASES)
+    async def test_list_methods_wrap_single_and_keep_empty(
+        self, mock_client, method_name, kwargs
+    ):
+        await _assert_wrap_single_and_empty_async(
+            AsyncSECClient(mock_client), method_name, kwargs
+        )
+
+
+class TestAsyncTranscriptsListUnwrap:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("method_name,kwargs", _TRANSCRIPTS_CASES)
+    async def test_list_methods_wrap_single_and_keep_empty(
+        self, mock_client, method_name, kwargs
+    ):
+        await _assert_wrap_single_and_empty_async(
+            AsyncTranscriptsClient(mock_client), method_name, kwargs
+        )
+
+
+class TestAsyncBatchListUnwrap:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("method_name,kwargs", _BATCH_CASES)
+    async def test_list_methods_wrap_single_and_keep_empty(
+        self, mock_client, method_name, kwargs
+    ):
+        await _assert_wrap_single_and_empty_async(
+            AsyncBatchClient(mock_client), method_name, kwargs
+        )
+
+
 class TestPreviouslyUntypedEndpointRowBindings:
     @pytest.mark.parametrize(
         "endpoint,row_type",
@@ -395,6 +537,17 @@ class TestPreviouslyUntypedEndpointRowBindings:
             (TREASURY_RATES, TreasuryRate),
             (ECONOMIC_INDICATORS, EconomicIndicator),
             (SMA, SMAIndicator),
+            (SP500_CONSTITUENTS, IndexConstituent),
+            (HISTORICAL_SP500, HistoricalIndexConstituent),
+            (SEC_FILINGS_8K, SECFiling8K),
+            (SIC_LIST, SICCode),
+            (SEC_PROFILE, SECProfile),
+            (LATEST_TRANSCRIPTS, EarningsTranscript),
+            (EARNINGS_TRANSCRIPT, EarningsTranscript),
+            (TRANSCRIPT_DATES, TranscriptDate),
+            (TRANSCRIPT_SYMBOLS, TranscriptSymbol),
+            (BATCH_QUOTE, BatchQuote),
+            (BATCH_MARKET_CAP, BatchMarketCap),
         ],
     )
     def test_list_endpoints_bind_row_type(self, endpoint, row_type):

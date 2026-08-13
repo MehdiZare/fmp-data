@@ -16,7 +16,7 @@ from fmp_data.models import (
     URLType,
 )
 
-BATCH_QUOTE: Endpoint = Endpoint(
+BATCH_QUOTE: Endpoint[BatchQuote] = Endpoint(
     name="batch_quote",
     path="batch-quote",
     version=APIVersion.STABLE,
@@ -40,7 +40,7 @@ BATCH_QUOTE: Endpoint = Endpoint(
     ],
 )
 
-BATCH_QUOTE_SHORT: Endpoint = Endpoint(
+BATCH_QUOTE_SHORT: Endpoint[BatchQuoteShort] = Endpoint(
     name="batch_quote_short",
     path="batch-quote-short",
     version=APIVersion.STABLE,
@@ -64,7 +64,7 @@ BATCH_QUOTE_SHORT: Endpoint = Endpoint(
     ],
 )
 
-BATCH_AFTERMARKET_TRADE: Endpoint = Endpoint(
+BATCH_AFTERMARKET_TRADE: Endpoint[AftermarketTrade] = Endpoint(
     name="batch_aftermarket_trade",
     path="batch-aftermarket-trade",
     version=APIVersion.STABLE,
@@ -88,7 +88,7 @@ BATCH_AFTERMARKET_TRADE: Endpoint = Endpoint(
     ],
 )
 
-BATCH_AFTERMARKET_QUOTE: Endpoint = Endpoint(
+BATCH_AFTERMARKET_QUOTE: Endpoint[AftermarketQuote] = Endpoint(
     name="batch_aftermarket_quote",
     path="batch-aftermarket-quote",
     version=APIVersion.STABLE,
@@ -112,7 +112,7 @@ BATCH_AFTERMARKET_QUOTE: Endpoint = Endpoint(
     ],
 )
 
-BATCH_EXCHANGE_QUOTE: Endpoint = Endpoint(
+BATCH_EXCHANGE_QUOTE: Endpoint[BatchQuote] = Endpoint(
     name="batch_exchange_quote",
     path="batch-exchange-quote",
     version=APIVersion.STABLE,
@@ -143,7 +143,7 @@ BATCH_EXCHANGE_QUOTE: Endpoint = Endpoint(
     ],
 )
 
-BATCH_MUTUALFUND_QUOTES: Endpoint = Endpoint(
+BATCH_MUTUALFUND_QUOTES: Endpoint[BatchQuote] = Endpoint(
     name="batch_mutualfund_quotes",
     path="batch-mutualfund-quotes",
     version=APIVersion.STABLE,
@@ -167,7 +167,7 @@ BATCH_MUTUALFUND_QUOTES: Endpoint = Endpoint(
     ],
 )
 
-BATCH_ETF_QUOTES: Endpoint = Endpoint(
+BATCH_ETF_QUOTES: Endpoint[BatchQuote] = Endpoint(
     name="batch_etf_quotes",
     path="batch-etf-quotes",
     version=APIVersion.STABLE,
@@ -191,7 +191,7 @@ BATCH_ETF_QUOTES: Endpoint = Endpoint(
     ],
 )
 
-BATCH_COMMODITY_QUOTES: Endpoint = Endpoint(
+BATCH_COMMODITY_QUOTES: Endpoint[BatchQuote] = Endpoint(
     name="batch_commodity_quotes",
     path="batch-commodity-quotes",
     version=APIVersion.STABLE,
@@ -215,7 +215,7 @@ BATCH_COMMODITY_QUOTES: Endpoint = Endpoint(
     ],
 )
 
-BATCH_CRYPTO_QUOTES: Endpoint = Endpoint(
+BATCH_CRYPTO_QUOTES: Endpoint[BatchQuote] = Endpoint(
     name="batch_crypto_quotes",
     path="batch-crypto-quotes",
     version=APIVersion.STABLE,
@@ -239,7 +239,7 @@ BATCH_CRYPTO_QUOTES: Endpoint = Endpoint(
     ],
 )
 
-BATCH_FOREX_QUOTES: Endpoint = Endpoint(
+BATCH_FOREX_QUOTES: Endpoint[BatchQuote] = Endpoint(
     name="batch_forex_quotes",
     path="batch-forex-quotes",
     version=APIVersion.STABLE,
@@ -263,7 +263,7 @@ BATCH_FOREX_QUOTES: Endpoint = Endpoint(
     ],
 )
 
-BATCH_INDEX_QUOTES: Endpoint = Endpoint(
+BATCH_INDEX_QUOTES: Endpoint[BatchQuote] = Endpoint(
     name="batch_index_quotes",
     path="batch-index-quotes",
     version=APIVersion.STABLE,
@@ -287,7 +287,7 @@ BATCH_INDEX_QUOTES: Endpoint = Endpoint(
     ],
 )
 
-BATCH_MARKET_CAP: Endpoint = Endpoint(
+BATCH_MARKET_CAP: Endpoint[BatchMarketCap] = Endpoint(
     name="batch_market_cap",
     path="market-capitalization-batch",
     version=APIVersion.STABLE,

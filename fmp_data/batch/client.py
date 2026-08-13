@@ -113,7 +113,9 @@ class BatchClient(EndpointGroup):
         Returns:
             List of quote data for each symbol
         """
-        return self.client.request(BATCH_QUOTE, symbols=",".join(symbols))
+        return self._unwrap_list(
+            self.client.request(BATCH_QUOTE, symbols=",".join(symbols)), BatchQuote
+        )
 
     def get_quotes_short(self, symbols: list[str]) -> list[BatchQuoteShort]:
         """Get quick price snapshots for multiple symbols
@@ -124,7 +126,10 @@ class BatchClient(EndpointGroup):
         Returns:
             List of short quote data for each symbol
         """
-        return self.client.request(BATCH_QUOTE_SHORT, symbols=",".join(symbols))
+        return self._unwrap_list(
+            self.client.request(BATCH_QUOTE_SHORT, symbols=",".join(symbols)),
+            BatchQuoteShort,
+        )
 
     def get_aftermarket_trades(self, symbols: list[str]) -> list[AftermarketTrade]:
         """Get aftermarket (post-market) trade data for multiple symbols
@@ -135,7 +140,10 @@ class BatchClient(EndpointGroup):
         Returns:
             List of aftermarket trade data
         """
-        return self.client.request(BATCH_AFTERMARKET_TRADE, symbols=",".join(symbols))
+        return self._unwrap_list(
+            self.client.request(BATCH_AFTERMARKET_TRADE, symbols=",".join(symbols)),
+            AftermarketTrade,
+        )
 
     def get_aftermarket_quotes(self, symbols: list[str]) -> list[AftermarketQuote]:
         """Get aftermarket quote data for multiple symbols
@@ -146,7 +154,10 @@ class BatchClient(EndpointGroup):
         Returns:
             List of aftermarket quote data
         """
-        return self.client.request(BATCH_AFTERMARKET_QUOTE, symbols=",".join(symbols))
+        return self._unwrap_list(
+            self.client.request(BATCH_AFTERMARKET_QUOTE, symbols=",".join(symbols)),
+            AftermarketQuote,
+        )
 
     def get_exchange_quotes(
         self, exchange: str, short: bool | None = None
@@ -163,7 +174,9 @@ class BatchClient(EndpointGroup):
         params: dict[str, object] = {"exchange": exchange}
         if short is not None:
             params["short"] = short
-        return self.client.request(BATCH_EXCHANGE_QUOTE, **params)
+        return self._unwrap_list(
+            self.client.request(BATCH_EXCHANGE_QUOTE, **params), BatchQuote
+        )
 
     def get_mutualfund_quotes(self, short: bool | None = None) -> list[BatchQuote]:
         """Get batch quotes for all mutual funds
@@ -177,7 +190,9 @@ class BatchClient(EndpointGroup):
         params: dict[str, object] = {}
         if short is not None:
             params["short"] = short
-        return self.client.request(BATCH_MUTUALFUND_QUOTES, **params)
+        return self._unwrap_list(
+            self.client.request(BATCH_MUTUALFUND_QUOTES, **params), BatchQuote
+        )
 
     def get_etf_quotes(self, short: bool | None = None) -> list[BatchQuote]:
         """Get batch quotes for all ETFs
@@ -191,7 +206,9 @@ class BatchClient(EndpointGroup):
         params: dict[str, object] = {}
         if short is not None:
             params["short"] = short
-        return self.client.request(BATCH_ETF_QUOTES, **params)
+        return self._unwrap_list(
+            self.client.request(BATCH_ETF_QUOTES, **params), BatchQuote
+        )
 
     def get_commodity_quotes(self, short: bool | None = None) -> list[BatchQuote]:
         """Get batch quotes for all commodities
@@ -205,7 +222,9 @@ class BatchClient(EndpointGroup):
         params: dict[str, object] = {}
         if short is not None:
             params["short"] = short
-        return self.client.request(BATCH_COMMODITY_QUOTES, **params)
+        return self._unwrap_list(
+            self.client.request(BATCH_COMMODITY_QUOTES, **params), BatchQuote
+        )
 
     def get_crypto_quotes(self, short: bool | None = None) -> list[BatchQuote]:
         """Get batch quotes for all cryptocurrencies
@@ -219,7 +238,9 @@ class BatchClient(EndpointGroup):
         params: dict[str, object] = {}
         if short is not None:
             params["short"] = short
-        return self.client.request(BATCH_CRYPTO_QUOTES, **params)
+        return self._unwrap_list(
+            self.client.request(BATCH_CRYPTO_QUOTES, **params), BatchQuote
+        )
 
     def get_forex_quotes(self, short: bool | None = None) -> list[BatchQuote]:
         """Get batch quotes for all forex pairs
@@ -233,7 +254,9 @@ class BatchClient(EndpointGroup):
         params: dict[str, object] = {}
         if short is not None:
             params["short"] = short
-        return self.client.request(BATCH_FOREX_QUOTES, **params)
+        return self._unwrap_list(
+            self.client.request(BATCH_FOREX_QUOTES, **params), BatchQuote
+        )
 
     def get_index_quotes(self, short: bool | None = None) -> list[BatchQuote]:
         """Get batch quotes for all market indexes
@@ -247,7 +270,9 @@ class BatchClient(EndpointGroup):
         params: dict[str, object] = {}
         if short is not None:
             params["short"] = short
-        return self.client.request(BATCH_INDEX_QUOTES, **params)
+        return self._unwrap_list(
+            self.client.request(BATCH_INDEX_QUOTES, **params), BatchQuote
+        )
 
     def get_market_caps(self, symbols: list[str]) -> list[BatchMarketCap]:
         """Get market capitalization for multiple symbols
@@ -258,7 +283,10 @@ class BatchClient(EndpointGroup):
         Returns:
             List of market cap data for each symbol
         """
-        return self.client.request(BATCH_MARKET_CAP, symbols=",".join(symbols))
+        return self._unwrap_list(
+            self.client.request(BATCH_MARKET_CAP, symbols=",".join(symbols)),
+            BatchMarketCap,
+        )
 
     def get_profile_bulk(self, part: str) -> list[CompanyProfile]:
         """Get company profile data in bulk"""

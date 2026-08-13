@@ -115,7 +115,10 @@ class AsyncBatchClient(AsyncEndpointGroup):
         Returns:
             List of quote data for each symbol
         """
-        return await self.client.request_async(BATCH_QUOTE, symbols=",".join(symbols))
+        return self._unwrap_list(
+            await self.client.request_async(BATCH_QUOTE, symbols=",".join(symbols)),
+            BatchQuote,
+        )
 
     async def get_quotes_short(self, symbols: list[str]) -> list[BatchQuoteShort]:
         """Get quick price snapshots for multiple symbols
@@ -126,8 +129,11 @@ class AsyncBatchClient(AsyncEndpointGroup):
         Returns:
             List of short quote data for each symbol
         """
-        return await self.client.request_async(
-            BATCH_QUOTE_SHORT, symbols=",".join(symbols)
+        return self._unwrap_list(
+            await self.client.request_async(
+                BATCH_QUOTE_SHORT, symbols=",".join(symbols)
+            ),
+            BatchQuoteShort,
         )
 
     async def get_aftermarket_trades(
@@ -141,8 +147,11 @@ class AsyncBatchClient(AsyncEndpointGroup):
         Returns:
             List of aftermarket trade data
         """
-        return await self.client.request_async(
-            BATCH_AFTERMARKET_TRADE, symbols=",".join(symbols)
+        return self._unwrap_list(
+            await self.client.request_async(
+                BATCH_AFTERMARKET_TRADE, symbols=",".join(symbols)
+            ),
+            AftermarketTrade,
         )
 
     async def get_aftermarket_quotes(
@@ -156,8 +165,11 @@ class AsyncBatchClient(AsyncEndpointGroup):
         Returns:
             List of aftermarket quote data
         """
-        return await self.client.request_async(
-            BATCH_AFTERMARKET_QUOTE, symbols=",".join(symbols)
+        return self._unwrap_list(
+            await self.client.request_async(
+                BATCH_AFTERMARKET_QUOTE, symbols=",".join(symbols)
+            ),
+            AftermarketQuote,
         )
 
     async def get_exchange_quotes(
@@ -175,7 +187,9 @@ class AsyncBatchClient(AsyncEndpointGroup):
         params: dict[str, object] = {"exchange": exchange}
         if short is not None:
             params["short"] = short
-        return await self.client.request_async(BATCH_EXCHANGE_QUOTE, **params)
+        return self._unwrap_list(
+            await self.client.request_async(BATCH_EXCHANGE_QUOTE, **params), BatchQuote
+        )
 
     async def get_mutualfund_quotes(
         self, short: bool | None = None
@@ -191,7 +205,10 @@ class AsyncBatchClient(AsyncEndpointGroup):
         params: dict[str, object] = {}
         if short is not None:
             params["short"] = short
-        return await self.client.request_async(BATCH_MUTUALFUND_QUOTES, **params)
+        return self._unwrap_list(
+            await self.client.request_async(BATCH_MUTUALFUND_QUOTES, **params),
+            BatchQuote,
+        )
 
     async def get_etf_quotes(self, short: bool | None = None) -> list[BatchQuote]:
         """Get batch quotes for all ETFs
@@ -205,7 +222,9 @@ class AsyncBatchClient(AsyncEndpointGroup):
         params: dict[str, object] = {}
         if short is not None:
             params["short"] = short
-        return await self.client.request_async(BATCH_ETF_QUOTES, **params)
+        return self._unwrap_list(
+            await self.client.request_async(BATCH_ETF_QUOTES, **params), BatchQuote
+        )
 
     async def get_commodity_quotes(self, short: bool | None = None) -> list[BatchQuote]:
         """Get batch quotes for all commodities
@@ -219,7 +238,10 @@ class AsyncBatchClient(AsyncEndpointGroup):
         params: dict[str, object] = {}
         if short is not None:
             params["short"] = short
-        return await self.client.request_async(BATCH_COMMODITY_QUOTES, **params)
+        return self._unwrap_list(
+            await self.client.request_async(BATCH_COMMODITY_QUOTES, **params),
+            BatchQuote,
+        )
 
     async def get_crypto_quotes(self, short: bool | None = None) -> list[BatchQuote]:
         """Get batch quotes for all cryptocurrencies
@@ -233,7 +255,9 @@ class AsyncBatchClient(AsyncEndpointGroup):
         params: dict[str, object] = {}
         if short is not None:
             params["short"] = short
-        return await self.client.request_async(BATCH_CRYPTO_QUOTES, **params)
+        return self._unwrap_list(
+            await self.client.request_async(BATCH_CRYPTO_QUOTES, **params), BatchQuote
+        )
 
     async def get_forex_quotes(self, short: bool | None = None) -> list[BatchQuote]:
         """Get batch quotes for all forex pairs
@@ -247,7 +271,9 @@ class AsyncBatchClient(AsyncEndpointGroup):
         params: dict[str, object] = {}
         if short is not None:
             params["short"] = short
-        return await self.client.request_async(BATCH_FOREX_QUOTES, **params)
+        return self._unwrap_list(
+            await self.client.request_async(BATCH_FOREX_QUOTES, **params), BatchQuote
+        )
 
     async def get_index_quotes(self, short: bool | None = None) -> list[BatchQuote]:
         """Get batch quotes for all market indexes
@@ -261,7 +287,9 @@ class AsyncBatchClient(AsyncEndpointGroup):
         params: dict[str, object] = {}
         if short is not None:
             params["short"] = short
-        return await self.client.request_async(BATCH_INDEX_QUOTES, **params)
+        return self._unwrap_list(
+            await self.client.request_async(BATCH_INDEX_QUOTES, **params), BatchQuote
+        )
 
     async def get_market_caps(self, symbols: list[str]) -> list[BatchMarketCap]:
         """Get market capitalization for multiple symbols
@@ -272,8 +300,11 @@ class AsyncBatchClient(AsyncEndpointGroup):
         Returns:
             List of market cap data for each symbol
         """
-        return await self.client.request_async(
-            BATCH_MARKET_CAP, symbols=",".join(symbols)
+        return self._unwrap_list(
+            await self.client.request_async(
+                BATCH_MARKET_CAP, symbols=",".join(symbols)
+            ),
+            BatchMarketCap,
         )
 
     async def get_profile_bulk(self, part: str) -> list[CompanyProfile]:
