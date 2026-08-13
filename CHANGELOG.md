@@ -227,6 +227,9 @@ None. No FMP path we ship was newly retired by this changelog window.
   ``embedding_api_key`` and embedding ``api_key`` are ``repr=False``.
   ``CacheConfig.redis_url`` userinfo is redacted. Nested cache URLs on
   ``ClientConfig`` are redacted the same way.
+- **VCR sanitization no longer logs the raw API key (#252 FMP-SEC-009).**
+  DEBUG logs method/host/path only. Cassette leak assertions name
+  file/line/credential type, not the captured value.
 
 ## [2.6.0] - 2026-08-10
 
