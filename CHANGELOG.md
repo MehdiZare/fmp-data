@@ -234,6 +234,10 @@ None. No FMP path we ship was newly retired by this changelog window.
   (#252 FMP-SEC-010).** ``../../stable/profile`` is rejected; remaining path
   segments are percent-encoded so httpx cannot normalize them into another
   endpoint.
+- **Claude workflows no longer mint an OIDC token (#252 FMP-SEC-012).**
+  Review is ``contents: read`` plus PR/issue write. Interactive Claude keeps
+  ``contents: write`` so it can land commits; both use the OAuth secret, not
+  ``id-token: write``.
 - **Added ``SECURITY.md`` (#252 FMP-SEC-013).** Private disclosure via GitHub
   advisories; supported versions and target response times are documented.
 - **Tag-based TestPyPI builds require the tag to sit on ``main`` or ``dev``
