@@ -86,8 +86,9 @@ class AsyncBatchClient(AsyncEndpointGroup):
 
     async def _request_csv(self, endpoint: Endpoint[bytes], **params: Any) -> bytes:
         """Fetch a bulk CSV/bytes payload. Do not route these through _unwrap_list."""
-        # request_async() is typed T | list[T]; validate the payload ourselves
-        # so a mock bytearray or a mistaken list[bytes] cannot leak through.
+        # request_async() is typed T | list[T]; widen so a mock bytearray
+        # (not in the union) can be coerced and a mistaken list[bytes]
+        # is rejected.
         result = await self.client.request_async(endpoint, **params)
         payload: object = result
         if isinstance(payload, bytearray):

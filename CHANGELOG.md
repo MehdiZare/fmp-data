@@ -76,9 +76,11 @@ None. No FMP path we ship was newly retired by this changelog window.
   `_request_csv`. `request()` stays `T | list[T]`.
 
 - **Batch bulk-bytes / CSV endpoints are `Endpoint[bytes]` (#247).**
-  `PROFILE_BULK`, `EOD_BULK`, statement bulks, and the other CSV downloads
-  bind `bytes` (not a row type). `_request_csv` is the only bytes helper.
-  Quote lists stay on `_unwrap_list` (#246). `request()` stays `T | list[T]`.
+  All 18 `*_BULK` CSV downloads bind `bytes` (not a row type). In batch,
+  `_request_csv` is the only bytes helper. Quote lists stay on
+  `_unwrap_list` (#246). `request()` stays `T | list[T]`.
+  `FINANCIAL_REPORTS_XLSX` is unchanged: company XLSX download, still a
+  bare `Endpoint`, not `_request_csv`.
 
 ### Added
 

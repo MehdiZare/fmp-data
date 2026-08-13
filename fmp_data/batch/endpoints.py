@@ -311,9 +311,9 @@ BATCH_MARKET_CAP: Endpoint[BatchMarketCap] = Endpoint(
     ],
 )
 
-# CSV / bulk downloads. Payloads are raw bytes; parse with _request_csv.
-# Do not pass these to _unwrap_list — isinstance(payload, bytes) would wrap
-# the whole file as a one-element list.
+# CSV / bulk downloads. Payloads are raw bytes; fetch via _request_csv,
+# then parse with _parse_csv / parse_csv_*. Do not pass these to
+# _unwrap_list — a bytes payload becomes a one-element list.
 PROFILE_BULK: Endpoint[bytes] = Endpoint(
     name="profile_bulk",
     path="profile-bulk",

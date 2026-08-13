@@ -84,8 +84,8 @@ class BatchClient(EndpointGroup):
 
     def _request_csv(self, endpoint: Endpoint[bytes], **params: Any) -> bytes:
         """Fetch a bulk CSV/bytes payload. Do not route these through _unwrap_list."""
-        # request() is typed T | list[T]; validate the payload ourselves so a
-        # mock bytearray or a mistaken list[bytes] cannot leak through.
+        # request() is typed T | list[T]; widen so a mock bytearray (not in
+        # the union) can be coerced and a mistaken list[bytes] is rejected.
         result = self.client.request(endpoint, **params)
         payload: object = result
         if isinstance(payload, bytearray):
