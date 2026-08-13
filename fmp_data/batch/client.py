@@ -82,20 +82,24 @@ class BatchClient(EndpointGroup):
     in a single API call.
     """
 
-    def _request_csv(self, endpoint: Endpoint, **params: Any) -> bytes:
+    def _request_csv(self, endpoint: Endpoint[bytes], **params: Any) -> bytes:
+        """Fetch a bulk CSV/bytes payload. Do not route these through _unwrap_list."""
+        # request() is typed T | list[T]; validate the payload ourselves so a
+        # mock bytearray or a mistaken list[bytes] cannot leak through.
         result = self.client.request(endpoint, **params)
-        if isinstance(result, bytearray):
-            return bytes(result)
-        if not isinstance(result, bytes):
+        payload: object = result
+        if isinstance(payload, bytearray):
+            return bytes(payload)
+        if not isinstance(payload, bytes):
             raise InvalidResponseTypeError(
                 endpoint_name=endpoint.name,
                 expected_type="bytes",
-                actual_type=type(result).__name__,
+                actual_type=type(payload).__name__,
             )
-        return result
+        return payload
 
     def _parse_csv(
-        self, raw: bytes, model: type[ModelT], endpoint: Endpoint
+        self, raw: bytes, model: type[ModelT], endpoint: Endpoint[bytes]
     ) -> list[ModelT]:
         return parse_csv_models(
             raw,
