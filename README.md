@@ -32,7 +32,7 @@ This project uses UV as the primary package management tool for several key bene
 - Automatic retries with exponential backoff
 - 85%+ test coverage with comprehensive test suite
 - VCR cassette-backed integration tests with 100% endpoint contract validation
-- Automated API key leak scanning across all cassettes (pre-commit + CI)
+- Automated secret scanning of the committed tree (pre-commit + CI)
 - Secure API key handling
 - 100% coverage of FMP stable endpoints
 - Detailed error messages

@@ -178,6 +178,10 @@ None. No FMP path we ship was newly retired by this changelog window.
   committed hashed lock — a ``pyproject.toml`` floor bump is enough to
   pick up newer deps. Nox installs the ``dev`` group from pyproject
   instead of a second, stale pin list.
+- **Secret scan covers the committed tree, including tests (#252 FMP-SEC-008).**
+  CI no longer skips when VCR cassettes are absent. ``detect-secrets``
+  compares the whole tree to ``.secrets.baseline``; dummy keys in tests
+  are baselined. Cassettes stay zero-tolerance when present.
 
 - **Isolated PyPI publishing and immutable Actions pins (#252).** Release,
   Dev-Release, and Publish-to-TestPyPI now build in a job with no OIDC token

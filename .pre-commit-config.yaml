@@ -42,7 +42,6 @@ repos:
     hooks:
       - id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
-        exclude: tests/.*\.py$
 
   # ───────── Local nox-powered helpers ────────────────────────────────────
   - repo: local

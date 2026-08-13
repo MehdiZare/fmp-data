@@ -96,7 +96,7 @@ jobs:
           fail_ci_if_error: false
 
   secret-scan:
-    name: Secret Scan (cassettes)
+    name: Secret Scan
     runs-on: ubuntu-latest
     steps:
       - name: 🛎️  Checkout
@@ -110,24 +110,23 @@ jobs:
       - name: 🔐 Install detect-secrets
         run: pip install detect-secrets
 
-      # pragma: allowlist secret — step scans VCR cassettes for leaked API keys
-      - name: 🔍 Scan cassettes for leaked credentials
+      # pragma: allowlist secret — whole-tree scan vs committed baseline
+      - name: 🔍 Scan committed tree against baseline
         run: |
           set -euo pipefail
-          CASSETTE_DIR="tests/integration/vcr_cassettes"
+          # Fail closed on any new finding. Known dummy keys live in
+          # .secrets.baseline (including tests). The previous job only
+          # scanned gitignored VCR cassettes and skipped when they were
+          # absent, so CI never looked at the committed tree (#252 FMP-SEC-008).
+          git ls-files -z | xargs -0 detect-secrets-hook --baseline .secrets.baseline
 
-          # Skip scan when no cassettes are checked in
+          CASSETTE_DIR="tests/integration/vcr_cassettes"
           if [ ! -d "$CASSETTE_DIR" ] || [ -z "$(find "$CASSETTE_DIR" -name '*.yaml' 2>/dev/null)" ]; then
-            echo "No cassette YAML files found — skipping credential scan."
+            echo "No cassette YAML files present — baseline tree scan is the gate."
             exit 0
           fi
 
-          # Scan cassette YAML only. Cassettes must never contain live API keys;
-          # any finding is a hard failure. (Previously --baseline was passed and
-          # the Python step claimed to filter "NEW" findings, but it never
-          # compared hashes against the baseline — it failed on any result.
-          # Baseline is for the rest of the tree via pre-commit; cassettes are
-          # zero-tolerance.)
+          # Cassettes are gitignored and must never contain live keys.
           detect-secrets scan \
             "$CASSETTE_DIR" \
             --exclude-files '.*\.py$' \
