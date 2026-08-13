@@ -327,14 +327,22 @@ def typecheck(session: Session) -> None:
 
 @nox.session(python=DEFAULT_PYTHON, tags=["security"])
 def security(session: Session) -> None:
-    """Check dependencies for known CVEs."""
-    _sync_with_uv(session, extras=["dev"])
-    # virtualenv seeds this session with whatever pip it bundles, which lags
-    # behind the current release and drags its own CVEs into the audit. Upgrade
-    # it first so the report covers project dependencies rather than the
-    # scaffolding around them.
-    session.run("python", "-m", "pip", "install", "--upgrade", "pip")
-    session.run("pip-audit")
+    """Audit the frozen published extra graph for known CVEs.
+
+    ``pip-audit --strict`` requires every requirement to be pinned. The
+    hashed export at ``.github/requirements-audit.txt`` is that pin set
+    (#252 FMP-SEC-008). Auditing the file, not the session env, keeps
+    the report independent of whatever pip the virtualenv bundled.
+    """
+    session.install("pip-audit>=2.10.1")
+    session.run(
+        "pip-audit",
+        "-r",
+        str(REPO_ROOT / ".github" / "requirements-audit.txt"),
+        "--strict",
+        "--no-deps",
+        "--disable-pip",
+    )
 
 
 @nox.session(python=DEFAULT_PYTHON, tags=["smoke"])
