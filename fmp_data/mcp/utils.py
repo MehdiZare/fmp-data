@@ -15,6 +15,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import tempfile
 from typing import Any
 
 
@@ -140,6 +141,32 @@ def load_claude_config() -> dict[str, Any]:
     return {}
 
 
+def _chmod_user_only(path: Path, mode: int) -> None:
+    """Best-effort owner-only mode. Windows chmod is a no-op for this bit."""
+    if os.name == "nt":
+        return
+    try:
+        os.chmod(path, mode)
+    except OSError:
+        return
+
+
+def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
+    """Write JSON via a temp file, then ``os.replace``, mode ``0600``."""
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    tmp_path = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, indent=2)
+            handle.write("\n")
+        _chmod_user_only(tmp_path, 0o600)
+        os.replace(tmp_path, path)
+        _chmod_user_only(path, 0o600)
+    except Exception:
+        tmp_path.unlink(missing_ok=True)
+        raise
+
+
 def save_claude_config(config: dict[str, Any], backup: bool = True) -> Path | None:
     """
     Save the Claude Desktop configuration.
@@ -161,17 +188,16 @@ def save_claude_config(config: dict[str, Any], backup: bool = True) -> Path | No
 
     # Create directory if it doesn't exist
     config_path.parent.mkdir(parents=True, exist_ok=True)
+    _chmod_user_only(config_path.parent, 0o700)
 
     # Create backup if requested and file exists
     if backup and config_path.exists():
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_path = config_path.with_suffix(f".backup_{timestamp}.json")
         shutil.copy2(config_path, backup_path)
+        _chmod_user_only(backup_path, 0o600)
 
-    # Save configuration
-    with open(config_path, "w") as f:
-        json.dump(config, f, indent=2)
-
+    _atomic_write_json(config_path, config)
     return backup_path
 
 

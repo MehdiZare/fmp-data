@@ -220,6 +220,9 @@ None. No FMP path we ship was newly retired by this changelog window.
   treated as the secret (which previously crashed logging and printed the
   raw key). The filter is attached to each handler and each child logger.
   JSON extras and exception text are redacted.
+- **MCP Claude config is written ``0600`` and the API key is prompted with
+  echo off (#252 FMP-SEC-006).** Directory ``0700``; backups ``0600``;
+  atomic replace.
 
 ## [2.6.0] - 2026-08-10
 
