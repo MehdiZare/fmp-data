@@ -13,7 +13,7 @@ from collections.abc import Callable
 import os
 from pathlib import Path
 from typing import Any, Literal
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlsplit, urlunsplit
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -27,6 +27,24 @@ def _is_loopback_host(hostname: str | None) -> bool:
         return False
     host = hostname.strip("[]").lower()
     return host in {"localhost", "127.0.0.1", "::1"} or host.startswith("127.")
+
+
+def _mask_secret(value: str) -> str:
+    if len(value) > 4:
+        return f"{value[:4]}***"
+    return "***"
+
+
+def _redact_url_userinfo(url: str) -> str:
+    """Drop userinfo from a URL so ``redis://:hunter2@host`` cannot leak."""
+    parts = urlsplit(url)
+    if not (parts.username or parts.password):
+        return url
+    host = parts.hostname or ""
+    if parts.port:
+        host = f"{host}:{parts.port}"
+    netloc = f"***@{host}" if (parts.username or parts.password) else host
+    return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
 
 
 def _safe_int_from_env(env_var: str, default: int, *, min_val: int = 0) -> int:
@@ -291,12 +309,12 @@ class ClientConfig(BaseModel):
         # Create a copy of the model dict with masked API key
         data = self.model_dump()
         if data.get("api_key"):
-            # Mask the API key, showing only first 4 characters
-            api_key = data["api_key"]
-            if len(api_key) > 4:
-                data["api_key"] = f"{api_key[:4]}***"
-            else:
-                data["api_key"] = "***"
+            data["api_key"] = _mask_secret(str(data["api_key"]))
+        if data.get("embedding_api_key"):
+            data["embedding_api_key"] = _mask_secret(str(data["embedding_api_key"]))
+        cache = data.get("cache")
+        if isinstance(cache, dict) and cache.get("redis_url"):
+            cache["redis_url"] = _redact_url_userinfo(str(cache["redis_url"]))
 
         # Create a string representation from the masked data
         fields = []

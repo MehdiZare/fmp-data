@@ -61,7 +61,34 @@ class CacheConfig(BaseModel):
     cache_dir: Path | None = Field(
         default=None, description="Directory for file-based cache"
     )
-    redis_url: str | None = Field(default=None, description="Redis connection URL")
+    redis_url: str | None = Field(
+        default=None, description="Redis connection URL", repr=False
+    )
+
+    def __str__(self) -> str:
+        from urllib.parse import urlsplit, urlunsplit
+
+        data = self.model_dump()
+        url = data.get("redis_url")
+        if isinstance(url, str) and url:
+            parts = urlsplit(url)
+            if parts.username or parts.password:
+                host = parts.hostname or ""
+                if parts.port:
+                    host = f"{host}:{parts.port}"
+                data["redis_url"] = urlunsplit(
+                    (
+                        parts.scheme,
+                        f"***@{host}",
+                        parts.path,
+                        parts.query,
+                        parts.fragment,
+                    )
+                )
+        return f"CacheConfig({data})"
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
     @model_validator(mode="after")
     def _warn_on_unmatched_ttl_overrides(self) -> CacheConfig:

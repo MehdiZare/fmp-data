@@ -29,7 +29,9 @@ class EmbeddingConfig(BaseModel):
         default=None, description="Model name for the embedding provider"
     )
     api_key: str | None = Field(
-        default=None, description="API key for the embedding provider"
+        default=None,
+        description="API key for the embedding provider",
+        repr=False,
     )
     additional_kwargs: dict[str, Any] = Field(
         default_factory=dict,
