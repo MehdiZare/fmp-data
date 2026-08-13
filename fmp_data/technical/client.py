@@ -1,6 +1,6 @@
 # fmp_data/technical/client.py
 from datetime import date
-from typing import Any, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel
 
@@ -55,7 +55,7 @@ class TechnicalClient(EndpointGroup):
         interval: str | None,
         start_date: date | None,
         end_date: date | None,
-    ) -> list[Any]:
+    ) -> list[T]:
         """Generic helper to fetch technical indicator data
 
         Args:
@@ -79,7 +79,10 @@ class TechnicalClient(EndpointGroup):
             params["from"] = start_date.strftime("%Y-%m-%d")
         if end_date:
             params["to"] = end_date.strftime("%Y-%m-%d")
-        return self.client.request(endpoint, **params)
+        return self._unwrap_list(
+            self.client.request(endpoint, **params),
+            endpoint.response_model,
+        )
 
     def get_sma(
         self,

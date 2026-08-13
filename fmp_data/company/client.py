@@ -72,6 +72,7 @@ from fmp_data.company.models import (
     FinancialReportJSON,
     GeographicRevenueSegment,
     HistoricalData,
+    HistoricalPrice,
     HistoricalShareFloat,
     IntradayPrice,
     MergerAcquisition,
@@ -233,18 +234,11 @@ class CompanyClient(EndpointGroup):
         if end_date:
             params["end_date"] = end_date
 
-        # Make request
-        # this returns list[HistoricalPrice] due to response_model=HistoricalPrice
-        result = self.client.request(HISTORICAL_PRICE, **params)
-
-        # Convert to HistoricalData
-        if isinstance(result, list):
-            # Multiple price points -
-            # use them directly since HistoricalPrice now includes symbol
-            return HistoricalData(symbol=symbol, historical=result)
-        else:
-            # Single price point
-            return HistoricalData(symbol=symbol, historical=[result])
+        rows = self._unwrap_list(
+            self.client.request(HISTORICAL_PRICE, **params),
+            HistoricalPrice,
+        )
+        return HistoricalData(symbol=symbol, historical=rows)
 
     def get_intraday_prices(
         self,
@@ -579,12 +573,11 @@ class CompanyClient(EndpointGroup):
         if end_date:
             params["end_date"] = end_date
 
-        result = self.client.request(HISTORICAL_PRICE_LIGHT, **params)
-
-        if isinstance(result, list):
-            return HistoricalData(symbol=symbol, historical=result)
-        else:
-            return HistoricalData(symbol=symbol, historical=[result])
+        rows = self._unwrap_list(
+            self.client.request(HISTORICAL_PRICE_LIGHT, **params),
+            HistoricalPrice,
+        )
+        return HistoricalData(symbol=symbol, historical=rows)
 
     def get_historical_prices_non_split_adjusted(
         self,
@@ -610,12 +603,11 @@ class CompanyClient(EndpointGroup):
         if end_date:
             params["end_date"] = end_date
 
-        result = self.client.request(HISTORICAL_PRICE_NON_SPLIT_ADJUSTED, **params)
-
-        if isinstance(result, list):
-            return HistoricalData(symbol=symbol, historical=result)
-        else:
-            return HistoricalData(symbol=symbol, historical=[result])
+        rows = self._unwrap_list(
+            self.client.request(HISTORICAL_PRICE_NON_SPLIT_ADJUSTED, **params),
+            HistoricalPrice,
+        )
+        return HistoricalData(symbol=symbol, historical=rows)
 
     def get_historical_prices_dividend_adjusted(
         self,
@@ -641,12 +633,11 @@ class CompanyClient(EndpointGroup):
         if end_date:
             params["end_date"] = end_date
 
-        result = self.client.request(HISTORICAL_PRICE_DIVIDEND_ADJUSTED, **params)
-
-        if isinstance(result, list):
-            return HistoricalData(symbol=symbol, historical=result)
-        else:
-            return HistoricalData(symbol=symbol, historical=[result])
+        rows = self._unwrap_list(
+            self.client.request(HISTORICAL_PRICE_DIVIDEND_ADJUSTED, **params),
+            HistoricalPrice,
+        )
+        return HistoricalData(symbol=symbol, historical=rows)
 
     def get_dividends(
         self,

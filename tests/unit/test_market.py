@@ -99,7 +99,7 @@ def test_get_market_hours_empty_response(fmp_client):
     """Test getting market hours with empty response"""
     # Mock the client.request to return empty list directly
     with patch.object(fmp_client.market.client, "request", return_value=[]):
-        with pytest.raises(ValueError, match="No market hours data returned from API"):
+        with pytest.raises(ValueError, match="Expected at least one MarketHours"):
             fmp_client.market.get_market_hours()
 
 

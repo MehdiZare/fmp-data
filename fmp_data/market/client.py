@@ -73,7 +73,9 @@ class MarketClient(EndpointGroup):
             params["limit"] = str(limit)
         if exchange is not None:
             params["exchange"] = exchange
-        return self.client.request(SEARCH_COMPANY, **params)
+        return self._unwrap_list(
+            self.client.request(SEARCH_COMPANY, **params), CompanySearchResult
+        )
 
     def search_symbol(
         self, query: str, limit: int | None = None, exchange: str | None = None
@@ -84,27 +86,36 @@ class MarketClient(EndpointGroup):
             params["limit"] = str(limit)
         if exchange is not None:
             params["exchange"] = exchange
-        return self.client.request(SEARCH_SYMBOL, **params)
+        return self._unwrap_list(
+            self.client.request(SEARCH_SYMBOL, **params), CompanySearchResult
+        )
 
     def search_exchange_variants(self, query: str) -> list[CompanySearchResult]:
         """Search for exchange trading variants of a company"""
-        return self.client.request(SEARCH_EXCHANGE_VARIANTS, query=query)
+        return self._unwrap_list(
+            self.client.request(SEARCH_EXCHANGE_VARIANTS, query=query),
+            CompanySearchResult,
+        )
 
     def get_stock_list(self) -> list[CompanySymbol]:
         """Get list of all available stocks"""
-        return self.client.request(STOCK_LIST)
+        return self._unwrap_list(self.client.request(STOCK_LIST), CompanySymbol)
 
     def get_financial_statement_symbol_list(self) -> list[CompanySymbol]:
         """Get list of symbols with financial statements available"""
-        return self.client.request(FINANCIAL_STATEMENT_SYMBOL_LIST)
+        return self._unwrap_list(
+            self.client.request(FINANCIAL_STATEMENT_SYMBOL_LIST), CompanySymbol
+        )
 
     def get_etf_list(self) -> list[CompanySymbol]:
         """Get list of all available ETFs"""
-        return self.client.request(ETF_LIST)
+        return self._unwrap_list(self.client.request(ETF_LIST), CompanySymbol)
 
     def get_actively_trading_list(self) -> list[CompanySymbol]:
         """Get list of actively trading stocks"""
-        return self.client.request(ACTIVELY_TRADING_LIST)
+        return self._unwrap_list(
+            self.client.request(ACTIVELY_TRADING_LIST), CompanySymbol
+        )
 
     @deprecated(
         "tradable-list is dead and FMP publishes no drop-in replacement: "
@@ -132,7 +143,7 @@ class MarketClient(EndpointGroup):
 
     def get_available_indexes(self) -> list[AvailableIndex]:
         """Get list of all available indexes"""
-        return self.client.request(AVAILABLE_INDEXES)
+        return self._unwrap_list(self.client.request(AVAILABLE_INDEXES), AvailableIndex)
 
     def search_by_cik(self, query: str) -> list[CIKResult]:
         """Search companies by CIK number.
@@ -148,19 +159,27 @@ class MarketClient(EndpointGroup):
         Returns:
             List of matching CIK records.
         """
-        return self.client.request(CIK_SEARCH, query=query)
+        return self._unwrap_list(
+            self.client.request(CIK_SEARCH, query=query), CIKResult
+        )
 
     def get_cik_list(self, page: int = 0, limit: int = 1000) -> list[CIKListEntry]:
         """Get complete list of all CIK numbers"""
-        return self.client.request(CIK_LIST, page=page, limit=limit)
+        return self._unwrap_list(
+            self.client.request(CIK_LIST, page=page, limit=limit), CIKListEntry
+        )
 
     def search_by_cusip(self, query: str) -> list[CUSIPResult]:
         """Search companies by CUSIP"""
-        return self.client.request(CUSIP_SEARCH, query=query)
+        return self._unwrap_list(
+            self.client.request(CUSIP_SEARCH, query=query), CUSIPResult
+        )
 
     def search_by_isin(self, query: str) -> list[ISINResult]:
         """Search companies by ISIN"""
-        return self.client.request(ISIN_SEARCH, query=query)
+        return self._unwrap_list(
+            self.client.request(ISIN_SEARCH, query=query), ISINResult
+        )
 
     def get_company_screener(
         self,
@@ -213,7 +232,9 @@ class MarketClient(EndpointGroup):
             "include_all_share_classes": include_all_share_classes,
         }
         params = {key: value for key, value in params.items() if value is not None}
-        return self.client.request(COMPANY_SCREENER, **params)
+        return self._unwrap_list(
+            self.client.request(COMPANY_SCREENER, **params), CompanySearchResult
+        )
 
     def get_market_hours(self, exchange: str = "NYSE") -> MarketHours:
         """Get market trading hours information for a specific exchange
@@ -225,37 +246,35 @@ class MarketClient(EndpointGroup):
             MarketHours: Exchange trading hours object
 
         Raises:
-            ValueError: If no market hours data returned from API
+            ValueError: If the API returns an empty list
         """
         result = self.client.request(MARKET_HOURS, exchange=exchange)
-        if isinstance(result, list):
-            if not result:
-                raise ValueError("No market hours data returned from API")
-            return result[0]
-        return result
+        return self._unwrap_single(result, MarketHours)
 
     def get_all_exchange_market_hours(self) -> list[MarketHours]:
         """Get market trading hours information for all exchanges"""
-        result = self.client.request(ALL_EXCHANGE_MARKET_HOURS)
-        if isinstance(result, list):
-            return result
-        return [result]
+        return self._unwrap_list(
+            self.client.request(ALL_EXCHANGE_MARKET_HOURS),
+            MarketHours,
+        )
 
     def get_holidays_by_exchange(self, exchange: str = "NYSE") -> list[MarketHoliday]:
         """Get market holidays for a specific exchange"""
-        return self.client.request(HOLIDAYS_BY_EXCHANGE, exchange=exchange)
+        return self._unwrap_list(
+            self.client.request(HOLIDAYS_BY_EXCHANGE, exchange=exchange), MarketHoliday
+        )
 
     def get_gainers(self) -> list[MarketMover]:
         """Get market gainers"""
-        return self.client.request(GAINERS)
+        return self._unwrap_list(self.client.request(GAINERS), MarketMover)
 
     def get_losers(self) -> list[MarketMover]:
         """Get market losers"""
-        return self.client.request(LOSERS)
+        return self._unwrap_list(self.client.request(LOSERS), MarketMover)
 
     def get_most_active(self) -> list[MarketMover]:
         """Get most active stocks"""
-        return self.client.request(MOST_ACTIVE)
+        return self._unwrap_list(self.client.request(MOST_ACTIVE), MarketMover)
 
     def get_sector_performance(
         self,
@@ -271,7 +290,9 @@ class MarketClient(EndpointGroup):
             params["exchange"] = exchange
         snapshot_date = date or dt_date.today()
         params["date"] = snapshot_date.strftime("%Y-%m-%d")
-        return self.client.request(SECTOR_PERFORMANCE, **params)
+        return self._unwrap_list(
+            self.client.request(SECTOR_PERFORMANCE, **params), SectorPerformance
+        )
 
     def get_industry_performance_snapshot(
         self,
@@ -287,7 +308,10 @@ class MarketClient(EndpointGroup):
             params["exchange"] = exchange
         snapshot_date = date or dt_date.today()
         params["date"] = snapshot_date.strftime("%Y-%m-%d")
-        return self.client.request(INDUSTRY_PERFORMANCE_SNAPSHOT, **params)
+        return self._unwrap_list(
+            self.client.request(INDUSTRY_PERFORMANCE_SNAPSHOT, **params),
+            IndustryPerformance,
+        )
 
     def get_historical_sector_performance(
         self,
@@ -304,7 +328,10 @@ class MarketClient(EndpointGroup):
             params["to"] = to_date.strftime("%Y-%m-%d")
         if exchange:
             params["exchange"] = exchange
-        return self.client.request(HISTORICAL_SECTOR_PERFORMANCE, **params)
+        return self._unwrap_list(
+            self.client.request(HISTORICAL_SECTOR_PERFORMANCE, **params),
+            SectorPerformance,
+        )
 
     def get_historical_industry_performance(
         self,
@@ -321,7 +348,10 @@ class MarketClient(EndpointGroup):
             params["to"] = to_date.strftime("%Y-%m-%d")
         if exchange:
             params["exchange"] = exchange
-        return self.client.request(HISTORICAL_INDUSTRY_PERFORMANCE, **params)
+        return self._unwrap_list(
+            self.client.request(HISTORICAL_INDUSTRY_PERFORMANCE, **params),
+            IndustryPerformance,
+        )
 
     def get_sector_pe_snapshot(
         self,
@@ -337,7 +367,9 @@ class MarketClient(EndpointGroup):
             params["exchange"] = exchange
         snapshot_date = date or dt_date.today()
         params["date"] = snapshot_date.strftime("%Y-%m-%d")
-        return self.client.request(SECTOR_PE_SNAPSHOT, **params)
+        return self._unwrap_list(
+            self.client.request(SECTOR_PE_SNAPSHOT, **params), SectorPESnapshot
+        )
 
     def get_industry_pe_snapshot(
         self,
@@ -353,7 +385,9 @@ class MarketClient(EndpointGroup):
             params["exchange"] = exchange
         snapshot_date = date or dt_date.today()
         params["date"] = snapshot_date.strftime("%Y-%m-%d")
-        return self.client.request(INDUSTRY_PE_SNAPSHOT, **params)
+        return self._unwrap_list(
+            self.client.request(INDUSTRY_PE_SNAPSHOT, **params), IndustryPESnapshot
+        )
 
     def get_historical_sector_pe(
         self,
@@ -370,7 +404,9 @@ class MarketClient(EndpointGroup):
             params["to"] = to_date.strftime("%Y-%m-%d")
         if exchange:
             params["exchange"] = exchange
-        return self.client.request(HISTORICAL_SECTOR_PE, **params)
+        return self._unwrap_list(
+            self.client.request(HISTORICAL_SECTOR_PE, **params), SectorPESnapshot
+        )
 
     def get_historical_industry_pe(
         self,
@@ -387,7 +423,9 @@ class MarketClient(EndpointGroup):
             params["to"] = to_date.strftime("%Y-%m-%d")
         if exchange:
             params["exchange"] = exchange
-        return self.client.request(HISTORICAL_INDUSTRY_PE, **params)
+        return self._unwrap_list(
+            self.client.request(HISTORICAL_INDUSTRY_PE, **params), IndustryPESnapshot
+        )
 
     @deprecated(
         "pre-post-market is dead, and the market-wide shape no longer exists. "
@@ -413,23 +451,25 @@ class MarketClient(EndpointGroup):
 
     def get_all_shares_float(self) -> list[ShareFloat]:
         """Get share float data for all companies"""
-        return self.client.request(ALL_SHARES_FLOAT)
+        return self._unwrap_list(self.client.request(ALL_SHARES_FLOAT), ShareFloat)
 
     def get_available_exchanges(self) -> list[ExchangeSymbol]:
         """Get a complete list of supported stock exchanges"""
-        return self.client.request(AVAILABLE_EXCHANGES)
+        return self._unwrap_list(
+            self.client.request(AVAILABLE_EXCHANGES), ExchangeSymbol
+        )
 
     def get_available_sectors(self) -> list[str]:
         """Get a complete list of industry sectors"""
-        return self.client.request(AVAILABLE_SECTORS)
+        return self._unwrap_list(self.client.request(AVAILABLE_SECTORS), str)
 
     def get_available_industries(self) -> list[str]:
         """Get a comprehensive list of industries where stock symbols are available"""
-        return self.client.request(AVAILABLE_INDUSTRIES)
+        return self._unwrap_list(self.client.request(AVAILABLE_INDUSTRIES), str)
 
     def get_available_countries(self) -> list[str]:
         """Get a comprehensive list of countries where stock symbols are available"""
-        return self.client.request(AVAILABLE_COUNTRIES)
+        return self._unwrap_list(self.client.request(AVAILABLE_COUNTRIES), str)
 
     def get_ipo_disclosure(
         self,
@@ -452,7 +492,9 @@ class MarketClient(EndpointGroup):
             params["from"] = from_date.strftime("%Y-%m-%d")
         if to_date:
             params["to"] = to_date.strftime("%Y-%m-%d")
-        return self.client.request(IPO_DISCLOSURE, **params)
+        return self._unwrap_list(
+            self.client.request(IPO_DISCLOSURE, **params), IPODisclosure
+        )
 
     def get_ipo_prospectus(
         self,
@@ -475,4 +517,6 @@ class MarketClient(EndpointGroup):
             params["from"] = from_date.strftime("%Y-%m-%d")
         if to_date:
             params["to"] = to_date.strftime("%Y-%m-%d")
-        return self.client.request(IPO_PROSPECTUS, **params)
+        return self._unwrap_list(
+            self.client.request(IPO_PROSPECTUS, **params), IPOProspectus
+        )

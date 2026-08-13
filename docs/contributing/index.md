@@ -135,7 +135,10 @@ class ExampleClient(EndpointGroup):
             RateLimitError: If rate limit is exceeded
         """
         endpoint = self._endpoints.example_data
-        return self._client.request(endpoint, symbol=symbol)
+        return self._unwrap_list(
+            self._client.request(endpoint, symbol=symbol),
+            ExampleModel,
+        )
 ```
 
 ### Documentation Standards

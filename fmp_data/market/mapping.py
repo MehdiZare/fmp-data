@@ -1,5 +1,7 @@
 # fmp_data/market/mapping.py
 
+from typing import Any
+
 from fmp_data.lc.hints import (
     DATE_HINTS,
     EXCHANGE_HINT,
@@ -34,10 +36,11 @@ from fmp_data.market.endpoints import (
     SECTOR_PERFORMANCE,
     STOCK_LIST,
 )
+from fmp_data.models import Endpoint
 
 from .hints import COMPANY_SEARCH_HINT, IDENTIFIER_HINT
 
-MARKET_ENDPOINT_MAP = {
+MARKET_ENDPOINT_MAP: dict[str, Endpoint[Any]] = {
     "search_company": SEARCH_COMPANY,
     "get_all_shares_float": ALL_SHARES_FLOAT,
     "get_market_hours": MARKET_HOURS,

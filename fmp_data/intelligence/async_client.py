@@ -145,7 +145,9 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         params: dict[str, Any] = self._build_date_params(start_date, end_date)
         if include_report_times is not None:
             params["include_report_times"] = include_report_times
-        return await self.client.request_async(EARNINGS_CALENDAR, **params)
+        return self._unwrap_list(
+            await self.client.request_async(EARNINGS_CALENDAR, **params), EarningEvent
+        )
 
     async def get_historical_earnings(
         self,
@@ -171,7 +173,9 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             params["limit"] = limit
         if include_report_times is not None:
             params["include_report_times"] = include_report_times
-        return await self.client.request_async(HISTORICAL_EARNINGS, **params)
+        return self._unwrap_list(
+            await self.client.request_async(HISTORICAL_EARNINGS, **params), EarningEvent
+        )
 
     @deprecated(
         "The FMP API no longer serves the confirmed earnings calendar. Use "
@@ -216,21 +220,28 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
     ) -> list[DividendEvent]:
         """Get dividends calendar"""
         params = self._build_date_params(start_date, end_date)
-        return await self.client.request_async(DIVIDENDS_CALENDAR, **params)
+        return self._unwrap_list(
+            await self.client.request_async(DIVIDENDS_CALENDAR, **params), DividendEvent
+        )
 
     async def get_stock_splits_calendar(
         self, start_date: date | None = None, end_date: date | None = None
     ) -> list[StockSplitEvent]:
         """Get stock splits calendar"""
         params = self._build_date_params(start_date, end_date)
-        return await self.client.request_async(STOCK_SPLITS_CALENDAR, **params)
+        return self._unwrap_list(
+            await self.client.request_async(STOCK_SPLITS_CALENDAR, **params),
+            StockSplitEvent,
+        )
 
     async def get_ipo_calendar(
         self, start_date: date | None = None, end_date: date | None = None
     ) -> list[IPOEvent]:
         """Get IPO calendar"""
         params = self._build_date_params(start_date, end_date)
-        return await self.client.request_async(IPO_CALENDAR, **params)
+        return self._unwrap_list(
+            await self.client.request_async(IPO_CALENDAR, **params), IPOEvent
+        )
 
     async def get_fmp_articles(
         self, page: int = 0, limit: int = 20, size: int | None = None
@@ -251,11 +262,10 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             "page": page,
             "limit": limit,
         }
-        response = await self.client.request_async(FMP_ARTICLES_ENDPOINT, **params)
-        # Extract articles from the content array in the response
-        return (
-            response.content if isinstance(response, FMPArticlesResponse) else response
-        )
+        response: Any = await self.client.request_async(FMP_ARTICLES_ENDPOINT, **params)
+        if isinstance(response, FMPArticlesResponse):
+            return self._unwrap_list(response.content, FMPArticle)
+        return self._unwrap_list(response, FMPArticle)
 
     async def get_general_news(
         self,
@@ -271,7 +281,10 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             "end_date": self._format_date(to_date),
             "limit": limit,
         }
-        return await self.client.request_async(GENERAL_NEWS_ENDPOINT, **params)
+        return self._unwrap_list(
+            await self.client.request_async(GENERAL_NEWS_ENDPOINT, **params),
+            GeneralNewsArticle,
+        )
 
     async def get_stock_symbol_news(
         self,
@@ -289,7 +302,10 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             "end_date": self._format_date(to_date),
             "limit": limit,
         }
-        return await self.client.request_async(STOCK_SYMBOL_NEWS_ENDPOINT, **params)
+        return self._unwrap_list(
+            await self.client.request_async(STOCK_SYMBOL_NEWS_ENDPOINT, **params),
+            StockNewsArticle,
+        )
 
     async def get_stock_news(
         self,
@@ -314,7 +330,10 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             "end_date": self._format_date(to_date),
             "limit": limit,
         }
-        return await self.client.request_async(STOCK_NEWS_ENDPOINT, **params)
+        return self._unwrap_list(
+            await self.client.request_async(STOCK_NEWS_ENDPOINT, **params),
+            StockNewsArticle,
+        )
 
     @deprecated(
         "The FMP API no longer supports this endpoint -- "
@@ -358,7 +377,10 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             "end_date": self._format_date(to_date),
             "limit": limit,
         }
-        return await self.client.request_async(FOREX_NEWS_ENDPOINT, **params)
+        return self._unwrap_list(
+            await self.client.request_async(FOREX_NEWS_ENDPOINT, **params),
+            ForexNewsArticle,
+        )
 
     async def get_forex_symbol_news(
         self,
@@ -376,7 +398,10 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             "end_date": self._format_date(to_date),
             "limit": limit,
         }
-        return await self.client.request_async(FOREX_SYMBOL_NEWS_ENDPOINT, **params)
+        return self._unwrap_list(
+            await self.client.request_async(FOREX_SYMBOL_NEWS_ENDPOINT, **params),
+            ForexNewsArticle,
+        )
 
     async def get_crypto_news(
         self,
@@ -403,7 +428,10 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             "end_date": self._format_date(to_date),
             "limit": limit,
         }
-        return await self.client.request_async(CRYPTO_NEWS_ENDPOINT, **params)
+        return self._unwrap_list(
+            await self.client.request_async(CRYPTO_NEWS_ENDPOINT, **params),
+            CryptoNewsArticle,
+        )
 
     async def get_crypto_symbol_news(
         self,
@@ -421,7 +449,10 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             "end_date": self._format_date(to_date),
             "limit": limit,
         }
-        return await self.client.request_async(CRYPTO_SYMBOL_NEWS_ENDPOINT, **params)
+        return self._unwrap_list(
+            await self.client.request_async(CRYPTO_SYMBOL_NEWS_ENDPOINT, **params),
+            CryptoNewsArticle,
+        )
 
     async def get_press_releases(
         self,
@@ -437,7 +468,10 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             "end_date": self._format_date(to_date),
             "limit": limit,
         }
-        return await self.client.request_async(PRESS_RELEASES_ENDPOINT, **params)
+        return self._unwrap_list(
+            await self.client.request_async(PRESS_RELEASES_ENDPOINT, **params),
+            PressRelease,
+        )
 
     async def get_press_releases_by_symbol(
         self,
@@ -455,8 +489,11 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             "end_date": self._format_date(to_date),
             "limit": limit,
         }
-        return await self.client.request_async(
-            PRESS_RELEASES_BY_SYMBOL_ENDPOINT, **params
+        return self._unwrap_list(
+            await self.client.request_async(
+                PRESS_RELEASES_BY_SYMBOL_ENDPOINT, **params
+            ),
+            PressReleaseBySymbol,
         )
 
     @removed("Social sentiment endpoints were discontinued by FMP.")
@@ -502,22 +539,32 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
 
     async def get_esg_benchmark(self) -> list[ESGBenchmark]:
         """Get ESG benchmark data"""
-        return await self.client.request_async(ESG_BENCHMARK)
+        return self._unwrap_list(
+            await self.client.request_async(ESG_BENCHMARK), ESGBenchmark
+        )
 
     # Government trading methods
     async def get_senate_latest(
         self, page: int = 0, limit: int = 100
     ) -> list[SenateTrade]:
         """Get latest Senate financial disclosures"""
-        return await self.client.request_async(SENATE_LATEST, page=page, limit=limit)
+        return self._unwrap_list(
+            await self.client.request_async(SENATE_LATEST, page=page, limit=limit),
+            SenateTrade,
+        )
 
     async def get_senate_trading(self, symbol: str) -> list[SenateTrade]:
         """Get Senate trading data"""
-        return await self.client.request_async(SENATE_TRADING, symbol=symbol)
+        return self._unwrap_list(
+            await self.client.request_async(SENATE_TRADING, symbol=symbol), SenateTrade
+        )
 
     async def get_senate_trades_by_name(self, name: str) -> list[SenateTrade]:
         """Get Senate trading data by name"""
-        return await self.client.request_async(SENATE_TRADES_BY_NAME, name=name)
+        return self._unwrap_list(
+            await self.client.request_async(SENATE_TRADES_BY_NAME, name=name),
+            SenateTrade,
+        )
 
     @deprecated(
         "senate-trading-rss-feed is dead. The live path senate-latest is "
@@ -540,32 +587,50 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         self, page: int = 0, limit: int = 100
     ) -> list[HouseDisclosure]:
         """Get latest House financial disclosures"""
-        return await self.client.request_async(HOUSE_LATEST, page=page, limit=limit)
+        return self._unwrap_list(
+            await self.client.request_async(HOUSE_LATEST, page=page, limit=limit),
+            HouseDisclosure,
+        )
 
     async def get_house_disclosure(self, symbol: str) -> list[HouseDisclosure]:
         """Get House disclosure data"""
-        return await self.client.request_async(HOUSE_DISCLOSURE, symbol=symbol)
+        return self._unwrap_list(
+            await self.client.request_async(HOUSE_DISCLOSURE, symbol=symbol),
+            HouseDisclosure,
+        )
 
     async def get_house_trades_by_name(self, name: str) -> list[HouseDisclosure]:
         """Get House trading data by name"""
-        return await self.client.request_async(HOUSE_TRADES_BY_NAME, name=name)
+        return self._unwrap_list(
+            await self.client.request_async(HOUSE_TRADES_BY_NAME, name=name),
+            HouseDisclosure,
+        )
 
     # Fundraising methods
     async def get_crowdfunding_rss(
         self, page: int = 0, limit: int = 100
     ) -> list[CrowdfundingOffering]:
         """Get latest crowdfunding offerings"""
-        return await self.client.request_async(CROWDFUNDING_RSS, page=page, limit=limit)
+        return self._unwrap_list(
+            await self.client.request_async(CROWDFUNDING_RSS, page=page, limit=limit),
+            CrowdfundingOffering,
+        )
 
     async def search_crowdfunding(
         self, name: str
     ) -> list[CrowdfundingOfferingSearchItem]:
         """Search crowdfunding offerings"""
-        return await self.client.request_async(CROWDFUNDING_SEARCH, name=name)
+        return self._unwrap_list(
+            await self.client.request_async(CROWDFUNDING_SEARCH, name=name),
+            CrowdfundingOfferingSearchItem,
+        )
 
     async def get_crowdfunding_by_cik(self, cik: str) -> list[CrowdfundingOffering]:
         """Get crowdfunding offerings by CIK"""
-        return await self.client.request_async(CROWDFUNDING_BY_CIK, cik=cik)
+        return self._unwrap_list(
+            await self.client.request_async(CROWDFUNDING_BY_CIK, cik=cik),
+            CrowdfundingOffering,
+        )
 
     async def get_equity_offering_rss(
         self, page: int = 0, limit: int = 10, cik: str | None = None
@@ -574,15 +639,24 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         params: dict[str, int | str] = {"page": page, "limit": limit}
         if cik is not None:
             params["cik"] = cik
-        return await self.client.request_async(EQUITY_OFFERING_RSS, **params)
+        return self._unwrap_list(
+            await self.client.request_async(EQUITY_OFFERING_RSS, **params),
+            EquityOffering,
+        )
 
     async def search_equity_offering(self, name: str) -> list[EquityOfferingSearchItem]:
         """Search equity offerings"""
-        return await self.client.request_async(EQUITY_OFFERING_SEARCH, name=name)
+        return self._unwrap_list(
+            await self.client.request_async(EQUITY_OFFERING_SEARCH, name=name),
+            EquityOfferingSearchItem,
+        )
 
     async def get_equity_offering_by_cik(self, cik: str) -> list[EquityOffering]:
         """Get equity offerings by CIK"""
-        return await self.client.request_async(EQUITY_OFFERING_BY_CIK, cik=cik)
+        return self._unwrap_list(
+            await self.client.request_async(EQUITY_OFFERING_BY_CIK, cik=cik),
+            EquityOffering,
+        )
 
     # Analyst Ratings and Grades methods
     async def get_ratings_snapshot(self, symbol: str) -> RatingsSnapshot | None:
@@ -594,34 +668,49 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         self, symbol: str, limit: int = 100
     ) -> list[HistoricalRating]:
         """Get historical analyst ratings"""
-        return await self.client.request_async(
-            RATINGS_HISTORICAL, symbol=symbol, limit=limit
+        return self._unwrap_list(
+            await self.client.request_async(
+                RATINGS_HISTORICAL, symbol=symbol, limit=limit
+            ),
+            HistoricalRating,
         )
 
     async def get_price_target_news(
         self, symbol: str, page: int = 0
     ) -> list[PriceTargetNews]:
         """Get price target news"""
-        return await self.client.request_async(
-            PRICE_TARGET_NEWS, symbol=symbol, page=page
+        return self._unwrap_list(
+            await self.client.request_async(
+                PRICE_TARGET_NEWS, symbol=symbol, page=page
+            ),
+            PriceTargetNews,
         )
 
     async def get_price_target_latest_news(
         self, page: int = 0
     ) -> list[PriceTargetNews]:
         """Get latest price target news"""
-        return await self.client.request_async(PRICE_TARGET_LATEST_NEWS, page=page)
+        return self._unwrap_list(
+            await self.client.request_async(PRICE_TARGET_LATEST_NEWS, page=page),
+            PriceTargetNews,
+        )
 
     async def get_grades(self, symbol: str, page: int = 0) -> list[StockGrade]:
         """Get stock grades from analysts"""
-        return await self.client.request_async(GRADES, symbol=symbol, page=page)
+        return self._unwrap_list(
+            await self.client.request_async(GRADES, symbol=symbol, page=page),
+            StockGrade,
+        )
 
     async def get_grades_historical(
         self, symbol: str, limit: int = 100
     ) -> list[HistoricalStockGrade]:
         """Get historical stock grades"""
-        return await self.client.request_async(
-            GRADES_HISTORICAL, symbol=symbol, limit=limit
+        return self._unwrap_list(
+            await self.client.request_async(
+                GRADES_HISTORICAL, symbol=symbol, limit=limit
+            ),
+            HistoricalStockGrade,
         )
 
     async def get_grades_consensus(self, symbol: str) -> StockGradesConsensus | None:
@@ -631,8 +720,14 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
 
     async def get_grades_news(self, symbol: str, page: int = 0) -> list[StockGradeNews]:
         """Get stock grade news"""
-        return await self.client.request_async(GRADES_NEWS, symbol=symbol, page=page)
+        return self._unwrap_list(
+            await self.client.request_async(GRADES_NEWS, symbol=symbol, page=page),
+            StockGradeNews,
+        )
 
     async def get_grades_latest_news(self, page: int = 0) -> list[StockGradeNews]:
         """Get latest stock grade news"""
-        return await self.client.request_async(GRADES_LATEST_NEWS, page=page)
+        return self._unwrap_list(
+            await self.client.request_async(GRADES_LATEST_NEWS, page=page),
+            StockGradeNews,
+        )

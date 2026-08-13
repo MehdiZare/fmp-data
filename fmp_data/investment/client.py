@@ -1,5 +1,6 @@
 # fmp_data/investment/client.py
 from datetime import date
+from typing import cast
 import warnings
 
 from fmp_data.base import EndpointGroup
@@ -27,6 +28,7 @@ from fmp_data.investment.models import (
     FundDisclosureSearchResult,
     MutualFundHolder,
     MutualFundHolding,
+    PortfolioDate,
 )
 
 
@@ -41,7 +43,9 @@ class InvestmentClient(EndpointGroup):
         params: dict[str, str] = {"symbol": symbol}
         if holdings_date is not None:
             params["date"] = holdings_date.strftime("%Y-%m-%d")
-        return self.client.request(ETF_HOLDINGS, **params)
+        return self._unwrap_list(
+            self.client.request(ETF_HOLDINGS, **params), ETFHolding
+        )
 
     @deprecated(
         "etf/portfolio-dates is dead. The live path funds/disclosure-dates is "
@@ -73,11 +77,14 @@ class InvestmentClient(EndpointGroup):
             ETFInfo object if found, or None if no data/error occurs
         """
         try:
-            result = self.client.request(ETF_INFO, symbol=symbol)
-            if isinstance(result, list):
-                return result[0] if result else None
+            result = cast(object, self.client.request(ETF_INFO, symbol=symbol))
             if isinstance(result, ETFInfo):
                 return result
+            if isinstance(result, list):
+                return cast(
+                    ETFInfo | None,
+                    self._unwrap_single(result, ETFInfo, allow_none=True),
+                )
             warnings.warn(
                 f"Unexpected result type from ETF_INFO: {type(result)}", stacklevel=2
             )
@@ -88,15 +95,23 @@ class InvestmentClient(EndpointGroup):
 
     def get_etf_sector_weightings(self, symbol: str) -> list[ETFSectorWeighting]:
         """Get ETF sector weightings"""
-        return self.client.request(ETF_SECTOR_WEIGHTINGS, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(ETF_SECTOR_WEIGHTINGS, symbol=symbol),
+            ETFSectorWeighting,
+        )
 
     def get_etf_country_weightings(self, symbol: str) -> list[ETFCountryWeighting]:
         """Get ETF country weightings"""
-        return self.client.request(ETF_COUNTRY_WEIGHTINGS, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(ETF_COUNTRY_WEIGHTINGS, symbol=symbol),
+            ETFCountryWeighting,
+        )
 
     def get_etf_exposure(self, symbol: str) -> list[ETFExposure]:
         """Get ETF stock exposure"""
-        return self.client.request(ETF_EXPOSURE, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(ETF_EXPOSURE, symbol=symbol), ETFExposure
+        )
 
     @deprecated(
         "etf/holder is dead and FMP publishes nothing with this shape. "
@@ -125,7 +140,7 @@ class InvestmentClient(EndpointGroup):
     # Mutual Fund methods
     def get_mutual_fund_dates(
         self, symbol: str, cik: str | int | None = None
-    ) -> list[date]:
+    ) -> list[PortfolioDate]:
         """Get mutual fund/ETF disclosure dates
 
         Args:
@@ -133,16 +148,19 @@ class InvestmentClient(EndpointGroup):
             cik: Optional fund CIK
 
         Returns:
-            List of disclosure dates
+            List of disclosure date records
         """
         params: dict[str, str | int] = {"symbol": symbol}
         if cik is not None:
             params["cik"] = cik
-        return self.client.request(MUTUAL_FUND_DATES, **params)
+        return self._unwrap_list(
+            self.client.request(MUTUAL_FUND_DATES, **params),
+            PortfolioDate,
+        )
 
     def get_fund_disclosure_dates(
         self, symbol: str, cik: str | int | None = None
-    ) -> list[date]:
+    ) -> list[PortfolioDate]:
         """Get mutual fund/ETF disclosure dates"""
         return self.get_mutual_fund_dates(symbol=symbol, cik=cik)
 
@@ -211,7 +229,10 @@ class InvestmentClient(EndpointGroup):
         self, symbol: str
     ) -> list[FundDisclosureHolderLatest]:
         """Get latest mutual fund/ETF disclosure holders"""
-        return self.client.request(FUNDS_DISCLOSURE_HOLDERS_LATEST, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(FUNDS_DISCLOSURE_HOLDERS_LATEST, symbol=symbol),
+            FundDisclosureHolderLatest,
+        )
 
     def get_fund_disclosure(
         self, symbol: str, year: int, quarter: int, cik: str | int | None = None
@@ -224,10 +245,15 @@ class InvestmentClient(EndpointGroup):
         }
         if cik is not None:
             params["cik"] = cik
-        return self.client.request(FUNDS_DISCLOSURE, **params)
+        return self._unwrap_list(
+            self.client.request(FUNDS_DISCLOSURE, **params), FundDisclosureHolding
+        )
 
     def search_fund_disclosure_holders(
         self, name: str
     ) -> list[FundDisclosureSearchResult]:
         """Search mutual fund/ETF disclosure holders by name"""
-        return self.client.request(FUNDS_DISCLOSURE_HOLDERS_SEARCH, name=name)
+        return self._unwrap_list(
+            self.client.request(FUNDS_DISCLOSURE_HOLDERS_SEARCH, name=name),
+            FundDisclosureSearchResult,
+        )

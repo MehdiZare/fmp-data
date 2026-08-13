@@ -18,7 +18,7 @@ from fmp_data.models import (
     URLType,
 )
 
-TREASURY_RATES: Endpoint = Endpoint(
+TREASURY_RATES: Endpoint[TreasuryRate] = Endpoint(
     name="treasury_rates",
     path="treasury-rates",
     version=APIVersion.STABLE,
@@ -57,7 +57,7 @@ TREASURY_RATES: Endpoint = Endpoint(
     ],
 )
 
-ECONOMIC_INDICATORS: Endpoint = Endpoint(
+ECONOMIC_INDICATORS: Endpoint[EconomicIndicator] = Endpoint(
     name="economic_indicators",
     path="economic-indicators",
     version=APIVersion.STABLE,
@@ -89,7 +89,7 @@ ECONOMIC_INDICATORS: Endpoint = Endpoint(
     ],
 )
 
-ECONOMIC_CALENDAR: Endpoint = Endpoint(
+ECONOMIC_CALENDAR: Endpoint[EconomicEvent] = Endpoint(
     name="economic_calendar",
     path="economic-calendar",
     version=APIVersion.STABLE,
@@ -128,7 +128,7 @@ ECONOMIC_CALENDAR: Endpoint = Endpoint(
     ],
 )
 
-MARKET_RISK_PREMIUM: Endpoint = Endpoint(
+MARKET_RISK_PREMIUM: Endpoint[MarketRiskPremium] = Endpoint(
     name="market_risk_premium",
     path="market-risk-premium",
     version=APIVersion.STABLE,
@@ -152,7 +152,7 @@ MARKET_RISK_PREMIUM: Endpoint = Endpoint(
     ],
 )
 
-COMMITMENT_OF_TRADERS_REPORT: Endpoint = Endpoint(
+COMMITMENT_OF_TRADERS_REPORT: Endpoint[CommitmentOfTradersReport] = Endpoint(
     name="commitment_of_traders_report",
     path="commitment-of-traders-report",
     version=APIVersion.STABLE,
@@ -190,7 +190,7 @@ COMMITMENT_OF_TRADERS_REPORT: Endpoint = Endpoint(
     ],
 )
 
-COMMITMENT_OF_TRADERS_ANALYSIS: Endpoint = Endpoint(
+COMMITMENT_OF_TRADERS_ANALYSIS: Endpoint[CommitmentOfTradersAnalysis] = Endpoint(
     name="commitment_of_traders_analysis",
     path="commitment-of-traders-analysis",
     version=APIVersion.STABLE,
@@ -228,7 +228,7 @@ COMMITMENT_OF_TRADERS_ANALYSIS: Endpoint = Endpoint(
     ],
 )
 
-COMMITMENT_OF_TRADERS_LIST: Endpoint = Endpoint(
+COMMITMENT_OF_TRADERS_LIST: Endpoint[CommitmentOfTradersListItem] = Endpoint(
     name="commitment_of_traders_list",
     path="commitment-of-traders-list",
     version=APIVersion.STABLE,

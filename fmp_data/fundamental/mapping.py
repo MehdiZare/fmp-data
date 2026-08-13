@@ -1,5 +1,7 @@
 # fmp_data/fundamental/mapping.py
 
+from typing import Any
+
 from fmp_data.fundamental.endpoints import (
     BALANCE_SHEET,
     CASH_FLOW,
@@ -28,9 +30,10 @@ from fmp_data.lc.models import (
     ResponseFieldInfo,
     SemanticCategory,
 )
+from fmp_data.models import Endpoint
 
 # Endpoint mappings
-FUNDAMENTAL_ENDPOINT_MAP = {
+FUNDAMENTAL_ENDPOINT_MAP: dict[str, Endpoint[Any]] = {
     "get_income_statement": INCOME_STATEMENT,
     "get_balance_sheet": BALANCE_SHEET,
     "get_cash_flow": CASH_FLOW,

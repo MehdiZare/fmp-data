@@ -23,7 +23,7 @@ from fmp_data.models import (
     ParamType,
 )
 
-INCOME_STATEMENT: Endpoint = Endpoint(
+INCOME_STATEMENT: Endpoint[IncomeStatement] = Endpoint(
     name="income_statement",
     path="income-statement",
     version=APIVersion.STABLE,
@@ -67,7 +67,7 @@ INCOME_STATEMENT: Endpoint = Endpoint(
     ],
 )
 
-BALANCE_SHEET: Endpoint = Endpoint(
+BALANCE_SHEET: Endpoint[BalanceSheet] = Endpoint(
     name="balance_sheet",
     path="balance-sheet-statement",
     version=APIVersion.STABLE,
@@ -110,7 +110,7 @@ BALANCE_SHEET: Endpoint = Endpoint(
     ],
 )
 
-CASH_FLOW: Endpoint = Endpoint(
+CASH_FLOW: Endpoint[CashFlowStatement] = Endpoint(
     name="cash_flow",
     path="cash-flow-statement",
     version=APIVersion.STABLE,
@@ -153,7 +153,7 @@ CASH_FLOW: Endpoint = Endpoint(
     ],
 )
 
-LATEST_FINANCIAL_STATEMENTS: Endpoint = Endpoint(
+LATEST_FINANCIAL_STATEMENTS: Endpoint[LatestFinancialStatement] = Endpoint(
     name="latest_financial_statements",
     path="latest-financial-statements",
     version=APIVersion.STABLE,
@@ -184,7 +184,7 @@ LATEST_FINANCIAL_STATEMENTS: Endpoint = Endpoint(
     ],
 )
 
-KEY_METRICS: Endpoint = Endpoint(
+KEY_METRICS: Endpoint[KeyMetrics] = Endpoint(
     name="key_metrics",
     path="key-metrics",
     version=APIVersion.STABLE,
@@ -227,7 +227,7 @@ KEY_METRICS: Endpoint = Endpoint(
     ],
 )
 
-FINANCIAL_RATIOS: Endpoint = Endpoint(
+FINANCIAL_RATIOS: Endpoint[FinancialRatios] = Endpoint(
     name="financial_ratios",
     path="ratios",
     version=APIVersion.STABLE,
@@ -269,7 +269,7 @@ FINANCIAL_RATIOS: Endpoint = Endpoint(
         "Show Amazon's liquidity metrics",
     ],
 )
-FULL_FINANCIAL_STATEMENT: Endpoint = Endpoint(
+FULL_FINANCIAL_STATEMENT: Endpoint[FinancialStatementFull] = Endpoint(
     name="full_financial_statement",
     path="financial-statement-full-as-reported",
     version=APIVersion.STABLE,
@@ -302,7 +302,7 @@ FULL_FINANCIAL_STATEMENT: Endpoint = Endpoint(
     response_model=FinancialStatementFull,
 )
 
-FINANCIAL_REPORTS_DATES: Endpoint = Endpoint(
+FINANCIAL_REPORTS_DATES: Endpoint[FinancialReportDate] = Endpoint(
     name="financial_reports_dates",
     path="financial-reports-dates",
     version=APIVersion.STABLE,
@@ -319,7 +319,7 @@ FINANCIAL_REPORTS_DATES: Endpoint = Endpoint(
     response_model=FinancialReportDate,
 )
 
-OWNER_EARNINGS: Endpoint = Endpoint(
+OWNER_EARNINGS: Endpoint[OwnerEarnings] = Endpoint(
     name="owner_earnings",
     path="owner-earnings",
     version=APIVersion.STABLE,
@@ -352,7 +352,7 @@ OWNER_EARNINGS: Endpoint = Endpoint(
     ],
 )
 
-LEVERED_DCF: Endpoint = Endpoint(
+LEVERED_DCF: Endpoint[LeveredDCF] = Endpoint(
     name="levered_dcf",
     path="levered-discounted-cash-flow",
     version=APIVersion.STABLE,
@@ -379,7 +379,7 @@ LEVERED_DCF: Endpoint = Endpoint(
     ],
 )
 
-HISTORICAL_RATING: Endpoint = Endpoint(
+HISTORICAL_RATING: Endpoint[HistoricalRating] = Endpoint(
     name="historical_rating",
     path="historical-rating",
     version=APIVersion.STABLE,
@@ -408,7 +408,7 @@ HISTORICAL_RATING: Endpoint = Endpoint(
     ],
 )
 
-DISCOUNTED_CASH_FLOW: Endpoint = Endpoint(
+DISCOUNTED_CASH_FLOW: Endpoint[DCF] = Endpoint(
     name="discounted_cash_flow",
     path="discounted-cash-flow",
     version=APIVersion.STABLE,
@@ -435,7 +435,7 @@ DISCOUNTED_CASH_FLOW: Endpoint = Endpoint(
     ],
 )
 
-CUSTOM_DISCOUNTED_CASH_FLOW: Endpoint = Endpoint(
+CUSTOM_DISCOUNTED_CASH_FLOW: Endpoint[CustomDCF] = Endpoint(
     name="custom_discounted_cash_flow",
     path="custom-discounted-cash-flow",
     version=APIVersion.STABLE,
@@ -462,7 +462,7 @@ CUSTOM_DISCOUNTED_CASH_FLOW: Endpoint = Endpoint(
     ],
 )
 
-CUSTOM_LEVERED_DCF: Endpoint = Endpoint(
+CUSTOM_LEVERED_DCF: Endpoint[CustomLeveredDCF] = Endpoint(
     name="custom_levered_dcf",
     path="custom-levered-discounted-cash-flow",
     version=APIVersion.STABLE,

@@ -27,74 +27,103 @@ class FundamentalClient(EndpointGroup):
         self, symbol: str, period: str = "annual", limit: int | None = None
     ) -> list[IncomeStatement]:
         """Get income statements"""
-        return self.client.request(
-            endpoints.INCOME_STATEMENT, symbol=symbol, period=period, limit=limit
+        return self._unwrap_list(
+            self.client.request(
+                endpoints.INCOME_STATEMENT, symbol=symbol, period=period, limit=limit
+            ),
+            IncomeStatement,
         )
 
     def get_balance_sheet(
         self, symbol: str, period: str = "annual", limit: int | None = None
     ) -> list[BalanceSheet]:
         """Get balance sheets"""
-        return self.client.request(
-            endpoints.BALANCE_SHEET, symbol=symbol, period=period, limit=limit
+        return self._unwrap_list(
+            self.client.request(
+                endpoints.BALANCE_SHEET, symbol=symbol, period=period, limit=limit
+            ),
+            BalanceSheet,
         )
 
     def get_cash_flow(
         self, symbol: str, period: str = "annual", limit: int | None = None
     ) -> list[CashFlowStatement]:
         """Get cash flow statements"""
-        return self.client.request(
-            endpoints.CASH_FLOW, symbol=symbol, period=period, limit=limit
+        return self._unwrap_list(
+            self.client.request(
+                endpoints.CASH_FLOW, symbol=symbol, period=period, limit=limit
+            ),
+            CashFlowStatement,
         )
 
     def get_latest_financial_statements(
         self, page: int = 0, limit: int = 250
     ) -> list[LatestFinancialStatement]:
         """Get latest financial statement metadata across symbols"""
-        return self.client.request(
-            endpoints.LATEST_FINANCIAL_STATEMENTS, page=page, limit=limit
+        return self._unwrap_list(
+            self.client.request(
+                endpoints.LATEST_FINANCIAL_STATEMENTS, page=page, limit=limit
+            ),
+            LatestFinancialStatement,
         )
 
     def get_key_metrics(
         self, symbol: str, period: str = "annual", limit: int | None = None
     ) -> list[KeyMetrics]:
         """Get key financial metrics"""
-        return self.client.request(
-            endpoints.KEY_METRICS, symbol=symbol, period=period, limit=limit
+        return self._unwrap_list(
+            self.client.request(
+                endpoints.KEY_METRICS, symbol=symbol, period=period, limit=limit
+            ),
+            KeyMetrics,
         )
 
     def get_financial_ratios(
         self, symbol: str, period: str = "annual", limit: int | None = None
     ) -> list[FinancialRatios]:
         """Get financial ratios"""
-        return self.client.request(
-            endpoints.FINANCIAL_RATIOS, symbol=symbol, period=period, limit=limit
+        return self._unwrap_list(
+            self.client.request(
+                endpoints.FINANCIAL_RATIOS, symbol=symbol, period=period, limit=limit
+            ),
+            FinancialRatios,
         )
 
     def get_full_financial_statement(
         self, symbol: str, period: str = "annual", limit: int | None = None
     ) -> list[FinancialStatementFull]:
         """Get full financial statements as reported"""
-        return self.client.request(
-            endpoints.FULL_FINANCIAL_STATEMENT,
-            symbol=symbol,
-            period=period,
-            limit=limit,
+        return self._unwrap_list(
+            self.client.request(
+                endpoints.FULL_FINANCIAL_STATEMENT,
+                symbol=symbol,
+                period=period,
+                limit=limit,
+            ),
+            FinancialStatementFull,
         )
 
     def get_financial_reports_dates(self, symbol: str) -> list[FinancialReportDate]:
         """Get list of financial reports dates"""
-        return self.client.request(endpoints.FINANCIAL_REPORTS_DATES, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(endpoints.FINANCIAL_REPORTS_DATES, symbol=symbol),
+            FinancialReportDate,
+        )
 
     def get_owner_earnings(
         self, symbol: str, limit: int | None = None
     ) -> list[OwnerEarnings]:
         """Get owner earnings metrics"""
-        return self.client.request(endpoints.OWNER_EARNINGS, symbol=symbol, limit=limit)
+        return self._unwrap_list(
+            self.client.request(endpoints.OWNER_EARNINGS, symbol=symbol, limit=limit),
+            OwnerEarnings,
+        )
 
     def get_levered_dcf(self, symbol: str) -> list[LeveredDCF]:
         """Get levered DCF valuation"""
-        return self.client.request(endpoints.LEVERED_DCF, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(endpoints.LEVERED_DCF, symbol=symbol), LeveredDCF
+        )
 
     @deprecated(
         "historical-rating is dead. The live path ratings-historical is "
@@ -119,12 +148,20 @@ class FundamentalClient(EndpointGroup):
 
     def get_discounted_cash_flow(self, symbol: str) -> list[DCF]:
         """Get discounted cash flow valuation"""
-        return self.client.request(endpoints.DISCOUNTED_CASH_FLOW, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(endpoints.DISCOUNTED_CASH_FLOW, symbol=symbol), DCF
+        )
 
     def get_custom_discounted_cash_flow(self, symbol: str) -> list[CustomDCF]:
         """Get advanced DCF analysis with detailed projections"""
-        return self.client.request(endpoints.CUSTOM_DISCOUNTED_CASH_FLOW, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(endpoints.CUSTOM_DISCOUNTED_CASH_FLOW, symbol=symbol),
+            CustomDCF,
+        )
 
     def get_custom_levered_dcf(self, symbol: str) -> list[CustomLeveredDCF]:
         """Get levered DCF analysis using FCFE"""
-        return self.client.request(endpoints.CUSTOM_LEVERED_DCF, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(endpoints.CUSTOM_LEVERED_DCF, symbol=symbol),
+            CustomLeveredDCF,
+        )

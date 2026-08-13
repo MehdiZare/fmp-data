@@ -144,7 +144,7 @@ STOCK_PRICE_CHANGE: Endpoint[StockPriceChange] = Endpoint(
     response_model=StockPriceChange,
 )
 
-HISTORICAL_PRICE: Endpoint = Endpoint(
+HISTORICAL_PRICE: Endpoint[HistoricalPrice] = Endpoint(
     name="historical_price",
     path="historical-price-eod/full",
     version=APIVersion.STABLE,
@@ -176,7 +176,7 @@ HISTORICAL_PRICE: Endpoint = Endpoint(
     response_model=HistoricalPrice,
 )
 
-HISTORICAL_PRICE_LIGHT: Endpoint = Endpoint(
+HISTORICAL_PRICE_LIGHT: Endpoint[HistoricalPrice] = Endpoint(
     name="historical_price_light",
     path="historical-price-eod/light",
     version=APIVersion.STABLE,
@@ -208,7 +208,7 @@ HISTORICAL_PRICE_LIGHT: Endpoint = Endpoint(
     response_model=HistoricalPrice,
 )
 
-HISTORICAL_PRICE_NON_SPLIT_ADJUSTED: Endpoint = Endpoint(
+HISTORICAL_PRICE_NON_SPLIT_ADJUSTED: Endpoint[HistoricalPrice] = Endpoint(
     name="historical_price_non_split_adjusted",
     path="historical-price-eod/non-split-adjusted",
     version=APIVersion.STABLE,
@@ -240,7 +240,7 @@ HISTORICAL_PRICE_NON_SPLIT_ADJUSTED: Endpoint = Endpoint(
     response_model=HistoricalPrice,
 )
 
-HISTORICAL_PRICE_DIVIDEND_ADJUSTED: Endpoint = Endpoint(
+HISTORICAL_PRICE_DIVIDEND_ADJUSTED: Endpoint[HistoricalPrice] = Endpoint(
     name="historical_price_dividend_adjusted",
     path="historical-price-eod/dividend-adjusted",
     version=APIVersion.STABLE,
@@ -508,7 +508,7 @@ COMPANY_NOTES: Endpoint[CompanyNote] = Endpoint(
     ],
 )
 
-HISTORICAL_SHARE_FLOAT: Endpoint = Endpoint(
+HISTORICAL_SHARE_FLOAT: Endpoint[HistoricalShareFloat] = Endpoint(
     name="historical_share_float",
     path="historical/shares-float",
     version=APIVersion.STABLE,
@@ -705,7 +705,7 @@ HISTORICAL_MARKET_CAP: Endpoint[MarketCapitalization] = Endpoint(
     optional_params=[],
     response_model=MarketCapitalization,
 )
-PRICE_TARGET: Endpoint = Endpoint(
+PRICE_TARGET: Endpoint[PriceTarget] = Endpoint(
     name="price_target",
     path="price-target",
     version=APIVersion.STABLE,
@@ -808,7 +808,7 @@ ANALYST_ESTIMATES: Endpoint[AnalystEstimate] = Endpoint(
     response_model=AnalystEstimate,
 )
 
-ANALYST_RECOMMENDATIONS: Endpoint = Endpoint(
+ANALYST_RECOMMENDATIONS: Endpoint[AnalystRecommendation] = Endpoint(
     name="analyst_recommendations",
     path="analyst-stock-recommendations",
     version=APIVersion.STABLE,
@@ -832,7 +832,7 @@ ANALYST_RECOMMENDATIONS: Endpoint = Endpoint(
     response_model=AnalystRecommendation,
 )
 
-UPGRADES_DOWNGRADES: Endpoint = Endpoint(
+UPGRADES_DOWNGRADES: Endpoint[UpgradeDowngrade] = Endpoint(
     name="upgrades_downgrades",
     path="upgrades-downgrades",
     version=APIVersion.STABLE,
@@ -944,7 +944,7 @@ DELISTED_COMPANIES: Endpoint[DelistedCompany] = Endpoint(
     response_model=DelistedCompany,
 )
 
-HISTORICAL_EMPLOYEE_COUNT: Endpoint = Endpoint(
+HISTORICAL_EMPLOYEE_COUNT: Endpoint[EmployeeCount] = Endpoint(
     name="historical_employee_count",
     path="historical/employee-count",
     version=APIVersion.STABLE,
@@ -965,7 +965,7 @@ HISTORICAL_EMPLOYEE_COUNT: Endpoint = Endpoint(
     response_model=EmployeeCount,
 )
 
-COMPANY_OUTLOOK: Endpoint = Endpoint(
+COMPANY_OUTLOOK: Endpoint[CompanyOutlook] = Endpoint(
     name="company_outlook",
     path="company-outlook",
     version=APIVersion.STABLE,
@@ -987,7 +987,7 @@ COMPANY_OUTLOOK: Endpoint = Endpoint(
     response_model=CompanyOutlook,
 )
 
-STOCK_SCREENER: Endpoint = Endpoint(
+STOCK_SCREENER: Endpoint[CompanyProfile] = Endpoint(
     name="stock_screener",
     path="stock-screener",
     version=APIVersion.STABLE,

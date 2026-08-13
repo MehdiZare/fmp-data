@@ -2,7 +2,7 @@
 """Async client for technical analysis endpoints."""
 
 from datetime import date
-from typing import Any, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel
 
@@ -57,7 +57,7 @@ class AsyncTechnicalClient(AsyncEndpointGroup):
         interval: str | None,
         start_date: date | None,
         end_date: date | None,
-    ) -> list[Any]:
+    ) -> list[T]:
         """Generic helper to fetch technical indicator data
 
         Args:
@@ -81,7 +81,10 @@ class AsyncTechnicalClient(AsyncEndpointGroup):
             params["from"] = start_date.strftime("%Y-%m-%d")
         if end_date:
             params["to"] = end_date.strftime("%Y-%m-%d")
-        return await self.client.request_async(endpoint, **params)
+        return self._unwrap_list(
+            await self.client.request_async(endpoint, **params),
+            endpoint.response_model,
+        )
 
     async def get_sma(
         self,

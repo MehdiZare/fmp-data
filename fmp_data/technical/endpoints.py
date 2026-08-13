@@ -25,7 +25,7 @@ from fmp_data.technical.models import (
 VALID_TIMEFRAMES = ["1min", "5min", "15min", "30min", "1hour", "4hour", "1day"]
 
 # Simple Moving Average
-SMA: Endpoint = Endpoint(
+SMA: Endpoint[SMAIndicator] = Endpoint(
     name="sma",
     path="technical-indicators/sma",
     version=APIVersion.STABLE,
@@ -79,7 +79,7 @@ SMA: Endpoint = Endpoint(
 )
 
 # Exponential Moving Average
-EMA: Endpoint = Endpoint(
+EMA: Endpoint[EMAIndicator] = Endpoint(
     name="ema",
     path="technical-indicators/ema",
     version=APIVersion.STABLE,
@@ -133,7 +133,7 @@ EMA: Endpoint = Endpoint(
 )
 
 # Weighted Moving Average
-WMA: Endpoint = Endpoint(
+WMA: Endpoint[WMAIndicator] = Endpoint(
     name="wma",
     path="technical-indicators/wma",
     version=APIVersion.STABLE,
@@ -187,7 +187,7 @@ WMA: Endpoint = Endpoint(
 )
 
 # Double Exponential Moving Average
-DEMA: Endpoint = Endpoint(
+DEMA: Endpoint[DEMAIndicator] = Endpoint(
     name="dema",
     path="technical-indicators/dema",
     version=APIVersion.STABLE,
@@ -241,7 +241,7 @@ DEMA: Endpoint = Endpoint(
 )
 
 # Triple Exponential Moving Average
-TEMA: Endpoint = Endpoint(
+TEMA: Endpoint[TEMAIndicator] = Endpoint(
     name="tema",
     path="technical-indicators/tema",
     version=APIVersion.STABLE,
@@ -295,7 +295,7 @@ TEMA: Endpoint = Endpoint(
 )
 
 # Relative Strength Index
-RSI: Endpoint = Endpoint(
+RSI: Endpoint[RSIIndicator] = Endpoint(
     name="rsi",
     path="technical-indicators/rsi",
     version=APIVersion.STABLE,
@@ -349,7 +349,7 @@ RSI: Endpoint = Endpoint(
 )
 
 # Standard Deviation
-STANDARD_DEVIATION: Endpoint = Endpoint(
+STANDARD_DEVIATION: Endpoint[StandardDeviationIndicator] = Endpoint(
     name="standard_deviation",
     path="technical-indicators/standarddeviation",
     version=APIVersion.STABLE,
@@ -403,7 +403,7 @@ STANDARD_DEVIATION: Endpoint = Endpoint(
 )
 
 # Williams %R
-WILLIAMS: Endpoint = Endpoint(
+WILLIAMS: Endpoint[WilliamsIndicator] = Endpoint(
     name="williams",
     path="technical-indicators/williams",
     version=APIVersion.STABLE,
@@ -457,7 +457,7 @@ WILLIAMS: Endpoint = Endpoint(
 )
 
 # Average Directional Index
-ADX: Endpoint = Endpoint(
+ADX: Endpoint[ADXIndicator] = Endpoint(
     name="adx",
     path="technical-indicators/adx",
     version=APIVersion.STABLE,

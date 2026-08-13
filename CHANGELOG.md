@@ -58,6 +58,16 @@ None. No FMP path we ship was newly retired by this changelog window.
   need to mock `request`. A lone object becomes `[row]`; an empty list
   stays empty.
 
+- **Remaining list endpoints and methods now go through `_unwrap_list` /
+  `Endpoint[T]` (#242).** Market, fundamental, investment, intelligence,
+  institutional, alternative, economics, and technical list surfaces bind
+  the row type (`Endpoint[T]`, not `Endpoint[list[T]]`) and normalize
+  `request()` / `request_async()` with `_unwrap_list`. Company historical
+  EOD helpers unwrap rows then wrap `HistoricalData`. `request()` stays
+  `T | list[T]`. Methods are not switched to `request_list`.
+  `get_mutual_fund_dates` / `get_fund_disclosure_dates` are annotated
+  `list[PortfolioDate]` (runtime already returned `PortfolioDate` rows).
+
 ### Added
 
 - **FMP hosted MCP vs `fmp-mcp` positioning (#230).** Docs-only: we are not

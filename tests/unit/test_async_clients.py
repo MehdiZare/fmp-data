@@ -449,6 +449,19 @@ class TestAsyncCompanyClient:
         assert result.historical[0].date.date() == dt_date(2024, 1, 1)
 
     @pytest.mark.asyncio
+    async def test_get_historical_prices_empty_list_stays_empty(self, mock_client):
+        """Empty EOD lists become HistoricalData(historical=[])."""
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        mock_client.request_async.return_value = []
+
+        async_client = AsyncCompanyClient(mock_client)
+        result = await async_client.get_historical_prices("AAPL")
+
+        assert result.symbol == "AAPL"
+        assert result.historical == []
+
+    @pytest.mark.asyncio
     async def test_get_historical_prices_with_date_filters(self, mock_client):
         """Test get_historical_prices forwards date filters."""
         from fmp_data.company import endpoints as company_endpoints
@@ -904,7 +917,7 @@ class TestAsyncMarketClient:
         mock_client.request_async.return_value = []
 
         async_client = AsyncMarketClient(mock_client)
-        with pytest.raises(ValueError, match="No market hours data"):
+        with pytest.raises(ValueError, match="Expected at least one MarketHours"):
             await async_client.get_market_hours(exchange="NYSE")
 
     @pytest.mark.asyncio
@@ -2612,7 +2625,7 @@ class TestAsyncAlternativeMarketsClient:
     async def test_get_crypto_historical_passes_dict_response(
         self, mock_client, monkeypatch
     ):
-        """Test crypto historical dict responses pass through."""
+        """Test crypto historical lone-row dicts wrap into HistoricalData."""
         from fmp_data.alternative.async_client import AsyncAlternativeMarketsClient
         from fmp_data.alternative.models import CryptoHistoricalData
 
@@ -2620,14 +2633,16 @@ class TestAsyncAlternativeMarketsClient:
         mock_validate = MagicMock(return_value=sentinel)
         monkeypatch.setattr(CryptoHistoricalData, "model_validate", mock_validate)
 
-        response = {"symbol": "BTCUSD", "historical": [{"date": "2024-01-01"}]}
+        response = {"date": "2024-01-01"}
         mock_client.request_async.return_value = response
 
         async_client = AsyncAlternativeMarketsClient(mock_client)
         result = await async_client.get_crypto_historical("BTCUSD")
 
         assert result is sentinel
-        mock_validate.assert_called_once_with(response)
+        mock_validate.assert_called_once_with(
+            {"symbol": "BTCUSD", "historical": [response]}
+        )
 
     @pytest.mark.asyncio
     async def test_get_forex_historical_formats_dates(self, mock_client):
@@ -2635,7 +2650,7 @@ class TestAsyncAlternativeMarketsClient:
         from fmp_data.alternative import endpoints as alternative_endpoints
         from fmp_data.alternative.async_client import AsyncAlternativeMarketsClient
 
-        mock_client.request_async.return_value = {"symbol": "EURUSD", "historical": []}
+        mock_client.request_async.return_value = []
 
         async_client = AsyncAlternativeMarketsClient(mock_client)
         result = await async_client.get_forex_historical(
@@ -2656,7 +2671,7 @@ class TestAsyncAlternativeMarketsClient:
         from fmp_data.alternative import endpoints as alternative_endpoints
         from fmp_data.alternative.async_client import AsyncAlternativeMarketsClient
 
-        mock_client.request_async.return_value = {"symbol": "CL", "historical": []}
+        mock_client.request_async.return_value = []
 
         async_client = AsyncAlternativeMarketsClient(mock_client)
         result = await async_client.get_commodity_historical(

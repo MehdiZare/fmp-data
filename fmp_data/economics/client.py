@@ -35,11 +35,16 @@ class EconomicsClient(EndpointGroup):
         if end_date:
             params["end_date"] = end_date.strftime("%Y-%m-%d")
 
-        return self.client.request(TREASURY_RATES, **params)
+        return self._unwrap_list(
+            self.client.request(TREASURY_RATES, **params), TreasuryRate
+        )
 
     def get_economic_indicators(self, indicator_name: str) -> list[EconomicIndicator]:
         """Get economic indicator data"""
-        return self.client.request(ECONOMIC_INDICATORS, name=indicator_name)
+        return self._unwrap_list(
+            self.client.request(ECONOMIC_INDICATORS, name=indicator_name),
+            EconomicIndicator,
+        )
 
     def get_economic_calendar(
         self, start_date: date | None = None, end_date: date | None = None
@@ -51,11 +56,15 @@ class EconomicsClient(EndpointGroup):
         if end_date:
             params["end_date"] = end_date.strftime("%Y-%m-%d")
 
-        return self.client.request(ECONOMIC_CALENDAR, **params)
+        return self._unwrap_list(
+            self.client.request(ECONOMIC_CALENDAR, **params), EconomicEvent
+        )
 
     def get_market_risk_premium(self) -> list[MarketRiskPremium]:
         """Get market risk premium data"""
-        return self.client.request(MARKET_RISK_PREMIUM)
+        return self._unwrap_list(
+            self.client.request(MARKET_RISK_PREMIUM), MarketRiskPremium
+        )
 
     def get_commitment_of_traders_report(
         self, symbol: str, start_date: date, end_date: date
@@ -66,7 +75,10 @@ class EconomicsClient(EndpointGroup):
             "start_date": start_date.strftime("%Y-%m-%d"),
             "end_date": end_date.strftime("%Y-%m-%d"),
         }
-        return self.client.request(COMMITMENT_OF_TRADERS_REPORT, **params)
+        return self._unwrap_list(
+            self.client.request(COMMITMENT_OF_TRADERS_REPORT, **params),
+            CommitmentOfTradersReport,
+        )
 
     def get_commitment_of_traders_analysis(
         self, symbol: str, start_date: date, end_date: date
@@ -77,8 +89,13 @@ class EconomicsClient(EndpointGroup):
             "start_date": start_date.strftime("%Y-%m-%d"),
             "end_date": end_date.strftime("%Y-%m-%d"),
         }
-        return self.client.request(COMMITMENT_OF_TRADERS_ANALYSIS, **params)
+        return self._unwrap_list(
+            self.client.request(COMMITMENT_OF_TRADERS_ANALYSIS, **params),
+            CommitmentOfTradersAnalysis,
+        )
 
     def get_commitment_of_traders_list(self) -> list[CommitmentOfTradersListItem]:
         """Get list of available Commitment of Traders (COT) symbols"""
-        return self.client.request(COMMITMENT_OF_TRADERS_LIST)
+        return self._unwrap_list(
+            self.client.request(COMMITMENT_OF_TRADERS_LIST), CommitmentOfTradersListItem
+        )

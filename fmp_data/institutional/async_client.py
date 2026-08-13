@@ -98,16 +98,15 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
             )
             return []
 
-        if isinstance(result, list):
-            if not result:
-                self.client.logger.warning(
-                    "No Form 13F data found for CIK %s in %s Q%s.",
-                    cik,
-                    year,
-                    quarter,
-                )
-            return result
-        return [result]
+        result = self._unwrap_list(result, Form13F)
+        if not result:
+            self.client.logger.warning(
+                "No Form 13F data found for CIK %s in %s Q%s.",
+                cik,
+                year,
+                quarter,
+            )
+        return result
 
     async def get_form_13f(self, cik: str | int, report_date: date) -> list[Form13F]:
         """
@@ -137,8 +136,7 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         """
         try:
             result = await self.client.request_async(FORM_13F_DATES, cik=cik)
-            # Ensure we always return a list
-            return result if isinstance(result, list) else [result]
+            return self._unwrap_list(result, Form13FDate)
         except (FMPError, ValidationError) as e:
             # API errors return empty list for convenience (same contract as sync).
             self.client.logger.warning(
@@ -168,8 +166,11 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         self, page: int = 0, limit: int = 100
     ) -> list[InstitutionalHolder]:
         """Get list of institutional holders"""
-        return await self.client.request_async(
-            INSTITUTIONAL_HOLDERS, page=page, limit=limit
+        return self._unwrap_list(
+            await self.client.request_async(
+                INSTITUTIONAL_HOLDERS, page=page, limit=limit
+            ),
+            InstitutionalHolder,
         )
 
     async def get_institutional_holdings_by_quarter(
@@ -186,8 +187,11 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
             year: Filing year (e.g., 2023)
             quarter: Calendar quarter, 1-4
         """
-        return await self.client.request_async(
-            INSTITUTIONAL_HOLDINGS, symbol=symbol, year=year, quarter=quarter
+        return self._unwrap_list(
+            await self.client.request_async(
+                INSTITUTIONAL_HOLDINGS, symbol=symbol, year=year, quarter=quarter
+            ),
+            InstitutionalHolding,
         )
 
     async def get_institutional_holdings(
@@ -223,17 +227,25 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         self, symbol: str, page: int = 0, limit: int = 100
     ) -> list[InsiderTrade]:
         """Get insider trades"""
-        return await self.client.request_async(
-            INSIDER_TRADES, symbol=symbol, page=page, limit=limit
+        return self._unwrap_list(
+            await self.client.request_async(
+                INSIDER_TRADES, symbol=symbol, page=page, limit=limit
+            ),
+            InsiderTrade,
         )
 
     async def get_transaction_types(self) -> list[InsiderTransactionType]:
         """Get insider transaction types"""
-        return await self.client.request_async(TRANSACTION_TYPES)
+        return self._unwrap_list(
+            await self.client.request_async(TRANSACTION_TYPES), InsiderTransactionType
+        )
 
     async def get_insider_roster(self, symbol: str) -> list[InsiderRoster]:
         """Get insider roster"""
-        return await self.client.request_async(INSIDER_ROSTER, symbol=symbol)
+        return self._unwrap_list(
+            await self.client.request_async(INSIDER_ROSTER, symbol=symbol),
+            InsiderRoster,
+        )
 
     async def get_insider_statistics(self, symbol: str) -> InsiderStatistic:
         """Get insider trading statistics"""
@@ -244,7 +256,10 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         self, page: int = 0, limit: int = 1000
     ) -> list[CIKMapping]:
         """Get CIK to name mappings"""
-        return await self.client.request_async(CIK_MAPPER, page=page, limit=limit)
+        return self._unwrap_list(
+            await self.client.request_async(CIK_MAPPER, page=page, limit=limit),
+            CIKMapping,
+        )
 
     async def search_cik_by_name(self, name: str, page: int = 0) -> list[CIKMapping]:
         """
@@ -261,9 +276,10 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         Returns:
             List of CIK mappings matching the name
         """
-        results = await self.client.request_async(CIK_MAPPER, page=page, limit=10000)
-        if not isinstance(results, list):
-            results = [results]
+        results = self._unwrap_list(
+            await self.client.request_async(CIK_MAPPER, page=page, limit=10000),
+            CIKMapping,
+        )
         name_upper = name.strip().upper()
         return [
             item
@@ -274,7 +290,10 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
 
     async def get_beneficial_ownership(self, symbol: str) -> list[BeneficialOwnership]:
         """Get beneficial ownership data for a symbol"""
-        return await self.client.request_async(BENEFICIAL_OWNERSHIP, symbol=symbol)
+        return self._unwrap_list(
+            await self.client.request_async(BENEFICIAL_OWNERSHIP, symbol=symbol),
+            BeneficialOwnership,
+        )
 
     @deprecated(
         "The FMP API no longer serves fail-to-deliver data and publishes no "
@@ -302,7 +321,10 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         params: dict[str, int | str | date] = {"page": page, "limit": limit}
         if trade_date is not None:
             params["date"] = trade_date
-        return await self.client.request_async(INSIDER_TRADING_LATEST, **params)
+        return self._unwrap_list(
+            await self.client.request_async(INSIDER_TRADING_LATEST, **params),
+            InsiderTradingLatest,
+        )
 
     async def search_insider_trading(
         self,
@@ -323,14 +345,20 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
             params["companyCik"] = company_cik
         if transaction_type:
             params["transactionType"] = transaction_type
-        return await self.client.request_async(INSIDER_TRADING_SEARCH, **params)
+        return self._unwrap_list(
+            await self.client.request_async(INSIDER_TRADING_SEARCH, **params),
+            InsiderTradingSearch,
+        )
 
     async def get_insider_trading_by_name(
         self, reporting_name: str, page: int = 0
     ) -> list[InsiderTradingByName]:
         """Search insider trades by reporting name"""
-        return await self.client.request_async(
-            INSIDER_TRADING_BY_NAME, name=reporting_name, page=page
+        return self._unwrap_list(
+            await self.client.request_async(
+                INSIDER_TRADING_BY_NAME, name=reporting_name, page=page
+            ),
+            InsiderTradingByName,
         )
 
     async def get_insider_trading_statistics_enhanced(
@@ -350,7 +378,10 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         params: dict[str, str | int] = {"page": page, "limit": limit}
         if cik:
             params["cik"] = cik
-        return await self.client.request_async(INSTITUTIONAL_OWNERSHIP_LATEST, **params)
+        return self._unwrap_list(
+            await self.client.request_async(INSTITUTIONAL_OWNERSHIP_LATEST, **params),
+            InstitutionalOwnershipLatest,
+        )
 
     async def get_institutional_ownership_extract_by_quarter(
         self, cik: str | int, year: int, quarter: int
@@ -361,8 +392,11 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         query parameters the API takes. See the sync
         :meth:`~fmp_data.institutional.client.InstitutionalClient.get_institutional_ownership_extract_by_quarter`.
         """
-        return await self.client.request_async(
-            INSTITUTIONAL_OWNERSHIP_EXTRACT, cik=cik, year=year, quarter=quarter
+        return self._unwrap_list(
+            await self.client.request_async(
+                INSTITUTIONAL_OWNERSHIP_EXTRACT, cik=cik, year=year, quarter=quarter
+            ),
+            InstitutionalOwnershipExtract,
         )
 
     async def get_institutional_ownership_extract(
@@ -378,7 +412,10 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         self, cik: str | int
     ) -> list[InstitutionalOwnershipDates]:
         """Get Form 13F filing dates"""
-        return await self.client.request_async(INSTITUTIONAL_OWNERSHIP_DATES, cik=cik)
+        return self._unwrap_list(
+            await self.client.request_async(INSTITUTIONAL_OWNERSHIP_DATES, cik=cik),
+            InstitutionalOwnershipDates,
+        )
 
     async def get_institutional_ownership_analytics_by_quarter(
         self,
@@ -393,13 +430,16 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         Wire shape of the analytics endpoint. See the sync
         :meth:`~fmp_data.institutional.client.InstitutionalClient.get_institutional_ownership_analytics_by_quarter`.
         """
-        return await self.client.request_async(
-            INSTITUTIONAL_OWNERSHIP_ANALYTICS,
-            symbol=symbol,
-            year=year,
-            quarter=quarter,
-            page=page,
-            limit=limit,
+        return self._unwrap_list(
+            await self.client.request_async(
+                INSTITUTIONAL_OWNERSHIP_ANALYTICS,
+                symbol=symbol,
+                year=year,
+                quarter=quarter,
+                page=page,
+                limit=limit,
+            ),
+            InstitutionalOwnershipAnalytics,
         )
 
     async def get_institutional_ownership_analytics(
@@ -424,7 +464,10 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
             params["year"] = year
         if quarter is not None:
             params["quarter"] = quarter
-        return await self.client.request_async(HOLDER_PERFORMANCE_SUMMARY, **params)
+        return self._unwrap_list(
+            await self.client.request_async(HOLDER_PERFORMANCE_SUMMARY, **params),
+            HolderPerformanceSummary,
+        )
 
     async def get_holder_performance_summary_by_quarter(
         self, cik: str | int, year: int, quarter: int, page: int = 0
@@ -464,8 +507,11 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         Wire shape of the industry-breakdown endpoint. See the sync
         :meth:`~fmp_data.institutional.client.InstitutionalClient.get_holder_industry_breakdown_by_quarter`.
         """
-        return await self.client.request_async(
-            HOLDER_INDUSTRY_BREAKDOWN, cik=cik, year=year, quarter=quarter
+        return self._unwrap_list(
+            await self.client.request_async(
+                HOLDER_INDUSTRY_BREAKDOWN, cik=cik, year=year, quarter=quarter
+            ),
+            HolderIndustryBreakdown,
         )
 
     async def get_holder_industry_breakdown(
@@ -483,8 +529,11 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         Wire shape of the symbol-positions-summary endpoint. See the sync
         :meth:`~fmp_data.institutional.client.InstitutionalClient.get_symbol_positions_summary_by_quarter`.
         """
-        return await self.client.request_async(
-            SYMBOL_POSITIONS_SUMMARY, symbol=symbol, year=year, quarter=quarter
+        return self._unwrap_list(
+            await self.client.request_async(
+                SYMBOL_POSITIONS_SUMMARY, symbol=symbol, year=year, quarter=quarter
+            ),
+            SymbolPositionsSummary,
         )
 
     async def get_symbol_positions_summary(
@@ -502,8 +551,11 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
         Wire shape of the industry-performance endpoint. See the sync
         :meth:`~fmp_data.institutional.client.InstitutionalClient.get_industry_performance_summary_by_quarter`.
         """
-        return await self.client.request_async(
-            INDUSTRY_PERFORMANCE_SUMMARY, year=year, quarter=quarter
+        return self._unwrap_list(
+            await self.client.request_async(
+                INDUSTRY_PERFORMANCE_SUMMARY, year=year, quarter=quarter
+            ),
+            IndustryPerformanceSummary,
         )
 
     async def get_industry_performance_summary(
