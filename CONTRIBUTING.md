@@ -26,6 +26,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
+This repo requires uv 0.12.3 or newer (`uv self update` if yours is older).
+
 3. **Install dependencies:**
 ```bash
 # Quick setup with make
