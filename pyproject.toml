@@ -428,6 +428,8 @@ exclude_lines = [
     "def main():",
     "class .*\\(Protocol\\):",
     "@abstractmethod",
+    "@overload",
+    "\\.\\.\\.$",
 ]
 show_missing = true
 fail_under = 80
