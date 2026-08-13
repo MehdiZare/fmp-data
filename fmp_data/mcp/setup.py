@@ -100,6 +100,12 @@ class SetupWizard:
             else:
                 print(message)
 
+    def prompt_secret(self, message: str) -> str:
+        """Read a secret with echo disabled."""
+        import getpass
+
+        return getpass.getpass(f"{self._redact_sensitive(message)}: ").strip()
+
     def prompt(self, message: str, default: str | None = None) -> str:
         """
         Prompt user for input.
@@ -241,7 +247,7 @@ class SetupWizard:
         )
 
         while True:
-            api_key = self.prompt("Enter your FMP API key").strip()
+            api_key = self.prompt_secret("Enter your FMP API key")
 
             if not api_key:
                 self.print("API key is required", "error")
