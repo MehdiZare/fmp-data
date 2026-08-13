@@ -87,36 +87,15 @@ def _sync_with_uv(session: Session, extras: Iterable[str] = ()) -> None:
     # Install the base package first
     session.run("uv", "pip", "install", "-e", ".")
 
-    # Install dependency groups and extras separately
+    # Install dependency groups and extras from pyproject.toml so
+    # floors live in one place and a bump there is enough to update CI.
     for extra in extras:
         if extra == "dev":
-            # Install all dev dependencies from dependency-groups
-            session.run(
-                "uv",
-                "pip",
-                "install",
-                "pytest>=8.3.3",
-                "pytest-asyncio>=0.24.0",
-                "pytest-cov>=6.0.0",
-                "pytest-mock>=3.14.0",
-                "pytest-xdist>=3.6.1",
-                "coverage>=7.6.4",
-                "freezegun>=1.5.1",
-                "responses>=0.25.3",
-                "vcrpy>=6.0.2",
-                "ruff>=0.12.2",
-                "mypy>=1.13.0",
-                "bandit[toml]>=1.7.10",
-                "pip-audit>=2.7.0",
-                "python-dotenv>=1.2.1",
-            )
+            session.run("uv", "pip", "install", "--group", "dev")
         elif extra in ["langchain", "mcp", "mcp-server"]:
-            # Handle actual extras from [project.optional-dependencies]
-            # mcp-server maps to mcp in optional-dependencies
             extra_name = "mcp" if extra == "mcp-server" else extra
             session.run("uv", "pip", "install", f"-e.[{extra_name}]")
         else:
-            # Try as an extra
             session.run("uv", "pip", "install", f"-e.[{extra}]")
 
 
@@ -327,14 +306,39 @@ def typecheck(session: Session) -> None:
 
 @nox.session(python=DEFAULT_PYTHON, tags=["security"])
 def security(session: Session) -> None:
-    """Check dependencies for known CVEs."""
-    _sync_with_uv(session, extras=["dev"])
-    # virtualenv seeds this session with whatever pip it bundles, which lags
-    # behind the current release and drags its own CVEs into the audit. Upgrade
-    # it first so the report covers project dependencies rather than the
-    # scaffolding around them.
-    session.run("python", "-m", "pip", "install", "--upgrade", "pip")
-    session.run("pip-audit")
+    """Audit the published extra graph for known CVEs.
+
+    Resolve extras from ``pyproject.toml`` at session time (no committed
+    hashed lock) and audit that pin set. A floor bump in pyproject is
+    enough to pick up newer deps (#252 FMP-SEC-008).
+    """
+    session.install("uv", "pip-audit>=2.10.1")
+    export = Path(session.create_tmp()) / "requirements-audit.txt"
+    session.run(
+        "uv",
+        "export",
+        "--extra",
+        "langchain",
+        "--extra",
+        "mcp",
+        "--extra",
+        "cache-redis",
+        "--no-dev",
+        "--no-emit-project",
+        "--no-hashes",
+        "--no-header",
+        "--no-annotate",
+        "-o",
+        str(export),
+    )
+    session.run(
+        "pip-audit",
+        "-r",
+        str(export),
+        "--strict",
+        "--no-deps",
+        "--disable-pip",
+    )
 
 
 @nox.session(python=DEFAULT_PYTHON, tags=["smoke"])
