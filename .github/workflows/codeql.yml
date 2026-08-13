@@ -1,5 +1,8 @@
 name: CodeQL
 
+# Advanced setup. GitHub default setup must stay off — the two cannot
+# upload into the same code-scanning slot.
+
 on:
   push:
     branches:
