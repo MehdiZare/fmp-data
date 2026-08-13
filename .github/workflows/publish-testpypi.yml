@@ -57,9 +57,9 @@ jobs:
         with:
           enable-cache: false
 
-      - name: 📦  Install pinned build frontend and backend
+      - name: 📦  Install build frontend and backend (version floors)
         run: |
-          uv pip install --system --require-hashes -r .github/requirements-build.txt
+          uv pip install --system -r .github/requirements-build.txt
 
       - name: 🏷️  Calculate and create test version tag
         id: version
@@ -292,7 +292,7 @@ jobs:
       - name: 📦  Build wheel & sdist
         run: |
           set -euo pipefail
-          uv pip install --system --require-hashes -r .github/requirements-build.txt
+          uv pip install --system -r .github/requirements-build.txt
           python -m build --no-isolation --wheel --sdist
           (cd dist && sha256sum ./* > ../SHA256SUMS)
           cat SHA256SUMS

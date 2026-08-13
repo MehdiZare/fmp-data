@@ -1,4 +1,4 @@
-"""Publish jobs pin hatchling/hatch-vcs and build without PEP 517 isolation."""
+"""Publish jobs install build backends from version floors, not a hashed lock."""
 
 from __future__ import annotations
 
@@ -9,11 +9,21 @@ WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 REQUIREMENTS = REPO_ROOT / ".github" / "requirements-build.txt"
 
 
-def test_requirements_build_pins_backend_with_hashes() -> None:
+def test_requirements_build_uses_version_floors() -> None:
     text = REQUIREMENTS.read_text(encoding="utf-8")
-    for package in ("build==", "hatchling==", "hatch-vcs=="):
+    for package in ("build>=", "hatchling>=", "hatch-vcs>="):
         assert package in text
-    assert "--hash=sha256:" in text
+    assert "==" not in text
+    assert "--hash=" not in text
+
+
+def test_publish_installs_without_require_hashes() -> None:
+    offenders: list[str] = []
+    for path in sorted(WORKFLOWS.glob("*.yml")):
+        text = path.read_text(encoding="utf-8")
+        if "requirements-build.txt" in text and "--require-hashes" in text:
+            offenders.append(str(path.relative_to(REPO_ROOT)))
+    assert offenders == []
 
 
 def test_publish_builds_use_no_isolation() -> None:

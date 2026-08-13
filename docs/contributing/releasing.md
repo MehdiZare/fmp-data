@@ -133,9 +133,9 @@ the overlay in a hotfix-shaped PR.
   being skipped.
 - External Actions are pinned to full commit SHAs. The PEP 517 frontend
   (`build`) and backend (`hatchling`, `hatch-vcs`) are installed from
-  `.github/requirements-build.txt` with `--require-hashes`. Publish jobs
-  run `python -m build --no-isolation` so PEP 517 isolation cannot pull
-  an unpinned backend from PyPI.
+  version floors in `.github/requirements-build.txt` (not a hashed lock).
+  Publish jobs run `python -m build --no-isolation` so isolation cannot
+  pull a different backend than the one just installed.
 - **Claude Code Review** is advisory: missing or expired OAuth tokens do not
   fail the PR. Required gates live in `ci.yml` / the branch rulesets.
 
