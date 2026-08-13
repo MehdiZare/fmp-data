@@ -63,3 +63,13 @@ def test_langchain_config_from_env(lc_env_vars, tmp_path):
     assert config.vector_store_path == str(tmp_path / "vector_store")
     assert config.similarity_threshold == 0.5
     assert config.max_tools == 10
+
+
+def test_embedding_api_key_not_in_repr() -> None:
+    config = LangChainConfig(
+        api_key="fmp-secret",
+        embedding_api_key="openai-secret-key",
+    )
+    assert "openai-secret-key" not in repr(config)
+    assert "openai-secret-key" not in str(config)
+    assert config.embedding_api_key == "openai-secret-key"

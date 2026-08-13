@@ -223,6 +223,10 @@ None. No FMP path we ship was newly retired by this changelog window.
 - **MCP Claude config is written ``0600`` and the API key is prompted with
   echo off (#252 FMP-SEC-006).** Directory ``0700``; backups ``0600``;
   atomic replace.
+- **Secondary secrets no longer survive ``str``/``repr`` (#252 FMP-SEC-007).**
+  ``embedding_api_key`` and embedding ``api_key`` are ``repr=False``.
+  ``CacheConfig.redis_url`` userinfo is redacted. Nested cache URLs on
+  ``ClientConfig`` are redacted the same way.
 
 ## [2.6.0] - 2026-08-10
 

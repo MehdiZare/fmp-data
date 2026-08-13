@@ -702,3 +702,23 @@ class TestConfigEdgeCases:
         # Modify nested logging config
         config.logging.level = "ERROR"
         assert config.logging.level == "ERROR"
+
+
+def test_cache_and_client_repr_hide_redis_userinfo() -> None:
+    from fmp_data.cache.config import CacheConfig
+
+    cache = CacheConfig(
+        backend="redis",
+        redis_url="redis://:hunter2@localhost:6379/0",
+    )
+    assert "hunter2" not in str(cache)
+    assert "hunter2" not in repr(cache)
+
+    client = ClientConfig(
+        api_key="abcd-secret",
+        cache=cache,
+    )
+    text = str(client)
+    assert "hunter2" not in text
+    assert "abcd-secret" not in text
+    assert "abcd***" in text

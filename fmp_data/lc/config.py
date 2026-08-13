@@ -24,7 +24,9 @@ class LangChainConfig(ClientConfig):
         default=None, description="Model name for embeddings"
     )
     embedding_api_key: str | None = Field(
-        default=None, description="API key for embedding provider"
+        default=None,
+        description="API key for embedding provider",
+        repr=False,
     )
 
     # Vector store settings
