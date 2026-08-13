@@ -418,6 +418,7 @@ class TestClientConfig:
             "https://",
             "",
             "just_text",
+            "http://example.com",
         ]
 
         for url in invalid_urls:
