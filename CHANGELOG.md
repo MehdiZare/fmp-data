@@ -215,6 +215,11 @@ None. No FMP path we ship was newly retired by this changelog window.
   except loopback HTTP. The key is sent only as the `apikey` query parameter
   (no client-wide header that a 302 would forward). Cross-origin redirects
   are refused.
+- **Log redaction applies to child loggers and ``api_key=%s`` (#252 FMP-SEC-005).**
+  The filter formats the message before masking, so a ``%s`` value is not
+  treated as the secret (which previously crashed logging and printed the
+  raw key). The filter is attached to each handler and each child logger.
+  JSON extras and exception text are redacted.
 
 ## [2.6.0] - 2026-08-10
 

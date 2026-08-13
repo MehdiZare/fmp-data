@@ -158,6 +158,36 @@ class TestSensitiveDataFilter:
         assert filter_instance.filter(record) is True
         assert record.getMessage() == original_message  # Should be unchanged
 
+    def test_percent_s_format_does_not_leak_or_raise(self) -> None:
+        """``api_key=%s`` must not treat ``%s`` as the secret (#252 FMP-SEC-005)."""
+        filter_instance = SensitiveDataFilter()
+        secret = "supersecretkey99"  # noqa: S105
+        record = logging.LogRecord(
+            name="test_logger",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="parent has api_key=%s",
+            args=(secret,),
+            exc_info=None,
+        )
+        assert filter_instance.filter(record) is True
+        text = record.getMessage()
+        assert secret not in text
+        assert "api_key=" in text
+
+    def test_child_logger_redacts_without_test_adding_filter(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        from fmp_data.logger import FMPLogger
+
+        secret = "childsecretkey99"  # noqa: S105
+        log = FMPLogger().get_logger("fmp_data.base")
+        caplog.set_level(logging.INFO, logger="fmp_data.base")
+        log.info("child saw api_key=%s", secret)
+        assert secret not in caplog.text
+        assert "api_key=" in caplog.text
+
 
 class TestJsonFormatter:
     """Test JsonFormatter functionality"""
