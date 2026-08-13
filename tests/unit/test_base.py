@@ -1175,3 +1175,41 @@ class TestRequestList:
                 await base_client.request_async_list(test_endpoint, symbol="AAPL")
                 is items
             )
+
+
+def test_http_client_does_not_put_apikey_in_default_headers(client_config):
+    """Query param is the only key channel (#252 FMP-SEC-004)."""
+    from fmp_data.base import BaseClient
+
+    client = BaseClient(client_config)
+    try:
+        assert "apikey" not in {k.lower() for k in client.client.headers}
+    finally:
+        client.close()
+
+
+def test_reject_cross_origin_redirect():
+    from fmp_data.base import _reject_cross_origin_redirect
+
+    src = httpx.Request("GET", "https://trusted.test/path")
+    dst = httpx.Request("GET", "https://attacker.test/steal")
+    response = httpx.Response(
+        302, headers={"location": "https://attacker.test/steal"}, request=src
+    )
+    object.__setattr__(response, "next_request", dst)
+
+    with pytest.raises(FMPError, match="cross-origin"):
+        _reject_cross_origin_redirect(response)
+
+
+def test_same_origin_redirect_is_allowed():
+    from fmp_data.base import _reject_cross_origin_redirect
+
+    src = httpx.Request("GET", "https://trusted.test/old")
+    dst = httpx.Request("GET", "https://trusted.test/new")
+    response = httpx.Response(
+        302, headers={"location": "https://trusted.test/new"}, request=src
+    )
+    object.__setattr__(response, "next_request", dst)
+
+    _reject_cross_origin_redirect(response)

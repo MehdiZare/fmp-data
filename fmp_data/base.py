@@ -40,6 +40,27 @@ T = TypeVar("T")
 ValidationMode = Literal["lenient", "warn", "strict"]
 
 
+def _default_http_headers() -> dict[str, str]:
+    """Headers shared by the sync and async clients. No API key (#252)."""
+    return {
+        "User-Agent": "FMP-Python-Client/1.0",
+        "Accept": "application/json",
+    }
+
+
+def _reject_cross_origin_redirect(response: httpx.Response) -> None:
+    """Refuse a 3xx that would send the next hop to another origin."""
+    nxt = response.next_request
+    if nxt is None:
+        return
+    src, dst = response.request.url, nxt.url
+    if (src.scheme, src.host, src.port) != (dst.scheme, dst.host, dst.port):
+        raise FMPError(
+            "Refusing cross-origin redirect "
+            f"from {src.scheme}://{src.host} to {dst.scheme}://{dst.host}"
+        )
+
+
 def _refuse_bytes_list_request(endpoint: Endpoint[T]) -> None:
     """``request_list`` is for row lists, not file downloads."""
     if endpoint.response_model is bytes:
@@ -188,15 +209,16 @@ class BaseClient:
     def _setup_http_client(self) -> None:
         """
         Setup HTTP client with default configuration.
+
+        The API key travels as the ``apikey`` query parameter only. A
+        client-wide header would be forwarded on a 302 to another origin
+        (#252 FMP-SEC-004). Cross-origin redirects are refused.
         """
         self.client = httpx.Client(
             timeout=self.config.timeout,
             follow_redirects=True,
-            headers={
-                "User-Agent": "FMP-Python-Client/1.0",
-                "Accept": "application/json",
-                "apikey": self.config.api_key,
-            },
+            headers=_default_http_headers(),
+            event_hooks={"response": [_reject_cross_origin_redirect]},
         )
 
     def close(self) -> None:
@@ -218,11 +240,8 @@ class BaseClient:
             self._async_client = httpx.AsyncClient(
                 timeout=self.config.timeout,
                 follow_redirects=True,
-                headers={
-                    "User-Agent": "FMP-Python-Client/1.0",
-                    "Accept": "application/json",
-                    "apikey": self.config.api_key,
-                },
+                headers=_default_http_headers(),
+                event_hooks={"response": [_reject_cross_origin_redirect]},
             )
         return self._async_client
 

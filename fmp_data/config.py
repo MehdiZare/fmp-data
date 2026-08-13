@@ -21,6 +21,14 @@ from fmp_data.cache.config import CacheConfig
 from fmp_data.exceptions import ConfigError
 
 
+def _is_loopback_host(hostname: str | None) -> bool:
+    """True for localhost / loopback literals used by local test servers."""
+    if not hostname:
+        return False
+    host = hostname.strip("[]").lower()
+    return host in {"localhost", "127.0.0.1", "::1"} or host.startswith("127.")
+
+
 def _safe_int_from_env(env_var: str, default: int, *, min_val: int = 0) -> int:
     """Safely convert environment variable to int, falling back to default."""
     try:
@@ -251,7 +259,12 @@ class ClientConfig(BaseModel):
     @field_validator("base_url")
     @classmethod
     def validate_base_url(cls, v: str) -> str:
-        """Validate base URL format"""
+        """Validate base URL format.
+
+        HTTPS is required except for loopback HTTP (local mocks). A
+        non-loopback ``http://`` origin would send ``apikey`` in the clear
+        (#252 FMP-SEC-004).
+        """
         if not v or not v.strip():
             raise ValueError("Base URL cannot be empty")
 
@@ -262,6 +275,12 @@ class ClientConfig(BaseModel):
                 raise ValueError(f"Invalid URL format: {v}")
             if parsed.scheme not in ("http", "https"):
                 raise ValueError(f"URL scheme must be http or https: {v}")
+            if parsed.scheme == "http" and not _is_loopback_host(parsed.hostname):
+                raise ValueError(
+                    f"base_url must use https except for loopback HTTP: {v}"
+                )
+        except ValueError:
+            raise
         except Exception as e:
             raise ValueError(f"Invalid URL: {v}") from e
 

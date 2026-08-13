@@ -209,6 +209,13 @@ None. No FMP path we ship was newly retired by this changelog window.
   `.py` still writes the restricted `TOOLS = ["..."]` form so existing
   scripts keep working. Unknown suffixes are refused.
 
+### Security
+
+- **API key stays on origin (#252 FMP-SEC-004).** `base_url` must be HTTPS
+  except loopback HTTP. The key is sent only as the `apikey` query parameter
+  (no client-wide header that a 302 would forward). Cross-origin redirects
+  are refused.
+
 ## [2.6.0] - 2026-08-10
 
 Released from `dev`. A correctness-and-contracts release: the LangChain and MCP
