@@ -939,6 +939,81 @@ class TestGeneratedManifestIsUsable:
         assert content.endswith("]\n")
 
 
+class TestGenerateManifestFormatFromSuffix:
+    """#256: suffix chooses JSON / YAML / TOML / legacy Python."""
+
+    @staticmethod
+    def _write(
+        tmp_path: Path, name: str
+    ) -> tuple[Path, bool, list[str] | None, str | None]:
+        from fmp_data.mcp.cli import generate_manifest
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        path = tmp_path / name
+        written = generate_manifest(
+            path,
+            tools=["company.profile", "market.gainers"],
+            include_defaults=False,
+        )
+        if not written:
+            return path, written, None, None
+        return path, written, load_manifest_tools(path), path.read_text()
+
+    def test_json_suffix_writes_tools_object(self, tmp_path: Path) -> None:
+        _path, written, tools, content = self._write(tmp_path, "manifest.json")
+        assert written is True
+        assert tools == ["company.profile", "market.gainers"]
+        assert content is not None
+        assert '"tools"' in content
+        assert "TOOLS =" not in content
+        assert content.endswith("\n")
+
+    def test_yaml_suffix_loads(self, tmp_path: Path) -> None:
+        _, written, tools, content = self._write(tmp_path, "manifest.yaml")
+        assert written is True
+        assert tools == ["company.profile", "market.gainers"]
+        assert content is not None
+        assert content.startswith("tools:")
+
+    def test_toml_suffix_loads(self, tmp_path: Path) -> None:
+        _, written, tools, content = self._write(tmp_path, "manifest.toml")
+        assert written is True
+        assert tools == ["company.profile", "market.gainers"]
+        assert content is not None
+        assert content.startswith("tools = [")
+
+    def test_py_suffix_still_writes_tools_assignment(self, tmp_path: Path) -> None:
+        _, written, tools, content = self._write(tmp_path, "manifest.py")
+        assert written is True
+        assert tools == ["company.profile", "market.gainers"]
+        assert content is not None
+        assert "TOOLS = [" in content
+
+    def test_no_suffix_writes_json(self, tmp_path: Path) -> None:
+        from fmp_data.mcp.cli import generate_manifest
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        path = tmp_path / "manifest"
+        written = generate_manifest(
+            path, tools=["company.profile"], include_defaults=False
+        )
+        written_path = tmp_path / "manifest.json"
+        assert written is True
+        assert not path.exists()
+        assert load_manifest_tools(written_path) == ["company.profile"]
+
+    def test_unknown_suffix_is_refused(self, tmp_path: Path, capsys) -> None:
+        from fmp_data.mcp.cli import generate_manifest
+
+        path = tmp_path / "manifest.txt"
+        written = generate_manifest(
+            path, tools=["company.profile"], include_defaults=False
+        )
+        assert written is False
+        assert not path.exists()
+        assert ".json" in capsys.readouterr().err
+
+
 class TestListLabelsAllThreeRetirementConcepts:
     """#158: ``list`` knew only about renames, so withdrawals read as live.
 

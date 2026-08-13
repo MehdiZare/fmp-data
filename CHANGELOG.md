@@ -201,6 +201,14 @@ None. No FMP path we ship was newly retired by this changelog window.
   treated `isinstance(payload, bytes)` as a lone row and returned `[bytes]`.
   Quote-list unwrap is unchanged.
 
+### Changed
+
+- **`fmp-mcp generate` writes JSON / YAML / TOML from the output suffix (#256).**
+  `.json` is preferred (`{"tools": [...]}`). `.yaml` / `.yml` and `.toml` use
+  the same `tools` object. A path with no suffix becomes `<name>.json`.
+  `.py` still writes the restricted `TOOLS = ["..."]` form so existing
+  scripts keep working. Unknown suffixes are refused.
+
 ## [2.6.0] - 2026-08-10
 
 Released from `dev`. A correctness-and-contracts release: the LangChain and MCP
