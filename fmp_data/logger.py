@@ -96,48 +96,33 @@ class SensitiveDataFilter(logging.Filter):
         return masked_text
 
     def filter(self, record: logging.LogRecord) -> bool:
-        """Filter log record to mask sensitive data"""
-        # Process the message itself
-        msg = getattr(record, "msg", None)
-        if msg:
-            record.msg = self._mask_patterns_in_string(str(msg))
+        """Filter log record to mask sensitive data.
 
-        # For args processing, we need to be very careful to not break string formatting
-        if record.args:
-            try:
-                # Get the original formatted message first
-                original_msg = record.msg
-                original_args = record.args
-                if original_args:
-                    formatted_msg = str(original_msg) % original_args
-                else:
-                    formatted_msg = str(original_msg)
-                masked_msg = self._mask_patterns_in_string(formatted_msg)
+        Format the message *before* masking. Mutating ``api_key=%s`` first
+        treats ``%s`` as the secret, then leaves ``record.args`` intact so
+        logging raises and the error handler prints the raw key (#252
+        FMP-SEC-005).
+        """
+        try:
+            formatted = record.getMessage()
+        except Exception:
+            formatted = str(record.msg)
+        record.msg = self._mask_patterns_in_string(formatted)
+        record.args = ()
 
-                # Replace with masked message and no args to avoid formatting issues
-                record.msg = masked_msg
-                record.args = ()
-
-            except Exception:  # nosec B110
-                # If formatting fails, try processing args individually
-                try:
-                    new_args = []
-                    for arg in record.args:
-                        if isinstance(arg, str):
-                            masked_arg = self._mask_patterns_in_string(arg)
-                            new_args.append(masked_arg)
-                        elif isinstance(arg, dict):
-                            masked_dict = self._mask_dict_recursive(deepcopy(arg))
-                            new_args.append(masked_dict)
-                        elif isinstance(arg, list):
-                            masked_list = self._mask_dict_recursive(deepcopy(arg))
-                            new_args.append(masked_list)
-                        else:
-                            new_args.append(arg)
-                    record.args = tuple(new_args)
-                except Exception:  # noqa: S110  # nosec B110
-                    # If everything fails, leave record unchanged
-                    pass
+        for key, value in list(record.__dict__.items()):
+            if key.startswith("_"):
+                continue
+            lowered = key.lower()
+            if lowered in self.sensitive_keys or any(
+                token in lowered for token in ("api_key", "apikey", "redis_url")
+            ):
+                if isinstance(value, str | int | float):
+                    record.__dict__[key] = self._mask_value(str(value))
+                elif isinstance(value, dict | list):
+                    record.__dict__[key] = self._mask_dict_recursive(deepcopy(value))
+            elif key in {"exc_text", "stack_info"} and isinstance(value, str):
+                record.__dict__[key] = self._mask_patterns_in_string(value)
 
         return True
 
@@ -219,6 +204,31 @@ class JsonFormatter(logging.Formatter):
             } and not key.startswith("_"):
                 log_data[key] = value
 
+        redactor = SensitiveDataFilter()
+        if "exception" in log_data:
+            log_data["exception"]["message"] = redactor._mask_patterns_in_string(
+                log_data["exception"]["message"]
+            )
+            log_data["exception"]["traceback"] = redactor._mask_patterns_in_string(
+                log_data["exception"]["traceback"]
+            )
+        for extra_key, extra_value in list(log_data.items()):
+            if extra_key in {
+                "timestamp",
+                "level",
+                "message",
+                "module",
+                "line",
+                "exception",
+            }:
+                continue
+            if isinstance(extra_value, str):
+                log_data[extra_key] = redactor._mask_patterns_in_string(extra_value)
+            elif isinstance(extra_value, dict | list):
+                log_data[extra_key] = redactor._mask_dict_recursive(
+                    deepcopy(extra_value)
+                )
+
         return json.dumps(log_data, default=str)
 
 
@@ -291,11 +301,24 @@ class FMPLogger:
         self._handlers: dict[str, logging.Handler] = {}
 
         # Add sensitive data filter
-        self._logger.addFilter(SensitiveDataFilter())
+        self._ensure_redaction_filter(self._logger)
 
         # Add default console handler if no handlers exist
         if not self._logger.handlers:
             self._add_default_console_handler()
+
+    @staticmethod
+    def _ensure_redaction_filter(
+        target: logging.Logger | logging.Handler,
+    ) -> None:
+        """Attach ``SensitiveDataFilter`` once. Child loggers skip ancestor
+        filters; handler filters run on every emit (#252 FMP-SEC-005).
+        """
+        if any(
+            isinstance(existing, SensitiveDataFilter) for existing in target.filters
+        ):
+            return
+        target.addFilter(SensitiveDataFilter())
 
     def get_logger(self, name: str | None = None) -> logging.Logger:
         """Return a child of the package logger.
@@ -305,8 +328,9 @@ class FMPLogger:
         ``logging.getLogger("fmp_data")``; ``getChild("fmp_data.base")``
         would prefix an already-qualified module name (#238).
 
-        Handlers and filters stay on the root logger. Children propagate
-        to it unchanged.
+        Handlers stay on the root logger. Each child also gets a
+        ``SensitiveDataFilter`` because ancestor logger filters are not
+        applied to descendant records.
 
         Args:
             name: Optional logger name. A fully-qualified ``fmp_data.*``
@@ -320,8 +344,11 @@ class FMPLogger:
             return self._logger
         prefix = "fmp_data."
         if name.startswith(prefix):
-            return self._logger.getChild(name[len(prefix) :])
-        return self._logger.getChild(name)
+            child = self._logger.getChild(name[len(prefix) :])
+        else:
+            child = self._logger.getChild(name)
+        self._ensure_redaction_filter(child)
+        return child
 
     def _add_default_console_handler(self) -> None:
         """Add default console handler with a reasonable format"""
@@ -331,6 +358,7 @@ class FMPLogger:
         )
         handler.setFormatter(formatter)
         handler.setLevel(logging.INFO)
+        self._ensure_redaction_filter(handler)
         self._logger.addHandler(handler)
         self._handlers["console"] = handler
 
@@ -411,6 +439,7 @@ class FMPLogger:
             handler.setFormatter(logging.Formatter(config.format))
 
         handler.setLevel(getattr(logging, config.level))
+        self._ensure_redaction_filter(handler)
         self._logger.addHandler(handler)
         self._handlers[name] = handler
 
