@@ -170,6 +170,12 @@ None. No FMP path we ship was newly retired by this changelog window.
   had made every unsigned automation commit need `--admin` despite green checks;
   required Test-Matrix jobs, no force-push, and no branch deletion remain.
 
+### Changed
+
+- **CI installs the latest ``uv`` via ``setup-uv`` v10.** The action pin
+  is the v10.0.0 SHA (repo requires SHA-pinned actions). ``version:
+  latest`` lets uv itself move without another workflow edit.
+
 ### Security
 
 - **``pip-audit --strict`` audits a live extras export (#252 FMP-SEC-008).**
