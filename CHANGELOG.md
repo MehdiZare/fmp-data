@@ -182,6 +182,9 @@ None. No FMP path we ship was newly retired by this changelog window.
   CI no longer skips when VCR cassettes are absent. ``detect-secrets``
   compares the whole tree to ``.secrets.baseline``; dummy keys in tests
   are baselined. Cassettes stay zero-tolerance when present.
+- **CodeQL analyzes the Python tree on every PR (#252 FMP-SEC-008).**
+  Findings upload to GitHub code scanning. The workflow is SHA-pinned
+  and uses ``build-mode: none``.
 
 - **Isolated PyPI publishing and immutable Actions pins (#252).** Release,
   Dev-Release, and Publish-to-TestPyPI now build in a job with no OIDC token
