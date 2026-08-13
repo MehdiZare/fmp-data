@@ -290,22 +290,24 @@ class TestSecureRotatingFileHandler:
             permissions = stat_info.st_mode & 0o777
             assert permissions == 0o600
 
-    def test_permission_error_handling(self, tmp_path):
-        """Test handling of permission errors"""
+    def test_permission_error_handling(self, tmp_path, caplog):
+        """chmod failures log on fmp_data.logger, not a stdlib-only logger (#241)."""
         log_file = tmp_path / "test.log"
 
-        with patch("os.chmod", side_effect=OSError("Permission denied")):
-            with patch("logging.getLogger") as mock_get_logger:
-                mock_logger = Mock()
-                mock_get_logger.return_value = mock_logger
+        with (
+            patch("os.chmod", side_effect=OSError("Permission denied")),
+            caplog.at_level(logging.WARNING, logger="fmp_data.logger"),
+        ):
+            _ = SecureRotatingFileHandler(filename=str(log_file))
 
-                _ = SecureRotatingFileHandler(filename=str(log_file))
-
-                # Should have logged a warning (possibly called once during init)
-                assert mock_logger.warning.called
-                assert "Could not set secure permissions" in str(
-                    mock_logger.warning.call_args_list
-                )
+        extras = [
+            record
+            for record in caplog.records
+            if "Could not set secure permissions" in record.getMessage()
+        ]
+        # __init__ and _open both try chmod when the file is first used.
+        assert extras
+        assert all(record.name == "fmp_data.logger" for record in extras)
 
     def test_windows_skip_permissions(self, tmp_path):
         """Test that permission setting is skipped on Windows"""
@@ -394,6 +396,97 @@ class TestFMPLogger:
         from fmp_data.base import logger as base_logger
 
         assert base_logger.name == "fmp_data.base"
+
+    def test_csv_utils_logger_is_package_child(self):
+        """batch._csv_utils must go through FMPLogger, not stdlib getLogger (#241)."""
+        from fmp_data.batch._csv_utils import logger as csv_logger
+
+        assert csv_logger.name == "fmp_data.batch._csv_utils"
+        assert csv_logger is FMPLogger().get_logger("fmp_data.batch._csv_utils")
+
+    def test_remaining_stdlib_module_loggers_are_package_children(self):
+        """Leftover fmp_data.* module loggers must sit on the package tree (#241)."""
+        from fmp_data.cache.file import logger as file_logger
+        from fmp_data.cache.redis_backend import logger as redis_logger
+        from fmp_data.investment.async_client import logger as investment_logger
+        from fmp_data.rate_limit import logger as rate_logger
+
+        expected = {
+            file_logger: "fmp_data.cache.file",
+            redis_logger: "fmp_data.cache.redis_backend",
+            investment_logger: "fmp_data.investment.async_client",
+            rate_logger: "fmp_data.rate_limit",
+        }
+        for log, name in expected.items():
+            assert log.name == name
+            assert log is FMPLogger().get_logger(name)
+
+    def test_lc_class_loggers_use_module_tree(self):
+        """Class-name loggers must land on fmp_data.lc.*, not fmp_data.Class (#241)."""
+        from fmp_data.lc.models import SemanticCategory
+        from fmp_data.lc.registry import EndpointBasedRule, EndpointRegistry
+        from fmp_data.lc.registry import ValidationRuleRegistry as RegistryRules
+        from fmp_data.lc.validation import CommonValidationRule
+        from fmp_data.lc.validation import ValidationRuleRegistry as ValidationRules
+
+        class _StubRule(CommonValidationRule):
+            @property
+            def expected_category(self) -> SemanticCategory:
+                return SemanticCategory.COMPANY_INFO
+
+        rule = _StubRule()
+        assert rule.logger.name == "fmp_data.lc.validation._StubRule"
+
+        validation_registry = ValidationRules()
+        assert validation_registry.logger.name == (
+            "fmp_data.lc.validation.ValidationRuleRegistry"
+        )
+
+        registry_rules = RegistryRules()
+        assert registry_rules.logger.name == (
+            "fmp_data.lc.registry.ValidationRuleRegistry"
+        )
+
+        endpoint_rule = EndpointBasedRule({}, SemanticCategory.COMPANY_INFO)
+        assert endpoint_rule.logger.name == "fmp_data.lc.registry.EndpointBasedRule"
+
+        endpoint_registry = EndpointRegistry()
+        assert endpoint_registry.logger.name == "fmp_data.lc.registry.EndpointRegistry"
+
+    def test_package_modules_do_not_call_stdlib_getlogger_name(self):
+        """Production fmp_data modules must enter via FMPLogger (#241)."""
+        import ast
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[2] / "fmp_data"
+        offenders: list[str] = []
+        for path in root.rglob("*.py"):
+            tree = ast.parse(path.read_text(), filename=str(path))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                func = node.func
+                if not (
+                    isinstance(func, ast.Attribute)
+                    and func.attr == "getLogger"
+                    and isinstance(func.value, ast.Name)
+                    and func.value.id == "logging"
+                ):
+                    continue
+                if len(node.args) != 1:
+                    continue
+                arg = node.args[0]
+                # Root construction in FMPLogger stays stdlib.
+                if (
+                    isinstance(arg, ast.Constant)
+                    and arg.value == "fmp_data"
+                    and path.name == "logger.py"
+                ):
+                    continue
+                if isinstance(arg, ast.Name) and arg.id == "__name__":
+                    offenders.append(f"{path.relative_to(root.parent)}:{node.lineno}")
+
+        assert offenders == []
 
     def test_get_logger_without_name(self):
         """Test getting logger without name"""

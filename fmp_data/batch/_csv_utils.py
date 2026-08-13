@@ -2,7 +2,6 @@
 
 import csv
 import io
-import logging
 from typing import Any, TypeVar, get_args, get_origin
 
 from pydantic import AnyHttpUrl, BaseModel, HttpUrl
@@ -10,8 +9,9 @@ from pydantic import ValidationError as PydanticValidationError
 
 from fmp_data.base import BaseClient, ValidationMode
 from fmp_data.exceptions import ValidationError
+from fmp_data.logger import FMPLogger
 
-logger = logging.getLogger(__name__)
+logger = FMPLogger().get_logger(__name__)
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
 

@@ -107,6 +107,15 @@ None. No FMP path we ship was newly retired by this changelog window.
   (`fmp_data.fmp_data.*`), switch to `fmp_data.*`. Handler and filter
   attachment is unchanged.
 
+- **Remaining logging entry points go through `FMPLogger` (#241).**
+  Production `logging.getLogger(__name__)` call sites (CSV extras, secure
+  log-file chmod, cache backends, rate limiter, investment async) now use
+  `FMPLogger().get_logger(__name__)`. LangChain class-name loggers use
+  `__name__` + `.getChild(class)` so `ValidationRule` lands on
+  `fmp_data.lc.validation.ValidationRule` rather than `fmp_data.ValidationRule`.
+  Extras tests listen on `fmp_data.base` via `caplog`. Handler and filter
+  attachment is unchanged.
+
 - **CSV bulk parsing now honors `FMP_VALIDATION_MODE` (#232).** `parse_csv_models`
   used `model.model_validate` directly, so unknown bulk headers (`overallScore`
   on `rating-bulk`, a misspelled diluted-PE column) landed in

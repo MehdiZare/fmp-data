@@ -1,5 +1,6 @@
 """Additional tests for base.py to improve coverage"""
 
+import logging
 from typing import cast
 from unittest.mock import Mock, patch
 
@@ -168,17 +169,23 @@ class TestValidateModel:
         with pytest.raises(ValidationError, match=r"\.\.\.$"):
             BaseClient._validate_model("test_ep", _SampleModel, payload, "strict")
 
-    def test_warn_logs_once_per_endpoint(self):
+    def test_warn_logs_once_per_endpoint(self, caplog):
         _extra_field_warnings_seen.discard(("dedup_ep", ("bonus",)))
         payload = {"name": "x", "value": 1, "bonus": True}
 
-        with patch("fmp_data.base.logger") as mock_logger:
+        with caplog.at_level(logging.WARNING, logger="fmp_data.base"):
             BaseClient._validate_model("dedup_ep", _SampleModel, payload, "warn")
-            assert mock_logger.warning.call_count == 1
+            extras = [
+                record for record in caplog.records if record.name == "fmp_data.base"
+            ]
+            assert len(extras) == 1
 
             # Second call with same endpoint+fields should NOT log again
             BaseClient._validate_model("dedup_ep", _SampleModel, payload, "warn")
-            assert mock_logger.warning.call_count == 1
+            extras = [
+                record for record in caplog.records if record.name == "fmp_data.base"
+            ]
+            assert len(extras) == 1
 
         # Cleanup
         _extra_field_warnings_seen.discard(("dedup_ep", ("bonus",)))

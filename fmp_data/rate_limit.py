@@ -7,10 +7,11 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from email.utils import parsedate_to_datetime
 import json
-import logging
 import time
 
-logger = logging.getLogger(__name__)
+from fmp_data.logger import FMPLogger
+
+logger = FMPLogger().get_logger(__name__)
 
 
 @dataclass
