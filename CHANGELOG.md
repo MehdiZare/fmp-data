@@ -188,10 +188,11 @@ None. No FMP path we ship was newly retired by this changelog window.
   and `fmp-mcp validate` no longer `exec` user-supplied Python. Legacy
   `TOOLS = ["..."]` files are parsed with a restricted AST (docstring + that
   assignment only). Imports, calls, and any other statement are rejected.
-  JSON, YAML, and TOML manifests are also accepted (`["spec"]` or
-  `{"tools": ["spec"]}`). Existing generated and example `.py` manifests keep
-  working. A file that previously ran arbitrary code as "validation" now
-  fails closed.
+  JSON and YAML accept a top-level list or `{"tools": ["..."]}`. TOML
+  accepts `tools = ["..."]` only (no top-level array). On Python 3.10
+  TOML uses `tomli` from the `mcp` extra; 3.11+ uses stdlib `tomllib`.
+  Existing generated and example `.py` manifests keep working. A file
+  that previously ran arbitrary code as "validation" now fails closed.
 
 ## [2.6.0] - 2026-08-10
 

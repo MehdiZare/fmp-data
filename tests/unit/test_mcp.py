@@ -1125,6 +1125,42 @@ class TestMCPManifestLoading:
         with pytest.raises(ValueError, match="does not execute"):
             load_manifest_tools(manifest)
 
+    def test_load_manifest_refuses_call_inside_tools_list(self, tmp_path):
+        """A call as a TOOLS element must not run (#252 FMP-SEC-001)."""
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        marker = tmp_path / "rhs-executed"
+        manifest = tmp_path / "rhs_call.py"
+        manifest.write_text(
+            f"TOOLS = [__import__('pathlib').Path({str(marker)!r}).write_text('RAN')]\n"
+        )
+
+        with pytest.raises(ValueError, match="does not execute"):
+            load_manifest_tools(manifest)
+        assert not marker.exists()
+
+    def test_load_manifest_refuses_fstring_inside_tools_list(self, tmp_path):
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        marker = tmp_path / "fstring-executed"
+        manifest = tmp_path / "rhs_fstring.py"
+        manifest.write_text(
+            'TOOLS = [f"{open(' + repr(str(marker)) + ", 'w').write('RAN')}\"]\n"
+        )
+
+        with pytest.raises(ValueError, match="does not execute"):
+            load_manifest_tools(manifest)
+        assert not marker.exists()
+
+    def test_load_manifest_refuses_non_tools_assignment(self, tmp_path):
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        manifest = tmp_path / "manifest.py"
+        manifest.write_text("X = 1\nTOOLS = ['company.profile']\n")
+
+        with pytest.raises(ValueError, match="does not execute"):
+            load_manifest_tools(manifest)
+
     def test_load_manifest_json_list(self, tmp_path):
         from fmp_data.mcp.utils import load_manifest_tools
 
@@ -1149,6 +1185,22 @@ class TestMCPManifestLoading:
 
         assert load_manifest_tools(manifest) == ["company.profile", "market.gainers"]
 
+    def test_load_manifest_yml_suffix(self, tmp_path):
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        manifest = tmp_path / "manifest.yml"
+        manifest.write_text("- company.profile\n")
+
+        assert load_manifest_tools(manifest) == ["company.profile"]
+
+    def test_load_manifest_toml_object(self, tmp_path):
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        manifest = tmp_path / "manifest.toml"
+        manifest.write_text('tools = ["company.profile", "market.gainers"]\n')
+
+        assert load_manifest_tools(manifest) == ["company.profile", "market.gainers"]
+
     def test_validate_manifest_does_not_execute_python(self, tmp_path, capsys):
         from fmp_data.mcp.cli import validate_manifest
 
@@ -1161,7 +1213,16 @@ class TestMCPManifestLoading:
         assert validate_manifest(manifest) is False
         assert not marker.exists()
         err = capsys.readouterr().err
-        assert "does not execute" in err or "ManifestExecutionError" in err
+        assert "does not execute" in err
+
+    def test_validate_manifest_rejects_malformed_json(self, tmp_path, capsys):
+        from fmp_data.mcp.cli import validate_manifest
+
+        manifest = tmp_path / "broken.json"
+        manifest.write_text("{not json\n")
+
+        assert validate_manifest(manifest) is False
+        assert "Invalid JSON" in capsys.readouterr().err
 
 
 @pytest.mark.integration

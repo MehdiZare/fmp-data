@@ -477,10 +477,14 @@ def _load_yaml_manifest(path: Path) -> list[str]:
 def _load_toml_manifest(path: Path) -> list[str]:
     try:
         import tomllib
-    except ImportError as exc:  # pragma: no cover - Python 3.10
-        raise RuntimeError(
-            f"Cannot load {path}: TOML manifests require Python 3.11+ (stdlib tomllib)."
-        ) from exc
+    except ImportError:  # pragma: no cover - Python 3.10
+        try:
+            import tomli as tomllib  # type: ignore[no-redef]
+        except ImportError as exc:
+            raise RuntimeError(
+                f"Cannot load {path}: TOML manifests need tomli on Python "
+                "3.10. Install with: pip install 'fmp-data[mcp]'"
+            ) from exc
     try:
         data = tomllib.loads(path.read_text(encoding="utf-8"))
     except tomllib.TOMLDecodeError as exc:
@@ -493,8 +497,10 @@ def load_manifest_tools(manifest_path: str | Path | None) -> list[str]:
     Load tool specs from a data-only manifest, or return defaults.
 
     Python files are parsed as a restricted ``TOOLS = ["..."]`` assignment.
-    They are never imported or executed. JSON, YAML, and TOML files are
-    accepted as a top-level list or an object with a ``tools`` list.
+    They are never imported or executed. JSON and YAML accept a top-level
+    list or an object with a ``tools`` list. TOML accepts only a ``tools``
+    array (no top-level TOML array). On Python 3.10 TOML parsing uses
+    ``tomli`` from the mcp extra.
 
     Parameters
     ----------
