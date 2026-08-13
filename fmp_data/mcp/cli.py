@@ -965,6 +965,9 @@ def validate_manifest(manifest_path: str | Path) -> bool:
     """
     Validate a manifest file for correctness.
 
+    The file is loaded as data (JSON / YAML / TOML / restricted ``TOOLS =``
+    Python). It is never imported or executed.
+
     Parameters
     ----------
     manifest_path
@@ -975,7 +978,7 @@ def validate_manifest(manifest_path: str | Path) -> bool:
     bool
         True if valid, False otherwise
     """
-    import importlib.util
+    from fmp_data.mcp.utils import load_manifest_tools
 
     manifest_path = Path(manifest_path).expanduser().resolve()
 
@@ -983,31 +986,11 @@ def validate_manifest(manifest_path: str | Path) -> bool:
         print(f"Error: Manifest file not found: {manifest_path}", file=sys.stderr)
         return False
 
-    # Try to import the manifest
-    spec = importlib.util.spec_from_file_location("test_manifest", manifest_path)
-    if spec is None or spec.loader is None:
-        print(f"Error: Cannot import manifest: {manifest_path}", file=sys.stderr)
-        return False
-
-    module = importlib.util.module_from_spec(spec)
     try:
-        spec.loader.exec_module(module)
+        tools = load_manifest_tools(manifest_path)
     except Exception as e:
         print(f"Error loading manifest: {e}", file=sys.stderr)
         return False
-
-    tools = getattr(module, "TOOLS", None)
-    if tools is None:
-        print("Error: Manifest does not define TOOLS variable", file=sys.stderr)
-        return False
-    if not isinstance(tools, list):
-        print("Error: TOOLS must be a list", file=sys.stderr)
-        return False
-
-    for tool in tools:
-        if not isinstance(tool, str):
-            print(f"Error: Tool spec must be string, got {type(tool)}", file=sys.stderr)
-            return False
 
     unknown, ambiguous, deprecated, withdrawn = _classify_manifest_entries(tools)
     duplicates, collisions = _manifest_name_clashes(tools)

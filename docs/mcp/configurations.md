@@ -104,7 +104,24 @@ app.run()
 
 ## Creating Custom Configurations
 
-You can create your own manifest by:
+Manifests are **data**. `fmp-mcp validate` and the server parse them; they
+never import or execute the file. A Python file that is not exactly a
+docstring plus `TOOLS = ["..."]` is rejected.
+
+Preferred new format:
+
+```json
+{
+  "tools": ["company.profile", "company.quote"]
+}
+```
+
+YAML (`tools: [company.profile]`) and TOML (`tools = ["company.profile"]`)
+are accepted the same way. TOML has no top-level array form; use a
+`tools` table. On Python 3.10 the `mcp` extra pulls in `tomli` for that
+parse; 3.11+ uses stdlib `tomllib`.
+
+You can still create a legacy Python manifest by:
 
 1. **Manual creation** - Copy one of these examples and modify:
 ```python

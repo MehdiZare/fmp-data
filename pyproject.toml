@@ -69,6 +69,8 @@ mcp = [
     # security-fixes only).
     "mcp[cli]>=2.0.0",
     "pyyaml>=6.0.3",
+    # stdlib tomllib is 3.11+; keep TOML manifests working on 3.10.
+    "tomli>=2.0.1; python_version < '3.11'",
 ]
 cache-redis = [
     "redis>=8.1.0",
@@ -282,6 +284,8 @@ module = [
     "redis",
     "yaml.*",
     "yaml",
+    "tomli",
+    "tomli.*",
     "rich.*",
     "tqdm.*",
     "pandas.*",

@@ -6,8 +6,8 @@ Helper functions for setting up and managing MCP server configuration.
 
 from __future__ import annotations
 
+import ast
 from datetime import datetime
-import importlib.util
 import json
 import os
 from pathlib import Path
@@ -366,14 +366,146 @@ def get_manifest_choices() -> dict[str, str | None]:
     return choices
 
 
+def _coerce_tool_list(data: Any, path: Path) -> list[str]:
+    """Accept a top-level list or an object with a ``tools`` list of strings."""
+    if isinstance(data, list):
+        items = data
+    elif isinstance(data, dict) and "tools" in data:
+        items = data["tools"]
+    else:
+        raise ValueError(
+            f"{path} must be a list of tool specs or an object with a "
+            "'tools' list of strings"
+        )
+    if not isinstance(items, list):
+        raise ValueError(f"{path}: 'tools' must be a list of strings")
+    tools: list[str] = []
+    for item in items:
+        if not isinstance(item, str) or not item:
+            raise ValueError(f"{path}: every tool spec must be a non-empty string")
+        tools.append(item)
+    return tools
+
+
+def _string_list_from_ast(node: ast.AST, path: Path) -> list[str]:
+    if not isinstance(node, ast.List):
+        raise ValueError(
+            f"{path} is not a data-only manifest: TOOLS must be a list of "
+            "string literals. A Python manifest does not execute."
+        )
+    tools: list[str] = []
+    for elt in node.elts:
+        if (
+            not isinstance(elt, ast.Constant)
+            or not isinstance(elt.value, str)
+            or not elt.value
+        ):
+            raise ValueError(
+                f"{path} is not a data-only manifest: TOOLS must contain only "
+                "non-empty string literals. A Python manifest does not execute."
+            )
+        tools.append(elt.value)
+    return tools
+
+
+def _parse_python_manifest(source: str, path: Path) -> list[str]:
+    """Parse a legacy ``TOOLS = ["..."]`` file without executing it."""
+    try:
+        tree = ast.parse(source, filename=str(path))
+    except SyntaxError as exc:
+        raise ValueError(f"Invalid Python manifest {path}: {exc}") from exc
+
+    tools: list[str] | None = None
+    for stmt in tree.body:
+        if (
+            isinstance(stmt, ast.Expr)
+            and isinstance(stmt.value, ast.Constant)
+            and isinstance(stmt.value.value, str)
+        ):
+            continue
+        if isinstance(stmt, ast.Assign):
+            if (
+                len(stmt.targets) != 1
+                or not isinstance(stmt.targets[0], ast.Name)
+                or stmt.targets[0].id != "TOOLS"
+            ):
+                raise ValueError(
+                    f"{path} is not a data-only manifest: only a module-level "
+                    "TOOLS = [...] assignment is allowed. A Python manifest "
+                    "does not execute."
+                )
+            if tools is not None:
+                raise ValueError(
+                    f"{path} is not a data-only manifest: TOOLS is assigned "
+                    "more than once. A Python manifest does not execute."
+                )
+            tools = _string_list_from_ast(stmt.value, path)
+            continue
+        raise ValueError(
+            f"{path} is not a data-only manifest: only a docstring and "
+            "TOOLS = [...] are allowed. A Python manifest does not execute."
+        )
+
+    if tools is None:
+        raise AttributeError(f"{path} does not define a global variable 'TOOLS'")
+    return tools
+
+
+def _load_json_manifest(path: Path) -> list[str]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON manifest {path}: {exc}") from exc
+    return _coerce_tool_list(data, path)
+
+
+def _load_yaml_manifest(path: Path) -> list[str]:
+    try:
+        import yaml
+    except ImportError as exc:
+        raise RuntimeError(
+            f"Cannot load {path}: PyYAML is required for YAML manifests. "
+            "Install with: pip install 'fmp-data[mcp]'"
+        ) from exc
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise ValueError(f"Invalid YAML manifest {path}: {exc}") from exc
+    return _coerce_tool_list(data, path)
+
+
+def _load_toml_manifest(path: Path) -> list[str]:
+    try:
+        import tomllib
+    except ImportError:  # pragma: no cover - Python 3.10
+        try:
+            import tomli as tomllib  # type: ignore[no-redef]
+        except ImportError as exc:
+            raise RuntimeError(
+                f"Cannot load {path}: TOML manifests need tomli on Python "
+                "3.10. Install with: pip install 'fmp-data[mcp]'"
+            ) from exc
+    try:
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+    except tomllib.TOMLDecodeError as exc:
+        raise ValueError(f"Invalid TOML manifest {path}: {exc}") from exc
+    return _coerce_tool_list(data, path)
+
+
 def load_manifest_tools(manifest_path: str | Path | None) -> list[str]:
     """
-    Load tool specs from a manifest file or return defaults.
+    Load tool specs from a data-only manifest, or return defaults.
+
+    Python files are parsed as a restricted ``TOOLS = ["..."]`` assignment.
+    They are never imported or executed. JSON and YAML accept a top-level
+    list or an object with a ``tools`` list. TOML accepts only a ``tools``
+    array (no top-level TOML array). On Python 3.10 TOML parsing uses
+    ``tomli`` from the mcp extra.
 
     Parameters
     ----------
     manifest_path
-        Path to a manifest file that defines ``TOOLS``, or None for defaults.
+        Path to a manifest file, or None for defaults.
 
     Returns
     -------
@@ -386,18 +518,18 @@ def load_manifest_tools(manifest_path: str | Path | None) -> list[str]:
         return list(DEFAULT_TOOLS)
 
     path = Path(manifest_path).expanduser().resolve()
-    spec = importlib.util.spec_from_file_location("user_manifest", path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Cannot import manifest at {path}")
+    if not path.is_file():
+        raise FileNotFoundError(f"Manifest file not found: {path}")
 
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    suffix = path.suffix.lower()
+    if suffix == ".json":
+        return _load_json_manifest(path)
+    if suffix in {".yaml", ".yml"}:
+        return _load_yaml_manifest(path)
+    if suffix == ".toml":
+        return _load_toml_manifest(path)
 
-    tools = getattr(module, "TOOLS", None)
-    if tools is None:
-        raise AttributeError(f"{path} does not define a global variable 'TOOLS'")
-
-    return list(tools)
+    return _parse_python_manifest(path.read_text(encoding="utf-8"), path)
 
 
 def restart_claude_desktop_instructions() -> str:
