@@ -172,9 +172,9 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Changed
 
-- **CI installs the latest ``uv`` via ``setup-uv`` v10.** The action pin
-  is the v10.0.0 SHA (repo requires SHA-pinned actions). ``version:
-  latest`` lets uv itself move without another workflow edit.
+- **CI and local uv are 0.12.3+.** ``setup-uv`` v10 installs uv ``0.12.3``.
+  ``[tool.uv] required-version = ">=0.12.3"`` rejects older local
+  installs. The action pin remains the v10.0.0 SHA.
 
 ### Security
 
