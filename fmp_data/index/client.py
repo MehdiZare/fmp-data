@@ -23,7 +23,9 @@ class IndexClient(EndpointGroup):
         Returns:
             List of S&P 500 constituent companies
         """
-        return self.client.request(SP500_CONSTITUENTS)
+        return self._unwrap_list(
+            self.client.request(SP500_CONSTITUENTS), IndexConstituent
+        )
 
     def get_nasdaq_constituents(self) -> list[IndexConstituent]:
         """Get current NASDAQ index constituents
@@ -31,7 +33,9 @@ class IndexClient(EndpointGroup):
         Returns:
             List of NASDAQ constituent companies
         """
-        return self.client.request(NASDAQ_CONSTITUENTS)
+        return self._unwrap_list(
+            self.client.request(NASDAQ_CONSTITUENTS), IndexConstituent
+        )
 
     def get_dowjones_constituents(self) -> list[IndexConstituent]:
         """Get current Dow Jones Industrial Average constituents
@@ -39,7 +43,9 @@ class IndexClient(EndpointGroup):
         Returns:
             List of Dow Jones constituent companies
         """
-        return self.client.request(DOWJONES_CONSTITUENTS)
+        return self._unwrap_list(
+            self.client.request(DOWJONES_CONSTITUENTS), IndexConstituent
+        )
 
     def get_historical_sp500(self) -> list[HistoricalIndexConstituent]:
         """Get historical S&P 500 constituent changes
@@ -47,7 +53,9 @@ class IndexClient(EndpointGroup):
         Returns:
             List of historical constituent additions and removals
         """
-        return self.client.request(HISTORICAL_SP500)
+        return self._unwrap_list(
+            self.client.request(HISTORICAL_SP500), HistoricalIndexConstituent
+        )
 
     def get_historical_nasdaq(self) -> list[HistoricalIndexConstituent]:
         """Get historical NASDAQ constituent changes
@@ -55,7 +63,9 @@ class IndexClient(EndpointGroup):
         Returns:
             List of historical constituent additions and removals
         """
-        return self.client.request(HISTORICAL_NASDAQ)
+        return self._unwrap_list(
+            self.client.request(HISTORICAL_NASDAQ), HistoricalIndexConstituent
+        )
 
     def get_historical_dowjones(self) -> list[HistoricalIndexConstituent]:
         """Get historical Dow Jones constituent changes
@@ -63,4 +73,6 @@ class IndexClient(EndpointGroup):
         Returns:
             List of historical constituent additions and removals
         """
-        return self.client.request(HISTORICAL_DOWJONES)
+        return self._unwrap_list(
+            self.client.request(HISTORICAL_DOWJONES), HistoricalIndexConstituent
+        )

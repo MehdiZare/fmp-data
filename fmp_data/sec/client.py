@@ -56,14 +56,17 @@ class SECClient(EndpointGroup):
         """
         end_date = to_date or date.today()
         start_date = from_date or (end_date - timedelta(days=30))
-        return self.client.request(
-            SEC_FILINGS_8K,
-            page=page,
-            limit=limit,
-            **{
-                "from": start_date.strftime("%Y-%m-%d"),
-                "to": end_date.strftime("%Y-%m-%d"),
-            },
+        return self._unwrap_list(
+            self.client.request(
+                SEC_FILINGS_8K,
+                page=page,
+                limit=limit,
+                **{
+                    "from": start_date.strftime("%Y-%m-%d"),
+                    "to": end_date.strftime("%Y-%m-%d"),
+                },
+            ),
+            SECFiling8K,
         )
 
     def get_latest_financials(
@@ -86,14 +89,17 @@ class SECClient(EndpointGroup):
         """
         end_date = to_date or date.today()
         start_date = from_date or (end_date - timedelta(days=30))
-        return self.client.request(
-            SEC_FILINGS_FINANCIALS,
-            page=page,
-            limit=limit,
-            **{
-                "from": start_date.strftime("%Y-%m-%d"),
-                "to": end_date.strftime("%Y-%m-%d"),
-            },
+        return self._unwrap_list(
+            self.client.request(
+                SEC_FILINGS_FINANCIALS,
+                page=page,
+                limit=limit,
+                **{
+                    "from": start_date.strftime("%Y-%m-%d"),
+                    "to": end_date.strftime("%Y-%m-%d"),
+                },
+            ),
+            SECFinancialFiling,
         )
 
     def search_by_form_type(
@@ -116,15 +122,18 @@ class SECClient(EndpointGroup):
         """
         end_date = to_date or date.today()
         start_date = from_date or (end_date - timedelta(days=30))
-        return self.client.request(
-            SEC_FILINGS_SEARCH_FORM_TYPE,
-            formType=form_type,
-            page=page,
-            limit=limit,
-            **{
-                "from": start_date.strftime("%Y-%m-%d"),
-                "to": end_date.strftime("%Y-%m-%d"),
-            },
+        return self._unwrap_list(
+            self.client.request(
+                SEC_FILINGS_SEARCH_FORM_TYPE,
+                formType=form_type,
+                page=page,
+                limit=limit,
+                **{
+                    "from": start_date.strftime("%Y-%m-%d"),
+                    "to": end_date.strftime("%Y-%m-%d"),
+                },
+            ),
+            SECFilingSearchResult,
         )
 
     def search_by_symbol(
@@ -147,15 +156,18 @@ class SECClient(EndpointGroup):
         """
         end_date = to_date or date.today()
         start_date = from_date or (end_date - timedelta(days=30))
-        return self.client.request(
-            SEC_FILINGS_SEARCH_SYMBOL,
-            symbol=symbol,
-            page=page,
-            limit=limit,
-            **{
-                "from": start_date.strftime("%Y-%m-%d"),
-                "to": end_date.strftime("%Y-%m-%d"),
-            },
+        return self._unwrap_list(
+            self.client.request(
+                SEC_FILINGS_SEARCH_SYMBOL,
+                symbol=symbol,
+                page=page,
+                limit=limit,
+                **{
+                    "from": start_date.strftime("%Y-%m-%d"),
+                    "to": end_date.strftime("%Y-%m-%d"),
+                },
+            ),
+            SECFilingSearchResult,
         )
 
     def search_by_cik(
@@ -178,15 +190,18 @@ class SECClient(EndpointGroup):
         """
         end_date = to_date or date.today()
         start_date = from_date or (end_date - timedelta(days=30))
-        return self.client.request(
-            SEC_FILINGS_SEARCH_CIK,
-            cik=cik,
-            page=page,
-            limit=limit,
-            **{
-                "from": start_date.strftime("%Y-%m-%d"),
-                "to": end_date.strftime("%Y-%m-%d"),
-            },
+        return self._unwrap_list(
+            self.client.request(
+                SEC_FILINGS_SEARCH_CIK,
+                cik=cik,
+                page=page,
+                limit=limit,
+                **{
+                    "from": start_date.strftime("%Y-%m-%d"),
+                    "to": end_date.strftime("%Y-%m-%d"),
+                },
+            ),
+            SECFilingSearchResult,
         )
 
     def search_company_by_name(
@@ -205,8 +220,11 @@ class SECClient(EndpointGroup):
         Returns:
             List of matching companies
         """
-        return self.client.request(
-            SEC_COMPANY_SEARCH_NAME, company=name, page=page, limit=limit
+        return self._unwrap_list(
+            self.client.request(
+                SEC_COMPANY_SEARCH_NAME, company=name, page=page, limit=limit
+            ),
+            SECCompanySearchResult,
         )
 
     def search_company_by_symbol(self, symbol: str) -> list[SECCompanySearchResult]:
@@ -218,7 +236,10 @@ class SECClient(EndpointGroup):
         Returns:
             List of matching companies
         """
-        return self.client.request(SEC_COMPANY_SEARCH_SYMBOL, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(SEC_COMPANY_SEARCH_SYMBOL, symbol=symbol),
+            SECCompanySearchResult,
+        )
 
     def search_company_by_cik(self, cik: str | int) -> list[SECCompanySearchResult]:
         """Search SEC companies by CIK number
@@ -229,7 +250,10 @@ class SECClient(EndpointGroup):
         Returns:
             List of matching companies
         """
-        return self.client.request(SEC_COMPANY_SEARCH_CIK, cik=cik)
+        return self._unwrap_list(
+            self.client.request(SEC_COMPANY_SEARCH_CIK, cik=cik),
+            SECCompanySearchResult,
+        )
 
     def get_profile(self, symbol: str) -> SECProfile | None:
         """Get SEC profile for a company
@@ -256,7 +280,7 @@ class SECClient(EndpointGroup):
         Returns:
             List of SIC codes
         """
-        return self.client.request(SIC_LIST)
+        return self._unwrap_list(self.client.request(SIC_LIST), SICCode)
 
     def search_industry_classification(
         self,
@@ -283,7 +307,10 @@ class SECClient(EndpointGroup):
             params["cik"] = cik
         if sic_code:
             params["sicCode"] = sic_code
-        return self.client.request(INDUSTRY_CLASSIFICATION_SEARCH, **params)
+        return self._unwrap_list(
+            self.client.request(INDUSTRY_CLASSIFICATION_SEARCH, **params),
+            IndustryClassification,
+        )
 
     def get_all_industry_classification(
         self, page: int = 0, limit: int = 100
@@ -297,4 +324,7 @@ class SECClient(EndpointGroup):
         Returns:
             List of industry classification records
         """
-        return self.client.request(ALL_INDUSTRY_CLASSIFICATION, page=page, limit=limit)
+        return self._unwrap_list(
+            self.client.request(ALL_INDUSTRY_CLASSIFICATION, page=page, limit=limit),
+            IndustryClassification,
+        )

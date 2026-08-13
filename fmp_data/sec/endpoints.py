@@ -18,7 +18,7 @@ from fmp_data.sec.models import (
     SICCode,
 )
 
-SEC_FILINGS_8K: Endpoint = Endpoint(
+SEC_FILINGS_8K: Endpoint[SECFiling8K] = Endpoint(
     name="sec_filings_8k",
     path="sec-filings-8k",
     version=APIVersion.STABLE,
@@ -63,7 +63,7 @@ SEC_FILINGS_8K: Endpoint = Endpoint(
     ],
 )
 
-SEC_FILINGS_FINANCIALS: Endpoint = Endpoint(
+SEC_FILINGS_FINANCIALS: Endpoint[SECFinancialFiling] = Endpoint(
     name="sec_filings_financials",
     path="sec-filings-financials",
     version=APIVersion.STABLE,
@@ -108,7 +108,7 @@ SEC_FILINGS_FINANCIALS: Endpoint = Endpoint(
     ],
 )
 
-SEC_FILINGS_SEARCH_FORM_TYPE: Endpoint = Endpoint(
+SEC_FILINGS_SEARCH_FORM_TYPE: Endpoint[SECFilingSearchResult] = Endpoint(
     name="sec_filings_search_form_type",
     path="sec-filings-search/form-type",
     version=APIVersion.STABLE,
@@ -159,7 +159,7 @@ SEC_FILINGS_SEARCH_FORM_TYPE: Endpoint = Endpoint(
     ],
 )
 
-SEC_FILINGS_SEARCH_SYMBOL: Endpoint = Endpoint(
+SEC_FILINGS_SEARCH_SYMBOL: Endpoint[SECFilingSearchResult] = Endpoint(
     name="sec_filings_search_symbol",
     path="sec-filings-search/symbol",
     version=APIVersion.STABLE,
@@ -210,7 +210,7 @@ SEC_FILINGS_SEARCH_SYMBOL: Endpoint = Endpoint(
     ],
 )
 
-SEC_FILINGS_SEARCH_CIK: Endpoint = Endpoint(
+SEC_FILINGS_SEARCH_CIK: Endpoint[SECFilingSearchResult] = Endpoint(
     name="sec_filings_search_cik",
     path="sec-filings-search/cik",
     version=APIVersion.STABLE,
@@ -261,7 +261,7 @@ SEC_FILINGS_SEARCH_CIK: Endpoint = Endpoint(
     ],
 )
 
-SEC_COMPANY_SEARCH_NAME: Endpoint = Endpoint(
+SEC_COMPANY_SEARCH_NAME: Endpoint[SECCompanySearchResult] = Endpoint(
     name="sec_company_search_name",
     path="sec-filings-company-search/name",
     version=APIVersion.STABLE,
@@ -300,7 +300,7 @@ SEC_COMPANY_SEARCH_NAME: Endpoint = Endpoint(
     ],
 )
 
-SEC_COMPANY_SEARCH_SYMBOL: Endpoint = Endpoint(
+SEC_COMPANY_SEARCH_SYMBOL: Endpoint[SECCompanySearchResult] = Endpoint(
     name="sec_company_search_symbol",
     path="sec-filings-company-search/symbol",
     version=APIVersion.STABLE,
@@ -324,7 +324,7 @@ SEC_COMPANY_SEARCH_SYMBOL: Endpoint = Endpoint(
     ],
 )
 
-SEC_COMPANY_SEARCH_CIK: Endpoint = Endpoint(
+SEC_COMPANY_SEARCH_CIK: Endpoint[SECCompanySearchResult] = Endpoint(
     name="sec_company_search_cik",
     path="sec-filings-company-search/cik",
     version=APIVersion.STABLE,
@@ -372,7 +372,7 @@ SEC_PROFILE: Endpoint[SECProfile] = Endpoint(
     ],
 )
 
-SIC_LIST: Endpoint = Endpoint(
+SIC_LIST: Endpoint[SICCode] = Endpoint(
     name="sic_list",
     path="standard-industrial-classification-list",
     version=APIVersion.STABLE,
@@ -389,7 +389,7 @@ SIC_LIST: Endpoint = Endpoint(
     ],
 )
 
-INDUSTRY_CLASSIFICATION_SEARCH: Endpoint = Endpoint(
+INDUSTRY_CLASSIFICATION_SEARCH: Endpoint[IndustryClassification] = Endpoint(
     name="industry_classification_search",
     path="industry-classification-search",
     version=APIVersion.STABLE,
@@ -432,7 +432,7 @@ INDUSTRY_CLASSIFICATION_SEARCH: Endpoint = Endpoint(
     ],
 )
 
-ALL_INDUSTRY_CLASSIFICATION: Endpoint = Endpoint(
+ALL_INDUSTRY_CLASSIFICATION: Endpoint[IndustryClassification] = Endpoint(
     name="all_industry_classification",
     path="all-industry-classification",
     version=APIVersion.STABLE,

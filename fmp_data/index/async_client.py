@@ -25,7 +25,9 @@ class AsyncIndexClient(AsyncEndpointGroup):
         Returns:
             List of S&P 500 constituent companies
         """
-        return await self.client.request_async(SP500_CONSTITUENTS)
+        return self._unwrap_list(
+            await self.client.request_async(SP500_CONSTITUENTS), IndexConstituent
+        )
 
     async def get_nasdaq_constituents(self) -> list[IndexConstituent]:
         """Get current NASDAQ index constituents
@@ -33,7 +35,9 @@ class AsyncIndexClient(AsyncEndpointGroup):
         Returns:
             List of NASDAQ constituent companies
         """
-        return await self.client.request_async(NASDAQ_CONSTITUENTS)
+        return self._unwrap_list(
+            await self.client.request_async(NASDAQ_CONSTITUENTS), IndexConstituent
+        )
 
     async def get_dowjones_constituents(self) -> list[IndexConstituent]:
         """Get current Dow Jones Industrial Average constituents
@@ -41,7 +45,9 @@ class AsyncIndexClient(AsyncEndpointGroup):
         Returns:
             List of Dow Jones constituent companies
         """
-        return await self.client.request_async(DOWJONES_CONSTITUENTS)
+        return self._unwrap_list(
+            await self.client.request_async(DOWJONES_CONSTITUENTS), IndexConstituent
+        )
 
     async def get_historical_sp500(self) -> list[HistoricalIndexConstituent]:
         """Get historical S&P 500 constituent changes
@@ -49,7 +55,10 @@ class AsyncIndexClient(AsyncEndpointGroup):
         Returns:
             List of historical constituent additions and removals
         """
-        return await self.client.request_async(HISTORICAL_SP500)
+        return self._unwrap_list(
+            await self.client.request_async(HISTORICAL_SP500),
+            HistoricalIndexConstituent,
+        )
 
     async def get_historical_nasdaq(self) -> list[HistoricalIndexConstituent]:
         """Get historical NASDAQ constituent changes
@@ -57,7 +66,10 @@ class AsyncIndexClient(AsyncEndpointGroup):
         Returns:
             List of historical constituent additions and removals
         """
-        return await self.client.request_async(HISTORICAL_NASDAQ)
+        return self._unwrap_list(
+            await self.client.request_async(HISTORICAL_NASDAQ),
+            HistoricalIndexConstituent,
+        )
 
     async def get_historical_dowjones(self) -> list[HistoricalIndexConstituent]:
         """Get historical Dow Jones constituent changes
@@ -65,4 +77,7 @@ class AsyncIndexClient(AsyncEndpointGroup):
         Returns:
             List of historical constituent additions and removals
         """
-        return await self.client.request_async(HISTORICAL_DOWJONES)
+        return self._unwrap_list(
+            await self.client.request_async(HISTORICAL_DOWJONES),
+            HistoricalIndexConstituent,
+        )

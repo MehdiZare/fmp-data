@@ -1,6 +1,8 @@
 # fmp_data/index/mapping.py
 from __future__ import annotations
 
+from typing import Any
+
 from fmp_data.index.endpoints import (
     DOWJONES_CONSTITUENTS,
     HISTORICAL_DOWJONES,
@@ -10,9 +12,10 @@ from fmp_data.index.endpoints import (
     SP500_CONSTITUENTS,
 )
 from fmp_data.lc.models import EndpointSemantics, SemanticCategory
+from fmp_data.models import Endpoint
 
 # Index endpoints mapping
-INDEX_ENDPOINT_MAP = {
+INDEX_ENDPOINT_MAP: dict[str, Endpoint[Any]] = {
     "get_sp500_constituents": SP500_CONSTITUENTS,
     "get_nasdaq_constituents": NASDAQ_CONSTITUENTS,
     "get_dowjones_constituents": DOWJONES_CONSTITUENTS,

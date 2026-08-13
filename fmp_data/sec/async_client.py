@@ -58,14 +58,17 @@ class AsyncSECClient(AsyncEndpointGroup):
         """
         end_date = to_date or date.today()
         start_date = from_date or (end_date - timedelta(days=30))
-        return await self.client.request_async(
-            SEC_FILINGS_8K,
-            page=page,
-            limit=limit,
-            **{
-                "from": start_date.strftime("%Y-%m-%d"),
-                "to": end_date.strftime("%Y-%m-%d"),
-            },
+        return self._unwrap_list(
+            await self.client.request_async(
+                SEC_FILINGS_8K,
+                page=page,
+                limit=limit,
+                **{
+                    "from": start_date.strftime("%Y-%m-%d"),
+                    "to": end_date.strftime("%Y-%m-%d"),
+                },
+            ),
+            SECFiling8K,
         )
 
     async def get_latest_financials(
@@ -88,14 +91,17 @@ class AsyncSECClient(AsyncEndpointGroup):
         """
         end_date = to_date or date.today()
         start_date = from_date or (end_date - timedelta(days=30))
-        return await self.client.request_async(
-            SEC_FILINGS_FINANCIALS,
-            page=page,
-            limit=limit,
-            **{
-                "from": start_date.strftime("%Y-%m-%d"),
-                "to": end_date.strftime("%Y-%m-%d"),
-            },
+        return self._unwrap_list(
+            await self.client.request_async(
+                SEC_FILINGS_FINANCIALS,
+                page=page,
+                limit=limit,
+                **{
+                    "from": start_date.strftime("%Y-%m-%d"),
+                    "to": end_date.strftime("%Y-%m-%d"),
+                },
+            ),
+            SECFinancialFiling,
         )
 
     async def search_by_form_type(
@@ -118,15 +124,18 @@ class AsyncSECClient(AsyncEndpointGroup):
         """
         end_date = to_date or date.today()
         start_date = from_date or (end_date - timedelta(days=30))
-        return await self.client.request_async(
-            SEC_FILINGS_SEARCH_FORM_TYPE,
-            formType=form_type,
-            page=page,
-            limit=limit,
-            **{
-                "from": start_date.strftime("%Y-%m-%d"),
-                "to": end_date.strftime("%Y-%m-%d"),
-            },
+        return self._unwrap_list(
+            await self.client.request_async(
+                SEC_FILINGS_SEARCH_FORM_TYPE,
+                formType=form_type,
+                page=page,
+                limit=limit,
+                **{
+                    "from": start_date.strftime("%Y-%m-%d"),
+                    "to": end_date.strftime("%Y-%m-%d"),
+                },
+            ),
+            SECFilingSearchResult,
         )
 
     async def search_by_symbol(
@@ -149,15 +158,18 @@ class AsyncSECClient(AsyncEndpointGroup):
         """
         end_date = to_date or date.today()
         start_date = from_date or (end_date - timedelta(days=30))
-        return await self.client.request_async(
-            SEC_FILINGS_SEARCH_SYMBOL,
-            symbol=symbol,
-            page=page,
-            limit=limit,
-            **{
-                "from": start_date.strftime("%Y-%m-%d"),
-                "to": end_date.strftime("%Y-%m-%d"),
-            },
+        return self._unwrap_list(
+            await self.client.request_async(
+                SEC_FILINGS_SEARCH_SYMBOL,
+                symbol=symbol,
+                page=page,
+                limit=limit,
+                **{
+                    "from": start_date.strftime("%Y-%m-%d"),
+                    "to": end_date.strftime("%Y-%m-%d"),
+                },
+            ),
+            SECFilingSearchResult,
         )
 
     async def search_by_cik(
@@ -180,15 +192,18 @@ class AsyncSECClient(AsyncEndpointGroup):
         """
         end_date = to_date or date.today()
         start_date = from_date or (end_date - timedelta(days=30))
-        return await self.client.request_async(
-            SEC_FILINGS_SEARCH_CIK,
-            cik=cik,
-            page=page,
-            limit=limit,
-            **{
-                "from": start_date.strftime("%Y-%m-%d"),
-                "to": end_date.strftime("%Y-%m-%d"),
-            },
+        return self._unwrap_list(
+            await self.client.request_async(
+                SEC_FILINGS_SEARCH_CIK,
+                cik=cik,
+                page=page,
+                limit=limit,
+                **{
+                    "from": start_date.strftime("%Y-%m-%d"),
+                    "to": end_date.strftime("%Y-%m-%d"),
+                },
+            ),
+            SECFilingSearchResult,
         )
 
     async def search_company_by_name(
@@ -207,8 +222,11 @@ class AsyncSECClient(AsyncEndpointGroup):
         Returns:
             List of matching companies
         """
-        return await self.client.request_async(
-            SEC_COMPANY_SEARCH_NAME, company=name, page=page, limit=limit
+        return self._unwrap_list(
+            await self.client.request_async(
+                SEC_COMPANY_SEARCH_NAME, company=name, page=page, limit=limit
+            ),
+            SECCompanySearchResult,
         )
 
     async def search_company_by_symbol(
@@ -222,7 +240,10 @@ class AsyncSECClient(AsyncEndpointGroup):
         Returns:
             List of matching companies
         """
-        return await self.client.request_async(SEC_COMPANY_SEARCH_SYMBOL, symbol=symbol)
+        return self._unwrap_list(
+            await self.client.request_async(SEC_COMPANY_SEARCH_SYMBOL, symbol=symbol),
+            SECCompanySearchResult,
+        )
 
     async def search_company_by_cik(
         self, cik: str | int
@@ -235,7 +256,10 @@ class AsyncSECClient(AsyncEndpointGroup):
         Returns:
             List of matching companies
         """
-        return await self.client.request_async(SEC_COMPANY_SEARCH_CIK, cik=cik)
+        return self._unwrap_list(
+            await self.client.request_async(SEC_COMPANY_SEARCH_CIK, cik=cik),
+            SECCompanySearchResult,
+        )
 
     async def get_profile(self, symbol: str) -> SECProfile | None:
         """Get SEC profile for a company
@@ -262,7 +286,7 @@ class AsyncSECClient(AsyncEndpointGroup):
         Returns:
             List of SIC codes
         """
-        return await self.client.request_async(SIC_LIST)
+        return self._unwrap_list(await self.client.request_async(SIC_LIST), SICCode)
 
     async def search_industry_classification(
         self,
@@ -289,7 +313,10 @@ class AsyncSECClient(AsyncEndpointGroup):
             params["cik"] = cik
         if sic_code:
             params["sicCode"] = sic_code
-        return await self.client.request_async(INDUSTRY_CLASSIFICATION_SEARCH, **params)
+        return self._unwrap_list(
+            await self.client.request_async(INDUSTRY_CLASSIFICATION_SEARCH, **params),
+            IndustryClassification,
+        )
 
     async def get_all_industry_classification(
         self, page: int = 0, limit: int = 100
@@ -303,6 +330,9 @@ class AsyncSECClient(AsyncEndpointGroup):
         Returns:
             List of industry classification records
         """
-        return await self.client.request_async(
-            ALL_INDUSTRY_CLASSIFICATION, page=page, limit=limit
+        return self._unwrap_list(
+            await self.client.request_async(
+                ALL_INDUSTRY_CLASSIFICATION, page=page, limit=limit
+            ),
+            IndustryClassification,
         )

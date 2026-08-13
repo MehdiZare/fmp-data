@@ -33,8 +33,9 @@ class AsyncTranscriptsClient(AsyncEndpointGroup):
         Returns:
             List of recent earnings transcripts
         """
-        return await self.client.request_async(
-            LATEST_TRANSCRIPTS, page=page, limit=limit
+        return self._unwrap_list(
+            await self.client.request_async(LATEST_TRANSCRIPTS, page=page, limit=limit),
+            EarningsTranscript,
         )
 
     async def get_transcript(
@@ -62,7 +63,10 @@ class AsyncTranscriptsClient(AsyncEndpointGroup):
         }
         if limit is not None:
             params["limit"] = limit
-        return await self.client.request_async(EARNINGS_TRANSCRIPT, **params)
+        return self._unwrap_list(
+            await self.client.request_async(EARNINGS_TRANSCRIPT, **params),
+            EarningsTranscript,
+        )
 
     async def get_available_dates(self, symbol: str) -> list[TranscriptDate]:
         """Get available transcript dates for a specific company
@@ -73,7 +77,10 @@ class AsyncTranscriptsClient(AsyncEndpointGroup):
         Returns:
             List of available transcript dates
         """
-        return await self.client.request_async(TRANSCRIPT_DATES, symbol=symbol)
+        return self._unwrap_list(
+            await self.client.request_async(TRANSCRIPT_DATES, symbol=symbol),
+            TranscriptDate,
+        )
 
     async def get_available_symbols(self) -> list[TranscriptSymbol]:
         """Get list of all symbols with available earnings transcripts
@@ -81,4 +88,6 @@ class AsyncTranscriptsClient(AsyncEndpointGroup):
         Returns:
             List of symbols with transcripts
         """
-        return await self.client.request_async(TRANSCRIPT_SYMBOLS)
+        return self._unwrap_list(
+            await self.client.request_async(TRANSCRIPT_SYMBOLS), TranscriptSymbol
+        )

@@ -1,6 +1,8 @@
 # fmp_data/sec/mapping.py
 from __future__ import annotations
 
+from typing import Any
+
 from fmp_data.lc.hints import (
     CIK_HINT,
     FROM_TO_DATE_HINTS,
@@ -9,6 +11,7 @@ from fmp_data.lc.hints import (
     SYMBOL_HINT,
 )
 from fmp_data.lc.models import EndpointSemantics, ParameterHint, SemanticCategory
+from fmp_data.models import Endpoint
 from fmp_data.sec.endpoints import (
     ALL_INDUSTRY_CLASSIFICATION,
     INDUSTRY_CLASSIFICATION_SEARCH,
@@ -57,7 +60,7 @@ COMPANY_NAME_HINT = ParameterHint(
 )
 
 # SEC endpoints mapping
-SEC_ENDPOINT_MAP = {
+SEC_ENDPOINT_MAP: dict[str, Endpoint[Any]] = {
     "get_latest_8k": SEC_FILINGS_8K,
     "get_latest_financials": SEC_FILINGS_FINANCIALS,
     "search_by_form_type": SEC_FILINGS_SEARCH_FORM_TYPE,

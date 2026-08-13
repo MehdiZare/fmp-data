@@ -68,6 +68,13 @@ None. No FMP path we ship was newly retired by this changelog window.
   `get_mutual_fund_dates` / `get_fund_disclosure_dates` are annotated
   `list[PortfolioDate]` (runtime already returned `PortfolioDate` rows).
 
+- **Leftover index, SEC, transcripts, and batch quote lists go through
+  `_unwrap_list` / `Endpoint[T]` (#245).** Index constituents, SEC list
+  surfaces (not `SEC_PROFILE`), transcripts, and batch JSON quote lists
+  bind the row type and normalize `request()` / `request_async()`.
+  `get_profile` stays `_unwrap_single`. Bulk-bytes / CSV paths stay on
+  `_request_csv`. `request()` stays `T | list[T]`.
+
 ### Added
 
 - **FMP hosted MCP vs `fmp-mcp` positioning (#230).** Docs-only: we are not
