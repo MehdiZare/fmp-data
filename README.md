@@ -184,14 +184,11 @@ Full tool list: [docs/mcp/tools.md](https://github.com/MehdiZare/fmp-data/blob/m
 export FMP_API_KEY=your_api_key_here
 export FMP_MCP_MANIFEST=/path/to/custom/manifest.py
 
-# Custom manifest example (manifest.py)
-TOOLS = [
-    "company.profile",
-    "market.search",
-    "company.quote",
-    "fundamental.income_statement",
-    "fundamental.balance_sheet"
-]
+# Custom manifest example (manifest.json — preferred)
+# { "tools": ["company.profile", "company.quote"] }
+#
+# Legacy Python is parsed as data, not executed:
+# TOOLS = ["company.profile", "company.quote"]
 ```
 
 ### Integration with AI Assistants
