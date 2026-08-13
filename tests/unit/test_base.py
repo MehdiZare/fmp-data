@@ -1,4 +1,5 @@
 import json
+import logging
 import traceback
 from unittest.mock import MagicMock, Mock, patch
 
@@ -738,7 +739,7 @@ def test_process_response_strict_mode_rejects_unknown_fields() -> None:
         )
 
 
-def test_process_response_warn_mode_logs_unknown_fields() -> None:
+def test_process_response_warn_mode_logs_unknown_fields(caplog) -> None:
     """Warn mode should log unknown fields on extra-allow models."""
 
     class ExtraAllowModel(BaseModel):
@@ -749,14 +750,15 @@ def test_process_response_warn_mode_logs_unknown_fields() -> None:
     endpoint.name = "warn_extra_endpoint"
     endpoint.response_model = ExtraAllowModel
 
-    with patch("fmp_data.base.logger.warning") as mock_warning:
+    with caplog.at_level(logging.WARNING, logger="fmp_data.base"):
         result: ExtraAllowModel | list[ExtraAllowModel] = BaseClient._process_response(
             endpoint, {"value": 1, "unexpected": 2}, validation_mode="warn"
         )
 
     assert isinstance(result, ExtraAllowModel)
     assert result.value == 1
-    mock_warning.assert_called()
+    extras = [record for record in caplog.records if record.name == "fmp_data.base"]
+    assert extras
 
 
 def test_client_cleanup(base_client):

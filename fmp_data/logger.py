@@ -258,7 +258,7 @@ class SecureRotatingFileHandler(RotatingFileHandler):
                 os.chmod(self.baseFilename, 0o600)
                 self._permissions_set = True
             except OSError as e:
-                logging.getLogger(__name__).warning(
+                FMPLogger().get_logger(__name__).warning(
                     f"Could not set secure permissions on log file: {e}"
                 )
 

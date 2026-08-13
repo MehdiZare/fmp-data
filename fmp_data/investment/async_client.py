@@ -2,7 +2,6 @@
 """Async client for investment products endpoints."""
 
 from datetime import date
-import logging
 import warnings
 
 from fmp_data.base import AsyncEndpointGroup
@@ -32,8 +31,9 @@ from fmp_data.investment.models import (
     MutualFundHolder,
     MutualFundHolding,
 )
+from fmp_data.logger import FMPLogger
 
-logger = logging.getLogger(__name__)
+logger = FMPLogger().get_logger(__name__)
 
 
 class AsyncInvestmentClient(AsyncEndpointGroup):

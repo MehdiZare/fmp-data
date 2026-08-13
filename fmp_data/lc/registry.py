@@ -293,7 +293,7 @@ class ValidationRule(ABC):
     """Abstract base class for validation rules."""
 
     def __init__(self) -> None:
-        self.logger = FMPLogger().get_logger(self.__class__.__name__)
+        self.logger = FMPLogger().get_logger(__name__).getChild(self.__class__.__name__)
 
     @property
     @abstractmethod
@@ -490,7 +490,7 @@ class ValidationRuleRegistry:
     def __init__(self) -> None:
         """Initialize the registry."""
         self._rules: list[ValidationRule] = []
-        self.logger = FMPLogger().get_logger(self.__class__.__name__)
+        self.logger = FMPLogger().get_logger(__name__).getChild(self.__class__.__name__)
 
     def register_rule(self, rule: ValidationRule) -> None:
         """Register a validation rule."""
