@@ -505,17 +505,14 @@ class TestFundamentalEndpoints(unittest.TestCase):
         self.assertIsNone(income_stmt.gross_profit)
 
     def test_invalid_period_parameter(self):
-        """Test handling of invalid period parameter"""
+        """Client methods propagate request errors from the shared client."""
         with self.assertRaises(ValueError) as context:
-            self.mock_client.request.side_effect = ValueError(
-                "Invalid value for period. Must be one of: "
-                "['annual', 'quarter', 'FY', 'Q1', 'Q2', 'Q3', 'Q4']"
-            )
+            self.mock_client.request.side_effect = ValueError("request failed")
             self.fundamental_client.get_income_statement(
                 symbol=self.symbol,
                 period="invalid",  # type: ignore[arg-type]
             )
-        self.assertIn("Must be one of:", str(context.exception))
+        self.assertIn("request failed", str(context.exception))
 
     def test_missing_required_parameter(self):
         """Test handling of missing required parameter"""

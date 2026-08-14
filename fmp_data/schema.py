@@ -196,9 +196,7 @@ PeriodAnnualQuarter: TypeAlias = Literal["annual", "quarter"]
 PeriodFiscal: TypeAlias = Literal["FY", "Q1", "Q2", "Q3", "Q4"]
 Period: TypeAlias = PeriodAnnualQuarter | PeriodFiscal
 Interval: TypeAlias = Literal["1min", "5min", "15min", "30min", "1hour", "4hour"]
-Timeframe: TypeAlias = Literal[
-    "1min", "5min", "15min", "30min", "1hour", "4hour", "1day"
-]
+Timeframe: TypeAlias = Interval | Literal["1day"]
 # Client-only aliases mapped onto Timeframe by TechnicalClient._normalize_timeframe.
 IntervalAlias: TypeAlias = Literal["daily", "hourly"]
 TechnicalInterval: TypeAlias = Interval | IntervalAlias
