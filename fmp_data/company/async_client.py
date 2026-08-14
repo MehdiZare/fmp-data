@@ -115,6 +115,7 @@ from fmp_data.fundamental.models import (
 from fmp_data.helpers import deprecated
 from fmp_data.intelligence.models import DividendEvent, EarningEvent, StockSplitEvent
 from fmp_data.models import MarketCapitalization, _safe_path_segment
+from fmp_data.schema import Interval, Period, PeriodAnnualQuarter, PeriodFiscal
 
 
 def _format_date(value: date | None) -> str | None:
@@ -258,7 +259,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
     async def get_intraday_prices(
         self,
         symbol: str,
-        interval: str = "1min",
+        interval: Interval = "1min",
         from_date: date | None = None,
         to_date: date | None = None,
         nonadjusted: bool | None = None,
@@ -318,7 +319,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         return []
 
     async def get_product_revenue_segmentation(
-        self, symbol: str, period: str = "annual"
+        self, symbol: str, period: PeriodAnnualQuarter = "annual"
     ) -> list[ProductRevenueSegment]:
         """Get revenue segmentation by product.
 
@@ -340,7 +341,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         )
 
     async def get_geographic_revenue_segmentation(
-        self, symbol: str, period: str = "annual"
+        self, symbol: str, period: PeriodAnnualQuarter = "annual"
     ) -> list[GeographicRevenueSegment]:
         """Get revenue segmentation by geographic region.
 
@@ -436,7 +437,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
     async def get_analyst_estimates(
         self,
         symbol: str,
-        period: str = "annual",
+        period: PeriodAnnualQuarter = "annual",
         page: int = 0,
         limit: int = 10,
     ) -> list[AnalystEstimate]:
@@ -850,7 +851,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         )
 
     async def get_enterprise_values(
-        self, symbol: str, period: str = "annual", limit: int = 20
+        self, symbol: str, period: Period = "annual", limit: int = 20
     ) -> list[EnterpriseValue]:
         """Get historical enterprise value data
 
@@ -870,7 +871,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         )
 
     async def get_income_statement_growth(
-        self, symbol: str, period: str = "annual", limit: int = 20
+        self, symbol: str, period: Period = "annual", limit: int = 20
     ) -> list[FinancialGrowth]:
         """Get year-over-year growth rates for income statement items
 
@@ -890,7 +891,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         )
 
     async def get_balance_sheet_growth(
-        self, symbol: str, period: str = "annual", limit: int = 20
+        self, symbol: str, period: Period = "annual", limit: int = 20
     ) -> list[FinancialGrowth]:
         """Get year-over-year growth rates for balance sheet items
 
@@ -910,7 +911,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         )
 
     async def get_cash_flow_growth(
-        self, symbol: str, period: str = "annual", limit: int = 20
+        self, symbol: str, period: Period = "annual", limit: int = 20
     ) -> list[FinancialGrowth]:
         """Get year-over-year growth rates for cash flow items
 
@@ -930,7 +931,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         )
 
     async def get_financial_growth(
-        self, symbol: str, period: str = "annual", limit: int = 20
+        self, symbol: str, period: Period = "annual", limit: int = 20
     ) -> list[FinancialGrowth]:
         """Get comprehensive financial growth metrics
 
@@ -950,7 +951,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         )
 
     async def get_financial_reports_json(
-        self, symbol: str, year: int, period: str = "FY"
+        self, symbol: str, year: int, period: PeriodFiscal = "FY"
     ) -> dict:
         """Get Form 10-K financial reports in JSON format
 
@@ -981,7 +982,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         return payload
 
     async def get_financial_reports_xlsx(
-        self, symbol: str, year: int, period: str = "FY"
+        self, symbol: str, year: int, period: PeriodFiscal = "FY"
     ) -> bytes:
         """Get Form 10-K financial reports in Excel format
 
@@ -1010,7 +1011,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         return bytes(payload)
 
     async def get_income_statement_as_reported(
-        self, symbol: str, period: str = "annual", limit: int = 10
+        self, symbol: str, period: PeriodAnnualQuarter = "annual", limit: int = 10
     ) -> list[AsReportedIncomeStatement]:
         """Get income statement as originally reported
 
@@ -1030,7 +1031,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         )
 
     async def get_balance_sheet_as_reported(
-        self, symbol: str, period: str = "annual", limit: int = 10
+        self, symbol: str, period: PeriodAnnualQuarter = "annual", limit: int = 10
     ) -> list[AsReportedBalanceSheet]:
         """Get balance sheet as originally reported
 
@@ -1050,7 +1051,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         )
 
     async def get_cash_flow_as_reported(
-        self, symbol: str, period: str = "annual", limit: int = 10
+        self, symbol: str, period: PeriodAnnualQuarter = "annual", limit: int = 10
     ) -> list[AsReportedCashFlowStatement]:
         """Get cash flow statement as originally reported
 

@@ -11,6 +11,7 @@ from collections import Counter
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
+from enum import Enum
 import importlib
 import inspect
 import json
@@ -18,7 +19,8 @@ import os
 from pathlib import Path
 import re
 import time
-from typing import Any
+from types import UnionType
+from typing import Any, Literal, Union, get_args, get_origin, get_type_hints
 
 from fmp_data.client import FMPDataClient
 from fmp_data.exceptions import RateLimitError
@@ -271,8 +273,36 @@ _FIXED_SAMPLES: dict[str, Any] = {
 }
 
 
-def sample_for(param_name: str, group: str, method: str) -> Any | None:
+def first_closed_sample(annotation: Any) -> Any | None:
+    """First member of a ``Literal`` or ``Enum`` annotation, if any."""
+    if annotation is inspect.Parameter.empty or annotation is None:
+        return None
+    origin = get_origin(annotation)
+    if origin is Literal:
+        args = get_args(annotation)
+        return args[0] if args else None
+    if isinstance(annotation, type) and issubclass(annotation, Enum):
+        return next(iter(annotation)).value
+    if origin in {Union, UnionType}:
+        for arg in get_args(annotation):
+            if arg is type(None) or arg is str:
+                continue
+            value = first_closed_sample(arg)
+            if value is not None:
+                return value
+    return None
+
+
+def sample_for(
+    param_name: str,
+    group: str,
+    method: str,
+    annotation: Any = None,
+) -> Any | None:
     """A representative value for ``param_name``, or ``None`` if unknown."""
+    closed = first_closed_sample(annotation)
+    if closed is not None:
+        return closed
     if param_name == "symbol":
         return _inferred_symbol(group, method)
     if param_name == "name":
@@ -323,12 +353,18 @@ def build_kwargs(case: SweepCase) -> dict[str, Any]:
     with a global sample is how we used to send ``annual`` to endpoints
     that only accept ``FY``.
     """
+    try:
+        hints = get_type_hints(case.func)
+    except Exception:
+        hints = {}
     kwargs: dict[str, Any] = {}
     for name, param in bindable_params(case.func).items():
         required = param.default is inspect.Parameter.empty
         if not required and name not in _ALWAYS_FILL:
             continue
-        value = sample_for(name, case.group, case.method)
+        value = sample_for(
+            name, case.group, case.method, hints.get(name, param.annotation)
+        )
         if value is not None:
             kwargs[name] = value
     kwargs.update(_ONE_OF_DEFAULTS.get((case.group, case.method), {}))

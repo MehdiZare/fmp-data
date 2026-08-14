@@ -23,9 +23,10 @@ from fmp_data.models import (
     ParamType,
     URLType,
 )
+from fmp_data.schema import INTERVAL_VALUES
 
 # Validation constants
-VALID_INTERVALS = ["1min", "5min", "15min", "30min", "1hour", "4hour"]
+VALID_INTERVALS = list(INTERVAL_VALUES)
 
 CRYPTO_LIST: Endpoint[CryptoPair] = Endpoint(
     name="crypto_list",

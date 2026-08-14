@@ -20,6 +20,7 @@ from fmp_data.economics.models import (
     MarketRiskPremium,
     TreasuryRate,
 )
+from fmp_data.economics.schema import EconomicIndicatorType
 
 
 class EconomicsClient(EndpointGroup):
@@ -39,7 +40,9 @@ class EconomicsClient(EndpointGroup):
             self.client.request(TREASURY_RATES, **params), TreasuryRate
         )
 
-    def get_economic_indicators(self, indicator_name: str) -> list[EconomicIndicator]:
+    def get_economic_indicators(
+        self, indicator_name: EconomicIndicatorType | str
+    ) -> list[EconomicIndicator]:
         """Get economic indicator data"""
         return self._unwrap_list(
             self.client.request(ECONOMIC_INDICATORS, name=indicator_name),

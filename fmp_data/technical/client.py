@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from fmp_data.base import EndpointGroup
 from fmp_data.models import Endpoint
+from fmp_data.schema import TechnicalInterval, Timeframe
 from fmp_data.technical.endpoints import (
     ADX,
     DEMA,
@@ -36,7 +37,9 @@ class TechnicalClient(EndpointGroup):
     """Client for technical analysis endpoints"""
 
     @staticmethod
-    def _normalize_timeframe(timeframe: str, interval: str | None) -> str:
+    def _normalize_timeframe(
+        timeframe: Timeframe, interval: TechnicalInterval | None
+    ) -> str:
         if interval is None:
             return timeframe
         normalized = interval.lower()
@@ -51,8 +54,8 @@ class TechnicalClient(EndpointGroup):
         endpoint: Endpoint[T],
         symbol: str,
         period_length: int,
-        timeframe: str,
-        interval: str | None,
+        timeframe: Timeframe,
+        interval: TechnicalInterval | None,
         start_date: date | None,
         end_date: date | None,
     ) -> list[T]:
@@ -69,11 +72,11 @@ class TechnicalClient(EndpointGroup):
         Returns:
             List of indicator values
         """
-        timeframe = self._normalize_timeframe(timeframe, interval)
+        resolved = self._normalize_timeframe(timeframe, interval)
         params: dict[str, str | int] = {
             "symbol": symbol,
             "periodLength": period_length,
-            "timeframe": timeframe,
+            "timeframe": resolved,
         }
         if start_date:
             params["from"] = start_date.strftime("%Y-%m-%d")
@@ -88,8 +91,8 @@ class TechnicalClient(EndpointGroup):
         self,
         symbol: str,
         period_length: int = 20,
-        timeframe: str = "1day",
-        interval: str | None = None,
+        timeframe: Timeframe = "1day",
+        interval: TechnicalInterval | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[SMAIndicator]:
@@ -102,8 +105,8 @@ class TechnicalClient(EndpointGroup):
         self,
         symbol: str,
         period_length: int = 20,
-        timeframe: str = "1day",
-        interval: str | None = None,
+        timeframe: Timeframe = "1day",
+        interval: TechnicalInterval | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[EMAIndicator]:
@@ -116,8 +119,8 @@ class TechnicalClient(EndpointGroup):
         self,
         symbol: str,
         period_length: int = 20,
-        timeframe: str = "1day",
-        interval: str | None = None,
+        timeframe: Timeframe = "1day",
+        interval: TechnicalInterval | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[WMAIndicator]:
@@ -130,8 +133,8 @@ class TechnicalClient(EndpointGroup):
         self,
         symbol: str,
         period_length: int = 20,
-        timeframe: str = "1day",
-        interval: str | None = None,
+        timeframe: Timeframe = "1day",
+        interval: TechnicalInterval | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[DEMAIndicator]:
@@ -144,8 +147,8 @@ class TechnicalClient(EndpointGroup):
         self,
         symbol: str,
         period_length: int = 20,
-        timeframe: str = "1day",
-        interval: str | None = None,
+        timeframe: Timeframe = "1day",
+        interval: TechnicalInterval | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[TEMAIndicator]:
@@ -158,8 +161,8 @@ class TechnicalClient(EndpointGroup):
         self,
         symbol: str,
         period_length: int = 14,
-        timeframe: str = "1day",
-        interval: str | None = None,
+        timeframe: Timeframe = "1day",
+        interval: TechnicalInterval | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[WilliamsIndicator]:
@@ -172,8 +175,8 @@ class TechnicalClient(EndpointGroup):
         self,
         symbol: str,
         period_length: int = 14,
-        timeframe: str = "1day",
-        interval: str | None = None,
+        timeframe: Timeframe = "1day",
+        interval: TechnicalInterval | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[RSIIndicator]:
@@ -186,8 +189,8 @@ class TechnicalClient(EndpointGroup):
         self,
         symbol: str,
         period_length: int = 14,
-        timeframe: str = "1day",
-        interval: str | None = None,
+        timeframe: Timeframe = "1day",
+        interval: TechnicalInterval | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[ADXIndicator]:
@@ -200,8 +203,8 @@ class TechnicalClient(EndpointGroup):
         self,
         symbol: str,
         period_length: int = 20,
-        timeframe: str = "1day",
-        interval: str | None = None,
+        timeframe: Timeframe = "1day",
+        interval: TechnicalInterval | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[StandardDeviationIndicator]:

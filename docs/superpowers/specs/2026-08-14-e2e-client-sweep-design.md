@@ -53,9 +53,12 @@ what callers use, and several live methods are not in a map.
 ### Samples
 
 Required method parameters are filled from a name-based sample table
-(symbol, cik, dates, …). Optional date parameters are also filled with
-**anchored** dates so VCR query strings stay stable (`date.today()`
-inside SEC search is the failure mode this prevents).
+(symbol, cik, dates, …). Closed vocabularies (`period`, `interval`,
+`timeframe`, economic indicator names) are sampled from the method
+annotation (`Literal` / `Enum`) so a fiscal-only method cannot receive
+`annual`. Optional date parameters are also filled with **anchored**
+dates so VCR query strings stay stable (`date.today()` inside SEC
+search is the failure mode this prevents).
 
 Inferences:
 

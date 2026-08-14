@@ -2,7 +2,7 @@
 from datetime import date
 from enum import Enum
 import inspect
-from typing import Any
+from typing import Any, Literal, TypeAlias, get_args
 import warnings
 
 from pydantic import (
@@ -185,6 +185,40 @@ class IntervalEnum(BaseEnum):
     MIN_30 = "30min"
     HOUR_1 = "1hour"
     HOUR_4 = "4hour"
+
+
+# Closed request vocabularies used by client methods and endpoint valid_values.
+# Three period aliases on purpose: financial-reports and batch bulk reject
+# ``annual``/``quarter``. Do not collapse these into ReportingPeriodEnum.
+PeriodAnnualQuarter: TypeAlias = Literal["annual", "quarter"]
+PeriodFiscal: TypeAlias = Literal["FY", "Q1", "Q2", "Q3", "Q4"]
+Period: TypeAlias = Literal["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"]
+Interval: TypeAlias = Literal["1min", "5min", "15min", "30min", "1hour", "4hour"]
+Timeframe: TypeAlias = Literal[
+    "1min", "5min", "15min", "30min", "1hour", "4hour", "1day"
+]
+# Client-only aliases mapped onto Timeframe by TechnicalClient._normalize_timeframe.
+IntervalAlias: TypeAlias = Literal["daily", "hourly"]
+TechnicalInterval: TypeAlias = Interval | IntervalAlias
+
+
+def literal_values(typ: Any) -> tuple[Any, ...]:
+    """Members of a ``Literal`` alias, in declaration order."""
+    args = get_args(typ)
+    if not args:
+        raise TypeError(f"{typ!r} is not a typing.Literal alias")
+    return args
+
+
+PERIOD_ANNUAL_QUARTER_VALUES: tuple[str, ...] = literal_values(PeriodAnnualQuarter)
+PERIOD_FISCAL_VALUES: tuple[str, ...] = literal_values(PeriodFiscal)
+PERIOD_VALUES: tuple[str, ...] = literal_values(Period)
+INTERVAL_VALUES: tuple[str, ...] = literal_values(Interval)
+TIMEFRAME_VALUES: tuple[str, ...] = literal_values(Timeframe)
+TECHNICAL_INTERVAL_VALUES: tuple[str, ...] = (
+    *INTERVAL_VALUES,
+    *literal_values(IntervalAlias),
+)
 
 
 # Base argument models

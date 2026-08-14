@@ -1,13 +1,12 @@
 # fmp_data/alternative/schema.py
 from datetime import date
-from typing import Literal
 
 from pydantic import Field, field_validator
 
-from fmp_data.schema import DeprecatedArgModel
+from fmp_data.schema import DeprecatedArgModel, Interval
 
 # Constants
-VALID_INTERVALS = Literal["1min", "5min", "15min", "30min", "1hour", "4hour"]
+VALID_INTERVALS = Interval
 
 
 class BaseListArgs(DeprecatedArgModel):
