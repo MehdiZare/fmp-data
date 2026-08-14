@@ -129,8 +129,8 @@ There are three period types on purpose: most statement endpoints take
 `Period` (`annual` / `quarter` / `FY` / `Q1`–`Q4`). Financial reports and
 batch bulk take only `PeriodFiscal`. Some company series take only
 `PeriodAnnualQuarter`. `Timeframe` is `Interval` plus `"1day"`.
-`TechnicalClient.interval=` takes `TechnicalInterval` (`daily` /
-`hourly`), not `Timeframe`.
+`TechnicalClient.interval=` takes `TechnicalInterval` (`Interval` plus
+`"daily"` / `"hourly"`), not `Timeframe`.
 
 ### Response Caching
 

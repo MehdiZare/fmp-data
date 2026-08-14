@@ -88,8 +88,8 @@ Keep the three period types distinct. Most statement endpoints take `Period`
 (`annual` / `quarter` / `FY` / `Q1`–`Q4`). Financial reports and batch bulk
 take only `PeriodFiscal`. Some company series take only `PeriodAnnualQuarter`.
 `Timeframe` is `Interval` plus `"1day"`. `TechnicalClient.interval=` takes
-`TechnicalInterval` (`daily` / `hourly`), not `Timeframe`. Plain strings
-still work at runtime.
+`TechnicalInterval` (`Interval` plus `"daily"` / `"hourly"`), not
+`Timeframe`. Plain strings still work at runtime.
 
 ## Responses and data handling
 Endpoints return Pydantic models (or lists of models). Use attributes directly

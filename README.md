@@ -504,25 +504,19 @@ with FMPDataClient.from_env() as client:
 
 ### 4. Technical Indicators
 ```python
-from datetime import date
-
 from fmp_data import FMPDataClient, TechnicalInterval, Timeframe
 
 with FMPDataClient.from_env() as client:
     # Simple Moving Average
     timeframe: Timeframe = "1day"
+    sma = client.technical.get_sma("AAPL", period_length=20, timeframe=timeframe)
+
+    # leftover interval aliases map onto Timeframe (daily→1day)
     interval: TechnicalInterval = "daily"
-    sma = client.technical.get_sma(
-        "AAPL", period_length=20, timeframe=timeframe, interval=interval
-    )
+    sma_daily = client.technical.get_sma("AAPL", period_length=20, interval=interval)
 
     # RSI (Relative Strength Index)
     rsi = client.technical.get_rsi("AAPL", period_length=14, timeframe="1day")
-
-    # MACD
-    macd = client.technical.get_macd(
-        "AAPL", fast_period=12, slow_period=26, signal_period=9
-    )
 ```
 
 ### 5. Alternative Data
