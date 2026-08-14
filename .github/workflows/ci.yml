@@ -98,6 +98,31 @@ jobs:
           flags: unittests
           fail_ci_if_error: false
 
+  extras-coverage:
+    name: Extras Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🛎️  Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: 🐍  Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: ⚡  Install uv
+        uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d  # v10.0.0
+        with:
+          version: "0.12.3"
+
+      - name: 📊 Extras coverage gate (lc / mcp / Redis)
+        env:
+          NOX_USE_UV: "1"
+          CI: "true"
+        run: |
+          uv tool install nox
+          uv tool run nox -s coverage_extras
+
   secret-scan:
     name: Secret Scan
     runs-on: ubuntu-latest
@@ -187,12 +212,12 @@ jobs:
   test-matrix-expected:
     name: Test-MatrixExpected
     runs-on: ubuntu-latest
-    needs: [tests, coverage, secret-scan, actions-shell]
+    needs: [tests, coverage, extras-coverage, secret-scan, actions-shell]
     if: ${{ always() }}
     steps:
       - name: ✅ Verify matrix results
         run: |
-          if [[ "${{ needs.tests.result }}" != "success" || "${{ needs.coverage.result }}" != "success" || "${{ needs.secret-scan.result }}" != "success" || "${{ needs.actions-shell.result }}" != "success" ]]; then
+          if [[ "${{ needs.tests.result }}" != "success" || "${{ needs.coverage.result }}" != "success" || "${{ needs.extras-coverage.result }}" != "success" || "${{ needs.secret-scan.result }}" != "success" || "${{ needs.actions-shell.result }}" != "success" ]]; then
             echo "Upstream checks failed"
             exit 1
           fi

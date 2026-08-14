@@ -1,0 +1,29 @@
+# Separate extras coverage gate (#273).
+# Core 80% still omits these trees in pyproject.toml.
+[run]
+branch = true
+source =
+    fmp_data.lc
+    fmp_data.mcp
+    fmp_data.cache.redis_backend
+
+[report]
+fail_under = 65
+show_missing = true
+precision = 2
+skip_empty = false
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    def __str__
+    raise NotImplementedError
+    if __name__ == ['\"]__main__['\"]:
+    if TYPE_CHECKING:
+    pass
+    raise ImportError
+    except ImportError
+    def main():
+    class .*\\(Protocol\\):
+    @abstractmethod
+    @overload
+    \.\.\.$

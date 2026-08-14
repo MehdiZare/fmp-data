@@ -22,8 +22,8 @@ need no extra beyond pydantic. CI runs the default matrix with no extras, so a
 guard that lives in ``tests/unit/lc/`` is invisible to it. The store-filtering
 behaviour, which genuinely needs langchain, stays in
 ``tests/unit/lc/test_deprecated_endpoints.py``; the MCP-side half of the
-contract lives in ``tests/unit/test_mcp.py``, the only file the ``mcp-server``
-CI job runs.
+contract lives in ``tests/unit/test_mcp.py``, which the ``mcp-server``
+CI job runs as part of ``tests/unit/test_mcp*.py``.
 """
 
 from __future__ import annotations

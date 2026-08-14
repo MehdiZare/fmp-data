@@ -175,6 +175,12 @@ None. No FMP path we ship was newly retired by this changelog window.
 - **CI and local uv are 0.12.3+.** ``setup-uv`` v10 installs uv ``0.12.3``.
   ``[tool.uv] required-version = ">=0.12.3"`` rejects older local
   installs. The action pin remains the v10.0.0 SHA.
+- **Separate extras coverage gate for ``lc`` / ``mcp`` / Redis (#273).**
+  The core 80% report still omits those trees. ``nox -s coverage_extras``
+  (CI job ``extras-coverage``) installs the extras, measures only those
+  files, and fails under 65% (measured baseline 66.78% on 2026-08-13).
+  ``Test-MatrixExpected`` requires that job. The ``mcp-server`` session
+  now runs every ``tests/unit/test_mcp*.py`` file.
 
 ### Security
 

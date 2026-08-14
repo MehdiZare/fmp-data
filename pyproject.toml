@@ -191,6 +191,7 @@ extend-exclude = [
     "__pycache__",
     "build",
     "dist",
+    "extras.coveragerc",
 ]
 
 [tool.ruff.lint]
@@ -406,6 +407,8 @@ omit = [
     "fmp_data/lc/*",
     "fmp_data/mcp/*",
     "fmp_data/cache/redis_backend.py",
+    # Extras stay omitted from the core 80% gate. extras.coveragerc +
+    # `nox -s coverage_extras` measure them separately (#273).
 ]
 
 [tool.coverage.paths]

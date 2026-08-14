@@ -1500,8 +1500,8 @@ class TestDeprecationMechanismsStaySeparate:
     These live here, rather than beside the other #137 tests in
     ``tests/unit/lc/``, because they need the ``mcp`` extra and that directory
     is skipped without ``langchain``. No CI job installs both: the ``langchain``
-    job has no ``mcp``, and the ``mcp-server`` job runs only this file
-    (``noxfile.py``). Placed anywhere else, they would never execute.
+    job has no ``mcp``, and the ``mcp-server`` job runs ``tests/unit/test_mcp*.py``
+    (``noxfile.py``). Placed under ``tests/unit/lc/``, they would never execute.
     """
 
     def test_mcp_catalog_still_advertises_the_deprecated_keys(self):
