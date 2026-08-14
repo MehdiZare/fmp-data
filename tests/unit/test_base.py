@@ -44,6 +44,8 @@ def mock_response():
         payload = json_data or {}
         mock.json.return_value = payload
         mock.text = json.dumps(payload)
+        # Real responses carry bytes here; see the note in tests/unit/conftest.py.
+        mock.content = mock.text.encode()
         mock.raise_for_status = Mock()
         if status_code >= 400:
             mock.raise_for_status.side_effect = httpx.HTTPStatusError(
@@ -291,6 +293,82 @@ def test_get_error_details_redacts_api_keys_in_scalar_json():
     assert isinstance(details, dict)
     assert fake_key_value not in repr(details)
     assert "[REDACTED]" in details["raw_content"]
+
+
+def _handle_body(client_config, status, content):
+    """Drive the real ``handle_response`` and return the raised FMPError."""
+    client = BaseClient(client_config)
+    response = httpx.Response(
+        status, request=httpx.Request("GET", "https://example.com"), content=content
+    )
+    with pytest.raises(FMPError) as excinfo:
+        client.handle_response(response)
+    return excinfo.value
+
+
+def test_handle_response_redacts_key_in_non_json_success_body(client_config):
+    """A 2xx with a non-JSON body must redact like every other error path.
+
+    The ``JSONDecodeError`` branch built ``FMPError.response`` from the raw
+    bytes with no redaction, while the 5xx sibling ran them through
+    ``_redact_api_keys``. Every existing test drove the *helper*, never this
+    branch -- which is how the asymmetry survived (#252 FMP-SEC-005).
+
+    Reachable in normal operation: WAF and CDN block pages echo the full
+    request URL, and ours carries ``apikey=``.
+    """
+    fake_key_value = "SECRET_FMP_KEY"
+    body = f"<html>blocked for apikey={fake_key_value}</html>".encode()
+
+    error = _handle_body(client_config, 200, body)
+
+    rendered = repr(error.response)
+    assert fake_key_value not in rendered
+    assert "[REDACTED]" in rendered
+
+
+def test_handle_response_redacts_scalar_json_body(client_config):
+    """A bare JSON *string* body is how proxies return short error text."""
+    fake_key_value = "SECRET_FMP_KEY"
+    body = json.dumps(f"denied for apikey={fake_key_value}").encode()
+
+    error = _handle_body(client_config, 200, body)
+
+    rendered = repr(error.response)
+    assert fake_key_value not in rendered
+    assert "[REDACTED]" in rendered
+
+
+def test_handle_response_non_json_redaction_matches_the_error_path(client_config):
+    """Pin the parity, not just the fix.
+
+    The defect was that two branches handling the same bytes disagreed.
+    Asserting only "200 redacts" would still pass if the paths drifted apart
+    again in the other direction.
+    """
+    fake_key_value = "SECRET_FMP_KEY"
+    body = f"<html>blocked for apikey={fake_key_value}</html>".encode()
+
+    assert (
+        _handle_body(client_config, 200, body).response
+        == _handle_body(client_config, 500, body).response
+    )
+
+
+def test_handle_response_non_utf8_body_does_not_mask_the_json_error(client_config):
+    """A non-UTF-8 body must not raise *while handling* the JSON failure.
+
+    Bare ``.decode()`` raises ``UnicodeDecodeError`` from inside the
+    ``except json.JSONDecodeError`` block, replacing the real error with a
+    decoding one. ``errors="replace"`` matches ``_get_error_details``.
+    """
+    fake_key_value = "SECRET_FMP_KEY"
+    body = b"\xff\xfe blocked for apikey=" + fake_key_value.encode()
+
+    error = _handle_body(client_config, 200, body)
+
+    assert "Invalid JSON response" in str(error)
+    assert fake_key_value not in repr(error.response)
 
 
 def test_get_error_details_handles_non_utf8_body():
