@@ -434,6 +434,37 @@ class TestAsyncCompanyClient:
         with pytest.raises(InvalidSymbolError, match="Symbol is required"):
             async_client.get_company_logo_url(" ")
 
+    @pytest.mark.parametrize(
+        "symbol",
+        ["../../stable/profile", "a/b", "..", "%2f..%2f", "a\\b"],
+    )
+    def test_get_company_logo_url_rejects_path_escapes(self, mock_client, symbol):
+        """This builder bypasses `Endpoint.build_url` (#252 FMP-SEC-010).
+
+        The original sweep only covered `build_url` callers, so this raw
+        f-string was missed -- and `symbol` reaches it from an LLM through
+        the `company_logo_url` MCP tool.
+        """
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        mock_client.config = MagicMock(base_url="https://example.com")
+        async_client = AsyncCompanyClient(mock_client)
+
+        with pytest.raises(Exception, match="Invalid path parameter"):
+            async_client.get_company_logo_url(symbol)
+
+    def test_get_company_logo_url_allows_dotted_tickers(self, mock_client):
+        """`BRK.B` is a real ticker; only `.`/`..` segments are traversal."""
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        mock_client.config = MagicMock(base_url="https://example.com")
+        async_client = AsyncCompanyClient(mock_client)
+
+        assert (
+            async_client.get_company_logo_url("BRK.B")
+            == "https://example.com/image-stock/BRK.B.png"
+        )
+
     @pytest.mark.asyncio
     async def test_get_historical_prices_wraps_single_result(self, mock_client):
         """Test get_historical_prices wraps non-list results."""

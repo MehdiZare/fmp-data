@@ -109,7 +109,7 @@ from fmp_data.fundamental.models import (
 )
 from fmp_data.helpers import deprecated
 from fmp_data.intelligence.models import DividendEvent, EarningEvent, StockSplitEvent
-from fmp_data.models import MarketCapitalization
+from fmp_data.models import MarketCapitalization, _safe_path_segment
 
 
 def _format_date(value: date | None) -> str | None:
@@ -182,7 +182,12 @@ class CompanyClient(EndpointGroup):
         if not symbol or not symbol.strip():
             raise InvalidSymbolError()
         base_url = self.client.config.base_url.rstrip("/")
-        return f"{base_url}/image-stock/{symbol}.png"
+        # This builder never goes through `Endpoint.build_url`, so it does not
+        # inherit that method's path sanitizing -- the #252 FMP-SEC-010 sweep
+        # only covered `build_url` callers and missed it. `symbol` reaches here
+        # from an LLM via the `company_logo_url` MCP tool, so escape it the same
+        # way rather than interpolating it raw.
+        return f"{base_url}/image-stock/{_safe_path_segment(symbol)}.png"
 
     def get_quote(self, symbol: str) -> Quote:
         """Get real-time stock quote"""
