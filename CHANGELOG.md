@@ -232,6 +232,31 @@ None. No FMP path we ship was newly retired by this changelog window.
   are shared with `EmbeddingConfig.__repr__`, which previously recursed
   while the config side did not. Non-secret values such as `maxBytes` are
   still shown.
+- **Checkouts no longer leave a repo-write token in the workspace
+  (#252 FMP-SEC-002).** Only 4 of 17 `actions/checkout` steps set
+  `persist-credentials: false`, so the rest wrote the job's token into
+  `.git/config` where every later step could read it — dependency
+  installs, build backends, third-party actions. Ten more now drop it.
+  The two that keep it are documented in place: `sync-main-to-dev.yml`
+  really pushes (and persists a *PAT*, broader than `GITHUB_TOKEN`), and
+  `claude.yml` runs an action whose default `use_commit_signing: false`
+  means it commits with standard git commands. A test asserts the
+  exception list by name so a third one has to be deliberate.
+- **`CODECOV_TOKEN` is no longer present in a job that runs PR code
+  (#252).** `nox -s coverage_local` executes the PR branch's own noxfile
+  and test suite; the upload token sat in that same job. Coverage now
+  uploads `coverage.xml` as an artifact and a separate `coverage-upload`
+  job — no secrets in the first, no repository code in the second —
+  performs the upload. It is deliberately not a required check: the
+  coverage threshold is still enforced in the `coverage` job, and a
+  telemetry upload should not gate merges.
+- **Release notes use a random `$GITHUB_OUTPUT` heredoc delimiter (#252).**
+  Not a live hole: `--pretty=format:"- %s"` prefixes every commit line, so
+  a commit subject of `EOF` emits `- EOF` and cannot close the heredoc
+  (verified both ways). But that protection is a side effect of a format
+  string — dropping the `- ` prefix would make every following line a
+  workflow command. The delimiter is now random per run, so the guard is
+  deliberate.
 - **The release build job no longer carries a persisted git credential
   (#252 FMP-SEC-002).** `release.yml`'s build job legitimately needs
   `contents: write` — it pushes the release tag and creates the GitHub

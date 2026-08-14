@@ -50,6 +50,7 @@ jobs:
         if: steps.auth.outputs.configured == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 1
 
       # continue-on-error: an *expired* token still reaches this step (the gate
@@ -62,6 +63,17 @@ jobs:
         uses: anthropics/claude-code-action@239e3a730883eeb5c53db12b0fc9573b3024b126  # v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # KNOWN GAP, not an oversight (#252). This marketplace resolves to
+          # whatever HEAD is at run time, and the action's `plugin_marketplaces`
+          # input takes a bare Git URL with no documented ref/SHA syntax -- so
+          # unlike every `uses:` in this repo it cannot be pinned, and the
+          # repository's `sha_pinning_required` setting does not see it because
+          # the fetch happens at runtime rather than through `uses:`.
+          #
+          # Accepted because it is the same first-party origin as the
+          # SHA-pinned action above, and this job is review-only: no checkout
+          # credentials, and its writes are confined to PR comments. Revisit if
+          # the action gains a pinning syntax.
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
