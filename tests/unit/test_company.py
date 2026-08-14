@@ -1619,3 +1619,43 @@ class TestCompanyHistoricalEODUnwrap:
     def test_leftover_company_endpoints_bind_row_type(self, endpoint, row_type):
         """Leftover company declarations bind T as the payload/row type."""
         assert endpoint.response_model is row_type
+
+
+class TestCompanyLogoUrl:
+    """`get_company_logo_url` bypasses `Endpoint.build_url` (#252 FMP-SEC-010).
+
+    The original sweep only covered `build_url` callers, so this raw f-string
+    was missed -- and `symbol` reaches it from an LLM through the
+    `company_logo_url` MCP tool.
+    """
+
+    @staticmethod
+    def _client() -> CompanyClient:
+        from fmp_data.config import ClientConfig
+
+        config = ClientConfig(
+            api_key="test_key",  # pragma: allowlist secret
+            base_url="https://example.com",
+        )
+        return CompanyClient(BaseClient(config))
+
+    def test_normal_symbol_is_unchanged(self) -> None:
+        assert (
+            self._client().get_company_logo_url("AAPL")
+            == "https://example.com/image-stock/AAPL.png"
+        )
+
+    def test_dotted_ticker_still_works(self) -> None:
+        """`BRK.B` is a real ticker; only `.`/`..` segments are traversal."""
+        assert (
+            self._client().get_company_logo_url("BRK.B")
+            == "https://example.com/image-stock/BRK.B.png"
+        )
+
+    @pytest.mark.parametrize(
+        "symbol",
+        ["../../stable/profile", "a/b", "..", "%2f..%2f", "a\\b"],
+    )
+    def test_path_escapes_are_rejected(self, symbol: str) -> None:
+        with pytest.raises(Exception, match="Invalid path parameter"):
+            self._client().get_company_logo_url(symbol)

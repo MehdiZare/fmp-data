@@ -229,6 +229,16 @@ None. No FMP path we ship was newly retired by this changelog window.
   first (hatch-vcs derives the version from the local tag, and the build
   runs after) and the remote tag is created as an annotated tag object
   rather than a bare ref, so it matches.
+- **`get_company_logo_url` escapes the symbol (#252 FMP-SEC-010).** That
+  builder assembles its URL with a raw f-string and never calls
+  `Endpoint.build_url`, so it did not inherit the path sanitizing added
+  when FMP-SEC-010 was closed — the sweep behind that fix only covered
+  `build_url` callers. `symbol` reaches this method from an LLM through
+  the `company_logo_url` MCP tool, and
+  `get_company_logo_url("../../stable/profile")` returned a URL pointing
+  at a different path on the origin. Now percent-encoded and rejected
+  for separators and dot-segments, matching every other path parameter.
+  Dotted tickers such as `BRK.B` still work.
 - **The TestPyPI publish job no longer holds repo-write (#252 FMP-SEC-002).**
   ``test-release-publish`` carried ``pull-requests: write`` and
   ``issues: write`` alongside ``id-token: write`` purely so it could post
