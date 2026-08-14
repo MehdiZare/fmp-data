@@ -211,6 +211,13 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Fixed
 
+- **TestPyPI / Dev-Release / Release sdist version-assert no longer
+  SIGPIPEs.** `set -euo pipefail` plus `tar -xOf … | awk … exit` made
+  GNU tar exit 2 after a successful build (awk closed the pipe on the
+  first `Version:` line). The sdist was fine; the job still went red,
+  so the 2.7.0 release PR never published a TestPyPI comment. PKG-INFO
+  is now read in full before the version line is parsed.
+
 - **`HolderIndustryBreakdown.industry_title` accepts `null`.** A live
   13F industry-breakdown row sends `industryTitle: null`; the field was
   required `str` and the whole call raised `ValidationError`.
