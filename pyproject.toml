@@ -213,8 +213,6 @@ select = [
 ]
 ignore = [
     "S101",
-    "S603",
-    "S607",
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -222,10 +220,6 @@ ignore = [
     "S101",
     "S106",
     "S107",
-]
-"scripts/*" = [
-    "S603",
-    "S607",
 ]
 "**/conftest.py" = [
     "S101",
@@ -472,7 +466,6 @@ output = "coverage.xml"
 [tool.bandit]
 exclude_dirs = [
     "tests",
-    "scripts",
     ".nox",
     ".venv",
     "build",

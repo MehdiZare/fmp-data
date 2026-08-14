@@ -65,12 +65,13 @@ def find_python_executable() -> str:
     # Try common Python commands
     for cmd in ["python3", "python", "python3.10", "python3.11", "python3.12"]:
         try:
-            result = subprocess.run(  # nosec B603
+            # Fixed argv from the literal list above; no shell.
+            result = subprocess.run(  # noqa: S603  # nosec B603
                 [cmd, "--version"], capture_output=True, text=True, timeout=2
             )
             if result.returncode == 0:
                 # Get the full path
-                which_result = subprocess.run(  # nosec B603
+                which_result = subprocess.run(  # noqa: S603  # nosec B603
                     (
                         ["which", cmd]
                         if platform.system() != "Windows"

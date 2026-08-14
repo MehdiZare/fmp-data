@@ -242,6 +242,23 @@ None. No FMP path we ship was newly retired by this changelog window.
   `base.py` suppresses on its own paths, while nothing under `lc/` was
   redacting. Now redacted at the point of capture, so every branch of the
   envelope inherits it.
+- **Publish workflows serialize (#252).** `release.yml`,
+  `dev-release.yml` and `publish-testpypi.yml` had no `concurrency` group,
+  so two pushes to the same PR could both build and publish and the
+  slower run's comment could overwrite the newer one — advertising a
+  stale version, the exact invariant #204 exists to protect.
+  `cancel-in-progress` is deliberately `false`: making the second run
+  wait is strictly better than aborting one mid-upload.
+- **Ruff's bandit twins are no longer globally ignored (#252
+  FMP-SEC-008).** #278 removed `B603`/`B607` from `[tool.bandit] skips`,
+  but their flake8-bandit equivalents `S603`/`S607` stayed in
+  `[tool.ruff.lint] ignore` — so the narrowing looked done while the rule
+  was enforced by *neither* tool. The global ignore is now just `S101`;
+  the five real call sites carry a targeted `# noqa` with a reason
+  alongside the existing `# nosec`. `scripts/` was also exempt from both
+  ruff's `S` rules and bandit's `exclude_dirs`; both exemptions are gone
+  and both tools pass. A test pins the ruff ignore list next to the
+  existing bandit one, since splitting them is what let this drift.
 - **`ClientConfig.__str__` redaction is metadata-driven, not a name
   allowlist (#252 FMP-SEC-007).** It dumped the whole model and masked the
   three field names it knew about, so everything else rendered verbatim —

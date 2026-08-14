@@ -14,6 +14,14 @@ on:
       - 'v*.*.*b*'             # Beta releases (v1.2.3b1)
       - 'v*.*.*dev*'           # Dev releases (v1.2.3dev1)
 
+# Serialize TestPyPI publishes. Two pushes to the same PR would otherwise
+# race, and the slower run's comment could overwrite the newer one --
+# advertising a stale version, the exact invariant #204 exists to protect.
+# Serializing (rather than cancelling) also avoids aborting an upload.
+concurrency:
+  group: publish-testpypi
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
