@@ -198,6 +198,17 @@ None. No FMP path we ship was newly retired by this changelog window.
   handlers unredacted. The filter now renders and masks the traceback
   itself, and ``JsonFormatter`` masks the exception message and
   traceback it derives from ``record.exc_info``.
+- **Non-JSON and scalar error bodies redact the API key (#252 FMP-SEC-005).**
+  ``handle_response``'s ``json.JSONDecodeError`` branch built
+  ``FMPError.response`` from the raw bytes with no redaction, while the
+  5xx sibling ran the same bytes through ``_redact_api_keys`` — so a 2xx
+  carrying a non-JSON body leaked the live key into the exception. This
+  is routine, not exotic: WAF and CDN block pages echo the full request
+  URL, and ours carries ``apikey=``. A bare JSON *string* body took the
+  same unredacted route through ``_parse_json_response``. Both now
+  redact, and the body is decoded with ``errors="replace"`` so a
+  non-UTF-8 payload cannot raise ``UnicodeDecodeError`` from inside the
+  JSON error handler and mask the real failure.
 - **``pip-audit --strict`` audits a live extras export (#252 FMP-SEC-008).**
   ``nox -s security`` runs ``uv export`` for the published extras
   (langchain, mcp, cache-redis) and audits that pin set. There is no

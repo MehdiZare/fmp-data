@@ -681,9 +681,18 @@ class BaseClient:
         except httpx.HTTPStatusError as exc:
             return self._handle_http_status_error(endpoint_for_error, exc)
         except json.JSONDecodeError as exc:
+            # Redact, exactly as the sibling error path does. A 2xx carrying a
+            # non-JSON body is routine -- WAF and CDN block pages echo the full
+            # request URL, and ours carries `apikey=` -- so this branch put the
+            # live key straight into `FMPError.response` while the same body on
+            # a 5xx came back redacted (#252 FMP-SEC-005).
+            # `errors="replace"` matches `_get_error_details`: without it a
+            # non-UTF-8 body raises UnicodeDecodeError *while handling* the
+            # JSON error, losing the original failure.
+            raw = response.content.decode("utf-8", errors="replace")
             raise FMPError(
                 f"Invalid JSON response from API: {exc!s}",
-                response={"raw_content": response.content.decode()},
+                response={"raw_content": _redact_api_keys(raw)},
             ) from exc
 
     @staticmethod
@@ -692,9 +701,15 @@ class BaseClient:
     ) -> dict[str, Any] | list[Any]:
         data = response.json()
         if not isinstance(data, dict | list):
+            # Scalar bodies land here -- including a bare JSON *string*, which
+            # is how upstream proxies return short error text. That string can
+            # reflect the request URL, so it needs the same redaction the
+            # dict/list paths get via `_sanitize_error_details` (#252).
             raise FMPError(
                 f"Unexpected response type: {type(data)}. Expected dict or list.",
-                response={"data": data},
+                response={"data": _sanitize_error_details(data)}
+                if isinstance(data, str)
+                else {"data": data},
             )
         return cast(dict[str, Any] | list[Any], data)
 
