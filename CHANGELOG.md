@@ -17,6 +17,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `valid_values` are derived from the same aliases. Plain strings still
   work at runtime. The e2e harness samples required closed params from
   the method annotation, not a global `"annual"` table.
+- **Public re-export of those aliases** (`#308`). Annotate against
+  `from fmp_data import Period, PeriodFiscal, PeriodAnnualQuarter,
+  Interval, Timeframe`. They are in `fmp_data.__all__`.
+
+### Changed
+
+- Leftover `ReportingPeriodEnum`, `IntervalEnum`, and
+  `IntradayTimeInterval` member *values* are unpacked from the Literal
+  tuples so they cannot drift (#307). Member names are unchanged.
+- Deprecated `technical.schema.TimeInterval` is now an alias of
+  `TechnicalInterval` (`daily` / `hourly` included). Leftover
+  `model_json_schema()` is an `anyOf` of those enums, not a single
+  `enum` list. Live `TechnicalClient` signatures are unchanged (#309).
+- Deprecated `alternative.schema.BaseIntradayArgs` no longer keeps a
+  second hardcoded interval list; the field type is `Interval` (#309).
 
 ## [2.7.0] - 2026-08-14
 
