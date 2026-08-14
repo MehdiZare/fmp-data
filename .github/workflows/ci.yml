@@ -64,7 +64,13 @@ jobs:
         env:
           NOX_USE_UV: "1"
         run: |
-          uv tool run nox -s lint -s typecheck -s security
+          # One session per invocation. `nox -s` is store-not-append, so the
+          # earlier `-s lint -s typecheck -s security` form silently selected
+          # only `security` -- ruff and mypy never ran in CI at all (#252).
+          # Separate lines also keep each gate's failure unambiguous in the log.
+          uv tool run nox -s lint
+          uv tool run nox -s typecheck
+          uv tool run nox -s security
 
   # Coverage job - run all tests in one job for simplicity
   coverage:

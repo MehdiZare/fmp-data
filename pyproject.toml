@@ -192,6 +192,11 @@ extend-exclude = [
     "build",
     "dist",
     "extras.coveragerc",
+    # Dated, archival process documents. `ruff format` reflows Python inside
+    # Markdown fences, and these record *excerpts* -- partial bodies lifted out
+    # of their enclosing function. Reformatting re-indents them as if they were
+    # standalone modules, which corrupts the record rather than tidying it.
+    "docs/superpowers",
 ]
 
 [tool.ruff.lint]
