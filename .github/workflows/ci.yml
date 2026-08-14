@@ -212,12 +212,12 @@ jobs:
   test-matrix-expected:
     name: Test-MatrixExpected
     runs-on: ubuntu-latest
-    needs: [tests, coverage, secret-scan, actions-shell]
+    needs: [tests, coverage, extras-coverage, secret-scan, actions-shell]
     if: ${{ always() }}
     steps:
       - name: ✅ Verify matrix results
         run: |
-          if [[ "${{ needs.tests.result }}" != "success" || "${{ needs.coverage.result }}" != "success" || "${{ needs.secret-scan.result }}" != "success" || "${{ needs.actions-shell.result }}" != "success" ]]; then
+          if [[ "${{ needs.tests.result }}" != "success" || "${{ needs.coverage.result }}" != "success" || "${{ needs.extras-coverage.result }}" != "success" || "${{ needs.secret-scan.result }}" != "success" || "${{ needs.actions-shell.result }}" != "success" ]]; then
             echo "Upstream checks failed"
             exit 1
           fi

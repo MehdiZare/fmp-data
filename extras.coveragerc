@@ -3,9 +3,9 @@
 [run]
 branch = true
 source =
-    fmp_data/lc
-    fmp_data/mcp
-    fmp_data/cache/redis_backend.py
+    fmp_data.lc
+    fmp_data.mcp
+    fmp_data.cache.redis_backend
 
 [report]
 fail_under = 65
