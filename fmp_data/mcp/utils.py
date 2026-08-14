@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 import platform
 import shutil
-import subprocess
+import subprocess  # nosec B404
 import sys
 import tempfile
 from typing import Any
@@ -65,12 +65,12 @@ def find_python_executable() -> str:
     # Try common Python commands
     for cmd in ["python3", "python", "python3.10", "python3.11", "python3.12"]:
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603
                 [cmd, "--version"], capture_output=True, text=True, timeout=2
             )
             if result.returncode == 0:
                 # Get the full path
-                which_result = subprocess.run(
+                which_result = subprocess.run(  # nosec B603
                     (
                         ["which", cmd]
                         if platform.system() != "Windows"
@@ -273,7 +273,7 @@ def test_mcp_server(api_key: str, manifest_path: str | None = None) -> tuple[boo
 
     try:
         # Try to import and create the app
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603
             [
                 sys.executable,
                 "-c",
@@ -331,7 +331,7 @@ def validate_api_key(api_key: str) -> tuple[bool, str]:
         env = os.environ.copy()
         env["FMP_API_KEY"] = api_key
 
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603
             [
                 sys.executable,
                 "-c",
