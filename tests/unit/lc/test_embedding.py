@@ -39,6 +39,12 @@ def test_embedding_config_repr_redacts_secret_kwargs():
     assert "test-provider-key" not in text
     assert "timeout" in text
     assert "30" in text
+    config_with_author = EmbeddingConfig(
+        additional_kwargs={"author": "visible", "http_auth": "hidden"}
+    )
+    author_repr = repr(config_with_author)
+    assert "visible" in author_repr
+    assert "hidden" not in author_repr
 
 
 def test_embedding_config_validation():

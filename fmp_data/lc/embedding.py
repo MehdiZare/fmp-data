@@ -25,8 +25,8 @@ def _redact_kwargs(data: dict[str, Any]) -> dict[str, Any]:
     """Copy a kwargs map with secret-shaped values replaced."""
     redacted: dict[str, Any] = {}
     for key, value in data.items():
-        lowered = key.lower()
-        if any(token in lowered for token in _SECRET_KWARG_TOKENS):
+        parts = key.lower().replace("-", "_").split("_")
+        if any(part in _SECRET_KWARG_TOKENS for part in parts):
             redacted[key] = "***"
         else:
             redacted[key] = value
