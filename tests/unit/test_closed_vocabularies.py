@@ -145,7 +145,7 @@ def test_getting_started_income_statement_examples_use_period() -> None:
 
 
 def test_closed_vocabularies_are_public_exports() -> None:
-    """#308: callers annotate against the live contracts from fmp_data."""
+    """#308 / #311: callers annotate against the live contracts from fmp_data."""
     import fmp_data
 
     assert fmp_data.Period is Period
@@ -153,14 +153,19 @@ def test_closed_vocabularies_are_public_exports() -> None:
     assert fmp_data.PeriodAnnualQuarter is PeriodAnnualQuarter
     assert fmp_data.Interval is Interval
     assert fmp_data.Timeframe is Timeframe
+    assert fmp_data.TechnicalInterval is TechnicalInterval
     for name in (
         "Period",
         "PeriodFiscal",
         "PeriodAnnualQuarter",
         "Interval",
+        "TechnicalInterval",
         "Timeframe",
     ):
         assert name in fmp_data.__all__, name
+    assert "1day" not in literal_values(fmp_data.TechnicalInterval)
+    assert "daily" in literal_values(fmp_data.TechnicalInterval)
+    assert "hourly" in literal_values(fmp_data.TechnicalInterval)
 
 
 def test_deprecated_time_interval_tracks_technical_interval() -> None:

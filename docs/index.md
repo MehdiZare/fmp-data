@@ -115,13 +115,22 @@ from the package root when you want to annotate against the live client
 contracts:
 
 ```python
-from fmp_data import Interval, Period, PeriodAnnualQuarter, PeriodFiscal, Timeframe
+from fmp_data import (
+    Interval,
+    Period,
+    PeriodAnnualQuarter,
+    PeriodFiscal,
+    TechnicalInterval,
+    Timeframe,
+)
 ```
 
 There are three period types on purpose: most statement endpoints take
 `Period` (`annual` / `quarter` / `FY` / `Q1`–`Q4`). Financial reports and
 batch bulk take only `PeriodFiscal`. Some company series take only
 `PeriodAnnualQuarter`. `Timeframe` is `Interval` plus `"1day"`.
+`TechnicalClient.interval=` takes `TechnicalInterval` (`daily` /
+`hourly`), not `Timeframe`.
 
 ### Response Caching
 

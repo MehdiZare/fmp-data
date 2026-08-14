@@ -506,12 +506,15 @@ with FMPDataClient.from_env() as client:
 ```python
 from datetime import date
 
-from fmp_data import FMPDataClient, Timeframe
+from fmp_data import FMPDataClient, TechnicalInterval, Timeframe
 
 with FMPDataClient.from_env() as client:
     # Simple Moving Average
     timeframe: Timeframe = "1day"
-    sma = client.technical.get_sma("AAPL", period_length=20, timeframe=timeframe)
+    interval: TechnicalInterval = "daily"
+    sma = client.technical.get_sma(
+        "AAPL", period_length=20, timeframe=timeframe, interval=interval
+    )
 
     # RSI (Relative Strength Index)
     rsi = client.technical.get_rsi("AAPL", period_length=14, timeframe="1day")

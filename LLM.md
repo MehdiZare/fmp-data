@@ -74,13 +74,22 @@ Period, interval, and timeframe parameters are typed `Literal` aliases.
 Import them from the package root when annotating:
 
 ```python
-from fmp_data import Interval, Period, PeriodAnnualQuarter, PeriodFiscal, Timeframe
+from fmp_data import (
+    Interval,
+    Period,
+    PeriodAnnualQuarter,
+    PeriodFiscal,
+    TechnicalInterval,
+    Timeframe,
+)
 ```
 
 Keep the three period types distinct. Most statement endpoints take `Period`
 (`annual` / `quarter` / `FY` / `Q1`–`Q4`). Financial reports and batch bulk
 take only `PeriodFiscal`. Some company series take only `PeriodAnnualQuarter`.
-`Timeframe` is `Interval` plus `"1day"`. Plain strings still work at runtime.
+`Timeframe` is `Interval` plus `"1day"`. `TechnicalClient.interval=` takes
+`TechnicalInterval` (`daily` / `hourly`), not `Timeframe`. Plain strings
+still work at runtime.
 
 ## Responses and data handling
 Endpoints return Pydantic models (or lists of models). Use attributes directly

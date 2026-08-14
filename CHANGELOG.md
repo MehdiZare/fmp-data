@@ -19,8 +19,8 @@ This cut also aligns the client with the 2026 FMP `/stable` surface
 (diluted P/E, screener pagination, Senate/House `senateID`, rating-bulk
 scores, delisted companies), finishes the `Endpoint[T]` / `_unwrap_list`
 typing migration, types period / interval / timeframe as closed
-vocabularies (`Period`, `Interval`, `Timeframe`), and adds a local
-VCR-backed client-method sweep.
+vocabularies (`Period`, `Interval`, `TechnicalInterval`, `Timeframe`),
+and adds a local VCR-backed client-method sweep.
 
 **Read before upgrading.** One public-type break, narrow:
 
@@ -179,15 +179,18 @@ None. No FMP path we ship was newly retired by this changelog window.
 ### Added
 
 - **Closed request vocabularies for period, interval, and timeframe
-  (#306, #308).** Client methods now take `Period` / `PeriodFiscal` /
-  `PeriodAnnualQuarter`, `Interval`, and `Timeframe` (`Literal` aliases
-  in `fmp_data.schema`) instead of a naked `str`. Three period types on
-  purpose: financial reports and batch bulk accept only `FY`/`Q1`–`Q4`.
-  Endpoint `valid_values` are derived from the same aliases. Plain
-  strings still work at runtime. Re-exported from `fmp_data` (`__all__`):
-  `from fmp_data import Period, PeriodFiscal, PeriodAnnualQuarter,
-  Interval, Timeframe`. The e2e harness samples required closed params
-  from the method annotation, not a global `"annual"` table.
+  (#306, #308, #311).** Client methods now take `Period` / `PeriodFiscal` /
+  `PeriodAnnualQuarter`, `Interval`, `TechnicalInterval`, and `Timeframe`
+  (`Literal` aliases in `fmp_data.schema`) instead of a naked `str`. Three
+  period types on purpose: financial reports and batch bulk accept only
+  `FY`/`Q1`–`Q4`. Endpoint `valid_values` are derived from the same
+  aliases. Plain strings still work at runtime. Re-exported from
+  `fmp_data` (`__all__`): `from fmp_data import Period, PeriodFiscal,
+  PeriodAnnualQuarter, Interval, TechnicalInterval, Timeframe`.
+  `TechnicalClient.interval=` takes `TechnicalInterval` (`Interval` plus
+  `"daily"` / `"hourly"`), not `Timeframe` (`1day`). The e2e harness
+  samples required closed params from the method annotation, not a
+  global `"annual"` table.
 
 - **Local VCR-backed client-method e2e sweep.** Maintainer script
   `scripts/e2e_endpoints.py` (`make e2e-record` / `make e2e-replay`) calls
