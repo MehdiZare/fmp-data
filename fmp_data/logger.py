@@ -18,6 +18,50 @@ from fmp_data.config import LoggingConfig, LogHandlerConfig
 P = ParamSpec("P")
 R = TypeVar("R")
 
+# Attributes the stdlib puts on every LogRecord. Everything else in
+# ``record.__dict__`` came from a caller's ``extra=``, and is therefore fair
+# game for redaction. Rewriting the stdlib ones would corrupt formatting --
+# ``exc_info`` in particular is a tuple that formatters unpack.
+_STANDARD_LOGRECORD_ATTRS = frozenset(
+    {
+        "args",
+        "asctime",
+        "created",
+        "exc_info",
+        "exc_text",
+        "filename",
+        "funcName",
+        "getMessage",
+        "levelname",
+        "levelno",
+        "lineno",
+        "message",
+        "module",
+        "msecs",
+        "msg",
+        "name",
+        "pathname",
+        "process",
+        "processName",
+        "relativeCreated",
+        "stack_info",
+        "taskName",
+        "thread",
+        "threadName",
+    }
+)
+
+
+def _stringify(value: Any) -> str:
+    """Render a value for masking, including ``bytes``.
+
+    ``str(b"secret")`` yields ``b'secret'`` -- the credential survives with
+    decoration, which is worse than useless when the point is to mask it.
+    """
+    if isinstance(value, bytes | bytearray):
+        return value.decode("utf-8", errors="replace")
+    return str(value)
+
 
 class SensitiveDataFilter(logging.Filter):
     """Filter to mask sensitive data in log records"""
@@ -120,21 +164,31 @@ class SensitiveDataFilter(logging.Filter):
         record.args = ()
 
         for key, value in list(record.__dict__.items()):
-            if key.startswith("_"):
+            if key.startswith("_") or key in _STANDARD_LOGRECORD_ATTRS:
+                if key in {"exc_text", "stack_info"} and isinstance(value, str):
+                    record.__dict__[key] = self._mask_patterns_in_string(value)
                 continue
-            lowered = key.lower()
-            if lowered in self.sensitive_keys or any(
-                token in lowered for token in ("api_key", "apikey", "redis_url")
-            ):
-                if isinstance(value, str | int | float):
-                    record.__dict__[key] = self._mask_value(str(value))
-                elif isinstance(value, dict | list):
-                    record.__dict__[key] = self._mask_dict_recursive(deepcopy(value))
-            elif key in {"exc_text", "stack_info"} and isinstance(value, str):
-                record.__dict__[key] = self._mask_patterns_in_string(value)
+
+            if self._is_sensitive_key(key):
+                record.__dict__[key] = self._mask_value(_stringify(value))
+            else:
+                # Redact *every* extra, not only the sensitively-named ones.
+                # A secret nested under a benign key (`extra={"payload":
+                # {"api_key": ...}}`) used to be masked inside
+                # ``JsonFormatter.format`` instead of on the record, so any
+                # second handler -- ``logging.basicConfig()``, a Sentry or
+                # OTel exporter -- emitted the raw value (#252 FMP-SEC-005).
+                # Doing it here means every handler inherits the masking.
+                record.__dict__[key] = self._mask_dict_recursive(deepcopy(value))
 
         self._redact_traceback(record)
         return True
+
+    def _is_sensitive_key(self, key: str) -> bool:
+        lowered = key.lower()
+        return lowered in self.sensitive_keys or any(
+            token in lowered for token in ("api_key", "apikey", "redis_url")
+        )
 
     def _redact_traceback(self, record: logging.LogRecord) -> None:
         """Render and mask the traceback before any formatter can emit it.
@@ -155,27 +209,36 @@ class SensitiveDataFilter(logging.Filter):
         rendered = "".join(traceback.format_exception(*record.exc_info))
         record.exc_text = self._mask_patterns_in_string(rendered.rstrip("\n"))
 
-    def _mask_dict_recursive(self, d: Any, parent_key: str = "") -> Any:
-        """Recursively mask sensitive values in dictionaries and lists"""
-        if isinstance(d, dict):
-            result: dict[str, Any] = {}
-            for k, v in d.items():
-                key = k.lower() if isinstance(k, str) else k
-                is_sensitive = any(
-                    sensitive in str(key).lower() for sensitive in self.sensitive_keys
-                )
+    def _mask_dict_recursive(self, d: Any, parent_key: str = "", depth: int = 0) -> Any:
+        """Recursively mask sensitive values inside any container.
 
-                if is_sensitive and isinstance(v, str | int | float):
-                    result[k] = self._mask_value(str(v))
-                elif isinstance(v, dict):
-                    result[k] = self._mask_dict_recursive(v, f"{parent_key}.{k}")
-                elif isinstance(v, list):
-                    result[k] = self._mask_dict_recursive(v, parent_key)
-                else:
-                    result[k] = v
-            return result
-        elif isinstance(d, list):
-            return [self._mask_dict_recursive(item, parent_key) for item in d]
+        Type-complete on purpose. The previous version gated on
+        ``isinstance(v, str | int | float)`` to mask and ``dict | list`` to
+        recurse, so three shapes walked straight through unredacted (#252
+        FMP-SEC-005):
+
+        * a sensitive key holding ``bytes``, a ``tuple`` or a ``set``;
+        * ``log_api_call``'s ``call_args``, which is a *tuple* of positional
+          arguments -- the API key is routinely the first one;
+        * any secret reachable only through a tuple or set.
+        """
+        if depth >= 6:
+            return d
+        if isinstance(d, dict):
+            return {
+                k: (
+                    self._mask_value(_stringify(v))
+                    if isinstance(k, str) and self._is_sensitive_key(k)
+                    else self._mask_dict_recursive(v, f"{parent_key}.{k}", depth + 1)
+                )
+                for k, v in d.items()
+            }
+        if isinstance(d, list | tuple):
+            return type(d)(
+                self._mask_dict_recursive(i, parent_key, depth + 1) for i in d
+            )
+        if isinstance(d, set):
+            return {self._mask_dict_recursive(i, parent_key, depth + 1) for i in d}
         return d
 
 
@@ -522,7 +585,14 @@ def log_api_call(
                 safe_kwargs = deepcopy(kwargs)
                 log_context.update(
                     {
-                        "call_args": args[1:],  # Skip 'self' argument
+                        # Types, not values. Positional arguments have no
+                        # names, so nothing downstream can tell a credential
+                        # from a ticker symbol -- the filter masks by key name
+                        # and there is no key here, so a secret passed
+                        # positionally was logged verbatim (#252 FMP-SEC-005).
+                        # The data worth reading arrives through `call_kwargs`,
+                        # which is named and therefore maskable. Skip 'self'.
+                        "call_args": [type(a).__name__ for a in args[1:]],
                         "call_kwargs": safe_kwargs,
                     }
                 )

@@ -22,7 +22,7 @@ except ModuleNotFoundError:  # pragma: no cover
         "Install with:  pip install 'fmp-data[langchain]'"
     ) from None
 
-from fmp_data.base import BaseClient
+from fmp_data.base import BaseClient, _redact_api_keys
 from fmp_data.exceptions import ConfigError
 from fmp_data.lc.registry import EndpointInfo, EndpointRegistry
 from fmp_data.logger import FMPLogger
@@ -863,8 +863,15 @@ class EndpointVectorStore:
                     return self._serialize_result(result)
 
                 except Exception as e:
-                    # Handle different types of errors
-                    error_message = str(e)
+                    # Handle different types of errors.
+                    # Redact at the point of capture so every branch below
+                    # inherits it. This dict is the tool's *return value*: it
+                    # goes into the agent scratchpad, the chat history and any
+                    # tracing backend. `str()` of an `httpx.HTTPStatusError`
+                    # stringifies the request URL, which carries `apikey=` --
+                    # the exact leak `base.py` suppresses on its own paths, but
+                    # nothing under `lc/` was redacting (#252 FMP-SEC-005).
+                    error_message = _redact_api_keys(str(e))
                     error_type = type(e).__name__
 
                     # ValueError covers method-level constraints the endpoint

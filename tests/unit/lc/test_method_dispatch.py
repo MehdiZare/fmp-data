@@ -652,3 +652,38 @@ def test_successful_dispatch_logs_no_fallback(tmp_path: Any) -> None:
 
     store.logger.warning.assert_not_called()
     store.logger.debug.assert_not_called()
+
+
+def test_tool_error_envelope_redacts_reflected_api_keys(tmp_path: Any) -> None:
+    """The envelope is the tool's return value, so it reaches the model (#252).
+
+    `str()` of an `httpx.HTTPStatusError` stringifies the request URL, which
+    for this client always carries `apikey=`. That dict goes into the agent
+    scratchpad, the chat history and any tracing backend -- `base.py` suppresses
+    this exact leak on its own paths, but nothing under `lc/` was redacting.
+    """
+    planted = "PLANTEDCREDENTIALVALUE"
+    boom = RuntimeError(
+        f"Server error '500' for url "
+        f"'https://financialmodelingprep.com/stable/profile?apikey={planted}'"
+    )
+    client = cast(
+        BaseClient,
+        SimpleNamespace(
+            request=Mock(side_effect=boom),
+            sec=SimpleNamespace(
+                search_industry_classification=Mock(side_effect=boom),
+            ),
+        ),
+    )
+    registry = _sec_registry("industry_classification_search")
+    store = _store_with(client, registry, tmp_path)
+    info = registry.get_endpoint("search_industry_classification")
+    assert info is not None
+
+    result = cast(Any, store.create_tool(info)).invoke({"symbol": "AAPL"})
+
+    assert result["status"] == "error"
+    rendered = repr(result)
+    assert planted not in rendered, f"tool envelope leaked the key: {rendered}"
+    assert "[REDACTED]" in rendered
