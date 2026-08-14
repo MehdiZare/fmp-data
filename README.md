@@ -298,8 +298,10 @@ client = FMPDataClient(config=config)
 
 # Create vector store using the config
 vector_store = create_vector_store(
-    fmp_api_key=config.api_key,  # pragma: allowlist secret
-    openai_api_key=config.embedding_api_key,  # pragma: allowlist secret
+    # Credential fields are `SecretStr`, so `model_dump()` cannot leak them.
+    # Unwrap with `.get_secret_value()` wherever a plain string is required.
+    fmp_api_key=config.api_key.get_secret_value(),  # pragma: allowlist secret
+    openai_api_key=config.embedding_api_key.get_secret_value(),  # pragma: allowlist secret
     cache_dir=config.vector_store_path,
     embedding_provider=config.embedding_provider,
     embedding_model=config.embedding_model,

@@ -48,7 +48,7 @@ def vector_store(
     # sentinel the fixture has to interpret.
     try:
         store = create_vector_store(
-            fmp_api_key=fmp_client.config.api_key,
+            fmp_api_key=fmp_client.config.api_key.get_secret_value(),
             openai_api_key=openai_api_key,
             cache_dir=str(cache_dir),
             store_name="test_store",
@@ -82,7 +82,7 @@ class TestLangChainIntegration:
     ):
         """Test vector store creation and basic functionality"""
         store = create_vector_store(
-            fmp_api_key=fmp_client.config.api_key,
+            fmp_api_key=fmp_client.config.api_key.get_secret_value(),
             openai_api_key=openai_api_key,
             cache_dir=str(tmp_path),
             store_name="test_store",

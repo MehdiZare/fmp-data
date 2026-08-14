@@ -50,6 +50,39 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Changed
 
+- **BREAKING: credential config fields are `pydantic.SecretStr` (#252
+  FMP-SEC-007).** `ClientConfig.api_key`, `LangChainConfig.embedding_api_key`,
+  `EmbeddingConfig.api_key` and `CacheConfig.redis_url` changed type.
+
+  `repr()` and `str()` were already redacted, but `model_dump()` and
+  `model_dump_json()` returned every one of them in cleartext — so anything
+  serializing a config (a structured log, a JSON dump, an error report) leaked
+  the key. `SecretStr` closes that at the type level, including for
+  third-party callers who invoke `model_dump()` themselves.
+
+  **Migration:** read the value with `.get_secret_value()`.
+
+  ```python
+  # before
+  client = FMPDataClient(api_key=config.api_key)
+  # after
+  client = FMPDataClient(api_key=config.api_key.get_secret_value())
+  ```
+
+  Construction is unchanged — passing a plain `str` still works, pydantic
+  coerces it. Truthiness checks (`if not config.api_key`) still work. What
+  breaks is code that *reads* the field expecting a `str`: comparisons
+  against a string, slicing, or passing it into a `str`-typed parameter.
+
+  Note that passing a `SecretStr` where a string is expected often fails
+  *silently* rather than loudly — `httpx` accepts it and sends
+  `apikey=**********`, producing 401s with no local error. If you see
+  unexplained auth failures after upgrading, look for a missed
+  `.get_secret_value()`.
+
+  `ClientConfig.validate_api_key` now also rejects a key consisting only of
+  asterisks, which is what rebuilding a config from a masked dump produces.
+
 - **List-returning requests are `list[T]` without collapsing `request()` (#235).**
   `BaseClient.request` stays `Endpoint[T] -> T | list[T]`. Company list
   methods stay on `request()` (so existing mocks still work) and normalize

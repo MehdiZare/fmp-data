@@ -100,7 +100,8 @@ def test_embedding_config_validation():
         model_name="text-embedding-ada-002",
     )
     assert config.provider == EmbeddingProvider.OPENAI
-    assert config.api_key == "test-key"
+    assert config.api_key is not None
+    assert config.api_key.get_secret_value() == "test-key"
 
     # Test valid HuggingFace config without API key
     config = EmbeddingConfig(

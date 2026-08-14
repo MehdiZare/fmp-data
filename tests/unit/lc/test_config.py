@@ -36,7 +36,7 @@ def test_langchain_config_validation():
         similarity_threshold=0.5,
         max_tools=5,
     )
-    assert config.api_key == "test-key"
+    assert config.api_key.get_secret_value() == "test-key"
     assert config.embedding_provider == EmbeddingProvider.OPENAI
     assert config.similarity_threshold == 0.5
 
@@ -56,10 +56,11 @@ def test_langchain_config_from_env(lc_env_vars, tmp_path):
     """Test LangChain configuration from environment variables"""
     config = LangChainConfig.from_env()
 
-    assert config.api_key == "test-fmp-key"
+    assert config.api_key.get_secret_value() == "test-fmp-key"
     assert config.embedding_provider == EmbeddingProvider.OPENAI
     assert config.embedding_model == "text-embedding-ada-002"
-    assert config.embedding_api_key == "test-openai-key"
+    assert config.embedding_api_key is not None
+    assert config.embedding_api_key.get_secret_value() == "test-openai-key"
     assert config.vector_store_path == str(tmp_path / "vector_store")
     assert config.similarity_threshold == 0.5
     assert config.max_tools == 10
@@ -72,4 +73,5 @@ def test_embedding_api_key_not_in_repr() -> None:
     )
     assert "openai-secret-key" not in repr(config)
     assert "openai-secret-key" not in str(config)
-    assert config.embedding_api_key == "openai-secret-key"
+    assert config.embedding_api_key is not None
+    assert config.embedding_api_key.get_secret_value() == "openai-secret-key"

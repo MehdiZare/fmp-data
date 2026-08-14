@@ -537,9 +537,12 @@ class BaseClient:
             # Build URL
             url = endpoint.build_url(self.config.base_url, validated_params)
 
-            # Extract query parameters and add API key
+            # Extract query parameters and add API key.
+            # `.get_secret_value()` is mandatory here: httpx accepts a
+            # SecretStr and stringifies it, so a missed unwrap silently sends
+            # `apikey=**********` and every request 401s (#252).
             query_params = endpoint.get_query_params(validated_params)
-            query_params["apikey"] = self.config.api_key
+            query_params["apikey"] = self.config.api_key.get_secret_value()
 
             # Check cache before rate limiting — cache hits are free
             cache_key: str | None = None
@@ -1128,9 +1131,12 @@ class BaseClient:
             # Build URL
             url = endpoint.build_url(self.config.base_url, validated_params)
 
-            # Extract query parameters and add API key
+            # Extract query parameters and add API key.
+            # `.get_secret_value()` is mandatory here: httpx accepts a
+            # SecretStr and stringifies it, so a missed unwrap silently sends
+            # `apikey=**********` and every request 401s (#252).
             query_params = endpoint.get_query_params(validated_params)
-            query_params["apikey"] = self.config.api_key
+            query_params["apikey"] = self.config.api_key.get_secret_value()
 
             # Check cache before rate limiting — cache hits are free
             cache_key: str | None = None
