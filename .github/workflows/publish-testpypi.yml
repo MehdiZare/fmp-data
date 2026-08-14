@@ -140,8 +140,11 @@ jobs:
             exit 1
           fi
           SDIST="${sdists[0]}"
-          META_VERSION=$(tar -xOf "$SDIST" --wildcards '*/PKG-INFO' 2>/dev/null \
-            | awk -F': ' '/^Version:/{print $2; exit}')
+          # Read PKG-INFO in full first. `tar | awk ... exit` under pipefail
+          # dies with tar's SIGPIPE (exit 2) after awk closes the pipe — the
+          # sdist is fine, the job is not.
+          PKG_INFO=$(tar -xOf "$SDIST" --wildcards '*/PKG-INFO')
+          META_VERSION=$(awk -F': ' '/^Version:/{print $2; exit}' <<<"$PKG_INFO")
           if [ -z "${META_VERSION:-}" ]; then
             echo "::error::Could not read Version: from sdist PKG-INFO"
             exit 1
