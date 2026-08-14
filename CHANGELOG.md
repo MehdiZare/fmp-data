@@ -7,20 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [3.0.0] - 2026-08-14
+## [2.7.0] - 2026-08-14
 
-Released from `dev`. A security-and-contracts major: credential config
-fields are now `pydantic.SecretStr`, so `model_dump()` can no longer leak
-an API key, and a large #252 / #273 hardening pass closes the remaining
-redaction, publish-isolation, and CI-enforcement holes that 2.6.0 left
-open.
+Released from `dev`. A security-and-contracts minor in the same shape as
+2.6.0: credential config fields are now `pydantic.SecretStr`, so
+`model_dump()` can no longer leak an API key, and a large #252 / #273
+hardening pass closes the remaining redaction, publish-isolation, and
+CI-enforcement holes that 2.6.0 left open.
 
 This cut also aligns the client with the 2026 FMP `/stable` surface
 (diluted P/E, screener pagination, Senate/House `senateID`, rating-bulk
 scores, delisted companies), finishes the `Endpoint[T]` / `_unwrap_list`
 typing migration, and adds a local VCR-backed client-method sweep.
 
-**Read before upgrading.** One public-type break:
+**Read before upgrading.** One public-type break, narrow:
 
 | Change | Who it affects | Migration |
 |---|---|---|
@@ -36,10 +36,11 @@ failures after upgrading, look for a missed `.get_secret_value()`.
 Logger names no longer double `fmp_data.` (#238). If you filtered
 `fmp_data.fmp_data.*`, switch to `fmp_data.*`.
 
-**Not in this 3.0.** The `Endpoint.arg_model` / `EndpointParam.required`
-removals and the deletion of withdrawn endpoints announced in 2.6.0 remain
-deprecated, not deleted. Withdrawn tools still register and return `[]`.
-Those stay on the deprecation path for a later cut.
+**3.0 is still the removal cut.** The `Endpoint.arg_model` /
+`EndpointParam.required` deletions and the removal of withdrawn endpoints
+announced in 2.6.0 stay deprecated, not deleted. In-tree tripwires refuse
+a `## [3.x]` changelog heading until that work lands. Withdrawn tools
+still register and return `[]`.
 
 ### FMP API surface (scan this first)
 
