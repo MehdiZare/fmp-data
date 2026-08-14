@@ -184,6 +184,18 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Security
 
+- **The TestPyPI publish job no longer holds repo-write (#252 FMP-SEC-002).**
+  ``test-release-publish`` carried ``pull-requests: write`` and
+  ``issues: write`` alongside ``id-token: write`` purely so it could post
+  the "test release published" PR comment. Anything running in that job —
+  a compromised action, a malicious build dependency — could reach both
+  the TestPyPI OIDC token and the repository. The comment now runs in a
+  separate ``test-release-comment`` job with no OIDC token and no access
+  to the artifact; the publishing job is down to ``id-token: write`` plus
+  ``contents: read``. A new test walks every workflow and fails on any
+  job combining ``id-token: write`` with another write scope (the
+  ``actions/deploy-pages`` job is exempted narrowly, scoped to the
+  ``github-pages`` environment, since that pairing is mandatory there).
 - **``Authorization: Bearer`` no longer crashes the log filter, and
   tracebacks are actually redacted (#252 FMP-SEC-005).**
   ``SensitiveDataFilter`` read capture group 3 for every pattern, but

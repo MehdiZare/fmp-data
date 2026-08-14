@@ -162,10 +162,12 @@ jobs:
     environment:
       name: testpypi
       url: https://test.pypi.org/project/fmp-data/${{ needs.test-release-build.outputs.version }}/
+    # Publishing credential only. `pull-requests: write` / `issues: write`
+    # existed solely to post the PR comment, which now runs in its own job:
+    # nothing that holds the TestPyPI OIDC token should also be able to write
+    # to the repository (#252 FMP-SEC-002).
     permissions:
       id-token: write
-      pull-requests: write
-      issues: write
       contents: read
 
     steps:
@@ -191,6 +193,17 @@ jobs:
           verbose: true
           print-hash: true
 
+  test-release-comment:
+    # Repo-write scopes live here, isolated from the publishing credential.
+    # This job never sees an OIDC token and never touches the artifact.
+    needs: [test-release-build, test-release-publish]
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+      contents: read
+
+    steps:
       - name: 📝  Comment on PR
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
         with:
