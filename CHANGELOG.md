@@ -130,6 +130,13 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Added
 
+- **Local VCR-backed client-method e2e sweep.** Maintainer script
+  `scripts/e2e_endpoints.py` (`make e2e-record` / `make e2e-replay`) calls
+  every public sync `FMPDataClient` method, records gitignored cassettes
+  under `tests/e2e/vcr_cassettes/`, and prints a per-method report. Opt-in
+  (`-m not e2e` in addopts); not run by `make test`. First live pass
+  covered 265 methods: 239 ok, 26 deprecated skips.
+
 - **FMP hosted MCP vs `fmp-mcp` positioning (#230).** Docs-only: we are not
   wrapping FMP's remote MCP URL. README + `docs/mcp/index.md` point at
   `docs/mcp/hosted.md`, which records the 2026-08-12 decision (A+D: position
@@ -168,6 +175,12 @@ None. No FMP path we ship was newly retired by this changelog window.
     `DEFAULT_TOOLS`). LangChain indexes the same semantics key.
 
 ### Fixed
+
+- **`HolderIndustryBreakdown.industry_title` accepts `null`.** A live
+  13F industry-breakdown row sends `industryTitle: null`; the field was
+  required `str` and the whole call raised `ValidationError`.
+- **`CryptoNewsArticle.symbol` accepts `null`.** General crypto news
+  often has no pair; the required `str` field rejected those rows.
 
 - **`FMPLogger.get_logger(__name__)` no longer doubles `fmp_data.` (#238).**
   The root logger is already `fmp_data`; `getChild(__name__)` was emitting

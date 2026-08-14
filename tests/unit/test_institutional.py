@@ -9,6 +9,7 @@ from fmp_data.institutional.models import (
     CIKMapping,
     FailToDeliver,
     Form13F,
+    HolderIndustryBreakdown,
     HolderPerformanceSummary,
     InsiderStatistic,
     InsiderTrade,
@@ -1048,3 +1049,17 @@ class TestHolderPerformanceSummaryInertQuarterFilter:
             "year": 2023,
             "quarter": 3,
         }
+
+
+def test_holder_industry_breakdown_allows_null_title() -> None:
+    """FMP sends industryTitle: null on some holder rows (live 2026-08-14)."""
+    item = HolderIndustryBreakdown.model_validate(
+        {
+            "date": "2024-09-30",
+            "cik": "0001067983",
+            "investorName": "BERKSHIRE HATHAWAY INC",
+            "industryTitle": None,
+            "weight": 0.1,
+        }
+    )
+    assert item.industry_title is None

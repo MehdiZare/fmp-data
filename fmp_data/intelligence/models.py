@@ -296,7 +296,9 @@ class CryptoNewsArticle(BaseModel):
     site: str = Field(description="Source website")
     text: str = Field(description="Article preview text/summary")
     url: HttpUrl = Field(description="Full article URL")
-    symbol: str = Field(description="Cryptocurrency trading pair symbol")
+    symbol: str | None = Field(
+        default=None, description="Cryptocurrency trading pair symbol"
+    )
     publisher: str | None = Field(default=None, description="News publisher")
 
 

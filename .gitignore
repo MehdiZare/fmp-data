@@ -65,6 +65,8 @@ cover/
 
 # VCR cassettes (large recorded API responses, regenerated locally)
 tests/integration/vcr_cassettes/
+tests/e2e/vcr_cassettes/
+tests/e2e/reports/
 
 # Build
 *.manifest

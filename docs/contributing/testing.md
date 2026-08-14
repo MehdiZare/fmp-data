@@ -33,6 +33,25 @@ FMP_TEST_API_KEY=your_test_api_key FMP_VCR_RECORD=new_episodes uv run pytest tes
 FMP_TEST_API_KEY=your_test_api_key FMP_VCR_RECORD=new_episodes uv run pytest tests/integration/test_sec.py  # pragma: allowlist secret
 ```
 
+7. Full client-method e2e sweep (local, spends quota on record):
+```bash
+# list every public sync method
+uv run python scripts/e2e_endpoints.py list
+
+# record one group, or everything
+uv run python scripts/e2e_endpoints.py record --group company
+uv run python scripts/e2e_endpoints.py record --skip-bulk
+
+# replay without hitting the API
+uv run python scripts/e2e_endpoints.py replay
+```
+
+This sweep calls every public `FMPDataClient` method, writes VCR cassettes
+under `tests/e2e/vcr_cassettes/` (gitignored), and writes a JSON report to
+`tests/e2e/reports/last-report.json`. It is deselected from `make test`.
+Use it to debug model/path drift after an FMP change. The cheaper
+declaration probe remains `pytest tests/e2e/ -m live`.
+
 ## Test Structure
 
 ```

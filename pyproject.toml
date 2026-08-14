@@ -354,13 +354,13 @@ addopts = [
     "--disable-warnings",
     "--strict-markers",
     "--strict-config",
-    # Live-API tests are opt-in. `make test` sources .env and promotes
-    # FMP_API_KEY to FMP_TEST_API_KEY, so without this a maintainer running
-    # the project's own test command spends ~700 requests against a 250/day
-    # quota. Override with `-m live` on the command line, which wins over
-    # addopts.
+    # Live-API tests and the VCR client-method sweep are opt-in. `make test`
+    # sources .env and promotes FMP_API_KEY to FMP_TEST_API_KEY, so without
+    # this a maintainer running the project's own test command spends ~700
+    # requests against a 250/day quota. Override with `-m live` or `-m e2e`
+    # on the command line, which wins over addopts.
     "-m",
-    "not live",
+    "not live and not e2e",
 ]
 testpaths = [
     "tests",
@@ -387,6 +387,7 @@ markers = [
     "asyncio: marks tests as asyncio tests",
     "mcp: marks tests as MCP-specific tests",
     "live: hits the real FMP API and spends quota; deselected by default, run with -m live",
+    "e2e: full client-method VCR sweep; deselected by default, record with scripts/e2e_endpoints.py",
 ]
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
