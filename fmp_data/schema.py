@@ -158,34 +158,11 @@ class BaseEnum(str, Enum):
         return [e.value for e in cls]
 
 
-class ReportingPeriodEnum(BaseEnum):
-    """Standard reporting periods"""
-
-    ANNUAL = "annual"
-    QUARTER = "quarter"
-    FY = "FY"
-    Q1 = "Q1"
-    Q2 = "Q2"
-    Q3 = "Q3"
-    Q4 = "Q4"
-
-
 class StructureTypeEnum(BaseEnum):
     """Data structure types"""
 
     FLAT = "flat"
     NESTED = "nested"
-
-
-class IntervalEnum(BaseEnum):
-    """Standard time intervals"""
-
-    MIN_1 = "1min"
-    MIN_5 = "5min"
-    MIN_15 = "15min"
-    MIN_30 = "30min"
-    HOUR_1 = "1hour"
-    HOUR_4 = "4hour"
 
 
 # Closed request vocabularies used by client methods and endpoint valid_values.
@@ -222,6 +199,26 @@ PERIOD_VALUES: tuple[str, ...] = literal_values(Period)
 INTERVAL_VALUES: tuple[str, ...] = literal_values(Interval)
 TIMEFRAME_VALUES: tuple[str, ...] = literal_values(Timeframe)
 TECHNICAL_INTERVAL_VALUES: tuple[str, ...] = literal_values(TechnicalInterval)
+
+
+class ReportingPeriodEnum(BaseEnum):
+    """Standard reporting periods.
+
+    Member *values* come from ``Period``. Member names stay stable for the
+    deprecated arg models. Retired with those models in 3.0 (#153, #307).
+    """
+
+    ANNUAL, QUARTER, FY, Q1, Q2, Q3, Q4 = PERIOD_VALUES
+
+
+class IntervalEnum(BaseEnum):
+    """Standard time intervals.
+
+    Member *values* come from ``Interval``. ``1day`` lives on ``Timeframe``.
+    Retired with the deprecated arg models in 3.0 (#153, #307).
+    """
+
+    MIN_1, MIN_5, MIN_15, MIN_30, HOUR_1, HOUR_4 = INTERVAL_VALUES
 
 
 # Base argument models

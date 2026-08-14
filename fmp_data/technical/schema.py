@@ -2,14 +2,13 @@
 
 from datetime import date as dt_date
 from enum import Enum
-from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from fmp_data.schema import DateRangeArg, SymbolArg
+from fmp_data.schema import DateRangeArg, SymbolArg, TechnicalInterval
 
-# Available intervals for technical analysis
-TimeInterval = Literal["1min", "5min", "15min", "30min", "1hour", "4hour", "daily"]
+# Leftover arg-model alias. Live TechnicalClient uses Timeframe + TechnicalInterval.
+TimeInterval = TechnicalInterval
 
 
 class TechnicalIndicatorArgs(SymbolArg, DateRangeArg):

@@ -94,6 +94,62 @@ def test_legacy_enums_match_the_literal_sets() -> None:
     assert tuple(member.value for member in IntradayTimeInterval) == INTERVAL_VALUES
 
 
+def test_legacy_enums_are_unpacked_from_the_literal_tuples() -> None:
+    """#307: member values come from the Literal tuples, names stay put."""
+    import fmp_data.company.schema as company_schema
+    import fmp_data.schema as schema
+
+    assert "PERIOD_VALUES" in inspect.getsource(schema.ReportingPeriodEnum)
+    assert "INTERVAL_VALUES" in inspect.getsource(schema.IntervalEnum)
+    assert "INTERVAL_VALUES" in inspect.getsource(company_schema.IntradayTimeInterval)
+
+
+def test_closed_vocabularies_are_public_exports() -> None:
+    """#308: callers annotate against the live contracts from fmp_data."""
+    import fmp_data
+
+    assert fmp_data.Period is Period
+    assert fmp_data.PeriodFiscal is PeriodFiscal
+    assert fmp_data.PeriodAnnualQuarter is PeriodAnnualQuarter
+    assert fmp_data.Interval is Interval
+    assert fmp_data.Timeframe is Timeframe
+    for name in (
+        "Period",
+        "PeriodFiscal",
+        "PeriodAnnualQuarter",
+        "Interval",
+        "Timeframe",
+    ):
+        assert name in fmp_data.__all__, name
+
+
+def test_deprecated_time_interval_tracks_technical_interval() -> None:
+    """#309: leftover TimeInterval follows the live TechnicalInterval alias."""
+    from fmp_data.technical.schema import TimeInterval
+
+    assert literal_values(TimeInterval) == literal_values(TechnicalInterval)
+    assert "daily" in literal_values(TimeInterval)
+    assert "hourly" in literal_values(TimeInterval)
+
+
+def test_deprecated_intraday_args_do_not_hardcode_interval_values() -> None:
+    """#309: BaseIntradayArgs must not keep a second interval list."""
+    import warnings
+
+    from pydantic import ValidationError as PydanticValidationError
+
+    from fmp_data.alternative.schema import BaseIntradayArgs, CryptoIntradayArgs
+
+    source = inspect.getsource(BaseIntradayArgs)
+    assert "1min" not in source
+    assert "4hour" not in source
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        CryptoIntradayArgs(symbol="BTCUSD", interval="5min")
+        with pytest.raises(PydanticValidationError):
+            CryptoIntradayArgs(symbol="BTCUSD", interval="1day")
+
+
 def test_interval_is_a_strict_subset_of_timeframe() -> None:
     assert literal_values(Interval) == (
         "1min",

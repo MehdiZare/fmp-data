@@ -1,5 +1,18 @@
 # API Reference
 
+## Closed request vocabularies
+
+`Period`, `PeriodFiscal`, `PeriodAnnualQuarter`, `Interval`, and
+`Timeframe` are re-exported from `fmp_data`. They are the typed contracts
+for client method parameters. Import them from the package root:
+
+```python
+from fmp_data import Interval, Period, PeriodAnnualQuarter, PeriodFiscal, Timeframe
+```
+
+Do not collapse the three period aliases. Financial reports and batch
+bulk accept only `PeriodFiscal` (`FY` / `Q1`–`Q4`).
+
 ## Main Clients
 
 ### Sync Client

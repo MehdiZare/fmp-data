@@ -464,13 +464,14 @@ with FMPDataClient.from_env() as client:
 
 ### 2. Financial Statements
 ```python
-from fmp_data import FMPDataClient
+from fmp_data import FMPDataClient, PeriodAnnualQuarter
 
 with FMPDataClient.from_env() as client:
     # Get income statements
+    period: PeriodAnnualQuarter = "quarter"
     income_stmt = client.fundamental.get_income_statement(
         "AAPL",
-        period="quarter",  # or "annual"
+        period=period,
         limit=4,
     )
 
@@ -495,17 +496,22 @@ with FMPDataClient.from_env() as client:
     )
 
     # Get intraday prices
-    intraday = client.company.get_intraday_prices("TSLA", interval="5min")
+    from fmp_data import Interval
+
+    interval: Interval = "5min"
+    intraday = client.company.get_intraday_prices("TSLA", interval=interval)
 ```
 
 ### 4. Technical Indicators
 ```python
-from fmp_data import FMPDataClient
 from datetime import date
+
+from fmp_data import FMPDataClient, Timeframe
 
 with FMPDataClient.from_env() as client:
     # Simple Moving Average
-    sma = client.technical.get_sma("AAPL", period_length=20, timeframe="1day")
+    timeframe: Timeframe = "1day"
+    sma = client.technical.get_sma("AAPL", period_length=20, timeframe=timeframe)
 
     # RSI (Relative Strength Index)
     rsi = client.technical.get_rsi("AAPL", period_length=14, timeframe="1day")

@@ -1,12 +1,9 @@
 # fmp_data/alternative/schema.py
 from datetime import date
 
-from pydantic import Field, field_validator
+from pydantic import Field
 
 from fmp_data.schema import DeprecatedArgModel, Interval
-
-# Constants
-VALID_INTERVALS = Interval
 
 
 class BaseListArgs(DeprecatedArgModel):
@@ -45,16 +42,9 @@ class BaseHistoricalArgs(BaseQuoteArgs):
 class BaseIntradayArgs(BaseQuoteArgs):
     """Base class for intraday data endpoints"""
 
-    interval: VALID_INTERVALS = Field(
+    interval: Interval = Field(
         description="Time interval between price points",
     )
-
-    @field_validator("interval")
-    def validate_interval(cls, v: str) -> str:
-        valid_intervals = ["1min", "5min", "15min", "30min", "1hour", "4hour"]
-        if v not in valid_intervals:
-            raise ValueError(f"Interval must be one of: {valid_intervals}")
-        return v
 
 
 # Crypto Arguments
