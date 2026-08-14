@@ -239,7 +239,8 @@ None. No FMP path we ship was newly retired by this changelog window.
   (no client-wide header that a 302 would forward). Cross-origin redirects
   are refused by inspecting the `Location` header: httpx only sets
   `next_request` when `follow_redirects` is false, so a next-request-only
-  check was a no-op in production.
+  check was a no-op in production. An unparsable `Location` is refused
+  rather than left for httpx to handle after the hook returns.
 - **Log redaction applies to child loggers and ``api_key=%s`` (#252 FMP-SEC-005).**
   The filter formats the message before masking, so a ``%s`` value is not
   treated as the secret (which previously crashed logging and printed the

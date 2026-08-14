@@ -107,6 +107,20 @@ class TestAsyncClientReuse:
         # Cleanup
         await client.aclose()
 
+    @pytest.mark.asyncio
+    async def test_async_client_installs_cross_origin_redirect_hook(
+        self, client_config
+    ):
+        """Async client uses the same Location-based SEC-004 hook as sync."""
+        from fmp_data.base import BaseClient, _reject_cross_origin_redirect
+
+        client = BaseClient(client_config)
+        try:
+            async_client = client._setup_async_client()
+            assert _reject_cross_origin_redirect in async_client.event_hooks["response"]
+        finally:
+            await client.aclose()
+
 
 class TestAclose:
     """Tests for async close functionality."""

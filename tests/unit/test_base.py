@@ -11,6 +11,7 @@ from fmp_data.base import (
     AsyncEndpointGroup,
     BaseClient,
     EndpointGroup,
+    _origin,
     _reject_cross_origin_redirect,
     _sanitize_error_details,
     _sanitize_error_value,
@@ -1232,12 +1233,96 @@ def test_https_to_http_same_host_is_refused():
         _reject_cross_origin_redirect(response)
 
 
+def test_origin_defaults_http_ports_and_leaves_other_schemes():
+    https = httpx.URL("https://trusted.test/path")
+    http = httpx.URL("http://127.0.0.1/path")
+    ftp = httpx.URL("ftp://files.test/x")
+    custom = httpx.URL("https://trusted.test:8443/path")
+    assert _origin(https) == ("https", "trusted.test", 443)
+    assert _origin(http) == ("http", "127.0.0.1", 80)
+    assert _origin(ftp) == ("ftp", "files.test", None)
+    assert _origin(custom) == ("https", "trusted.test", 8443)
+
+
 def test_https_default_port_is_same_origin():
     response = _redirect_response(
         "https://trusted.test/old",
         "https://trusted.test:443/new",
     )
     _reject_cross_origin_redirect(response)
+
+
+def test_http_default_port_is_same_origin():
+    response = _redirect_response(
+        "http://127.0.0.1/old",
+        "http://127.0.0.1:80/new",
+    )
+    _reject_cross_origin_redirect(response)
+
+
+def test_explicit_non_default_port_is_different_origin():
+    response = _redirect_response(
+        "https://trusted.test/old",
+        "https://trusted.test:8443/new",
+    )
+    with pytest.raises(FMPError, match="cross-origin"):
+        _reject_cross_origin_redirect(response)
+
+
+def test_explicit_same_non_default_port_is_allowed():
+    response = _redirect_response(
+        "http://127.0.0.1:8080/old",
+        "http://127.0.0.1:8080/new",
+    )
+    _reject_cross_origin_redirect(response)
+
+
+def test_relative_location_is_same_origin():
+    response = _redirect_response("https://trusted.test/old", "/new")
+    _reject_cross_origin_redirect(response)
+
+
+def test_scheme_relative_same_host_is_allowed():
+    response = _redirect_response(
+        "https://trusted.test/old",
+        "//trusted.test/new",
+    )
+    _reject_cross_origin_redirect(response)
+
+
+def test_malformed_absolute_location_keeps_source_host():
+    """``https:/new`` is scheme+path with no host; httpx copies the source host."""
+    response = _redirect_response("https://trusted.test/old", "https:/new")
+    _reject_cross_origin_redirect(response)
+
+
+def test_non_redirect_response_is_ignored():
+    src = httpx.Request("GET", "https://trusted.test/path")
+    _reject_cross_origin_redirect(httpx.Response(200, request=src))
+
+
+def test_next_request_fallback_is_honored_when_set():
+    src = httpx.Request("GET", "https://trusted.test/path")
+    dst = httpx.Request("GET", "https://attacker.test/steal")
+    response = httpx.Response(
+        302,
+        headers={"location": "https://trusted.test/new"},
+        request=src,
+    )
+    object.__setattr__(response, "next_request", dst)
+    with pytest.raises(FMPError, match="cross-origin"):
+        _reject_cross_origin_redirect(response)
+
+
+def test_invalid_location_is_refused(monkeypatch):
+    response = _redirect_response("https://trusted.test/path", "https://ok.test/x")
+
+    def _boom(_value: str) -> httpx.URL:
+        raise httpx.InvalidURL("bad")
+
+    monkeypatch.setattr("fmp_data.base.httpx.URL", _boom)
+    with pytest.raises(FMPError, match="invalid Location"):
+        _reject_cross_origin_redirect(response)
 
 
 def test_http_client_does_not_follow_cross_origin_302():

@@ -76,7 +76,10 @@ def _resolve_redirect_target(response: httpx.Response) -> httpx.URL | None:
     try:
         url = httpx.URL(response.headers["Location"])
     except httpx.InvalidURL:
-        return None
+        src = response.request.url
+        raise FMPError(
+            f"Refusing redirect with invalid Location from {src.scheme}://{src.host}"
+        ) from None
     src = response.request.url
     if url.scheme and not url.host:
         url = url.copy_with(host=src.host)
