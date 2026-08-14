@@ -373,10 +373,10 @@ class SetupWizard:
         self.print(f"Found Python: {python_path}", "success")
 
         # Verify it can import fmp_data
-        import subprocess
+        import subprocess  # nosec B404
 
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603
                 [python_path, "-c", "import fmp_data"], capture_output=True, timeout=5
             )
             if result.returncode != 0:

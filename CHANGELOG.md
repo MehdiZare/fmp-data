@@ -234,6 +234,9 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Security
 
+- **Bandit skips are limited to `assert` used in the library (#273).**
+  Global `B404` / `B603` / `B607` / `B608` skips are gone. MCP subprocess
+  calls keep file-local `nosec` notes; there is no SQL to justify `B608`.
 - **API key stays on origin (#252 FMP-SEC-004).** `base_url` must be HTTPS
   except loopback HTTP. The key is sent only as the `apikey` query parameter
   (no client-wide header that a 302 would forward). Cross-origin redirects
