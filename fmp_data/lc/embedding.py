@@ -5,60 +5,11 @@ import os
 from typing import Any
 
 from langchain_core.embeddings import Embeddings
-from pydantic import BaseModel, ConfigDict, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_serializer
 
+from fmp_data._redaction import redact_mapping
 from fmp_data.exceptions import ConfigError
 from fmp_data.lc.utils import check_package_dependency
-
-_SECRET_KWARG_TOKENS = (
-    "key",
-    "token",
-    "secret",
-    "password",
-    "passwd",
-    "authorization",
-    "auth",
-)
-
-
-def _is_secret_key(key: str) -> bool:
-    """True when a kwargs key name looks like it holds a credential."""
-    parts = key.lower().replace("-", "_").split("_")
-    return any(part in _SECRET_KWARG_TOKENS for part in parts)
-
-
-def _redact_value(value: Any, depth: int = 0) -> Any:
-    """Redact secret-shaped entries inside nested containers.
-
-    Recursion matters: providers take credential-bearing *nested* kwargs --
-    ``OpenAIEmbeddings`` accepts ``default_headers={"Authorization": ...}``
-    and ``model_kwargs={"api_key": ...}``, and both are splatted straight
-    into the provider below. A top-level-only scan copied those dicts by
-    reference, so ``repr`` printed the secret verbatim (#273).
-
-    ``depth`` bounds pathological nesting; deeper values are elided rather
-    than walked.
-    """
-    if depth >= 6:
-        return "..."
-    if isinstance(value, dict):
-        return {
-            key: ("***" if _is_secret_key(str(key)) else _redact_value(item, depth + 1))
-            for key, item in value.items()
-        }
-    if isinstance(value, list | tuple):
-        return type(value)(_redact_value(item, depth + 1) for item in value)
-    if isinstance(value, set):
-        return {_redact_value(item, depth + 1) for item in value}
-    return value
-
-
-def _redact_kwargs(data: dict[str, Any]) -> dict[str, Any]:
-    """Copy a kwargs map with secret-shaped values replaced, recursively."""
-    return {
-        key: ("***" if _is_secret_key(key) else _redact_value(value))
-        for key, value in data.items()
-    }
 
 
 class EmbeddingProvider(str, Enum):
@@ -94,13 +45,31 @@ class EmbeddingConfig(BaseModel):
 
     model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
 
+    @field_serializer("additional_kwargs")
+    def _serialize_additional_kwargs(self, value: dict[str, Any]) -> dict[str, Any]:
+        """Redact on ``model_dump`` too, not only in ``repr`` (#252).
+
+        ``additional_kwargs`` is ``dict[str, Any]``, so ``SecretStr`` cannot
+        reach inside it -- providers take credential-bearing nested kwargs
+        such as ``default_headers={"Authorization": ...}``. A serializer is
+        the only place to catch those on the dump path, and it covers a third
+        party calling ``model_dump()`` directly.
+
+        Safe here, unlike on ``ClientConfig``: every consumer reads the
+        attribute (``**self.additional_kwargs``), so nothing rebuilds this
+        model from its own dump. ``ClientConfig`` cannot use this approach
+        because ``LangChainConfig.from_env`` round-trips through
+        ``model_dump()`` and would rebuild itself from the masked values.
+        """
+        return redact_mapping(value)
+
     def __repr__(self) -> str:
         """Hide API keys and secret-shaped kwargs from ``repr`` (#273)."""
         return (
             f"{type(self).__name__}("
             f"provider={self.provider!r}, "
             f"model_name={self.model_name!r}, "
-            f"additional_kwargs={_redact_kwargs(self.additional_kwargs)!r})"
+            f"additional_kwargs={redact_mapping(self.additional_kwargs)!r})"
         )
 
     def get_embeddings(self) -> Embeddings:

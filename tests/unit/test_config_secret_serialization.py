@@ -150,3 +150,78 @@ def test_truthiness_still_works_for_the_client_guards() -> None:
 
     assert not SecretStr("")
     assert SecretStr("x")
+
+
+class TestDisplayRedactionIsNotANameAllowlist:
+    """`__str__` must not depend on a hard-coded list of field names (#252).
+
+    The previous version dumped the whole model and masked the three names it
+    knew about (`api_key`, `embedding_api_key`, `cache.redis_url`). Anything
+    else rendered verbatim -- and `LogHandlerConfig.handler_kwargs` is a bare
+    `dict[str, Any]` handed straight to a logging handler, so no subclass was
+    needed to reach it.
+    """
+
+    @staticmethod
+    def _with_handler_kwargs(**kwargs: object) -> ClientConfig:
+        from fmp_data.config import LoggingConfig, LogHandlerConfig
+
+        return ClientConfig(
+            api_key=API_KEY,
+            logging=LoggingConfig(
+                handlers={
+                    "remote": LogHandlerConfig(
+                        class_name="StreamHandler", handler_kwargs=dict(kwargs)
+                    )
+                }
+            ),
+        )
+
+    def test_secret_in_untyped_handler_kwargs(self) -> None:
+        planted = "LOGHANDLERSECRET_bbbbbbbb"
+        config = self._with_handler_kwargs(credentials=("user", planted))
+        assert planted not in str(config)
+        assert planted not in repr(config)
+
+    def test_secret_nested_deeper_in_handler_kwargs(self) -> None:
+        """A top-level-only scan copies nested containers by reference."""
+        planted = "DEEPSECRET_cccccccc"
+        config = self._with_handler_kwargs(outer={"inner": {"api_key": planted}})
+        assert planted not in str(config)
+
+    def test_camel_case_key_is_recognised(self) -> None:
+        planted = "CAMELSECRET_dddddddd"
+        config = self._with_handler_kwargs(refreshToken=planted)
+        assert planted not in str(config)
+
+    def test_subclass_credential_field(self) -> None:
+        """A subclass must not have to edit `ClientConfig.__str__`."""
+        planted = "SUBCLASS_SECRET_gggggggg"
+
+        class WebhookConfig(ClientConfig):
+            webhook_secret: str | None = None
+
+        config = WebhookConfig(api_key=API_KEY, webhook_secret=planted)
+        assert planted not in str(config)
+        assert planted not in repr(config)
+
+    def test_repr_false_is_honoured_even_without_a_secret_shaped_name(self) -> None:
+        """`repr=False` is pydantic's own not-for-display marker."""
+        from pydantic import Field
+
+        planted = "OPAQUE_dddddddd"
+
+        class OpaqueConfig(ClientConfig):
+            internal_note: str | None = Field(default=None, repr=False)
+
+        config = OpaqueConfig(api_key=API_KEY, internal_note=planted)
+        assert planted not in str(config)
+
+    def test_non_secret_values_are_still_shown(self) -> None:
+        """Over-redaction would make this string useless for debugging."""
+        config = self._with_handler_kwargs(maxBytes=1048576, backupCount=3)
+        text = str(config)
+        assert "maxBytes" in text
+        assert "1048576" in text
+        assert "backupCount" in text
+        assert "base_url=" in text

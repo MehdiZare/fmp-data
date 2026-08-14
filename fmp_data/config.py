@@ -17,6 +17,7 @@ from urllib.parse import urlparse, urlsplit, urlunsplit
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
+from fmp_data._redaction import redact_mapping
 from fmp_data.cache.config import CacheConfig
 from fmp_data.exceptions import ConfigError
 
@@ -217,7 +218,15 @@ class RateLimitConfig(BaseModel):
 
 
 class ClientConfig(BaseModel):
-    """Base client configuration for FMP Data API"""
+    """Base client configuration for FMP Data API.
+
+    Adding a credential field, here or on a subclass: type it ``SecretStr``
+    and mark it ``repr=False``. ``SecretStr`` keeps it out of ``model_dump``
+    and ``model_dump_json``; ``repr=False`` keeps it out of ``__str__`` and
+    ``__repr__``. Neither is a name allowlist, so nothing here needs editing
+    to make a new field safe -- read the value back with
+    ``.get_secret_value()`` (#252).
+    """
 
     # Configure model
     model_config = ConfigDict(
@@ -340,23 +349,46 @@ class ClientConfig(BaseModel):
         return v
 
     def __str__(self) -> str:
-        """String representation with masked API key.
+        """String representation with credentials masked.
 
-        The masks are computed from the *fields*, not from ``model_dump()``.
-        Now that the credential fields are ``SecretStr`` the dump already
-        yields ``SecretStr('**********')``, and re-masking that would print
-        a mask of a mask -- losing the leading-4-character affordance that
-        makes this string useful for telling two keys apart.
+        Redaction is driven by field metadata and key shape, not by a list of
+        field names. The previous version dumped the whole model and masked
+        three names it knew about, so anything else rendered verbatim: a
+        subclass field, or a secret inside ``LogHandlerConfig.handler_kwargs``
+        -- a bare ``dict[str, Any]`` that needs no subclass to reach (#252).
+
+        Three passes, narrowest signal first:
+
+        1. ``repr=False`` fields. That is pydantic's own "not for display"
+           marker and every credential field already carries it, so a subclass
+           gets correct behaviour from the standard idiom rather than from
+           being added to a list here.
+        2. A recursive sweep for secret-shaped *keys*, which is the only
+           handle available on untyped ``dict[str, Any]`` bags.
+        3. The two values worth rendering richer than ``***``.
+
+        The richer masks are computed from the *fields*, not from the dump:
+        credential fields are ``SecretStr``, so the dump already holds
+        ``SecretStr('**********')`` and re-masking that would print a mask of
+        a mask -- losing the leading-4-character affordance that makes this
+        string useful for telling two keys apart.
         """
         data = self.model_dump()
-        if data.get("api_key"):
+
+        for name, field in type(self).model_fields.items():
+            if field.repr is False and data.get(name) is not None:
+                data[name] = "***"
+
+        data = redact_mapping(data)
+
+        if getattr(self, "api_key", None):
             data["api_key"] = _mask_secret(self.api_key)
         embedding_api_key = getattr(self, "embedding_api_key", None)
-        if data.get("embedding_api_key") and embedding_api_key:
+        if embedding_api_key:
             data["embedding_api_key"] = _mask_secret(embedding_api_key)
         cache = data.get("cache")
-        if isinstance(cache, dict) and cache.get("redis_url") and self.cache:
-            cache["redis_url"] = _redact_url_userinfo(self.cache.redis_url or "")
+        if isinstance(cache, dict) and self.cache and self.cache.redis_url:
+            cache["redis_url"] = _redact_url_userinfo(self.cache.redis_url)
 
         # Create a string representation from the masked data
         fields = []
