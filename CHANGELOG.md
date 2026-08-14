@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [3.0.0] - 2026-08-14
+
+Released from `dev`. A security-and-contracts major: credential config
+fields are now `pydantic.SecretStr`, so `model_dump()` can no longer leak
+an API key, and a large #252 / #273 hardening pass closes the remaining
+redaction, publish-isolation, and CI-enforcement holes that 2.6.0 left
+open.
+
+This cut also aligns the client with the 2026 FMP `/stable` surface
+(diluted P/E, screener pagination, Senate/House `senateID`, rating-bulk
+scores, delisted companies), finishes the `Endpoint[T]` / `_unwrap_list`
+typing migration, and adds a local VCR-backed client-method sweep.
+
+**Read before upgrading.** One public-type break:
+
+| Change | Who it affects | Migration |
+|---|---|---|
+| Credential config fields are `SecretStr` (#252 FMP-SEC-007) | anyone reading `ClientConfig.api_key`, `LangChainConfig.embedding_api_key`, `EmbeddingConfig.api_key`, or `CacheConfig.redis_url` as a `str` | call `.get_secret_value()` |
+
+Construction is unchanged — passing a plain `str` still works. `repr()` /
+`str()` were already redacted. What breaks is code that *reads* the field
+as a string (comparisons, slicing, or passing it into a `str` parameter).
+Passing a `SecretStr` where a string is expected often fails *silently*
+(`httpx` sends `apikey=**********` → 401). If you see unexplained auth
+failures after upgrading, look for a missed `.get_secret_value()`.
+
+Logger names no longer double `fmp_data.` (#238). If you filtered
+`fmp_data.fmp_data.*`, switch to `fmp_data.*`.
+
+**Not in this 3.0.** The `Endpoint.arg_model` / `EndpointParam.required`
+removals and the deletion of withdrawn endpoints announced in 2.6.0 remain
+deprecated, not deleted. Withdrawn tools still register and return `[]`.
+Those stay on the deprecation path for a later cut.
+
 ### FMP API surface (scan this first)
 
 Source: FMP public changelog
