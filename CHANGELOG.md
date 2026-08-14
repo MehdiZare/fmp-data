@@ -184,6 +184,20 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Security
 
+- **``Authorization: Bearer`` no longer crashes the log filter, and
+  tracebacks are actually redacted (#252 FMP-SEC-005).**
+  ``SensitiveDataFilter`` read capture group 3 for every pattern, but
+  ``authorization`` defines only two groups. Any log line containing
+  ``Authorization: Bearer <token>`` raised ``IndexError: no such group``
+  from inside ``logging``, so the Bearer rule never redacted *and* the
+  filter's own exception replaced the caller's — reachable through
+  ``FMPDataClient.__exit__``, which logs with ``exc_info=True``.
+  Separately, filters run before formatting, so ``record.exc_text`` was
+  still ``None`` when the filter looked at it: the ``exc_text`` branch
+  never fired on a live ``exc_info=True`` call and tracebacks reached
+  handlers unredacted. The filter now renders and masks the traceback
+  itself, and ``JsonFormatter`` masks the exception message and
+  traceback it derives from ``record.exc_info``.
 - **``pip-audit --strict`` audits a live extras export (#252 FMP-SEC-008).**
   ``nox -s security`` runs ``uv export`` for the published extras
   (langchain, mcp, cache-redis) and audits that pin set. There is no

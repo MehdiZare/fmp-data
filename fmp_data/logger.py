@@ -10,6 +10,7 @@ from logging.handlers import RotatingFileHandler
 import os
 from pathlib import Path
 import re
+import traceback
 from typing import Any, ClassVar, Optional, ParamSpec, TypeVar
 
 from fmp_data.config import LoggingConfig, LogHandlerConfig
@@ -85,10 +86,18 @@ class SensitiveDataFilter(logging.Filter):
         masked_text = text
         for pattern in self.patterns.values():
 
-            def mask_replacement(match: Any) -> Any:
-                prefix = match.group(1) if match.group(1) else ""
+            def mask_replacement(match: re.Match[str]) -> str:
+                # Group count varies by pattern. The quoted-value patterns
+                # capture a trailing quote as group 3, but `authorization`
+                # is (prefix)(token) with no delimiter to restore, so
+                # reading group 3 unconditionally raised
+                # `IndexError: no such group` -- which meant the Bearer rule
+                # never redacted *and* the exception escaped through
+                # `logger.error(..., exc_info=True)` to replace the caller's
+                # own error (#252).
+                prefix = match.group(1) or ""
                 sensitive_value = match.group(2)
-                suffix = match.group(3) if match.group(3) else ""
+                suffix = (match.group(3) or "") if match.re.groups >= 3 else ""
                 masked_value = self._mask_value(sensitive_value)
                 return f"{prefix}{masked_value}{suffix}"
 
@@ -124,7 +133,27 @@ class SensitiveDataFilter(logging.Filter):
             elif key in {"exc_text", "stack_info"} and isinstance(value, str):
                 record.__dict__[key] = self._mask_patterns_in_string(value)
 
+        self._redact_traceback(record)
         return True
+
+    def _redact_traceback(self, record: logging.LogRecord) -> None:
+        """Render and mask the traceback before any formatter can emit it.
+
+        Filters run *before* formatting, so ``record.exc_text`` is still
+        ``None`` here and the ``exc_text`` branch above never fires on a live
+        ``exc_info=True`` call -- the traceback reached the handler
+        unredacted, carrying whatever credential the raised exception's
+        message held (#252 FMP-SEC-005 called for exception text and
+        tracebacks, not just extras).
+
+        ``logging.Formatter.format`` reuses a non-empty ``record.exc_text``
+        instead of re-deriving it, so populating it with a masked rendering
+        is enough for the stdlib path.
+        """
+        if not record.exc_info or not record.exc_info[0] or record.exc_text:
+            return
+        rendered = "".join(traceback.format_exception(*record.exc_info))
+        record.exc_text = self._mask_patterns_in_string(rendered.rstrip("\n"))
 
     def _mask_dict_recursive(self, d: Any, parent_key: str = "") -> Any:
         """Recursively mask sensitive values in dictionaries and lists"""
@@ -170,10 +199,19 @@ class JsonFormatter(logging.Formatter):
         if record.exc_info and record.exc_info[0]:
             exc_type = record.exc_info[0]
             exc_value = record.exc_info[1]
+            # Mask here too: this formatter renders the exception from
+            # ``record.exc_info`` directly rather than reading the masked
+            # ``record.exc_text``, so it would otherwise re-derive the raw
+            # traceback the filter just sanitized (#252 FMP-SEC-005).
+            masker = SensitiveDataFilter()
             log_data["exception"] = {
                 "type": exc_type.__name__ if exc_type else "Unknown",
-                "message": str(exc_value) if exc_value else "",
-                "traceback": self.formatException(record.exc_info),
+                "message": masker._mask_patterns_in_string(
+                    str(exc_value) if exc_value else ""
+                ),
+                "traceback": masker._mask_patterns_in_string(
+                    record.exc_text or self.formatException(record.exc_info)
+                ),
             }
 
         # Add any extra fields from the record

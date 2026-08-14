@@ -188,6 +188,76 @@ class TestSensitiveDataFilter:
         assert secret not in caplog.text
         assert "api_key=" in caplog.text
 
+    def test_every_pattern_masks_without_raising(self) -> None:
+        """No pattern may read a capture group it does not define (#252).
+
+        ``mask_replacement`` read ``match.group(3)`` unconditionally while
+        ``authorization`` is a two-group pattern, so the Bearer rule raised
+        ``IndexError`` instead of redacting. Drive every configured pattern
+        rather than only the three-group ones, so adding another two-group
+        rule cannot reintroduce this.
+        """
+        filter_instance = SensitiveDataFilter()
+        planted = "PLANTEDCREDENTIALVALUE"
+        samples = {
+            "api_key": f"api_key={planted}",
+            "authorization": f"Authorization: Bearer {planted}",
+            "password": f"password: {planted}",
+            "token": f"token={planted}",
+            "secret": f"client_secret={planted}",
+            "key": f"key={planted}",
+        }
+        assert set(samples) == set(filter_instance.patterns), (
+            "a pattern was added or renamed without a sample here"
+        )
+
+        for name, text in samples.items():
+            masked = filter_instance._mask_patterns_in_string(text)
+            assert planted not in masked, f"{name} pattern did not redact: {masked}"
+
+    def test_bearer_token_is_redacted_not_crashed(self) -> None:
+        """The two-group ``authorization`` pattern actually masks."""
+        filter_instance = SensitiveDataFilter()
+        planted = "PLANTEDCREDENTIALVALUE"
+        record = logging.LogRecord(
+            name="test_logger",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg=f"sending Authorization: Bearer {planted}",
+            args=(),
+            exc_info=None,
+        )
+        assert filter_instance.filter(record) is True
+        text = record.getMessage()
+        assert planted not in text
+        assert "Authorization: Bearer " in text
+
+    def test_bearer_in_traceback_does_not_replace_callers_exception(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """The filter must never become the error the caller sees (#252).
+
+        ``FMPDataClient.__exit__`` logs with ``exc_info=True``. The filter
+        walks ``exc_text``, so an exception whose message carried a Bearer
+        token raised ``IndexError: no such group`` *from inside logging* and
+        the caller's real ``RuntimeError`` was lost behind it.
+        """
+        from fmp_data.logger import FMPLogger
+
+        planted = "PLANTEDCREDENTIALVALUE"
+        log = FMPLogger().get_logger("fmp_data.base")
+        caplog.set_level(logging.ERROR, logger="fmp_data.base")
+
+        try:
+            raise RuntimeError(f"upstream rejected Authorization: Bearer {planted}")
+        except RuntimeError:
+            log.error("Error in context manager", exc_info=True)
+
+        assert planted not in caplog.text
+        assert "upstream rejected" in caplog.text
+        assert "no such group" not in caplog.text
+
 
 class TestJsonFormatter:
     """Test JsonFormatter functionality"""
@@ -263,6 +333,40 @@ class TestJsonFormatter:
 
         assert "exception" in json_data
         assert "ValueError" in json_data["exception"]["type"]
+
+    def test_format_masks_credentials_in_exception_and_traceback(self):
+        """The JSON exception block must not re-derive the raw traceback.
+
+        ``JsonFormatter`` renders from ``record.exc_info`` directly, so it
+        bypassed the mask the filter had applied and emitted the credential
+        verbatim under ``exception.message`` / ``exception.traceback``
+        (#252 FMP-SEC-005).
+        """
+        formatter = JsonFormatter()
+        secret = "supersecretkey99"  # noqa: S105
+
+        try:
+            raise ValueError(f"upstream said api_key={secret}")
+        except ValueError:
+            exc_info = sys.exc_info()
+
+        record = logging.LogRecord(
+            name="test_logger",
+            level=logging.ERROR,
+            pathname="/path/to/file.py",
+            lineno=42,
+            msg="Exception occurred",
+            args=(),
+            exc_info=exc_info,
+        )
+
+        formatted = formatter.format(record)
+        assert secret not in formatted
+
+        json_data = json.loads(formatted)
+        assert "api_key=" in json_data["exception"]["message"]
+        assert secret not in json_data["exception"]["message"]
+        assert secret not in json_data["exception"]["traceback"]
 
     def test_format_excludes_private_attributes(self):
         """Test that private attributes are excluded from JSON"""
