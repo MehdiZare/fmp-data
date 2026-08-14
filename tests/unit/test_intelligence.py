@@ -1581,3 +1581,19 @@ class TestMarketIntelligenceClientAnalyst:
         assert kwargs["page"] == 0
         assert isinstance(result, list)
         assert result[0].symbol == "MSFT"
+
+
+def test_crypto_news_article_allows_null_symbol() -> None:
+    """General crypto news often has symbol: null (live 2026-08-14)."""
+    item = CryptoNewsArticle.model_validate(
+        {
+            "publishedDate": "2024-01-15T10:00:00",
+            "title": "Crypto Update",
+            "image": "https://example.com/image.jpg",
+            "site": "Crypto News",
+            "text": "News content",
+            "url": "https://example.com/crypto",
+            "symbol": None,
+        }
+    )
+    assert item.symbol is None

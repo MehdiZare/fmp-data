@@ -13,7 +13,8 @@ maintainer running the project's own test command with a populated ``.env``
 fired this whole suite: roughly 700 live requests -- a 275-endpoint 404 sweep
 plus a paired sentinel call per optional parameter -- against a default quota of
 250 a day. The marker is what makes "opt-in" true for ``make test`` as well as
-for CI.
+for CI. The same ``addopts`` line also deselects the VCR client-method
+sweep (``e2e``).
 
 Why this exists: a one-off probe of all 275 declarations found 28 paths that
 return 404 for every request, three endpoints whose ``from``/``to`` are
@@ -67,7 +68,7 @@ from fmp_data.models import Endpoint, ParamLocation
 API_KEY = os.getenv("FMP_TEST_API_KEY") or os.getenv("FMP_API_KEY")
 
 pytestmark = [
-    # Deselected by `-m "not live"` in addopts. This is the gate that holds
+    # Deselected by `-m "not live and not e2e"` in addopts. This is the gate that holds
     # for `make test`, which supplies a key from .env whether or not you meant
     # to spend one; the skipif below only helps when no key exists at all.
     pytest.mark.live,

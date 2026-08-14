@@ -857,7 +857,9 @@ class HolderIndustryBreakdown(BaseModel):
     report_date: date = Field(description="Filing date", alias="date")
     cik: CIK = Field(description="Institution CIK")
     investor_name: str = Field(alias="investorName", description="Investor name")
-    industry_title: str = Field(alias="industryTitle", description="Industry title")
+    industry_title: str | None = Field(
+        default=None, alias="industryTitle", description="Industry title"
+    )
     weight: float = Field(description="Industry weight in portfolio")
     last_weight: float | None = Field(
         default=None, alias="lastWeight", description="Previous weight"
