@@ -11,6 +11,8 @@ from fmp_data.base import (
     AsyncEndpointGroup,
     BaseClient,
     EndpointGroup,
+    _origin,
+    _reject_cross_origin_redirect,
     _sanitize_error_details,
     _sanitize_error_value,
 )
@@ -1188,28 +1190,216 @@ def test_http_client_does_not_put_apikey_in_default_headers(client_config):
         client.close()
 
 
-def test_reject_cross_origin_redirect():
-    from fmp_data.base import _reject_cross_origin_redirect
+def _redirect_response(src_url: str, location: str) -> httpx.Response:
+    """A 302 as ``follow_redirects=True`` presents it: Location set, no next_request."""
+    src = httpx.Request("GET", src_url)
+    return httpx.Response(302, headers={"location": location}, request=src)
 
-    src = httpx.Request("GET", "https://trusted.test/path")
-    dst = httpx.Request("GET", "https://attacker.test/steal")
-    response = httpx.Response(
-        302, headers={"location": "https://attacker.test/steal"}, request=src
+
+def test_reject_cross_origin_redirect_reads_location_when_next_request_unset():
+    """httpx sets next_request only when follow_redirects is False (#252)."""
+    response = _redirect_response(
+        "https://trusted.test/path?apikey=SECRET",
+        "https://attacker.test/steal",
     )
-    object.__setattr__(response, "next_request", dst)
-
+    assert response.next_request is None
     with pytest.raises(FMPError, match="cross-origin"):
         _reject_cross_origin_redirect(response)
 
 
-def test_same_origin_redirect_is_allowed():
-    from fmp_data.base import _reject_cross_origin_redirect
+def test_same_origin_location_redirect_is_allowed():
+    response = _redirect_response(
+        "https://trusted.test/old", "https://trusted.test/new"
+    )
+    assert response.next_request is None
+    _reject_cross_origin_redirect(response)
 
-    src = httpx.Request("GET", "https://trusted.test/old")
-    dst = httpx.Request("GET", "https://trusted.test/new")
+
+def test_scheme_relative_cross_origin_location_is_refused():
+    response = _redirect_response(
+        "https://trusted.test/path?apikey=SECRET",
+        "//attacker.test/steal",
+    )
+    with pytest.raises(FMPError, match="cross-origin"):
+        _reject_cross_origin_redirect(response)
+
+
+def test_https_to_http_same_host_is_refused():
+    response = _redirect_response(
+        "https://trusted.test/path",
+        "http://trusted.test/path",
+    )
+    with pytest.raises(FMPError, match="cross-origin"):
+        _reject_cross_origin_redirect(response)
+
+
+def test_origin_defaults_http_ports_and_leaves_other_schemes():
+    https = httpx.URL("https://trusted.test/path")
+    http = httpx.URL("http://127.0.0.1/path")
+    ftp = httpx.URL("ftp://files.test/x")
+    custom = httpx.URL("https://trusted.test:8443/path")
+    assert _origin(https) == ("https", "trusted.test", 443)
+    assert _origin(http) == ("http", "127.0.0.1", 80)
+    assert _origin(ftp) == ("ftp", "files.test", None)
+    assert _origin(custom) == ("https", "trusted.test", 8443)
+
+
+def test_https_default_port_is_same_origin():
+    response = _redirect_response(
+        "https://trusted.test/old",
+        "https://trusted.test:443/new",
+    )
+    _reject_cross_origin_redirect(response)
+
+
+def test_http_default_port_is_same_origin():
+    response = _redirect_response(
+        "http://127.0.0.1/old",
+        "http://127.0.0.1:80/new",
+    )
+    _reject_cross_origin_redirect(response)
+
+
+def test_explicit_non_default_port_is_different_origin():
+    response = _redirect_response(
+        "https://trusted.test/old",
+        "https://trusted.test:8443/new",
+    )
+    with pytest.raises(FMPError, match="cross-origin"):
+        _reject_cross_origin_redirect(response)
+
+
+def test_explicit_same_non_default_port_is_allowed():
+    response = _redirect_response(
+        "http://127.0.0.1:8080/old",
+        "http://127.0.0.1:8080/new",
+    )
+    _reject_cross_origin_redirect(response)
+
+
+def test_relative_location_is_same_origin():
+    response = _redirect_response("https://trusted.test/old", "/new")
+    _reject_cross_origin_redirect(response)
+
+
+def test_scheme_relative_same_host_is_allowed():
+    response = _redirect_response(
+        "https://trusted.test/old",
+        "//trusted.test/new",
+    )
+    _reject_cross_origin_redirect(response)
+
+
+def test_malformed_absolute_location_keeps_source_host():
+    """``https:/new`` is scheme+path with no host; httpx copies the source host."""
+    response = _redirect_response("https://trusted.test/old", "https:/new")
+    _reject_cross_origin_redirect(response)
+
+
+def test_non_redirect_response_is_ignored():
+    src = httpx.Request("GET", "https://trusted.test/path")
+    _reject_cross_origin_redirect(httpx.Response(200, request=src))
+
+
+def test_next_request_fallback_is_honored_when_set():
+    src = httpx.Request("GET", "https://trusted.test/path")
+    dst = httpx.Request("GET", "https://attacker.test/steal")
     response = httpx.Response(
-        302, headers={"location": "https://trusted.test/new"}, request=src
+        302,
+        headers={"location": "https://trusted.test/new"},
+        request=src,
     )
     object.__setattr__(response, "next_request", dst)
+    with pytest.raises(FMPError, match="cross-origin"):
+        _reject_cross_origin_redirect(response)
 
-    _reject_cross_origin_redirect(response)
+
+def test_invalid_location_is_refused(monkeypatch):
+    response = _redirect_response("https://trusted.test/path", "https://ok.test/x")
+
+    def _boom(_value: str) -> httpx.URL:
+        raise httpx.InvalidURL("bad")
+
+    monkeypatch.setattr("fmp_data.base.httpx.URL", _boom)
+    with pytest.raises(FMPError, match="invalid Location"):
+        _reject_cross_origin_redirect(response)
+
+
+def test_http_client_does_not_follow_cross_origin_302():
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(f"{request.url.scheme}://{request.url.host}{request.url.path}")
+        if request.url.host == "trusted.test":
+            return httpx.Response(
+                302,
+                headers={"location": "https://attacker.test/steal"},
+                request=request,
+            )
+        return httpx.Response(200, content=b"leaked", request=request)
+
+    with httpx.Client(
+        follow_redirects=True,
+        event_hooks={"response": [_reject_cross_origin_redirect]},
+        transport=httpx.MockTransport(handler),
+    ) as client:
+        with pytest.raises(FMPError, match="cross-origin"):
+            client.get("https://trusted.test/path?apikey=SECRET")
+
+    assert seen == ["https://trusted.test/path"]
+
+
+def test_http_client_follows_same_origin_302():
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.url.path)
+        if request.url.path == "/old":
+            return httpx.Response(
+                302,
+                headers={"location": "https://trusted.test/new"},
+                request=request,
+            )
+        return httpx.Response(200, json={"ok": True}, request=request)
+
+    with httpx.Client(
+        follow_redirects=True,
+        event_hooks={"response": [_reject_cross_origin_redirect]},
+        transport=httpx.MockTransport(handler),
+    ) as client:
+        response = client.get("https://trusted.test/old")
+
+    assert response.status_code == 200
+    assert seen == ["/old", "/new"]
+
+
+def test_base_client_installs_hook_that_refuses_cross_origin_302(client_config):
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.url.host)
+        if request.url.host == "api.test.com":
+            return httpx.Response(
+                302,
+                headers={"location": "https://attacker.test/steal"},
+                request=request,
+            )
+        return httpx.Response(200, content=b"leaked", request=request)
+
+    client = BaseClient(client_config)
+    try:
+        hooks = client.client.event_hooks
+        wrapped = httpx.Client(
+            timeout=client.config.timeout,
+            follow_redirects=True,
+            headers=dict(client.client.headers),
+            event_hooks=hooks,
+            transport=httpx.MockTransport(handler),
+        )
+        client.client.close()
+        client.client = wrapped
+        with pytest.raises(FMPError, match="cross-origin"):
+            client.client.get("https://api.test.com/stable/profile?apikey=SECRET")
+        assert seen == ["api.test.com"]
+    finally:
+        client.close()
