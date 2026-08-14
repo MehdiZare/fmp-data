@@ -179,18 +179,22 @@ None. No FMP path we ship was newly retired by this changelog window.
 ### Added
 
 - **Closed request vocabularies for period, interval, and timeframe
-  (#306, #308, #311).** Client methods now take `Period` / `PeriodFiscal` /
-  `PeriodAnnualQuarter`, `Interval`, `TechnicalInterval`, and `Timeframe`
-  (`Literal` aliases in `fmp_data.schema`) instead of a naked `str`. Three
-  period types on purpose: financial reports and batch bulk accept only
-  `FY`/`Q1`–`Q4`. Endpoint `valid_values` are derived from the same
-  aliases. Plain strings still work at runtime. Re-exported from
-  `fmp_data` (`__all__`): `from fmp_data import Period, PeriodFiscal,
-  PeriodAnnualQuarter, Interval, TechnicalInterval, Timeframe`.
-  `TechnicalClient.interval=` takes `TechnicalInterval` (`Interval` plus
-  `"daily"` / `"hourly"`), not `Timeframe` (`1day`). The e2e harness
-  samples required closed params from the method annotation, not a
-  global `"annual"` table.
+  (#306, #308).** Client methods now take `Period` / `PeriodFiscal` /
+  `PeriodAnnualQuarter`, `Interval`, and `Timeframe` (`Literal` aliases
+  in `fmp_data.schema`) instead of a naked `str`. Three period types on
+  purpose: financial reports and batch bulk accept only `FY`/`Q1`–`Q4`.
+  Endpoint `valid_values` are derived from the same aliases. Plain
+  strings still work at runtime. Re-exported from `fmp_data` (`__all__`):
+  `from fmp_data import Period, PeriodFiscal, PeriodAnnualQuarter,
+  Interval, Timeframe`. The e2e harness samples required closed params
+  from the method annotation, not a global `"annual"` table.
+
+- **Public re-export of `TechnicalInterval` (#311).** Annotate
+  `TechnicalClient.interval=` against
+  `from fmp_data import TechnicalInterval`. It is `Interval` plus
+  `"daily"` / `"hourly"`, not `Timeframe` (`1day`). Client-only leftover
+  aliases mapped by `_normalize_timeframe`; endpoint `valid_values` stay
+  on `Timeframe` / `Interval`.
 
 - **Local VCR-backed client-method e2e sweep.** Maintainer script
   `scripts/e2e_endpoints.py` (`make e2e-record` / `make e2e-replay`) calls
