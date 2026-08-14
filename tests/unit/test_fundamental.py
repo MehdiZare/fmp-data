@@ -508,13 +508,14 @@ class TestFundamentalEndpoints(unittest.TestCase):
         """Test handling of invalid period parameter"""
         with self.assertRaises(ValueError) as context:
             self.mock_client.request.side_effect = ValueError(
-                "Invalid value for period. Must be one of: ['annual', 'quarter']"
+                "Invalid value for period. Must be one of: "
+                "['annual', 'quarter', 'FY', 'Q1', 'Q2', 'Q3', 'Q4']"
             )
             self.fundamental_client.get_income_statement(
                 symbol=self.symbol,
                 period="invalid",  # type: ignore[arg-type]
             )
-        self.assertIn("Must be one of: ['annual', 'quarter']", str(context.exception))
+        self.assertIn("Must be one of:", str(context.exception))
 
     def test_missing_required_parameter(self):
         """Test handling of missing required parameter"""

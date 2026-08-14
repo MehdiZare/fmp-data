@@ -10,6 +10,11 @@ import importlib
 import inspect
 from typing import Any, Literal, get_args, get_origin, get_type_hints
 
+import pytest
+
+from fmp_data.company.endpoints import FINANCIAL_REPORTS_JSON
+from fmp_data.exceptions import ValidationError
+from fmp_data.fundamental.endpoints import INCOME_STATEMENT
 from fmp_data.models import Endpoint
 from fmp_data.schema import (
     INTERVAL_VALUES,
@@ -19,20 +24,24 @@ from fmp_data.schema import (
     TECHNICAL_INTERVAL_VALUES,
     TIMEFRAME_VALUES,
     Interval,
+    IntervalAlias,
+    IntervalEnum,
     Period,
     PeriodAnnualQuarter,
     PeriodFiscal,
+    ReportingPeriodEnum,
+    TechnicalInterval,
     Timeframe,
     literal_values,
 )
 from fmp_data.tool_binding import bindable_params
-from tests.e2e.harness import build_kwargs, discover_cases
+from tests.e2e.harness import build_kwargs, discover_cases, first_closed_sample
 
 
 def test_period_aliases_are_distinct_contracts() -> None:
     assert literal_values(PeriodAnnualQuarter) == ("annual", "quarter")
     assert literal_values(PeriodFiscal) == ("FY", "Q1", "Q2", "Q3", "Q4")
-    assert set(literal_values(Period)) == {
+    assert literal_values(Period) == (
         "annual",
         "quarter",
         "FY",
@@ -40,11 +49,25 @@ def test_period_aliases_are_distinct_contracts() -> None:
         "Q2",
         "Q3",
         "Q4",
-    }
-    # The wide alias is a union of the two contracts, not a third set.
-    assert set(literal_values(Period)) == set(PERIOD_ANNUAL_QUARTER_VALUES) | set(
-        PERIOD_FISCAL_VALUES
     )
+    # The wide alias is the union of the two contracts, not a third list.
+    assert literal_values(Period) == PERIOD_ANNUAL_QUARTER_VALUES + PERIOD_FISCAL_VALUES
+
+
+def test_literal_values_flattens_unions_and_rejects_non_literals() -> None:
+    assert literal_values(TechnicalInterval) == (
+        *INTERVAL_VALUES,
+        *literal_values(IntervalAlias),
+    )
+    assert literal_values(TechnicalInterval) == TECHNICAL_INTERVAL_VALUES
+    with pytest.raises(TypeError, match=r"not a typing\.Literal alias"):
+        literal_values(str)
+
+
+def test_legacy_enums_match_the_literal_sets() -> None:
+    """Keep ReportingPeriodEnum / IntervalEnum from drifting off the Literals."""
+    assert tuple(member.value for member in ReportingPeriodEnum) == PERIOD_VALUES
+    assert tuple(member.value for member in IntervalEnum) == INTERVAL_VALUES
 
 
 def test_interval_is_a_strict_subset_of_timeframe() -> None:
@@ -175,3 +198,26 @@ def test_harness_samples_required_period_from_the_annotation() -> None:
         if case.group == "batch" and case.method == "get_income_statement_bulk"
     )
     assert build_kwargs(case)["period"] == "FY"
+    assert first_closed_sample(PeriodFiscal) == "FY"
+    assert first_closed_sample(PeriodAnnualQuarter) == "annual"
+    assert first_closed_sample(Period) == "annual"
+
+
+def _param(endpoint: Endpoint[Any], name: str):
+    params = list(endpoint.mandatory_params) + list(endpoint.optional_params or [])
+    return next(param for param in params if param.name == name)
+
+
+def test_fiscal_endpoints_reject_annual() -> None:
+    period = _param(FINANCIAL_REPORTS_JSON, "period")
+    with pytest.raises(ValidationError, match="Must be one of"):
+        period.validate_value("annual")
+    assert period.validate_value("FY") == "FY"
+
+
+def test_income_statement_accepts_both_period_contracts() -> None:
+    period = _param(INCOME_STATEMENT, "period")
+    assert period.validate_value("annual") == "annual"
+    assert period.validate_value("FY") == "FY"
+    with pytest.raises(ValidationError, match="Must be one of"):
+        period.validate_value("invalid")

@@ -45,7 +45,7 @@ INCOME_STATEMENT: Endpoint[IncomeStatement] = Endpoint(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            description="Period (annual, quarter)",
+            description="Period (annual, quarter, FY, Q1-Q4)",
             default="annual",
             valid_values=list(PERIOD_VALUES),
         ),

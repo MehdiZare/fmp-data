@@ -2,7 +2,8 @@
 from datetime import date
 from enum import Enum
 import inspect
-from typing import Any, Literal, TypeAlias, get_args
+from types import UnionType
+from typing import Any, Literal, TypeAlias, Union, get_args, get_origin
 import warnings
 
 from pydantic import (
@@ -189,10 +190,11 @@ class IntervalEnum(BaseEnum):
 
 # Closed request vocabularies used by client methods and endpoint valid_values.
 # Three period aliases on purpose: financial-reports and batch bulk reject
-# ``annual``/``quarter``. Do not collapse these into ReportingPeriodEnum.
+# ``annual``/``quarter``. Period is the union of those two contracts so the
+# wide set cannot drift. Do not collapse these into ReportingPeriodEnum.
 PeriodAnnualQuarter: TypeAlias = Literal["annual", "quarter"]
 PeriodFiscal: TypeAlias = Literal["FY", "Q1", "Q2", "Q3", "Q4"]
-Period: TypeAlias = Literal["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"]
+Period: TypeAlias = PeriodAnnualQuarter | PeriodFiscal
 Interval: TypeAlias = Literal["1min", "5min", "15min", "30min", "1hour", "4hour"]
 Timeframe: TypeAlias = Literal[
     "1min", "5min", "15min", "30min", "1hour", "4hour", "1day"
@@ -203,11 +205,17 @@ TechnicalInterval: TypeAlias = Interval | IntervalAlias
 
 
 def literal_values(typ: Any) -> tuple[Any, ...]:
-    """Members of a ``Literal`` alias, in declaration order."""
-    args = get_args(typ)
-    if not args:
-        raise TypeError(f"{typ!r} is not a typing.Literal alias")
-    return args
+    """Members of a ``Literal`` alias (or a union of them), in declaration order."""
+    origin = get_origin(typ)
+    if origin is Literal:
+        return get_args(typ)
+    if origin in {Union, UnionType}:
+        collected: list[Any] = []
+        for arg in get_args(typ):
+            collected.extend(literal_values(arg))
+        if collected:
+            return tuple(collected)
+    raise TypeError(f"{typ!r} is not a typing.Literal alias")
 
 
 PERIOD_ANNUAL_QUARTER_VALUES: tuple[str, ...] = literal_values(PeriodAnnualQuarter)
@@ -215,10 +223,7 @@ PERIOD_FISCAL_VALUES: tuple[str, ...] = literal_values(PeriodFiscal)
 PERIOD_VALUES: tuple[str, ...] = literal_values(Period)
 INTERVAL_VALUES: tuple[str, ...] = literal_values(Interval)
 TIMEFRAME_VALUES: tuple[str, ...] = literal_values(Timeframe)
-TECHNICAL_INTERVAL_VALUES: tuple[str, ...] = (
-    *INTERVAL_VALUES,
-    *literal_values(IntervalAlias),
-)
+TECHNICAL_INTERVAL_VALUES: tuple[str, ...] = literal_values(TechnicalInterval)
 
 
 # Base argument models
