@@ -5,7 +5,7 @@ import os
 from typing import Any
 
 from langchain_core.embeddings import Embeddings
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 from fmp_data.exceptions import ConfigError
 from fmp_data.lc.utils import check_package_dependency
@@ -78,9 +78,12 @@ class EmbeddingConfig(BaseModel):
     model_name: str | None = Field(
         default=None, description="Model name for the embedding provider"
     )
-    api_key: str | None = Field(
+    api_key: SecretStr | None = Field(
         default=None,
-        description="API key for the embedding provider",
+        description=(
+            "API key for the embedding provider. Read the value with "
+            "`config.api_key.get_secret_value()`."
+        ),
         repr=False,
     )
     additional_kwargs: dict[str, Any] = Field(
@@ -126,7 +129,9 @@ class EmbeddingConfig(BaseModel):
                 from langchain_openai import OpenAIEmbeddings
 
                 return OpenAIEmbeddings(
-                    openai_api_key=self.api_key,
+                    # Providers take a plain string; a SecretStr would be
+                    # stringified to its mask and authenticate as nobody (#252).
+                    openai_api_key=self.api_key.get_secret_value(),
                     model=self.model_name or "text-embedding-ada-002",
                     **self.additional_kwargs,
                 )
@@ -155,7 +160,7 @@ class EmbeddingConfig(BaseModel):
                 from langchain_community.embeddings import CohereEmbeddings
 
                 return CohereEmbeddings(
-                    cohere_api_key=self.api_key,
+                    cohere_api_key=self.api_key.get_secret_value(),
                     model=self.model_name or "embed-english-v2.0",
                     **self.additional_kwargs,
                 )

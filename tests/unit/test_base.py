@@ -163,9 +163,16 @@ def test_base_client_query_params(client_config):
         mock_request.return_value.json.return_value = {}
         client.request(endpoint)
 
-        # Verify API key was added to params
+        # Verify API key was added to params.
+        # Assert the literal value, not `== client_config.api_key`: with
+        # SecretStr fields that comparison passes vacuously the moment both
+        # sides are masked, so it would go green on a client sending
+        # `apikey=**********`. httpx accepts a SecretStr and stringifies it,
+        # so that failure is silent (#252).
         called_params = mock_request.call_args[1]["params"]
-        assert called_params["apikey"] == client_config.api_key
+        assert called_params["apikey"] == client_config.api_key.get_secret_value()
+        assert isinstance(called_params["apikey"], str)
+        assert set(called_params["apikey"]) != {"*"}
         assert called_params["param1"] == "value1"
 
 

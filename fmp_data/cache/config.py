@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Literal
 import warnings
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, SecretStr, model_validator
 
 
 @functools.lru_cache(maxsize=1)
@@ -61,22 +61,32 @@ class CacheConfig(BaseModel):
     cache_dir: Path | None = Field(
         default=None, description="Directory for file-based cache"
     )
-    redis_url: str | None = Field(
-        default=None, description="Redis connection URL", repr=False
+    redis_url: SecretStr | None = Field(
+        default=None,
+        description=(
+            "Redis connection URL. May carry userinfo credentials, so it is "
+            "a SecretStr: read it with `config.redis_url.get_secret_value()`."
+        ),
+        repr=False,
     )
 
     def __str__(self) -> str:
         from urllib.parse import urlsplit, urlunsplit
 
         data = self.model_dump()
-        url = data.get("redis_url")
+        # Compute from the field: the dump now holds `SecretStr('**********')`,
+        # which has no parseable netloc left to redact (#252). Assign back
+        # unconditionally so a credential-free URL still shows its host --
+        # only the userinfo is secret, and the host is what makes this string
+        # worth printing.
+        url = self.redis_url.get_secret_value() if self.redis_url else None
         if isinstance(url, str) and url:
             parts = urlsplit(url)
             if parts.username or parts.password:
                 host = parts.hostname or ""
                 if parts.port:
                     host = f"{host}:{parts.port}"
-                data["redis_url"] = urlunsplit(
+                url = urlunsplit(
                     (
                         parts.scheme,
                         f"***@{host}",
@@ -85,6 +95,7 @@ class CacheConfig(BaseModel):
                         parts.fragment,
                     )
                 )
+            data["redis_url"] = url
         return f"CacheConfig({data})"
 
     def __repr__(self) -> str:

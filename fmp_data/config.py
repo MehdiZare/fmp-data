@@ -15,10 +15,22 @@ from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlparse, urlsplit, urlunsplit
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
 from fmp_data.cache.config import CacheConfig
 from fmp_data.exceptions import ConfigError
+
+
+def _reveal(value: SecretStr | str | None) -> str | None:
+    """Unwrap a possibly-``SecretStr`` credential for use at the wire.
+
+    Credential fields are ``SecretStr`` so ``model_dump`` and
+    ``model_dump_json`` cannot emit them (#252); every point that actually
+    *uses* the value goes through here.
+    """
+    if value is None:
+        return None
+    return value.get_secret_value() if isinstance(value, SecretStr) else value
 
 
 def _is_loopback_host(hostname: str | None) -> bool:
@@ -29,17 +41,19 @@ def _is_loopback_host(hostname: str | None) -> bool:
     return host in {"localhost", "127.0.0.1", "::1"} or host.startswith("127.")
 
 
-def _mask_secret(value: str) -> str:
-    if len(value) > 4:
-        return f"{value[:4]}***"
+def _mask_secret(value: SecretStr | str) -> str:
+    revealed = _reveal(value) or ""
+    if len(revealed) > 4:
+        return f"{revealed[:4]}***"
     return "***"
 
 
-def _redact_url_userinfo(url: str) -> str:
+def _redact_url_userinfo(url: SecretStr | str) -> str:
     """Drop userinfo from a URL so ``redis://:hunter2@host`` cannot leak."""
-    parts = urlsplit(url)
+    revealed = _reveal(url) or ""
+    parts = urlsplit(revealed)
     if not (parts.username or parts.password):
-        return url
+        return revealed
     host = parts.hostname or ""
     if parts.port:
         host = f"{host}:{parts.port}"
@@ -210,8 +224,11 @@ class ClientConfig(BaseModel):
         str_strip_whitespace=True,
     )
 
-    api_key: str = Field(
-        description="FMP API key. Can be set via FMP_API_KEY environment variable",
+    api_key: SecretStr = Field(
+        description=(
+            "FMP API key. Can be set via FMP_API_KEY environment variable. "
+            "Read the value with `config.api_key.get_secret_value()`."
+        ),
         repr=False,  # Exclude API key from repr
     )
     timeout: int = Field(default=30, gt=0, description="Request timeout in seconds")
@@ -268,11 +285,29 @@ class ClientConfig(BaseModel):
 
     @field_validator("api_key")
     @classmethod
-    def validate_api_key(cls, v: str) -> str:
-        """Validate API key is not empty"""
-        if not v or not v.strip():
+    def validate_api_key(cls, v: SecretStr) -> SecretStr:
+        """Validate API key is not empty.
+
+        Unwraps first: ``model_config``'s ``str_strip_whitespace`` does not
+        reach inside a ``SecretStr``, and ``SecretStr`` has no ``.strip()``,
+        so the stripping this validator has always done has to be explicit
+        now (#252).
+        """
+        revealed = (_reveal(v) or "").strip()
+        if not revealed:
             raise ValueError("API key cannot be empty")
-        return v.strip()
+        if set(revealed) == {"*"}:
+            # A value of nothing but asterisks is a redaction marker that has
+            # been round-tripped back in as if it were real -- e.g. rebuilding
+            # a config from `model_dump(mode="json")`. Accepting it produces a
+            # client that 401s on every call with no local error, so fail here
+            # where the cause is still visible (#252).
+            raise ValueError(
+                "API key looks like a redaction mask, not a key. It was "
+                "probably read back from a masked dump; use "
+                "`config.api_key.get_secret_value()` to obtain the real value."
+            )
+        return SecretStr(revealed)
 
     @field_validator("base_url")
     @classmethod
@@ -305,16 +340,23 @@ class ClientConfig(BaseModel):
         return v
 
     def __str__(self) -> str:
-        """String representation with masked API key"""
-        # Create a copy of the model dict with masked API key
+        """String representation with masked API key.
+
+        The masks are computed from the *fields*, not from ``model_dump()``.
+        Now that the credential fields are ``SecretStr`` the dump already
+        yields ``SecretStr('**********')``, and re-masking that would print
+        a mask of a mask -- losing the leading-4-character affordance that
+        makes this string useful for telling two keys apart.
+        """
         data = self.model_dump()
         if data.get("api_key"):
-            data["api_key"] = _mask_secret(str(data["api_key"]))
-        if data.get("embedding_api_key"):
-            data["embedding_api_key"] = _mask_secret(str(data["embedding_api_key"]))
+            data["api_key"] = _mask_secret(self.api_key)
+        embedding_api_key = getattr(self, "embedding_api_key", None)
+        if data.get("embedding_api_key") and embedding_api_key:
+            data["embedding_api_key"] = _mask_secret(embedding_api_key)
         cache = data.get("cache")
-        if isinstance(cache, dict) and cache.get("redis_url"):
-            cache["redis_url"] = _redact_url_userinfo(str(cache["redis_url"]))
+        if isinstance(cache, dict) and cache.get("redis_url") and self.cache:
+            cache["redis_url"] = _redact_url_userinfo(self.cache.redis_url or "")
 
         # Create a string representation from the masked data
         fields = []

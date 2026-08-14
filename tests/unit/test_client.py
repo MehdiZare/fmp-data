@@ -23,7 +23,7 @@ class TestFMPDataClientInitialization:
     def test_client_initialization_with_config(self, client_config):
         """Test client initialization with config object"""
         client = FMPDataClient(config=client_config)
-        assert client.config.api_key == "test_api_key"
+        assert client.config.api_key.get_secret_value() == "test_api_key"
         assert client.config.base_url == "https://test.financialmodelingprep.com/api"
         assert client._initialized is True
         client.close()
@@ -37,7 +37,7 @@ class TestFMPDataClientInitialization:
             base_url="https://custom.api.com",
             debug=True,
         )
-        assert client.config.api_key == "test_key"
+        assert client.config.api_key.get_secret_value() == "test_key"
         assert client.config.timeout == 60
         assert client.config.max_retries == 5
         assert client.config.base_url == "https://custom.api.com"
@@ -121,7 +121,7 @@ class TestFMPDataClientFromEnv:
     def test_from_env_basic(self):
         """Test basic from_env functionality"""
         client = FMPDataClient.from_env()
-        assert client.config.api_key == "env_test_key"
+        assert client.config.api_key.get_secret_value() == "env_test_key"
         assert client._initialized is True
         client.close()
 
@@ -129,7 +129,7 @@ class TestFMPDataClientFromEnv:
     def test_from_env_with_debug(self):
         """Test from_env with debug mode"""
         client = FMPDataClient.from_env(debug=True)
-        assert client.config.api_key == "env_test_key"
+        assert client.config.api_key.get_secret_value() == "env_test_key"
         assert client.config.logging.level == "DEBUG"
         assert client.config.logging.handlers["console"].level == "DEBUG"
         client.close()
@@ -138,7 +138,7 @@ class TestFMPDataClientFromEnv:
     def test_from_env_debug_false(self):
         """Test from_env with debug explicitly False"""
         client = FMPDataClient.from_env(debug=False)
-        assert client.config.api_key == "env_test_key"
+        assert client.config.api_key.get_secret_value() == "env_test_key"
         # Should use default config logging levels
         client.close()
 
@@ -180,7 +180,7 @@ class TestFMPDataClientContextManager:
     def test_context_manager_basic_usage(self):
         """Test basic context manager functionality"""
         with FMPDataClient(api_key="test_key") as client:
-            assert client.config.api_key == "test_key"
+            assert client.config.api_key.get_secret_value() == "test_key"
             assert client._initialized is True
             assert client.client is not None
             assert not client.client.is_closed

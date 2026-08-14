@@ -368,7 +368,7 @@ class TestClientConfig:
         config = ClientConfig(
             api_key="test_key", base_url="https://api.test.com", timeout=60
         )
-        assert config.api_key == "test_key"
+        assert config.api_key.get_secret_value() == "test_key"
         assert config.base_url == "https://api.test.com"
         assert config.timeout == 60
 
@@ -429,7 +429,7 @@ class TestClientConfig:
         """Test API key validation"""
         # Valid API key
         config = ClientConfig(api_key="valid_key")
-        assert config.api_key == "valid_key"
+        assert config.api_key.get_secret_value() == "valid_key"
 
         # Empty API key should fail
         with pytest.raises(ValidationError):
@@ -485,7 +485,7 @@ class TestClientConfig:
             )
 
             config = ClientConfig.from_env()
-            assert config.api_key == "env_test_key"
+            assert config.api_key.get_secret_value() == "env_test_key"
             assert config.base_url == "https://env.api.com"
             assert config.timeout == 45
             assert config.max_retries == 4
@@ -513,7 +513,7 @@ class TestClientConfig:
             # Don't set other variables
 
             config = ClientConfig.from_env()
-            assert config.api_key == "test_key"
+            assert config.api_key.get_secret_value() == "test_key"
             # Should use defaults for other values
             assert config.timeout == 30
             assert config.max_retries == 3
@@ -649,7 +649,7 @@ class TestConfigEdgeCases:
             )
 
             config = ClientConfig.from_env()
-            assert config.api_key == "test_key"
+            assert config.api_key.get_secret_value() == "test_key"
             # Should use defaults and not be affected by unknown vars
 
     def test_path_handling_edge_cases(self, tmp_path):
@@ -689,7 +689,7 @@ class TestConfigEdgeCases:
             base_url="https://api-test.example.com",  # Using simple ASCII URL
         )
 
-        assert config.api_key == "test_key_with_特殊字符"
+        assert config.api_key.get_secret_value() == "test_key_with_特殊字符"
 
     def test_nested_config_modification(self):
         """Test modifying nested configuration objects"""

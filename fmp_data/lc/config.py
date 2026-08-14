@@ -1,7 +1,7 @@
 # fmp_data/lc/config.py
 import os
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, SecretStr
 
 from fmp_data.config import ClientConfig
 from fmp_data.lc.embedding import EmbeddingConfig, EmbeddingProvider
@@ -23,9 +23,12 @@ class LangChainConfig(ClientConfig):
     embedding_model: str | None = Field(
         default=None, description="Model name for embeddings"
     )
-    embedding_api_key: str | None = Field(
+    embedding_api_key: SecretStr | None = Field(
         default=None,
-        description="API key for embedding provider",
+        description=(
+            "API key for embedding provider. Read the value with "
+            "`config.embedding_api_key.get_secret_value()`."
+        ),
         repr=False,
     )
 
@@ -58,7 +61,14 @@ class LangChainConfig(ClientConfig):
     @classmethod
     def from_env(cls) -> "LangChainConfig":
         """Create LangChain config from environment variables."""
-        # Get base config first
+        # Get base config first.
+        # Python-mode `model_dump()` on purpose: it yields the SecretStr
+        # *objects*, which re-validate into this model unchanged. Switching to
+        # `mode="json"` or `model_dump_json()` -- the reflex, since SecretStr
+        # is not JSON-serialisable -- substitutes the literal mask, and
+        # `validate_api_key` accepts `'**********'` as a perfectly good key.
+        # The result is a client that 401s on every request with no local
+        # error (#252).
         base_config = super().from_env()
         config_dict = base_config.model_dump()
 
