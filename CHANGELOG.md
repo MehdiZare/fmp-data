@@ -234,6 +234,9 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Security
 
+- **Embedding ``additional_kwargs`` no longer leak secrets in ``repr`` (#273).**
+  Secret-shaped keys are replaced with ``***``; ``api_key`` stays off the
+  default field repr.
 - **Makefile ``.env`` loader drops process-hijack keys (#273).**
   ``PATH``, ``LD_PRELOAD``, ``PYTHONPATH``, ``DYLD_*``, and similar
   identifiers are ignored so a trusted local file cannot rewrite the
