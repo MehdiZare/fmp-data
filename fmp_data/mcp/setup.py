@@ -376,7 +376,9 @@ class SetupWizard:
         import subprocess  # nosec B404
 
         try:
-            result = subprocess.run(  # nosec B603
+            # Fixed argv, no shell; `python_path` is the interpreter we just
+            # resolved, not user input.
+            result = subprocess.run(  # noqa: S603  # nosec B603
                 [python_path, "-c", "import fmp_data"], capture_output=True, timeout=5
             )
             if result.returncode != 0:

@@ -152,7 +152,7 @@ def test_uv_lock_stays_uncommitted() -> None:
     """
     assert "uv.lock" in GITIGNORE.read_text(encoding="utf-8")
     tracked = subprocess.run(
-        ["git", "ls-files", "--", "uv.lock", "poetry.lock"],
+        ["git", "ls-files", "--", "uv.lock", "poetry.lock"],  # noqa: S607
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,

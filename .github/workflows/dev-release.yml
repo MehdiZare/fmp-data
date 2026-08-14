@@ -17,6 +17,13 @@ on:
       - dev
   workflow_dispatch:
 
+# Serialize dev releases. Rapid pushes to `dev` would otherwise publish
+# out of order. Never cancel in progress -- a half-finished upload is
+# worse than a queued one (#252).
+concurrency:
+  group: dev-release-to-testpypi
+  cancel-in-progress: false
+
 permissions:
   contents: read
 

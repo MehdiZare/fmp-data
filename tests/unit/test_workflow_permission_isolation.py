@@ -135,3 +135,25 @@ def test_codecov_token_is_not_in_a_job_that_runs_pr_code() -> None:
     )
     assert upload["needs"] == "coverage" or "coverage" in upload["needs"]
     assert _write_scopes(upload.get("permissions")) == set()
+
+
+PUBLISH_WORKFLOWS = ("release.yml", "dev-release.yml", "publish-testpypi.yml")
+
+
+@pytest.mark.parametrize("name", PUBLISH_WORKFLOWS)
+def test_publish_workflows_serialize(name: str) -> None:
+    """Concurrent publishes race on version, tag and PR comment (#252).
+
+    Two pushes to the same PR both build and publish; the slower run's
+    comment can overwrite the newer one, advertising a stale version -- the
+    exact invariant #204 exists to protect.
+
+    `cancel-in-progress` must stay false: making the second run wait is
+    strictly better than aborting one mid-upload.
+    """
+    loaded = yaml.safe_load((REPO_ROOT / ".github" / "workflows" / name).read_text())
+    concurrency = loaded.get("concurrency")
+    assert concurrency, f"{name} has no concurrency group; publishes can race"
+    assert concurrency.get("cancel-in-progress") is False, (
+        f"{name} may cancel a run mid-upload"
+    )
