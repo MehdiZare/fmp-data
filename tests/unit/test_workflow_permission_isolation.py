@@ -108,3 +108,30 @@ def test_the_testpypi_comment_is_a_separate_job() -> None:
     assert "environment" not in comment
     step_uses = " ".join(str(s.get("uses", "")) for s in comment["steps"])
     assert "download-artifact" not in step_uses
+
+
+def test_codecov_token_is_not_in_a_job_that_runs_pr_code() -> None:
+    """The upload token must not share a job with PR-supplied code (#252).
+
+    `nox -s coverage_local` runs the PR branch's own noxfile and test suite.
+    Holding an upload token in that same job hands it to whatever that code
+    decides to do. Split the same way the release path splits build from
+    publish: produce an artifact with no secrets, upload it from a job that
+    only downloads.
+    """
+    jobs = _jobs(REPO_ROOT / ".github" / "workflows" / "ci.yml")
+
+    coverage = yaml.dump(jobs["coverage"])
+    assert "CODECOV_TOKEN" not in coverage, (
+        "the coverage job executes PR-supplied test code; it must not hold "
+        "the upload token"
+    )
+    assert "nox" in coverage, "guard is vacuous if this job stops running tests"
+
+    upload = jobs["coverage-upload"]
+    assert "CODECOV_TOKEN" in yaml.dump(upload)
+    assert "nox" not in yaml.dump(upload), (
+        "the upload job must not execute repository code"
+    )
+    assert upload["needs"] == "coverage" or "coverage" in upload["needs"]
+    assert _write_scopes(upload.get("permissions")) == set()

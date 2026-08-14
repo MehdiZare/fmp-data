@@ -234,15 +234,23 @@ jobs:
             COMMIT_NOTES=$(git log --pretty=format:"- %s" "$PREV_TAG"..HEAD)
           fi
 
+          # Random per-run delimiter. A fixed `EOF` is only safe here by
+          # accident: `--pretty=format:"- %s"` prefixes every commit line, so a
+          # commit subject of literally `EOF` emits `- EOF` and cannot close
+          # the heredoc. Drop the `- ` prefix and it becomes a live injection --
+          # every following line would be parsed by the runner as a workflow
+          # command. Verified both ways; the guard should not be a side effect
+          # of a format string (#252).
+          DELIM="NOTES_EOF_$(openssl rand -hex 16)"
           {
-            echo "NOTES<<EOF"
+            echo "NOTES<<$DELIM"
             echo "### $RELEASE_TYPE"
             echo ""
             echo "**$PR_TITLE** (#$PR_NUMBER) by @$PR_AUTHOR"
             echo ""
             echo "### 📝 Commits"
             echo "$COMMIT_NOTES"
-            echo "EOF"
+            echo "$DELIM"
           } >> "$GITHUB_OUTPUT"
 
       - name: 🚀 Create GitHub Release
