@@ -217,6 +217,17 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Security
 
+- **`LogHandlerConfig.handler_kwargs` is redacted on the dump path too
+  (#252 FMP-SEC-007).** `__str__` was swept in the metadata-driven
+  redaction change, but `model_dump()` / `model_dump_json()` still emitted
+  these verbatim — and they are a bare `dict[str, Any]` handed straight to
+  a logging handler, so a `SysLogHandler` password or an HTTP handler's
+  credentials live there. `SecretStr` cannot reach inside an untyped bag,
+  so a `field_serializer` closes it, the same approach used for
+  `EmbeddingConfig.additional_kwargs`. Safe here because the only consumer
+  reads the attribute (`config.handler_kwargs.copy()` in `logger.py`),
+  so nothing rebuilds the model from its own dump. Operational kwargs such
+  as `maxBytes` and `backupCount` are still shown.
 - **Log redaction is type-complete and happens on the record (#252
   FMP-SEC-005).** Four gaps sharing one root cause — the filter gated on
   `isinstance(v, str | int | float)` to mask and `dict | list` to recurse:

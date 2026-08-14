@@ -15,7 +15,14 @@ from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlparse, urlsplit, urlunsplit
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SecretStr,
+    field_serializer,
+    field_validator,
+)
 
 from fmp_data._redaction import redact_mapping
 from fmp_data.cache.config import CacheConfig
@@ -86,6 +93,22 @@ class LogHandlerConfig(BaseModel):
         default_factory=dict,
         description="Additional arguments for handler initialization",
     )
+
+    @field_serializer("handler_kwargs")
+    def _serialize_handler_kwargs(self, value: dict[str, Any]) -> dict[str, Any]:
+        """Redact on the dump path too, not only in ``__str__`` (#252).
+
+        ``dict[str, Any]`` is out of reach for ``SecretStr``, and these kwargs
+        go straight to a logging handler -- a ``SysLogHandler`` password or an
+        HTTP handler's credentials live here. ``__str__`` was fixed to sweep
+        them, but ``model_dump()`` / ``model_dump_json()`` still emitted them,
+        so anything serializing a config leaked.
+
+        Safe here for the same reason as ``EmbeddingConfig``: the only
+        consumer reads the attribute (``config.handler_kwargs.copy()`` in
+        ``logger.py``), so nothing rebuilds this model from its own dump.
+        """
+        return redact_mapping(value)
 
     @field_validator("level")
     @classmethod
