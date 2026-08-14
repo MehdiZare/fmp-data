@@ -464,11 +464,11 @@ with FMPDataClient.from_env() as client:
 
 ### 2. Financial Statements
 ```python
-from fmp_data import FMPDataClient, PeriodAnnualQuarter
+from fmp_data import FMPDataClient, Period
 
 with FMPDataClient.from_env() as client:
     # Get income statements
-    period: PeriodAnnualQuarter = "quarter"
+    period: Period = "quarter"
     income_stmt = client.fundamental.get_income_statement(
         "AAPL",
         period=period,

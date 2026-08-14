@@ -66,7 +66,7 @@ LangChain integration requires LangChain v1 (`langchain-core`, `langchain-openai
 ### Basic Usage
 
 ```python
-from fmp_data import FMPDataClient, PeriodAnnualQuarter
+from fmp_data import FMPDataClient, Period
 
 # Initialize from environment variables
 with FMPDataClient.from_env() as client:
@@ -75,7 +75,7 @@ with FMPDataClient.from_env() as client:
     print(f"Company: {profile.company_name}")
 
     # Get financial statements
-    period: PeriodAnnualQuarter = "annual"
+    period: Period = "annual"
     income = client.fundamental.get_income_statement("AAPL", period=period)
     print(f"Revenue: ${income[0].revenue:,.0f}")
 

@@ -204,11 +204,13 @@ TECHNICAL_INTERVAL_VALUES: tuple[str, ...] = literal_values(TechnicalInterval)
 class ReportingPeriodEnum(BaseEnum):
     """Standard reporting periods.
 
-    Member *values* come from ``Period``. Member names stay stable for the
-    deprecated arg models. Retired with those models in 3.0 (#153, #307).
+    Member *values* come from the two Period contracts so a union reorder
+    cannot swap annual/quarter onto FY/Qn. Member names stay stable for
+    the deprecated arg models. Retired with those models in 3.0 (#153, #307).
     """
 
-    ANNUAL, QUARTER, FY, Q1, Q2, Q3, Q4 = PERIOD_VALUES
+    ANNUAL, QUARTER = PERIOD_ANNUAL_QUARTER_VALUES
+    FY, Q1, Q2, Q3, Q4 = PERIOD_FISCAL_VALUES
 
 
 class IntervalEnum(BaseEnum):

@@ -10,8 +10,10 @@ for client method parameters. Import them from the package root:
 from fmp_data import Interval, Period, PeriodAnnualQuarter, PeriodFiscal, Timeframe
 ```
 
-Do not collapse the three period aliases. Financial reports and batch
-bulk accept only `PeriodFiscal` (`FY` / `Q1`–`Q4`).
+Do not collapse the three period aliases. Most statement endpoints take
+`Period` (`annual` / `quarter` / `FY` / `Q1`–`Q4`). Financial reports and
+batch bulk accept only `PeriodFiscal`. Some company series take only
+`PeriodAnnualQuarter`. `Timeframe` is `Interval` plus `"1day"`.
 
 ## Main Clients
 

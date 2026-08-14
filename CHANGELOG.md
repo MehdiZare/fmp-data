@@ -27,8 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `IntradayTimeInterval` member *values* are unpacked from the Literal
   tuples so they cannot drift (#307). Member names are unchanged.
 - Deprecated `technical.schema.TimeInterval` is now an alias of
-  `TechnicalInterval` (`daily` / `hourly` included; live
-  `TechnicalClient` signatures are unchanged) (#309).
+  `TechnicalInterval` (`daily` / `hourly` included). Leftover
+  `model_json_schema()` is an `anyOf` of those enums, not a single
+  `enum` list. Live `TechnicalClient` signatures are unchanged (#309).
 - Deprecated `alternative.schema.BaseIntradayArgs` no longer keeps a
   second hardcoded interval list; the field type is `Interval` (#309).
 

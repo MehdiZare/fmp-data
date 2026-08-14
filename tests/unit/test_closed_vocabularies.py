@@ -99,9 +99,49 @@ def test_legacy_enums_are_unpacked_from_the_literal_tuples() -> None:
     import fmp_data.company.schema as company_schema
     import fmp_data.schema as schema
 
-    assert "PERIOD_VALUES" in inspect.getsource(schema.ReportingPeriodEnum)
+    source = inspect.getsource(schema.ReportingPeriodEnum)
+    assert "PERIOD_ANNUAL_QUARTER_VALUES" in source
+    assert "PERIOD_FISCAL_VALUES" in source
     assert "INTERVAL_VALUES" in inspect.getsource(schema.IntervalEnum)
     assert "INTERVAL_VALUES" in inspect.getsource(company_schema.IntradayTimeInterval)
+    assert ReportingPeriodEnum.ANNUAL.value == "annual"
+    assert ReportingPeriodEnum.QUARTER.value == "quarter"
+    assert ReportingPeriodEnum.FY.value == "FY"
+    assert ReportingPeriodEnum.Q1.value == "Q1"
+    assert ReportingPeriodEnum.Q2.value == "Q2"
+    assert ReportingPeriodEnum.Q3.value == "Q3"
+    assert ReportingPeriodEnum.Q4.value == "Q4"
+    assert IntervalEnum.MIN_1.value == "1min"
+    assert IntervalEnum.MIN_5.value == "5min"
+    assert IntervalEnum.MIN_15.value == "15min"
+    assert IntervalEnum.MIN_30.value == "30min"
+    assert IntervalEnum.HOUR_1.value == "1hour"
+    assert IntervalEnum.HOUR_4.value == "4hour"
+    assert IntradayTimeInterval.ONE_MINUTE.value == "1min"
+    assert IntradayTimeInterval.FIVE_MINUTES.value == "5min"
+    assert IntradayTimeInterval.FIFTEEN_MINUTES.value == "15min"
+    assert IntradayTimeInterval.THIRTY_MINUTES.value == "30min"
+    assert IntradayTimeInterval.ONE_HOUR.value == "1hour"
+    assert IntradayTimeInterval.FOUR_HOURS.value == "4hour"
+
+
+def test_getting_started_income_statement_examples_use_period() -> None:
+    """#308: get_income_statement takes Period, not PeriodAnnualQuarter."""
+    from pathlib import Path
+    import re
+
+    root = Path(__file__).resolve().parents[2]
+    fence = re.compile(r"```(?:python)?\n(.*?)```", re.S)
+    offenders: list[str] = []
+    for rel in ("README.md", "docs/index.md"):
+        text = (root / rel).read_text(encoding="utf-8")
+        for block in fence.findall(text):
+            if "get_income_statement" in block and "PeriodAnnualQuarter" in block:
+                offenders.append(rel)
+    assert not offenders, (
+        "get_income_statement takes Period; do not annotate "
+        "PeriodAnnualQuarter in these examples:\n  " + "\n  ".join(offenders)
+    )
 
 
 def test_closed_vocabularies_are_public_exports() -> None:
@@ -125,11 +165,22 @@ def test_closed_vocabularies_are_public_exports() -> None:
 
 def test_deprecated_time_interval_tracks_technical_interval() -> None:
     """#309: leftover TimeInterval follows the live TechnicalInterval alias."""
-    from fmp_data.technical.schema import TimeInterval
+    import warnings
+
+    from pydantic import ValidationError as PydanticValidationError
+
+    from fmp_data.technical.schema import TechnicalIndicatorArgs, TimeInterval
 
     assert literal_values(TimeInterval) == literal_values(TechnicalInterval)
     assert "daily" in literal_values(TimeInterval)
     assert "hourly" in literal_values(TimeInterval)
+    assert "1day" not in literal_values(TimeInterval)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        TechnicalIndicatorArgs(symbol="AAPL", interval="daily")
+        TechnicalIndicatorArgs(symbol="AAPL", interval="hourly")
+        with pytest.raises(PydanticValidationError):
+            TechnicalIndicatorArgs(symbol="AAPL", interval="1day")
 
 
 def test_deprecated_intraday_args_do_not_hardcode_interval_values() -> None:
