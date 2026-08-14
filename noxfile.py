@@ -270,8 +270,12 @@ def coverage_extras(session: Session) -> None:
     """Separate extras coverage gate for lc / mcp / Redis (#273).
 
     Core 80% still omits these trees. This session installs the extras,
-    measures only those files, and fails under 65% (baseline 66.78% on
-    2026-08-13). xdist is off so local and CI numbers stay comparable.
+    measures only those files, and fails under 80%. The baseline was 66.78%
+    when the gate landed; dedicated tests for ``redis_backend``,
+    ``lc.validation``, ``lc.__init__``, ``mcp.utils`` and ``mcp.setup``
+    raised it to 86.99%, which is the headroom that makes this safe to
+    require at the ruleset layer (#282). xdist is off so local and CI
+    numbers stay comparable.
     """
     _sync_with_uv(
         session,
@@ -286,7 +290,7 @@ def coverage_extras(session: Session) -> None:
         "--cov=fmp_data.cache.redis_backend",
         "--cov-config=extras.coveragerc",
         "--cov-report=term-missing",
-        "--cov-fail-under=65",
+        "--cov-fail-under=80",
     )
 
 
@@ -336,13 +340,22 @@ def typecheck(session: Session) -> None:
 
 @nox.session(python=DEFAULT_PYTHON, tags=["security"])
 def security(session: Session) -> None:
-    """Audit the published extra graph for known CVEs.
+    """Static-analyse the source and audit the extra graph for known CVEs.
 
-    Resolve extras from ``pyproject.toml`` at session time (no committed
-    hashed lock) and audit that pin set. A floor bump in pyproject is
-    enough to pick up newer deps (#252 FMP-SEC-008).
+    Two halves:
+
+    * ``bandit`` over the library. #278 replaced the global ``B404`` /
+      ``B603`` / ``B607`` / ``B608`` skips with narrow, documented
+      file-local ``# nosec`` notes, but bandit only ran from
+      ``.pre-commit-config.yaml`` — there is no pre-commit CI job, so the
+      narrowing was unenforced on CI and a new ``subprocess`` call could
+      land unreviewed (#273).
+    * ``pip-audit`` over the extras resolved from ``pyproject.toml`` at
+      session time (no committed hashed lock), so a floor bump is enough
+      to pick up newer deps (#252 FMP-SEC-008).
     """
-    session.install("uv", "pip-audit>=2.10.1")
+    session.install("uv", "pip-audit>=2.10.1", "bandit[toml]>=1.8.0")
+    session.run("bandit", "-c", "pyproject.toml", "-r", PACKAGE_NAME)
     export = Path(session.create_tmp()) / "requirements-audit.txt"
     session.run(
         "uv",

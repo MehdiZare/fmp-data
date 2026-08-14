@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import configparser
 from pathlib import Path
+import re
+import subprocess
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PYPROJECT = REPO_ROOT / "pyproject.toml"
@@ -16,6 +18,10 @@ NOXFILE = REPO_ROOT / "noxfile.py"
 CI = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 GITIGNORE = REPO_ROOT / ".gitignore"
 EXTRAS_COVERAGERC = REPO_ROOT / "extras.coveragerc"
+
+# Raised from 65 once dedicated tests took the measured extras number from
+# 66.78% to 86.99% (#282). Keep the config and the nox session in step.
+EXTRAS_FAIL_UNDER = 80
 
 
 def _coverage_run_omit_block() -> str:
@@ -58,13 +64,13 @@ def test_extras_coveragerc_gates_the_omitted_trees() -> None:
     assert "fmp_data.mcp" in source
     assert "fmp_data.cache.redis_backend" in source
     assert "fmp_data/cache/redis_backend.py" not in source
-    assert parser.getint("report", "fail_under") == 65
+    assert parser.getint("report", "fail_under") == EXTRAS_FAIL_UNDER
 
 
 def test_coverage_extras_session_uses_the_dedicated_config() -> None:
     source = _coverage_extras_session_source()
     assert "--cov-config=extras.coveragerc" in source
-    assert "--cov-fail-under=65" in source
+    assert f"--cov-fail-under={EXTRAS_FAIL_UNDER}" in source
     assert "--cov=fmp_data.lc" in source
     assert "--cov=fmp_data.mcp" in source
     assert "--cov=fmp_data.cache.redis_backend" in source
@@ -95,6 +101,78 @@ def test_ci_runs_extras_coverage_separately() -> None:
     assert "needs.extras-coverage.result" in expected
 
 
+def test_exclude_lines_regexes_actually_compile_and_match() -> None:
+    """``extras.coveragerc`` is INI, so TOML double-escaping is wrong (#282).
+
+    ``class .*\\\\(Protocol\\\\):`` was copied from ``pyproject.toml``, where
+    TOML collapses ``\\\\(`` to ``\\(``. In an INI file it stays a literal
+    backslash, so the pattern compiled but could never match a real
+    ``class Foo(Protocol):`` line and the exclusion silently did nothing.
+    """
+    parser = configparser.ConfigParser()
+    parser.read(EXTRAS_COVERAGERC, encoding="utf-8")
+    patterns = [
+        line.strip()
+        for line in parser.get("report", "exclude_lines").splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+
+    for pattern in patterns:
+        re.compile(pattern)  # must not raise
+
+    protocol = [p for p in patterns if "Protocol" in p]
+    assert protocol, f"no Protocol exclusion found in {patterns}"
+    assert any(re.search(p, "class Foo(Protocol):") for p in protocol), (
+        f"Protocol exclusion never matches a real declaration: {protocol}"
+    )
+
+
+def test_ci_jobs_that_must_be_required_checks_run_unconditionally() -> None:
+    """Every job named in #282 must run on all PRs to be a safe gate.
+
+    A required check that never reports on some PRs blocks them forever, so
+    none of these may carry a ``paths:``/``paths-ignore:`` filter or a job
+    level ``if:``.
+    """
+    text = CI.read_text(encoding="utf-8")
+    assert "paths:" not in text
+    assert "paths-ignore:" not in text
+
+    for job in ("coverage:", "extras-coverage:", "secret-scan:", "actions-shell:"):
+        start = text.index(f"  {job}")
+        body = text[start : start + 400]
+        assert "\n    if:" not in body, f"{job} is conditional; unsafe to require"
+
+
 def test_uv_lock_stays_uncommitted() -> None:
-    text = GITIGNORE.read_text(encoding="utf-8")
-    assert "uv.lock" in text
+    """``uv.lock`` is ignored *and* actually absent from the index (#273).
+
+    Grepping ``.gitignore`` alone would still pass if someone force-added the
+    lock, so assert the tracked-file set too.
+    """
+    assert "uv.lock" in GITIGNORE.read_text(encoding="utf-8")
+    tracked = subprocess.run(
+        ["git", "ls-files", "--", "uv.lock", "poetry.lock"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.split()
+    assert tracked == [], f"lock files must stay untracked, found: {tracked}"
+
+
+def test_lock_file_policy_is_documented() -> None:
+    """The decision is recorded, not just enforced (#273).
+
+    The previous ``.gitignore`` rationale cited a non-existent "GitHub 500KB
+    warning" (that is pre-commit's ``check-added-large-files`` default), so
+    pin the real reasoning against silent reversion.
+    """
+    contributing = (REPO_ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    assert "### Lock file policy" in contributing
+    assert "not committed" in contributing
+    assert "pip-audit --strict" in contributing
+
+    gitignore = GITIGNORE.read_text(encoding="utf-8")
+    assert "500KB" not in gitignore
+    assert "CONTRIBUTING.md" in gitignore

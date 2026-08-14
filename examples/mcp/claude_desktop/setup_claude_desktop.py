@@ -16,7 +16,12 @@ import json
 import os
 from pathlib import Path
 import platform
-import subprocess
+
+# Every call below passes an argument list (never shell=True) built from
+# sys.executable and literals, so there is no shell to inject into. #278
+# narrowed the global B404/B603 skips to file-local notes; this file follows
+# the same convention as fmp_data/mcp/setup.py (#273).
+import subprocess  # nosec B404
 import sys
 
 
@@ -65,7 +70,7 @@ def install_fmp_data():
     """Install fmp-data package with MCP support."""
     print("\n📦 Installing fmp-data with MCP support...")
     try:
-        subprocess.run(
+        subprocess.run(  # nosec B603
             [sys.executable, "-m", "pip", "install", "fmp-data[mcp]"], check=True
         )
         print("✅ Successfully installed fmp-data[mcp]")
@@ -162,7 +167,7 @@ def test_mcp_server(api_key):
 
     try:
         # Try to import and create the app
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603
             [
                 sys.executable,
                 "-c",

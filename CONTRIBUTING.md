@@ -253,6 +253,35 @@ make deps-update
 make deps-check
 ```
 
+### Lock file policy
+
+`uv.lock` is **not committed**, and that is a deliberate decision (#273), not
+an oversight:
+
+- **This is a library, not an application.** The compatibility contract users
+  install against is the version floors in `pyproject.toml`. `pip`/`uv`
+  resolve against those; nothing downstream ever reads a lock file we commit.
+- **Drift is audited, not frozen.** `nox -s security` exports the live extras
+  graph (`uv export --extra langchain --extra mcp --extra cache-redis`) and
+  audits that resolution with `pip-audit --strict`. A committed lock would
+  make CI reproducible while quietly hiding new advisories behind stale pins.
+- **Supply-chain risk is pinned where it matters.** Every GitHub Action is
+  pinned to a 40-char SHA and the repo requires SHA-pinned actions; publish
+  runs as an isolated least-privilege job behind protected `pypi`/`testpypi`
+  environments (#252 FMP-SEC-002).
+- **Cost.** The lock is ~1&nbsp;MB and would add a multi-thousand-line diff to
+  every dependency bump, for no consumer benefit.
+
+Generate one locally whenever you want a reproducible dev environment:
+
+```bash
+uv sync   # writes uv.lock locally; it stays untracked
+```
+
+If CI breaks because a transitive dependency published a bad release, fix it
+by raising the floor (or adding an upper bound) in `pyproject.toml` — that is
+the fix users get too. Pinning CI alone would only hide the breakage.
+
 ### Pre-commit Hooks
 
 Pre-commit hooks run automatically on commit. To run manually:

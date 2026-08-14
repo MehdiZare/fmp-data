@@ -21,16 +21,44 @@ _SECRET_KWARG_TOKENS = (
 )
 
 
+def _is_secret_key(key: str) -> bool:
+    """True when a kwargs key name looks like it holds a credential."""
+    parts = key.lower().replace("-", "_").split("_")
+    return any(part in _SECRET_KWARG_TOKENS for part in parts)
+
+
+def _redact_value(value: Any, depth: int = 0) -> Any:
+    """Redact secret-shaped entries inside nested containers.
+
+    Recursion matters: providers take credential-bearing *nested* kwargs --
+    ``OpenAIEmbeddings`` accepts ``default_headers={"Authorization": ...}``
+    and ``model_kwargs={"api_key": ...}``, and both are splatted straight
+    into the provider below. A top-level-only scan copied those dicts by
+    reference, so ``repr`` printed the secret verbatim (#273).
+
+    ``depth`` bounds pathological nesting; deeper values are elided rather
+    than walked.
+    """
+    if depth >= 6:
+        return "..."
+    if isinstance(value, dict):
+        return {
+            key: ("***" if _is_secret_key(str(key)) else _redact_value(item, depth + 1))
+            for key, item in value.items()
+        }
+    if isinstance(value, list | tuple):
+        return type(value)(_redact_value(item, depth + 1) for item in value)
+    if isinstance(value, set):
+        return {_redact_value(item, depth + 1) for item in value}
+    return value
+
+
 def _redact_kwargs(data: dict[str, Any]) -> dict[str, Any]:
-    """Copy a kwargs map with secret-shaped values replaced."""
-    redacted: dict[str, Any] = {}
-    for key, value in data.items():
-        parts = key.lower().replace("-", "_").split("_")
-        if any(part in _SECRET_KWARG_TOKENS for part in parts):
-            redacted[key] = "***"
-        else:
-            redacted[key] = value
-    return redacted
+    """Copy a kwargs map with secret-shaped values replaced, recursively."""
+    return {
+        key: ("***" if _is_secret_key(key) else _redact_value(value))
+        for key, value in data.items()
+    }
 
 
 class EmbeddingProvider(str, Enum):

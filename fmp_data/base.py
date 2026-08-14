@@ -101,6 +101,20 @@ def _reject_cross_origin_redirect(response: httpx.Response) -> None:
         )
 
 
+async def _areject_cross_origin_redirect(response: httpx.Response) -> None:
+    """Async event-hook wrapper for :func:`_reject_cross_origin_redirect`.
+
+    ``httpx.AsyncClient`` *awaits* every response hook it invokes
+    (``await hook(response)`` in ``httpx._client``), while ``httpx.Client``
+    calls it plainly. Registering the sync function on the async client made
+    httpx await ``None`` and raised ``TypeError: object NoneType can't be
+    used in 'await' expression`` on **every** async response, not just
+    redirects. The check itself does no I/O, so the async hook simply
+    delegates (#252 FMP-SEC-004).
+    """
+    _reject_cross_origin_redirect(response)
+
+
 def _refuse_bytes_list_request(endpoint: Endpoint[T]) -> None:
     """``request_list`` is for row lists, not file downloads."""
     if endpoint.response_model is bytes:
@@ -281,7 +295,8 @@ class BaseClient:
                 timeout=self.config.timeout,
                 follow_redirects=True,
                 headers=_default_http_headers(),
-                event_hooks={"response": [_reject_cross_origin_redirect]},
+                # Must be the async wrapper: httpx awaits async-client hooks.
+                event_hooks={"response": [_areject_cross_origin_redirect]},
             )
         return self._async_client
 

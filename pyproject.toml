@@ -331,6 +331,15 @@ module = [
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
 ignore_missing_imports = true
+# Tests are type-checked in two different dependency environments: the
+# `typecheck` nox session installs core + dev only, while a local
+# `--all-extras` run resolves langchain/mcp/redis types. An ignore that is
+# required when a stub is passed to a fully-typed langchain signature is
+# therefore redundant when that package is absent (the signature degrades to
+# Any), and vice versa. Warning on unused ignores makes those two envs
+# mutually unsatisfiable, so it stays off for tests only; the library keeps
+# the strict global setting.
+warn_unused_ignores = false
 disable_error_code = [
     "import-untyped",
     "import-not-found",
