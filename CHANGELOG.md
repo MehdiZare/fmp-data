@@ -217,6 +217,31 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Security
 
+- **Log redaction is type-complete and happens on the record (#252
+  FMP-SEC-005).** Four gaps sharing one root cause — the filter gated on
+  `isinstance(v, str | int | float)` to mask and `dict | list` to recurse:
+  - `extra={"api_key": <bytes|tuple|set>}` was logged in the clear; only
+    `str`/`int`/`float` were masked. Every container type is now walked,
+    and `bytes` is decoded before masking rather than having its `repr`
+    masked (`b'****…'` was misleading about both value and length).
+  - A secret reachable only through a tuple was never reached.
+  - Nested extras were redacted inside `JsonFormatter.format` rather than
+    on the `LogRecord`, so a **second handler** — `logging.basicConfig()`,
+    a Sentry or OTel exporter — received the raw value from the same
+    record. Redaction now happens once on the record, so every handler
+    inherits it.
+  - `log_api_call` put positional arguments into `call_args` as a raw
+    tuple. Positional arguments have no names, so nothing downstream can
+    tell a credential from a ticker symbol; it now logs their *types*.
+    `call_kwargs` is named, and is masked as before.
+- **The LangChain tool error envelope redacts API keys (#252
+  FMP-SEC-005).** `fmp_data/lc/vector_store.py` returned `str(e)` inside
+  the tool's result dict, which goes into the agent scratchpad, the chat
+  history and any tracing backend. `str()` of an `httpx.HTTPStatusError`
+  stringifies the request URL, which carries `apikey=` — the exact leak
+  `base.py` suppresses on its own paths, while nothing under `lc/` was
+  redacting. Now redacted at the point of capture, so every branch of the
+  envelope inherits it.
 - **`ClientConfig.__str__` redaction is metadata-driven, not a name
   allowlist (#252 FMP-SEC-007).** It dumped the whole model and masked the
   three field names it knew about, so everything else rendered verbatim —

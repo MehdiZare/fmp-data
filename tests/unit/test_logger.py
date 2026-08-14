@@ -1,5 +1,6 @@
 # tests/test_logger.py
 import asyncio
+import io
 import json
 import logging
 import os
@@ -1110,3 +1111,129 @@ class TestLoggerIntegration:
         output = test_stream.getvalue()
         assert "secret123" not in output
         assert "api_key=" in output
+
+
+class TestRedactionIsTypeComplete:
+    """Redaction must not depend on a value happening to be a str (#252).
+
+    The filter gated on ``isinstance(v, str | int | float)`` to mask and
+    ``dict | list`` to recurse, so several ordinary shapes walked straight
+    through: a sensitive key holding ``bytes``/``tuple``/``set``, and any
+    secret reachable only through a tuple.
+    """
+
+    PLANTED = "PLANTEDCREDENTIALVALUE"
+
+    def _json(self, **extra):
+        record = logging.LogRecord("t", logging.INFO, "p", 1, "call", None, None)
+        record.__dict__.update(extra)
+        SensitiveDataFilter().filter(record)
+        return JsonFormatter().format(record)
+
+    @pytest.mark.parametrize("wrap", [bytes, tuple, set, list, str])
+    def test_sensitive_key_masked_whatever_the_container(self, wrap) -> None:
+        value = (
+            self.PLANTED.encode()
+            if wrap is bytes
+            else self.PLANTED
+            if wrap is str
+            else wrap([self.PLANTED])
+        )
+        assert self.PLANTED not in self._json(api_key=value)
+
+    def test_secret_reachable_only_through_a_tuple(self) -> None:
+        assert self.PLANTED not in self._json(
+            payload={"creds": ({"api_key": self.PLANTED},)}
+        )
+
+    def test_bytes_are_decoded_before_masking(self) -> None:
+        """Not a leak either way -- `_mask_value` masks the middle regardless --
+        but `str(b"...")` masks the *repr*, leaving `b'` decoration and a
+        misleading length in the log. Decoding first keeps the mask honest."""
+        from fmp_data.logger import _stringify
+
+        masker = SensitiveDataFilter()
+        raw = b"PLANTEDCREDENTIALVALUE"
+        assert masker._mask_value(_stringify(raw)) == "PL******************UE"
+        assert not masker._mask_value(_stringify(raw)).startswith("b'")
+
+    def test_non_secret_extras_survive(self) -> None:
+        """Over-redaction would make the logs useless."""
+        out = self._json(symbol="AAPL", attempt=3)
+        assert '"symbol": "AAPL"' in out
+        assert '"attempt": 3' in out
+
+    def test_standard_record_attributes_are_not_rewritten(self) -> None:
+        """`exc_info` is a tuple formatters unpack; mangling it breaks them."""
+        try:
+            raise ValueError("boom")
+        except ValueError:
+            record = logging.LogRecord(
+                "t", logging.ERROR, "p", 1, "m", None, sys.exc_info()
+            )
+        SensitiveDataFilter().filter(record)
+        assert isinstance(record.exc_info, tuple)
+        assert record.exc_info[0] is ValueError
+
+
+class TestEveryHandlerSeesRedactedExtras:
+    """Redaction happens on the record, not inside one formatter (#252).
+
+    Nested extras were masked inside ``JsonFormatter.format``, so a second
+    handler -- ``logging.basicConfig()``, a Sentry or OTel exporter -- got the
+    raw value from the same record.
+    """
+
+    def test_a_second_plain_handler_sees_masked_extras(self) -> None:
+        from fmp_data.logger import FMPLogger
+
+        planted = "PLANTEDCREDENTIALVALUE"
+        buf = io.StringIO()
+        handler = logging.StreamHandler(buf)
+        handler.setFormatter(logging.Formatter("%(message)s | %(nested)s"))
+        package_logger = logging.getLogger("fmp_data")
+        package_logger.addHandler(handler)
+        try:
+            FMPLogger().get_logger("fmp_data.base").info(
+                "call", extra={"nested": {"api_key": planted}}
+            )
+        finally:
+            package_logger.removeHandler(handler)
+
+        assert planted not in buf.getvalue()
+        assert "api_key" in buf.getvalue()
+
+
+class TestLogApiCallPositionalArguments:
+    """Positional arguments have no names, so nothing can judge them (#252).
+
+    ``call_args`` was the raw tuple of positional arguments; the filter masks
+    by key name and there is no key inside a tuple, so a credential passed
+    positionally was logged verbatim.
+    """
+
+    def test_positional_values_are_replaced_by_their_types(self) -> None:
+        from fmp_data.logger import log_api_call
+
+        planted = "PLANTEDCREDENTIALVALUE"
+        buf = io.StringIO()
+        handler = logging.StreamHandler(buf)
+        handler.setFormatter(JsonFormatter())
+        handler.addFilter(SensitiveDataFilter())
+        logger = logging.getLogger("fmp_data.test_positional")
+        logger.addHandler(handler)
+        logger.setLevel(logging.DEBUG)
+        logger.propagate = False
+
+        class Service:
+            @log_api_call(logger=logger)
+            def request(self, positional, **kwargs):
+                return "ok"
+
+        Service().request(planted, symbol="AAPL", api_key=planted)
+        out = buf.getvalue()
+
+        assert planted not in out
+        assert '"call_args": ["str"]' in out
+        # Named arguments stay readable except for the credential.
+        assert '"symbol": "AAPL"' in out
