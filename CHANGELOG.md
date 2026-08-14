@@ -7,32 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-### Added
-
-- **Closed request vocabularies for period, interval, and timeframe.**
-  Client methods now take `Period` / `PeriodFiscal` / `PeriodAnnualQuarter`,
-  `Interval`, and `Timeframe` (`Literal` aliases in `fmp_data.schema`)
-  instead of a naked `str`. Three period types on purpose: financial
-  reports and batch bulk accept only `FY`/`Q1`–`Q4`. Endpoint
-  `valid_values` are derived from the same aliases. Plain strings still
-  work at runtime. The e2e harness samples required closed params from
-  the method annotation, not a global `"annual"` table.
-- **Public re-export of those aliases** (`#308`). Annotate against
-  `from fmp_data import Period, PeriodFiscal, PeriodAnnualQuarter,
-  Interval, Timeframe`. They are in `fmp_data.__all__`.
-
-### Changed
-
-- Leftover `ReportingPeriodEnum`, `IntervalEnum`, and
-  `IntradayTimeInterval` member *values* are unpacked from the Literal
-  tuples so they cannot drift (#307). Member names are unchanged.
-- Deprecated `technical.schema.TimeInterval` is now an alias of
-  `TechnicalInterval` (`daily` / `hourly` included). Leftover
-  `model_json_schema()` is an `anyOf` of those enums, not a single
-  `enum` list. Live `TechnicalClient` signatures are unchanged (#309).
-- Deprecated `alternative.schema.BaseIntradayArgs` no longer keeps a
-  second hardcoded interval list; the field type is `Interval` (#309).
-
 ## [2.7.0] - 2026-08-14
 
 Released from `dev`. A security-and-contracts minor in the same shape as
@@ -44,7 +18,9 @@ CI-enforcement holes that 2.6.0 left open.
 This cut also aligns the client with the 2026 FMP `/stable` surface
 (diluted P/E, screener pagination, Senate/House `senateID`, rating-bulk
 scores, delisted companies), finishes the `Endpoint[T]` / `_unwrap_list`
-typing migration, and adds a local VCR-backed client-method sweep.
+typing migration, types period / interval / timeframe as closed
+vocabularies (`Period`, `Interval`, `Timeframe`), and adds a local
+VCR-backed client-method sweep.
 
 **Read before upgrading.** One public-type break, narrow:
 
@@ -189,7 +165,29 @@ None. No FMP path we ship was newly retired by this changelog window.
   their existing type checks and still return `dict` / `bytes`. XLSX
   stays off batch `_request_csv`.
 
+- **Leftover period/interval enums track the Literal contracts (#307,
+  #309).** `ReportingPeriodEnum`, `IntervalEnum`, and
+  `IntradayTimeInterval` unpack member *values* from the Literal tuples
+  so they cannot drift; member names are unchanged. Deprecated
+  `technical.schema.TimeInterval` is now an alias of `TechnicalInterval`
+  (`daily` / `hourly` included). Deprecated
+  `alternative.schema.BaseIntradayArgs` no longer keeps a second
+  hardcoded interval list; the field type is `Interval`. Live
+  `TechnicalClient` signatures are unchanged. The arg-model types
+  themselves stay until 3.0.
+
 ### Added
+
+- **Closed request vocabularies for period, interval, and timeframe
+  (#306, #308).** Client methods now take `Period` / `PeriodFiscal` /
+  `PeriodAnnualQuarter`, `Interval`, and `Timeframe` (`Literal` aliases
+  in `fmp_data.schema`) instead of a naked `str`. Three period types on
+  purpose: financial reports and batch bulk accept only `FY`/`Q1`–`Q4`.
+  Endpoint `valid_values` are derived from the same aliases. Plain
+  strings still work at runtime. Re-exported from `fmp_data` (`__all__`):
+  `from fmp_data import Period, PeriodFiscal, PeriodAnnualQuarter,
+  Interval, Timeframe`. The e2e harness samples required closed params
+  from the method annotation, not a global `"annual"` table.
 
 - **Local VCR-backed client-method e2e sweep.** Maintainer script
   `scripts/e2e_endpoints.py` (`make e2e-record` / `make e2e-replay`) calls
