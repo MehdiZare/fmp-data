@@ -270,10 +270,21 @@ jobs:
       - name: Require tag commit reachable from main or dev
         run: |
           set -euo pipefail
-          git fetch origin main dev
+          # Fully-qualified refs only. `origin/main` is an *unqualified* rev:
+          # git resolves refs/tags/<name> BEFORE refs/remotes/<name>, and
+          # checkout with fetch-depth:0 mirrors every tag verbatim
+          # (+refs/tags/*:refs/tags/*). A tag literally named "origin/main"
+          # therefore shadowed the remote-tracking branch and this guard
+          # compared HEAD against an attacker-chosen commit, passing with only
+          # a "refname is ambiguous" warning. --no-tags plus an explicit
+          # refspec keeps the comparison targets under refs/remotes/
+          # (#252 FMP-SEC-003).
+          git fetch --no-tags --force origin \
+            "+refs/heads/main:refs/remotes/origin/main" \
+            "+refs/heads/dev:refs/remotes/origin/dev"
           HEAD="$(git rev-parse HEAD)"
-          if git merge-base --is-ancestor "$HEAD" origin/main \
-            || git merge-base --is-ancestor "$HEAD" origin/dev; then
+          if git merge-base --is-ancestor "$HEAD" refs/remotes/origin/main \
+            || git merge-base --is-ancestor "$HEAD" refs/remotes/origin/dev; then
             echo "Tag $HEAD is reachable from origin/main or origin/dev"
           else
             echo "::error::Tag commit $HEAD is not an ancestor of origin/main or origin/dev (#252 FMP-SEC-003)"

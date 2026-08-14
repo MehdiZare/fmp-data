@@ -8,7 +8,12 @@ source =
     fmp_data.cache.redis_backend
 
 [report]
-fail_under = 65
+# Baseline was 66.78% when this gate landed (#273); dedicated tests for
+# redis_backend / lc.validation / lc.__init__ / mcp.utils / mcp.setup took
+# it to 86.99% (#282). 80 keeps ~7 points of headroom so an ordinary
+# uncovered addition does not block merges the moment this becomes a
+# required check.
+fail_under = 80
 show_missing = true
 precision = 2
 skip_empty = false
@@ -23,7 +28,9 @@ exclude_lines =
     raise ImportError
     except ImportError
     def main():
-    class .*\\(Protocol\\):
+    # Single backslashes: this is an INI file, not TOML. The double-escaped
+    # copy (`\\(Protocol\\)`) asked for a literal backslash and never matched.
+    class .*\(Protocol\):
     @abstractmethod
     @overload
     \.\.\.$

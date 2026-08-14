@@ -225,6 +225,17 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Fixed
 
+- **Async requests work again (#252 FMP-SEC-004).** `httpx.AsyncClient` *awaits*
+  every response hook (`await hook(response)`), while `httpx.Client` calls it
+  plainly. The cross-origin redirect guard added for FMP-SEC-004 was a plain
+  `def` registered on both clients, so httpx awaited `None` and **every**
+  successful async response raised
+  `TypeError: object NoneType can't be used in 'await' expression` — not only
+  redirects. `_areject_cross_origin_redirect` now wraps the check for the async
+  client. Unreleased regression: it never shipped in a tagged version. The async
+  tests replaced the client with `AsyncMock` and asserted only hook membership,
+  so nothing exercised the real send path; they now drive
+  `httpx.MockTransport` and assert the hook is a coroutine function.
 - **`_unwrap_list_result` refuses a bytes file (#253).** `request_list` already
   raised `TypeError` for `Endpoint[bytes]`, but the shared unwrap helper still
   treated `isinstance(payload, bytes)` as a lone row and returned `[bytes]`.
@@ -232,6 +243,23 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Changed
 
+- **Extras coverage gate raised to 80% and made a required check (#273, #282).**
+  Dedicated tests for `cache/redis_backend.py`, `lc/validation.py`,
+  `lc/__init__.py`, `mcp/utils.py` and `mcp/setup.py` took the measured extras
+  number from 66.78% to 86.99%, so `nox -s coverage_extras` now fails under 80
+  with ~7 points of headroom. `Extras Coverage`, `coverage`, `Secret Scan`,
+  `Actions shell checks` and `Test-MatrixExpected` are now required status
+  checks on **Protect Dev** and **Protect Main**; previously only
+  `tests (3.10–3.14)` were required, so a red extras or secret scan could not
+  block a merge. Also fixed the `Protocol` exclusion in `extras.coveragerc`,
+  which had been copied from TOML with `\\(` and so never matched.
+- **`uv.lock` stays uncommitted, by decision (#273).** Recorded in
+  `CONTRIBUTING.md` under "Lock file policy": this is a library, so the
+  compatibility contract is the floors in `pyproject.toml`; drift is caught by
+  `nox -s security` auditing a live `uv export` with `pip-audit --strict`
+  rather than frozen behind stale pins. The old `.gitignore` rationale cited a
+  non-existent "GitHub 500KB warning" (that threshold is pre-commit's
+  `check-added-large-files` default) and has been replaced.
 - **`fmp-mcp generate` writes JSON / YAML / TOML from the output suffix (#256).**
   `.json` is preferred (`{"tools": [...]}`). `.yaml` / `.yml` and `.toml` use
   the same `tools` object. A path with no suffix becomes `<name>.json`.
@@ -240,6 +268,31 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Security
 
+- **TestPyPI tag guard cannot be shadowed by a tag (#252 FMP-SEC-003).** The
+  ancestry check compared against the *unqualified* rev `origin/main`. Git
+  resolves `refs/tags/<name>` before `refs/remotes/<name>`, and
+  `actions/checkout` with `fetch-depth: 0` mirrors every tag verbatim, so a tag
+  literally named `origin/main` shadowed the remote-tracking branch and the
+  guard compared HEAD against an attacker-chosen commit — passing with only a
+  "refname is ambiguous" warning, which `set -euo pipefail` does not trap. Both
+  comparisons now use `refs/remotes/origin/{main,dev}` and the guard fetches
+  with `--no-tags` and an explicit refspec.
+- **Bandit actually runs in CI (#273).** #278 replaced the blanket `B404` /
+  `B603` / `B607` / `B608` skips with narrow file-local `# nosec` notes, but
+  bandit was only wired into `.pre-commit-config.yaml` and there is no
+  pre-commit CI job — so the narrowing was unenforced and a new `subprocess`
+  call could land unreviewed. `nox -s security` now runs bandit over the
+  library before the dependency audit. Current tree: 0 findings.
+  `examples/mcp/claude_desktop/setup_claude_desktop.py` also picked up the
+  same file-local notes: #278 dropped the global skips without annotating it,
+  which left `pre-commit run --all-files` failing on the example.
+- **Embedding ``additional_kwargs`` redaction is recursive (#273).** The
+  top-level scan copied nested containers by reference, so a credential under a
+  real provider kwarg — `default_headers={"Authorization": ...}` or
+  `model_kwargs={"api_key": ...}`, both accepted by `OpenAIEmbeddings` and
+  splatted straight through — was printed verbatim by `repr`. Nested dicts,
+  lists, tuples and sets are now walked (depth-bounded); the live kwargs are
+  left unmutated.
 - **Embedding ``additional_kwargs`` no longer leak secrets in ``repr`` (#273).**
   Secret-shaped keys are replaced with ``***``; ``api_key`` stays off the
   default field repr.

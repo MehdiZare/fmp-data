@@ -47,6 +47,50 @@ def test_embedding_config_repr_redacts_secret_kwargs():
     assert "hidden" not in author_repr
 
 
+def test_embedding_config_repr_redacts_nested_secret_kwargs():
+    """Nested kwargs must be walked, not copied by reference (#273).
+
+    ``OpenAIEmbeddings`` really takes ``default_headers`` and
+    ``model_kwargs``, and this config splats them straight into the
+    provider, so credentials legitimately live one level down. A
+    top-level-only scan printed them verbatim.
+    """
+    config = EmbeddingConfig(
+        additional_kwargs={
+            "default_headers": {"Authorization": "Bearer nested-bearer"},
+            "model_kwargs": {"api_key": "nested-apikey"},  # pragma: allowlist secret
+            "deeply": {"a": {"b": {"token": "nested-deep"}}},
+            "in_a_list": [{"password": "nested-in-list"}],  # pragma: allowlist secret
+            "harmless": {"temperature": 0.2},
+        },
+    )
+    text = repr(config)
+
+    for secret in (
+        "nested-bearer",
+        "nested-apikey",
+        "nested-deep",
+        "nested-in-list",
+    ):
+        assert secret not in text, f"{secret} leaked into repr: {text}"
+
+    # Non-secret nested data must survive so the repr stays useful.
+    assert "temperature" in text
+    assert "0.2" in text
+
+
+def test_embedding_config_repr_does_not_mutate_the_original_kwargs():
+    """Redaction returns a copy; the live kwargs still reach the provider."""
+    kwargs = {"default_headers": {"Authorization": "Bearer keep-me"}}
+    config = EmbeddingConfig(additional_kwargs=kwargs)
+
+    repr(config)
+
+    assert config.additional_kwargs["default_headers"]["Authorization"] == (
+        "Bearer keep-me"
+    )
+
+
 def test_embedding_config_validation():
     """Test embedding configuration validation"""
     # Test valid OpenAI config
