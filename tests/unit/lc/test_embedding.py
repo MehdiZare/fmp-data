@@ -25,6 +25,22 @@ def mock_cohere():
         yield mock
 
 
+def test_embedding_config_repr_redacts_secret_kwargs():
+    config = EmbeddingConfig(
+        provider=EmbeddingProvider.OPENAI,
+        api_key="test-key",
+        additional_kwargs={
+            "openai_api_key": "test-provider-key",  # pragma: allowlist secret
+            "timeout": 30,
+        },
+    )
+    text = repr(config)
+    assert "test-key" not in text
+    assert "test-provider-key" not in text
+    assert "timeout" in text
+    assert "30" in text
+
+
 def test_embedding_config_validation():
     """Test embedding configuration validation"""
     # Test valid OpenAI config

@@ -10,6 +10,28 @@ from pydantic import BaseModel, ConfigDict, Field
 from fmp_data.exceptions import ConfigError
 from fmp_data.lc.utils import check_package_dependency
 
+_SECRET_KWARG_TOKENS = (
+    "key",
+    "token",
+    "secret",
+    "password",
+    "passwd",
+    "authorization",
+    "auth",
+)
+
+
+def _redact_kwargs(data: dict[str, Any]) -> dict[str, Any]:
+    """Copy a kwargs map with secret-shaped values replaced."""
+    redacted: dict[str, Any] = {}
+    for key, value in data.items():
+        lowered = key.lower()
+        if any(token in lowered for token in _SECRET_KWARG_TOKENS):
+            redacted[key] = "***"
+        else:
+            redacted[key] = value
+    return redacted
+
 
 class EmbeddingProvider(str, Enum):
     """Supported embedding providers"""
@@ -36,9 +58,19 @@ class EmbeddingConfig(BaseModel):
     additional_kwargs: dict[str, Any] = Field(
         default_factory=dict,
         description="Additional keyword arguments for the embedding provider",
+        repr=False,
     )
 
     model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
+
+    def __repr__(self) -> str:
+        """Hide API keys and secret-shaped kwargs from ``repr`` (#273)."""
+        return (
+            f"{type(self).__name__}("
+            f"provider={self.provider!r}, "
+            f"model_name={self.model_name!r}, "
+            f"additional_kwargs={_redact_kwargs(self.additional_kwargs)!r})"
+        )
 
     def get_embeddings(self) -> Embeddings:
         """
