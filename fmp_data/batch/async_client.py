@@ -73,6 +73,7 @@ from fmp_data.fundamental.models import (
 )
 from fmp_data.investment.models import ETFHolding
 from fmp_data.models import Endpoint
+from fmp_data.schema import PeriodFiscal
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
@@ -387,14 +388,14 @@ class AsyncBatchClient(AsyncEndpointGroup):
         return self._parse_csv(raw, EarningsSurpriseBulk, EARNINGS_SURPRISES_BULK)
 
     async def get_income_statement_bulk(
-        self, year: int, period: str
+        self, year: int, period: PeriodFiscal
     ) -> list[IncomeStatement]:
         """Get bulk income statements"""
         raw = await self._request_csv(INCOME_STATEMENT_BULK, year=year, period=period)
         return self._parse_csv(raw, IncomeStatement, INCOME_STATEMENT_BULK)
 
     async def get_income_statement_growth_bulk(
-        self, year: int, period: str
+        self, year: int, period: PeriodFiscal
     ) -> list[FinancialGrowth]:
         """Get bulk income statement growth data"""
         raw = await self._request_csv(
@@ -403,7 +404,7 @@ class AsyncBatchClient(AsyncEndpointGroup):
         return self._parse_csv(raw, FinancialGrowth, INCOME_STATEMENT_GROWTH_BULK)
 
     async def get_balance_sheet_bulk(
-        self, year: int, period: str
+        self, year: int, period: PeriodFiscal
     ) -> list[BalanceSheet]:
         """Get bulk balance sheet statements"""
         raw = await self._request_csv(
@@ -412,7 +413,7 @@ class AsyncBatchClient(AsyncEndpointGroup):
         return self._parse_csv(raw, BalanceSheet, BALANCE_SHEET_STATEMENT_BULK)
 
     async def get_balance_sheet_growth_bulk(
-        self, year: int, period: str
+        self, year: int, period: PeriodFiscal
     ) -> list[FinancialGrowth]:
         """Get bulk balance sheet growth data"""
         raw = await self._request_csv(
@@ -423,7 +424,7 @@ class AsyncBatchClient(AsyncEndpointGroup):
         )
 
     async def get_cash_flow_bulk(
-        self, year: int, period: str
+        self, year: int, period: PeriodFiscal
     ) -> list[CashFlowStatement]:
         """Get bulk cash flow statements"""
         raw = await self._request_csv(
@@ -432,7 +433,7 @@ class AsyncBatchClient(AsyncEndpointGroup):
         return self._parse_csv(raw, CashFlowStatement, CASH_FLOW_STATEMENT_BULK)
 
     async def get_cash_flow_growth_bulk(
-        self, year: int, period: str
+        self, year: int, period: PeriodFiscal
     ) -> list[FinancialGrowth]:
         """Get bulk cash flow growth data"""
         raw = await self._request_csv(

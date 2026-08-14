@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- **Closed request vocabularies for period, interval, and timeframe.**
+  Client methods now take `Period` / `PeriodFiscal` / `PeriodAnnualQuarter`,
+  `Interval`, and `Timeframe` (`Literal` aliases in `fmp_data.schema`)
+  instead of a naked `str`. Three period types on purpose: financial
+  reports and batch bulk accept only `FY`/`Q1`–`Q4`. Endpoint
+  `valid_values` are derived from the same aliases. Plain strings still
+  work at runtime. The e2e harness samples required closed params from
+  the method annotation, not a global `"annual"` table.
+
 ## [2.7.0] - 2026-08-14
 
 Released from `dev`. A security-and-contracts minor in the same shape as

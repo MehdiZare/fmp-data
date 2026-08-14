@@ -9,6 +9,7 @@ from fmp_data.models import (
     ParamType,
     URLType,
 )
+from fmp_data.schema import TIMEFRAME_VALUES
 from fmp_data.technical.models import (
     ADXIndicator,
     DEMAIndicator,
@@ -22,7 +23,7 @@ from fmp_data.technical.models import (
 )
 
 # Valid timeframes for all technical indicators
-VALID_TIMEFRAMES = ["1min", "5min", "15min", "30min", "1hour", "4hour", "1day"]
+VALID_TIMEFRAMES = list(TIMEFRAME_VALUES)
 
 # Simple Moving Average
 SMA: Endpoint[SMAIndicator] = Endpoint(

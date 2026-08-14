@@ -39,6 +39,7 @@ from fmp_data.alternative.models import (
 )
 from fmp_data.base import AsyncEndpointGroup
 from fmp_data.helpers import deprecated
+from fmp_data.schema import Interval
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
@@ -104,7 +105,7 @@ class AsyncAlternativeMarketsClient(AsyncEndpointGroup):
         )
 
     async def get_crypto_intraday(
-        self, symbol: str, interval: str = "5min"
+        self, symbol: str, interval: Interval = "5min"
     ) -> list[CryptoIntradayPrice]:
         """Get cryptocurrency intraday prices"""
         return self._unwrap_list(
@@ -161,7 +162,7 @@ class AsyncAlternativeMarketsClient(AsyncEndpointGroup):
         )
 
     async def get_forex_intraday(
-        self, symbol: str, interval: str = "5min"
+        self, symbol: str, interval: Interval = "5min"
     ) -> list[ForexIntradayPrice]:
         """Get forex intraday prices"""
         return self._unwrap_list(
@@ -220,7 +221,7 @@ class AsyncAlternativeMarketsClient(AsyncEndpointGroup):
         )
 
     async def get_commodity_intraday(
-        self, symbol: str, interval: str = "5min"
+        self, symbol: str, interval: Interval = "5min"
     ) -> list[CommodityIntradayPrice]:
         """Get commodity intraday prices"""
         return self._unwrap_list(

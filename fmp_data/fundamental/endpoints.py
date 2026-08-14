@@ -22,6 +22,7 @@ from fmp_data.models import (
     ParamLocation,
     ParamType,
 )
+from fmp_data.schema import PERIOD_VALUES
 
 INCOME_STATEMENT: Endpoint[IncomeStatement] = Endpoint(
     name="income_statement",
@@ -44,9 +45,9 @@ INCOME_STATEMENT: Endpoint[IncomeStatement] = Endpoint(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            description="Period (annual, quarter)",
+            description="Period (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
+            valid_values=list(PERIOD_VALUES),
         ),
         EndpointParam(
             name="limit",
@@ -90,7 +91,7 @@ BALANCE_SHEET: Endpoint[BalanceSheet] = Endpoint(
             param_type=ParamType.STRING,
             description="Period (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
+            valid_values=list(PERIOD_VALUES),
         ),
         EndpointParam(
             name="limit",
@@ -133,7 +134,7 @@ CASH_FLOW: Endpoint[CashFlowStatement] = Endpoint(
             param_type=ParamType.STRING,
             description="Period (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
+            valid_values=list(PERIOD_VALUES),
         ),
         EndpointParam(
             name="limit",
@@ -207,7 +208,7 @@ KEY_METRICS: Endpoint[KeyMetrics] = Endpoint(
             param_type=ParamType.STRING,
             description="Period (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
+            valid_values=list(PERIOD_VALUES),
         ),
         EndpointParam(
             name="limit",
@@ -250,7 +251,7 @@ FINANCIAL_RATIOS: Endpoint[FinancialRatios] = Endpoint(
             param_type=ParamType.STRING,
             description="Period (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
+            valid_values=list(PERIOD_VALUES),
         ),
         EndpointParam(
             name="limit",
@@ -289,7 +290,7 @@ FULL_FINANCIAL_STATEMENT: Endpoint[FinancialStatementFull] = Endpoint(
             param_type=ParamType.STRING,
             description="Period (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
+            valid_values=list(PERIOD_VALUES),
         ),
         EndpointParam(
             name="limit",
