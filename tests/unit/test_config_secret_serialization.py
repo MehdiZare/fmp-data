@@ -225,3 +225,52 @@ class TestDisplayRedactionIsNotANameAllowlist:
         assert "1048576" in text
         assert "backupCount" in text
         assert "base_url=" in text
+
+
+class TestHandlerKwargsOnTheDumpPath:
+    """`handler_kwargs` is out of `SecretStr`'s reach (#252).
+
+    It is a bare `dict[str, Any]` handed straight to a logging handler --
+    a `SysLogHandler` password or an HTTP handler's credentials live here.
+    `__str__` was swept, but `model_dump()` still emitted them.
+    """
+
+    PLANTED = "PLANTEDHANDLERSECRET"
+
+    def _config(self) -> ClientConfig:
+        from fmp_data.config import LoggingConfig, LogHandlerConfig
+
+        return ClientConfig(
+            api_key=API_KEY,
+            logging=LoggingConfig(
+                handlers={
+                    "file": LogHandlerConfig(
+                        class_name="RotatingFileHandler",
+                        handler_kwargs={
+                            "password": self.PLANTED,
+                            "maxBytes": 1048576,
+                            "backupCount": 3,
+                        },
+                    )
+                }
+            ),
+        )
+
+    def test_model_dump_does_not_leak(self) -> None:
+        assert self.PLANTED not in str(self._config().model_dump())
+
+    def test_model_dump_json_does_not_leak(self) -> None:
+        assert self.PLANTED not in self._config().model_dump_json()
+
+    def test_the_live_value_is_untouched(self) -> None:
+        """`logger.py` splats these into the handler constructor."""
+        config = self._config()
+        config.model_dump()  # must not mutate
+        kwargs = config.logging.handlers["file"].handler_kwargs
+        assert kwargs["password"] == self.PLANTED
+
+    def test_operational_kwargs_survive(self) -> None:
+        dumped = self._config().model_dump()
+        kwargs = dumped["logging"]["handlers"]["file"]["handler_kwargs"]
+        assert kwargs["maxBytes"] == 1048576
+        assert kwargs["backupCount"] == 3
