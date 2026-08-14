@@ -22,6 +22,7 @@ from fmp_data.economics.models import (
     MarketRiskPremium,
     TreasuryRate,
 )
+from fmp_data.economics.schema import EconomicIndicatorType
 
 
 class AsyncEconomicsClient(AsyncEndpointGroup):
@@ -42,7 +43,7 @@ class AsyncEconomicsClient(AsyncEndpointGroup):
         )
 
     async def get_economic_indicators(
-        self, indicator_name: str
+        self, indicator_name: EconomicIndicatorType | str
     ) -> list[EconomicIndicator]:
         """Get economic indicator data"""
         return self._unwrap_list(

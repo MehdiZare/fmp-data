@@ -511,7 +511,8 @@ class TestFundamentalEndpoints(unittest.TestCase):
                 "Invalid value for period. Must be one of: ['annual', 'quarter']"
             )
             self.fundamental_client.get_income_statement(
-                symbol=self.symbol, period="invalid"
+                symbol=self.symbol,
+                period="invalid",  # type: ignore[arg-type]
             )
         self.assertIn("Must be one of: ['annual', 'quarter']", str(context.exception))
 

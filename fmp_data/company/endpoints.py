@@ -58,6 +58,12 @@ from fmp_data.models import (
     ParamType,
     URLType,
 )
+from fmp_data.schema import (
+    INTERVAL_VALUES,
+    PERIOD_ANNUAL_QUARTER_VALUES,
+    PERIOD_FISCAL_VALUES,
+    PERIOD_VALUES,
+)
 
 QUOTE: Endpoint[Quote] = Endpoint(
     name="quote",
@@ -283,7 +289,7 @@ INTRADAY_PRICE: Endpoint[IntradayPrice] = Endpoint(
             location=ParamLocation.PATH,
             param_type=ParamType.STRING,
             description="Time interval (1min, 5min, 15min, 30min, 1hour, 4hour)",
-            valid_values=["1min", "5min", "15min", "30min", "1hour", "4hour"],
+            valid_values=list(INTERVAL_VALUES),
         ),
         EndpointParam(
             name="symbol",
@@ -567,7 +573,7 @@ PRODUCT_REVENUE_SEGMENTATION: Endpoint[ProductRevenueSegment] = Endpoint(
             param_type=ParamType.STRING,
             description="Annual or quarterly data",
             default="annual",
-            valid_values=["annual", "quarter"],
+            valid_values=list(PERIOD_ANNUAL_QUARTER_VALUES),
         ),
     ],
     optional_params=[],
@@ -610,7 +616,7 @@ GEOGRAPHIC_REVENUE_SEGMENTATION: Endpoint[GeographicRevenueSegment] = Endpoint(
             param_type=ParamType.STRING,
             description="Annual or quarterly data",
             default="annual",
-            valid_values=["annual", "quarter"],
+            valid_values=list(PERIOD_ANNUAL_QUARTER_VALUES),
         ),
     ],
     optional_params=[],
@@ -787,7 +793,7 @@ ANALYST_ESTIMATES: Endpoint[AnalystEstimate] = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             description="Estimate period (annual or quarter)",
-            valid_values=["annual", "quarter"],
+            valid_values=list(PERIOD_ANNUAL_QUARTER_VALUES),
         ),
     ],
     optional_params=[
@@ -1500,7 +1506,7 @@ ENTERPRISE_VALUES: Endpoint[EnterpriseValue] = Endpoint(
             param_type=ParamType.STRING,
             description="Period type (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
+            valid_values=list(PERIOD_VALUES),
         ),
         EndpointParam(
             name="limit",
@@ -1538,7 +1544,7 @@ INCOME_STATEMENT_GROWTH: Endpoint[FinancialGrowth] = Endpoint(
             param_type=ParamType.STRING,
             description="Period type (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
+            valid_values=list(PERIOD_VALUES),
         ),
         EndpointParam(
             name="limit",
@@ -1576,7 +1582,7 @@ BALANCE_SHEET_GROWTH: Endpoint[FinancialGrowth] = Endpoint(
             param_type=ParamType.STRING,
             description="Period type (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
+            valid_values=list(PERIOD_VALUES),
         ),
         EndpointParam(
             name="limit",
@@ -1614,7 +1620,7 @@ CASH_FLOW_GROWTH: Endpoint[FinancialGrowth] = Endpoint(
             param_type=ParamType.STRING,
             description="Period type (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
+            valid_values=list(PERIOD_VALUES),
         ),
         EndpointParam(
             name="limit",
@@ -1652,7 +1658,7 @@ FINANCIAL_GROWTH: Endpoint[FinancialGrowth] = Endpoint(
             param_type=ParamType.STRING,
             description="Period type (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
+            valid_values=list(PERIOD_VALUES),
         ),
         EndpointParam(
             name="limit",
@@ -1694,7 +1700,7 @@ FINANCIAL_REPORTS_JSON: Endpoint[FinancialReportJSON] = Endpoint(
             param_type=ParamType.STRING,
             description="Report period (FY or Q1-Q4)",
             default="FY",
-            valid_values=["FY", "Q1", "Q2", "Q3", "Q4"],
+            valid_values=list(PERIOD_FISCAL_VALUES),
         ),
     ],
     optional_params=[],
@@ -1730,7 +1736,7 @@ FINANCIAL_REPORTS_XLSX: Endpoint[bytes] = Endpoint(
             param_type=ParamType.STRING,
             description="Report period (FY or Q1-Q4)",
             default="FY",
-            valid_values=["FY", "Q1", "Q2", "Q3", "Q4"],
+            valid_values=list(PERIOD_FISCAL_VALUES),
         ),
     ],
     optional_params=[],
@@ -1762,7 +1768,7 @@ INCOME_STATEMENT_AS_REPORTED: Endpoint[AsReportedIncomeStatement] = Endpoint(
             param_type=ParamType.STRING,
             description="Period type (annual or quarter)",
             default="annual",
-            valid_values=["annual", "quarter"],
+            valid_values=list(PERIOD_ANNUAL_QUARTER_VALUES),
         ),
         EndpointParam(
             name="limit",
@@ -1800,7 +1806,7 @@ BALANCE_SHEET_AS_REPORTED: Endpoint[AsReportedBalanceSheet] = Endpoint(
             param_type=ParamType.STRING,
             description="Period type (annual or quarter)",
             default="annual",
-            valid_values=["annual", "quarter"],
+            valid_values=list(PERIOD_ANNUAL_QUARTER_VALUES),
         ),
         EndpointParam(
             name="limit",
@@ -1838,7 +1844,7 @@ CASH_FLOW_AS_REPORTED: Endpoint[AsReportedCashFlowStatement] = Endpoint(
             param_type=ParamType.STRING,
             description="Period type (annual or quarter)",
             default="annual",
-            valid_values=["annual", "quarter"],
+            valid_values=list(PERIOD_ANNUAL_QUARTER_VALUES),
         ),
         EndpointParam(
             name="limit",

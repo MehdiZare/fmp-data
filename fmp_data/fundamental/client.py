@@ -18,13 +18,14 @@ from fmp_data.fundamental.models import (
     OwnerEarnings,
 )
 from fmp_data.helpers import deprecated
+from fmp_data.schema import Period
 
 
 class FundamentalClient(EndpointGroup):
     """Client for fundamental analysis endpoints"""
 
     def get_income_statement(
-        self, symbol: str, period: str = "annual", limit: int | None = None
+        self, symbol: str, period: Period = "annual", limit: int | None = None
     ) -> list[IncomeStatement]:
         """Get income statements"""
         return self._unwrap_list(
@@ -35,7 +36,7 @@ class FundamentalClient(EndpointGroup):
         )
 
     def get_balance_sheet(
-        self, symbol: str, period: str = "annual", limit: int | None = None
+        self, symbol: str, period: Period = "annual", limit: int | None = None
     ) -> list[BalanceSheet]:
         """Get balance sheets"""
         return self._unwrap_list(
@@ -46,7 +47,7 @@ class FundamentalClient(EndpointGroup):
         )
 
     def get_cash_flow(
-        self, symbol: str, period: str = "annual", limit: int | None = None
+        self, symbol: str, period: Period = "annual", limit: int | None = None
     ) -> list[CashFlowStatement]:
         """Get cash flow statements"""
         return self._unwrap_list(
@@ -68,7 +69,7 @@ class FundamentalClient(EndpointGroup):
         )
 
     def get_key_metrics(
-        self, symbol: str, period: str = "annual", limit: int | None = None
+        self, symbol: str, period: Period = "annual", limit: int | None = None
     ) -> list[KeyMetrics]:
         """Get key financial metrics"""
         return self._unwrap_list(
@@ -79,7 +80,7 @@ class FundamentalClient(EndpointGroup):
         )
 
     def get_financial_ratios(
-        self, symbol: str, period: str = "annual", limit: int | None = None
+        self, symbol: str, period: Period = "annual", limit: int | None = None
     ) -> list[FinancialRatios]:
         """Get financial ratios"""
         return self._unwrap_list(
@@ -90,7 +91,7 @@ class FundamentalClient(EndpointGroup):
         )
 
     def get_full_financial_statement(
-        self, symbol: str, period: str = "annual", limit: int | None = None
+        self, symbol: str, period: Period = "annual", limit: int | None = None
     ) -> list[FinancialStatementFull]:
         """Get full financial statements as reported"""
         return self._unwrap_list(
