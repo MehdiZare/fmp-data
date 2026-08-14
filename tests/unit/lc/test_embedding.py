@@ -164,3 +164,44 @@ def test_get_embeddings_cohere(mock_cohere):
     mock_cohere.assert_called_once_with(
         cohere_api_key="test-key", model="embed-english-v2.0"
     )
+
+
+class TestAdditionalKwargsSerialization:
+    """`additional_kwargs` must not leak on the dump path either (#252).
+
+    `SecretStr` cannot reach inside a `dict[str, Any]`, and providers take
+    credential-bearing nested kwargs -- `OpenAIEmbeddings` accepts
+    `default_headers={"Authorization": ...}`. `repr` was fixed in #273; the
+    dump was not, so a structured log or JSON error report still emitted it.
+    """
+
+    PLANTED = "PLANTEDCREDENTIAL_aaaa"
+
+    def _config(self) -> EmbeddingConfig:
+        return EmbeddingConfig(
+            api_key="EMBEDKEY_bbbb",  # pragma: allowlist secret
+            additional_kwargs={
+                "default_headers": {"Authorization": f"Bearer {self.PLANTED}"},
+                "model_kwargs": {"api_key": self.PLANTED},
+                "timeout": 30,
+            },
+        )
+
+    def test_model_dump_does_not_leak_nested_credentials(self) -> None:
+        assert self.PLANTED not in str(self._config().model_dump())
+
+    def test_model_dump_json_does_not_leak_nested_credentials(self) -> None:
+        assert self.PLANTED not in self._config().model_dump_json()
+
+    def test_repr_still_does_not_leak(self) -> None:
+        assert self.PLANTED not in repr(self._config())
+
+    def test_the_live_kwargs_are_untouched(self) -> None:
+        """`get_embeddings` splats these into the provider; masking them
+        there would authenticate as nobody."""
+        config = self._config()
+        config.model_dump()  # must not mutate
+        assert config.additional_kwargs["model_kwargs"]["api_key"] == self.PLANTED
+
+    def test_non_secret_kwargs_survive_the_dump(self) -> None:
+        assert self._config().model_dump()["additional_kwargs"]["timeout"] == 30

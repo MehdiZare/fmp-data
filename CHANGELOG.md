@@ -217,6 +217,21 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Security
 
+- **`ClientConfig.__str__` redaction is metadata-driven, not a name
+  allowlist (#252 FMP-SEC-007).** It dumped the whole model and masked the
+  three field names it knew about, so everything else rendered verbatim —
+  including a secret inside `LogHandlerConfig.handler_kwargs`, a bare
+  `dict[str, Any]` that needs no subclass to reach, and any credential
+  field added by a subclass. Redaction now runs in three passes: fields
+  marked `repr=False` (pydantic's own not-for-display signal, which every
+  credential field already carries, so a subclass gets correct behaviour
+  from the standard idiom); a recursive sweep for secret-shaped keys,
+  which is the only handle available on untyped bags; then the two values
+  worth rendering richer than `***` (the API key's leading characters and
+  the Redis host). The shape rules moved to `fmp_data/_redaction.py` and
+  are shared with `EmbeddingConfig.__repr__`, which previously recursed
+  while the config side did not. Non-secret values such as `maxBytes` are
+  still shown.
 - **The release build job no longer carries a persisted git credential
   (#252 FMP-SEC-002).** `release.yml`'s build job legitimately needs
   `contents: write` — it pushes the release tag and creates the GitHub
