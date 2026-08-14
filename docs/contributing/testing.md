@@ -101,7 +101,11 @@ def test_api_call(client):
 
 We maintain high test coverage:
 
-- Minimum coverage: 80%
+- Core minimum coverage: 80% (`fmp_data/lc/*`, `fmp_data/mcp/*`, and
+  `fmp_data/cache/redis_backend.py` stay omitted from that number)
+- Extras gate: 65% via `uv tool run nox -s coverage_extras` (or the
+  CI `extras-coverage` job). That session installs langchain / mcp /
+  cache-redis and measures only those trees.
 - Coverage report: `uv run pytest --cov=fmp_data --cov-report=html`
 - View report: `open htmlcov/index.html`
 

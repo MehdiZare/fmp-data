@@ -191,6 +191,13 @@ None. No FMP path we ship was newly retired by this changelog window.
 - **CodeQL analyzes the Python tree on every PR (#252 FMP-SEC-008).**
   Findings upload to GitHub code scanning. The workflow is SHA-pinned
   and uses ``build-mode: none``.
+- **Separate extras coverage gate for ``lc`` / ``mcp`` / Redis (#273).**
+  The core 80% report still omits those trees. ``nox -s coverage_extras``
+  (CI job ``extras-coverage``) installs the extras, measures only those
+  files, and fails under 65% (measured baseline 66.78% on 2026-08-13).
+  The ``mcp-server`` session now runs every ``tests/unit/test_mcp*.py``
+  file. ``uv.lock`` stays uncommitted; ``pip-audit`` still uses a live
+  export (#270).
 
 - **Isolated PyPI publishing and immutable Actions pins (#252).** Release,
   Dev-Release, and Publish-to-TestPyPI now build in a job with no OIDC token

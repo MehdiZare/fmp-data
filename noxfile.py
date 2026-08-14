@@ -105,6 +105,14 @@ def _pytest_xdist_args() -> list[str]:
     return ["-n", "auto"]
 
 
+def _mcp_unit_tests() -> list[str]:
+    """Every ``tests/unit/test_mcp*.py`` file for the mcp-server session."""
+    return sorted(
+        p.relative_to(REPO_ROOT).as_posix()
+        for p in (REPO_ROOT / "tests" / "unit").glob("test_mcp*.py")
+    )
+
+
 # --------------------------------------------------------------------------- #
 #  Sessions                                                                   #
 # --------------------------------------------------------------------------- #
@@ -125,20 +133,18 @@ def tests(session: Session, feature_group: str | None) -> None:
     pytest_args = ["-q", *_pytest_xdist_args()]
 
     if feature_group == "mcp-server":
-        # Check if mcp tests exist and handle gracefully
-        mcp_test_file = Path("tests/unit/test_mcp.py")
-        if mcp_test_file.exists():
-            # Use success_codes to handle no tests collected gracefully
+        mcp_tests = _mcp_unit_tests()
+        if mcp_tests:
             session.run(
                 "pytest",
                 *pytest_args,
-                "tests/unit/test_mcp.py",
+                *mcp_tests,
                 "-m",
                 "not integration",
                 success_codes=[0, 5],  # 0=success, 5=no tests collected
             )
         else:
-            session.log("Skipping mcp-server tests - test_mcp.py not found")
+            session.log("Skipping mcp-server tests - no tests/unit/test_mcp*.py")
     else:
         # For core and langchain, run all tests
         session.run("pytest", *pytest_args, success_codes=[0, 5])
@@ -207,20 +213,19 @@ def coverage_local(session: Session) -> None:
 
         # Handle different feature groups
         if feature_group == "mcp-server":
-            # Check if mcp tests exist first
-            mcp_test_file = Path("tests/unit/test_mcp.py")
-            if mcp_test_file.exists():
+            mcp_tests = _mcp_unit_tests()
+            if mcp_tests:
                 session.run(
                     "pytest",
                     *pytest_args,
-                    "tests/unit/test_mcp.py",
+                    *mcp_tests,
                     "-m",
                     "not integration",
                     env=env,
                     success_codes=[0, 5],  # 0=success, 5=no tests collected
                 )
             else:
-                session.log("Skipping mcp-server tests - test_mcp.py not found")
+                session.log("Skipping mcp-server tests - no tests/unit/test_mcp*.py")
                 # Create minimal coverage file for this feature group
                 session.run(
                     "python",
@@ -258,6 +263,31 @@ cov.save()
     session.run("coverage", "xml")
     session.run("coverage", "html")
     session.run("coverage", "report")
+
+
+@nox.session(python=DEFAULT_PYTHON, tags=["coverage-extras"])
+def coverage_extras(session: Session) -> None:
+    """Separate extras coverage gate for lc / mcp / Redis (#273).
+
+    Core 80% still omits these trees. This session installs the extras,
+    measures only those files, and fails under 65% (baseline 66.78% on
+    2026-08-13). xdist is off so local and CI numbers stay comparable.
+    """
+    _sync_with_uv(
+        session,
+        extras=["dev", "langchain", "mcp-server", "cache-redis"],
+    )
+    session.run(
+        "pytest",
+        "-q",
+        "tests/unit",
+        "--cov=fmp_data.lc",
+        "--cov=fmp_data.mcp",
+        "--cov=fmp_data.cache.redis_backend",
+        "--cov-config=extras.coveragerc",
+        "--cov-report=term-missing",
+        "--cov-fail-under=65",
+    )
 
 
 @nox.session(python=DEFAULT_PYTHON, tags=["test-local"])
