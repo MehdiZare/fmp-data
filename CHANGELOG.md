@@ -234,6 +234,10 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Security
 
+- **Makefile ``.env`` loader drops process-hijack keys (#273).**
+  ``PATH``, ``LD_PRELOAD``, ``PYTHONPATH``, ``DYLD_*``, and similar
+  identifiers are ignored so a trusted local file cannot rewrite the
+  maintainer shell.
 - **Bandit skips are limited to `assert` used in the library (#273).**
   Global `B404` / `B603` / `B607` / `B608` skips are gone. MCP subprocess
   calls keep file-local `nosec` notes; there is no SQL to justify `B608`.

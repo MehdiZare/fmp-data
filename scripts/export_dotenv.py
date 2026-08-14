@@ -4,7 +4,8 @@
 Used by the Makefile so a crafted ``.env`` cannot run as the maintainer
 (#252 FMP-SEC-011). Values are ``shlex.quote``-d. Lines that are empty,
 comments, or missing ``=`` are ignored. Optional ``export `` prefix is
-stripped. No interpolation, no command substitution.
+stripped. No interpolation, no command substitution. Process-hijack keys
+(``PATH``, ``LD_PRELOAD``, ``PYTHONPATH``, ``DYLD_*``, …) are dropped.
 """
 
 from __future__ import annotations
@@ -12,6 +13,29 @@ from __future__ import annotations
 from pathlib import Path
 import shlex
 import sys
+
+# A trusted .env can still clobber the maintainer shell if we export these.
+_BLOCKED_KEYS = frozenset(
+    {
+        "PATH",
+        "LD_PRELOAD",
+        "LD_LIBRARY_PATH",
+        "DYLD_INSERT_LIBRARIES",
+        "DYLD_LIBRARY_PATH",
+        "DYLD_FRAMEWORK_PATH",
+        "PYTHONPATH",
+        "PYTHONHOME",
+        "PYTHONSTARTUP",
+        "PYTHONBREAKPOINT",
+        "IFS",
+        "PS4",
+        "SHELLOPTS",
+        "BASH_ENV",
+        "ENV",
+        "CDPATH",
+        "PROMPT_COMMAND",
+    }
+)
 
 
 def export_lines(text: str) -> list[str]:
@@ -27,6 +51,8 @@ def export_lines(text: str) -> list[str]:
         key, value = stripped.split("=", 1)
         key = key.strip()
         if not key or not key.isidentifier():
+            continue
+        if key in _BLOCKED_KEYS or key.startswith("DYLD_"):
             continue
         value = value.strip()
         if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:

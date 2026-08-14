@@ -33,3 +33,25 @@ def test_export_lines_quotes_and_ignores_shell() -> None:
     # $(...) is quoted, not executed
     assert any("EVIL=" in line and "$(touch" in line for line in lines)
     assert all(line.startswith("export ") for line in lines)
+
+
+def test_export_lines_drops_process_hijack_keys() -> None:
+    text = "\n".join(
+        [
+            "FMP_API_KEY=keep",
+            "PATH=/tmp/evil",
+            "LD_PRELOAD=/tmp/evil.so",
+            "PYTHONPATH=/tmp/evil",
+            "DYLD_INSERT_LIBRARIES=/tmp/evil.dylib",
+            "DYLD_CUSTOM=also-blocked",
+            "IFS=x",
+        ]
+    )
+    lines = export_dotenv.export_lines(text)
+    joined = "\n".join(lines)
+    assert "export FMP_API_KEY=keep" in joined
+    assert "PATH=" not in joined
+    assert "LD_PRELOAD=" not in joined
+    assert "PYTHONPATH=" not in joined
+    assert "DYLD_" not in joined
+    assert "IFS=" not in joined
