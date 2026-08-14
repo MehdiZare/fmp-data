@@ -184,6 +184,18 @@ None. No FMP path we ship was newly retired by this changelog window.
 
 ### Security
 
+- **The release build job no longer carries a persisted git credential
+  (#252 FMP-SEC-002).** `release.yml`'s build job legitimately needs
+  `contents: write` — it pushes the release tag and creates the GitHub
+  Release — but it checked out with `token: ${{ secrets.GITHUB_TOKEN }}`,
+  leaving repo-write credentials in `.git/config` for the whole job,
+  including while it installs a PEP 517 frontend and backend and runs a
+  build. Exactly one step needed remote write; it now creates the tag
+  through the API with an explicitly scoped `GH_TOKEN`, so the checkout
+  uses `persist-credentials: false`. The tag is still created locally
+  first (hatch-vcs derives the version from the local tag, and the build
+  runs after) and the remote tag is created as an annotated tag object
+  rather than a bare ref, so it matches.
 - **The TestPyPI publish job no longer holds repo-write (#252 FMP-SEC-002).**
   ``test-release-publish`` carried ``pull-requests: write`` and
   ``issues: write`` alongside ``id-token: write`` purely so it could post
