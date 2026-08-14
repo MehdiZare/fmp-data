@@ -19,8 +19,8 @@ This cut also aligns the client with the 2026 FMP `/stable` surface
 (diluted P/E, screener pagination, Senate/House `senateID`, rating-bulk
 scores, delisted companies), finishes the `Endpoint[T]` / `_unwrap_list`
 typing migration, types period / interval / timeframe as closed
-vocabularies (`Period`, `Interval`, `Timeframe`), and adds a local
-VCR-backed client-method sweep.
+vocabularies (`Period`, `Interval`, `TechnicalInterval`, `Timeframe`),
+and adds a local VCR-backed client-method sweep.
 
 **Read before upgrading.** One public-type break, narrow:
 
@@ -188,6 +188,13 @@ None. No FMP path we ship was newly retired by this changelog window.
   `from fmp_data import Period, PeriodFiscal, PeriodAnnualQuarter,
   Interval, Timeframe`. The e2e harness samples required closed params
   from the method annotation, not a global `"annual"` table.
+
+- **Public re-export of `TechnicalInterval` (#311).** Annotate
+  `TechnicalClient.interval=` against
+  `from fmp_data import TechnicalInterval`. It is `Interval` plus
+  `"daily"` / `"hourly"`, not `Timeframe` (`1day`). Client-only leftover
+  aliases mapped by `_normalize_timeframe`; endpoint `valid_values` stay
+  on `Timeframe` / `Interval`.
 
 - **Local VCR-backed client-method e2e sweep.** Maintainer script
   `scripts/e2e_endpoints.py` (`make e2e-record` / `make e2e-replay`) calls

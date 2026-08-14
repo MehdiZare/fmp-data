@@ -125,6 +125,31 @@ def test_legacy_enums_are_unpacked_from_the_literal_tuples() -> None:
     assert IntradayTimeInterval.FOUR_HOURS.value == "4hour"
 
 
+def test_readme_sma_example_does_not_stack_interval_on_timeframe() -> None:
+    """interval overrides timeframe; examples must show one or the other."""
+    from pathlib import Path
+    import re
+
+    text = (Path(__file__).resolve().parents[2] / "README.md").read_text(
+        encoding="utf-8"
+    )
+    fence = re.compile(r"```(?:python)?\n(.*?)```", re.S)
+    stacked = [
+        i
+        for i, block in enumerate(fence.findall(text))
+        if "get_sma" in block
+        and (
+            re.search(r"get_sma\([^)]*timeframe\s*=[^)]*interval\s*=", block, re.S)
+            or re.search(r"get_sma\([^)]*interval\s*=[^)]*timeframe\s*=", block, re.S)
+        )
+    ]
+    assert not stacked, (
+        "get_sma examples must not pass both timeframe and interval; "
+        "interval overrides timeframe:\n  README.md fence(s) "
+        + ", ".join(map(str, stacked))
+    )
+
+
 def test_getting_started_income_statement_examples_use_period() -> None:
     """#308: get_income_statement takes Period, not PeriodAnnualQuarter."""
     from pathlib import Path
@@ -145,7 +170,7 @@ def test_getting_started_income_statement_examples_use_period() -> None:
 
 
 def test_closed_vocabularies_are_public_exports() -> None:
-    """#308: callers annotate against the live contracts from fmp_data."""
+    """#308 / #311: callers annotate against the live contracts from fmp_data."""
     import fmp_data
 
     assert fmp_data.Period is Period
@@ -153,14 +178,19 @@ def test_closed_vocabularies_are_public_exports() -> None:
     assert fmp_data.PeriodAnnualQuarter is PeriodAnnualQuarter
     assert fmp_data.Interval is Interval
     assert fmp_data.Timeframe is Timeframe
+    assert fmp_data.TechnicalInterval is TechnicalInterval
     for name in (
         "Period",
         "PeriodFiscal",
         "PeriodAnnualQuarter",
         "Interval",
+        "TechnicalInterval",
         "Timeframe",
     ):
         assert name in fmp_data.__all__, name
+    assert "1day" not in literal_values(fmp_data.TechnicalInterval)
+    assert "daily" in literal_values(fmp_data.TechnicalInterval)
+    assert "hourly" in literal_values(fmp_data.TechnicalInterval)
 
 
 def test_deprecated_time_interval_tracks_technical_interval() -> None:
