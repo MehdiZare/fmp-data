@@ -1091,6 +1091,29 @@ class TestMarketIntelligenceClientGovernment:
         wire = SENATE_PROFILE.validate_params(kwargs)
         assert wire["senateID"] == "P000197"
 
+    def test_get_senate_profile_filters_use_wire_aliases(self, fmp_client, mock_client):
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_profile(
+            active=True,
+            latest_party="Democrat",
+            latest_position="Representative",
+        )
+
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["active"] is True
+        assert kwargs["latest_party"] == "Democrat"
+        assert kwargs["latest_position"] == "Representative"
+
+        from fmp_data.intelligence.endpoints import SENATE_PROFILE
+
+        wire = SENATE_PROFILE.validate_params(kwargs)
+        assert wire["active"] is True
+        assert wire["latestParty"] == "Democrat"
+        assert wire["latestPosition"] == "Representative"
+        assert "latest_party" not in wire
+        assert "latest_position" not in wire
+
     def test_get_senate_positions_unfiltered_and_omits_none(
         self, fmp_client, mock_client
     ):
@@ -1124,6 +1147,24 @@ class TestMarketIntelligenceClientGovernment:
 
         wire = SENATE_POSITIONS.validate_params(kwargs)
         assert wire["senateID"] == "P000197"
+
+    def test_get_senate_positions_filters_use_wire_keys(self, fmp_client, mock_client):
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_positions(
+            party="Republican",
+            position="Senator",
+        )
+
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["party"] == "Republican"
+        assert kwargs["position"] == "Senator"
+
+        from fmp_data.intelligence.endpoints import SENATE_POSITIONS
+
+        wire = SENATE_POSITIONS.validate_params(kwargs)
+        assert wire["party"] == "Republican"
+        assert wire["position"] == "Senator"
 
     def test_senate_profile_parses_birth_date(self):
         from datetime import date

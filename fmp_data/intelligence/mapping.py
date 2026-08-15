@@ -164,6 +164,38 @@ CRYPTO_PAIR_HINT = ParameterHint(
     context_clues=["crypto", "cryptocurrency", "bitcoin", "ethereum", "trading pair"],
 )
 
+ACTIVE_MEMBER_HINT = ParameterHint(
+    natural_names=["active", "currently serving", "in office"],
+    extraction_patterns=[
+        r"(?i)\bactive\b",
+        r"(?i)currently serving",
+        r"(?i)in office",
+    ],
+    examples=["true", "false"],
+    context_clues=["active", "current member", "in office"],
+    required=False,
+)
+
+CONGRESS_PARTY_HINT = ParameterHint(
+    natural_names=["party", "affiliation", "political party"],
+    extraction_patterns=[
+        r"(?i)\b(democrat(?:ic)?|republican|independent)\b",
+    ],
+    examples=["Democrat", "Republican", "Independent"],
+    context_clues=["party", "affiliation", "democrat", "republican"],
+    required=False,
+)
+
+CONGRESS_POSITION_HINT = ParameterHint(
+    natural_names=["position", "chamber", "office", "title"],
+    extraction_patterns=[
+        r"(?i)\b(senator|representative|house|senate)\b",
+    ],
+    examples=["Senator", "Representative"],
+    context_clues=["chamber", "senator", "representative", "position"],
+    required=False,
+)
+
 # Additional utility mappings
 SENTIMENT_SOURCES = {
     "stocktwits": {
@@ -1821,6 +1853,9 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         sub_category="Government Trading",
         parameter_hints={
             "senate_id": SENATE_ID_HINT,
+            "active": ACTIVE_MEMBER_HINT,
+            "latest_party": CONGRESS_PARTY_HINT,
+            "latest_position": CONGRESS_POSITION_HINT,
             "page": PAGE_HINT,
             "limit": LIMIT_HINT,
         },
@@ -1860,6 +1895,8 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         sub_category="Government Trading",
         parameter_hints={
             "senate_id": SENATE_ID_HINT,
+            "party": CONGRESS_PARTY_HINT,
+            "position": CONGRESS_POSITION_HINT,
             "page": PAGE_HINT,
             "limit": LIMIT_HINT,
         },
