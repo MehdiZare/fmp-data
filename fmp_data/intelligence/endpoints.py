@@ -23,6 +23,8 @@ from fmp_data.intelligence.models import (
     PressReleaseBySymbol,
     PriceTargetNews,
     RatingsSnapshot,
+    SenatePosition,
+    SenateProfile,
     SenateTrade,
     SocialSentimentChanges,
     StockGrade,
@@ -954,6 +956,102 @@ HOUSE_TRADES_BY_NAME: Endpoint[HouseDisclosure] = Endpoint(
     ],
     optional_params=[],
     response_model=HouseDisclosure,
+)
+
+SENATE_PROFILE: Endpoint[SenateProfile] = Endpoint(
+    name="senate_profile",
+    path="senate-profile",
+    version=APIVersion.STABLE,
+    description="Get Congress member profiles (path is senate-profile; includes House)",
+    mandatory_params=[],
+    optional_params=[
+        EndpointParam(
+            name="senate_id",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="FMP member id (wire key senateID)",
+            alias="senateID",
+        ),
+        EndpointParam(
+            name="active",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            description="Filter to currently active members",
+        ),
+        EndpointParam(
+            name="latest_party",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="Filter by latest party",
+            alias="latestParty",
+        ),
+        EndpointParam(
+            name="latest_position",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="Filter by latest position",
+            alias="latestPosition",
+        ),
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Page number (max 20)",
+            default=0,
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Number of results (max 500)",
+            default=500,
+        ),
+    ],
+    response_model=SenateProfile,
+)
+
+SENATE_POSITIONS: Endpoint[SenatePosition] = Endpoint(
+    name="senate_positions",
+    path="senate-positions",
+    version=APIVersion.STABLE,
+    description="Get Congress member term history",
+    mandatory_params=[],
+    optional_params=[
+        EndpointParam(
+            name="senate_id",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="FMP member id (wire key senateID)",
+            alias="senateID",
+        ),
+        EndpointParam(
+            name="party",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="Filter by party",
+        ),
+        EndpointParam(
+            name="position",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="Filter by position",
+        ),
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Page number (max 50)",
+            default=0,
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Number of results (max 300)",
+            default=300,
+        ),
+    ],
+    response_model=SenatePosition,
 )
 
 HOUSE_TRADES_BY_ID: Endpoint[HouseDisclosure] = Endpoint(
