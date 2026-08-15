@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import shutil
 import subprocess  # nosec B404
 import sys
@@ -261,6 +262,13 @@ ApiKeyCheckReason = Literal["valid", "invalid", "timeout", "unavailable"]
 # works; AAPL is on every FMP plan that can call ``quote``.
 _PROBE_SYMBOL = "AAPL"
 
+# ``base._check_error_response`` raises a status-less ``FMPError`` when a
+# 2xx JSON body is ``{"Error Message": "Invalid API KEY..."}``. Live
+# ``/stable/quote`` now returns HTTP 401 for a junk key (probed 2026-08-15),
+# which already maps to ``AuthenticationError``. Keep matching the known
+# copy so a 200-body regression cannot report the key as valid (#329).
+_INVALID_API_KEY_MESSAGE = re.compile(r"^invalid api key\b", re.IGNORECASE)
+
 
 def test_mcp_server(
     api_key: str, manifest_path: str | None = None
@@ -345,6 +353,11 @@ def validate_api_key(api_key: str) -> tuple[bool, ApiKeyCheckReason]:
         # FMPError. The previous helper treated both as invalid. 429 /
         # 5xx mean the key was accepted.
         if exc.status_code in {401, 403}:
+            return False, "invalid"
+        # 2xx bodies with the known invalid-key copy have no status_code.
+        if exc.status_code is None and _INVALID_API_KEY_MESSAGE.match(
+            (exc.message or "").strip()
+        ):
             return False, "invalid"
         return True, "valid"
     except Exception:

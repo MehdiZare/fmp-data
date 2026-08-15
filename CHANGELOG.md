@@ -55,6 +55,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   client and calls `company.get_quote("AAPL")`; 401 and 403 map to
   `invalid`. Rate-limit / other HTTP errors still count as `valid`.
 
+- **`validate_api_key` treats a status-less `Invalid API KEY` body as
+  invalid (#329).** Live `/stable/quote` (and `/api/v3/quote`) now
+  return HTTP 401 for a junk key (probed 2026-08-15), which already
+  maps to `AuthenticationError`. `_check_error_response` still raises
+  a bare `FMPError` with no `status_code` if a 2xx JSON body is
+  `{"Error Message": "Invalid API KEY..."}`; that copy now classifies
+  as `invalid`. Unrelated status-less `FMPError`s still count as
+  `valid`.
+
 - **Setup wizard offers the example MCP profiles again (#320).**
   `get_manifest_choices` looks in `examples/mcp/configurations/` (the
   real directory). The example Claude Desktop script, JSON profiles,

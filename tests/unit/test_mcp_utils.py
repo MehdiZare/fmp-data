@@ -817,6 +817,37 @@ class TestValidateApiKey:
 
         assert mcp_utils.validate_api_key("KEY123") == (True, "valid")
 
+    def test_statusless_invalid_api_key_copy_is_invalid(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A 200-body ``Error Message`` has no status_code (#329)."""
+        from fmp_data.exceptions import FMPError
+
+        class BodyClient(_FakeFmpClient):
+            def __init__(self, **kwargs: Any) -> None:
+                super().__init__(**kwargs)
+                self.company = _FakeCompany(raises=FMPError("Invalid API KEY"))
+
+        monkeypatch.setattr("fmp_data.client.FMPDataClient", BodyClient)
+
+        assert mcp_utils.validate_api_key("BAD") == (False, "invalid")
+        assert BodyClient.instances[-1].closed is True
+
+    def test_statusless_unrelated_fmp_error_is_still_valid(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Do not over-match every status-less 200 error body as invalid."""
+        from fmp_data.exceptions import FMPError
+
+        class OtherClient(_FakeFmpClient):
+            def __init__(self, **kwargs: Any) -> None:
+                super().__init__(**kwargs)
+                self.company = _FakeCompany(raises=FMPError("Legacy endpoint retired"))
+
+        monkeypatch.setattr("fmp_data.client.FMPDataClient", OtherClient)
+
+        assert mcp_utils.validate_api_key("KEY123") == (True, "valid")
+
     def test_http_403_is_invalid(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from fmp_data.exceptions import FMPError
 
