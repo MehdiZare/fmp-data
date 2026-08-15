@@ -1379,23 +1379,20 @@ class TestMCPSetupSecurity:
                 mock_redact.assert_any_call("default_value")
 
     def test_print_method_always_redacts(self):
-        """Test that all print method calls apply redaction."""
+        """Console output pattern-redacts key-shaped tokens."""
         import io
         from unittest.mock import patch
 
         from fmp_data.mcp.setup import SetupWizard
 
         setup = SetupWizard(quiet=False)
-        setup.api_key = "secret123"
-
-        # Capture stdout
         captured_output = io.StringIO()
 
         with patch("sys.stdout", captured_output):
-            setup.print("Your API key secret123 is valid", "info")
+            setup.print("Your API key sk-abcdefgh12345678 is valid", "info")
 
         output = captured_output.getvalue()
-        assert "secret123" not in output
+        assert "sk-abcdefgh12345678" not in output
         assert "[REDACTED]" in output
 
     def test_exception_handling_security(self):
@@ -1405,7 +1402,6 @@ class TestMCPSetupSecurity:
 
         from fmp_data.mcp.setup import run_setup
 
-        # Mock an exception that might contain sensitive data
         sensitive_error = Exception("Error with api_key=secret123: connection failed")
 
         captured_output = io.StringIO()
@@ -1417,10 +1413,10 @@ class TestMCPSetupSecurity:
                 result = run_setup(quiet=False)
 
         output = captured_output.getvalue()
-        # Should not contain the raw API key (pattern-based redaction should catch it)
         assert "secret123" not in output
-        assert "[REDACTED]" in output or "Setup failed" in output
-        assert result == 1  # Should return error code
+        assert "api_key=" not in output
+        assert "Setup failed: Exception" in output
+        assert result == 1
 
 
 class TestMCPCompat:
