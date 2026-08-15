@@ -126,12 +126,19 @@ _URL_CREDENTIAL_RE = re.compile(
     re.IGNORECASE,
 )
 _URL_APIKEY_RE = re.compile(r"([?&]apikey=)[^&\s]+", re.IGNORECASE)
-# Lookbehind keeps ``FMP_API_KEY="[YOUR_API_KEY]"`` (the wizard's
-# placeholder instruction) from matching as an assignment. Error bodies
-# use bare ``apikey=`` / ``api_key=`` / ``"api_key":``.
+# Matches ``apikey=``, ``api_key=``, ``FMP_API_KEY=``, ``my_api_key=``,
+# and ``"api_key":``. The previous ``(?<![A-Za-z0-9_])`` lookbehind
+# skipped every ``*_API_KEY=`` assignment so wizard copy
+# ``export FMP_API_KEY="[YOUR_API_KEY]"`` survived — and so did a real
+# token in an error body (#330). Placeholders are skipped in
+# ``_redact_assignment``.
 _ASSIGNMENT_RE = re.compile(
-    r"([\"']?(?<![A-Za-z0-9_])api_?key[\"']?\s*[=:]\s*[\"']?)"
+    r"([\"']?(?<![A-Za-z0-9])(?:[A-Za-z0-9]+_)*api_?key[\"']?\s*[=:]\s*[\"']?)"
     r"([^&\s\"'<>]+)([\"']?)",
+    re.IGNORECASE,
+)
+_PLACEHOLDER_ASSIGNMENT_VALUE = re.compile(
+    r"^(\[[^\]]+\]|your[_-].*key(?:[_-].*)?|<your[_-].*>)$",
     re.IGNORECASE,
 )
 _ENCODED_RE = re.compile(r"(apikey%3[Dd])([^&\s\"'<>]+)", re.IGNORECASE)
@@ -146,6 +153,14 @@ _KEY_SHAPED_RES = (
 _TEXT_MASK = "[REDACTED]"
 
 
+def _redact_assignment(match: re.Match[str]) -> str:
+    """Redact an assignment unless the value is wizard placeholder copy."""
+    value = match.group(2)
+    if _PLACEHOLDER_ASSIGNMENT_VALUE.match(value):
+        return match.group(0)
+    return f"{match.group(1)}{_TEXT_MASK}{match.group(3)}"
+
+
 def redact_credential_patterns(text: str) -> str:
     """Redact query/assignment/encoded credentials without the live secret.
 
@@ -155,7 +170,7 @@ def redact_credential_patterns(text: str) -> str:
     """
     result = _URL_CREDENTIAL_RE.sub(rf"\1{_TEXT_MASK}", text)
     result = _URL_APIKEY_RE.sub(rf"\1{_TEXT_MASK}", result)
-    result = _ASSIGNMENT_RE.sub(rf"\1{_TEXT_MASK}\3", result)
+    result = _ASSIGNMENT_RE.sub(_redact_assignment, result)
     return _ENCODED_RE.sub(rf"\1{_TEXT_MASK}", result)
 
 

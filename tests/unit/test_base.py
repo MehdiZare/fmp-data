@@ -388,6 +388,18 @@ def test_handle_response_does_not_blank_32_char_request_ids(client_config):
     assert token in repr(error.response)
 
 
+def test_handle_response_redacts_fmp_api_key_assignment(client_config):
+    """``FMP_API_KEY=`` on an error body must redact; request ids stay (#330)."""
+    planted = "PLANTED_error_body_fmp_key"
+    request_id = "A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6"
+    body = f"<html>denied FMP_API_KEY={planted} request-id={request_id}</html>".encode()
+    error = _handle_body(client_config, 500, body)
+    rendered = repr(error.response)
+    assert planted not in rendered
+    assert "[REDACTED]" in rendered
+    assert request_id in rendered
+
+
 def test_get_error_details_handles_non_utf8_body():
     """Non-UTF-8 error bodies should not raise while extracting details."""
     request = httpx.Request("GET", "https://example.com")

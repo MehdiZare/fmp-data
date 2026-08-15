@@ -122,12 +122,16 @@ def test_pattern_api_redacts_query_assignment_and_encoded() -> None:
     encoded = "path?apikey%3Dnot-a-real-key-value"  # pragma: allowlist secret
     assert "not-a-real-key-value" not in redact_credential_patterns(encoded)
     assert "[REDACTED]" in redact_credential_patterns(encoded)
-    # Wizard instruction copy must survive: FMP_API_KEY is an env var name,
-    # not a bare apikey= assignment.
+    # Wizard instruction copy must survive: the value is a placeholder,
+    # not a live token (#316, #330).
     assert (
         redact_credential_patterns('export FMP_API_KEY="[YOUR_API_KEY]"')
         == 'export FMP_API_KEY="[YOUR_API_KEY]"'
     )
+    planted = "PLANTED_fmp_api_key_token"
+    assert planted not in redact_credential_patterns(f"FMP_API_KEY={planted}")
+    assert "[REDACTED]" in redact_credential_patterns(f"FMP_API_KEY={planted}")
+    assert planted not in redact_credential_patterns(f"my_api_key={planted}")
 
 
 def test_pattern_api_leaves_32_char_identifiers() -> None:
