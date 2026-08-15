@@ -30,14 +30,21 @@ _URL_CREDENTIAL_PATTERNS = (
     r"([?&](?:api_?key|token|secret)=)[^&\s]+",
     r"([?&]apikey=)[^&\s]+",
 )
-# Standalone key-shaped tokens. These must not depend on the getpass-held
-# value: CodeQL treats ``print`` as a logging sink and ``str.replace`` of
-# a password is not a sanitizer.
+# Console output must not read the wizard's held secret. These patterns
+# are the only sanitizer on that path.
 _KEY_SHAPED_PATTERNS = (
     r"\b(?:sk-|pk_)[a-zA-Z0-9_-]{8,}\b",
     r"\bapi_key=[a-zA-Z0-9_-]{8,}(?=\s|:|;)",
     r"\b[a-zA-Z0-9]{32,}\b",
     r"[a-fA-F0-9]{40,}",
+)
+# validate_api_key strings that never embed subprocess stderr or the key.
+_SAFE_API_KEY_FAILURES = frozenset(
+    {
+        "API key is invalid or expired",
+        "API key validation timed out",
+        "API key validation failed: Invalid API key",
+    }
 )
 
 
@@ -70,12 +77,7 @@ class SetupWizard:
         self.config: dict[str, Any] = {}
 
     def _redact_sensitive(self, message: str | None) -> str | None:
-        """Redact sensitive information such as API keys from message.
-
-        Used for interactive prompts (``input`` / ``getpass``), which are
-        not logging sinks. Console output goes through ``_redact_key_patterns``
-        only so CodeQL cannot track the getpass-held key into ``print``.
-        """
+        """Redact secrets from interactive prompts (``input`` / ``getpass``)."""
         if not message:
             return message
 
@@ -85,17 +87,17 @@ class SetupWizard:
         return result
 
     def print(self, message: str, style: str = "") -> None:
-        """Print message unless in quiet mode."""
+        """Print message unless in quiet mode.
+
+        Pattern-redact only; do not read ``self.api_key``.
+        """
         if self.quiet:
             return
         self._write_console(style, _redact_key_patterns(message))
 
     @staticmethod
     def _write_console(style: str, text: str) -> None:
-        """Write pattern-redacted text to stdout.
-
-        ``print`` is a CodeQL logging sink. This path never reads the
-        getpass-held key; callers must not pass slices of that key.
+        """Write already-redacted text to stdout.
 
         Import ``sys`` locally so tests can stub ``setup.sys`` for version
         checks without breaking the writer.
@@ -276,7 +278,7 @@ class SetupWizard:
 
             # Validate API key
             self.print("Validating API key...", "info")
-            valid, _status = validate_api_key(api_key)
+            valid, status = validate_api_key(api_key)
 
             if valid:
                 self.print("API key validated successfully.", "success")
@@ -290,9 +292,14 @@ class SetupWizard:
 
                 return True
             else:
-                # Do not echo validate_api_key's message — it can include
-                # subprocess stderr that repeats the key.
-                self.print("API key validation failed.", "error")
+                # Echo only classified, key-free statuses. Raw helper text
+                # can include subprocess stderr that repeats the key.
+                failure = (
+                    status
+                    if status in _SAFE_API_KEY_FAILURES
+                    else "API key validation failed."
+                )
+                self.print(failure, "error")
                 retry = self.prompt("Try another key? (y/n)", "y")
                 if retry.lower() != "y":
                     # Clear invalid API key
@@ -300,11 +307,7 @@ class SetupWizard:
                     return False
 
     def _show_env_instructions(self) -> None:
-        """Show instructions for saving API key to environment.
-
-        Never interpolate any slice of the getpass-held key into console
-        output — CodeQL treats that as logging a password.
-        """
+        """Show instructions for saving API key to environment."""
         import platform
 
         system = platform.system()
@@ -572,14 +575,13 @@ def run_setup(quiet: bool = False) -> int:
         wizard.print("\n\nSetup cancelled by user", "warning")
         return 1
     except Exception as e:
-        # Pattern-redact the exception text. Do not feed the getpass-held
-        # key into this path — ``print`` / stdout is a CodeQL logging sink.
-        detail = _redact_key_patterns(f"Setup failed: {e}")
+        # Exception text can quote the key. Type name is enough to debug.
+        detail = f"Setup failed: {type(e).__name__}"
+        reporter = wizard if not wizard.quiet else SetupWizard(quiet=False)
         try:
-            wizard.print(detail, "error")
+            reporter.print(detail, "error")
         except Exception:
-            temp_wizard = SetupWizard(quiet=False)
-            temp_wizard.print(detail, "error")
+            SetupWizard(quiet=False).print(detail, "error")
         return 1
 
 

@@ -1379,19 +1379,13 @@ class TestMCPSetupSecurity:
                 mock_redact.assert_any_call("default_value")
 
     def test_print_method_always_redacts(self):
-        """Console output pattern-redacts key-shaped tokens.
-
-        It must not read the getpass-held key: CodeQL treats stdout as a
-        logging sink and ``str.replace(password, …)`` is not a sanitizer.
-        """
+        """Console output pattern-redacts key-shaped tokens."""
         import io
         from unittest.mock import patch
 
         from fmp_data.mcp.setup import SetupWizard
 
         setup = SetupWizard(quiet=False)
-        setup.api_key = "secret123"
-
         captured_output = io.StringIO()
 
         with patch("sys.stdout", captured_output):
@@ -1408,7 +1402,6 @@ class TestMCPSetupSecurity:
 
         from fmp_data.mcp.setup import run_setup
 
-        # Mock an exception that might contain sensitive data
         sensitive_error = Exception("Error with api_key=secret123: connection failed")
 
         captured_output = io.StringIO()
@@ -1420,10 +1413,10 @@ class TestMCPSetupSecurity:
                 result = run_setup(quiet=False)
 
         output = captured_output.getvalue()
-        # Should not contain the raw API key (pattern-based redaction should catch it)
         assert "secret123" not in output
-        assert "[REDACTED]" in output or "Setup failed" in output
-        assert result == 1  # Should return error code
+        assert "api_key=" not in output
+        assert "Setup failed: Exception" in output
+        assert result == 1
 
 
 class TestMCPCompat:

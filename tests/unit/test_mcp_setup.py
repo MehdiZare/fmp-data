@@ -240,20 +240,39 @@ class TestPrint:
     def test_printing_redacts_key_shaped_tokens(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """Console output uses pattern redaction, not the getpass-held key.
-
-        CodeQL treats ``print`` / stdout as a logging sink and does not
-        accept ``str.replace(password, …)`` as a sanitizer, so the writer
-        must not read ``self.api_key``.
-        """
-        wizard = SetupWizard()
-        wizard.api_key = "Kk1Kk2Kk3Kk4"  # pragma: allowlist secret
-
-        wizard.print("saved sk-abcdefgh12345678", "success")
+        """Console output uses pattern redaction, not the getpass-held key."""
+        SetupWizard().print("saved sk-abcdefgh12345678", "success")
 
         out = capsys.readouterr().out
         assert "sk-abcdefgh12345678" not in out
         assert out == "✅ saved [REDACTED]\n"
+
+    def test_print_does_not_consult_redact_sensitive(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A regression that routes print through ``_redact_sensitive``
+        would re-taint stdout with the getpass-held key."""
+        wizard = SetupWizard()
+        wizard.api_key = "Kk1Kk2Kk3Kk4"  # pragma: allowlist secret
+
+        def boom(message: str | None) -> str | None:
+            raise AssertionError("print must not call _redact_sensitive")
+
+        monkeypatch.setattr(wizard, "_redact_sensitive", boom)
+        wizard.print("saved sk-abcdefgh12345678", "success")
+
+        assert capsys.readouterr().out == "✅ saved [REDACTED]\n"
+
+    def test_print_does_not_replace_a_short_held_key(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Pattern-only: callers must never interpolate the held key."""
+        wizard = SetupWizard()
+        wizard.api_key = "Kk1Kk2Kk3Kk4"  # pragma: allowlist secret
+
+        wizard.print("saved Kk1Kk2Kk3Kk4", "success")
+
+        assert capsys.readouterr().out == "✅ saved Kk1Kk2Kk3Kk4\n"
 
 
 class TestPrompts:
@@ -479,6 +498,29 @@ class TestSetupApiKey:
         assert "❌ API key validation failed." in out
         assert prompts == ["Try another key? (y/n) [y]: "]
 
+    @pytest.mark.parametrize(
+        "status",
+        [
+            "API key is invalid or expired",
+            "API key validation timed out",
+            "API key validation failed: Invalid API key",
+        ],
+    )
+    def test_classified_validation_failures_are_shown(
+        self,
+        status: str,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Key-free helper statuses are safe to echo; raw stderr is not."""
+        monkeypatch.setattr(setup_mod, "get_api_key_from_env", lambda: None)
+        monkeypatch.setattr(setup_mod, "validate_api_key", lambda key: (False, status))
+        feed_secrets(monkeypatch, ["TYPED-KEY"])
+        feed_input(monkeypatch, ["n"])
+
+        assert SetupWizard().setup_api_key() is False
+        assert f"❌ {status}" in capsys.readouterr().out
+
     def test_retrying_after_a_rejection_keeps_the_second_key(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -558,11 +600,15 @@ class TestShowEnvInstructions:
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         monkeypatch.setattr(platform, "system", lambda: "Linux")
+        wizard = SetupWizard()
+        wizard.api_key = "12345678"  # pragma: allowlist secret
 
-        SetupWizard()._show_env_instructions()
+        wizard._show_env_instructions()
 
         out = capsys.readouterr().out
         assert 'export FMP_API_KEY="[YOUR_API_KEY]"' in out
+        assert "12345678" not in out
+        assert "1234...5678" not in out
 
 
 class TestChooseConfiguration:
@@ -1092,7 +1138,7 @@ class TestRunSetup:
         assert "Setup cancelled by user" in capsys.readouterr().out
         assert not happy_path.exists()
 
-    def test_an_unexpected_crash_is_reported_with_its_key_redacted(
+    def test_an_unexpected_crash_is_reported_with_its_type_only(
         self,
         happy_path: Path,
         monkeypatch: pytest.MonkeyPatch,
@@ -1106,20 +1152,34 @@ class TestRunSetup:
         assert run_setup() == 1
 
         out = capsys.readouterr().out
-        assert "❌ Setup failed: probe hit [REDACTED]" in out
+        assert "❌ Setup failed: RuntimeError" in out
         assert "sk-abcdefgh12345678" not in out
+        assert "probe hit" not in out
 
-    def test_when_the_error_report_itself_fails_the_key_is_still_redacted(
+    def test_a_quiet_crash_still_reports_the_exception_type(
         self,
         happy_path: Path,
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """The fallback writer still pattern-redacts key-shaped tokens.
+        def explode() -> bool:
+            raise RuntimeError("probe hit sk-abcdefgh12345678")
 
-        Console output must not read the getpass-held key (CodeQL logging
-        sink), so this uses a key-shaped token rather than ``ENV-API-KEY``.
-        """
+        monkeypatch.setattr(setup_mod, "check_claude_desktop_installed", explode)
+
+        assert run_setup(quiet=True) == 1
+
+        out = capsys.readouterr().out
+        assert "❌ Setup failed: RuntimeError" in out
+        assert "sk-abcdefgh12345678" not in out
+
+    def test_when_the_error_report_itself_fails_the_type_is_still_shown(
+        self,
+        happy_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """The fallback writer must not interpolate exception text."""
 
         def explode() -> dict[str, str | None]:
             raise RuntimeError("manifest scan died holding sk-abcdefgh12345678")
@@ -1132,8 +1192,9 @@ class TestRunSetup:
 
         out = capsys.readouterr().out
         assert failed_once, "the first error report never happened"
-        assert "Setup failed: manifest scan died holding [REDACTED]" in out
+        assert "Setup failed: RuntimeError" in out
         assert "sk-abcdefgh12345678" not in out
+        assert "manifest scan" not in out
 
     def test_the_fallback_report_survives_a_crash_before_any_key_exists(
         self,
@@ -1153,4 +1214,5 @@ class TestRunSetup:
 
         out = capsys.readouterr().out
         assert failed_once, "the first error report never happened"
-        assert "❌ Setup failed: claude probe died" in out
+        assert "❌ Setup failed: RuntimeError" in out
+        assert "claude probe died" not in out
