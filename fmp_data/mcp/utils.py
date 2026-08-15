@@ -16,26 +16,7 @@ import shutil
 import subprocess  # nosec B404
 import sys
 import tempfile
-from typing import Any, Literal
-
-#: Classified helper messages (#319). Callers may print these; they never
-#: embed stderr, exception text, or the supplied key.
-ApiKeyReason = Literal["valid", "invalid", "timeout", "unavailable"]
-McpServerReason = Literal["ok", "started", "failed"]
-
-API_KEY_VALID = "API key is valid"  # pragma: allowlist secret
-API_KEY_INVALID = "API key is invalid or expired"  # pragma: allowlist secret
-API_KEY_TIMEOUT = "API key validation timed out"  # pragma: allowlist secret
-API_KEY_UNAVAILABLE = "API key validation failed"  # pragma: allowlist secret
-
-MCP_SERVER_OK = "MCP server test passed"
-MCP_SERVER_STARTED = "MCP server test passed (server started)"
-MCP_SERVER_FAILED = "MCP server test failed"
-
-# Cheap authenticated probe for ``validate_api_key`` (#317). Search is a
-# small JSON payload and is available on the free sandbox symbols.
-_API_KEY_PROBE_QUERY = "AAPL"  # pragma: allowlist secret
-_API_KEY_PROBE_LIMIT = 1
+from typing import Any
 
 
 def get_claude_config_path() -> Path:
@@ -308,14 +289,16 @@ def test_mcp_server(api_key: str, manifest_path: str | None = None) -> tuple[boo
         )
 
         if result.returncode == 0:
-            return True, MCP_SERVER_OK
-        return False, MCP_SERVER_FAILED
+            return True, "MCP server test passed"
+        else:
+            error_msg = result.stderr.strip() if result.stderr else "Unknown error"
+            return False, f"MCP server test failed: {error_msg}"
 
     except subprocess.TimeoutExpired:
         # Timeout actually means the server started and is waiting for input
-        return True, MCP_SERVER_STARTED
-    except Exception:
-        return False, MCP_SERVER_FAILED
+        return True, "MCP server test passed (server started)"
+    except Exception as e:
+        return False, f"MCP server test failed: {e}"
 
 
 def get_api_key_from_env() -> str | None:
@@ -331,11 +314,8 @@ def get_api_key_from_env() -> str | None:
 
 
 def validate_api_key(api_key: str) -> tuple[bool, str]:
-    """Validate an FMP API key with a cheap authenticated request (#317).
-
-    The returned message is a classified static string (#319). It never
-    embeds stderr, exception text, or the supplied key, so the wizard and
-    the CLI can print it.
+    """
+    Validate an FMP API key by making a test request.
 
     Parameters
     ----------
@@ -345,32 +325,41 @@ def validate_api_key(api_key: str) -> tuple[bool, str]:
     Returns
     -------
     tuple[bool, str]
-        Success status and a classified display string
+        Success status and message
     """
-    import httpx
-    from pydantic import ValidationError as PydanticValidationError
-
-    from fmp_data.client import FMPDataClient
-    from fmp_data.exceptions import AuthenticationError, ConfigError, FMPError
-
-    client: FMPDataClient | None = None
     try:
-        client = FMPDataClient(api_key=api_key, timeout=10, max_retries=1)
-        client.market.search_symbol(_API_KEY_PROBE_QUERY, limit=_API_KEY_PROBE_LIMIT)
-        return True, API_KEY_VALID
-    except (AuthenticationError, ConfigError, PydanticValidationError):
-        return False, API_KEY_INVALID
-    except FMPError as exc:
-        if exc.status_code in {401, 403}:
-            return False, API_KEY_INVALID
-        return False, API_KEY_UNAVAILABLE
-    except (TimeoutError, httpx.TimeoutException):
-        return False, API_KEY_TIMEOUT
-    except Exception:
-        return False, API_KEY_UNAVAILABLE
-    finally:
-        if client is not None:
-            client.close()
+        # Try to create a client with the API key
+        env = os.environ.copy()
+        env["FMP_API_KEY"] = api_key
+
+        result = subprocess.run(  # nosec B603
+            [
+                sys.executable,
+                "-c",
+                "import os; "
+                "from fmp_data import FMPDataClient; "
+                "client = FMPDataClient.from_env(); "
+                "client.close(); "
+                "print('API key is valid')",
+            ],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+
+        if result.returncode == 0:
+            return True, "API key is valid"
+        else:
+            error_msg = result.stderr.strip() if result.stderr else "Invalid API key"
+            if "401" in error_msg or "403" in error_msg:
+                return False, "API key is invalid or expired"
+            return False, f"API key validation failed: {error_msg}"
+
+    except subprocess.TimeoutExpired:
+        return False, "API key validation timed out"
+    except Exception as e:
+        return False, f"API key validation failed: {e}"
 
 
 def get_manifest_choices() -> dict[str, str | None]:
@@ -382,9 +371,7 @@ def get_manifest_choices() -> dict[str, str | None]:
     dict[str, str | None]
         Mapping of choice names to manifest paths (None for default)
     """
-    base_path = (
-        Path(__file__).parent.parent.parent / "examples" / "mcp" / "configurations"
-    )
+    base_path = Path(__file__).parent.parent.parent / "examples" / "mcp_configurations"
 
     choices: dict[str, str | None] = {
         "default": None,  # Use default manifest

@@ -187,12 +187,13 @@ def test_mcp_server(api_key):
             return True
         else:
             print("❌ MCP server test failed")
+            print(f"   Error: {result.stderr}")
             return False
     except subprocess.TimeoutExpired:
         print("✅ MCP server test passed (server started)")
         return True
-    except Exception:
-        print("❌ MCP server test failed")
+    except Exception as e:
+        print(f"❌ MCP server test failed: {e}")
         return False
 
 
@@ -209,10 +210,10 @@ def choose_configuration():
 
     manifest_map = {
         "1": None,  # Default
-        "2": "examples/mcp/configurations/minimal_manifest.py",
-        "3": "examples/mcp/configurations/trading_manifest.py",
-        "4": "examples/mcp/configurations/research_manifest.py",
-        "5": "examples/mcp/configurations/crypto_manifest.py",
+        "2": "examples/mcp_configurations/minimal_manifest.py",
+        "3": "examples/mcp_configurations/trading_manifest.py",
+        "4": "examples/mcp_configurations/research_manifest.py",
+        "5": "examples/mcp_configurations/crypto_manifest.py",
     }
 
     return manifest_map.get(choice)

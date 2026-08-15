@@ -188,7 +188,7 @@ We provide pre-configured tool sets for different use cases:
       "args": ["-m", "fmp_data.mcp"],
       "env": {
         "FMP_API_KEY": "your_api_key_here"  # pragma: allowlist secret,
-        "FMP_MCP_MANIFEST": "examples/mcp/configurations/trading_manifest.py"
+        "FMP_MCP_MANIFEST": "examples/mcp_configurations/trading_manifest.py"
       }
     }
   }
@@ -204,7 +204,7 @@ We provide pre-configured tool sets for different use cases:
       "args": ["-m", "fmp_data.mcp"],
       "env": {
         "FMP_API_KEY": "your_api_key_here"  # pragma: allowlist secret,
-        "FMP_MCP_MANIFEST": "examples/mcp/configurations/research_manifest.py"
+        "FMP_MCP_MANIFEST": "examples/mcp_configurations/research_manifest.py"
       }
     }
   }
@@ -220,7 +220,7 @@ We provide pre-configured tool sets for different use cases:
       "args": ["-m", "fmp_data.mcp"],
       "env": {
         "FMP_API_KEY": "your_api_key_here"  # pragma: allowlist secret,
-        "FMP_MCP_MANIFEST": "examples/mcp/configurations/crypto_manifest.py"
+        "FMP_MCP_MANIFEST": "examples/mcp_configurations/crypto_manifest.py"
       }
     }
   }

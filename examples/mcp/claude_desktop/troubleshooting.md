@@ -140,7 +140,7 @@ Use a minimal configuration to reduce API calls:
       "args": ["-m", "fmp_data.mcp"],
       "env": {
         "FMP_API_KEY": "your_key",
-        "FMP_MCP_MANIFEST": "examples/mcp/configurations/minimal_manifest.py"
+        "FMP_MCP_MANIFEST": "examples/mcp_configurations/minimal_manifest.py"
       }
     }
   }
