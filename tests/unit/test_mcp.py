@@ -1379,7 +1379,11 @@ class TestMCPSetupSecurity:
                 mock_redact.assert_any_call("default_value")
 
     def test_print_method_always_redacts(self):
-        """Test that all print method calls apply redaction."""
+        """Console output pattern-redacts key-shaped tokens.
+
+        It must not read the getpass-held key: CodeQL treats stdout as a
+        logging sink and ``str.replace(password, …)`` is not a sanitizer.
+        """
         import io
         from unittest.mock import patch
 
@@ -1388,14 +1392,13 @@ class TestMCPSetupSecurity:
         setup = SetupWizard(quiet=False)
         setup.api_key = "secret123"
 
-        # Capture stdout
         captured_output = io.StringIO()
 
         with patch("sys.stdout", captured_output):
-            setup.print("Your API key secret123 is valid", "info")
+            setup.print("Your API key sk-abcdefgh12345678 is valid", "info")
 
         output = captured_output.getvalue()
-        assert "secret123" not in output
+        assert "sk-abcdefgh12345678" not in output
         assert "[REDACTED]" in output
 
     def test_exception_handling_security(self):
