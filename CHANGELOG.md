@@ -249,6 +249,10 @@ None. No FMP path we ship was newly retired by this changelog window.
   so the 2.7.0 release PR never published a TestPyPI comment. PKG-INFO
   is now read in full before the version line is parsed.
 
+- **MCP setup wizard no longer prints validator stderr.** That string
+  can quote the key the user just typed. Console output is only the
+  redacted copy, with CodeQL suppressions on the ``print`` sinks.
+
 - **Release-PR review follow-ups (#304).** Loopback HTTP now requires a
   real loopback *address* (``127.evil.example`` is rejected). Log extras
   redact string leaves and ``Authorization`` mapping keys. MCP Python

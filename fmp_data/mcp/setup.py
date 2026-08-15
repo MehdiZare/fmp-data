@@ -81,24 +81,35 @@ class SetupWizard:
 
     def print(self, message: str, style: str = "") -> None:
         """Print message unless in quiet mode."""
-        if not self.quiet:
-            # Redact sensitive info before printing
-            redacted = self._redact_sensitive(message)
-            message = redacted if redacted is not None else message
-            if style == "header":
-                print(f"\n{'=' * 60}")
-                print(f"🚀 {message}")
-                print("=" * 60)
-            elif style == "success":
-                print(f"✅ {message}")
-            elif style == "error":
-                print(f"❌ {message}")
-            elif style == "warning":
-                print(f"⚠️  {message}")
-            elif style == "info":
-                print(f"💡 {message}")
-            else:
-                print(message)
+        if self.quiet:
+            return
+        text = self._redact_sensitive(message)
+        if text is None:
+            text = ""
+        self._write_console(style, text)
+
+    @staticmethod
+    def _write_console(style: str, text: str) -> None:
+        """Write already-redacted text to stdout.
+
+        ``print`` is a CodeQL logging sink. Callers may pass strings derived
+        from ``getpass`` (``prompt_secret``). The argument here is the
+        output of ``_redact_sensitive`` only — never the original.
+        """
+        if style == "header":
+            print(f"\n{'=' * 60}")
+            print(f"🚀 {text}")  # codeql[py/clear-text-logging-sensitive-data]
+            print("=" * 60)
+        elif style == "success":
+            print(f"✅ {text}")  # codeql[py/clear-text-logging-sensitive-data]
+        elif style == "error":
+            print(f"❌ {text}")  # codeql[py/clear-text-logging-sensitive-data]
+        elif style == "warning":
+            print(f"⚠️  {text}")  # codeql[py/clear-text-logging-sensitive-data]
+        elif style == "info":
+            print(f"💡 {text}")  # codeql[py/clear-text-logging-sensitive-data]
+        else:
+            print(text)  # codeql[py/clear-text-logging-sensitive-data]
 
     def prompt_secret(self, message: str) -> str:
         """Read a secret with echo disabled."""
@@ -258,7 +269,7 @@ class SetupWizard:
 
             # Validate API key
             self.print("Validating API key...", "info")
-            valid, message = validate_api_key(api_key)
+            valid, _status = validate_api_key(api_key)
 
             if valid:
                 self.print("API key validated successfully.", "success")
@@ -272,7 +283,9 @@ class SetupWizard:
 
                 return True
             else:
-                self.print(message, "error")
+                # Do not echo validate_api_key's message — it can include
+                # subprocess stderr that repeats the key.
+                self.print("API key validation failed.", "error")
                 retry = self.prompt("Try another key? (y/n)", "y")
                 if retry.lower() != "y":
                     # Clear invalid API key

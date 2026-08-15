@@ -455,7 +455,7 @@ class TestSetupApiKey:
     def test_a_rejected_key_is_reported_redacted_and_then_cleared(
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """The validator's message quotes the key the user just typed."""
+        """The validator's message is not echoed — it can quote the key."""
         monkeypatch.setattr(setup_mod, "get_api_key_from_env", lambda: None)
         monkeypatch.setattr(
             setup_mod,
@@ -470,7 +470,8 @@ class TestSetupApiKey:
         assert wizard.api_key is None
         out = capsys.readouterr().out
         assert "Kk1Kk2Kk3Kk4" not in out
-        assert "❌ rejected [REDACTED] with 401" in out
+        assert "rejected" not in out
+        assert "❌ API key validation failed." in out
         assert prompts == ["Try another key? (y/n) [y]: "]
 
     def test_retrying_after_a_rejection_keeps_the_second_key(
