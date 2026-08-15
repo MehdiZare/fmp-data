@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- **Senate and House trades by member id (#323).**
+  `get_senate_trades_by_id` / `get_house_trades_by_id` (sync + async)
+  call `/stable/senate-trades-by-id` and `/stable/house-trades-by-id`
+  with query param `senateID`. Reuses `SenateTrade` / `HouseDisclosure`.
+  The docs example `S000033` currently returns an empty list; Whitehouse
+  `W000802` and Pelosi `P000197` return rows (probed 2026-08-15).
+
 ### Changed
 
 - **One module now owns credential display redaction (#316).**

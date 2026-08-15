@@ -842,6 +842,39 @@ SENATE_TRADES_BY_NAME: Endpoint[SenateTrade] = Endpoint(
     response_model=SenateTrade,
 )
 
+SENATE_TRADES_BY_ID: Endpoint[SenateTrade] = Endpoint(
+    name="senate_trades_by_id",
+    path="senate-trades-by-id",
+    version=APIVersion.STABLE,
+    description="Get Senate trading data by member id",
+    mandatory_params=[
+        EndpointParam(
+            name="senate_id",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="FMP senate member id (wire key senateID)",
+            alias="senateID",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Page number",
+            default=0,
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Number of results (max 250)",
+            default=100,
+        ),
+    ],
+    response_model=SenateTrade,
+)
+
 SENATE_TRADING_RSS: Endpoint[SenateTrade] = Endpoint(
     name="senate_trading_rss",
     path="senate-trading-rss-feed",
@@ -920,6 +953,42 @@ HOUSE_TRADES_BY_NAME: Endpoint[HouseDisclosure] = Endpoint(
         )
     ],
     optional_params=[],
+    response_model=HouseDisclosure,
+)
+
+HOUSE_TRADES_BY_ID: Endpoint[HouseDisclosure] = Endpoint(
+    name="house_trades_by_id",
+    path="house-trades-by-id",
+    version=APIVersion.STABLE,
+    description="Get House trading data by member id",
+    mandatory_params=[
+        EndpointParam(
+            name="senate_id",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description=(
+                "FMP member id. House rows use the wire key senateID "
+                "(e.g. Pelosi is P000197)"
+            ),
+            alias="senateID",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Page number",
+            default=0,
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Number of results (max 250)",
+            default=100,
+        ),
+    ],
     response_model=HouseDisclosure,
 )
 

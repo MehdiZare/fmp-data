@@ -9,7 +9,7 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 (everything with MCP semantics, loadable via an explicit manifest), followed by
 how many of those are in `DEFAULT_TOOLS` (what a default server registers).
 The two differ where a tool is deprecated, redundant, or too heavy for the
-default set — `224` catalog tools, `138` default.
+default set — `226` catalog tools, `140` default.
 
 **Withdrawn endpoints:** 22 tools name an FMP endpoint that no longer exists.
 Probed against the live `stable` API, every one of those paths returns 404, so
@@ -37,7 +37,7 @@ always be written in full: `crypto_quotes` (`alternative.crypto_quotes` vs
 - [Fundamental (14 tools, 12 default)](#fundamental)
 - [Index (6 tools, 0 default)](#index)
 - [Institutional (12 tools, 8 default)](#institutional)
-- [Intelligence (45 tools, 38 default)](#intelligence)
+- [Intelligence (47 tools, 40 default)](#intelligence)
 - [Investment (14 tools, 9 default)](#investment)
 - [Market (23 tools, 21 default)](#market)
 - [SEC (12 tools, 0 default)](#sec)
@@ -213,7 +213,7 @@ via a manifest; these return large payloads and several are CSV).
 
 ## Intelligence
 
-**45 tools** for news, sentiment, market events, and analyst ratings/grades (38 default).
+**47 tools** for news, sentiment, market events, and analyst ratings/grades (40 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -245,6 +245,7 @@ via a manifest; these return large payloads and several are CSV).
 | `historical_social_sentiment` | **Removed / not in DEFAULT_TOOLS** — raises `RemovedEndpointError` |
 | `house_disclosure` | Access House of Representatives trading disclosures including transaction details, filing information, and trade specifics |
 | `house_latest` | Get the latest House financial disclosures with transaction details |
+| `house_trades_by_id` | Get House trading data filtered by member id |
 | `house_trades_by_name` | Get House trading data filtered by representative name |
 | `ipo_calendar` | Retrieve upcoming and recent IPO events including pricing details, offering sizes, and listing dates |
 | `press_releases` | Retrieve corporate press releases and official company announcements with detailed content and publication information |
@@ -254,6 +255,7 @@ via a manifest; these return large payloads and several are CSV).
 | `ratings_historical` | Retrieve historical analyst ratings for a company to track how the rating and its component scores changed over time |
 | `ratings_snapshot` | Get the current analyst rating snapshot for a company, including the overall rating and component scores |
 | `senate_latest` | Get the latest Senate financial disclosures with transaction details |
+| `senate_trades_by_id` | Get Senate trading data filtered by member id |
 | `senate_trades_by_name` | Get Senate trading data filtered by senator name |
 | `senate_trading` | Access Senate trading activity and disclosures including stock trades, transaction details, and filing information |
 | `senate_trading_rss` | Get real-time RSS feed of Senate trading disclosures including new filings and transaction updates |

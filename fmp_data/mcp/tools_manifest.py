@@ -172,7 +172,7 @@ DEFAULT_TOOLS: list[str] = [
     "institutional.insider_trades",
     "institutional.institutional_holdings",
     "institutional.transaction_types",
-    # Intelligence (38 tools) - news, events, grades/ratings (#116)
+    # Intelligence (40 tools) - news, events, grades/ratings (#116)
     # Dead FMP endpoints intentionally omitted from defaults, all in
     # WITHDRAWN_TOOLS: earnings_confirmed, earnings_surprises and
     # stock_news_sentiments 404 with no successor at all, and
@@ -205,6 +205,7 @@ DEFAULT_TOOLS: list[str] = [
     "intelligence.historical_earnings",
     "intelligence.house_disclosure",
     "intelligence.house_latest",
+    "intelligence.house_trades_by_id",
     "intelligence.house_trades_by_name",
     "intelligence.ipo_calendar",
     "intelligence.press_releases",
@@ -215,6 +216,7 @@ DEFAULT_TOOLS: list[str] = [
     "intelligence.ratings_snapshot",
     "intelligence.senate_trading",
     "intelligence.senate_latest",
+    "intelligence.senate_trades_by_id",
     "intelligence.senate_trades_by_name",
     "intelligence.stock_news",
     "intelligence.stock_splits_calendar",

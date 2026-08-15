@@ -32,6 +32,7 @@ from fmp_data.intelligence.endpoints import (
     HISTORICAL_EARNINGS,
     HOUSE_DISCLOSURE,
     HOUSE_LATEST,
+    HOUSE_TRADES_BY_ID,
     HOUSE_TRADES_BY_NAME,
     IPO_CALENDAR,
     PRESS_RELEASES_BY_SYMBOL_ENDPOINT,
@@ -41,6 +42,7 @@ from fmp_data.intelligence.endpoints import (
     RATINGS_HISTORICAL,
     RATINGS_SNAPSHOT,
     SENATE_LATEST,
+    SENATE_TRADES_BY_ID,
     SENATE_TRADES_BY_NAME,
     SENATE_TRADING,
     STOCK_NEWS_ENDPOINT,
@@ -566,6 +568,17 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             SenateTrade,
         )
 
+    async def get_senate_trades_by_id(
+        self, senate_id: str, page: int = 0, limit: int = 100
+    ) -> list[SenateTrade]:
+        """Get Senate trading data by member id"""
+        return self._unwrap_list(
+            await self.client.request_async(
+                SENATE_TRADES_BY_ID, senate_id=senate_id, page=page, limit=limit
+            ),
+            SenateTrade,
+        )
+
     @deprecated(
         "senate-trading-rss-feed is dead. The live path senate-latest is "
         "already shipped as get_senate_latest(); this method is a leftover "
@@ -603,6 +616,17 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         """Get House trading data by name"""
         return self._unwrap_list(
             await self.client.request_async(HOUSE_TRADES_BY_NAME, name=name),
+            HouseDisclosure,
+        )
+
+    async def get_house_trades_by_id(
+        self, senate_id: str, page: int = 0, limit: int = 100
+    ) -> list[HouseDisclosure]:
+        """Get House trading data by member id"""
+        return self._unwrap_list(
+            await self.client.request_async(
+                HOUSE_TRADES_BY_ID, senate_id=senate_id, page=page, limit=limit
+            ),
             HouseDisclosure,
         )
 

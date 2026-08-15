@@ -540,6 +540,22 @@ class TestIntelligenceEndpoints(BaseTestCase):
                     assert trade.first_name
                     assert trade.last_name
 
+    def test_get_senate_trades_by_id(self, fmp_client: FMPDataClient, vcr_instance):
+        """Docs example S000033 is empty; W000802 has rows (probed 2026-08-15)."""
+        with vcr_instance.use_cassette("intelligence/senate_trades_by_id.yaml"):
+            trades = self._handle_rate_limit(
+                fmp_client.intelligence.get_senate_trades_by_id,
+                "W000802",
+                page=0,
+                limit=5,
+            )
+
+            assert isinstance(trades, list)
+            assert trades
+            for trade in trades:
+                assert isinstance(trade, SenateTrade)
+                assert trade.senate_id == "W000802"
+
     def test_get_senate_trading_rss(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting senate trading RSS feed"""
         with vcr_instance.use_cassette("intelligence/senate_trading_rss.yaml"):
@@ -609,6 +625,21 @@ class TestIntelligenceEndpoints(BaseTestCase):
                     assert isinstance(disclosure, HouseDisclosure)
                     assert disclosure.first_name
                     assert disclosure.last_name
+
+    def test_get_house_trades_by_id(self, fmp_client: FMPDataClient, vcr_instance):
+        with vcr_instance.use_cassette("intelligence/house_trades_by_id.yaml"):
+            disclosures = self._handle_rate_limit(
+                fmp_client.intelligence.get_house_trades_by_id,
+                "P000197",
+                page=0,
+                limit=5,
+            )
+
+            assert isinstance(disclosures, list)
+            assert disclosures
+            for disclosure in disclosures:
+                assert isinstance(disclosure, HouseDisclosure)
+                assert disclosure.senate_id == "P000197"
 
     def test_get_crowdfunding_rss(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting latest crowdfunding offerings"""

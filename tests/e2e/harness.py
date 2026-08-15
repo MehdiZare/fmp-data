@@ -64,6 +64,8 @@ ALLOW_EMPTY: frozenset[tuple[str, str]] = frozenset(
         ("institutional", "get_holder_industry_breakdown"),
         ("intelligence", "get_senate_trades_by_name"),
         ("intelligence", "get_house_trades_by_name"),
+        ("intelligence", "get_senate_trades_by_id"),
+        ("intelligence", "get_house_trades_by_id"),
         ("intelligence", "search_crowdfunding"),
         ("intelligence", "get_crowdfunding_by_cik"),
         ("intelligence", "search_equity_offering"),
@@ -270,6 +272,7 @@ _FIXED_SAMPLES: dict[str, Any] = {
     "sicCode": "3571",
     "part": 0,
     "part_number": 0,
+    "senate_id": "P000197",
 }
 
 
@@ -333,6 +336,7 @@ _ALWAYS_FILL = frozenset(
 # override of ``timeframe`` and would stop matching their 1day cassettes.
 _METHOD_OVERRIDES: dict[tuple[str, str], dict[str, Any]] = {
     ("company", "get_intraday_prices"): {"interval": "5min"},
+    ("intelligence", "get_senate_trades_by_id"): {"senate_id": "W000802"},
 }
 
 # Public methods that never perform HTTP. Calling them under VCR in replay

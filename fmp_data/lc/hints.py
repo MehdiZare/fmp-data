@@ -337,6 +337,18 @@ PAGE_HINT = ParameterHint(
     ],
 )
 
+# FMP member id. House rows use the same wire key ``senateID`` (Pelosi is
+# ``P000197``).
+SENATE_ID_HINT = ParameterHint(
+    natural_names=["senate id", "senateID", "member id", "bioguide"],
+    extraction_patterns=[
+        r"(?i)\bsenate[_ ]?id[:\s]+([A-Z]\d{6})",
+        r"\b([A-Z]\d{6})\b",
+    ],
+    examples=["S000033", "P000197", "W000802"],
+    context_clues=["senate id", "member id", "bioguide", "congress member"],
+)
+
 SECTOR_HINT = ParameterHint(
     natural_names=["sector", "market sector", "industry sector"],
     extraction_patterns=[
