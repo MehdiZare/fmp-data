@@ -1226,3 +1226,33 @@ class TestServerCheckPrinting:
         assert planted not in out
         assert "MCP server test failed: stderr" not in out
         assert "❌ MCP server test failed" in out
+
+    def test_test_command_does_not_echo_create_app_exception(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        import argparse
+        import sys
+        import types
+
+        from fmp_data.mcp import cli as cli_mod
+        from fmp_data.mcp import utils as mcp_utils
+
+        planted = "PLANTED_create_app_key"
+        monkeypatch.setenv("FMP_API_KEY", planted)
+        monkeypatch.setattr(
+            mcp_utils,
+            "test_mcp_server",
+            lambda api_key, manifest_path=None: (True, "passed"),
+        )
+
+        def boom() -> None:
+            raise RuntimeError(f"create_app failed apikey={planted}")
+
+        fake_server = types.ModuleType("fmp_data.mcp.server")
+        fake_server.create_app = boom  # type: ignore[attr-defined]
+        monkeypatch.setitem(sys.modules, "fmp_data.mcp.server", fake_server)
+
+        assert cli_mod.test_command(argparse.Namespace()) == 0
+        out = capsys.readouterr().out
+        assert planted not in out
+        assert "Could not count tools" in out
