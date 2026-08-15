@@ -250,8 +250,8 @@ None. No FMP path we ship was newly retired by this changelog window.
   is now read in full before the version line is parsed.
 
 - **MCP setup wizard no longer prints validator stderr or the key
-  (#315).** Failed validation and the MCP smoke-test print static or
-  classified key-free copy. Console output is pattern-redacted and
+  (#315).** Failed validation, the MCP smoke-test, and unexpected
+  crashes print static copy. Console output is pattern-redacted and
   never interpolates the getpass-held key or exception text (CodeQL
   ``py/clear-text-logging-sensitive-data``). Persistence hints use
   ``[YOUR_API_KEY]``, not a prefix/suffix of the secret.

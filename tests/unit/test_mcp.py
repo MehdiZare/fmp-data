@@ -1415,7 +1415,7 @@ class TestMCPSetupSecurity:
         output = captured_output.getvalue()
         assert "secret123" not in output
         assert "api_key=" not in output
-        assert "Setup failed: Exception" in output
+        assert "Setup failed." in output
         assert result == 1
 
 
