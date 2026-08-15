@@ -17,6 +17,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (sk-/32-char heuristics); those stay off HTTP error bodies so request
   ids are not blanked.
 
+### Fixed
+
+- **MCP setup helpers no longer echo subprocess stderr (#319).**
+  `validate_api_key` and `test_mcp_server` return classified reasons
+  (`valid` / `invalid` / `timeout` / `unavailable` and
+  `passed` / `started` / `failed` / `unavailable`). `fmp-mcp status`
+  and `fmp-mcp test` print sink-local literals so a key quoted in
+  child stderr cannot reach the terminal.
+
+- **`validate_api_key` now probes FMP (#317).**
+  A typed junk key no longer reports success. The helper constructs a
+  client and calls `company.get_quote("AAPL")`; 401 maps to `invalid`.
+
+- **Setup wizard offers the example MCP profiles again (#320).**
+  `get_manifest_choices` looks in `examples/mcp/configurations/` (the
+  real directory). The example Claude Desktop script and its
+  README / troubleshooting copies use the same path.
+
 ## [2.7.0] - 2026-08-14
 
 Released from `dev`. A security-and-contracts minor in the same shape as
