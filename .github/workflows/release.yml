@@ -134,10 +134,7 @@ jobs:
             echo "VERSION_NUMBER=$NEW_VERSION"
           } >> "$GITHUB_OUTPUT"
 
-      - name: 🏷️ Create and push tag
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
+      - name: 🏷️ Create local tag
         run: |
           set -euo pipefail
           git config user.name github-actions
@@ -150,9 +147,10 @@ jobs:
             exit 1
           fi
 
-          # Fail loudly if the tag already exists. The previous behaviour
-          # skipped creation, still built, and published with skip-existing —
-          # a green check that re-advertised whatever was already on PyPI.
+          # Fail loudly if the tag already exists locally. The previous
+          # behaviour skipped creation, still built, and published with
+          # skip-existing — a green check that re-advertised whatever was
+          # already on PyPI.
           if git rev-parse -q --verify "refs/tags/${RELEASE_TAG}" > /dev/null; then
             echo "::error::Tag ${RELEASE_TAG} already exists. Refusing to re-release."
             echo "If this is intentional, delete the tag and re-run, or bump the version."
@@ -162,29 +160,10 @@ jobs:
           # Create the tag locally FIRST and keep it. hatch-vcs derives the
           # version from the local tag, and the build step below runs after
           # this one -- a remote-only tag would silently produce a .devN
-          # version instead of the release version.
+          # version instead of the release version. The remote tag is pushed
+          # only after the build and sdist version check succeed.
           git tag -a "$RELEASE_TAG" -m "Release $RELEASE_TAG"
-
-          # Publish it through the API rather than `git push`: the checkout no
-          # longer persists credentials, so there is no git remote auth. Two
-          # calls keep the remote tag *annotated*, matching the local one --
-          # creating the ref alone would leave a lightweight tag.
-          COMMIT_SHA="$(git rev-parse "${RELEASE_TAG}^{commit}")"
-          TAG_SHA="$(gh api "repos/${REPO}/git/tags" \
-            -f tag="$RELEASE_TAG" \
-            -f message="Release $RELEASE_TAG" \
-            -f object="$COMMIT_SHA" \
-            -f type=commit \
-            --jq .sha)"
-          gh api "repos/${REPO}/git/refs" \
-            -f ref="refs/tags/${RELEASE_TAG}" \
-            -f sha="$TAG_SHA" > /dev/null
-
-          # Confirm the remote actually has it before anything downstream
-          # relies on it (`gh release create --verify-tag` would fail later
-          # and less legibly).
-          gh api "repos/${REPO}/git/ref/tags/${RELEASE_TAG}" > /dev/null
-          echo "Pushed tag ${RELEASE_TAG} -> ${COMMIT_SHA}"
+          echo "Created local tag ${RELEASE_TAG}"
 
       - name: 📦 Build distribution
         env:
@@ -219,6 +198,40 @@ jobs:
 
           (cd dist && sha256sum ./* > ../SHA256SUMS)
           cat SHA256SUMS
+
+      - name: 🏷️ Push tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          RELEASE_TAG="${{ steps.version.outputs.VERSION }}"
+
+          if [ -z "$RELEASE_TAG" ] || [ "$RELEASE_TAG" = "v" ]; then
+            echo "::error::Refusing to push empty/invalid tag '$RELEASE_TAG'"
+            exit 1
+          fi
+
+          # Publish it through the API rather than `git push`: the checkout no
+          # longer persists credentials, so there is no git remote auth. Two
+          # calls keep the remote tag *annotated*, matching the local one --
+          # creating the ref alone would leave a lightweight tag.
+          COMMIT_SHA="$(git rev-parse "${RELEASE_TAG}^{commit}")"
+          TAG_SHA="$(gh api "repos/${REPO}/git/tags" \
+            -f tag="$RELEASE_TAG" \
+            -f message="Release $RELEASE_TAG" \
+            -f object="$COMMIT_SHA" \
+            -f type=commit \
+            --jq .sha)"
+          gh api "repos/${REPO}/git/refs" \
+            -f ref="refs/tags/${RELEASE_TAG}" \
+            -f sha="$TAG_SHA" > /dev/null
+
+          # Confirm the remote actually has it before anything downstream
+          # relies on it (`gh release create --verify-tag` would fail later
+          # and less legibly).
+          gh api "repos/${REPO}/git/ref/tags/${RELEASE_TAG}" > /dev/null
+          echo "Pushed tag ${RELEASE_TAG} -> ${COMMIT_SHA}"
 
       - name: 📋 Generate release notes from PR
         id: release_notes

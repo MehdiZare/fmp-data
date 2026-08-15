@@ -42,6 +42,17 @@ class RedisCache(CacheBackend):
     def _prefixed(self, key: str) -> str:
         return f"{self._key_prefix}{key}"
 
+    @staticmethod
+    def _escape_scan_match(prefix: str) -> str:
+        """Escape Redis SCAN glob metacharacters in a key prefix."""
+        return (
+            prefix.replace("\\", "\\\\")
+            .replace("*", "\\*")
+            .replace("?", "\\?")
+            .replace("[", "\\[")
+            .replace("]", "\\]")
+        )
+
     def get(self, key: str) -> Any | None:
         try:
             raw = cast(str | None, self._client.get(self._prefixed(key)))
@@ -70,7 +81,7 @@ class RedisCache(CacheBackend):
             logger.warning("Redis delete error for key %s", key, exc_info=True)
 
     def clear(self) -> None:
-        pattern = f"{self._key_prefix}*"
+        pattern = f"{self._escape_scan_match(self._key_prefix)}*"
         cursor: int = 0
         try:
             while True:

@@ -11,8 +11,11 @@ stripped. No interpolation, no command substitution. Process-hijack keys
 from __future__ import annotations
 
 from pathlib import Path
+import re
 import shlex
 import sys
+
+_INLINE_COMMENT = re.compile(r"\s+#")
 
 # A trusted .env can still clobber the maintainer shell if we export these.
 _BLOCKED_KEYS = frozenset(
@@ -55,8 +58,15 @@ def export_lines(text: str) -> list[str]:
         if key in _BLOCKED_KEYS or key.startswith("DYLD_"):
             continue
         value = value.strip()
-        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
-            value = value[1:-1]
+        if value and value[0] in {"'", '"'}:
+            quote = value[0]
+            end = value.find(quote, 1)
+            if end != -1:
+                value = value[1:end]
+            elif len(value) >= 2 and value[-1] == quote:
+                value = value[1:-1]
+        else:
+            value = _INLINE_COMMENT.split(value, maxsplit=1)[0].rstrip()
         lines.append(f"export {key}={shlex.quote(value)}")
     return lines
 

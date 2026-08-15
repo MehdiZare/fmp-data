@@ -683,7 +683,11 @@ class BaseClient:
             return self._parse_json_response(response)
         except httpx.HTTPStatusError as exc:
             return self._handle_http_status_error(endpoint_for_error, exc)
-        except json.JSONDecodeError as exc:
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
+            # Same trio as `_get_error_details`. `response.json()` can raise
+            # UnicodeDecodeError on a non-UTF-8 body, and JSONDecodeError is
+            # only a subclass of ValueError — leaving those out let a 2xx
+            # non-UTF-8 body escape as a raw decode error instead of FMPError.
             # Redact, exactly as the sibling error path does. A 2xx carrying a
             # non-JSON body is routine -- WAF and CDN block pages echo the full
             # request URL, and ours carries `apikey=` -- so this branch put the

@@ -118,8 +118,9 @@ Preferred new format:
 
 YAML (`tools: [company.profile]`) and TOML (`tools = ["company.profile"]`)
 are accepted the same way. TOML has no top-level array form; use a
-`tools` table. On Python 3.10 the `mcp` extra pulls in `tomli` for that
-parse; 3.11+ uses stdlib `tomllib`.
+top-level `tools` *key* (`tools = ["..."]`), not a `[tools]` table.
+On Python 3.10 the `mcp` extra pulls in `tomli` for that parse; 3.11+
+uses stdlib `tomllib`.
 
 You can still create a legacy Python manifest by:
 

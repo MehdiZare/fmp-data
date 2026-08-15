@@ -55,3 +55,26 @@ def test_export_lines_drops_process_hijack_keys() -> None:
     assert "PYTHONPATH=" not in joined
     assert "DYLD_" not in joined
     assert "IFS=" not in joined
+
+
+def test_export_lines_strips_unquoted_inline_comments() -> None:
+    """Match python-dotenv: ``\\s+#`` starts a comment on unquoted values."""
+    text = "\n".join(
+        [
+            "UNQUOTED=plain # trailing",
+            "TABBED=plain\t# tab comment",
+            'QUOTED="hash # stays"',
+            'QUOTED_THEN_COMMENT="keep" # drop',
+            "HASHONLY=abc#def",
+        ]
+    )
+    lines = export_dotenv.export_lines(text)
+    joined = "\n".join(lines)
+    assert "export UNQUOTED=plain" in joined
+    assert "trailing" not in joined
+    assert "export TABBED=plain" in joined
+    assert "tab comment" not in joined
+    assert "hash # stays" in joined
+    assert "export QUOTED_THEN_COMMENT=keep" in joined
+    assert "drop" not in joined
+    assert any("HASHONLY=" in line and "abc#def" in line for line in lines)

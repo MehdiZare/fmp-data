@@ -22,7 +22,7 @@ def test_codeql_workflow_is_sha_pinned() -> None:
         if ref.startswith("./"):
             continue
         action, _, pin = ref.partition("@")
-        pin = pin.split()[0]
+        pin = pin.split()[0] if pin.strip() else ""
         assert len(pin) == 40 and all(c in "0123456789abcdef" for c in pin), (
             f"{action} is not pinned to a 40-char SHA: {pin!r}"
         )

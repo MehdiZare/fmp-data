@@ -182,11 +182,11 @@ class TestSensitiveDataFilter:
     ) -> None:
         from fmp_data.logger import FMPLogger
 
-        secret = "childsecretkey99"  # noqa: S105
+        planted = "childdummyvalue99"
         log = FMPLogger().get_logger("fmp_data.base")
         caplog.set_level(logging.INFO, logger="fmp_data.base")
-        log.info("child saw api_key=%s", secret)
-        assert secret not in caplog.text
+        log.info("child saw api_key=%s", planted)
+        assert planted not in caplog.text
         assert "api_key=" in caplog.text
 
     def test_every_pattern_masks_without_raising(self) -> None:
@@ -1202,6 +1202,25 @@ class TestEveryHandlerSeesRedactedExtras:
 
         assert planted not in buf.getvalue()
         assert "api_key" in buf.getvalue()
+
+    def test_string_leaves_and_authorization_keys_are_masked(self) -> None:
+        """Pattern-shaped strings and Authorization mapping keys are redacted."""
+        planted = "PLANTEDCREDENTIALVALUE"
+        filt = SensitiveDataFilter()
+        record = logging.LogRecord(
+            name="fmp_data.test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="payload",
+            args=(),
+            exc_info=None,
+        )
+        record.__dict__["payload"] = f"apikey={planted}"
+        record.__dict__["headers"] = {"Authorization": f"Bearer {planted}"}
+        assert filt.filter(record) is True
+        assert planted not in str(record.__dict__["payload"])
+        assert planted not in str(record.__dict__["headers"])
 
 
 class TestLogApiCallPositionalArguments:

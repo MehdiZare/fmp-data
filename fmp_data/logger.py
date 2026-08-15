@@ -105,6 +105,7 @@ class SensitiveDataFilter(logging.Filter):
             "access_token",
             "refresh_token",
             "auth_token",
+            "authorization",
             "bearer_token",
             "key",
         }
@@ -239,6 +240,10 @@ class SensitiveDataFilter(logging.Filter):
             )
         if isinstance(d, set):
             return {self._mask_dict_recursive(i, parent_key, depth + 1) for i in d}
+        if isinstance(d, str):
+            return self._mask_patterns_in_string(d)
+        if isinstance(d, bytes | bytearray):
+            return self._mask_patterns_in_string(_stringify(d))
         return d
 
 
