@@ -31,6 +31,7 @@ from fmp_data.intelligence.endpoints import (
     HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT,
     HOUSE_DISCLOSURE,
     HOUSE_LATEST,
+    HOUSE_TRADES_BY_ID,
     HOUSE_TRADES_BY_NAME,
     IPO_CALENDAR,
     PRESS_RELEASES_BY_SYMBOL_ENDPOINT,
@@ -40,6 +41,7 @@ from fmp_data.intelligence.endpoints import (
     RATINGS_HISTORICAL,
     RATINGS_SNAPSHOT,
     SENATE_LATEST,
+    SENATE_TRADES_BY_ID,
     SENATE_TRADES_BY_NAME,
     SENATE_TRADING,
     SENATE_TRADING_RSS,
@@ -54,6 +56,7 @@ from fmp_data.lc.hints import (
     DATE_HINTS,
     LIMIT_HINT,
     PAGE_HINT,
+    SENATE_ID_HINT,
     SYMBOL_HINT,
 )
 from fmp_data.lc.models import (
@@ -82,10 +85,12 @@ INTELLIGENCE_ENDPOINT_MAP: dict[str, Endpoint[Any]] = {
     "get_senate_latest": SENATE_LATEST,
     "get_senate_trading": SENATE_TRADING,
     "get_senate_trades_by_name": SENATE_TRADES_BY_NAME,
+    "get_senate_trades_by_id": SENATE_TRADES_BY_ID,
     "get_senate_trading_rss": SENATE_TRADING_RSS,
     "get_house_latest": HOUSE_LATEST,
     "get_house_disclosure": HOUSE_DISCLOSURE,
     "get_house_trades_by_name": HOUSE_TRADES_BY_NAME,
+    "get_house_trades_by_id": HOUSE_TRADES_BY_ID,
     # Fundraising endpoints
     "get_crowdfunding_rss": CROWDFUNDING_RSS,
     "search_crowdfunding": CROWDFUNDING_SEARCH,
@@ -881,6 +886,45 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "amount": ResponseFieldInfo(
                 description="Trade amount range",
                 examples=["$1,001 - $15,000", "$15,001 - $50,000"],
+                related_terms=["value", "transaction size"],
+            ),
+        },
+        use_cases=[
+            "Member trade review",
+            "Political trading analysis",
+            "Compliance checks",
+        ],
+    ),
+    "house_trades_by_id": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_house_trades_by_id",
+        natural_description="Get House trading data filtered by member id",
+        example_queries=[
+            "House trades by senate id",
+            "Trades for P000197",
+            "Look up House trades by member id",
+        ],
+        related_terms=[
+            "house trades by id",
+            "senateID",
+            "member id trades",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Government Trading",
+        parameter_hints={
+            "senate_id": SENATE_ID_HINT,
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
+        response_hints={
+            "symbol": ResponseFieldInfo(
+                description="Stock symbol",
+                examples=["UBER", "INTC"],
+                related_terms=["ticker", "company symbol"],
+            ),
+            "amount": ResponseFieldInfo(
+                description="Trade amount range",
+                examples=["$500,001 - $1,000,000", "$1,001 - $15,000"],
                 related_terms=["value", "transaction size"],
             ),
         },
@@ -1699,6 +1743,45 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "symbol": ResponseFieldInfo(
                 description="Stock symbol",
                 examples=["AAPL", "BRK/B"],
+                related_terms=["ticker", "company symbol"],
+            ),
+            "amount": ResponseFieldInfo(
+                description="Trade amount range",
+                examples=["$1,001 - $15,000", "$15,001 - $50,000"],
+                related_terms=["value", "transaction size"],
+            ),
+        },
+        use_cases=[
+            "Member trade review",
+            "Political trading analysis",
+            "Compliance checks",
+        ],
+    ),
+    "senate_trades_by_id": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_senate_trades_by_id",
+        natural_description="Get Senate trading data filtered by member id",
+        example_queries=[
+            "Senate trades by senate id",
+            "Trades for W000802",
+            "Look up Senate trades by member id",
+        ],
+        related_terms=[
+            "senate trades by id",
+            "senateID",
+            "member id trades",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Government Trading",
+        parameter_hints={
+            "senate_id": SENATE_ID_HINT,
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
+        response_hints={
+            "symbol": ResponseFieldInfo(
+                description="Stock symbol",
+                examples=["LOW", "AAPL"],
                 related_terms=["ticker", "company symbol"],
             ),
             "amount": ResponseFieldInfo(

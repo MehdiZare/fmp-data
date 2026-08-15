@@ -106,7 +106,7 @@ Hosted `endpoint` values are FMP path slugs, not our `client.method` specs.
 | `analyst` | 8 | `intelligence.grades*`, `company.price_target_*`, `company.analyst_estimates` | |
 | `calendar` | 9 | `intelligence` earnings/dividends/splits/IPO calendars | |
 | `news` | 10 | `intelligence` news / press-release tools | |
-| `senate` | 6 | `intelligence` senate/house trade tools | |
+| `senate` | 6 | `intelligence` senate/house trade tools | This client also ships trades-by-id (#323) |
 | `directory` | 11 | `market` lists / `company.symbol_changes` | |
 | `discountedCashFlow` | 4 | `fundamental.discounted_cash_flow`, levered + custom DCF | |
 | `economics` | 4 | `economics.*` | |

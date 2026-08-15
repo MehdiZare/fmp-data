@@ -944,6 +944,24 @@ class TestMarketIntelligenceClientGovernment:
         _args, kwargs = mock_client.request.call_args
         assert kwargs["name"] == "Jerry"
 
+    def test_get_senate_trades_by_id(self, fmp_client, mock_client):
+        """senate_id is forwarded as senate_id, not a name= leftover (#323)."""
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_trades_by_id(
+            "W000802", page=0, limit=100
+        )
+
+        mock_client.request.assert_called_once()
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["senate_id"] == "W000802"
+        assert "name" not in kwargs
+        assert "symbol" not in kwargs
+        assert kwargs["page"] == 0
+        assert kwargs["limit"] == 100
+        assert _args[0].name == "senate_trades_by_id"
+        assert _args[0].path == "senate-trades-by-id"
+
     def test_get_senate_trading_rss_is_deprecated(self, fmp_client, mock_client):
         """``senate-trading-rss-feed`` 404s; ``senate-latest`` is the live feed."""
         with pytest.warns(DeprecationWarning, match="get_senate_latest"):
@@ -1017,6 +1035,36 @@ class TestMarketIntelligenceClientGovernment:
         mock_client.request.assert_called_once()
         _args, kwargs = mock_client.request.call_args
         assert kwargs["name"] == "James"
+
+    def test_get_house_trades_by_id(self, fmp_client, mock_client):
+        """senate_id is forwarded as senate_id, not a name= leftover (#323)."""
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_house_trades_by_id("P000197", page=0, limit=100)
+
+        mock_client.request.assert_called_once()
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["senate_id"] == "P000197"
+        assert "name" not in kwargs
+        assert "symbol" not in kwargs
+        assert kwargs["page"] == 0
+        assert kwargs["limit"] == 100
+        assert _args[0].name == "house_trades_by_id"
+        assert _args[0].path == "house-trades-by-id"
+
+    def test_trades_by_id_query_uses_senateID_alias(self):
+        """Client kwargs use senate_id; the wire query key is senateID (#323)."""
+        from fmp_data.intelligence.endpoints import (
+            HOUSE_TRADES_BY_ID,
+            SENATE_TRADES_BY_ID,
+        )
+
+        for endpoint in (SENATE_TRADES_BY_ID, HOUSE_TRADES_BY_ID):
+            wire = endpoint.validate_params({"senate_id": "P000197", "page": 0})
+            assert wire["senateID"] == "P000197"
+            assert "senate_id" not in wire
+            assert "name" not in wire
+            assert "symbol" not in wire
 
     def test_senate_trade_senate_id_alias_round_trip(self):
         """senateID is a first-class SenateTrade field (#229)."""

@@ -10,7 +10,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 - [Market (36 endpoints)](#market)
 - [Fundamental (14 endpoints)](#fundamental)
 - [Technical (9 endpoints)](#technical)
-- [Market Intelligence (46 endpoints)](#market-intelligence)
+- [Market Intelligence (48 endpoints)](#market-intelligence)
 - [Institutional (24 endpoints)](#institutional)
 - [Investment (14 endpoints)](#investment)
 - [Alternative Markets (15 endpoints)](#alternative-markets)
@@ -167,7 +167,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 
 ## Market Intelligence
 
-### 46 endpoints
+### 48 endpoints
 
 | Endpoint | Path | Description |
 |----------|------|-------------|
@@ -194,6 +194,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 | `historical_social_sentiment` | `/stable/historical/social-sentiment` | **Removed** — raises `RemovedEndpointError` |
 | `house_latest` | `/stable/house-latest` | Get latest House financial disclosures |
 | `house_disclosure` | `/stable/house-trades` | Get House trading data by symbol |
+| `house_trades_by_id` | `/stable/house-trades-by-id` | Get House trading data by member id |
 | `house_trades_by_name` | `/stable/house-trades-by-name` | Get House trading data by name |
 | `ipo_calendar` | `/stable/ipos-calendar` | Get IPO calendar |
 | `crypto_news_symbol` | `/stable/news/crypto` | Search crypto news articles by trading pair |
@@ -211,6 +212,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 | `ratings_snapshot` | `/stable/ratings-snapshot` | Get current analyst ratings snapshot |
 | `senate_latest` | `/stable/senate-latest` | Get latest Senate financial disclosures |
 | `senate_trading` | `/stable/senate-trades` | Get Senate trading data by symbol |
+| `senate_trades_by_id` | `/stable/senate-trades-by-id` | Get Senate trading data by member id |
 | `senate_trades_by_name` | `/stable/senate-trades-by-name` | Get Senate trading data by name |
 | `senate_trading_rss` | `/stable/senate-trading-rss-feed` | Get Senate trading RSS feed |
 | `social_sentiment_changes` | `/stable/social-sentiments/change` | Get changes in social sentiment data |
