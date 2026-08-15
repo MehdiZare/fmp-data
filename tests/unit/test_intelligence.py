@@ -1209,6 +1209,72 @@ class TestMarketIntelligenceClientGovernment:
         assert row.start_date == date(2025, 1, 2)
         assert row.end_date is None
 
+    def test_get_senate_net_worth(self, fmp_client, mock_client):
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_net_worth("P000197", page=0, limit=250)
+
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["senate_id"] == "P000197"
+        assert kwargs["page"] == 0
+        assert kwargs["limit"] == 250
+
+    def test_get_senate_net_worth_aggregated_omits_totals_col(
+        self, fmp_client, mock_client
+    ):
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_net_worth_aggregated("P000197")
+
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["senate_id"] == "P000197"
+        assert kwargs["totals_col"] is None
+
+        from fmp_data.intelligence.endpoints import SENATE_NET_WORTH_AGGREGATED
+
+        wire = SENATE_NET_WORTH_AGGREGATED.validate_params(kwargs)
+        assert wire["senateID"] == "P000197"
+        assert "totalsCol" not in wire
+
+    def test_senate_net_worth_item_keeps_nested_ranges(self):
+        from datetime import date
+
+        from fmp_data.intelligence.models import SenateNetWorthItem
+
+        row = SenateNetWorthItem.model_validate(
+            {
+                "senateID": "P000197",
+                "formType": "House Report",
+                "year": 2022,
+                "filingDate": "2023-05-15",
+                "section": "Liabilities",
+                "category": "Mortgage & Real Estate Liability",
+                "name": "Union Bank of California",
+                "assetType": "Mortgage on 2640 Broadway, San Francisco, CA",
+                "incomeType": None,
+                "owner": "Joint",
+                "comment": None,
+                "debtDetails": {"dateIncurred": "September 2007"},
+                "valueRange": {"min": 1000001, "max": 5000000},
+                "value": 3000001,
+                "incomeRange": None,
+                "income": None,
+                "link": (
+                    "https://disclosures-clerk.house.gov/public_disc/"
+                    "financial-pdfs/2022/10053231.pdf"
+                ),
+            }
+        )
+        assert row.senate_id == "P000197"
+        assert row.filing_date == date(2023, 5, 15)
+        assert row.debt_details is not None
+        assert row.debt_details.date_incurred == "September 2007"
+        assert row.value_range is not None
+        assert row.value_range.min == 1000001
+        assert row.value_range.max == 5000000
+        assert row.income_range is None
+        assert row.income is None
+
     def test_trades_by_id_query_uses_senateID_alias(self):
         """Client kwargs use senate_id; the wire query key is senateID (#323)."""
         from fmp_data.intelligence.endpoints import (

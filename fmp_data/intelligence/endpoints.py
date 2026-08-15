@@ -23,6 +23,8 @@ from fmp_data.intelligence.models import (
     PressReleaseBySymbol,
     PriceTargetNews,
     RatingsSnapshot,
+    SenateNetWorthAggregated,
+    SenateNetWorthItem,
     SenatePosition,
     SenateProfile,
     SenateTrade,
@@ -1052,6 +1054,69 @@ SENATE_POSITIONS: Endpoint[SenatePosition] = Endpoint(
         ),
     ],
     response_model=SenatePosition,
+)
+
+SENATE_NET_WORTH: Endpoint[SenateNetWorthItem] = Endpoint(
+    name="senate_net_worth",
+    path="senate-net-worth",
+    version=APIVersion.STABLE,
+    description="Get itemized Senate/House net-worth disclosures by member id",
+    mandatory_params=[
+        EndpointParam(
+            name="senate_id",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="FMP member id (wire key senateID)",
+            alias="senateID",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Page number (max 100)",
+            default=0,
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Number of results (max 250)",
+            default=250,
+        ),
+    ],
+    response_model=SenateNetWorthItem,
+)
+
+SENATE_NET_WORTH_AGGREGATED: Endpoint[SenateNetWorthAggregated] = Endpoint(
+    name="senate_net_worth_aggregated",
+    path="senate-net-worth-aggregated",
+    version=APIVersion.STABLE,
+    description="Get yearly aggregated Senate/House net-worth totals by member id",
+    mandatory_params=[
+        EndpointParam(
+            name="senate_id",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="FMP member id (wire key senateID)",
+            alias="senateID",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="totals_col",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description=(
+                "Optional totals column. Docs mark totalsCol required but "
+                "give no example; live /stable/senate-net-worth-aggregated "
+                "returns 200 without it (probed 2026-08-15)."
+            ),
+            alias="totalsCol",
+        )
+    ],
+    response_model=SenateNetWorthAggregated,
 )
 
 HOUSE_TRADES_BY_ID: Endpoint[HouseDisclosure] = Endpoint(

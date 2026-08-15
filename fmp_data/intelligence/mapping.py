@@ -41,6 +41,8 @@ from fmp_data.intelligence.endpoints import (
     RATINGS_HISTORICAL,
     RATINGS_SNAPSHOT,
     SENATE_LATEST,
+    SENATE_NET_WORTH,
+    SENATE_NET_WORTH_AGGREGATED,
     SENATE_POSITIONS,
     SENATE_PROFILE,
     SENATE_TRADES_BY_ID,
@@ -90,6 +92,8 @@ INTELLIGENCE_ENDPOINT_MAP: dict[str, Endpoint[Any]] = {
     "get_senate_trades_by_id": SENATE_TRADES_BY_ID,
     "get_senate_profile": SENATE_PROFILE,
     "get_senate_positions": SENATE_POSITIONS,
+    "get_senate_net_worth": SENATE_NET_WORTH,
+    "get_senate_net_worth_aggregated": SENATE_NET_WORTH_AGGREGATED,
     "get_senate_trading_rss": SENATE_TRADING_RSS,
     "get_house_latest": HOUSE_LATEST,
     "get_house_disclosure": HOUSE_DISCLOSURE,
@@ -1916,6 +1920,84 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "Term history",
             "Party and chamber tracking",
             "Member career timeline",
+        ],
+    ),
+    "senate_net_worth": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_senate_net_worth",
+        natural_description=(
+            "Get itemized Senate/House net-worth disclosures for a member id"
+        ),
+        example_queries=[
+            "Net worth for P000197",
+            "Senate net worth items",
+            "Disclosed assets and liabilities",
+        ],
+        related_terms=[
+            "net worth",
+            "assets",
+            "liabilities",
+            "senateID",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Government Trading",
+        parameter_hints={
+            "senate_id": SENATE_ID_HINT,
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
+        response_hints={
+            "section": ResponseFieldInfo(
+                description="Disclosure section",
+                examples=["Liabilities", "Assets"],
+                related_terms=["category", "schedule"],
+            ),
+            "value": ResponseFieldInfo(
+                description="Point estimate of the disclosed value",
+                examples=["3000001", "291009"],
+                related_terms=["amount", "worth"],
+            ),
+        },
+        use_cases=[
+            "Disclosed balance sheet",
+            "Asset and liability review",
+            "Conflict screening",
+        ],
+    ),
+    "senate_net_worth_aggregated": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_senate_net_worth_aggregated",
+        natural_description=(
+            "Get yearly aggregated Senate/House net-worth totals for a member id"
+        ),
+        example_queries=[
+            "Aggregated net worth for P000197",
+            "Yearly Senate net worth totals",
+        ],
+        related_terms=[
+            "net worth aggregated",
+            "yearly totals",
+            "senateID",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Government Trading",
+        parameter_hints={"senate_id": SENATE_ID_HINT},
+        response_hints={
+            "total": ResponseFieldInfo(
+                description="Rolled-up net worth for the year",
+                examples=["225219551", "162568548.5"],
+                related_terms=["net worth", "total value"],
+            ),
+            "year": ResponseFieldInfo(
+                description="Disclosure year",
+                examples=["2024", "2023"],
+                related_terms=["filing year"],
+            ),
+        },
+        use_cases=[
+            "Yearly net-worth trend",
+            "Portfolio composition",
+            "Conflict screening",
         ],
     ),
     "senate_trading_rss": EndpointSemantics(
