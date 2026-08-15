@@ -1219,6 +1219,12 @@ class TestMarketIntelligenceClientGovernment:
         assert kwargs["page"] == 0
         assert kwargs["limit"] == 250
 
+        from fmp_data.intelligence.endpoints import SENATE_NET_WORTH
+
+        wire = SENATE_NET_WORTH.validate_params(kwargs)
+        assert wire["senateID"] == "P000197"
+        assert "senate_id" not in wire
+
     def test_get_senate_net_worth_aggregated_omits_totals_col(
         self, fmp_client, mock_client
     ):
@@ -1235,6 +1241,25 @@ class TestMarketIntelligenceClientGovernment:
         wire = SENATE_NET_WORTH_AGGREGATED.validate_params(kwargs)
         assert wire["senateID"] == "P000197"
         assert "totalsCol" not in wire
+
+    def test_get_senate_net_worth_aggregated_sends_totals_col(
+        self, fmp_client, mock_client
+    ):
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_net_worth_aggregated(
+            "P000197", totals_col="total"
+        )
+
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["totals_col"] == "total"
+
+        from fmp_data.intelligence.endpoints import SENATE_NET_WORTH_AGGREGATED
+
+        wire = SENATE_NET_WORTH_AGGREGATED.validate_params(kwargs)
+        assert wire["senateID"] == "P000197"
+        assert wire["totalsCol"] == "total"
+        assert "totals_col" not in wire
 
     def test_senate_net_worth_item_keeps_nested_ranges(self):
         from datetime import date
@@ -1274,6 +1299,36 @@ class TestMarketIntelligenceClientGovernment:
         assert row.value_range.max == 5000000
         assert row.income_range is None
         assert row.income is None
+        assert not row.model_extra
+
+    def test_senate_net_worth_aggregated_parses_aliases_and_keeps_extras(self):
+        from fmp_data.intelligence.models import SenateNetWorthAggregated
+
+        row = SenateNetWorthAggregated.model_validate(
+            {
+                "senateID": "P000197",
+                "year": 2024,
+                "total": 225219551,
+                "realEstateLiabilities": 1000001,
+                "cashAndCashEquivalents": 500000,
+                "businessAndSelfEmployment": 0,
+                "realEstate": 2000000,
+                "ownershipInterest": 0,
+                "stock": 220000000,
+                "options": 0,
+                "revolvingAndCreditLines": 0,
+                "assetBackedSecurities": 0,
+                "businessLiabilities": 0,
+                "mutualFundsAndETFs": 1718550,
+                "bonds": 42.5,
+            }
+        )
+        assert row.senate_id == "P000197"
+        assert row.year == 2024
+        assert row.total == 225219551
+        assert row.real_estate_liabilities == 1000001
+        assert row.mutual_funds_and_etfs == 1718550
+        assert row.model_extra == {"bonds": 42.5}
 
     def test_trades_by_id_query_uses_senateID_alias(self):
         """Client kwargs use senate_id; the wire query key is senateID (#323)."""

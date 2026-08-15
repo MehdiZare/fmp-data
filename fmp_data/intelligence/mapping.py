@@ -200,6 +200,16 @@ CONGRESS_POSITION_HINT = ParameterHint(
     required=False,
 )
 
+TOTALS_COL_HINT = ParameterHint(
+    natural_names=["totals column", "totalsCol", "aggregation column"],
+    extraction_patterns=[
+        r"(?i)totals[_ ]?col[:\s]+(\w+)",
+    ],
+    examples=["total"],
+    context_clues=["totals column", "aggregated total", "totalsCol"],
+    required=False,
+)
+
 # Additional utility mappings
 SENTIMENT_SOURCES = {
     "stocktwits": {
@@ -1981,7 +1991,10 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INTELLIGENCE,
         sub_category="Government Trading",
-        parameter_hints={"senate_id": SENATE_ID_HINT},
+        parameter_hints={
+            "senate_id": SENATE_ID_HINT,
+            "totals_col": TOTALS_COL_HINT,
+        },
         response_hints={
             "total": ResponseFieldInfo(
                 description="Rolled-up net worth for the year",
