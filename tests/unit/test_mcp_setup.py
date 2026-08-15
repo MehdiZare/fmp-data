@@ -498,29 +498,6 @@ class TestSetupApiKey:
         assert "❌ API key validation failed." in out
         assert prompts == ["Try another key? (y/n) [y]: "]
 
-    @pytest.mark.parametrize(
-        "status",
-        [
-            "API key is invalid or expired",
-            "API key validation timed out",
-            "API key validation failed: Invalid API key",
-        ],
-    )
-    def test_classified_validation_failures_are_shown(
-        self,
-        status: str,
-        monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """Key-free helper statuses are safe to echo; raw stderr is not."""
-        monkeypatch.setattr(setup_mod, "get_api_key_from_env", lambda: None)
-        monkeypatch.setattr(setup_mod, "validate_api_key", lambda key: (False, status))
-        feed_secrets(monkeypatch, ["TYPED-KEY"])
-        feed_input(monkeypatch, ["n"])
-
-        assert SetupWizard().setup_api_key() is False
-        assert f"❌ {status}" in capsys.readouterr().out
-
     def test_retrying_after_a_rejection_keeps_the_second_key(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -1152,7 +1129,7 @@ class TestRunSetup:
         assert run_setup() == 1
 
         out = capsys.readouterr().out
-        assert "❌ Setup failed: RuntimeError" in out
+        assert "❌ Setup failed." in out
         assert "sk-abcdefgh12345678" not in out
         assert "probe hit" not in out
 
@@ -1170,7 +1147,7 @@ class TestRunSetup:
         assert run_setup(quiet=True) == 1
 
         out = capsys.readouterr().out
-        assert "❌ Setup failed: RuntimeError" in out
+        assert "❌ Setup failed." in out
         assert "sk-abcdefgh12345678" not in out
 
     def test_when_the_error_report_itself_fails_the_type_is_still_shown(
@@ -1192,7 +1169,7 @@ class TestRunSetup:
 
         out = capsys.readouterr().out
         assert failed_once, "the first error report never happened"
-        assert "Setup failed: RuntimeError" in out
+        assert "Setup failed." in out
         assert "sk-abcdefgh12345678" not in out
         assert "manifest scan" not in out
 
@@ -1214,5 +1191,5 @@ class TestRunSetup:
 
         out = capsys.readouterr().out
         assert failed_once, "the first error report never happened"
-        assert "❌ Setup failed: RuntimeError" in out
+        assert "❌ Setup failed." in out
         assert "claude probe died" not in out

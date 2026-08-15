@@ -38,14 +38,6 @@ _KEY_SHAPED_PATTERNS = (
     r"\b[a-zA-Z0-9]{32,}\b",
     r"[a-fA-F0-9]{40,}",
 )
-# validate_api_key strings that never embed subprocess stderr or the key.
-_SAFE_API_KEY_FAILURES = frozenset(
-    {
-        "API key is invalid or expired",
-        "API key validation timed out",
-        "API key validation failed: Invalid API key",
-    }
-)
 
 
 def _redact_key_patterns(message: str) -> str:
@@ -278,7 +270,7 @@ class SetupWizard:
 
             # Validate API key
             self.print("Validating API key...", "info")
-            valid, status = validate_api_key(api_key)
+            valid, _status = validate_api_key(api_key)
 
             if valid:
                 self.print("API key validated successfully.", "success")
@@ -292,14 +284,9 @@ class SetupWizard:
 
                 return True
             else:
-                # Echo only classified, key-free statuses. Raw helper text
-                # can include subprocess stderr that repeats the key.
-                failure = (
-                    status
-                    if status in _SAFE_API_KEY_FAILURES
-                    else "API key validation failed."
-                )
-                self.print(failure, "error")
+                # Static copy only. The helper string is dataflow from the
+                # getpass-held key; stdout is a CodeQL logging sink.
+                self.print("API key validation failed.", "error")
                 retry = self.prompt("Try another key? (y/n)", "y")
                 if retry.lower() != "y":
                     # Clear invalid API key
@@ -574,9 +561,10 @@ def run_setup(quiet: bool = False) -> int:
     except KeyboardInterrupt:
         wizard.print("\n\nSetup cancelled by user", "warning")
         return 1
-    except Exception as e:
-        # Exception text can quote the key. Type name is enough to debug.
-        detail = f"Setup failed: {type(e).__name__}"
+    except Exception:
+        # Do not interpolate the exception: stdout is a logging sink and
+        # the message can quote the key.
+        detail = "Setup failed."
         reporter = wizard if not wizard.quiet else SetupWizard(quiet=False)
         try:
             reporter.print(detail, "error")
