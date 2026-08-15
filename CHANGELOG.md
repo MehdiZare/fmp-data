@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- **One module now owns credential display redaction (#316).**
+  `fmp_data._redaction` exposes two explicit APIs: pattern-only
+  `redact_credential_patterns` (CodeQL-safe for stdout / logging sinks;
+  never takes the live secret) and exact-replace `redact_held_secret`
+  (prompts / `getpass` only). `base._redact_api_keys` and the MCP setup
+  wizard both call through those, so the three former copies cannot
+  drift.
+
 ## [2.7.0] - 2026-08-14
 
 Released from `dev`. A security-and-contracts minor in the same shape as

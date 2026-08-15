@@ -1,17 +1,27 @@
-"""The shared secret-shape rules used by config and embedding display (#252).
+"""The shared secret-shape rules used by config, embeddings, and console (#252, #316).
 
 ``ClientConfig.__str__`` and ``EmbeddingConfig.__repr__`` both need the same
 judgement about what looks like a credential. They used to disagree -- the
 embedding side recursed into nested containers and the config side did not --
 so these rules now live in one module and are tested directly rather than only
 through the two callers.
+
+Free-form text (HTTP error bodies, the setup wizard, prompts) used to each
+have their own regexes. ``redact_credential_patterns`` /
+``redact_held_secret`` are the two APIs those sinks must pick from.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from fmp_data._redaction import is_secret_key, redact_mapping, redact_value
+from fmp_data._redaction import (
+    is_secret_key,
+    redact_credential_patterns,
+    redact_held_secret,
+    redact_mapping,
+    redact_value,
+)
 
 
 @pytest.mark.parametrize(
@@ -95,3 +105,39 @@ def test_redact_mapping_masks_top_level_secret_names() -> None:
 def test_non_string_keys_do_not_raise() -> None:
     """Untyped bags can be keyed by anything."""
     assert redact_value({1: "a", None: "b"}) == {1: "a", None: "b"}
+
+
+def test_pattern_api_redacts_query_assignment_and_key_shaped() -> None:
+    """One pattern-only function covers every former call site (#316)."""
+    url = "GET https://fmp.test/v3/profile?apikey=hunter2xyz&symbol=AAPL"
+    assert redact_credential_patterns(url) == (
+        "GET https://fmp.test/v3/profile?apikey=[REDACTED]&symbol=AAPL"
+    )
+    assert (
+        redact_credential_patterns("denied for apikey=SECRET_FMP_KEY")
+        == "denied for apikey=[REDACTED]"
+    )
+    encoded = "path?apikey%3Dnot-a-real-key-value"  # pragma: allowlist secret
+    assert "not-a-real-key-value" not in redact_credential_patterns(encoded)
+    assert "[REDACTED]" in redact_credential_patterns(encoded)
+    assert redact_credential_patterns("saved sk-abcdefgh12345678") == "saved [REDACTED]"
+    # Wizard instruction copy must survive: FMP_API_KEY is an env var name,
+    # not a bare apikey= assignment.
+    assert (
+        redact_credential_patterns('export FMP_API_KEY="[YOUR_API_KEY]"')
+        == 'export FMP_API_KEY="[YOUR_API_KEY]"'
+    )
+
+
+def test_pattern_api_never_needs_the_held_secret() -> None:
+    """Signature is the CodeQL contract: no secret argument on this path."""
+    assert redact_credential_patterns.__code__.co_argcount == 1
+
+
+def test_exact_replace_is_prompt_only() -> None:
+    held = "Kk1Kk2Kk3Kk4"  # pragma: allowlist secret
+    assert (
+        redact_held_secret(f"tried {held} then {held}", held)
+        == "tried [REDACTED] then [REDACTED]"
+    )
+    assert redact_held_secret("nothing here", "") == "nothing here"

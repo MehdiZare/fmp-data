@@ -1,17 +1,26 @@
-"""Shared rules for hiding credentials in display strings (#252).
+"""Shared rules for hiding credentials in display strings (#252, #316).
 
-Two different places need the same judgement about "does this look like a
-secret": ``ClientConfig.__str__`` renders arbitrary nested config for humans,
-and ``EmbeddingConfig.__repr__`` renders the kwargs bag it splats into a
-provider. Keeping one implementation means the rules cannot drift apart, and
-means widening the token list fixes both at once.
+Two jobs live here:
+
+1. **Key-name walk** (``is_secret_key`` / ``redact_value``): ``ClientConfig.__str__``
+   and ``EmbeddingConfig.__repr__`` need the same judgement about what looks
+   like a credential in a structured mapping.
+2. **Free-form text** (``redact_credential_patterns`` / ``redact_held_secret``):
+   console output, HTTP error bodies, and prompts used to each have their
+   own regexes and drifted (#315, #316).
 
 This is a *display* safeguard, not an access control. Values are still fully
 available on the model; only the rendered text is masked.
+
+CodeQL ``py/clear-text-logging-sensitive-data`` treats ``print`` / stdout as
+a logging sink. Sinks may call :func:`redact_credential_patterns` (it never
+takes the live secret). They must not call :func:`redact_held_secret` — that
+API is for ``input`` / ``getpass`` prompts only.
 """
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 # Matched against ``_``/``-`` separated parts of a key name, so ``api_key``,
@@ -105,3 +114,59 @@ def redact_mapping(data: dict[str, Any]) -> dict[str, Any]:
         key: (_MASK if is_secret_key(key) else redact_value(value))
         for key, value in data.items()
     }
+
+
+# --- Free-form text -------------------------------------------------------
+# Pattern-only. Never take the live secret as an argument. Safe for
+# logging sinks / stdout (CodeQL py/clear-text-logging-sensitive-data).
+_URL_CREDENTIAL_RE = re.compile(
+    r"([?&](?:api_?key|token|secret)=)[^&\s]+",
+    re.IGNORECASE,
+)
+_URL_APIKEY_RE = re.compile(r"([?&]apikey=)[^&\s]+", re.IGNORECASE)
+# Lookbehind keeps ``FMP_API_KEY="[YOUR_API_KEY]"`` (the wizard's
+# placeholder instruction) from matching as an assignment. Error bodies
+# use bare ``apikey=`` / ``api_key=`` / ``"api_key":``.
+_ASSIGNMENT_RE = re.compile(
+    r"([\"']?(?<![A-Za-z0-9_])api_?key[\"']?\s*[=:]\s*[\"']?)"
+    r"([^&\s\"'<>]+)([\"']?)",
+    re.IGNORECASE,
+)
+_ENCODED_RE = re.compile(r"(apikey%3[Dd])([^&\s\"'<>]+)", re.IGNORECASE)
+_KEY_SHAPED_RES = (
+    re.compile(r"\b(?:sk-|pk_)[a-zA-Z0-9_-]{8,}\b"),
+    re.compile(r"\bapi_key=[a-zA-Z0-9_-]{8,}(?=\s|:|;)"),
+    re.compile(r"\b[a-zA-Z0-9]{32,}\b"),
+    re.compile(r"[a-fA-F0-9]{40,}"),
+)
+_TEXT_MASK = "[REDACTED]"
+
+
+def redact_credential_patterns(text: str) -> str:
+    """Redact credential-shaped tokens without receiving the live secret.
+
+    Safe for logging sinks and stdout. Do not pass the held secret as an
+    argument; use :func:`redact_held_secret` at prompt sites only.
+
+    Combines the query-string / assignment / percent-encoded rules from
+    ``base._redact_api_keys`` with the key-shaped tokens the setup wizard
+    needs on console output (#316).
+    """
+    result = _URL_CREDENTIAL_RE.sub(rf"\1{_TEXT_MASK}", text)
+    result = _URL_APIKEY_RE.sub(rf"\1{_TEXT_MASK}", result)
+    result = _ASSIGNMENT_RE.sub(rf"\1{_TEXT_MASK}\3", result)
+    result = _ENCODED_RE.sub(rf"\1{_TEXT_MASK}", result)
+    for pattern in _KEY_SHAPED_RES:
+        result = pattern.sub(_TEXT_MASK, result)
+    return result
+
+
+def redact_held_secret(text: str, secret: str) -> str:
+    """Exact-replace a caller-held secret. Prompts / getpass only.
+
+    Never feed the result to a logging sink or stdout writer that CodeQL
+    treats as clear-text logging (``py/clear-text-logging-sensitive-data``).
+    """
+    if not secret:
+        return text
+    return text.replace(secret, _TEXT_MASK)

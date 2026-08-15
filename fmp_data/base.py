@@ -6,7 +6,6 @@ from contextvars import ContextVar
 import copy
 import json
 import logging
-import re
 import time
 from typing import Any, Literal, NoReturn, TypeGuard, TypeVar, cast, overload
 import warnings
@@ -24,6 +23,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from fmp_data._redaction import redact_credential_patterns
 from fmp_data.cache.base import CacheBackend
 from fmp_data.config import ClientConfig
 from fmp_data.exceptions import (
@@ -160,11 +160,6 @@ _rate_limit_retry_count: ContextVar[int] = ContextVar(
     "rate_limit_retry_count", default=0
 )
 _extra_field_warnings_seen: set[tuple[str, tuple[str, ...]]] = set()
-_API_KEY_ASSIGNMENT_RE = re.compile(
-    r"([\"']?api_?key[\"']?\s*[=:]\s*[\"']?)([^&\s\"'<>]+)([\"']?)",
-    re.IGNORECASE,
-)
-_API_KEY_ENCODED_RE = re.compile(r"(apikey%3[Dd])([^&\s\"'<>]+)", re.IGNORECASE)
 
 
 def _is_pydantic_model(model: type[Any]) -> TypeGuard[type[BaseModel]]:
@@ -172,14 +167,14 @@ def _is_pydantic_model(model: type[Any]) -> TypeGuard[type[BaseModel]]:
 
 
 def _redact_api_keys(text: str) -> str:
-    """Redact apikey/api_key values embedded in free-form strings.
+    """Redact credential-shaped tokens in free-form strings.
 
-    Handles common query-string, percent-encoded (``apikey%3D``), and
-    assignment/JSON-text patterns. For structured dict payloads, use
+    Delegates to :func:`fmp_data._redaction.redact_credential_patterns` so
+    error bodies and the setup wizard cannot drift (#316). Pattern-only:
+    never pass the live secret. For structured dict payloads, use
     :func:`_sanitize_error_details` (also redacts ``api-key`` keys by name).
     """
-    redacted = _API_KEY_ASSIGNMENT_RE.sub(r"\1[REDACTED]\3", text)
-    return _API_KEY_ENCODED_RE.sub(r"\1[REDACTED]", redacted)
+    return redact_credential_patterns(text)
 
 
 def _sanitize_error_details(
