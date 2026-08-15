@@ -14,6 +14,10 @@ reviews:
   auto_review:
     enabled: true
     drafts: false  # Skip draft PRs
+    # Default branch (`main`) is always included. Most work lands on `dev`
+    # first (#318); without this, CodeRabbit skips those PRs.
+    base_branches:
+      - "^dev$"
 
   # Path-specific review instructions
   path_instructions:
