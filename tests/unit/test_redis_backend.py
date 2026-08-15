@@ -334,11 +334,11 @@ class TestRedisCacheClear:
         assert client.scan_calls == [(0, "fmp:*", 100), (17, "fmp:*", 100)]
         assert client.delete_calls == [("fmp:a", "fmp:b"), ("fmp:c",)]
 
-    def test_glob_metacharacters_in_prefix_are_not_escaped(
+    def test_glob_metacharacters_in_prefix_are_escaped(
         self, redis_stub: FakeRedisModule
     ) -> None:
-        """Current behaviour: the prefix is concatenated into the SCAN
-        pattern verbatim, so glob metacharacters change what is matched.
+        """SCAN MATCH is a glob; a literal ``[`` in the prefix must not
+        become a character class.
         """
         cache = RedisCache(key_prefix="fmp[1]:")
         client = redis_stub.client
@@ -348,7 +348,7 @@ class TestRedisCacheClear:
         cache.clear()
 
         assert client.setex_calls[0][0] == "fmp[1]:quote"
-        assert client.scan_calls == [(0, "fmp[1]:*", 100)]
+        assert client.scan_calls == [(0, r"fmp\[1\]:*", 100)]
 
     def test_empty_page_does_not_call_delete(self, redis_stub: FakeRedisModule) -> None:
         cache = RedisCache()

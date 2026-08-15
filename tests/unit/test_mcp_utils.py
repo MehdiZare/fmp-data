@@ -977,16 +977,13 @@ class TestPythonManifestIsParsedAsData:
 
         assert "assigned more than once" in str(excinfo.value)
 
-    def test_refuses_an_annotated_tools_assignment(self, tmp_path: Path) -> None:
-        """Current behaviour: ``TOOLS: list[str] = [...]`` is not accepted."""
+    def test_accepts_an_annotated_tools_assignment(self, tmp_path: Path) -> None:
+        """``TOOLS: list[str] = [...]`` is still a data-only assignment."""
         manifest = _write_manifest(
             tmp_path, "annotated.py", "TOOLS: list[str] = ['company.profile']\n"
         )
 
-        with pytest.raises(ValueError) as excinfo:
-            mcp_utils.load_manifest_tools(manifest)
-
-        assert "only a docstring and TOOLS" in str(excinfo.value)
+        assert mcp_utils.load_manifest_tools(manifest) == ["company.profile"]
 
     @pytest.mark.parametrize(
         ("shape", "source"),

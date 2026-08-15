@@ -484,6 +484,8 @@ with FMPDataClient.from_env() as client:
 
 ### 3. Market Data
 ```python
+from datetime import date
+
 from fmp_data import FMPDataClient
 
 with FMPDataClient.from_env() as client:

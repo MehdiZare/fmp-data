@@ -425,6 +425,13 @@ class TestClientConfig:
             with pytest.raises(ValidationError):
                 ClientConfig(api_key="test_key", base_url=url)
 
+    def test_http_loopback_prefix_is_not_enough(self) -> None:
+        """``127.evil.example`` is not a loopback address."""
+        with pytest.raises(ValidationError, match="https except for loopback"):
+            ClientConfig(api_key="test_key", base_url="http://127.evil.example")
+        config = ClientConfig(api_key="test_key", base_url="http://127.0.0.1:8000")
+        assert config.base_url == "http://127.0.0.1:8000"
+
     def test_api_key_validation(self):
         """Test API key validation"""
         # Valid API key

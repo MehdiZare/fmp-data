@@ -70,17 +70,20 @@ def test_only_the_steps_that_need_it_receive_a_token() -> None:
         str(s.get("name")) for s in _build_steps() if "GH_TOKEN" in (s.get("env") or {})
     }
     assert len(holders) == 2, f"unexpected GH_TOKEN holders: {holders}"
-    assert any("tag" in h for h in holders)
+    assert any("Push tag" in h for h in holders)
     assert any("Release" in h for h in holders)
 
     build = _step("Build distribution")
     assert "GH_TOKEN" not in (build.get("env") or {})
+    assert "GH_TOKEN" not in (_step("Create local tag").get("env") or {})
 
 
 def test_tag_is_created_locally_before_the_build() -> None:
     """hatch-vcs reads the *local* tag; a remote-only tag yields `.devN`."""
-    assert _index("Create and push tag") < _index("Build distribution")
-    assert "git tag -a" in _step("Create and push tag")["run"]
+    assert _index("Create local tag") < _index("Build distribution")
+    assert _index("Build distribution") < _index("Push tag")
+    assert "git tag -a" in _step("Create local tag")["run"]
+    assert "git/tags" not in _step("Create local tag")["run"]
 
 
 def _code_lines(run: str) -> str:
@@ -91,7 +94,7 @@ def _code_lines(run: str) -> str:
 
 
 def test_tag_is_pushed_through_the_api_as_an_annotated_tag() -> None:
-    run = _step("Create and push tag")["run"]
+    run = _step("Push tag")["run"]
 
     # No git remote auth exists any more, so this must not come back.
     assert "git push" not in _code_lines(run)
@@ -104,10 +107,10 @@ def test_tag_is_pushed_through_the_api_as_an_annotated_tag() -> None:
 
 
 def test_the_push_is_verified_before_downstream_steps_rely_on_it() -> None:
-    assert "git/ref/tags/" in _step("Create and push tag")["run"]
+    assert "git/ref/tags/" in _step("Push tag")["run"]
 
 
-@pytest.mark.parametrize("fragment", ["Create and push tag", "Create GitHub Release"])
+@pytest.mark.parametrize("fragment", ["Push tag", "Create GitHub Release"])
 def test_token_scoped_steps_still_fail_closed(fragment: str) -> None:
     run = _step(fragment)["run"]
     assert "set -euo pipefail" in run

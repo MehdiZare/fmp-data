@@ -249,6 +249,14 @@ None. No FMP path we ship was newly retired by this changelog window.
   so the 2.7.0 release PR never published a TestPyPI comment. PKG-INFO
   is now read in full before the version line is parsed.
 
+- **Release-PR review follow-ups (#304).** Loopback HTTP now requires a
+  real loopback *address* (``127.evil.example`` is rejected). Log extras
+  redact string leaves and ``Authorization`` mapping keys. MCP Python
+  manifests accept ``TOOLS: list[str] = [...]``. Redis ``SCAN MATCH``
+  escapes glob metacharacters in the key prefix. The release remote tag
+  is created only after the sdist version check. Makefile ``.env``
+  loading strips dotenv-style inline comments.
+
 - **`HolderIndustryBreakdown.industry_title` accepts `null`.** A live
   13F industry-breakdown row sends `industryTitle: null`; the field was
   required `str` and the whole call raised `ValidationError`.

@@ -10,6 +10,7 @@ File: fmp_data/config.py
 from __future__ import annotations
 
 from collections.abc import Callable
+from ipaddress import ip_address
 import os
 from pathlib import Path
 from typing import Any, Literal
@@ -42,11 +43,21 @@ def _reveal(value: SecretStr | str | None) -> str | None:
 
 
 def _is_loopback_host(hostname: str | None) -> bool:
-    """True for localhost / loopback literals used by local test servers."""
+    """True for localhost / loopback *addresses* used by local test servers.
+
+    A prefix check on ``127.`` is not enough: ``127.evil.example`` would
+    then be treated as loopback and ``http://`` would be allowed, sending
+    ``apikey`` without TLS.
+    """
     if not hostname:
         return False
     host = hostname.strip("[]").lower()
-    return host in {"localhost", "127.0.0.1", "::1"} or host.startswith("127.")
+    if host == "localhost":
+        return True
+    try:
+        return ip_address(host).is_loopback
+    except ValueError:
+        return False
 
 
 def _mask_secret(value: SecretStr | str) -> str:

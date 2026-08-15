@@ -435,6 +435,35 @@ def _string_list_from_ast(node: ast.AST, path: Path) -> list[str]:
     return tools
 
 
+def _tools_list_from_assignment(
+    stmt: ast.Assign | ast.AnnAssign, path: Path, already: list[str] | None
+) -> list[str]:
+    """Extract ``TOOLS`` from a module-level assignment or annotated assignment."""
+    value: ast.expr | None
+    if isinstance(stmt, ast.Assign):
+        ok = (
+            len(stmt.targets) == 1
+            and isinstance(stmt.targets[0], ast.Name)
+            and stmt.targets[0].id == "TOOLS"
+        )
+        value = stmt.value
+    else:
+        ok = isinstance(stmt.target, ast.Name) and stmt.target.id == "TOOLS"
+        value = stmt.value
+    if not ok or value is None:
+        raise ValueError(
+            f"{path} is not a data-only manifest: only a module-level "
+            "TOOLS = [...] assignment is allowed. A Python manifest "
+            "does not execute."
+        )
+    if already is not None:
+        raise ValueError(
+            f"{path} is not a data-only manifest: TOOLS is assigned "
+            "more than once. A Python manifest does not execute."
+        )
+    return _string_list_from_ast(value, path)
+
+
 def _parse_python_manifest(source: str, path: Path) -> list[str]:
     """Parse a legacy ``TOOLS = ["..."]`` file without executing it."""
     try:
@@ -450,23 +479,8 @@ def _parse_python_manifest(source: str, path: Path) -> list[str]:
             and isinstance(stmt.value.value, str)
         ):
             continue
-        if isinstance(stmt, ast.Assign):
-            if (
-                len(stmt.targets) != 1
-                or not isinstance(stmt.targets[0], ast.Name)
-                or stmt.targets[0].id != "TOOLS"
-            ):
-                raise ValueError(
-                    f"{path} is not a data-only manifest: only a module-level "
-                    "TOOLS = [...] assignment is allowed. A Python manifest "
-                    "does not execute."
-                )
-            if tools is not None:
-                raise ValueError(
-                    f"{path} is not a data-only manifest: TOOLS is assigned "
-                    "more than once. A Python manifest does not execute."
-                )
-            tools = _string_list_from_ast(stmt.value, path)
+        if isinstance(stmt, ast.Assign | ast.AnnAssign):
+            tools = _tools_list_from_assignment(stmt, path, tools)
             continue
         raise ValueError(
             f"{path} is not a data-only manifest: only a docstring and "

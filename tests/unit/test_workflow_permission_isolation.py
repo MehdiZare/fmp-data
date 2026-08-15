@@ -34,12 +34,36 @@ WORKFLOWS = sorted((REPO_ROOT / ".github" / "workflows").glob("*.yml"))
 PAGES_DEPLOY_ENVIRONMENT = "github-pages"
 
 
-def _jobs(path: Path) -> dict[str, Any]:
+def _loaded(path: Path) -> dict[str, Any]:
     loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
     assert isinstance(loaded, dict), f"{path.name} is not a mapping"
-    jobs = loaded.get("jobs") or {}
+    return loaded
+
+
+def _jobs(path: Path) -> dict[str, Any]:
+    jobs = _loaded(path).get("jobs") or {}
     assert isinstance(jobs, dict)
     return jobs
+
+
+def _effective_permissions(loaded: dict[str, Any], job: dict[str, Any]) -> Any:
+    """Job-level permissions replace workflow-level ones; they do not merge."""
+    if "permissions" in job:
+        return job["permissions"]
+    return loaded.get("permissions")
+
+
+def _effective_env(
+    loaded: dict[str, Any],
+    job: dict[str, Any],
+    step: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Workflow, then job, then step — later mappings win."""
+    env: dict[str, Any] = {}
+    for mapping in (loaded.get("env"), job.get("env"), (step or {}).get("env")):
+        if isinstance(mapping, dict):
+            env.update(mapping)
+    return env
 
 
 def _write_scopes(permissions: Any) -> set[str]:
@@ -67,8 +91,9 @@ def _environment_name(job: dict[str, Any]) -> str | None:
 @pytest.mark.parametrize("path", WORKFLOWS, ids=lambda p: p.name)
 def test_no_job_mixes_oidc_with_repo_write(path: Path) -> None:
     offenders = []
+    loaded = _loaded(path)
     for name, job in _jobs(path).items():
-        scopes = _write_scopes(job.get("permissions"))
+        scopes = _write_scopes(_effective_permissions(loaded, job))
         if "id-token" not in scopes:
             continue
         allowed = {"id-token"}
@@ -119,22 +144,38 @@ def test_codecov_token_is_not_in_a_job_that_runs_pr_code() -> None:
     publish: produce an artifact with no secrets, upload it from a job that
     only downloads.
     """
-    jobs = _jobs(REPO_ROOT / ".github" / "workflows" / "ci.yml")
+    path = REPO_ROOT / ".github" / "workflows" / "ci.yml"
+    loaded = _loaded(path)
+    jobs = _jobs(path)
 
-    coverage = yaml.dump(jobs["coverage"])
-    assert "CODECOV_TOKEN" not in coverage, (
+    coverage = jobs["coverage"]
+    coverage_env = _effective_env(loaded, coverage)
+    for step in coverage.get("steps") or []:
+        if isinstance(step, dict):
+            coverage_env = {**coverage_env, **_effective_env(loaded, coverage, step)}
+    assert "CODECOV_TOKEN" not in coverage_env, (
         "the coverage job executes PR-supplied test code; it must not hold "
         "the upload token"
     )
-    assert "nox" in coverage, "guard is vacuous if this job stops running tests"
+    assert "CODECOV_TOKEN" not in yaml.dump(coverage), (
+        "the coverage job executes PR-supplied test code; it must not hold "
+        "the upload token"
+    )
+    assert "nox" in yaml.dump(coverage), (
+        "guard is vacuous if this job stops running tests"
+    )
 
     upload = jobs["coverage-upload"]
-    assert "CODECOV_TOKEN" in yaml.dump(upload)
+    upload_env = _effective_env(loaded, upload)
+    for step in upload.get("steps") or []:
+        if isinstance(step, dict):
+            upload_env = {**upload_env, **_effective_env(loaded, upload, step)}
+    assert "CODECOV_TOKEN" in upload_env or "CODECOV_TOKEN" in yaml.dump(upload)
     assert "nox" not in yaml.dump(upload), (
         "the upload job must not execute repository code"
     )
     assert upload["needs"] == "coverage" or "coverage" in upload["needs"]
-    assert _write_scopes(upload.get("permissions")) == set()
+    assert _write_scopes(_effective_permissions(loaded, upload)) == set()
 
 
 PUBLISH_WORKFLOWS = ("release.yml", "dev-release.yml", "publish-testpypi.yml")
