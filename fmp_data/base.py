@@ -170,9 +170,10 @@ def _redact_api_keys(text: str) -> str:
     """Redact credential-shaped tokens in free-form strings.
 
     Delegates to :func:`fmp_data._redaction.redact_credential_patterns` so
-    error bodies and the setup wizard cannot drift (#316). Pattern-only:
-    never pass the live secret. For structured dict payloads, use
-    :func:`_sanitize_error_details` (also redacts ``api-key`` keys by name).
+    query/assignment/encoded rules cannot drift from the setup wizard
+    (#316). Pattern-only: never pass the live secret. Does not run
+    wizard key-shaped heuristics (those blank request ids). For
+    structured dict payloads, use :func:`_sanitize_error_details`.
     """
     return redact_credential_patterns(text)
 

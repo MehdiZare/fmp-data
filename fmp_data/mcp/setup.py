@@ -9,7 +9,11 @@ from __future__ import annotations
 import sys
 from typing import Any
 
-from fmp_data._redaction import redact_credential_patterns, redact_held_secret
+from fmp_data._redaction import (
+    redact_credential_patterns,
+    redact_held_secret,
+    redact_key_shaped_tokens,
+)
 from fmp_data.mcp.utils import (
     add_mcp_server_to_config,
     check_claude_desktop_installed,
@@ -33,7 +37,7 @@ def _redact_key_patterns(message: str) -> str:
     :func:`redact_held_secret` without failing the CodeQL sink rule
     (``py/clear-text-logging-sensitive-data``, #315 / #316).
     """
-    return redact_credential_patterns(message)
+    return redact_key_shaped_tokens(redact_credential_patterns(message))
 
 
 class SetupWizard:
@@ -59,7 +63,7 @@ class SetupWizard:
         if not message:
             return message
 
-        result = redact_credential_patterns(message)
+        result = _redact_key_patterns(message)
         if self.api_key:
             result = redact_held_secret(result, self.api_key)
         return result

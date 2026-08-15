@@ -7,8 +7,9 @@ so these rules now live in one module and are tested directly rather than only
 through the two callers.
 
 Free-form text (HTTP error bodies, the setup wizard, prompts) used to each
-have their own regexes. ``redact_credential_patterns`` /
-``redact_held_secret`` are the two APIs those sinks must pick from.
+have their own regexes. Error bodies use ``redact_credential_patterns``.
+The wizard also runs ``redact_key_shaped_tokens``. Prompts use
+``redact_held_secret``.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from fmp_data._redaction import (
     is_secret_key,
     redact_credential_patterns,
     redact_held_secret,
+    redact_key_shaped_tokens,
     redact_mapping,
     redact_value,
 )
@@ -107,8 +109,8 @@ def test_non_string_keys_do_not_raise() -> None:
     assert redact_value({1: "a", None: "b"}) == {1: "a", None: "b"}
 
 
-def test_pattern_api_redacts_query_assignment_and_key_shaped() -> None:
-    """One pattern-only function covers every former call site (#316)."""
+def test_pattern_api_redacts_query_assignment_and_encoded() -> None:
+    """Shared path covers the former base.py rules (#316)."""
     url = "GET https://fmp.test/v3/profile?apikey=hunter2xyz&symbol=AAPL"
     assert redact_credential_patterns(url) == (
         "GET https://fmp.test/v3/profile?apikey=[REDACTED]&symbol=AAPL"
@@ -120,12 +122,29 @@ def test_pattern_api_redacts_query_assignment_and_key_shaped() -> None:
     encoded = "path?apikey%3Dnot-a-real-key-value"  # pragma: allowlist secret
     assert "not-a-real-key-value" not in redact_credential_patterns(encoded)
     assert "[REDACTED]" in redact_credential_patterns(encoded)
-    assert redact_credential_patterns("saved sk-abcdefgh12345678") == "saved [REDACTED]"
     # Wizard instruction copy must survive: FMP_API_KEY is an env var name,
     # not a bare apikey= assignment.
     assert (
         redact_credential_patterns('export FMP_API_KEY="[YOUR_API_KEY]"')
         == 'export FMP_API_KEY="[YOUR_API_KEY]"'
+    )
+
+
+def test_pattern_api_leaves_32_char_identifiers() -> None:
+    """Error-body path must not blank request ids (#316)."""
+    token = "A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6"  # noqa: S105  # pragma: allowlist secret
+    assert token in redact_credential_patterns(f"request-id={token} denied")
+    assert redact_credential_patterns("saved sk-abcdefgh12345678") == (
+        "saved sk-abcdefgh12345678"
+    )
+
+
+def test_key_shaped_api_redacts_wizard_heuristics() -> None:
+    """Console-only heuristics; not composed into error-body redaction."""
+    assert redact_key_shaped_tokens("saved sk-abcdefgh12345678") == "saved [REDACTED]"
+    token = "A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6"  # noqa: S105  # pragma: allowlist secret
+    assert redact_key_shaped_tokens(f"request failed for {token} at 401") == (
+        "request failed for [REDACTED] at 401"
     )
 
 

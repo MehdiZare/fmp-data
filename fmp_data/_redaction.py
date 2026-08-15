@@ -5,9 +5,11 @@ Two jobs live here:
 1. **Key-name walk** (``is_secret_key`` / ``redact_value``): ``ClientConfig.__str__``
    and ``EmbeddingConfig.__repr__`` need the same judgement about what looks
    like a credential in a structured mapping.
-2. **Free-form text** (``redact_credential_patterns`` / ``redact_held_secret``):
-   console output, HTTP error bodies, and prompts used to each have their
-   own regexes and drifted (#315, #316).
+2. **Free-form text**: query/assignment/encoded patterns
+   (``redact_credential_patterns``) are shared by HTTP error bodies and the
+   setup wizard. Wizard console also runs ``redact_key_shaped_tokens``
+   (sk-/32-char heuristics). Those stay off the error-body path — they
+   blank request ids. Prompts use ``redact_held_secret``.
 
 This is a *display* safeguard, not an access control. Values are still fully
 available on the model; only the rendered text is masked.
@@ -133,6 +135,8 @@ _ASSIGNMENT_RE = re.compile(
     re.IGNORECASE,
 )
 _ENCODED_RE = re.compile(r"(apikey%3[Dd])([^&\s\"'<>]+)", re.IGNORECASE)
+# Wizard-console only. ``[a-zA-Z0-9]{32,}`` matches request ids; do not
+# run these on HTTP error bodies (``base._redact_api_keys``).
 _KEY_SHAPED_RES = (
     re.compile(r"\b(?:sk-|pk_)[a-zA-Z0-9_-]{8,}\b"),
     re.compile(r"\bapi_key=[a-zA-Z0-9_-]{8,}(?=\s|:|;)"),
@@ -143,19 +147,25 @@ _TEXT_MASK = "[REDACTED]"
 
 
 def redact_credential_patterns(text: str) -> str:
-    """Redact credential-shaped tokens without receiving the live secret.
+    """Redact query/assignment/encoded credentials without the live secret.
 
-    Safe for logging sinks and stdout. Do not pass the held secret as an
-    argument; use :func:`redact_held_secret` at prompt sites only.
-
-    Combines the query-string / assignment / percent-encoded rules from
-    ``base._redact_api_keys`` with the key-shaped tokens the setup wizard
-    needs on console output (#316).
+    Safe for logging sinks, stdout, and HTTP error bodies. Does not apply
+    wizard key-shaped heuristics (those blank request ids). Do not pass
+    the held secret; use :func:`redact_held_secret` at prompt sites only.
     """
     result = _URL_CREDENTIAL_RE.sub(rf"\1{_TEXT_MASK}", text)
     result = _URL_APIKEY_RE.sub(rf"\1{_TEXT_MASK}", result)
     result = _ASSIGNMENT_RE.sub(rf"\1{_TEXT_MASK}\3", result)
-    result = _ENCODED_RE.sub(rf"\1{_TEXT_MASK}", result)
+    return _ENCODED_RE.sub(rf"\1{_TEXT_MASK}", result)
+
+
+def redact_key_shaped_tokens(text: str) -> str:
+    """Redact sk-/pk_/32-char tokens. Wizard console only.
+
+    Not for HTTP error bodies. Pair with :func:`redact_credential_patterns`
+    at console sinks that must also catch keys the wizard never held.
+    """
+    result = text
     for pattern in _KEY_SHAPED_RES:
         result = pattern.sub(_TEXT_MASK, result)
     return result
