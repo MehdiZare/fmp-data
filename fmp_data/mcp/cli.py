@@ -1106,6 +1106,22 @@ def setup_command(args: argparse.Namespace) -> int:
     return run_setup(quiet=getattr(args, "quiet", False))
 
 
+def _print_server_check(success: bool, reason: str) -> None:
+    """Print a classified MCP server check using sink-local literals.
+
+    Do not interpolate ``reason`` into the printed string. CodeQL treats
+    stdout as a logging sink; a helper return that once held stderr is
+    still tainted even after an allowlist (#319, #321).
+    """
+    if success:
+        if reason == "started":
+            print("✅ MCP server test passed (server started)")
+        else:
+            print("✅ MCP server test passed")
+        return
+    print("❌ MCP server test failed")
+
+
 def status_command(args: argparse.Namespace) -> int:
     """Check MCP server status."""
     from fmp_data.mcp.utils import (
@@ -1139,11 +1155,8 @@ def status_command(args: argparse.Namespace) -> int:
             )
             if api_key:
                 print("🧪 Testing server connection...")
-                success, message = test_mcp_server(api_key)
-                if success:
-                    print(f"✅ {message}")
-                else:
-                    print(f"❌ {message}")
+                success, reason = test_mcp_server(api_key)
+                _print_server_check(success, reason)
             else:
                 print("⚠️  No API key configured")
         else:
@@ -1171,25 +1184,24 @@ def test_command(args: argparse.Namespace) -> int:
         return 1
 
     # Test server
-    success, message = test_mcp_server(api_key)
-    if success:
-        print(f"✅ {message}")
-
-        # Try to get tool count
-        try:
-            from fmp_data.mcp.server import create_app
-
-            app = create_app()
-            tool_manager = getattr(app, "_tool_manager", None)
-            tool_count = len(tool_manager._tools) if tool_manager else 0
-            print(f"✅ {tool_count} tools registered")
-        except Exception as e:
-            print(f"⚠️  Could not count tools: {e}")
-
-        return 0
-    else:
-        print(f"❌ {message}")
+    success, reason = test_mcp_server(api_key)
+    _print_server_check(success, reason)
+    if not success:
         return 1
+
+    # Try to get tool count
+    try:
+        from fmp_data.mcp.server import create_app
+
+        app = create_app()
+        tool_manager = getattr(app, "_tool_manager", None)
+        tool_count = len(tool_manager._tools) if tool_manager else 0
+        print(f"✅ {tool_count} tools registered")
+    except Exception:
+        # create_app can reflect the key in an exception message.
+        print("⚠️  Could not count tools")
+
+    return 0
 
 
 # CLI entry points for potential future integration with click/argparse

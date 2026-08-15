@@ -13,11 +13,12 @@ of these shapes while silently running their payload -- the marker file is
 what makes that distinguishable from a genuine refusal.
 
 The second is the setup helper surface (config path, config load/save,
-interpreter discovery, subprocess-backed checks). Those functions decide
-where the tool writes and what it reports back to the user, so they are
-tested through fakes for the OS-facing collaborators only -- ``platform``,
-``os.environ``, ``subprocess.run``, ``Path.exists`` -- never by faking the
-function under test.
+interpreter discovery, subprocess-backed server start, in-process API-key
+probe). Those functions decide where the tool writes and what it reports
+back to the user, so they are tested through fakes for the OS-facing
+collaborators only -- ``platform``, ``os.environ``, ``subprocess.run``,
+``FMPDataClient``, ``Path.exists`` -- never by faking the function under
+test. Helper return values are classified reasons, never stderr.
 """
 
 from __future__ import annotations
@@ -28,7 +29,7 @@ from pathlib import Path
 import platform
 import subprocess
 import sys
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 
@@ -622,7 +623,7 @@ class TestRunMcpServerCheck:
         fake = _FakeRun(returncode=0, stdout="Server initialized successfully\n")
         monkeypatch.setattr(subprocess, "run", fake)
 
-        assert run_mcp_server_check("KEY123") == (True, "MCP server test passed")
+        assert run_mcp_server_check("KEY123") == (True, "passed")
 
         cmd, kwargs = fake.calls[0]
         assert cmd[0] == sys.executable
@@ -634,8 +635,8 @@ class TestRunMcpServerCheck:
         assert kwargs["env"]["FMP_API_KEY"] == "KEY123"  # pragma: allowlist secret
         assert "FMP_MCP_MANIFEST" not in kwargs["env"]
         assert kwargs["timeout"] == 5
-        # stderr is reported verbatim on failure, so decoded output is part
-        # of the contract, not an incidental kwarg.
+        # Output is captured so a key quoted on stderr never reaches the
+        # caller; the return is a classified reason, not that text (#319).
         assert kwargs["capture_output"] is True
         assert kwargs["text"] is True
         assert "FMP_API_KEY" not in os.environ
@@ -650,7 +651,7 @@ class TestRunMcpServerCheck:
 
         assert run_mcp_server_check("KEY123", manifest_path=manifest) == (
             True,
-            "MCP server test passed",
+            "passed",
         )
 
         env = fake.calls[0][1]["env"]
@@ -658,25 +659,23 @@ class TestRunMcpServerCheck:
         assert env["FMP_API_KEY"] == "KEY123"  # pragma: allowlist secret
         assert "FMP_MCP_MANIFEST" not in os.environ
 
-    def test_reports_stderr_on_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_nonzero_exit_is_failed_without_stderr(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setattr(
-            subprocess, "run", _FakeRun(returncode=1, stderr="  ImportError: mcp  ")
+            subprocess,
+            "run",
+            _FakeRun(returncode=1, stderr="  ImportError: mcp apikey=KEY123  "),
         )
 
-        assert run_mcp_server_check("KEY123") == (
-            False,
-            "MCP server test failed: ImportError: mcp",
-        )
+        assert run_mcp_server_check("KEY123") == (False, "failed")
 
     def test_reports_unknown_error_when_stderr_is_empty(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr(subprocess, "run", _FakeRun(returncode=2, stderr=""))
 
-        assert run_mcp_server_check("KEY123") == (
-            False,
-            "MCP server test failed: Unknown error",
-        )
+        assert run_mcp_server_check("KEY123") == (False, "failed")
 
     def test_timeout_counts_as_a_started_server(
         self, monkeypatch: pytest.MonkeyPatch
@@ -687,10 +686,7 @@ class TestRunMcpServerCheck:
             _FakeRun(raises=subprocess.TimeoutExpired(cmd="py", timeout=5)),
         )
 
-        assert run_mcp_server_check("KEY123") == (
-            True,
-            "MCP server test passed (server started)",
-        )
+        assert run_mcp_server_check("KEY123") == (True, "started")
 
     def test_unexpected_exception_is_reported_not_raised(
         self, monkeypatch: pytest.MonkeyPatch
@@ -699,10 +695,7 @@ class TestRunMcpServerCheck:
             subprocess, "run", _FakeRun(raises=OSError("no such executable"))
         )
 
-        assert run_mcp_server_check("KEY123") == (
-            False,
-            "MCP server test failed: no such executable",
-        )
+        assert run_mcp_server_check("KEY123") == (False, "unavailable")
 
 
 # ---------------------------------------------------------------------------
@@ -724,91 +717,149 @@ class TestGetApiKeyFromEnv:
         assert mcp_utils.get_api_key_from_env() is None
 
 
+class _FakeCompany:
+    def __init__(self, quote: Any = None, raises: BaseException | None = None) -> None:
+        self.quote = quote
+        self.raises = raises
+        self.symbols: list[str] = []
+
+    def get_quote(self, symbol: str) -> Any:
+        self.symbols.append(symbol)
+        if self.raises is not None:
+            raise self.raises
+        return self.quote
+
+
+class _FakeFmpClient:
+    """Stand-in for ``FMPDataClient`` that records construction and close."""
+
+    instances: ClassVar[list[_FakeFmpClient]] = []
+
+    def __init__(self, **kwargs: Any) -> None:
+        self.kwargs = kwargs
+        self.closed = False
+        self.company = _FakeCompany()
+        type(self).instances.append(self)
+
+    def close(self) -> None:
+        self.closed = True
+
+
 class TestValidateApiKey:
-    def test_valid_key_reports_success_and_never_leaks_into_os_environ(
+    def test_valid_key_makes_an_authenticated_quote_probe(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.delenv("FMP_API_KEY", raising=False)
-        fake = _FakeRun(returncode=0, stdout="API key is valid\n")
-        monkeypatch.setattr(subprocess, "run", fake)
+        _FakeFmpClient.instances = []
+        monkeypatch.setattr("fmp_data.client.FMPDataClient", _FakeFmpClient)
 
-        assert mcp_utils.validate_api_key("KEY123") == (True, "API key is valid")
+        assert mcp_utils.validate_api_key("KEY123") == (True, "valid")
 
-        cmd, kwargs = fake.calls[0]
-        assert cmd[0] == sys.executable
-        # The probe must build a client from the environment -- otherwise a
-        # key that never reaches FMP would still be reported "valid".
-        assert cmd[1] == "-c"
-        assert "from fmp_data import FMPDataClient" in cmd[2]
-        assert "FMPDataClient.from_env()" in cmd[2]
-        assert kwargs["env"]["FMP_API_KEY"] == "KEY123"  # pragma: allowlist secret
-        assert kwargs["timeout"] == 10
-        assert kwargs["capture_output"] is True
-        assert kwargs["text"] is True
+        assert len(_FakeFmpClient.instances) == 1
+        client = _FakeFmpClient.instances[0]
+        assert client.kwargs["api_key"] == "KEY123"  # pragma: allowlist secret
+        assert client.kwargs["timeout"] == 10
+        assert client.kwargs["max_retries"] == 1
+        assert client.company.symbols == [mcp_utils._PROBE_SYMBOL]
+        assert client.closed is True
         assert "FMP_API_KEY" not in os.environ
 
-    @pytest.mark.parametrize("status", ["401", "403"])
-    def test_auth_status_codes_map_to_an_invalid_key_message(
-        self, monkeypatch: pytest.MonkeyPatch, status: str
-    ) -> None:
-        monkeypatch.setattr(
-            subprocess,
-            "run",
-            _FakeRun(returncode=1, stderr=f"AuthenticationError: {status} for url"),
-        )
-
-        assert mcp_utils.validate_api_key("BAD") == (
-            False,
-            "API key is invalid or expired",
-        )
-
-    def test_other_failures_surface_stderr(
+    def test_authentication_error_is_invalid(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(
-            subprocess, "run", _FakeRun(returncode=1, stderr="ConnectionError: dns\n")
-        )
+        from fmp_data.exceptions import AuthenticationError
 
-        assert mcp_utils.validate_api_key("KEY123") == (
-            False,
-            "API key validation failed: ConnectionError: dns",
-        )
+        class AuthClient(_FakeFmpClient):
+            def __init__(self, **kwargs: Any) -> None:
+                super().__init__(**kwargs)
+                self.company = _FakeCompany(
+                    raises=AuthenticationError("nope", status_code=401)
+                )
 
-    def test_empty_stderr_falls_back_to_invalid_key_text(
+        monkeypatch.setattr("fmp_data.client.FMPDataClient", AuthClient)
+
+        assert mcp_utils.validate_api_key("BAD") == (False, "invalid")
+        assert AuthClient.instances[-1].closed is True
+
+    def test_config_error_is_invalid(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from fmp_data.exceptions import ConfigError
+
+        def boom(**kwargs: Any) -> None:
+            raise ConfigError("Invalid client configuration")
+
+        monkeypatch.setattr("fmp_data.client.FMPDataClient", boom)
+
+        assert mcp_utils.validate_api_key("") == (False, "invalid")
+
+    def test_timeout_is_timeout(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import httpx
+
+        class TimeoutClient(_FakeFmpClient):
+            def __init__(self, **kwargs: Any) -> None:
+                super().__init__(**kwargs)
+                self.company = _FakeCompany(raises=httpx.TimeoutException("slow"))
+
+        monkeypatch.setattr("fmp_data.client.FMPDataClient", TimeoutClient)
+
+        assert mcp_utils.validate_api_key("KEY123") == (False, "timeout")
+
+    def test_non_auth_fmp_error_still_counts_as_valid(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(subprocess, "run", _FakeRun(returncode=1, stderr=""))
+        from fmp_data.exceptions import FMPError
 
-        assert mcp_utils.validate_api_key("KEY123") == (
-            False,
-            "API key validation failed: Invalid API key",
-        )
+        class BusyClient(_FakeFmpClient):
+            def __init__(self, **kwargs: Any) -> None:
+                super().__init__(**kwargs)
+                self.company = _FakeCompany(raises=FMPError("rate limited", 429))
 
-    def test_timeout_is_reported_as_a_timeout(
+        monkeypatch.setattr("fmp_data.client.FMPDataClient", BusyClient)
+
+        assert mcp_utils.validate_api_key("KEY123") == (True, "valid")
+
+    def test_http_403_is_invalid(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from fmp_data.exceptions import FMPError
+
+        class ForbiddenClient(_FakeFmpClient):
+            def __init__(self, **kwargs: Any) -> None:
+                super().__init__(**kwargs)
+                self.company = _FakeCompany(
+                    raises=FMPError("unauthorized", status_code=403)
+                )
+
+        monkeypatch.setattr("fmp_data.client.FMPDataClient", ForbiddenClient)
+
+        assert mcp_utils.validate_api_key("BAD") == (False, "invalid")
+        assert ForbiddenClient.instances[-1].closed is True
+
+    def test_unexpected_exception_is_unavailable_not_raised(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(
-            subprocess,
-            "run",
-            _FakeRun(raises=subprocess.TimeoutExpired(cmd="py", timeout=10)),
-        )
+        class BrokenClient(_FakeFmpClient):
+            def __init__(self, **kwargs: Any) -> None:
+                super().__init__(**kwargs)
+                self.company = _FakeCompany(raises=OSError("network down"))
 
-        assert mcp_utils.validate_api_key("KEY123") == (
-            False,
-            "API key validation timed out",
-        )
+        monkeypatch.setattr("fmp_data.client.FMPDataClient", BrokenClient)
 
-    def test_unexpected_exception_is_reported_not_raised(
+        assert mcp_utils.validate_api_key("KEY123") == (False, "unavailable")
+
+    def test_return_never_embeds_exception_text(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(
-            subprocess, "run", _FakeRun(raises=OSError("exec format error"))
-        )
+        planted = "PLANTED_key_xyzzy"
 
-        assert mcp_utils.validate_api_key("KEY123") == (
-            False,
-            "API key validation failed: exec format error",
-        )
+        class LeakyClient(_FakeFmpClient):
+            def __init__(self, **kwargs: Any) -> None:
+                super().__init__(**kwargs)
+                self.company = _FakeCompany(raises=OSError(f"refused apikey={planted}"))
+
+        monkeypatch.setattr("fmp_data.client.FMPDataClient", LeakyClient)
+
+        ok, reason = mcp_utils.validate_api_key(planted)
+        assert ok is False
+        assert reason == "unavailable"
+        assert planted not in reason
 
 
 # ---------------------------------------------------------------------------
@@ -835,7 +886,7 @@ class TestGetManifestChoices:
         monkeypatch.setattr(
             mcp_utils, "__file__", str(tmp_path / "fmp_data" / "mcp" / "utils.py")
         )
-        return tmp_path / "examples" / "mcp_configurations"
+        return tmp_path / "examples" / "mcp" / "configurations"
 
     @pytest.mark.parametrize("name", sorted(EXAMPLE_MANIFESTS))
     def test_each_choice_maps_to_its_own_file_and_only_when_present(
@@ -873,6 +924,36 @@ class TestGetManifestChoices:
         self._redirect_examples_root(monkeypatch, tmp_path)
 
         assert mcp_utils.get_manifest_choices() == {"default": None}
+
+    def test_repo_example_profiles_are_offered_when_present(self) -> None:
+        """The real checkout path, not a redirected fake tree (#320)."""
+        repo_examples = (
+            Path(__file__).resolve().parents[2] / "examples" / "mcp" / "configurations"
+        )
+        if not repo_examples.is_dir():
+            pytest.skip("example manifests are not shipped in this install")
+
+        choices = mcp_utils.get_manifest_choices()
+
+        assert "default" in choices
+        for name, filename in EXAMPLE_MANIFESTS.items():
+            expected = repo_examples / filename
+            if not expected.is_file():
+                pytest.fail(f"advertised example {filename} is missing")
+            assert choices[name] == str(expected)
+
+
+def test_example_claude_desktop_copies_use_the_real_manifest_path() -> None:
+    """The same stale path #320 fixed in the helper also lived in examples."""
+    root = Path(__file__).resolve().parents[2] / "examples" / "mcp" / "claude_desktop"
+    stale = "examples/mcp_configurations/"
+    offenders: list[str] = []
+    for path in sorted(root.rglob("*")):
+        if not path.is_file() or path.suffix not in {".py", ".md", ".json"}:
+            continue
+        if stale in path.read_text(encoding="utf-8"):
+            offenders.append(str(path.relative_to(root)))
+    assert not offenders, f"stale examples/mcp_configurations/ in {offenders}"
 
 
 # ---------------------------------------------------------------------------

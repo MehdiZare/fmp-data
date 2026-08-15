@@ -1176,3 +1176,83 @@ class TestListLabelsAllThreeRetirementConcepts:
         assert DEPRECATED_TOOLS, "floor: no renames to check"
         for spec, replacement in sorted(DEPRECATED_TOOLS.items()):
             assert f"{spec} [DEPRECATED -> {replacement}]" in rendered
+
+
+class TestServerCheckPrinting:
+    """``fmp-mcp status`` / ``test`` must print sink-local literals (#319)."""
+
+    def test_failed_reason_does_not_flow_into_stdout(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        from fmp_data.mcp.cli import _print_server_check
+
+        planted = "PLANTED_apikey_should_not_print"
+        _print_server_check(False, f"failed: apikey={planted}")
+
+        out = capsys.readouterr().out
+        assert planted not in out
+        assert out == "❌ MCP server test failed\n"
+
+    def test_started_and_passed_use_distinct_literals(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        from fmp_data.mcp.cli import _print_server_check
+
+        _print_server_check(True, "started")
+        _print_server_check(True, "passed")
+
+        assert capsys.readouterr().out == (
+            "✅ MCP server test passed (server started)\n✅ MCP server test passed\n"
+        )
+
+    def test_test_command_does_not_echo_a_leaky_helper(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        import argparse
+
+        from fmp_data.mcp import cli as cli_mod
+        from fmp_data.mcp import utils as mcp_utils
+
+        planted = "PLANTED_cli_key"
+        monkeypatch.setenv("FMP_API_KEY", planted)
+
+        def leaky(api_key: str, manifest_path: str | None = None) -> tuple[bool, str]:
+            return False, f"MCP server test failed: stderr quoted {api_key}"
+
+        monkeypatch.setattr(mcp_utils, "test_mcp_server", leaky)
+
+        assert cli_mod.test_command(argparse.Namespace()) == 1
+        out = capsys.readouterr().out
+        assert planted not in out
+        assert "MCP server test failed: stderr" not in out
+        assert "❌ MCP server test failed" in out
+
+    def test_test_command_does_not_echo_create_app_exception(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        import argparse
+        import sys
+        import types
+
+        from fmp_data.mcp import cli as cli_mod
+        from fmp_data.mcp import utils as mcp_utils
+
+        planted = "PLANTED_create_app_key"
+        monkeypatch.setenv("FMP_API_KEY", planted)
+        monkeypatch.setattr(
+            mcp_utils,
+            "test_mcp_server",
+            lambda api_key, manifest_path=None: (True, "passed"),
+        )
+
+        def boom() -> None:
+            raise RuntimeError(f"create_app failed apikey={planted}")
+
+        fake_server = types.ModuleType("fmp_data.mcp.server")
+        fake_server.create_app = boom  # type: ignore[attr-defined]
+        monkeypatch.setitem(sys.modules, "fmp_data.mcp.server", fake_server)
+
+        assert cli_mod.test_command(argparse.Namespace()) == 0
+        out = capsys.readouterr().out
+        assert planted not in out
+        assert "Could not count tools" in out
