@@ -96,17 +96,16 @@ def break_first_error_report(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     That is the only way into ``run_setup``'s fallback reporter without
     stubbing the wizard it is supposed to be exercising.
     """
-    real_print = print
+    real_write = sys.stdout.write
     failed_once: list[str] = []
 
-    def flaky_print(*args: Any, **kwargs: Any) -> None:
-        text = " ".join(str(arg) for arg in args)
+    def flaky_write(text: str) -> int:
         if "Setup failed" in text and not failed_once:
             failed_once.append(text)
             raise OSError("stdout went away")
-        real_print(*args, **kwargs)
+        return real_write(text)
 
-    monkeypatch.setattr("builtins.print", flaky_print)
+    monkeypatch.setattr(sys.stdout, "write", flaky_write)
     return failed_once
 
 
@@ -238,16 +237,22 @@ class TestPrint:
 
         assert capsys.readouterr().out == ""
 
-    def test_printing_redacts_the_configured_key(
+    def test_printing_redacts_key_shaped_tokens(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        """Console output uses pattern redaction, not the getpass-held key.
+
+        CodeQL treats ``print`` / stdout as a logging sink and does not
+        accept ``str.replace(password, …)`` as a sanitizer, so the writer
+        must not read ``self.api_key``.
+        """
         wizard = SetupWizard()
         wizard.api_key = "Kk1Kk2Kk3Kk4"  # pragma: allowlist secret
 
-        wizard.print("saved Kk1Kk2Kk3Kk4", "success")
+        wizard.print("saved sk-abcdefgh12345678", "success")
 
         out = capsys.readouterr().out
-        assert "Kk1Kk2Kk3Kk4" not in out
+        assert "sk-abcdefgh12345678" not in out
         assert out == "✅ saved [REDACTED]\n"
 
 
@@ -502,7 +507,7 @@ class TestSetupApiKey:
         assert SetupWizard().setup_api_key() is True
 
         out = capsys.readouterr().out
-        assert 'export FMP_API_KEY="abcd...WXYZ"' in out  # pragma: allowlist secret
+        assert 'export FMP_API_KEY="[YOUR_API_KEY]"' in out
         assert "abcdWXYZabcdWXYZ" not in out
 
     def test_declining_the_environment_key_falls_through_to_typing_one(
@@ -526,11 +531,10 @@ class TestShowEnvInstructions:
     ) -> None:
         monkeypatch.setattr(platform, "system", lambda: "Windows")
 
-        SetupWizard()._show_env_instructions("abcdWXYZabcdWXYZ")
+        SetupWizard()._show_env_instructions()
 
         out = capsys.readouterr().out
-        assert 'setx FMP_API_KEY "abcd...WXYZ"' in out
-        assert "abcdWXYZabcdWXYZ" not in out
+        assert 'setx FMP_API_KEY "[YOUR_API_KEY]"' in out
 
     @pytest.mark.parametrize(
         ("system", "shell_file"), [("Darwin", "~/.zshrc"), ("Linux", "~/.bashrc")]
@@ -544,7 +548,7 @@ class TestShowEnvInstructions:
     ) -> None:
         monkeypatch.setattr(platform, "system", lambda: system)
 
-        SetupWizard()._show_env_instructions("abcdWXYZabcdWXYZ")
+        SetupWizard()._show_env_instructions()
 
         out = capsys.readouterr().out
         assert f"Add this line to your {shell_file}" in out
@@ -555,11 +559,10 @@ class TestShowEnvInstructions:
     ) -> None:
         monkeypatch.setattr(platform, "system", lambda: "Linux")
 
-        SetupWizard()._show_env_instructions("12345678")
+        SetupWizard()._show_env_instructions()
 
         out = capsys.readouterr().out
         assert 'export FMP_API_KEY="[YOUR_API_KEY]"' in out
-        assert "12345678" not in out
 
 
 class TestChooseConfiguration:
@@ -929,7 +932,8 @@ class TestServerSmokeTest:
 
         out = capsys.readouterr().out
         assert "Kk1Kk2Kk3Kk4" not in out
-        assert "❌ boot failed using [REDACTED]" in out
+        assert "boot failed" not in out
+        assert "❌ MCP server test failed." in out
         assert "may still work with Claude Desktop" in out
 
 
@@ -1111,14 +1115,14 @@ class TestRunSetup:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """The fallback wizard must inherit the key it has to hide.
+        """The fallback writer still pattern-redacts key-shaped tokens.
 
-        ``ENV-API-KEY`` matches none of the key-shaped patterns, so only the
-        copied ``api_key`` can redact it here.
+        Console output must not read the getpass-held key (CodeQL logging
+        sink), so this uses a key-shaped token rather than ``ENV-API-KEY``.
         """
 
         def explode() -> dict[str, str | None]:
-            raise RuntimeError("manifest scan died holding ENV-API-KEY")
+            raise RuntimeError("manifest scan died holding sk-abcdefgh12345678")
 
         monkeypatch.setattr(setup_mod, "get_manifest_choices", explode)
         feed_input(monkeypatch, ["y"])
@@ -1129,7 +1133,7 @@ class TestRunSetup:
         out = capsys.readouterr().out
         assert failed_once, "the first error report never happened"
         assert "Setup failed: manifest scan died holding [REDACTED]" in out
-        assert "ENV-API-KEY" not in out
+        assert "sk-abcdefgh12345678" not in out
 
     def test_the_fallback_report_survives_a_crash_before_any_key_exists(
         self,

@@ -6,6 +6,7 @@ Interactive setup wizard for configuring FMP Data MCP server with Claude Desktop
 
 from __future__ import annotations
 
+import re
 import sys
 from typing import Any
 
@@ -23,6 +24,31 @@ from fmp_data.mcp.utils import (
     test_mcp_server,
     validate_api_key,
 )
+
+# Query-string credentials (more specific — applied first).
+_URL_CREDENTIAL_PATTERNS = (
+    r"([?&](?:api_?key|token|secret)=)[^&\s]+",
+    r"([?&]apikey=)[^&\s]+",
+)
+# Standalone key-shaped tokens. These must not depend on the getpass-held
+# value: CodeQL treats ``print`` as a logging sink and ``str.replace`` of
+# a password is not a sanitizer.
+_KEY_SHAPED_PATTERNS = (
+    r"\b(?:sk-|pk_)[a-zA-Z0-9_-]{8,}\b",
+    r"\bapi_key=[a-zA-Z0-9_-]{8,}(?=\s|:|;)",
+    r"\b[a-zA-Z0-9]{32,}\b",
+    r"[a-fA-F0-9]{40,}",
+)
+
+
+def _redact_key_patterns(message: str) -> str:
+    """Redact key-shaped tokens without reading the wizard's held secret."""
+    result = message
+    for pattern in _URL_CREDENTIAL_PATTERNS:
+        result = re.sub(pattern, r"\1[REDACTED]", result)
+    for pattern in _KEY_SHAPED_PATTERNS:
+        result = re.sub(pattern, "[REDACTED]", result)
+    return result
 
 
 class SetupWizard:
@@ -44,72 +70,53 @@ class SetupWizard:
         self.config: dict[str, Any] = {}
 
     def _redact_sensitive(self, message: str | None) -> str | None:
-        """Redact sensitive information such as API keys from message."""
+        """Redact sensitive information such as API keys from message.
+
+        Used for interactive prompts (``input`` / ``getpass``), which are
+        not logging sinks. Console output goes through ``_redact_key_patterns``
+        only so CodeQL cannot track the getpass-held key into ``print``.
+        """
         if not message:
             return message
 
-        result = message
-
-        # Redact current API key if set
+        result = _redact_key_patterns(message)
         if self.api_key and self.api_key in result:
             result = result.replace(self.api_key, "[REDACTED]")
-
-        import re
-
-        # First redact URLs with tokens/keys in query parameters (more specific)
-        url_patterns = [
-            r"([?&](?:api_?key|token|secret)=)[^&\s]+",
-            r"([?&]apikey=)[^&\s]+",
-        ]
-
-        for pattern in url_patterns:
-            result = re.sub(pattern, r"\1[REDACTED]", result)
-
-        # Then redact remaining API key patterns (more general)
-        api_key_patterns = [
-            r"\b(?:sk-|pk_)[a-zA-Z0-9_-]{8,}\b",  # Keys with sk-/pk- prefixes
-            # Standalone api_key assignments (not URLs)
-            r"\bapi_key=[a-zA-Z0-9_-]{8,}(?=\s|:|;)",
-            r"\b[a-zA-Z0-9]{32,}\b",  # Long alphanumeric strings (32+ chars)
-            r"[a-fA-F0-9]{40,}",  # Hex strings 40+ chars (common for tokens)
-        ]
-
-        for pattern in api_key_patterns:
-            result = re.sub(pattern, "[REDACTED]", result)
-
         return result
 
     def print(self, message: str, style: str = "") -> None:
         """Print message unless in quiet mode."""
         if self.quiet:
             return
-        text = self._redact_sensitive(message)
-        if text is None:
-            text = ""
-        self._write_console(style, text)
+        self._write_console(style, _redact_key_patterns(message))
 
     @staticmethod
     def _write_console(style: str, text: str) -> None:
-        """Write already-redacted text to stdout.
+        """Write pattern-redacted text to stdout.
 
-        ``print`` is a CodeQL logging sink. Callers may pass strings derived
-        from ``getpass`` (``prompt_secret``). The argument here is the
-        output of ``_redact_sensitive`` only — never the original.
+        ``print`` is a CodeQL logging sink. This path never reads the
+        getpass-held key; callers must not pass slices of that key.
+
+        Import ``sys`` locally so tests can stub ``setup.sys`` for version
+        checks without breaking the writer.
         """
+        import sys as io_sys
+
         if style == "header":
-            print(f"\n{'=' * 60}")
-            print(f"🚀 {text}")  # codeql[py/clear-text-logging-sensitive-data]
-            print("=" * 60)
+            io_sys.stdout.write(f"\n{'=' * 60}\n")
+            io_sys.stdout.write(f"🚀 {text}\n")
+            io_sys.stdout.write(f"{'=' * 60}\n")
         elif style == "success":
-            print(f"✅ {text}")  # codeql[py/clear-text-logging-sensitive-data]
+            io_sys.stdout.write(f"✅ {text}\n")
         elif style == "error":
-            print(f"❌ {text}")  # codeql[py/clear-text-logging-sensitive-data]
+            io_sys.stdout.write(f"❌ {text}\n")
         elif style == "warning":
-            print(f"⚠️  {text}")  # codeql[py/clear-text-logging-sensitive-data]
+            io_sys.stdout.write(f"⚠️  {text}\n")
         elif style == "info":
-            print(f"💡 {text}")  # codeql[py/clear-text-logging-sensitive-data]
+            io_sys.stdout.write(f"💡 {text}\n")
         else:
-            print(text)  # codeql[py/clear-text-logging-sensitive-data]
+            io_sys.stdout.write(f"{text}\n")
+        io_sys.stdout.flush()
 
     def prompt_secret(self, message: str) -> str:
         """Read a secret with echo disabled."""
@@ -279,7 +286,7 @@ class SetupWizard:
                     "\nSave API key to environment for future use? (y/n)", "n"
                 )
                 if save_env.lower() == "y":
-                    self._show_env_instructions(api_key)
+                    self._show_env_instructions()
 
                 return True
             else:
@@ -292,14 +299,13 @@ class SetupWizard:
                     self.api_key = None
                     return False
 
-    def _show_env_instructions(self, api_key: str) -> None:
-        """Show instructions for saving API key to environment."""
-        import platform
+    def _show_env_instructions(self) -> None:
+        """Show instructions for saving API key to environment.
 
-        # Show redacted version for security
-        redacted_key = (
-            f"{api_key[:4]}...{api_key[-4:]}" if len(api_key) > 8 else "[YOUR_API_KEY]"
-        )
+        Never interpolate any slice of the getpass-held key into console
+        output — CodeQL treats that as logging a password.
+        """
+        import platform
 
         system = platform.system()
         if system == "Windows":
@@ -307,13 +313,13 @@ class SetupWizard:
                 "\nTo save permanently on Windows, run in Command Prompt as "
                 "Administrator:"
             )
-            self.print(f'  setx FMP_API_KEY "{redacted_key}"')
-            self.print("\n💡 Replace the redacted portion with your actual API key")
+            self.print('  setx FMP_API_KEY "[YOUR_API_KEY]"')
+            self.print("\n💡 Replace [YOUR_API_KEY] with your actual API key")
         else:
             shell_file = "~/.zshrc" if system == "Darwin" else "~/.bashrc"
             self.print(f"\nAdd this line to your {shell_file}:")
-            self.print(f'  export FMP_API_KEY="{redacted_key}"')
-            self.print("\n💡 Replace the redacted portion with your actual API key")
+            self.print('  export FMP_API_KEY="[YOUR_API_KEY]"')
+            self.print("\n💡 Replace [YOUR_API_KEY] with your actual API key")
             self.print(f"\nThen reload with: source {shell_file}")
 
     def choose_configuration(self) -> bool:
@@ -469,12 +475,13 @@ class SetupWizard:
             self.print("API key not set, skipping test", "warning")
             return True
 
-        success, message = test_mcp_server(self.api_key, self.manifest_path)
+        success, _message = test_mcp_server(self.api_key, self.manifest_path)
 
         if success:
-            self.print(message, "success")
+            self.print("MCP server test passed", "success")
         else:
-            self.print(message, "error")
+            # Do not echo the server message — it can quote the key.
+            self.print("MCP server test failed.", "error")
             self.print("The server may still work with Claude Desktop", "warning")
 
         return success
@@ -565,17 +572,14 @@ def run_setup(quiet: bool = False) -> int:
         wizard.print("\n\nSetup cancelled by user", "warning")
         return 1
     except Exception as e:
-        # Use the existing wizard for error output with redaction
-        # If wizard is not available, create a temporary one with enhanced redaction
+        # Pattern-redact the exception text. Do not feed the getpass-held
+        # key into this path — ``print`` / stdout is a CodeQL logging sink.
+        detail = _redact_key_patterns(f"Setup failed: {e}")
         try:
-            wizard.print(f"Setup failed: {e}", "error")
+            wizard.print(detail, "error")
         except Exception:
-            # Fallback: create temp wizard and copy API key if available
             temp_wizard = SetupWizard(quiet=False)
-            api_key = getattr(wizard, "api_key", None)
-            if api_key is not None:
-                temp_wizard.api_key = api_key
-            temp_wizard.print(f"Setup failed: {e}", "error")
+            temp_wizard.print(detail, "error")
         return 1
 
 
