@@ -817,6 +817,21 @@ class TestValidateApiKey:
 
         assert mcp_utils.validate_api_key("KEY123") == (True, "valid")
 
+    def test_http_403_is_invalid(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from fmp_data.exceptions import FMPError
+
+        class ForbiddenClient(_FakeFmpClient):
+            def __init__(self, **kwargs: Any) -> None:
+                super().__init__(**kwargs)
+                self.company = _FakeCompany(
+                    raises=FMPError("unauthorized", status_code=403)
+                )
+
+        monkeypatch.setattr("fmp_data.client.FMPDataClient", ForbiddenClient)
+
+        assert mcp_utils.validate_api_key("BAD") == (False, "invalid")
+        assert ForbiddenClient.instances[-1].closed is True
+
     def test_unexpected_exception_is_unavailable_not_raised(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -934,7 +949,7 @@ def test_example_claude_desktop_copies_use_the_real_manifest_path() -> None:
     stale = "examples/mcp_configurations/"
     offenders: list[str] = []
     for path in sorted(root.rglob("*")):
-        if not path.is_file() or path.suffix not in {".py", ".md"}:
+        if not path.is_file() or path.suffix not in {".py", ".md", ".json"}:
             continue
         if stale in path.read_text(encoding="utf-8"):
             offenders.append(str(path.relative_to(root)))

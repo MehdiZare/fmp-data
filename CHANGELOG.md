@@ -28,12 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`validate_api_key` now probes FMP (#317).**
   A typed junk key no longer reports success. The helper constructs a
-  client and calls `company.get_quote("AAPL")`; 401 maps to `invalid`.
+  client and calls `company.get_quote("AAPL")`; 401 and 403 map to
+  `invalid`. Rate-limit / other HTTP errors still count as `valid`.
 
 - **Setup wizard offers the example MCP profiles again (#320).**
   `get_manifest_choices` looks in `examples/mcp/configurations/` (the
-  real directory). The example Claude Desktop script and its
-  README / troubleshooting copies use the same path.
+  real directory). The example Claude Desktop script, JSON profiles,
+  and README / troubleshooting copies use the same path.
 
 ## [2.7.0] - 2026-08-14
 
