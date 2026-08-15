@@ -17,6 +17,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wizard both call through those, so the three former copies cannot
   drift.
 
+- **MCP helper messages are classified and key-free (#319).**
+  `validate_api_key` and `test_mcp_server` return only static display
+  strings (`API_KEY_*`, `MCP_SERVER_*`). They no longer embed stderr or
+  exception text, so the CLI (`status` / `test`) can print them.
+
+- **`validate_api_key` now probes FMP (#317).**
+  It constructs a client with the supplied key and calls
+  `market.search_symbol("AAPL", limit=1)`. 401/403 map to
+  `API key is invalid or expired`. Construction-only success is gone.
+
+- **Setup wizard example profiles are offered again (#320).**
+  `get_manifest_choices` reads `examples/mcp/configurations/`. Claude
+  Desktop example docs and the standalone setup script use that path.
+
 ## [2.7.0] - 2026-08-14
 
 Released from `dev`. A security-and-contracts minor in the same shape as
