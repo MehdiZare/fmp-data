@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- **One module now owns credential display redaction (#316).**
+  `redact_credential_patterns` is the shared query/assignment/encoded
+  path (CodeQL-safe for stdout / logging sinks; never takes the live
+  secret). `redact_held_secret` is exact-replace for prompts /
+  `getpass` only. The setup wizard also runs `redact_key_shaped_tokens`
+  (sk-/32-char heuristics); those stay off HTTP error bodies so request
+  ids are not blanked.
+
 ## [2.7.0] - 2026-08-14
 
 Released from `dev`. A security-and-contracts minor in the same shape as

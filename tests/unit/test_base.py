@@ -378,6 +378,16 @@ def test_handle_response_non_utf8_body_does_not_mask_the_json_error(client_confi
     assert fake_key_value not in repr(error.response)
 
 
+def test_handle_response_does_not_blank_32_char_request_ids(client_config):
+    """Wizard key-shaped heuristics must not run on HTTP error bodies (#316)."""
+    token = "A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6"  # noqa: S105  # pragma: allowlist secret
+    body = f"<html>request-id={token} denied</html>".encode()
+
+    error = _handle_body(client_config, 500, body)
+
+    assert token in repr(error.response)
+
+
 def test_get_error_details_handles_non_utf8_body():
     """Non-UTF-8 error bodies should not raise while extracting details."""
     request = httpx.Request("GET", "https://example.com")

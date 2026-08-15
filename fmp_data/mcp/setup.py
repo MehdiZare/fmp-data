@@ -6,10 +6,14 @@ Interactive setup wizard for configuring FMP Data MCP server with Claude Desktop
 
 from __future__ import annotations
 
-import re
 import sys
 from typing import Any
 
+from fmp_data._redaction import (
+    redact_credential_patterns,
+    redact_held_secret,
+    redact_key_shaped_tokens,
+)
 from fmp_data.mcp.utils import (
     add_mcp_server_to_config,
     check_claude_desktop_installed,
@@ -25,29 +29,15 @@ from fmp_data.mcp.utils import (
     validate_api_key,
 )
 
-# Query-string credentials (more specific — applied first).
-_URL_CREDENTIAL_PATTERNS = (
-    r"([?&](?:api_?key|token|secret)=)[^&\s]+",
-    r"([?&]apikey=)[^&\s]+",
-)
-# Console output must not read the wizard's held secret. These patterns
-# are the only sanitizer on that path.
-_KEY_SHAPED_PATTERNS = (
-    r"\b(?:sk-|pk_)[a-zA-Z0-9_-]{8,}\b",
-    r"\bapi_key=[a-zA-Z0-9_-]{8,}(?=\s|:|;)",
-    r"\b[a-zA-Z0-9]{32,}\b",
-    r"[a-fA-F0-9]{40,}",
-)
-
 
 def _redact_key_patterns(message: str) -> str:
-    """Redact key-shaped tokens without reading the wizard's held secret."""
-    result = message
-    for pattern in _URL_CREDENTIAL_PATTERNS:
-        result = re.sub(pattern, r"\1[REDACTED]", result)
-    for pattern in _KEY_SHAPED_PATTERNS:
-        result = re.sub(pattern, "[REDACTED]", result)
-    return result
+    """Pattern-only redaction. Never reads the wizard's held secret.
+
+    Thin wrapper so ``print`` cannot be retargeted at
+    :func:`redact_held_secret` without failing the CodeQL sink rule
+    (``py/clear-text-logging-sensitive-data``, #315 / #316).
+    """
+    return redact_key_shaped_tokens(redact_credential_patterns(message))
 
 
 class SetupWizard:
@@ -74,8 +64,8 @@ class SetupWizard:
             return message
 
         result = _redact_key_patterns(message)
-        if self.api_key and self.api_key in result:
-            result = result.replace(self.api_key, "[REDACTED]")
+        if self.api_key:
+            result = redact_held_secret(result, self.api_key)
         return result
 
     def print(self, message: str, style: str = "") -> None:
