@@ -881,6 +881,25 @@ class BaseClient:
             raise AuthenticationError(text, status_code=200)
         raise FMPError(text)
 
+    _ERROR_BODY_KEYS = frozenset({"Error Message", "message", "error"})
+
+    @staticmethod
+    def _check_singleton_error_list(data: list[Any]) -> None:
+        """Type a one-element list whose only keys are error keys (#342).
+
+        ``get_quote`` is a JSON list. A junk-key body
+        ``[{"Error Message": "Invalid API KEY"}]`` never hit
+        ``_check_error_response`` (dict-only). Do not walk a large list.
+        """
+        if len(data) != 1:
+            return
+        item = data[0]
+        if not isinstance(item, dict):
+            return
+        keys = set(item)
+        if keys and keys <= BaseClient._ERROR_BODY_KEYS:
+            BaseClient._check_error_response(item)
+
     @staticmethod
     def _validate_model(
         endpoint_name: str,
@@ -1033,6 +1052,7 @@ class BaseClient:
 
         # Process list responses
         if isinstance(data, list):
+            BaseClient._check_singleton_error_list(data)
             return BaseClient._process_list_response(
                 endpoint,
                 data,

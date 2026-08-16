@@ -867,6 +867,59 @@ def test_process_response_raises_on_error_message():
         BaseClient._process_response(endpoint, {"message": "boom"})
 
 
+def _list_quote_endpoint() -> Mock:
+    class QuoteRow(BaseModel):
+        model_config = ConfigDict(extra="allow")
+        symbol: str | None = None
+
+    endpoint = Mock()
+    endpoint.name = "quote"
+    endpoint.response_model = QuoteRow
+    return endpoint
+
+
+def test_process_response_singleton_invalid_api_key_list_is_auth_error() -> None:
+    """A one-row list error body must type as AuthenticationError (#342)."""
+    with pytest.raises(AuthenticationError) as exc_info:
+        BaseClient._process_response(
+            _list_quote_endpoint(),
+            [{"Error Message": "Invalid API KEY"}],
+        )
+    assert exc_info.value.status_code == 200
+
+
+def test_process_response_singleton_unrelated_error_list_is_not_auth() -> None:
+    """Legacy 2xx list bodies stay a non-auth failure (#342)."""
+    with pytest.raises(FMPError) as exc_info:
+        BaseClient._process_response(
+            _list_quote_endpoint(),
+            [{"Error Message": "Legacy endpoint retired"}],
+        )
+    assert type(exc_info.value) is FMPError
+
+
+def test_process_response_normal_quote_list_is_unchanged() -> None:
+    result: object = BaseClient._process_response(
+        _list_quote_endpoint(),
+        [{"symbol": "AAPL", "price": 1.0}],
+    )
+    assert isinstance(result, list)
+    assert result[0].symbol == "AAPL"
+
+
+def test_process_response_does_not_walk_a_multi_row_list_for_errors() -> None:
+    """Do not inspect every row of a large list (#342)."""
+    result: object = BaseClient._process_response(
+        _list_quote_endpoint(),
+        [
+            {"Error Message": "Invalid API KEY"},
+            {"symbol": "AAPL"},
+        ],
+    )
+    assert isinstance(result, list)
+    assert len(result) == 2
+
+
 def test_process_response_strict_mode_rejects_unknown_fields() -> None:
     """Strict mode should reject unknown fields on extra-allow models."""
 

@@ -1295,8 +1295,8 @@ class TestMarketIntelligenceClientGovernment:
         assert row.debt_details is not None
         assert row.debt_details.date_incurred == "September 2007"
         assert row.value_range is not None
-        assert row.value_range.min == 1000001
-        assert row.value_range.max == 5000000
+        assert row.value_range.minimum == 1000001
+        assert row.value_range.maximum == 5000000
         assert row.income_range is None
         assert row.income is None
         assert not row.model_extra
@@ -1371,6 +1371,91 @@ class TestMarketIntelligenceClientGovernment:
         )
         assert row.senate_id == "P000197"
         assert row.model_dump(by_alias=True)["senateID"] == "P000197"
+
+    def test_trade_and_disclosure_dates_are_date_not_datetime(self) -> None:
+        """Older rows join the profile/net-worth date family (#338)."""
+        from datetime import date
+
+        trade = SenateTrade.model_validate(
+            {
+                "disclosureDate": "2025-01-08",
+                "transactionDate": "2024-12-19T10:00:00",
+                "link": "https://example.com/filing",
+            }
+        )
+        house = HouseDisclosure.model_validate(
+            {
+                "disclosureDate": "2025-01-08T00:00:00",
+                "transactionDate": "2024-12-19",
+                "link": "https://example.com/filing",
+            }
+        )
+        assert type(trade.disclosure_date) is date
+        assert type(trade.transaction_date) is date
+        assert type(trade.date_received) is date
+        assert type(house.disclosure_date) is date
+        assert type(house.transaction_date) is date
+
+    def test_latest_pagination_is_optional_like_trades_by_id(self) -> None:
+        """page/limit with defaults belong in optional_params (#338)."""
+        from fmp_data.intelligence.endpoints import (
+            HOUSE_LATEST,
+            HOUSE_TRADES_BY_ID,
+            SENATE_LATEST,
+            SENATE_TRADES_BY_ID,
+        )
+
+        for endpoint in (
+            SENATE_LATEST,
+            HOUSE_LATEST,
+            SENATE_TRADES_BY_ID,
+            HOUSE_TRADES_BY_ID,
+        ):
+            mandatory = {param.name for param in endpoint.mandatory_params}
+            optional = {param.name for param in endpoint.optional_params or []}
+            assert "page" in optional, endpoint.name
+            assert "limit" in optional, endpoint.name
+            assert "page" not in mandatory, endpoint.name
+            assert "limit" not in mandatory, endpoint.name
+
+    def test_newer_government_models_have_field_descriptions(self) -> None:
+        """MCP/JSON schema text should match the rest of intelligence (#338)."""
+        from fmp_data.intelligence.models import (
+            SenateNetWorthAggregated,
+            SenateNetWorthDebtDetails,
+            SenateNetWorthItem,
+            SenateNetWorthValueRange,
+            SenatePosition,
+            SenateProfile,
+        )
+
+        missing: list[str] = []
+        for model in (
+            SenateProfile,
+            SenatePosition,
+            SenateNetWorthValueRange,
+            SenateNetWorthDebtDetails,
+            SenateNetWorthItem,
+            SenateNetWorthAggregated,
+        ):
+            for name, field in model.model_fields.items():
+                if not (field.description or "").strip():
+                    missing.append(f"{model.__name__}.{name}")
+        assert not missing, f"missing Field(description=): {missing}"
+
+    def test_value_range_uses_minimum_maximum_and_enforces_order(self) -> None:
+        """Do not shadow builtins; inverted ranges are invalid (#336)."""
+        from pydantic import ValidationError as PydanticValidationError
+
+        from fmp_data.intelligence.models import SenateNetWorthValueRange
+
+        row = SenateNetWorthValueRange.model_validate({"min": 1, "max": 5})
+        assert row.minimum == 1
+        assert row.maximum == 5
+        assert "min" not in SenateNetWorthValueRange.model_fields
+        assert "max" not in SenateNetWorthValueRange.model_fields
+        with pytest.raises(PydanticValidationError):
+            SenateNetWorthValueRange.model_validate({"min": 5, "max": 1})
 
 
 class TestMarketIntelligenceClientFundraising:

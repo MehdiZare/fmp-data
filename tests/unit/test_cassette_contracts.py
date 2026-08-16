@@ -8,6 +8,7 @@ import pkgutil
 import re
 from urllib.parse import urlparse
 
+from pydantic import BaseModel
 import pytest
 import yaml
 
@@ -47,6 +48,52 @@ def _matches_path(pattern: str, actual_path: str) -> bool:
     return re.fullmatch(tokenized, actual_path) is not None
 
 
+CONTRACTS_PATH = Path("tests/integration/cassette_contracts.json")
+
+
+def _load_committed_contracts() -> list[dict]:
+    payload = json.loads(CONTRACTS_PATH.read_text(encoding="utf-8"))
+    return list(payload["cassettes"])
+
+
+def _declared_wire_names(model: type[BaseModel]) -> set[str]:
+    """Field names plus aliases a live key can bind to."""
+    names: set[str] = set()
+    for name, field in model.model_fields.items():
+        names.add(name)
+        if field.alias:
+            names.add(str(field.alias))
+        if field.serialization_alias:
+            names.add(str(field.serialization_alias))
+        validation_alias = field.validation_alias
+        if isinstance(validation_alias, str):
+            names.add(validation_alias)
+        elif validation_alias is not None and hasattr(validation_alias, "choices"):
+            names.update(str(choice) for choice in validation_alias.choices)
+        parts = name.split("_")
+        names.add(parts[0] + "".join(part.capitalize() for part in parts[1:]))
+    return names
+
+
+def test_committed_cassette_contracts_match_models() -> None:
+    """CI has no YAML; the committed snapshot must still fail on alias drift (#336)."""
+    contracts = _load_committed_contracts()
+    assert contracts, f"{CONTRACTS_PATH} has no cassette entries"
+
+    missing: list[str] = []
+    for entry in contracts:
+        module_name, _, class_name = entry["model"].rpartition(".")
+        model = getattr(importlib.import_module(module_name), class_name)
+        assert issubclass(model, BaseModel)
+        declared = _declared_wire_names(model)
+        for alias in entry["required_aliases"]:
+            if alias not in declared:
+                missing.append(
+                    f"{entry['path']}: {entry['model']} missing alias {alias!r}"
+                )
+    assert not missing, "Committed cassette contract drift:\n  " + "\n  ".join(missing)
+
+
 def test_vcr_cassettes_match_endpoint_models() -> None:  # noqa: C901
     """Validate JSON cassette payloads against declared endpoint response models."""
     endpoints = _collect_endpoints()
@@ -59,7 +106,9 @@ def test_vcr_cassettes_match_endpoint_models() -> None:  # noqa: C901
     if not cassette_files:
         pytest.skip(
             "No VCR cassette YAML files found — "
-            "record cassettes first to enable contract validation."
+            "record cassettes first to enable payload contract validation. "
+            "Alias drift is still checked by "
+            "test_committed_cassette_contracts_match_models."
         )
 
     unmatched_requests: list[str] = []
