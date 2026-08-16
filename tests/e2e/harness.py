@@ -64,8 +64,6 @@ ALLOW_EMPTY: frozenset[tuple[str, str]] = frozenset(
         ("institutional", "get_holder_industry_breakdown"),
         ("intelligence", "get_senate_trades_by_name"),
         ("intelligence", "get_house_trades_by_name"),
-        ("intelligence", "get_senate_trades_by_id"),
-        ("intelligence", "get_house_trades_by_id"),
         ("intelligence", "search_crowdfunding"),
         ("intelligence", "get_crowdfunding_by_cik"),
         ("intelligence", "search_equity_offering"),

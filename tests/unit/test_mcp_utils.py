@@ -824,16 +824,22 @@ class TestValidateApiKey:
             "Invalid API KEY. Feel free to create a Free API Key...",
         ],
     )
-    def test_statusless_invalid_api_key_copy_is_invalid(
+    def test_typed_2xx_invalid_key_body_is_invalid(
         self, monkeypatch: pytest.MonkeyPatch, message: str
     ) -> None:
-        """A 200-body ``Error Message`` has no status_code (#329)."""
-        from fmp_data.exceptions import FMPError
+        """Wizard invalid follows ``_check_error_response``, not a copy matcher."""
+        from fmp_data.base import BaseClient
+
+        class TypingCompany(_FakeCompany):
+            def get_quote(self, symbol: str) -> Any:
+                self.symbols.append(symbol)
+                BaseClient._check_error_response({"Error Message": message})
+                return None
 
         class BodyClient(_FakeFmpClient):
             def __init__(self, **kwargs: Any) -> None:
                 super().__init__(**kwargs)
-                self.company = _FakeCompany(raises=FMPError(message))
+                self.company = TypingCompany()
 
         monkeypatch.setattr("fmp_data.client.FMPDataClient", BodyClient)
 

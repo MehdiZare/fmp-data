@@ -126,11 +126,11 @@ _URL_CREDENTIAL_RE = re.compile(
     re.IGNORECASE,
 )
 _URL_APIKEY_RE = re.compile(r"([?&]apikey=)[^&\s]+", re.IGNORECASE)
-# Prefixed ``*_API_KEY=`` must match; only the wizard's instruction
-# value is skipped so ``export FMP_API_KEY="[YOUR_API_KEY]"`` stays
-# readable (#330).
+# Prefixed ``*_API_KEY=`` / hyphenated ``*-API-KEY=`` must match
+# (#330, #339). Only the wizard's instruction value is skipped so
+# ``export FMP_API_KEY="[YOUR_API_KEY]"`` stays readable.
 _ASSIGNMENT_RE = re.compile(
-    r"([\"']?(?<![A-Za-z0-9])(?:[A-Za-z0-9]+_)*api_?key[\"']?\s*[=:]\s*[\"']?)"
+    r"([\"']?(?<![A-Za-z0-9])(?:[A-Za-z0-9]+[_-])*api[_-]?key[\"']?\s*[=:]\s*[\"']?)"
     r"([^&\s\"'<>]+)([\"']?)",
     re.IGNORECASE,
 )

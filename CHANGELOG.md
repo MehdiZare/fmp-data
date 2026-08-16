@@ -48,6 +48,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only the wizard placeholder `[YOUR_API_KEY]` is left alone.
   Wizard 32-char / hex-40 heuristics stay off this path.
 
+- **`SenateId` branded type on every `senate_id` field (#338).** Shared
+  `Annotated` type (like `CIK`) on `SenateTrade`, `HouseDisclosure`,
+  `SenateProfile`, `SenatePosition`, and the net-worth rows. Strings
+  pass through untouched. Date-family and pagination requiredness are
+  not part of this slice.
+
+- **`redact_credential_patterns` redacts hyphenated assignment names
+  (#339).** `X-API-KEY=` / `FMP-API-KEY=` now match. Wizard placeholder
+  `[YOUR_API_KEY]` and 32-char request ids are still left alone.
+
 ### Fixed
 
 - **MCP setup helpers no longer echo subprocess stderr (#319).**
@@ -62,19 +72,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   client and calls `company.get_quote("AAPL")`; 401 and 403 map to
   `invalid`. Rate-limit / other HTTP errors still count as `valid`.
 
-- **`validate_api_key` treats a status-less `Invalid API KEY` body as
-  invalid (#329).** Live `/stable/quote` (and `/api/v3/quote`) now
-  return HTTP 401 for a junk key (probed 2026-08-15), which already
-  maps to `AuthenticationError`. `_check_error_response` still raises
-  a bare `FMPError` with no `status_code` if a 2xx JSON body is
-  `{"Error Message": "Invalid API KEY..."}`; that copy now classifies
-  as `invalid`. Unrelated status-less `FMPError`s still count as
-  `valid`.
+- **`validate_api_key` first classified a status-less `Invalid API KEY`
+  body as invalid (#329).** That wizard-side copy matcher is superseded
+  by #340 in this same Unreleased section. Live `/stable/quote` returns
+  HTTP 401 for a junk key (probed 2026-08-15).
 
 - **Setup wizard offers the example MCP profiles again (#320).**
   `get_manifest_choices` looks in `examples/mcp/configurations/` (the
   real directory). The example Claude Desktop script, JSON profiles,
   and README / troubleshooting copies use the same path.
+
+- **E2E sweep no longer treats Senate/House trades-by-id as allowed
+  empty (#337).** Those methods pin known-nonempty ids (`W000802` /
+  `P000197`); a 200/`[]` is the 404-as-empty class, not entity
+  emptiness. Name-based lookups stay on `ALLOW_EMPTY`.
+
+- **2xx `Invalid API KEY` bodies raise `AuthenticationError` (#340).**
+  `_check_error_response` types the known invalid-key copy instead of
+  a status-less `FMPError`. Unrelated 2xx bodies stay `FMPError`.
+  `validate_api_key`'s copy matcher is gone — the
+  `except AuthenticationError` path covers it.
+
+- **Net-worth integration tests require at least one nested object and
+  one populated aggregated alias (#336).** First slice on the local VCR
+  path: a full rename of `valueRange`/`debtDetails`, or of both
+  `total`/`stock`, now fails. Per-field `model_extra` locking stays
+  with the unit fixtures.
 
 ## [2.7.0] - 2026-08-14
 

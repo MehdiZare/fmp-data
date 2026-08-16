@@ -14,7 +14,7 @@ from pydantic import (
 )
 from pydantic.alias_generators import to_camel
 
-from fmp_data.models import CIK
+from fmp_data.models import CIK, SenateId
 
 default_model_config = ConfigDict(
     populate_by_name=True,
@@ -458,7 +458,7 @@ class SenateTrade(BaseModel):
     model_config = default_model_config
 
     symbol: str | None = Field(None, description="Stock symbol")
-    senate_id: str | None = Field(
+    senate_id: SenateId | None = Field(
         None,
         alias="senateID",
         description="FMP entity id for the senator (wire key senateID).",
@@ -510,7 +510,7 @@ class HouseDisclosure(BaseModel):
         validation_alias=AliasChoices("symbol", "ticker"),
         description="Stock symbol",
     )
-    senate_id: str | None = Field(
+    senate_id: SenateId | None = Field(
         None,
         alias="senateID",
         description=(
@@ -571,7 +571,7 @@ class SenateProfile(BaseModel):
 
     model_config = default_model_config
 
-    senate_id: str | None = Field(
+    senate_id: SenateId | None = Field(
         None, alias="senateID", description="FMP member id (wire key senateID)"
     )
     first_name: str | None = Field(None, alias="firstName")
@@ -590,7 +590,7 @@ class SenatePosition(BaseModel):
 
     model_config = default_model_config
 
-    senate_id: str | None = Field(
+    senate_id: SenateId | None = Field(
         None, alias="senateID", description="FMP member id (wire key senateID)"
     )
     congress_number: int | None = Field(None, alias="congressNumber")
@@ -624,7 +624,7 @@ class SenateNetWorthItem(BaseModel):
 
     model_config = default_model_config
 
-    senate_id: str | None = Field(None, alias="senateID")
+    senate_id: SenateId | None = Field(None, alias="senateID")
     form_type: str | None = Field(None, alias="formType")
     year: int | None = Field(None)
     filing_date: dt_date | None = Field(None, alias="filingDate")
@@ -648,7 +648,7 @@ class SenateNetWorthAggregated(BaseModel):
 
     model_config = default_model_config
 
-    senate_id: str | None = Field(None, alias="senateID")
+    senate_id: SenateId | None = Field(None, alias="senateID")
     year: int | None = Field(None)
     total: float | None = Field(None)
     real_estate_liabilities: float | None = Field(None, alias="realEstateLiabilities")

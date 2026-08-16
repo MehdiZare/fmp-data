@@ -135,9 +135,33 @@ def test_pattern_api_redacts_query_assignment_and_encoded() -> None:
     assert planted not in redact_credential_patterns(f"FMP_API_KEY={planted}")
     assert "[REDACTED]" in redact_credential_patterns(f"FMP_API_KEY={planted}")
     assert planted not in redact_credential_patterns(f"my_api_key={planted}")
+    assert planted not in redact_credential_patterns(f"X-API-KEY={planted}")
+    assert "[REDACTED]" in redact_credential_patterns(f"X-API-KEY={planted}")
+    assert planted not in redact_credential_patterns(f"FMP-API-KEY={planted}")
+    assert "[REDACTED]" in redact_credential_patterns(f"FMP-API-KEY={planted}")
     assert "PLANTED" not in redact_credential_patterns(quoted)
     assert "[PLANTED_BRACKETED]" not in redact_credential_patterns(bracketed)
     assert "your_actual_secret_key" not in redact_credential_patterns(your_shaped)
+
+
+def test_hyphenated_assignment_keeps_placeholder_and_request_id() -> None:
+    """#339 is a pair: hyphenated names redact; placeholder and ids survive."""
+    planted = "PLANTED_fmp_api_key_token"
+    assert planted not in redact_credential_patterns(f"X-API-KEY={planted}")
+    assert planted not in redact_credential_patterns(f"FMP-API-KEY={planted}")
+    assert (
+        redact_credential_patterns("X-API-KEY=[YOUR_API_KEY]")
+        == "X-API-KEY=[YOUR_API_KEY]"
+    )
+    assert (
+        redact_credential_patterns('FMP-API-KEY="[YOUR_API_KEY]"')
+        == 'FMP-API-KEY="[YOUR_API_KEY]"'
+    )
+    token = "A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6"  # noqa: S105  # pragma: allowlist secret
+    mixed = f"X-API-KEY={planted} request-id={token}"
+    redacted = redact_credential_patterns(mixed)
+    assert planted not in redacted
+    assert token in redacted
 
 
 def test_pattern_api_leaves_32_char_identifiers() -> None:

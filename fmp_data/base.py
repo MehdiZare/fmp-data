@@ -6,6 +6,7 @@ from contextvars import ContextVar
 import copy
 import json
 import logging
+import re
 import time
 from typing import Any, Literal, NoReturn, TypeGuard, TypeVar, cast, overload
 import warnings
@@ -38,6 +39,11 @@ from fmp_data.rate_limit import AsyncFMPRateLimiter, FMPRateLimiter, QuotaConfig
 
 T = TypeVar("T")
 ValidationMode = Literal["lenient", "warn", "strict"]
+
+# 2xx JSON bodies use this copy for a junk key. HTTP 401 is the live
+# /quote path (probed 2026-08-15); this is the typed regression guard
+# so callers do not see a bare FMPError (#340).
+_INVALID_API_KEY_BODY = re.compile(r"^invalid api key\b", re.IGNORECASE)
 
 
 def _default_http_headers() -> dict[str, str]:
@@ -850,20 +856,30 @@ class BaseClient:
 
     @staticmethod
     def _check_error_response(data: dict[str, Any]) -> None:
-        """Check for error messages in response data and raise FMPError if found.
+        """Raise a typed error when a 2xx JSON dict carries an error body.
 
         Args:
             data: Dictionary response data to check
 
         Raises:
-            FMPError: If an error message is found in the data
+            AuthenticationError: If the body is the known invalid-key copy
+                on a 2xx response (#340).
+            FMPError: If any other error message is found in the data
         """
         if "Error Message" in data:
-            raise FMPError(data["Error Message"])
+            BaseClient._raise_response_error(data["Error Message"])
         if "message" in data:
-            raise FMPError(data["message"])
+            BaseClient._raise_response_error(data["message"])
         if "error" in data:
-            raise FMPError(data["error"])
+            BaseClient._raise_response_error(data["error"])
+
+    @staticmethod
+    def _raise_response_error(message: Any) -> NoReturn:
+        """Raise a typed error for a 2xx JSON error body."""
+        text = str(message)
+        if _INVALID_API_KEY_BODY.match(text.strip()):
+            raise AuthenticationError(text, status_code=200)
+        raise FMPError(text)
 
     @staticmethod
     def _validate_model(
