@@ -45,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (#330).** The #316 lookbehind skipped every `*_API_KEY=` assignment
   so wizard copy `export FMP_API_KEY="[YOUR_API_KEY]"` survived — and
   so did a real token in an HTTP error body. Prefixed names now match;
-  placeholder values (`[YOUR_API_KEY]`, `your_*key*`) are left alone.
+  only the wizard placeholder `[YOUR_API_KEY]` is left alone.
   Wizard 32-char / hex-40 heuristics stay off this path.
 
 ### Fixed

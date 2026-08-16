@@ -126,19 +126,16 @@ _URL_CREDENTIAL_RE = re.compile(
     re.IGNORECASE,
 )
 _URL_APIKEY_RE = re.compile(r"([?&]apikey=)[^&\s]+", re.IGNORECASE)
-# Matches ``apikey=``, ``api_key=``, ``FMP_API_KEY=``, ``my_api_key=``,
-# and ``"api_key":``. The previous ``(?<![A-Za-z0-9_])`` lookbehind
-# skipped every ``*_API_KEY=`` assignment so wizard copy
-# ``export FMP_API_KEY="[YOUR_API_KEY]"`` survived — and so did a real
-# token in an error body (#330). Placeholders are skipped in
-# ``_redact_assignment``.
+# Prefixed ``*_API_KEY=`` must match; only the wizard's instruction
+# value is skipped so ``export FMP_API_KEY="[YOUR_API_KEY]"`` stays
+# readable (#330).
 _ASSIGNMENT_RE = re.compile(
     r"([\"']?(?<![A-Za-z0-9])(?:[A-Za-z0-9]+_)*api_?key[\"']?\s*[=:]\s*[\"']?)"
     r"([^&\s\"'<>]+)([\"']?)",
     re.IGNORECASE,
 )
 _PLACEHOLDER_ASSIGNMENT_VALUE = re.compile(
-    r"^(\[[^\]]+\]|your[_-].*key(?:[_-].*)?|<your[_-].*>)$",
+    r"^\[YOUR_API_KEY\]$",
     re.IGNORECASE,
 )
 _ENCODED_RE = re.compile(r"(apikey%3[Dd])([^&\s\"'<>]+)", re.IGNORECASE)
@@ -154,7 +151,7 @@ _TEXT_MASK = "[REDACTED]"
 
 
 def _redact_assignment(match: re.Match[str]) -> str:
-    """Redact an assignment unless the value is wizard placeholder copy."""
+    """Redact an assignment unless the value is ``[YOUR_API_KEY]``."""
     value = match.group(2)
     if _PLACEHOLDER_ASSIGNMENT_VALUE.match(value):
         return match.group(0)
