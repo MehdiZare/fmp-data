@@ -566,6 +566,42 @@ class HouseDisclosure(BaseModel):
         return str(self.disclosure_date.year) if self.disclosure_date else None
 
 
+class SenateProfile(BaseModel):
+    """Congress member profile. Path is senate-profile; rows include House."""
+
+    model_config = default_model_config
+
+    senate_id: str | None = Field(
+        None, alias="senateID", description="FMP member id (wire key senateID)"
+    )
+    first_name: str | None = Field(None, alias="firstName")
+    last_name: str | None = Field(None, alias="lastName")
+    birth_date: dt_date | None = Field(None, alias="birthDate")
+    latest_party: str | None = Field(None, alias="latestParty")
+    latest_state: str | None = Field(None, alias="latestState")
+    latest_position: str | None = Field(None, alias="latestPosition")
+    image: HttpUrl | None = Field(None, description="Member portrait URL")
+    active: bool | None = Field(None)
+    years_active: float | None = Field(None, alias="yearsActive")
+
+
+class SenatePosition(BaseModel):
+    """Congress member term history. Path is senate-positions."""
+
+    model_config = default_model_config
+
+    senate_id: str | None = Field(
+        None, alias="senateID", description="FMP member id (wire key senateID)"
+    )
+    congress_number: int | None = Field(None, alias="congressNumber")
+    start_date: dt_date | None = Field(None, alias="startDate")
+    end_date: dt_date | None = Field(None, alias="endDate")
+    party: str | None = Field(None)
+    position: str | None = Field(None)
+    state: str | None = Field(None)
+    years_in_term: float | None = Field(None, alias="yearsInTerm")
+
+
 class CrowdfundingOffering(BaseModel):
     """Crowdfunding offering data"""
 

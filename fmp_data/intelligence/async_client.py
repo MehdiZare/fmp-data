@@ -42,6 +42,8 @@ from fmp_data.intelligence.endpoints import (
     RATINGS_HISTORICAL,
     RATINGS_SNAPSHOT,
     SENATE_LATEST,
+    SENATE_POSITIONS,
+    SENATE_PROFILE,
     SENATE_TRADES_BY_ID,
     SENATE_TRADES_BY_NAME,
     SENATE_TRADING,
@@ -75,6 +77,8 @@ from fmp_data.intelligence.models import (
     PressReleaseBySymbol,
     PriceTargetNews,
     RatingsSnapshot,
+    SenatePosition,
+    SenateProfile,
     SenateTrade,
     SocialSentimentChanges,
     StockGrade,
@@ -628,6 +632,52 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
                 HOUSE_TRADES_BY_ID, senate_id=senate_id, page=page, limit=limit
             ),
             HouseDisclosure,
+        )
+
+    async def get_senate_profile(
+        self,
+        senate_id: str | None = None,
+        *,
+        active: bool | None = None,
+        latest_party: str | None = None,
+        latest_position: str | None = None,
+        page: int = 0,
+        limit: int = 500,
+    ) -> list[SenateProfile]:
+        """Get Congress member profiles."""
+        return self._unwrap_list(
+            await self.client.request_async(
+                SENATE_PROFILE,
+                senate_id=senate_id,
+                active=active,
+                latest_party=latest_party,
+                latest_position=latest_position,
+                page=page,
+                limit=limit,
+            ),
+            SenateProfile,
+        )
+
+    async def get_senate_positions(
+        self,
+        senate_id: str | None = None,
+        *,
+        party: str | None = None,
+        position: str | None = None,
+        page: int = 0,
+        limit: int = 300,
+    ) -> list[SenatePosition]:
+        """Get Congress member term history."""
+        return self._unwrap_list(
+            await self.client.request_async(
+                SENATE_POSITIONS,
+                senate_id=senate_id,
+                party=party,
+                position=position,
+                page=page,
+                limit=limit,
+            ),
+            SenatePosition,
         )
 
     # Fundraising methods

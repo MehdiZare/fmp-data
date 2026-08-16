@@ -1052,6 +1052,163 @@ class TestMarketIntelligenceClientGovernment:
         assert _args[0].name == "house_trades_by_id"
         assert _args[0].path == "house-trades-by-id"
 
+    def test_get_senate_profile_unfiltered_and_omits_none(
+        self, fmp_client, mock_client
+    ):
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_profile()
+
+        mock_client.request.assert_called_once()
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["senate_id"] is None
+        assert kwargs["active"] is None
+        assert kwargs["latest_party"] is None
+        assert kwargs["latest_position"] is None
+        assert kwargs["page"] == 0
+        assert kwargs["limit"] == 500
+
+        from fmp_data.intelligence.endpoints import SENATE_PROFILE
+
+        wire = SENATE_PROFILE.validate_params(kwargs)
+        assert "senateID" not in wire
+        assert "active" not in wire
+        assert "latestParty" not in wire
+        assert "latestPosition" not in wire
+        assert wire["page"] == 0
+        assert wire["limit"] == 500
+
+    def test_get_senate_profile_filters_senate_id(self, fmp_client, mock_client):
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_profile(senate_id="P000197")
+
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["senate_id"] == "P000197"
+
+        from fmp_data.intelligence.endpoints import SENATE_PROFILE
+
+        wire = SENATE_PROFILE.validate_params(kwargs)
+        assert wire["senateID"] == "P000197"
+
+    def test_get_senate_profile_filters_use_wire_aliases(self, fmp_client, mock_client):
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_profile(
+            active=True,
+            latest_party="Democrat",
+            latest_position="Representative",
+        )
+
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["active"] is True
+        assert kwargs["latest_party"] == "Democrat"
+        assert kwargs["latest_position"] == "Representative"
+
+        from fmp_data.intelligence.endpoints import SENATE_PROFILE
+
+        wire = SENATE_PROFILE.validate_params(kwargs)
+        assert wire["active"] is True
+        assert wire["latestParty"] == "Democrat"
+        assert wire["latestPosition"] == "Representative"
+        assert "latest_party" not in wire
+        assert "latest_position" not in wire
+
+    def test_get_senate_positions_unfiltered_and_omits_none(
+        self, fmp_client, mock_client
+    ):
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_positions()
+
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["senate_id"] is None
+        assert kwargs["party"] is None
+        assert kwargs["position"] is None
+
+        from fmp_data.intelligence.endpoints import SENATE_POSITIONS
+
+        wire = SENATE_POSITIONS.validate_params(kwargs)
+        assert "senateID" not in wire
+        assert "party" not in wire
+        assert "position" not in wire
+        assert wire["page"] == 0
+        assert wire["limit"] == 300
+
+    def test_get_senate_positions_filters_senate_id(self, fmp_client, mock_client):
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_positions(senate_id="P000197")
+
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["senate_id"] == "P000197"
+
+        from fmp_data.intelligence.endpoints import SENATE_POSITIONS
+
+        wire = SENATE_POSITIONS.validate_params(kwargs)
+        assert wire["senateID"] == "P000197"
+
+    def test_get_senate_positions_filters_use_wire_keys(self, fmp_client, mock_client):
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_positions(
+            party="Republican",
+            position="Senator",
+        )
+
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["party"] == "Republican"
+        assert kwargs["position"] == "Senator"
+
+        from fmp_data.intelligence.endpoints import SENATE_POSITIONS
+
+        wire = SENATE_POSITIONS.validate_params(kwargs)
+        assert wire["party"] == "Republican"
+        assert wire["position"] == "Senator"
+
+    def test_senate_profile_parses_birth_date(self):
+        from datetime import date
+
+        from fmp_data.intelligence.models import SenateProfile
+
+        row = SenateProfile.model_validate(
+            {
+                "senateID": "L000397",
+                "firstName": "Zoe",
+                "lastName": "Lofgren",
+                "birthDate": "1947-12-20",
+                "latestParty": "Democrat",
+                "latestState": "CA",
+                "latestPosition": "Representative",
+                "image": "https://images.financialmodelingprep.com/senate/L000397.jpg",
+                "active": True,
+                "yearsActive": 31.6,
+            }
+        )
+        assert row.senate_id == "L000397"
+        assert row.birth_date == date(1947, 12, 20)
+        assert row.active is True
+
+    def test_senate_position_null_end_date_stays_none(self):
+        from datetime import date
+
+        from fmp_data.intelligence.models import SenatePosition
+
+        row = SenatePosition.model_validate(
+            {
+                "senateID": "Z000018",
+                "congressNumber": 119,
+                "startDate": "2025-01-02",
+                "endDate": None,
+                "party": "Republican",
+                "position": "Representative",
+                "state": "MT",
+                "yearsInTerm": 0.7,
+            }
+        )
+        assert row.start_date == date(2025, 1, 2)
+        assert row.end_date is None
+
     def test_trades_by_id_query_uses_senateID_alias(self):
         """Client kwargs use senate_id; the wire query key is senateID (#323)."""
         from fmp_data.intelligence.endpoints import (

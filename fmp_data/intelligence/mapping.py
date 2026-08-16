@@ -41,6 +41,8 @@ from fmp_data.intelligence.endpoints import (
     RATINGS_HISTORICAL,
     RATINGS_SNAPSHOT,
     SENATE_LATEST,
+    SENATE_POSITIONS,
+    SENATE_PROFILE,
     SENATE_TRADES_BY_ID,
     SENATE_TRADES_BY_NAME,
     SENATE_TRADING,
@@ -86,6 +88,8 @@ INTELLIGENCE_ENDPOINT_MAP: dict[str, Endpoint[Any]] = {
     "get_senate_trading": SENATE_TRADING,
     "get_senate_trades_by_name": SENATE_TRADES_BY_NAME,
     "get_senate_trades_by_id": SENATE_TRADES_BY_ID,
+    "get_senate_profile": SENATE_PROFILE,
+    "get_senate_positions": SENATE_POSITIONS,
     "get_senate_trading_rss": SENATE_TRADING_RSS,
     "get_house_latest": HOUSE_LATEST,
     "get_house_disclosure": HOUSE_DISCLOSURE,
@@ -158,6 +162,38 @@ CRYPTO_PAIR_HINT = ParameterHint(
     ],
     examples=["BTCUSD", "ETHUSD", "BNBUSD"],
     context_clues=["crypto", "cryptocurrency", "bitcoin", "ethereum", "trading pair"],
+)
+
+ACTIVE_MEMBER_HINT = ParameterHint(
+    natural_names=["active", "currently serving", "in office"],
+    extraction_patterns=[
+        r"(?i)\bactive\b",
+        r"(?i)currently serving",
+        r"(?i)in office",
+    ],
+    examples=["true", "false"],
+    context_clues=["active", "current member", "in office"],
+    required=False,
+)
+
+CONGRESS_PARTY_HINT = ParameterHint(
+    natural_names=["party", "affiliation", "political party"],
+    extraction_patterns=[
+        r"(?i)\b(democrat(?:ic)?|republican|independent)\b",
+    ],
+    examples=["Democrat", "Republican", "Independent"],
+    context_clues=["party", "affiliation", "democrat", "republican"],
+    required=False,
+)
+
+CONGRESS_POSITION_HINT = ParameterHint(
+    natural_names=["position", "chamber", "office", "title"],
+    extraction_patterns=[
+        r"(?i)\b(senator|representative|house|senate)\b",
+    ],
+    examples=["Senator", "Representative"],
+    context_clues=["chamber", "senator", "representative", "position"],
+    required=False,
 )
 
 # Additional utility mappings
@@ -1794,6 +1830,92 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "Member trade review",
             "Political trading analysis",
             "Compliance checks",
+        ],
+    ),
+    "senate_profile": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_senate_profile",
+        natural_description=(
+            "List Congress member profiles, optionally filtered by member id, "
+            "active status, party, or position"
+        ),
+        example_queries=[
+            "Senate member profiles",
+            "Profile for P000197",
+            "Active Congress members",
+        ],
+        related_terms=[
+            "senate profile",
+            "member directory",
+            "senateID",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Government Trading",
+        parameter_hints={
+            "senate_id": SENATE_ID_HINT,
+            "active": ACTIVE_MEMBER_HINT,
+            "latest_party": CONGRESS_PARTY_HINT,
+            "latest_position": CONGRESS_POSITION_HINT,
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
+        response_hints={
+            "first_name": ResponseFieldInfo(
+                description="Member first name",
+                examples=["Nancy", "Zoe"],
+                related_terms=["first name", "given name"],
+            ),
+            "last_name": ResponseFieldInfo(
+                description="Member last name",
+                examples=["Pelosi", "Lofgren"],
+                related_terms=["last name", "surname"],
+            ),
+        },
+        use_cases=[
+            "Member directory",
+            "Resolve name to senateID",
+            "Active member screening",
+        ],
+    ),
+    "senate_positions": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_senate_positions",
+        natural_description="Get Congress member term history by member id or chamber",
+        example_queries=[
+            "Senate positions for P000197",
+            "Term history for a member",
+            "Congress positions by party",
+        ],
+        related_terms=[
+            "senate positions",
+            "term history",
+            "congress number",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Government Trading",
+        parameter_hints={
+            "senate_id": SENATE_ID_HINT,
+            "party": CONGRESS_PARTY_HINT,
+            "position": CONGRESS_POSITION_HINT,
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
+        response_hints={
+            "position": ResponseFieldInfo(
+                description="Chamber or role",
+                examples=["Representative", "Senator"],
+                related_terms=["office", "title"],
+            ),
+            "party": ResponseFieldInfo(
+                description="Party during the term",
+                examples=["Democrat", "Republican"],
+                related_terms=["affiliation"],
+            ),
+        },
+        use_cases=[
+            "Term history",
+            "Party and chamber tracking",
+            "Member career timeline",
         ],
     ),
     "senate_trading_rss": EndpointSemantics(

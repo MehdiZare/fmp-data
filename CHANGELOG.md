@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The docs example `S000033` currently returns an empty list; Whitehouse
   `W000802` and Pelosi `P000197` return rows (probed 2026-08-15).
 
+- **Senate member profiles and term history (#324).**
+  `get_senate_profile` / `get_senate_positions` (sync + async) call
+  `/stable/senate-profile` and `/stable/senate-positions`. New models
+  `SenateProfile` and `SenatePosition`. Unset optional filters are
+  omitted from the query string. Sample rows include House members;
+  FMP's path names are kept.
+
 ### Changed
 
 - **One module now owns credential display redaction (#316).**
