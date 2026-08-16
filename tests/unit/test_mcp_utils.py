@@ -824,16 +824,18 @@ class TestValidateApiKey:
             "Invalid API KEY. Feel free to create a Free API Key...",
         ],
     )
-    def test_statusless_invalid_api_key_copy_is_invalid(
+    def test_invalid_api_key_body_is_authentication_error(
         self, monkeypatch: pytest.MonkeyPatch, message: str
     ) -> None:
-        """A 200-body ``Error Message`` has no status_code (#329)."""
-        from fmp_data.exceptions import FMPError
+        """2xx invalid-key bodies raise AuthenticationError after #340."""
+        from fmp_data.exceptions import AuthenticationError
 
         class BodyClient(_FakeFmpClient):
             def __init__(self, **kwargs: Any) -> None:
                 super().__init__(**kwargs)
-                self.company = _FakeCompany(raises=FMPError(message))
+                self.company = _FakeCompany(
+                    raises=AuthenticationError(message, status_code=200)
+                )
 
         monkeypatch.setattr("fmp_data.client.FMPDataClient", BodyClient)
 

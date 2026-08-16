@@ -699,6 +699,12 @@ class TestIntelligenceEndpoints(BaseTestCase):
             for row in rows:
                 assert isinstance(row, SenateNetWorthItem)
                 assert row.senate_id == "P000197"
+            # Lock the nested wire shape: extra=allow would hide a
+            # renamed valueRange / debtDetails as model_extra (#336).
+            assert any(
+                (row.value_range is not None) or (row.debt_details is not None)
+                for row in rows
+            ), "expected at least one nested valueRange or debtDetails"
 
     def test_get_senate_net_worth_aggregated(
         self, fmp_client: FMPDataClient, vcr_instance
@@ -715,6 +721,10 @@ class TestIntelligenceEndpoints(BaseTestCase):
                 assert isinstance(row, SenateNetWorthAggregated)
                 assert row.senate_id == "P000197"
                 assert row.year is not None
+            # Lock aggregated camelCase aliases as first-class fields (#336).
+            assert any(
+                row.total is not None or row.stock is not None for row in rows
+            ), "expected at least one populated aggregated alias"
 
     def test_get_crowdfunding_rss(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting latest crowdfunding offerings"""

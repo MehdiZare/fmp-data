@@ -801,6 +801,32 @@ def test_check_error_response_raises(payload):
         BaseClient._check_error_response(payload)
 
 
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"Error Message": "Invalid API KEY"},
+        {"Error Message": ("Invalid API KEY. Feel free to create a Free API Key...")},
+        {"message": "Invalid API KEY"},
+        {"error": "invalid api key"},
+    ],
+)
+def test_check_error_response_invalid_api_key_is_authentication_error(
+    payload: dict,
+) -> None:
+    """2xx invalid-key bodies must raise AuthenticationError (#340)."""
+    with pytest.raises(AuthenticationError) as exc_info:
+        BaseClient._check_error_response(payload)
+    assert exc_info.value.status_code == 200
+
+
+def test_check_error_response_unrelated_2xx_body_stays_fmp_error() -> None:
+    """Do not type every 2xx error body as auth failure (#340)."""
+    with pytest.raises(FMPError) as exc_info:
+        BaseClient._check_error_response({"Error Message": "Legacy endpoint retired"})
+    assert type(exc_info.value) is FMPError
+    assert exc_info.value.status_code is None
+
+
 def test_validate_single_item_primitives_and_model():
     """Test validation handles primitive and model responses."""
 

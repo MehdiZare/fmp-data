@@ -79,6 +79,21 @@ def _coerce_cik(value: Any) -> Any:
 CIK = Annotated[str, BeforeValidator(_coerce_cik)]
 
 
+def _coerce_senate_id(value: Any) -> Any:
+    """Pass through a Senate/House member id.
+
+    Wire form is ``[A-Z]\\d{6}`` (``SENATE_ID_HINT``). Strings are left
+    alone — rewriting case or padding would claim more than the live
+    responses support, same rule as :data:`CIK` strings. The branded
+    type exists so every ``senate_id`` field shares one annotation (#338).
+    """
+    return value
+
+
+# FMP Congress member id (wire key senateID). House rows use the same key.
+SenateId = Annotated[str, BeforeValidator(_coerce_senate_id)]
+
+
 class HTTPMethod(str, Enum):
     """HTTP methods supported by the API"""
 

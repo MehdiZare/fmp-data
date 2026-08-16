@@ -130,7 +130,7 @@ _URL_APIKEY_RE = re.compile(r"([?&]apikey=)[^&\s]+", re.IGNORECASE)
 # value is skipped so ``export FMP_API_KEY="[YOUR_API_KEY]"`` stays
 # readable (#330).
 _ASSIGNMENT_RE = re.compile(
-    r"([\"']?(?<![A-Za-z0-9])(?:[A-Za-z0-9]+_)*api_?key[\"']?\s*[=:]\s*[\"']?)"
+    r"([\"']?(?<![A-Za-z0-9])(?:[A-Za-z0-9]+[_-])*api[_-]?key[\"']?\s*[=:]\s*[\"']?)"
     r"([^&\s\"'<>]+)([\"']?)",
     re.IGNORECASE,
 )

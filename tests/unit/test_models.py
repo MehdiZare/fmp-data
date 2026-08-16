@@ -463,6 +463,84 @@ class TestCIKCoercion:
         )
 
 
+def _field_uses_senate_id(field: Any) -> bool:
+    """Detect the SenateId BeforeValidator, including optional fields."""
+    from fmp_data.models import _coerce_senate_id
+
+    if any(getattr(m, "func", None) is _coerce_senate_id for m in field.metadata):
+        return True
+    stack = [field.annotation]
+    while stack:
+        current = stack.pop()
+        if get_origin(current) is Annotated:
+            args = get_args(current)
+            if any(getattr(m, "func", None) is _coerce_senate_id for m in args[1:]):
+                return True
+            stack.append(args[0])
+        else:
+            stack.extend(get_args(current))
+    return False
+
+
+class TestSenateId:
+    """Senate/House member id is a branded str, not a bare ``str`` (#338)."""
+
+    def test_string_passes_through_untouched(self) -> None:
+        from fmp_data.models import SenateId, default_model_config
+
+        class Model(BaseModel):
+            model_config = default_model_config
+            senate_id: SenateId | None = Field(default=None)
+
+        assert Model(senate_id="P000197").senate_id == "P000197"
+        # Do not rewrite what the API sent (same rule as CIK strings).
+        assert Model(senate_id="p000197").senate_id == "p000197"
+
+    def test_none_is_preserved(self) -> None:
+        from fmp_data.models import SenateId, default_model_config
+
+        class Model(BaseModel):
+            model_config = default_model_config
+            senate_id: SenateId | None = Field(default=None)
+
+        assert Model().senate_id is None
+        assert Model(senate_id=None).senate_id is None
+
+    def test_no_model_declares_a_bare_str_senate_id(self) -> None:
+        """Every senate_id field must route through SenateId (#338)."""
+        import importlib
+        import pkgutil
+
+        import fmp_data
+
+        offenders: list[str] = []
+        seen = 0
+        for module_info in pkgutil.walk_packages(fmp_data.__path__, prefix="fmp_data."):
+            if not module_info.name.endswith(".models"):
+                continue
+            module = importlib.import_module(module_info.name)
+            for attr_name in dir(module):
+                model = getattr(module, attr_name)
+                if not (
+                    isinstance(model, type)
+                    and issubclass(model, BaseModel)
+                    and model is not BaseModel
+                ):
+                    continue
+                field = model.model_fields.get("senate_id")
+                if field is None:
+                    continue
+                seen += 1
+                if not _field_uses_senate_id(field):
+                    offenders.append(f"{module_info.name}.{model.__name__}")
+
+        assert seen >= 6, (
+            f"guard inspected only {seen} senate_id fields — "
+            "is it still walking intelligence models?"
+        )
+        assert not offenders, f"senate_id fields not using SenateId: {offenders}"
+
+
 class TestCIKRequestParam:
     """ParamType.CIK zero-pads a CIK on the way out to the API."""
 
