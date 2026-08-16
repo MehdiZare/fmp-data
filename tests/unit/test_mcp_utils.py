@@ -817,8 +817,15 @@ class TestValidateApiKey:
 
         assert mcp_utils.validate_api_key("KEY123") == (True, "valid")
 
+    @pytest.mark.parametrize(
+        "message",
+        [
+            "Invalid API KEY",
+            "Invalid API KEY. Feel free to create a Free API Key...",
+        ],
+    )
     def test_statusless_invalid_api_key_copy_is_invalid(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, monkeypatch: pytest.MonkeyPatch, message: str
     ) -> None:
         """A 200-body ``Error Message`` has no status_code (#329)."""
         from fmp_data.exceptions import FMPError
@@ -826,7 +833,7 @@ class TestValidateApiKey:
         class BodyClient(_FakeFmpClient):
             def __init__(self, **kwargs: Any) -> None:
                 super().__init__(**kwargs)
-                self.company = _FakeCompany(raises=FMPError("Invalid API KEY"))
+                self.company = _FakeCompany(raises=FMPError(message))
 
         monkeypatch.setattr("fmp_data.client.FMPDataClient", BodyClient)
 
