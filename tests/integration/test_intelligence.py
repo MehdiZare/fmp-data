@@ -29,6 +29,8 @@ from fmp_data.intelligence.models import (
     PressReleaseBySymbol,
     PriceTargetNews,
     RatingsSnapshot,
+    SenateNetWorthAggregated,
+    SenateNetWorthItem,
     SenatePosition,
     SenateProfile,
     SenateTrade,
@@ -682,6 +684,37 @@ class TestIntelligenceEndpoints(BaseTestCase):
             for row in rows:
                 assert isinstance(row, SenatePosition)
                 assert row.senate_id
+
+    def test_get_senate_net_worth(self, fmp_client: FMPDataClient, vcr_instance):
+        with vcr_instance.use_cassette("intelligence/senate_net_worth.yaml"):
+            rows = self._handle_rate_limit(
+                fmp_client.intelligence.get_senate_net_worth,
+                "P000197",
+                page=0,
+                limit=5,
+            )
+
+            assert isinstance(rows, list)
+            assert rows
+            for row in rows:
+                assert isinstance(row, SenateNetWorthItem)
+                assert row.senate_id == "P000197"
+
+    def test_get_senate_net_worth_aggregated(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        with vcr_instance.use_cassette("intelligence/senate_net_worth_aggregated.yaml"):
+            rows = self._handle_rate_limit(
+                fmp_client.intelligence.get_senate_net_worth_aggregated,
+                "P000197",
+            )
+
+            assert isinstance(rows, list)
+            assert rows
+            for row in rows:
+                assert isinstance(row, SenateNetWorthAggregated)
+                assert row.senate_id == "P000197"
+                assert row.year is not None
 
     def test_get_crowdfunding_rss(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting latest crowdfunding offerings"""

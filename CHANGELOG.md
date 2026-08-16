@@ -23,6 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   omitted from the query string. Sample rows include House members;
   FMP's path names are kept.
 
+- **Senate net-worth disclosures (#325).**
+  `get_senate_net_worth` / `get_senate_net_worth_aggregated` (sync +
+  async) call `/stable/senate-net-worth` and
+  `/stable/senate-net-worth-aggregated`. Nested `valueRange` /
+  `debtDetails` stay nested. `totalsCol` is optional: a live probe on
+  2026-08-15 returned 200 with 12 yearly rows when it was omitted,
+  sent empty, or set to `total`. Missing `senateID` is 400.
+
 ### Changed
 
 - **One module now owns credential display redaction (#316).**

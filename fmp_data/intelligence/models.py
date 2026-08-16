@@ -602,6 +602,74 @@ class SenatePosition(BaseModel):
     years_in_term: float | None = Field(None, alias="yearsInTerm")
 
 
+class SenateNetWorthValueRange(BaseModel):
+    """Disclosed min/max range on an itemized net-worth row."""
+
+    model_config = default_model_config
+
+    min: float | None = Field(None)
+    max: float | None = Field(None)
+
+
+class SenateNetWorthDebtDetails(BaseModel):
+    """Liability extras on an itemized net-worth row."""
+
+    model_config = default_model_config
+
+    date_incurred: str | None = Field(None, alias="dateIncurred")
+
+
+class SenateNetWorthItem(BaseModel):
+    """Itemized Senate/House net-worth disclosure row."""
+
+    model_config = default_model_config
+
+    senate_id: str | None = Field(None, alias="senateID")
+    form_type: str | None = Field(None, alias="formType")
+    year: int | None = Field(None)
+    filing_date: dt_date | None = Field(None, alias="filingDate")
+    section: str | None = Field(None)
+    category: str | None = Field(None)
+    name: str | None = Field(None)
+    asset_type: str | None = Field(None, alias="assetType")
+    income_type: str | None = Field(None, alias="incomeType")
+    owner: str | None = Field(None)
+    comment: str | None = Field(None)
+    debt_details: SenateNetWorthDebtDetails | None = Field(None, alias="debtDetails")
+    value_range: SenateNetWorthValueRange | None = Field(None, alias="valueRange")
+    value: float | None = Field(None)
+    income_range: SenateNetWorthValueRange | None = Field(None, alias="incomeRange")
+    income: float | None = Field(None)
+    link: HttpUrl | None = Field(None)
+
+
+class SenateNetWorthAggregated(BaseModel):
+    """Yearly net-worth rollup. Extra columns stay allowed."""
+
+    model_config = default_model_config
+
+    senate_id: str | None = Field(None, alias="senateID")
+    year: int | None = Field(None)
+    total: float | None = Field(None)
+    real_estate_liabilities: float | None = Field(None, alias="realEstateLiabilities")
+    cash_and_cash_equivalents: float | None = Field(
+        None, alias="cashAndCashEquivalents"
+    )
+    business_and_self_employment: float | None = Field(
+        None, alias="businessAndSelfEmployment"
+    )
+    real_estate: float | None = Field(None, alias="realEstate")
+    ownership_interest: float | None = Field(None, alias="ownershipInterest")
+    stock: float | None = Field(None)
+    options: float | None = Field(None)
+    revolving_and_credit_lines: float | None = Field(
+        None, alias="revolvingAndCreditLines"
+    )
+    asset_backed_securities: float | None = Field(None, alias="assetBackedSecurities")
+    business_liabilities: float | None = Field(None, alias="businessLiabilities")
+    mutual_funds_and_etfs: float | None = Field(None, alias="mutualFundsAndETFs")
+
+
 class CrowdfundingOffering(BaseModel):
     """Crowdfunding offering data"""
 

@@ -10,7 +10,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 - [Market (36 endpoints)](#market)
 - [Fundamental (14 endpoints)](#fundamental)
 - [Technical (9 endpoints)](#technical)
-- [Market Intelligence (50 endpoints)](#market-intelligence)
+- [Market Intelligence (52 endpoints)](#market-intelligence)
 - [Institutional (24 endpoints)](#institutional)
 - [Investment (14 endpoints)](#investment)
 - [Alternative Markets (15 endpoints)](#alternative-markets)
@@ -167,7 +167,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 
 ## Market Intelligence
 
-### 50 endpoints
+### 52 endpoints
 
 | Endpoint | Path | Description |
 |----------|------|-------------|
@@ -211,6 +211,8 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 | `ratings_historical` | `/stable/ratings-historical` | Get historical analyst ratings |
 | `ratings_snapshot` | `/stable/ratings-snapshot` | Get current analyst ratings snapshot |
 | `senate_latest` | `/stable/senate-latest` | Get latest Senate financial disclosures |
+| `senate_net_worth` | `/stable/senate-net-worth` | Get itemized Senate/House net-worth disclosures |
+| `senate_net_worth_aggregated` | `/stable/senate-net-worth-aggregated` | Get yearly aggregated Senate/House net-worth totals |
 | `senate_positions` | `/stable/senate-positions` | Get Congress member term history |
 | `senate_profile` | `/stable/senate-profile` | Get Congress member profiles |
 | `senate_trading` | `/stable/senate-trades` | Get Senate trading data by symbol |

@@ -40,6 +40,8 @@ from fmp_data.intelligence.endpoints import (
     RATINGS_HISTORICAL,
     RATINGS_SNAPSHOT,
     SENATE_LATEST,
+    SENATE_NET_WORTH,
+    SENATE_NET_WORTH_AGGREGATED,
     SENATE_POSITIONS,
     SENATE_PROFILE,
     SENATE_TRADES_BY_ID,
@@ -75,6 +77,8 @@ from fmp_data.intelligence.models import (
     PressReleaseBySymbol,
     PriceTargetNews,
     RatingsSnapshot,
+    SenateNetWorthAggregated,
+    SenateNetWorthItem,
     SenatePosition,
     SenateProfile,
     SenateTrade,
@@ -653,6 +657,30 @@ class MarketIntelligenceClient(EndpointGroup):
                 limit=limit,
             ),
             SenatePosition,
+        )
+
+    def get_senate_net_worth(
+        self, senate_id: str, page: int = 0, limit: int = 250
+    ) -> list[SenateNetWorthItem]:
+        """Get itemized Senate/House net-worth disclosures."""
+        return self._unwrap_list(
+            self.client.request(
+                SENATE_NET_WORTH, senate_id=senate_id, page=page, limit=limit
+            ),
+            SenateNetWorthItem,
+        )
+
+    def get_senate_net_worth_aggregated(
+        self, senate_id: str, *, totals_col: str | None = None
+    ) -> list[SenateNetWorthAggregated]:
+        """Get yearly aggregated Senate/House net-worth totals."""
+        return self._unwrap_list(
+            self.client.request(
+                SENATE_NET_WORTH_AGGREGATED,
+                senate_id=senate_id,
+                totals_col=totals_col,
+            ),
+            SenateNetWorthAggregated,
         )
 
     # Fundraising methods

@@ -9,7 +9,7 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 (everything with MCP semantics, loadable via an explicit manifest), followed by
 how many of those are in `DEFAULT_TOOLS` (what a default server registers).
 The two differ where a tool is deprecated, redundant, or too heavy for the
-default set — `228` catalog tools, `142` default.
+default set — `230` catalog tools, `144` default.
 
 **Withdrawn endpoints:** 22 tools name an FMP endpoint that no longer exists.
 Probed against the live `stable` API, every one of those paths returns 404, so
@@ -37,7 +37,7 @@ always be written in full: `crypto_quotes` (`alternative.crypto_quotes` vs
 - [Fundamental (14 tools, 12 default)](#fundamental)
 - [Index (6 tools, 0 default)](#index)
 - [Institutional (12 tools, 8 default)](#institutional)
-- [Intelligence (49 tools, 42 default)](#intelligence)
+- [Intelligence (51 tools, 44 default)](#intelligence)
 - [Investment (14 tools, 9 default)](#investment)
 - [Market (23 tools, 21 default)](#market)
 - [SEC (12 tools, 0 default)](#sec)
@@ -213,7 +213,7 @@ via a manifest; these return large payloads and several are CSV).
 
 ## Intelligence
 
-**49 tools** for news, sentiment, market events, and analyst ratings/grades (42 default).
+**51 tools** for news, sentiment, market events, and analyst ratings/grades (44 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -255,6 +255,8 @@ via a manifest; these return large payloads and several are CSV).
 | `ratings_historical` | Retrieve historical analyst ratings for a company to track how the rating and its component scores changed over time |
 | `ratings_snapshot` | Get the current analyst rating snapshot for a company, including the overall rating and component scores |
 | `senate_latest` | Get the latest Senate financial disclosures with transaction details |
+| `senate_net_worth` | Get itemized Senate/House net-worth disclosures for a member id |
+| `senate_net_worth_aggregated` | Get yearly aggregated Senate/House net-worth totals for a member id |
 | `senate_positions` | Get Congress member term history |
 | `senate_profile` | List Congress member profiles |
 | `senate_trades_by_id` | Get Senate trading data filtered by member id |
