@@ -856,7 +856,7 @@ class BaseClient:
 
     @staticmethod
     def _check_error_response(data: dict[str, Any]) -> None:
-        """Check for error messages in response data and raise FMPError if found.
+        """Raise a typed error when a 2xx JSON dict carries an error body.
 
         Args:
             data: Dictionary response data to check

@@ -82,10 +82,10 @@ CIK = Annotated[str, BeforeValidator(_coerce_cik)]
 def _coerce_senate_id(value: Any) -> Any:
     """Pass through a Senate/House member id.
 
-    Wire form is ``[A-Z]\\d{6}`` (``SENATE_ID_HINT``). Strings are left
-    alone — rewriting case or padding would claim more than the live
-    responses support, same rule as :data:`CIK` strings. The branded
-    type exists so every ``senate_id`` field shares one annotation (#338).
+    Observed wire form is ``[A-Z]\\d{6}``. This coercer does not validate
+    or rewrite that shape — same string rule as :data:`CIK` (case and
+    padding stay as sent). The branded type exists so every response
+    ``senate_id`` field shares one annotation (#338).
     """
     return value
 

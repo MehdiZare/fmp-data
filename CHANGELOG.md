@@ -72,11 +72,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   client and calls `company.get_quote("AAPL")`; 401 and 403 map to
   `invalid`. Rate-limit / other HTTP errors still count as `valid`.
 
-- **`validate_api_key` treats a status-less `Invalid API KEY` body as
-  invalid (#329).** Live `/stable/quote` now returns HTTP 401 for a
-  junk key (probed 2026-08-15). #340 later types the 2xx body itself
-  as `AuthenticationError`; this entry is the wizard-side classifier
-  that landed first.
+- **`validate_api_key` first classified a status-less `Invalid API KEY`
+  body as invalid (#329).** That wizard-side copy matcher is superseded
+  by #340 in this same Unreleased section. Live `/stable/quote` returns
+  HTTP 401 for a junk key (probed 2026-08-15).
 
 - **Setup wizard offers the example MCP profiles again (#320).**
   `get_manifest_choices` looks in `examples/mcp/configurations/` (the
@@ -94,9 +93,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `validate_api_key`'s copy matcher is gone — the
   `except AuthenticationError` path covers it.
 
-- **Net-worth integration tests require nested objects and populated
-  aggregated aliases (#336).** Stops `extra="allow"` from hiding a
-  renamed `valueRange` / `debtDetails` / camelCase rollup column.
+- **Net-worth integration tests require at least one nested object and
+  one populated aggregated alias (#336).** First slice on the local VCR
+  path: a full rename of `valueRange`/`debtDetails`, or of both
+  `total`/`stock`, now fails. Per-field `model_extra` locking stays
+  with the unit fixtures.
 
 ## [2.7.0] - 2026-08-14
 

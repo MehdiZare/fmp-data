@@ -341,9 +341,9 @@ def validate_api_key(api_key: str) -> tuple[bool, ApiKeyCheckReason]:
     except (TimeoutError, httpx.TimeoutException):
         return False, "timeout"
     except FMPError as exc:
-        # HTTP 401 and 2xx invalid-key bodies are AuthenticationError
-        # (#340). 403 is still a generic FMPError. 429 / 5xx mean the
-        # key was accepted.
+        # AuthenticationError (HTTP 401 and typed 2xx invalid-key
+        # bodies) is handled above. 403 is still a generic FMPError
+        # and counts as invalid. 429 / 5xx mean the key was accepted.
         if exc.status_code in {401, 403}:
             return False, "invalid"
         return True, "valid"

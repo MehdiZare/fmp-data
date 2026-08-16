@@ -819,10 +819,20 @@ def test_check_error_response_invalid_api_key_is_authentication_error(
     assert exc_info.value.status_code == 200
 
 
-def test_check_error_response_unrelated_2xx_body_stays_fmp_error() -> None:
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"Error Message": "Legacy endpoint retired"},
+        {"message": "Legacy endpoint retired"},
+        {"error": "Legacy endpoint retired"},
+    ],
+)
+def test_check_error_response_unrelated_2xx_body_stays_fmp_error(
+    payload: dict,
+) -> None:
     """Do not type every 2xx error body as auth failure (#340)."""
     with pytest.raises(FMPError) as exc_info:
-        BaseClient._check_error_response({"Error Message": "Legacy endpoint retired"})
+        BaseClient._check_error_response(payload)
     assert type(exc_info.value) is FMPError
     assert exc_info.value.status_code is None
 
