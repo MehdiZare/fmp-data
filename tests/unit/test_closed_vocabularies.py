@@ -1,7 +1,8 @@
-"""Closed request vocabularies: period, interval, timeframe.
+"""Closed request vocabularies: period, interval, timeframe, and structure.
 
 These must stay three *different* period types. One union enum is how
-``annual`` leaked onto financial-reports (FY/Qn only).
+``annual`` leaked onto financial-reports (FY/Qn only). Structure
+(flat|nested) is a separate closed vocab on revenue segmentation.
 """
 
 from __future__ import annotations
@@ -200,6 +201,10 @@ def test_closed_vocabularies_are_public_exports() -> None:
         "Timeframe",
     ):
         assert name in fmp_data.__all__, name
+    # #349: Structure is a closed vocab on public methods but is not
+    # promoted to the package surface (same deferred decision as #308 /
+    # #311 were before Period / TechnicalInterval landed).
+    assert "Structure" not in fmp_data.__all__
     assert "1day" not in literal_values(fmp_data.TechnicalInterval)
     assert "daily" in literal_values(fmp_data.TechnicalInterval)
     assert "hourly" in literal_values(fmp_data.TechnicalInterval)

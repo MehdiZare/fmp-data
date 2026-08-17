@@ -593,6 +593,36 @@ class TestAsyncCompanyClient:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "method_name,endpoint_name",
+        [
+            ("get_product_revenue_segmentation", "PRODUCT_REVENUE_SEGMENTATION"),
+            ("get_geographic_revenue_segmentation", "GEOGRAPHIC_REVENUE_SEGMENTATION"),
+        ],
+    )
+    async def test_revenue_segmentation_nested_structure(
+        self, mock_client, method_name, endpoint_name
+    ):
+        """structure=nested is forwarded on the async methods."""
+        from fmp_data.company import endpoints as company_endpoints
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncCompanyClient(mock_client)
+
+        method = getattr(async_client, method_name)
+        result = await method("AAPL", structure="nested")
+
+        assert result == []
+        endpoint = getattr(company_endpoints, endpoint_name)
+        mock_client.request_async.assert_called_once_with(
+            endpoint,
+            symbol="AAPL",
+            structure="nested",
+            period="annual",
+        )
+
+    @pytest.mark.asyncio
     async def test_get_analyst_estimates_params(self, mock_client):
         """Test analyst estimates parameter forwarding."""
         from fmp_data.company import endpoints as company_endpoints

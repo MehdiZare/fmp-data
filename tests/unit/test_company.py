@@ -1662,7 +1662,7 @@ class TestCompanyLogoUrl:
 
 
 class TestSegmentationAndReportDefaults:
-    """Mandatory structure/period defaults never apply (#349)."""
+    """Leftover structure/period defaults apply only as optional_params (#349)."""
 
     def test_segmentation_structure_and_period_are_optional(self) -> None:
         from fmp_data.company.endpoints import (

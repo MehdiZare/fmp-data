@@ -368,7 +368,10 @@ def test_partition_industry_classification_all_optional() -> None:
 
 
 def test_partition_omits_unmapped_when_method_active() -> None:
-    """Endpoint-only params (structure, limit) are dropped under method dispatch."""
+    """Unmapped endpoint params (e.g. employee-count limit) are dropped.
+
+    Revenue ``structure`` is advertised once the method accepts it.
+    """
 
     def get_product_revenue_segmentation(
         symbol: str, period: str = "annual", structure: str = "flat"
@@ -395,7 +398,7 @@ def test_partition_omits_unmapped_when_method_active() -> None:
     assert emp_optional == []
     assert "limit" not in {p.name for p in emp_mandatory + emp_optional}
 
-    # Without a method, pre-#172 lists are unchanged (structure/limit kept).
+    # Without a method, lists stay as declared (structure and limit optional).
     bare_mand, bare_opt = partition_params_for_method(
         PRODUCT_REVENUE_SEGMENTATION.mandatory_params,
         PRODUCT_REVENUE_SEGMENTATION.optional_params or [],
