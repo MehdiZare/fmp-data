@@ -23,6 +23,7 @@ from fmp_data.schema import (
     PERIOD_ANNUAL_QUARTER_VALUES,
     PERIOD_FISCAL_VALUES,
     PERIOD_VALUES,
+    STRUCTURE_VALUES,
     TECHNICAL_INTERVAL_VALUES,
     TIMEFRAME_VALUES,
     Interval,
@@ -32,6 +33,8 @@ from fmp_data.schema import (
     PeriodAnnualQuarter,
     PeriodFiscal,
     ReportingPeriodEnum,
+    Structure,
+    StructureTypeEnum,
     TechnicalInterval,
     Timeframe,
     literal_values,
@@ -77,6 +80,11 @@ def test_period_aliases_are_distinct_contracts() -> None:
     assert get_args(period_runtime) == (PeriodAnnualQuarter, PeriodFiscal)
 
 
+def test_structure_alias_is_flat_or_nested() -> None:
+    assert literal_values(Structure) == ("flat", "nested")
+    assert literal_values(Structure) == STRUCTURE_VALUES
+
+
 def test_literal_values_flattens_unions_and_rejects_non_literals() -> None:
     assert literal_values(TechnicalInterval) == (
         *INTERVAL_VALUES,
@@ -92,6 +100,7 @@ def test_legacy_enums_match_the_literal_sets() -> None:
     assert tuple(member.value for member in ReportingPeriodEnum) == PERIOD_VALUES
     assert tuple(member.value for member in IntervalEnum) == INTERVAL_VALUES
     assert tuple(member.value for member in IntradayTimeInterval) == INTERVAL_VALUES
+    assert tuple(member.value for member in StructureTypeEnum) == STRUCTURE_VALUES
 
 
 def test_legacy_enums_are_unpacked_from_the_literal_tuples() -> None:
@@ -104,6 +113,7 @@ def test_legacy_enums_are_unpacked_from_the_literal_tuples() -> None:
     assert "PERIOD_FISCAL_VALUES" in source
     assert "INTERVAL_VALUES" in inspect.getsource(schema.IntervalEnum)
     assert "INTERVAL_VALUES" in inspect.getsource(company_schema.IntradayTimeInterval)
+    assert "STRUCTURE_VALUES" in inspect.getsource(schema.StructureTypeEnum)
     assert ReportingPeriodEnum.ANNUAL.value == "annual"
     assert ReportingPeriodEnum.QUARTER.value == "quarter"
     assert ReportingPeriodEnum.FY.value == "FY"
@@ -123,6 +133,8 @@ def test_legacy_enums_are_unpacked_from_the_literal_tuples() -> None:
     assert IntradayTimeInterval.THIRTY_MINUTES.value == "30min"
     assert IntradayTimeInterval.ONE_HOUR.value == "1hour"
     assert IntradayTimeInterval.FOUR_HOURS.value == "4hour"
+    assert StructureTypeEnum.FLAT.value == "flat"
+    assert StructureTypeEnum.NESTED.value == "nested"
 
 
 def test_readme_sma_example_does_not_stack_interval_on_timeframe() -> None:
@@ -405,6 +417,49 @@ def test_client_period_interval_annotations_are_the_typed_literals() -> None:
     assert not untyped, "client methods still take a naked str:\n  " + "\n  ".join(
         untyped
     )
+
+
+@pytest.mark.skip(reason="Task 3: structure valid_values on endpoints")
+def test_structure_endpoint_valid_values_come_from_the_literal() -> None:
+    found: list[str] = []
+    wrong: list[str] = []
+    for endpoint in _all_endpoints():
+        params = list(endpoint.mandatory_params) + list(endpoint.optional_params or [])
+        for param in params:
+            if param.name != "structure":
+                continue
+            found.append(endpoint.name)
+            values = tuple(str(v) for v in (param.valid_values or ()))
+            if values != STRUCTURE_VALUES:
+                wrong.append(f"{endpoint.name}.structure={values!r}")
+    assert found, "expected revenue-segmentation structure params"
+    assert not wrong, "structure valid_values drifted:\n  " + "\n  ".join(wrong)
+
+
+@pytest.mark.skip(reason="Task 4: methods gain structure=")
+def test_client_structure_annotations_are_the_typed_literal() -> None:
+    untyped: list[str] = []
+    seen = 0
+    for root_cls in (FMPDataClient, AsyncFMPDataClient):
+        for group, method, func in _iter_group_methods(root_cls):
+            if "structure" not in bindable_params(func):
+                continue
+            seen += 1
+            hints = get_type_hints(func)
+            members = _annotation_members(
+                hints.get("structure", inspect.Parameter.empty)
+            )
+            default = inspect.signature(func).parameters["structure"].default
+            if members != STRUCTURE_VALUES:
+                untyped.append(
+                    f"{root_cls.__name__}.{group}.{method} members={members!r}"
+                )
+            if default != "flat":
+                untyped.append(
+                    f"{root_cls.__name__}.{group}.{method} default={default!r}"
+                )
+    assert seen >= 4, f"expected sync+async product+geo methods, saw {seen}"
+    assert not untyped, "structure annotations drifted:\n  " + "\n  ".join(untyped)
 
 
 def test_fiscal_client_methods_stay_period_fiscal() -> None:
