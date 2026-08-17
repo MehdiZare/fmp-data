@@ -21,8 +21,8 @@ This guard walks every ``(endpoint_map x semantics)`` pair that
    gain more debt.
 3. **mandatory wire dropped under method dispatch** — a mandatory endpoint
    field maps to no method parameter, so method dispatch omits it from the
-   tool schema. Known cases (e.g. revenue ``structure``) are allowlisted;
-   new ones fail until reviewed.
+   tool schema. The dropped-mandatory allowlist is empty; a new
+   dropped-mandatory is a PR failure.
 
 Optional wire fields dropped under method dispatch are intentionally out of
 scope here (they are not required for a successful call). MCP registers the
