@@ -158,13 +158,6 @@ class BaseEnum(str, Enum):
         return [e.value for e in cls]
 
 
-class StructureTypeEnum(BaseEnum):
-    """Data structure types"""
-
-    FLAT = "flat"
-    NESTED = "nested"
-
-
 # Closed request vocabularies used by client methods and endpoint valid_values.
 # Three period aliases on purpose: financial-reports and batch bulk reject
 # ``annual``/``quarter``. Period is the union of those two contracts so the
@@ -177,6 +170,7 @@ Timeframe: TypeAlias = Interval | Literal["1day"]
 # Client-only aliases mapped onto Timeframe by TechnicalClient._normalize_timeframe.
 IntervalAlias: TypeAlias = Literal["daily", "hourly"]
 TechnicalInterval: TypeAlias = Interval | IntervalAlias
+Structure: TypeAlias = Literal["flat", "nested"]
 
 
 def literal_values(typ: Any) -> tuple[Any, ...]:
@@ -199,6 +193,17 @@ PERIOD_VALUES: tuple[str, ...] = literal_values(Period)
 INTERVAL_VALUES: tuple[str, ...] = literal_values(Interval)
 TIMEFRAME_VALUES: tuple[str, ...] = literal_values(Timeframe)
 TECHNICAL_INTERVAL_VALUES: tuple[str, ...] = literal_values(TechnicalInterval)
+STRUCTURE_VALUES: tuple[str, ...] = literal_values(Structure)
+
+
+class StructureTypeEnum(BaseEnum):
+    """Data structure types.
+
+    Member *values* come from ``Structure``. Retired with the
+    deprecated arg models in 3.0 (#153, #307).
+    """
+
+    FLAT, NESTED = STRUCTURE_VALUES
 
 
 class ReportingPeriodEnum(BaseEnum):

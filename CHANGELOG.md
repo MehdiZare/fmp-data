@@ -68,6 +68,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `optional_params` so `validate_params({})` applies the documented
   defaults. Not `PaginationArg` (1-based, different defaults).
 
+- **Company segmentation/report leftover defaults are optional (#349).**
+  `structure` / `period` on product and geographic revenue
+  segmentation, and `period` on financial-reports JSON/XLSX, move to
+  `optional_params` so `validate_params` applies the documented
+  defaults (`flat` / `annual` / `FY`). Segmentation methods now take
+  `structure: Structure = "flat"` (`Literal["flat", "nested"]`).
+  Stable currently returns the same list-of-objects for both
+  (probed 2026-08-17). `Structure` is not re-exported from
+  `fmp_data`. No remaining mandatory-plus-default params in the
+  catalogue.
+
 - **`SenateNetWorthValueRange` no longer shadows builtins (#336).**
   Fields are `minimum` / `maximum` (wire aliases `min` / `max`).
   Inverted and non-finite ranges are rejected. Callers using `.min` /

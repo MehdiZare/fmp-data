@@ -20,6 +20,7 @@ from fmp_data.company.models import (
     HistoricalPrice,
     IntradayPrice,
     MergerAcquisition,
+    ProductRevenueSegment,
     Quote,
     RevenueSegmentItem,
     SimpleQuote,
@@ -305,6 +306,37 @@ class TestCompanyClientCoverage:
         assert isinstance(result[0], GeographicRevenueSegment)
         params = mock_request.call_args.kwargs["params"]
         assert params["symbol"] == "AAPL"
+        assert params["period"] == "annual"
+        assert params["structure"] == "flat"
+
+    @pytest.mark.parametrize(
+        "method_name,model_cls",
+        [
+            ("get_geographic_revenue_segmentation", GeographicRevenueSegment),
+            ("get_product_revenue_segmentation", ProductRevenueSegment),
+        ],
+    )
+    @patch("httpx.Client.request")
+    def test_revenue_segmentation_nested_structure(
+        self,
+        mock_request,
+        fmp_client,
+        mock_response,
+        geographic_revenue_data,
+        method_name,
+        model_cls,
+    ):
+        """structure=nested is forwarded; response model is unchanged."""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[geographic_revenue_data]
+        )
+
+        result = getattr(fmp_client.company, method_name)("AAPL", structure="nested")
+
+        assert len(result) == 1
+        assert isinstance(result[0], model_cls)
+        params = mock_request.call_args.kwargs["params"]
+        assert params["structure"] == "nested"
         assert params["period"] == "annual"
 
     @patch("httpx.Client.request")

@@ -171,20 +171,21 @@ class ToolFactory:
 
         Mandatory-ness is taken from which list a parameter arrives in, never
         inferred from the parameter itself. ``EndpointParam.required`` and
-        ``EndpointParam.default`` both disagreed with list membership across
-        the catalog: 14 params sat in ``optional_params`` with
-        ``required=True``, and 13 more sit in ``mandatory_params`` carrying a
-        ``default`` -- so either one would silently mis-shape a schema.
-        ``Endpoint`` itself resolves the same question by list membership in
-        ``validate_params``.
+        ``EndpointParam.default`` both used to disagree with list membership:
+        14 params sat in ``optional_params`` with ``required=True``, and 13
+        more sat in ``mandatory_params`` carrying a ``default`` -- so either
+        one would silently mis-shape a schema. ``Endpoint`` itself resolves
+        the same question by list membership in ``validate_params``.
 
         The ``required`` half is settled as of #165: the flag is no longer
         stored at all, and ``EndpointParam.required`` is now a read-only
         property that ``Endpoint`` derives from these very lists. Reading it
         here would be correct today but circular -- it would route the answer
         through the parameter to get back the list it came from -- so the list
-        stays the direct source. The ``default`` half is still live, and
-        reading *that* would still be wrong.
+        stays the direct source. The ``default`` half is still live: #349
+        cleared the last mandatory-plus-default cases, but optional params
+        may still have ``default is None``, so reading *that* would still be
+        wrong.
 
         Optional parameters get a pydantic default so ``is_required()`` is
         false and the LLM may omit them. That default is ``param.default``

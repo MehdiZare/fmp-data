@@ -169,6 +169,33 @@ def test_required_is_derived_from_list_membership() -> None:
     )
 
 
+def test_mandatory_params_do_not_carry_defaults() -> None:
+    """A default on a mandatory param never applies (#165 / #349)."""
+    leftovers: list[str] = []
+    checked = 0
+    endpoints = _endpoints()
+    for module_name, attr, endpoint in endpoints:
+        for param in endpoint.mandatory_params:
+            checked += 1
+            if param.default is not None:
+                leftovers.append(
+                    f"{module_name}.{attr}.{param.name}: default={param.default!r}"
+                )
+        checked += len(endpoint.optional_params or [])
+    assert not leftovers, (
+        "mandatory params with a default never apply; move them to "
+        "optional_params:\n  " + "\n  ".join(leftovers)
+    )
+    assert len(endpoints) >= _MIN_ENDPOINTS, (
+        f"only {len(endpoints)} endpoints inspected; is the walk working? "
+        f"skipped: {SKIPPED_MODULES}"
+    )
+    assert checked >= _MIN_PARAMS, (
+        f"only {checked} params inspected; is the walk working? "
+        f"skipped: {SKIPPED_MODULES}"
+    )
+
+
 def test_every_param_has_a_description() -> None:
     """``description`` lost its no-default status; this covers what mypy cannot.
 

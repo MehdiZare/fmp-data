@@ -110,7 +110,13 @@ from fmp_data.fundamental.models import (
 from fmp_data.helpers import deprecated
 from fmp_data.intelligence.models import DividendEvent, EarningEvent, StockSplitEvent
 from fmp_data.models import MarketCapitalization, _safe_path_segment
-from fmp_data.schema import Interval, Period, PeriodAnnualQuarter, PeriodFiscal
+from fmp_data.schema import (
+    Interval,
+    Period,
+    PeriodAnnualQuarter,
+    PeriodFiscal,
+    Structure,
+)
 
 
 def _format_date(value: date | None) -> str | None:
@@ -305,13 +311,19 @@ class CompanyClient(EndpointGroup):
         return []
 
     def get_product_revenue_segmentation(
-        self, symbol: str, period: PeriodAnnualQuarter = "annual"
+        self,
+        symbol: str,
+        period: PeriodAnnualQuarter = "annual",
+        structure: Structure = "flat",
     ) -> list[ProductRevenueSegment]:
         """Get revenue segmentation by product.
 
         Args:
             symbol: Company symbol
             period: Data period ('annual' or 'quarter')
+            structure: Response layout ('flat' or 'nested'). Stable
+                currently returns the same list-of-objects for both
+                (probed 2026-08-17).
 
         Returns:
             List of product revenue segments by fiscal year
@@ -320,20 +332,26 @@ class CompanyClient(EndpointGroup):
             self.client.request(
                 PRODUCT_REVENUE_SEGMENTATION,
                 symbol=symbol,
-                structure="flat",
+                structure=structure,
                 period=period,
             ),
             ProductRevenueSegment,
         )
 
     def get_geographic_revenue_segmentation(
-        self, symbol: str, period: PeriodAnnualQuarter = "annual"
+        self,
+        symbol: str,
+        period: PeriodAnnualQuarter = "annual",
+        structure: Structure = "flat",
     ) -> list[GeographicRevenueSegment]:
         """Get revenue segmentation by geographic region.
 
         Args:
             symbol: Company symbol
             period: Data period ('annual' or 'quarter')
+            structure: Response layout ('flat' or 'nested'). Stable
+                currently returns the same list-of-objects for both
+                (probed 2026-08-17).
 
         Returns:
             List of geographic revenue segments by fiscal year
@@ -342,7 +360,7 @@ class CompanyClient(EndpointGroup):
             self.client.request(
                 GEOGRAPHIC_REVENUE_SEGMENTATION,
                 symbol=symbol,
-                structure="flat",
+                structure=structure,
                 period=period,
             ),
             GeographicRevenueSegment,
