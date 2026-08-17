@@ -910,11 +910,70 @@ def test_process_response_normal_quote_list_is_unchanged() -> None:
     assert result[0].symbol == "AAPL"
 
 
-def test_process_response_singleton_error_plus_data_keys_is_not_typed() -> None:
-    """Decorator keys keep the row on the validation path (#342)."""
+@pytest.mark.parametrize("key", ["Error Message", "message", "error"])
+def test_process_response_singleton_error_plus_data_keys_is_auth_error(
+    key: str,
+) -> None:
+    """Decorator keys plus the invalid-key copy type as auth (#344)."""
+    with pytest.raises(AuthenticationError) as exc_info:
+        BaseClient._process_response(
+            _list_quote_endpoint(),
+            [{key: "Invalid API KEY", "symbol": "AAPL"}],
+        )
+    assert exc_info.value.status_code == 200
+
+
+def test_process_response_singleton_unrelated_decorator_keys_stay_a_row() -> None:
+    """Mixed-key rows that are not the junk-key copy stay data (#344)."""
     result: object = BaseClient._process_response(
         _list_quote_endpoint(),
-        [{"Error Message": "Invalid API KEY", "symbol": "AAPL"}],
+        [{"Error Message": "Legacy endpoint retired", "symbol": "AAPL"}],
+    )
+    assert isinstance(result, list)
+    assert result[0].symbol == "AAPL"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"Error Message": {"message": "Invalid API KEY"}},
+        {"message": {"Error Message": "Invalid API KEY"}},
+        {"error": {"error": "invalid api key"}},
+        [{"Error Message": {"message": "Invalid API KEY"}}],
+    ],
+)
+def test_nested_invalid_api_key_value_is_authentication_error(
+    payload: object,
+) -> None:
+    """Nested error values unwrap instead of becoming a repr (#344)."""
+    with pytest.raises(AuthenticationError) as exc_info:
+        BaseClient._process_response(_list_quote_endpoint(), payload)
+    assert exc_info.value.status_code == 200
+
+
+def test_nested_junk_error_value_stays_fmp_error() -> None:
+    """Do not map an unrecognized nested body to None or to auth (#344)."""
+    with pytest.raises(FMPError) as exc_info:
+        BaseClient._check_error_response({"Error Message": {"foo": 1}})
+    assert type(exc_info.value) is FMPError
+    assert exc_info.value.status_code is None
+
+
+def test_process_response_singleton_invalid_api_key_scalar_is_auth_error() -> None:
+    """A one-element string list must not become the first model field (#344)."""
+    with pytest.raises(AuthenticationError) as exc_info:
+        BaseClient._process_response(
+            _list_quote_endpoint(),
+            ["Invalid API KEY"],
+        )
+    assert exc_info.value.status_code == 200
+
+
+def test_process_response_singleton_plain_scalar_keeps_first_field_fallback() -> None:
+    """Only the invalid-key scalar is typed; other strings stay data."""
+    result: object = BaseClient._process_response(
+        _list_quote_endpoint(),
+        ["AAPL"],
     )
     assert isinstance(result, list)
     assert result[0].symbol == "AAPL"

@@ -46,6 +46,34 @@ ValidationMode = Literal["lenient", "warn", "strict"]
 _INVALID_API_KEY_BODY = re.compile(r"^invalid api key\b", re.IGNORECASE)
 _ERROR_BODY_KEY_ORDER = ("Error Message", "message", "error")
 _ERROR_BODY_KEYS = frozenset(_ERROR_BODY_KEY_ORDER)
+_ERROR_BODY_UNWRAP_DEPTH = 4
+
+
+def _is_invalid_api_key_text(message: Any) -> bool:
+    """True when the coerced 2xx body is the known invalid-key copy."""
+    return bool(_INVALID_API_KEY_BODY.match(_error_body_text(message).strip()))
+
+
+def _error_body_text(message: Any, *, depth: int = 0) -> str:
+    """Coerce a 2xx error-body value to text.
+
+    Nested dicts are walked along the known error keys so
+    ``{"message": "Invalid API KEY"}`` types as auth, not as a ``str()``
+    repr. Junk that is not on those keys stays a string — it is not
+    mapped to ``None`` (#344).
+    """
+    if depth > _ERROR_BODY_UNWRAP_DEPTH:
+        return str(message)
+    if isinstance(message, str):
+        return message
+    if isinstance(message, dict):
+        for key in _ERROR_BODY_KEY_ORDER:
+            if key in message:
+                return _error_body_text(message[key], depth=depth + 1)
+        return str(message)
+    if isinstance(message, (list, tuple)) and len(message) == 1:
+        return _error_body_text(message[0], depth=depth + 1)
+    return str(message)
 
 
 def _default_http_headers() -> dict[str, str]:
@@ -875,26 +903,51 @@ class BaseClient:
     @staticmethod
     def _raise_response_error(message: Any) -> NoReturn:
         """Raise a typed error for a 2xx JSON error body."""
-        text = str(message)
-        if _INVALID_API_KEY_BODY.match(text.strip()):
+        text = _error_body_text(message)
+        if _is_invalid_api_key_text(text):
             raise AuthenticationError(text, status_code=200)
         raise FMPError(text)
 
     @staticmethod
-    def _check_singleton_error_list(data: list[Any]) -> None:
-        """Route a one-element error-only list through the dict 2xx typer.
+    def _raise_decorator_invalid_key(item: dict[str, Any]) -> None:
+        """Type a mixed-key singleton only when the copy is the junk key."""
+        for key in _ERROR_BODY_KEY_ORDER:
+            if key in item:
+                if _is_invalid_api_key_text(item[key]):
+                    BaseClient._raise_response_error(item[key])
+                return
 
-        A junk-key quote body is a one-row list. Multi-row lists are not
-        inspected. Unrelated singleton copy still becomes FMPError.
+    @staticmethod
+    def _check_singleton_error_list(data: list[Any]) -> None:
+        """Type leftover one-element 2xx list bodies (#342, #344).
+
+        Multi-row lists are not inspected. A one-element list is typed
+        when it is:
+
+        * error-key-only (any copy → AuthenticationError or FMPError)
+        * a dict with decorator keys whose error value is the known
+          invalid-key copy (AuthenticationError). Unrelated mixed-key
+          rows stay on the validation path so a real quote that happens
+          to carry an ``error`` field is not turned into FMPError.
+        * a scalar string that matches the invalid-key copy
+          (AuthenticationError). Other scalars keep the first-field
+          fallback.
         """
         if len(data) != 1:
             return
         item = data[0]
-        if not isinstance(item, dict):
+        if isinstance(item, str):
+            if _is_invalid_api_key_text(item):
+                BaseClient._raise_response_error(item)
+            return
+        if not isinstance(item, dict) or not item:
             return
         keys = set(item)
-        if keys and keys <= _ERROR_BODY_KEYS:
+        if keys <= _ERROR_BODY_KEYS:
             BaseClient._check_error_response(item)
+            return
+        if keys & _ERROR_BODY_KEYS:
+            BaseClient._raise_decorator_invalid_key(item)
 
     @staticmethod
     def _validate_model(
