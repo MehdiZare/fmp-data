@@ -1,0 +1,85 @@
+{
+  "description": "Committed government-trading cassette contract (#336). CI has no YAML (gitignored); this snapshot must still fail if a required wire alias leaves the model.",
+  "cassettes": [
+    {
+      "path": "intelligence/senate_net_worth.yaml",
+      "endpoint": "senate_net_worth",
+      "model": "fmp_data.intelligence.models.SenateNetWorthItem",
+      "required_aliases": [
+        "senateID",
+        "formType",
+        "filingDate",
+        "debtDetails",
+        "valueRange",
+        "incomeRange"
+      ]
+    },
+    {
+      "path": "intelligence/senate_net_worth.yaml",
+      "endpoint": "senate_net_worth",
+      "model": "fmp_data.intelligence.models.SenateNetWorthValueRange",
+      "required_aliases": ["min", "max"]
+    },
+    {
+      "path": "intelligence/senate_net_worth_aggregated.yaml",
+      "endpoint": "senate_net_worth_aggregated",
+      "model": "fmp_data.intelligence.models.SenateNetWorthAggregated",
+      "required_aliases": [
+        "senateID",
+        "year",
+        "total",
+        "stock",
+        "realEstate",
+        "realEstateLiabilities",
+        "cashAndCashEquivalents",
+        "mutualFundsAndETFs"
+      ]
+    },
+    {
+      "path": "intelligence/senate_profile.yaml",
+      "endpoint": "senate_profile",
+      "model": "fmp_data.intelligence.models.SenateProfile",
+      "required_aliases": [
+        "senateID",
+        "firstName",
+        "lastName",
+        "birthDate",
+        "latestParty",
+        "latestPosition",
+        "yearsActive"
+      ]
+    },
+    {
+      "path": "intelligence/senate_positions.yaml",
+      "endpoint": "senate_positions",
+      "model": "fmp_data.intelligence.models.SenatePosition",
+      "required_aliases": [
+        "senateID",
+        "congressNumber",
+        "startDate",
+        "endDate",
+        "yearsInTerm"
+      ]
+    },
+    {
+      "path": "intelligence/senate_trades_by_id.yaml",
+      "endpoint": "senate_trades_by_id",
+      "model": "fmp_data.intelligence.models.SenateTrade",
+      "required_aliases": [
+        "senateID",
+        "disclosureDate",
+        "transactionDate"
+      ]
+    },
+    {
+      "path": "intelligence/house_trades_by_id.yaml",
+      "endpoint": "house_trades_by_id",
+      "model": "fmp_data.intelligence.models.HouseDisclosure",
+      "required_aliases": [
+        "senateID",
+        "disclosureDate",
+        "transactionDate"
+      ]
+    }
+  ]
+}

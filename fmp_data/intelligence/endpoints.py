@@ -792,7 +792,8 @@ SENATE_LATEST: Endpoint[SenateTrade] = Endpoint(
     path="senate-latest",
     version=APIVersion.STABLE,
     description="Get latest Senate financial disclosures",
-    mandatory_params=[
+    mandatory_params=[],
+    optional_params=[
         EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
@@ -808,7 +809,6 @@ SENATE_LATEST: Endpoint[SenateTrade] = Endpoint(
             default=100,
         ),
     ],
-    optional_params=[],
     response_model=SenateTrade,
 )
 
@@ -906,7 +906,8 @@ HOUSE_LATEST: Endpoint[HouseDisclosure] = Endpoint(
     path="house-latest",
     version=APIVersion.STABLE,
     description="Get latest House financial disclosures",
-    mandatory_params=[
+    mandatory_params=[],
+    optional_params=[
         EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
@@ -922,7 +923,6 @@ HOUSE_LATEST: Endpoint[HouseDisclosure] = Endpoint(
             default=100,
         ),
     ],
-    optional_params=[],
     response_model=HouseDisclosure,
 )
 

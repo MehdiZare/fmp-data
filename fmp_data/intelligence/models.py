@@ -2,6 +2,7 @@
 from datetime import date as dt_date
 from datetime import datetime
 from decimal import Decimal
+from math import isfinite
 from typing import Annotated
 
 from pydantic import (
@@ -11,10 +12,23 @@ from pydantic import (
     ConfigDict,
     Field,
     HttpUrl,
+    model_validator,
 )
 from pydantic.alias_generators import to_camel
 
 from fmp_data.models import CIK, SenateId
+
+
+def _coerce_calendar_date(value: object) -> object:
+    """Turn a datetime or an ISO string with a time part into a calendar date."""
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, str) and "T" in value:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).date()
+    return value
+
+
+CalendarDate = Annotated[dt_date, BeforeValidator(_coerce_calendar_date)]
 
 default_model_config = ConfigDict(
     populate_by_name=True,
@@ -463,12 +477,12 @@ class SenateTrade(BaseModel):
         alias="senateID",
         description="FMP entity id for the senator (wire key senateID).",
     )
-    disclosure_date: datetime | None = Field(
+    disclosure_date: CalendarDate | None = Field(
         None,
         validation_alias=AliasChoices("disclosureDate", "dateRecieved"),
         description="Date disclosure received",
     )
-    transaction_date: datetime | None = Field(
+    transaction_date: CalendarDate | None = Field(
         None, alias="transactionDate", description="Date of transaction"
     )
     first_name: str | None = Field(
@@ -495,7 +509,7 @@ class SenateTrade(BaseModel):
     link: HttpUrl | None = Field(None, description="Link to filing")
 
     @property
-    def date_received(self) -> datetime | None:
+    def date_received(self) -> dt_date | None:
         """Backward-compatible alias for disclosure_date."""
         return self.disclosure_date
 
@@ -518,10 +532,10 @@ class HouseDisclosure(BaseModel):
             "House rows as well (e.g. Pelosi is P000197)."
         ),
     )
-    disclosure_date: datetime | None = Field(
+    disclosure_date: CalendarDate | None = Field(
         None, alias="disclosureDate", description="Date of disclosure"
     )
-    transaction_date: datetime | None = Field(
+    transaction_date: CalendarDate | None = Field(
         None, alias="transactionDate", description="Date of transaction"
     )
     first_name: str | None = Field(
@@ -574,15 +588,27 @@ class SenateProfile(BaseModel):
     senate_id: SenateId | None = Field(
         None, alias="senateID", description="FMP member id (wire key senateID)"
     )
-    first_name: str | None = Field(None, alias="firstName")
-    last_name: str | None = Field(None, alias="lastName")
-    birth_date: dt_date | None = Field(None, alias="birthDate")
-    latest_party: str | None = Field(None, alias="latestParty")
-    latest_state: str | None = Field(None, alias="latestState")
-    latest_position: str | None = Field(None, alias="latestPosition")
+    first_name: str | None = Field(None, alias="firstName", description="First name")
+    last_name: str | None = Field(None, alias="lastName", description="Last name")
+    birth_date: dt_date | None = Field(
+        None, alias="birthDate", description="Date of birth"
+    )
+    latest_party: str | None = Field(
+        None, alias="latestParty", description="Most recent party affiliation"
+    )
+    latest_state: str | None = Field(
+        None, alias="latestState", description="Most recent state represented"
+    )
+    latest_position: str | None = Field(
+        None, alias="latestPosition", description="Most recent chamber role"
+    )
     image: HttpUrl | None = Field(None, description="Member portrait URL")
-    active: bool | None = Field(None)
-    years_active: float | None = Field(None, alias="yearsActive")
+    active: bool | None = Field(
+        None, description="Whether the member is currently active"
+    )
+    years_active: float | None = Field(
+        None, alias="yearsActive", description="Years of service"
+    )
 
 
 class SenatePosition(BaseModel):
@@ -593,13 +619,21 @@ class SenatePosition(BaseModel):
     senate_id: SenateId | None = Field(
         None, alias="senateID", description="FMP member id (wire key senateID)"
     )
-    congress_number: int | None = Field(None, alias="congressNumber")
-    start_date: dt_date | None = Field(None, alias="startDate")
-    end_date: dt_date | None = Field(None, alias="endDate")
-    party: str | None = Field(None)
-    position: str | None = Field(None)
-    state: str | None = Field(None)
-    years_in_term: float | None = Field(None, alias="yearsInTerm")
+    congress_number: int | None = Field(
+        None, alias="congressNumber", description="Congress number for this term"
+    )
+    start_date: dt_date | None = Field(
+        None, alias="startDate", description="Term start date"
+    )
+    end_date: dt_date | None = Field(None, alias="endDate", description="Term end date")
+    party: str | None = Field(None, description="Party during this term")
+    position: str | None = Field(
+        None, description="Chamber role (Senator or Representative)"
+    )
+    state: str | None = Field(None, description="State represented")
+    years_in_term: float | None = Field(
+        None, alias="yearsInTerm", description="Years served in this term"
+    )
 
 
 class SenateNetWorthValueRange(BaseModel):
@@ -607,8 +641,25 @@ class SenateNetWorthValueRange(BaseModel):
 
     model_config = default_model_config
 
-    min: float | None = Field(None)
-    max: float | None = Field(None)
+    minimum: float | None = Field(
+        None, alias="min", description="Range lower bound (wire key min)"
+    )
+    maximum: float | None = Field(
+        None, alias="max", description="Range upper bound (wire key max)"
+    )
+
+    @model_validator(mode="after")
+    def _ordered_bounds(self) -> "SenateNetWorthValueRange":
+        for bound in (self.minimum, self.maximum):
+            if bound is not None and not isfinite(bound):
+                raise ValueError("range bounds must be finite")
+        if (
+            self.minimum is not None
+            and self.maximum is not None
+            and self.minimum > self.maximum
+        ):
+            raise ValueError("minimum must be <= maximum")
+        return self
 
 
 class SenateNetWorthDebtDetails(BaseModel):
@@ -616,7 +667,9 @@ class SenateNetWorthDebtDetails(BaseModel):
 
     model_config = default_model_config
 
-    date_incurred: str | None = Field(None, alias="dateIncurred")
+    date_incurred: str | None = Field(
+        None, alias="dateIncurred", description="When the liability was incurred"
+    )
 
 
 class SenateNetWorthItem(BaseModel):
@@ -624,23 +677,37 @@ class SenateNetWorthItem(BaseModel):
 
     model_config = default_model_config
 
-    senate_id: SenateId | None = Field(None, alias="senateID")
-    form_type: str | None = Field(None, alias="formType")
-    year: int | None = Field(None)
-    filing_date: dt_date | None = Field(None, alias="filingDate")
-    section: str | None = Field(None)
-    category: str | None = Field(None)
-    name: str | None = Field(None)
-    asset_type: str | None = Field(None, alias="assetType")
-    income_type: str | None = Field(None, alias="incomeType")
-    owner: str | None = Field(None)
-    comment: str | None = Field(None)
-    debt_details: SenateNetWorthDebtDetails | None = Field(None, alias="debtDetails")
-    value_range: SenateNetWorthValueRange | None = Field(None, alias="valueRange")
-    value: float | None = Field(None)
-    income_range: SenateNetWorthValueRange | None = Field(None, alias="incomeRange")
-    income: float | None = Field(None)
-    link: HttpUrl | None = Field(None)
+    senate_id: SenateId | None = Field(
+        None, alias="senateID", description="FMP member id (wire key senateID)"
+    )
+    form_type: str | None = Field(None, alias="formType", description="Disclosure form")
+    year: int | None = Field(None, description="Disclosure year")
+    filing_date: dt_date | None = Field(
+        None, alias="filingDate", description="Date the disclosure was filed"
+    )
+    section: str | None = Field(None, description="Form section (assets, liabilities)")
+    category: str | None = Field(None, description="Asset or liability category")
+    name: str | None = Field(None, description="Institution or holding name")
+    asset_type: str | None = Field(
+        None, alias="assetType", description="Type or description of the holding"
+    )
+    income_type: str | None = Field(
+        None, alias="incomeType", description="Type of income, if disclosed"
+    )
+    owner: str | None = Field(None, description="Owner of the holding")
+    comment: str | None = Field(None, description="Filer comment")
+    debt_details: SenateNetWorthDebtDetails | None = Field(
+        None, alias="debtDetails", description="Liability extras"
+    )
+    value_range: SenateNetWorthValueRange | None = Field(
+        None, alias="valueRange", description="Disclosed value range"
+    )
+    value: float | None = Field(None, description="Point estimate of value")
+    income_range: SenateNetWorthValueRange | None = Field(
+        None, alias="incomeRange", description="Disclosed income range"
+    )
+    income: float | None = Field(None, description="Point estimate of income")
+    link: HttpUrl | None = Field(None, description="Link to the filing")
 
 
 class SenateNetWorthAggregated(BaseModel):
@@ -648,26 +715,42 @@ class SenateNetWorthAggregated(BaseModel):
 
     model_config = default_model_config
 
-    senate_id: SenateId | None = Field(None, alias="senateID")
-    year: int | None = Field(None)
-    total: float | None = Field(None)
-    real_estate_liabilities: float | None = Field(None, alias="realEstateLiabilities")
+    senate_id: SenateId | None = Field(
+        None, alias="senateID", description="FMP member id (wire key senateID)"
+    )
+    year: int | None = Field(None, description="Rollup year")
+    total: float | None = Field(None, description="Total disclosed net worth")
+    real_estate_liabilities: float | None = Field(
+        None, alias="realEstateLiabilities", description="Real-estate liabilities"
+    )
     cash_and_cash_equivalents: float | None = Field(
-        None, alias="cashAndCashEquivalents"
+        None, alias="cashAndCashEquivalents", description="Cash and cash equivalents"
     )
     business_and_self_employment: float | None = Field(
-        None, alias="businessAndSelfEmployment"
+        None,
+        alias="businessAndSelfEmployment",
+        description="Business and self-employment assets",
     )
-    real_estate: float | None = Field(None, alias="realEstate")
-    ownership_interest: float | None = Field(None, alias="ownershipInterest")
-    stock: float | None = Field(None)
-    options: float | None = Field(None)
+    real_estate: float | None = Field(
+        None, alias="realEstate", description="Real-estate assets"
+    )
+    ownership_interest: float | None = Field(
+        None, alias="ownershipInterest", description="Ownership-interest assets"
+    )
+    stock: float | None = Field(None, description="Stock holdings")
+    options: float | None = Field(None, description="Options holdings")
     revolving_and_credit_lines: float | None = Field(
-        None, alias="revolvingAndCreditLines"
+        None, alias="revolvingAndCreditLines", description="Revolving credit lines"
     )
-    asset_backed_securities: float | None = Field(None, alias="assetBackedSecurities")
-    business_liabilities: float | None = Field(None, alias="businessLiabilities")
-    mutual_funds_and_etfs: float | None = Field(None, alias="mutualFundsAndETFs")
+    asset_backed_securities: float | None = Field(
+        None, alias="assetBackedSecurities", description="Asset-backed securities"
+    )
+    business_liabilities: float | None = Field(
+        None, alias="businessLiabilities", description="Business liabilities"
+    )
+    mutual_funds_and_etfs: float | None = Field(
+        None, alias="mutualFundsAndETFs", description="Mutual funds and ETFs"
+    )
 
 
 class CrowdfundingOffering(BaseModel):

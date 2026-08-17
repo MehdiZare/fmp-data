@@ -44,6 +44,8 @@ ValidationMode = Literal["lenient", "warn", "strict"]
 # /quote path (probed 2026-08-15); this is the typed regression guard
 # so callers do not see a bare FMPError (#340).
 _INVALID_API_KEY_BODY = re.compile(r"^invalid api key\b", re.IGNORECASE)
+_ERROR_BODY_KEY_ORDER = ("Error Message", "message", "error")
+_ERROR_BODY_KEYS = frozenset(_ERROR_BODY_KEY_ORDER)
 
 
 def _default_http_headers() -> dict[str, str]:
@@ -866,12 +868,9 @@ class BaseClient:
                 on a 2xx response (#340).
             FMPError: If any other error message is found in the data
         """
-        if "Error Message" in data:
-            BaseClient._raise_response_error(data["Error Message"])
-        if "message" in data:
-            BaseClient._raise_response_error(data["message"])
-        if "error" in data:
-            BaseClient._raise_response_error(data["error"])
+        for key in _ERROR_BODY_KEY_ORDER:
+            if key in data:
+                BaseClient._raise_response_error(data[key])
 
     @staticmethod
     def _raise_response_error(message: Any) -> NoReturn:
@@ -880,6 +879,22 @@ class BaseClient:
         if _INVALID_API_KEY_BODY.match(text.strip()):
             raise AuthenticationError(text, status_code=200)
         raise FMPError(text)
+
+    @staticmethod
+    def _check_singleton_error_list(data: list[Any]) -> None:
+        """Route a one-element error-only list through the dict 2xx typer.
+
+        A junk-key quote body is a one-row list. Multi-row lists are not
+        inspected. Unrelated singleton copy still becomes FMPError.
+        """
+        if len(data) != 1:
+            return
+        item = data[0]
+        if not isinstance(item, dict):
+            return
+        keys = set(item)
+        if keys and keys <= _ERROR_BODY_KEYS:
+            BaseClient._check_error_response(item)
 
     @staticmethod
     def _validate_model(
@@ -1033,6 +1048,7 @@ class BaseClient:
 
         # Process list responses
         if isinstance(data, list):
+            BaseClient._check_singleton_error_list(data)
             return BaseClient._process_list_response(
                 endpoint,
                 data,

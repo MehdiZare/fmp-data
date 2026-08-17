@@ -51,8 +51,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`SenateId` branded type on every `senate_id` field (#338).** Shared
   `Annotated` type (like `CIK`) on `SenateTrade`, `HouseDisclosure`,
   `SenateProfile`, `SenatePosition`, and the net-worth rows. Strings
-  pass through untouched. Date-family and pagination requiredness are
-  not part of this slice.
+  pass through untouched.
+
+- **Senate/House trade dates are `date`, not `datetime` (#338).**
+  `SenateTrade` / `HouseDisclosure` `disclosure_date` and
+  `transaction_date` (and `SenateTrade.date_received`) now match the
+  profile / net-worth family. Breaking for callers that compared those
+  fields to `datetime.now()`.
+
+- **`SENATE_LATEST` / `HOUSE_LATEST` pagination is optional (#338).**
+  `page` / `limit` move to `optional_params`, same rule as trades-by-id.
+
+- **`SenateNetWorthValueRange` no longer shadows builtins (#336).**
+  Fields are `minimum` / `maximum` (wire aliases `min` / `max`).
+  Inverted and non-finite ranges are rejected. Callers using `.min` /
+  `.max` must switch.
 
 - **`redact_credential_patterns` redacts hyphenated assignment names
   (#339).** `X-API-KEY=` / `FMP-API-KEY=` now match. Wizard placeholder
@@ -93,11 +106,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `validate_api_key`'s copy matcher is gone — the
   `except AuthenticationError` path covers it.
 
-- **Net-worth integration tests require at least one nested object and
-  one populated aggregated alias (#336).** First slice on the local VCR
-  path: a full rename of `valueRange`/`debtDetails`, or of both
-  `total`/`stock`, now fails. Per-field `model_extra` locking stays
-  with the unit fixtures.
+- **Net-worth integration tests lock nested objects, aggregated
+  aliases, and `model_extra` (#336).** Itemized rows must have empty
+  `model_extra` and at least one populated `valueRange` and
+  `debtDetails`. Aggregated pages must populate both `total` and
+  `stock`.
+
+- **Committed cassette-contract snapshot fails CI without YAML (#336).**
+  `tests/integration/cassette_contracts.json` lists required wire
+  aliases for government-trading models. The YAML payload check still
+  skips when cassettes are gitignored.
+
+- **List-shaped 2xx `Invalid API KEY` bodies raise
+  `AuthenticationError` (#342).** A one-element list whose only keys
+  are error keys is routed through `_raise_response_error`. Multi-row
+  lists are not walked. Unrelated singleton error lists stay
+  `FMPError`.
 
 ## [2.7.0] - 2026-08-14
 
