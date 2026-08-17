@@ -129,6 +129,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lists are not walked. Unrelated singleton error lists stay
   `FMPError`.
 
+- **Residual list-shaped 2xx error bodies type as
+  `AuthenticationError` (#344).** A one-element list with decorator
+  keys (`Error Message` plus data fields), a nested error value
+  (`{"message": "Invalid API KEY"}`), or a scalar
+  `["Invalid API KEY"]` now raises instead of falling through
+  validation. Mixed-key rows whose copy is not the junk-key body stay
+  on the validation path. Multi-row lists are still not walked.
+
 ## [2.7.0] - 2026-08-14
 
 Released from `dev`. A security-and-contracts minor in the same shape as
