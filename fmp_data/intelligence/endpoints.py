@@ -888,7 +888,8 @@ SENATE_TRADING_RSS: Endpoint[SenateTrade] = Endpoint(
         "select it. The live senate-latest endpoint is already exposed as "
         "intelligence.get_senate_latest and returns the same rows."
     ),
-    mandatory_params=[
+    mandatory_params=[],
+    optional_params=[
         EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
@@ -897,7 +898,6 @@ SENATE_TRADING_RSS: Endpoint[SenateTrade] = Endpoint(
             default=0,
         )
     ],
-    optional_params=[],
     response_model=SenateTrade,
 )
 
@@ -1161,7 +1161,8 @@ CROWDFUNDING_RSS: Endpoint[CrowdfundingOffering] = Endpoint(
     path="crowdfunding-offerings-latest",
     version=APIVersion.STABLE,
     description="Get latest crowdfunding offerings",
-    mandatory_params=[
+    mandatory_params=[],
+    optional_params=[
         EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
@@ -1177,7 +1178,6 @@ CROWDFUNDING_RSS: Endpoint[CrowdfundingOffering] = Endpoint(
             default=100,
         ),
     ],
-    optional_params=[],
     response_model=CrowdfundingOffering,
 )
 
@@ -1220,7 +1220,8 @@ EQUITY_OFFERING_RSS: Endpoint[EquityOffering] = Endpoint(
     path="fundraising-latest",
     version=APIVersion.STABLE,
     description="Get latest equity offerings",
-    mandatory_params=[
+    mandatory_params=[],
+    optional_params=[
         EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
@@ -1235,8 +1236,6 @@ EQUITY_OFFERING_RSS: Endpoint[EquityOffering] = Endpoint(
             description="Number of results",
             default=10,
         ),
-    ],
-    optional_params=[
         EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,

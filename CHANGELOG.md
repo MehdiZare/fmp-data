@@ -62,6 +62,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`SENATE_LATEST` / `HOUSE_LATEST` pagination is optional (#338).**
   `page` / `limit` move to `optional_params`, same rule as trades-by-id.
 
+- **RSS pagination leftovers are optional (#345).**
+  `SENATE_TRADING_RSS.page`, `CROWDFUNDING_RSS` `page`/`limit`, and
+  adjacent `EQUITY_OFFERING_RSS` `page`/`limit` move to
+  `optional_params` so `validate_params({})` applies the documented
+  defaults. Not `PaginationArg` (1-based, different defaults).
+
 - **`SenateNetWorthValueRange` no longer shadows builtins (#336).**
   Fields are `minimum` / `maximum` (wire aliases `min` / `max`).
   Inverted and non-finite ranges are rejected. Callers using `.min` /
