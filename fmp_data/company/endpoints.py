@@ -63,6 +63,7 @@ from fmp_data.schema import (
     PERIOD_ANNUAL_QUARTER_VALUES,
     PERIOD_FISCAL_VALUES,
     PERIOD_VALUES,
+    STRUCTURE_VALUES,
 )
 
 QUOTE: Endpoint[Quote] = Endpoint(
@@ -560,12 +561,15 @@ PRODUCT_REVENUE_SEGMENTATION: Endpoint[ProductRevenueSegment] = Endpoint(
             param_type=ParamType.STRING,
             description="Company symbol",
         ),
+    ],
+    optional_params=[
         EndpointParam(
             name="structure",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             description="Data structure format",
             default="flat",
+            valid_values=list(STRUCTURE_VALUES),
         ),
         EndpointParam(
             name="period",
@@ -576,7 +580,6 @@ PRODUCT_REVENUE_SEGMENTATION: Endpoint[ProductRevenueSegment] = Endpoint(
             valid_values=list(PERIOD_ANNUAL_QUARTER_VALUES),
         ),
     ],
-    optional_params=[],
     response_model=ProductRevenueSegment,
     example_queries=[
         "Show Apple's revenue by product",
@@ -603,12 +606,15 @@ GEOGRAPHIC_REVENUE_SEGMENTATION: Endpoint[GeographicRevenueSegment] = Endpoint(
             param_type=ParamType.STRING,
             description="Company symbol",
         ),
+    ],
+    optional_params=[
         EndpointParam(
             name="structure",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             description="Data structure format",
             default="flat",
+            valid_values=list(STRUCTURE_VALUES),
         ),
         EndpointParam(
             name="period",
@@ -619,7 +625,6 @@ GEOGRAPHIC_REVENUE_SEGMENTATION: Endpoint[GeographicRevenueSegment] = Endpoint(
             valid_values=list(PERIOD_ANNUAL_QUARTER_VALUES),
         ),
     ],
-    optional_params=[],
     response_model=GeographicRevenueSegment,
     example_queries=[
         "Show Apple's revenue by region",
@@ -1694,6 +1699,8 @@ FINANCIAL_REPORTS_JSON: Endpoint[FinancialReportJSON] = Endpoint(
             param_type=ParamType.INTEGER,
             description="Report year",
         ),
+    ],
+    optional_params=[
         EndpointParam(
             name="period",
             location=ParamLocation.QUERY,
@@ -1703,7 +1710,6 @@ FINANCIAL_REPORTS_JSON: Endpoint[FinancialReportJSON] = Endpoint(
             valid_values=list(PERIOD_FISCAL_VALUES),
         ),
     ],
-    optional_params=[],
     response_model=FinancialReportJSON,
 )
 
@@ -1730,6 +1736,8 @@ FINANCIAL_REPORTS_XLSX: Endpoint[bytes] = Endpoint(
             param_type=ParamType.INTEGER,
             description="Report year",
         ),
+    ],
+    optional_params=[
         EndpointParam(
             name="period",
             location=ParamLocation.QUERY,
@@ -1739,7 +1747,6 @@ FINANCIAL_REPORTS_XLSX: Endpoint[bytes] = Endpoint(
             valid_values=list(PERIOD_FISCAL_VALUES),
         ),
     ],
-    optional_params=[],
     response_model=bytes,  # Binary data
 )
 

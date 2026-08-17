@@ -419,7 +419,6 @@ def test_client_period_interval_annotations_are_the_typed_literals() -> None:
     )
 
 
-@pytest.mark.skip(reason="Task 3: structure valid_values on endpoints")
 def test_structure_endpoint_valid_values_come_from_the_literal() -> None:
     found: list[str] = []
     wrong: list[str] = []

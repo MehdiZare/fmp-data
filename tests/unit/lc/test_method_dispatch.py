@@ -397,12 +397,13 @@ def test_partition_omits_unmapped_when_method_active() -> None:
     assert "limit" not in {p.name for p in emp_mandatory + emp_optional}
 
     # Without a method, pre-#172 lists are unchanged (structure/limit kept).
-    bare_mand, _bare_opt = partition_params_for_method(
+    bare_mand, bare_opt = partition_params_for_method(
         PRODUCT_REVENUE_SEGMENTATION.mandatory_params,
         PRODUCT_REVENUE_SEGMENTATION.optional_params or [],
         None,
     )
-    assert "structure" in {p.name for p in bare_mand}
+    assert "structure" not in {p.name for p in bare_mand}
+    assert "structure" in {p.name for p in bare_opt}
     bare_emp_mand, bare_emp_opt = partition_params_for_method(
         EMPLOYEE_COUNT.mandatory_params,
         EMPLOYEE_COUNT.optional_params or [],
