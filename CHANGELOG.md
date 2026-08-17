@@ -63,8 +63,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `page` / `limit` move to `optional_params`, same rule as trades-by-id.
 
 - **`SenateNetWorthValueRange` no longer shadows builtins (#336).**
-  Fields are `minimum` / `maximum` (wire aliases `min` / `max`). An
-  inverted range is rejected. Callers using `.min` / `.max` must switch.
+  Fields are `minimum` / `maximum` (wire aliases `min` / `max`).
+  Inverted and non-finite ranges are rejected. Callers using `.min` /
+  `.max` must switch.
 
 - **`redact_credential_patterns` redacts hyphenated assignment names
   (#339).** `X-API-KEY=` / `FMP-API-KEY=` now match. Wizard placeholder

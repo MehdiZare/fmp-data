@@ -12,8 +12,13 @@
         "debtDetails",
         "valueRange",
         "incomeRange"
-      ],
-      "allow_extra": false
+      ]
+    },
+    {
+      "path": "intelligence/senate_net_worth.yaml",
+      "endpoint": "senate_net_worth",
+      "model": "fmp_data.intelligence.models.SenateNetWorthValueRange",
+      "required_aliases": ["min", "max"]
     },
     {
       "path": "intelligence/senate_net_worth_aggregated.yaml",
@@ -28,8 +33,7 @@
         "realEstateLiabilities",
         "cashAndCashEquivalents",
         "mutualFundsAndETFs"
-      ],
-      "allow_extra": true
+      ]
     },
     {
       "path": "intelligence/senate_profile.yaml",
@@ -43,8 +47,7 @@
         "latestParty",
         "latestPosition",
         "yearsActive"
-      ],
-      "allow_extra": false
+      ]
     },
     {
       "path": "intelligence/senate_positions.yaml",
@@ -56,8 +59,7 @@
         "startDate",
         "endDate",
         "yearsInTerm"
-      ],
-      "allow_extra": false
+      ]
     },
     {
       "path": "intelligence/senate_trades_by_id.yaml",
@@ -67,8 +69,7 @@
         "senateID",
         "disclosureDate",
         "transactionDate"
-      ],
-      "allow_extra": false
+      ]
     },
     {
       "path": "intelligence/house_trades_by_id.yaml",
@@ -78,8 +79,7 @@
         "senateID",
         "disclosureDate",
         "transactionDate"
-      ],
-      "allow_extra": false
+      ]
     }
   ]
 }

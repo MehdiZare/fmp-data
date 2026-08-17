@@ -1373,13 +1373,13 @@ class TestMarketIntelligenceClientGovernment:
         assert row.model_dump(by_alias=True)["senateID"] == "P000197"
 
     def test_trade_and_disclosure_dates_are_date_not_datetime(self) -> None:
-        """Older rows join the profile/net-worth date family (#338)."""
-        from datetime import date
+        """SenateTrade / HouseDisclosure dates are calendar dates, not datetimes."""
+        from datetime import date, datetime
 
         trade = SenateTrade.model_validate(
             {
-                "disclosureDate": "2025-01-08",
-                "transactionDate": "2024-12-19T10:00:00",
+                "disclosureDate": datetime(2025, 1, 8, 10, 0, 0),
+                "transactionDate": "2024-12-19T10:00:00Z",
                 "link": "https://example.com/filing",
             }
         )
@@ -1391,7 +1391,9 @@ class TestMarketIntelligenceClientGovernment:
             }
         )
         assert type(trade.disclosure_date) is date
+        assert trade.disclosure_date == date(2025, 1, 8)
         assert type(trade.transaction_date) is date
+        assert trade.transaction_date == date(2024, 12, 19)
         assert type(trade.date_received) is date
         assert type(house.disclosure_date) is date
         assert type(house.transaction_date) is date
@@ -1417,6 +1419,13 @@ class TestMarketIntelligenceClientGovernment:
             assert "limit" in optional, endpoint.name
             assert "page" not in mandatory, endpoint.name
             assert "limit" not in mandatory, endpoint.name
+
+        latest_defaults = SENATE_LATEST.validate_params({})
+        assert latest_defaults["page"] == 0
+        assert latest_defaults["limit"] == 100
+        house_defaults = HOUSE_LATEST.validate_params({})
+        assert house_defaults["page"] == 0
+        assert house_defaults["limit"] == 100
 
     def test_newer_government_models_have_field_descriptions(self) -> None:
         """MCP/JSON schema text should match the rest of intelligence (#338)."""
@@ -1452,10 +1461,15 @@ class TestMarketIntelligenceClientGovernment:
         row = SenateNetWorthValueRange.model_validate({"min": 1, "max": 5})
         assert row.minimum == 1
         assert row.maximum == 5
+        assert row.model_dump(by_alias=True) == {"min": 1.0, "max": 5.0}
         assert "min" not in SenateNetWorthValueRange.model_fields
         assert "max" not in SenateNetWorthValueRange.model_fields
-        with pytest.raises(PydanticValidationError):
+        point = SenateNetWorthValueRange.model_validate({"min": 1, "max": 1})
+        assert point.minimum == point.maximum == 1
+        with pytest.raises(PydanticValidationError, match="minimum must be"):
             SenateNetWorthValueRange.model_validate({"min": 5, "max": 1})
+        with pytest.raises(PydanticValidationError, match="finite"):
+            SenateNetWorthValueRange.model_validate({"min": float("nan"), "max": 1})
 
 
 class TestMarketIntelligenceClientFundraising:

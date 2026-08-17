@@ -2,6 +2,7 @@
 from datetime import date as dt_date
 from datetime import datetime
 from decimal import Decimal
+from math import isfinite
 from typing import Annotated
 
 from pydantic import (
@@ -19,7 +20,7 @@ from fmp_data.models import CIK, SenateId
 
 
 def _coerce_calendar_date(value: object) -> object:
-    """Accept a former datetime wire value as a calendar date (#338)."""
+    """Turn a datetime or an ISO string with a time part into a calendar date."""
     if isinstance(value, datetime):
         return value.date()
     if isinstance(value, str) and "T" in value:
@@ -624,9 +625,7 @@ class SenatePosition(BaseModel):
     start_date: dt_date | None = Field(
         None, alias="startDate", description="Term start date"
     )
-    end_date: dt_date | None = Field(
-        None, alias="endDate", description="Term end date; null if current"
-    )
+    end_date: dt_date | None = Field(None, alias="endDate", description="Term end date")
     party: str | None = Field(None, description="Party during this term")
     position: str | None = Field(
         None, description="Chamber role (Senator or Representative)"
@@ -651,6 +650,9 @@ class SenateNetWorthValueRange(BaseModel):
 
     @model_validator(mode="after")
     def _ordered_bounds(self) -> "SenateNetWorthValueRange":
+        for bound in (self.minimum, self.maximum):
+            if bound is not None and not isfinite(bound):
+                raise ValueError("range bounds must be finite")
         if (
             self.minimum is not None
             and self.maximum is not None

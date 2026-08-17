@@ -878,12 +878,15 @@ def _list_quote_endpoint() -> Mock:
     return endpoint
 
 
-def test_process_response_singleton_invalid_api_key_list_is_auth_error() -> None:
+@pytest.mark.parametrize("key", ["Error Message", "message", "error"])
+def test_process_response_singleton_invalid_api_key_list_is_auth_error(
+    key: str,
+) -> None:
     """A one-row list error body must type as AuthenticationError (#342)."""
     with pytest.raises(AuthenticationError) as exc_info:
         BaseClient._process_response(
             _list_quote_endpoint(),
-            [{"Error Message": "Invalid API KEY"}],
+            [{key: "Invalid API KEY"}],
         )
     assert exc_info.value.status_code == 200
 
@@ -907,8 +910,18 @@ def test_process_response_normal_quote_list_is_unchanged() -> None:
     assert result[0].symbol == "AAPL"
 
 
+def test_process_response_singleton_error_plus_data_keys_is_not_typed() -> None:
+    """Decorator keys keep the row on the validation path (#342)."""
+    result: object = BaseClient._process_response(
+        _list_quote_endpoint(),
+        [{"Error Message": "Invalid API KEY", "symbol": "AAPL"}],
+    )
+    assert isinstance(result, list)
+    assert result[0].symbol == "AAPL"
+
+
 def test_process_response_does_not_walk_a_multi_row_list_for_errors() -> None:
-    """Do not inspect every row of a large list (#342)."""
+    """Do not inspect every row of a multi-row list (#342)."""
     result: object = BaseClient._process_response(
         _list_quote_endpoint(),
         [
@@ -918,6 +931,19 @@ def test_process_response_does_not_walk_a_multi_row_list_for_errors() -> None:
     )
     assert isinstance(result, list)
     assert len(result) == 2
+
+
+def test_process_response_does_not_inspect_a_trailing_error_row() -> None:
+    """A last-row-only walker would still raise; only len == 1 is typed."""
+    result: object = BaseClient._process_response(
+        _list_quote_endpoint(),
+        [
+            {"symbol": "AAPL"},
+            {"Error Message": "Invalid API KEY"},
+        ],
+    )
+    assert isinstance(result, list)
+    assert result[0].symbol == "AAPL"
 
 
 def test_process_response_strict_mode_rejects_unknown_fields() -> None:

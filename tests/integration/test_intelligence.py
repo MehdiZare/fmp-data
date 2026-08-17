@@ -508,7 +508,7 @@ class TestIntelligenceEndpoints(BaseTestCase):
             if len(trades) > 0:
                 for trade in trades:
                     assert isinstance(trade, SenateTrade)
-                    assert isinstance(trade.disclosure_date, date)
+                    assert type(trade.disclosure_date) is date
                     assert isinstance(trade.amount, str)
                     assert isinstance(trade.first_name, str)
                     assert isinstance(trade.last_name, str)
@@ -573,7 +573,7 @@ class TestIntelligenceEndpoints(BaseTestCase):
             if len(trades) > 0:
                 for trade in trades:
                     assert isinstance(trade, SenateTrade)
-                    assert isinstance(trade.disclosure_date, date)
+                    assert type(trade.disclosure_date) is date
                     assert isinstance(trade.amount, str)
                     assert isinstance(trade.first_name, str)
                     assert isinstance(trade.last_name, str)
@@ -607,8 +607,8 @@ class TestIntelligenceEndpoints(BaseTestCase):
             if len(disclosures) > 0:
                 for disclosure in disclosures:
                     assert isinstance(disclosure, HouseDisclosure)
-                    assert isinstance(disclosure.disclosure_date, date)
-                    assert isinstance(disclosure.transaction_date, date)
+                    assert type(disclosure.disclosure_date) is date
+                    assert type(disclosure.transaction_date) is date
                     assert isinstance(disclosure.amount, str)
                     assert isinstance(disclosure.first_name, str)
                     assert isinstance(disclosure.last_name, str)
