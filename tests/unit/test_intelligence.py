@@ -1427,6 +1427,32 @@ class TestMarketIntelligenceClientGovernment:
         assert house_defaults["page"] == 0
         assert house_defaults["limit"] == 100
 
+    def test_rss_pagination_is_optional_like_latest(self) -> None:
+        """Mandatory page/limit defaults never apply (#345)."""
+        from fmp_data.intelligence.endpoints import (
+            CROWDFUNDING_RSS,
+            EQUITY_OFFERING_RSS,
+            SENATE_TRADING_RSS,
+        )
+
+        crowd = CROWDFUNDING_RSS.validate_params({})
+        assert crowd["page"] == 0
+        assert crowd["limit"] == 100
+        equity = EQUITY_OFFERING_RSS.validate_params({})
+        assert equity["page"] == 0
+        assert equity["limit"] == 10
+        rss = SENATE_TRADING_RSS.validate_params({})
+        assert rss["page"] == 0
+
+        for endpoint in (CROWDFUNDING_RSS, EQUITY_OFFERING_RSS, SENATE_TRADING_RSS):
+            mandatory = {param.name for param in endpoint.mandatory_params}
+            optional = {param.name for param in endpoint.optional_params or []}
+            assert "page" in optional, endpoint.name
+            assert "page" not in mandatory, endpoint.name
+            if endpoint is not SENATE_TRADING_RSS:
+                assert "limit" in optional, endpoint.name
+                assert "limit" not in mandatory, endpoint.name
+
     def test_newer_government_models_have_field_descriptions(self) -> None:
         """MCP/JSON schema text should match the rest of intelligence (#338)."""
         from fmp_data.intelligence.models import (
