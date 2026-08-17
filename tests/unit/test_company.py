@@ -1659,3 +1659,59 @@ class TestCompanyLogoUrl:
     def test_path_escapes_are_rejected(self, symbol: str) -> None:
         with pytest.raises(Exception, match="Invalid path parameter"):
             self._client().get_company_logo_url(symbol)
+
+
+class TestSegmentationAndReportDefaults:
+    """Mandatory structure/period defaults never apply (#349)."""
+
+    def test_segmentation_structure_and_period_are_optional(self) -> None:
+        from fmp_data.company.endpoints import (
+            GEOGRAPHIC_REVENUE_SEGMENTATION,
+            PRODUCT_REVENUE_SEGMENTATION,
+        )
+        from fmp_data.exceptions import ValidationError as FMPValidationError
+        from fmp_data.schema import STRUCTURE_VALUES
+
+        for endpoint in (
+            PRODUCT_REVENUE_SEGMENTATION,
+            GEOGRAPHIC_REVENUE_SEGMENTATION,
+        ):
+            mandatory = {param.name for param in endpoint.mandatory_params}
+            optional = {param.name for param in endpoint.optional_params or []}
+            assert mandatory == {"symbol"}, endpoint.name
+            assert "structure" in optional, endpoint.name
+            assert "period" in optional, endpoint.name
+            assert "structure" not in mandatory, endpoint.name
+            assert "period" not in mandatory, endpoint.name
+            injected = endpoint.validate_params({"symbol": "AAPL"})
+            assert injected["symbol"] == "AAPL"
+            assert injected["structure"] == "flat"
+            assert injected["period"] == "annual"
+            structure = next(
+                param
+                for param in (endpoint.optional_params or [])
+                if param.name == "structure"
+            )
+            assert tuple(str(v) for v in (structure.valid_values or ())) == (
+                STRUCTURE_VALUES
+            )
+            with pytest.raises(FMPValidationError, match="Must be one of"):
+                endpoint.validate_params({"symbol": "AAPL", "structure": "tree"})
+
+    def test_report_period_is_optional(self) -> None:
+        from fmp_data.company.endpoints import (
+            FINANCIAL_REPORTS_JSON,
+            FINANCIAL_REPORTS_XLSX,
+        )
+        from fmp_data.exceptions import ValidationError as FMPValidationError
+
+        for endpoint in (FINANCIAL_REPORTS_JSON, FINANCIAL_REPORTS_XLSX):
+            mandatory = {param.name for param in endpoint.mandatory_params}
+            optional = {param.name for param in endpoint.optional_params or []}
+            assert mandatory == {"symbol", "year"}, endpoint.name
+            assert "period" in optional, endpoint.name
+            assert "period" not in mandatory, endpoint.name
+            injected = endpoint.validate_params({"symbol": "AAPL", "year": 2024})
+            assert injected["period"] == "FY"
+            with pytest.raises(FMPValidationError, match="Missing mandatory parameter"):
+                endpoint.validate_params({"symbol": "AAPL"})
