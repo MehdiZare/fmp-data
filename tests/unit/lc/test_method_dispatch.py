@@ -371,7 +371,7 @@ def test_partition_omits_unmapped_when_method_active() -> None:
     """Endpoint-only params (structure, limit) are dropped under method dispatch."""
 
     def get_product_revenue_segmentation(
-        symbol: str, period: str = "annual"
+        symbol: str, period: str = "annual", structure: str = "flat"
     ) -> list[Any]:
         return []
 
@@ -384,8 +384,7 @@ def test_partition_omits_unmapped_when_method_active() -> None:
         get_product_revenue_segmentation,
     )
     assert {p.name for p in rev_mandatory} == {"symbol"}
-    assert {p.name for p in rev_optional} == {"period"}
-    assert "structure" not in {p.name for p in rev_mandatory + rev_optional}
+    assert {p.name for p in rev_optional} == {"period", "structure"}
 
     emp_mandatory, emp_optional = partition_params_for_method(
         EMPLOYEE_COUNT.mandatory_params,

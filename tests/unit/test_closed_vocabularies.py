@@ -435,7 +435,6 @@ def test_structure_endpoint_valid_values_come_from_the_literal() -> None:
     assert not wrong, "structure valid_values drifted:\n  " + "\n  ".join(wrong)
 
 
-@pytest.mark.skip(reason="Task 4: methods gain structure=")
 def test_client_structure_annotations_are_the_typed_literal() -> None:
     untyped: list[str] = []
     seen = 0

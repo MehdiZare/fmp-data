@@ -306,6 +306,26 @@ class TestCompanyClientCoverage:
         params = mock_request.call_args.kwargs["params"]
         assert params["symbol"] == "AAPL"
         assert params["period"] == "annual"
+        assert params["structure"] == "flat"
+
+    @patch("httpx.Client.request")
+    def test_get_geographic_revenue_segmentation_nested_structure(
+        self, mock_request, fmp_client, mock_response, geographic_revenue_data
+    ):
+        """structure=nested is forwarded; response model is unchanged."""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[geographic_revenue_data]
+        )
+
+        result = fmp_client.company.get_geographic_revenue_segmentation(
+            "AAPL", structure="nested"
+        )
+
+        assert len(result) == 1
+        assert isinstance(result[0], GeographicRevenueSegment)
+        params = mock_request.call_args.kwargs["params"]
+        assert params["structure"] == "nested"
+        assert params["period"] == "annual"
 
     @patch("httpx.Client.request")
     def test_get_intraday_prices_with_filters(
