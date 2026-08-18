@@ -90,6 +90,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Timeout and network errors no longer leak `apikey=` (#350).**
+  `httpx.TimeoutException` / `httpx.NetworkError` now raise
+  `FMPTimeoutError` / `FMPNetworkError` with `from None`. The request
+  URL is not logged (`str(httpx_exc)` and `exc_info=True` are off that
+  path). Status errors were already mapped in #97; this is the leftover
+  transport path. Callers that caught raw httpx timeouts should catch
+  the new types (they remain `FMPError` subclasses and stay retryable).
+
 - **MCP setup helpers no longer echo subprocess stderr (#319).**
   `validate_api_key` and `test_mcp_server` return classified reasons
   (`valid` / `invalid` / `timeout` / `unavailable` and

@@ -30,6 +30,8 @@ from fmp_data.config import ClientConfig
 from fmp_data.exceptions import (
     AuthenticationError,
     FMPError,
+    FMPNetworkError,
+    FMPTimeoutError,
     RateLimitError,
     ValidationError,
 )
@@ -463,6 +465,8 @@ class BaseClient:
 
     @staticmethod
     def _is_retryable_error(exc: BaseException) -> bool:
+        if isinstance(exc, FMPTimeoutError | FMPNetworkError):
+            return True
         if isinstance(exc, httpx.TimeoutException | httpx.NetworkError):
             return True
         if isinstance(exc, RateLimitError):
@@ -477,6 +481,41 @@ class BaseClient:
         if isinstance(exc, httpx.HTTPStatusError):
             return exc.response.status_code >= 500
         return False
+
+    def _reraise_transport_failure(
+        self, exc: BaseException, *, endpoint_name: str
+    ) -> NoReturn:
+        """Map timeout/network httpx errors without chaining the request URL.
+
+        ``from None`` is the same pin as ``_raise_fmp_http_error`` (#97):
+        httpx stringifies ``request.url``, which carries ``apikey=`` (#350).
+        """
+        if isinstance(exc, httpx.TimeoutException):
+            self.logger.error(
+                "Request timed out",
+                extra={"endpoint": endpoint_name},
+            )
+            raise FMPTimeoutError("Request timed out") from None
+        if isinstance(exc, httpx.NetworkError):
+            self.logger.error(
+                "Network error",
+                extra={"endpoint": endpoint_name},
+            )
+            raise FMPNetworkError("Network error") from None
+        raise exc
+
+    def _handle_execute_failure(
+        self, exc: BaseException, *, endpoint_name: str
+    ) -> None:
+        """Log a failed attempt, mapping transport errors first (#350)."""
+        if isinstance(exc, httpx.TimeoutException | httpx.NetworkError):
+            self._reraise_transport_failure(exc, endpoint_name=endpoint_name)
+        self.logger.error(
+            "Request failed: %s",
+            exc,
+            extra={"endpoint": endpoint_name, "error": str(exc)},
+            exc_info=True,
+        )
 
     @overload
     def request(self, endpoint: Endpoint[bytes], **kwargs: Any) -> bytes: ...
@@ -646,11 +685,7 @@ class BaseClient:
             # Re-raise rate limit errors to be handled by retry logic
             raise
         except Exception as e:
-            self.logger.error(
-                f"Request failed: {e!s}",
-                extra={"endpoint": endpoint.name, "error": str(e)},
-                exc_info=True,
-            )
+            self._handle_execute_failure(e, endpoint_name=endpoint.name)
             raise
         finally:
             # Log timing metrics
@@ -1309,11 +1344,7 @@ class BaseClient:
             # Re-raise rate limit errors to be handled by retry logic
             raise
         except Exception as e:
-            self.logger.error(
-                f"Async request failed: {e!s}",
-                extra={"endpoint": endpoint.name, "error": str(e)},
-                exc_info=True,
-            )
+            self._handle_execute_failure(e, endpoint_name=endpoint.name)
             raise
 
 

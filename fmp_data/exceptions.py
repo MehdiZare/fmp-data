@@ -17,6 +17,14 @@ class FMPError(Exception):
         super().__init__(self.message)
 
 
+class FMPTimeoutError(FMPError):
+    """Raised when an FMP HTTP request times out."""
+
+
+class FMPNetworkError(FMPError):
+    """Raised when an FMP HTTP request fails at the transport layer."""
+
+
 class RateLimitError(FMPError):
     """Raised when API rate limit is exceeded"""
 
