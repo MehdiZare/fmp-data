@@ -97,6 +97,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   path). Status errors were already mapped in #97; this is the leftover
   transport path. Callers that caught raw httpx timeouts should catch
   the new types (they remain `FMPError` subclasses and stay retryable).
+  `validate_api_key` classifies `FMPTimeoutError` as `timeout` and
+  `FMPNetworkError` as `unavailable` so a transport failure cannot
+  report a valid key.
 
 - **MCP setup helpers no longer echo subprocess stderr (#319).**
   `validate_api_key` and `test_mcp_server` return classified reasons

@@ -130,7 +130,8 @@ Each domain client is an `EndpointGroup` wrapper around a shared `BaseClient` an
 
 ### Retry and Rate Limiting
 The `BaseClient` uses `tenacity` for automatic retries on transient failures:
-- Retries on `TimeoutException`, `NetworkError`, `HTTPStatusError`
+- Retries on `FMPTimeoutError`, `FMPNetworkError`, and 5xx `FMPError`
+  (plus leftover raw `httpx.TimeoutException` / `httpx.NetworkError`)
 - Exponential backoff: multiplier=1, min=4s, max=10s
 - Configurable maximum attempts (default=3)
 
@@ -157,6 +158,8 @@ Custom exceptions for error handling (all in `fmp_data/exceptions.py`):
 
 ```text
 FMPError                  # Base exception for all FMP API errors
+├── FMPTimeoutError       # HTTP request timed out (#350)
+├── FMPNetworkError       # Transport / connect failure (#350)
 ├── RateLimitError        # 429 - includes retry_after attribute
 ├── AuthenticationError   # 401 - invalid or missing API key
 ├── ValidationError       # 400 - invalid request parameters

@@ -111,8 +111,12 @@ Same pin shape as `#97`:
   `test_metrics_callback_called_on_failure` to `FMPTimeoutError`
 - Leave retry-then-success tests (they raise httpx from the mock;
   the client maps, then retries)
-- `test_mcp_utils` fake company that raises `httpx.TimeoutException`
-  is not this path — leave it
+- Keep the `test_mcp_utils` fake that raises `httpx.TimeoutException`
+  (adapters/fakes still use it)
+- Also pin `FMPTimeoutError` → `timeout` and `FMPNetworkError` →
+  `unavailable` in `validate_api_key`. Both are `FMPError` subclasses
+  with `status_code is None`; the generic `except FMPError` branch
+  would otherwise report a valid key.
 
 ### Changelog
 

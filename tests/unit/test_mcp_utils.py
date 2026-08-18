@@ -803,6 +803,38 @@ class TestValidateApiKey:
 
         assert mcp_utils.validate_api_key("KEY123") == (False, "timeout")
 
+    def test_fmp_timeout_error_is_timeout(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """#350: mapped client timeouts must not count as a valid key."""
+        from fmp_data.exceptions import FMPTimeoutError
+
+        class TimeoutClient(_FakeFmpClient):
+            def __init__(self, **kwargs: Any) -> None:
+                super().__init__(**kwargs)
+                self.company = _FakeCompany(raises=FMPTimeoutError("Request timed out"))
+
+        monkeypatch.setattr("fmp_data.client.FMPDataClient", TimeoutClient)
+
+        assert mcp_utils.validate_api_key("KEY123") == (False, "timeout")
+        assert TimeoutClient.instances[-1].closed is True
+
+    def test_fmp_network_error_is_unavailable(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """#350: mapped connect failures must not count as a valid key."""
+        from fmp_data.exceptions import FMPNetworkError
+
+        class NetworkClient(_FakeFmpClient):
+            def __init__(self, **kwargs: Any) -> None:
+                super().__init__(**kwargs)
+                self.company = _FakeCompany(raises=FMPNetworkError("Network error"))
+
+        monkeypatch.setattr("fmp_data.client.FMPDataClient", NetworkClient)
+
+        assert mcp_utils.validate_api_key("KEY123") == (False, "unavailable")
+        assert NetworkClient.instances[-1].closed is True
+
     def test_non_auth_fmp_error_still_counts_as_valid(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:

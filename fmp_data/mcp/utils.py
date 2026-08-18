@@ -326,7 +326,13 @@ def validate_api_key(api_key: str) -> tuple[bool, ApiKeyCheckReason]:
     import httpx
 
     from fmp_data.client import FMPDataClient
-    from fmp_data.exceptions import AuthenticationError, ConfigError, FMPError
+    from fmp_data.exceptions import (
+        AuthenticationError,
+        ConfigError,
+        FMPError,
+        FMPNetworkError,
+        FMPTimeoutError,
+    )
 
     client: FMPDataClient | None = None
     try:
@@ -338,8 +344,14 @@ def validate_api_key(api_key: str) -> tuple[bool, ApiKeyCheckReason]:
         return False, "invalid"
     except ConfigError:
         return False, "invalid"
-    except (TimeoutError, httpx.TimeoutException):
+    except (TimeoutError, httpx.TimeoutException, FMPTimeoutError):
+        # #350 maps client timeouts to FMPTimeoutError. Keep the raw
+        # httpx type for fakes/adapters that still raise it.
         return False, "timeout"
+    except FMPNetworkError:
+        # Same mapping: a connect failure is not proof the key works.
+        # Raw httpx.NetworkError still lands in except Exception below.
+        return False, "unavailable"
     except FMPError as exc:
         # AuthenticationError (HTTP 401 and typed 2xx invalid-key
         # bodies) is handled above. 403 is still a generic FMPError
