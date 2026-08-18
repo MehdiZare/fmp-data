@@ -1,7 +1,7 @@
 import json
 import logging
 import traceback
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import httpx
 from pydantic import BaseModel, ConfigDict
@@ -20,6 +20,8 @@ from fmp_data.config import ClientConfig
 from fmp_data.exceptions import (
     AuthenticationError,
     FMPError,
+    FMPNetworkError,
+    FMPTimeoutError,
     RateLimitError,
     ValidationError,
 )
@@ -785,6 +787,179 @@ def test_is_retryable_error_includes_mapped_5xx_fmp_errors():
         httpx.HTTPStatusError("not found", request=request, response=response_4xx)
     )
     assert not BaseClient._is_retryable_error(ValueError("other"))
+    assert BaseClient._is_retryable_error(FMPTimeoutError("Request timed out"))
+    assert BaseClient._is_retryable_error(FMPNetworkError("Network error"))
+
+
+_LEAK_SECRET = "SECRET_FMP_KEY_123"  # noqa: S105  # pragma: allowlist secret
+
+
+def _httpx_error_with_key(
+    exc_cls: type[httpx.RequestError], secret: str
+) -> httpx.RequestError:
+    """Transport error whose request URL carries a live-looking apikey."""
+    request = httpx.Request(
+        "GET",
+        f"https://financialmodelingprep.com/stable/quote?symbol=AAPL&apikey={secret}",
+    )
+    return exc_cls(f"failed for url '{request.url}'", request=request)
+
+
+def _assert_secret_stays_off_exception(exc: BaseException, secret: str) -> None:
+    rendered = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    assert exc.__cause__ is None
+    assert exc.__suppress_context__ is True
+    assert secret not in str(exc)
+    assert secret not in repr(exc)
+    assert secret not in repr(exc.__cause__)
+    assert secret not in rendered
+    assert "httpx.TimeoutException" not in rendered
+    assert "httpx.ConnectError" not in rendered
+    assert "httpx.NetworkError" not in rendered
+
+
+@patch("httpx.Client.request")
+def test_timeout_does_not_leak_apikey_via_cause_or_logs(
+    mock_request, mock_endpoint, client_config
+) -> None:
+    """#350: timeout mapping must not chain httpx or log the request URL."""
+    mock_request.side_effect = _httpx_error_with_key(
+        httpx.TimeoutException, _LEAK_SECRET
+    )
+    mock_endpoint.method = MagicMock()
+    mock_endpoint.method.value = "GET"
+    mock_endpoint.response_model = SampleResponse
+    config = ClientConfig(
+        api_key=_LEAK_SECRET,
+        base_url=client_config.base_url,
+        max_retries=1,
+        max_rate_limit_retries=0,
+    )
+    client = BaseClient(config)
+    try:
+        with (
+            patch.object(client.logger, "error") as mock_error,
+            patch("tenacity.nap.sleep", return_value=None),
+            pytest.raises(FMPTimeoutError) as exc_info,
+        ):
+            client.request(mock_endpoint)
+    finally:
+        client.close()
+
+    _assert_secret_stays_off_exception(exc_info.value, _LEAK_SECRET)
+    mock_error.assert_called()
+    for call in mock_error.call_args_list:
+        assert _LEAK_SECRET not in str(call)
+        assert call.kwargs.get("exc_info") is not True
+
+
+@patch("httpx.Client.request")
+def test_network_error_does_not_leak_apikey_via_cause_or_logs(
+    mock_request, mock_endpoint, client_config
+) -> None:
+    """#350: connect/network mapping must not chain httpx or log the request URL."""
+    mock_request.side_effect = _httpx_error_with_key(httpx.ConnectError, _LEAK_SECRET)
+    mock_endpoint.method = MagicMock()
+    mock_endpoint.method.value = "GET"
+    mock_endpoint.response_model = SampleResponse
+    config = ClientConfig(
+        api_key=_LEAK_SECRET,
+        base_url=client_config.base_url,
+        max_retries=1,
+        max_rate_limit_retries=0,
+    )
+    client = BaseClient(config)
+    try:
+        with (
+            patch.object(client.logger, "error") as mock_error,
+            patch("tenacity.nap.sleep", return_value=None),
+            pytest.raises(FMPNetworkError) as exc_info,
+        ):
+            client.request(mock_endpoint)
+    finally:
+        client.close()
+
+    _assert_secret_stays_off_exception(exc_info.value, _LEAK_SECRET)
+    mock_error.assert_called()
+    for call in mock_error.call_args_list:
+        assert _LEAK_SECRET not in str(call)
+        assert call.kwargs.get("exc_info") is not True
+
+
+@pytest.mark.asyncio
+async def test_async_timeout_does_not_leak_apikey_via_cause_or_logs(
+    mock_endpoint, client_config
+) -> None:
+    """#350 async twin of the timeout pin."""
+    mock_endpoint.method = MagicMock()
+    mock_endpoint.method.value = "GET"
+    mock_endpoint.response_model = SampleResponse
+    config = ClientConfig(
+        api_key=_LEAK_SECRET,
+        base_url=client_config.base_url,
+        max_retries=1,
+        max_rate_limit_retries=0,
+    )
+    client = BaseClient(config)
+    mock_async_client = AsyncMock()
+    mock_async_client.request = AsyncMock(
+        side_effect=_httpx_error_with_key(httpx.TimeoutException, _LEAK_SECRET)
+    )
+    try:
+        with (
+            patch.object(client, "_setup_async_client", return_value=mock_async_client),
+            patch.object(client.logger, "error") as mock_error,
+            patch("tenacity.nap.sleep", return_value=None),
+            pytest.raises(FMPTimeoutError) as exc_info,
+        ):
+            await client.request_async(mock_endpoint)
+    finally:
+        await client.aclose()
+        client.close()
+
+    _assert_secret_stays_off_exception(exc_info.value, _LEAK_SECRET)
+    mock_error.assert_called()
+    for call in mock_error.call_args_list:
+        assert _LEAK_SECRET not in str(call)
+        assert call.kwargs.get("exc_info") is not True
+
+
+@pytest.mark.asyncio
+async def test_async_network_error_does_not_leak_apikey_via_cause_or_logs(
+    mock_endpoint, client_config
+) -> None:
+    """#350 async twin of the network pin."""
+    mock_endpoint.method = MagicMock()
+    mock_endpoint.method.value = "GET"
+    mock_endpoint.response_model = SampleResponse
+    config = ClientConfig(
+        api_key=_LEAK_SECRET,
+        base_url=client_config.base_url,
+        max_retries=1,
+        max_rate_limit_retries=0,
+    )
+    client = BaseClient(config)
+    mock_async_client = AsyncMock()
+    mock_async_client.request = AsyncMock(
+        side_effect=_httpx_error_with_key(httpx.ConnectError, _LEAK_SECRET)
+    )
+    try:
+        with (
+            patch.object(client, "_setup_async_client", return_value=mock_async_client),
+            patch.object(client.logger, "error") as mock_error,
+            patch("tenacity.nap.sleep", return_value=None),
+            pytest.raises(FMPNetworkError) as exc_info,
+        ):
+            await client.request_async(mock_endpoint)
+    finally:
+        await client.aclose()
+        client.close()
+
+    _assert_secret_stays_off_exception(exc_info.value, _LEAK_SECRET)
+    mock_error.assert_called()
+    for call in mock_error.call_args_list:
+        assert _LEAK_SECRET not in str(call)
+        assert call.kwargs.get("exc_info") is not True
 
 
 @pytest.mark.parametrize(
@@ -1143,7 +1318,7 @@ def test_request_max_retries_exceeded(mock_request, mock_endpoint, base_client):
     # Attempt request and verify it fails with the underlying error (reraise=True)
     with (
         patch("tenacity.nap.sleep", return_value=None),
-        pytest.raises(httpx.TimeoutException),
+        pytest.raises(FMPTimeoutError),
     ):
         base_client.request(mock_endpoint)
 
@@ -1316,7 +1491,7 @@ class TestMetricsCallback:
             client.client, "request", side_effect=httpx.TimeoutException("Timeout")
         ):
             with patch("tenacity.nap.sleep", return_value=None):
-                with pytest.raises(httpx.TimeoutException):
+                with pytest.raises(FMPTimeoutError):
                     client.request(mock_endpoint)
 
         # Callback should have been called for each attempt

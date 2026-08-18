@@ -731,6 +731,8 @@ The library provides a comprehensive exception hierarchy for robust error handli
 from fmp_data import FMPDataClient
 from fmp_data.exceptions import (
     FMPError,  # Base exception for all FMP errors
+    FMPTimeoutError,  # HTTP request timed out
+    FMPNetworkError,  # Transport / connect failure
     RateLimitError,  # API rate limit exceeded
     AuthenticationError,  # Invalid or missing API key
     ValidationError,  # Invalid request parameters
