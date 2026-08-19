@@ -7,8 +7,8 @@ The published GitHub Release used to be the squash-commit stub that
 and minus Unreleased / other versions) and wraps it with the install /
 docs footer the Release page already carried.
 
-Stdlib only: the release job runs this after ``setup-python``, before
-any project install.
+Stdlib only: do not import ``fmp_data``. The release job fails closed
+on a missing or empty section *before* it creates or pushes the tag.
 """
 
 from __future__ import annotations
