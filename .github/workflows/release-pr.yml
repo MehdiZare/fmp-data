@@ -1,7 +1,12 @@
 name: Release-PR
 
-# On every push to dev, ensure an open PR from dev → main exists so the
-# release checklist (labels, TestPyPI, CI) has somewhere to live.
+# On every push to `dev`, open a `dev → main` PR when there is a *content*
+# delta so the release checklist (labels, TestPyPI, CI) has somewhere to live.
+#
+# Identical trees are not a release. After a squash-merge + history-only
+# Sync-Main-to-Dev (`-s ours`), `dev` is commits-ahead of `main` with the
+# same tree. Opening a slot then (as #374 did) makes an unlabeled empty
+# squash recreate the #202 ancestry break for no package change. See #375.
 #
 # This deliberately does NOT use peter-evans/create-pull-request: that action
 # is for committing working-tree changes onto a new branch. Checking out dev
@@ -23,7 +28,7 @@ concurrency:
 permissions:
   contents: read
   pull-requests: write
-  issues: write  # gh label create
+  issues: write  # gh label create + empty-slot comment
 
 jobs:
   create-release-pr:
@@ -61,7 +66,7 @@ jobs:
           # Do not swallow gh failures — an auth/API error must not be treated
           # as "no PR exists."
           EXISTING_JSON=$(gh pr list --base main --head dev --state open \
-            --json number,url)
+            --json number,url,title,isDraft,body)
           EXISTING_NUM=$(echo "$EXISTING_JSON" | jq -r '.[0].number // empty')
 
           check_ancestry() {
@@ -74,8 +79,104 @@ jobs:
             fi
           }
 
+          # Post-squash history sync leaves different SHAs, AHEAD > 0, and
+          # an identical tree. SHA / rev-list checks miss that (#375).
+          trees_match() {
+            git diff --quiet origin/dev origin/main
+          }
+
+          # Terminators sit at the `run: |` base indent so YAML strip leaves
+          # them at column 0 (#363).
+          cat > /tmp/release-pr-body.md <<'RELEASE_BODY_EOF'
+          ## Release Checklist
+
+          Automated release PR from `dev` to `main`.
+
+          ### Pre-merge Checklist
+          - [ ] All CI checks pass (Test-Matrix, Guard-Main-Origin, etc.)
+          - [ ] Test PyPI validation successful (version + commit SHA in the bot comment match the tip you are releasing)
+          - [ ] Documentation is up to date
+
+          ### Release Type
+          Add **exactly one** of these labels to determine the version bump:
+          - `release:major` — Breaking changes
+          - `release:minor` — New features (backwards compatible)
+          - `release:patch` — Bug fixes
+
+          ### After Merge
+          The release workflow will automatically:
+          1. Create a new git tag
+          2. Build and publish to PyPI
+          3. Create a GitHub Release
+
+          The Sync-Main-to-Dev workflow then records the squash on `dev` so
+          the *next* release PR stays MERGEABLE. See #202 / #203 / #206.
+          RELEASE_BODY_EOF
+
+          cat > /tmp/empty-slot-body.md <<'EMPTY_SLOT_BODY_EOF'
+          ## Empty standing slot — do not merge
+
+          <!-- empty-tree-release-slot -->
+
+          `dev` and `main` have **identical trees**. This is not a release.
+
+          Opened (or kept) automatically after a squash onto `main` and the
+          history-only Sync-Main-to-Dev merge. An unlabeled empty squash
+          recreates the #202 ancestry break for no package change.
+
+          - Leave unlabeled; no `release:*`.
+          - Do **not** squash-merge while the trees match.
+          - This PR is converted to draft until `dev` has a content delta.
+            The next content push restores the release checklist and marks
+            it ready.
+
+          See #375.
+          EMPTY_SLOT_BODY_EOF
+
+          cat > /tmp/empty-slot-comment.md <<'EMPTY_SLOT_COMMENT_EOF'
+          <!-- empty-tree-release-slot -->
+
+          Converted to draft: `dev` and `main` have identical trees, so this
+          is not a release. Squash-merging it unlabeled would recreate the
+          #202 ancestry break for no package change. See #375.
+          EMPTY_SLOT_COMMENT_EOF
+
+          mark_empty_slot() {
+            local pr_number="$1"
+            echo "Release PR #${pr_number} has identical trees; converting to empty slot (draft)."
+            gh pr ready "$pr_number" --undo 2>/dev/null || true
+            gh pr edit "$pr_number" \
+              --title "Release: dev → main (empty slot — do not merge)" \
+              --body-file /tmp/empty-slot-body.md
+            if ! gh api "repos/${GITHUB_REPOSITORY}/issues/${pr_number}/comments" --paginate \
+              --jq '.[].body' | grep -Fq '<!-- empty-tree-release-slot -->'; then
+              gh pr comment "$pr_number" --body-file /tmp/empty-slot-comment.md
+            fi
+          }
+
+          restore_release_pr() {
+            local pr_number="$1"
+            local stamped="$2"
+            local is_draft="$3"
+            # Only rewrite PRs this workflow stamped. A human title that
+            # happens to say "do not merge" is not ours to clobber.
+            if [ "$stamped" != "true" ]; then
+              return 0
+            fi
+            echo "Content delta present; restoring release checklist on #${pr_number}."
+            gh pr edit "$pr_number" \
+              --title "Release: dev → main" \
+              --body-file /tmp/release-pr-body.md
+            if [ "$is_draft" = "true" ]; then
+              gh pr ready "$pr_number"
+            fi
+          }
+
           if [ -n "${EXISTING_NUM:-}" ]; then
             EXISTING_URL=$(echo "$EXISTING_JSON" | jq -r '.[0].url')
+            EXISTING_STAMPED=$(echo "$EXISTING_JSON" | jq -r \
+              '.[0].body // "" | contains("<!-- empty-tree-release-slot -->") | tostring')
+            EXISTING_DRAFT=$(echo "$EXISTING_JSON" | jq -r '.[0].isDraft | tostring')
 
             echo "Release PR already open: #${EXISTING_NUM} ${EXISTING_URL}"
 
@@ -86,6 +187,18 @@ jobs:
             # (.github/actions/check-pr-mergeable) so it cannot drift from
             # Guard-Main-Origin (#210).
             check_ancestry
+
+            if trees_match; then
+              mark_empty_slot "$EXISTING_NUM"
+              {
+                echo "action=empty-slot"
+                echo "pr_number=${EXISTING_NUM}"
+                echo "pr_url=${EXISTING_URL}"
+              } >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            restore_release_pr "$EXISTING_NUM" "$EXISTING_STAMPED" "$EXISTING_DRAFT"
 
             {
               echo "action=revalidate"
@@ -112,35 +225,17 @@ jobs:
             exit 0
           fi
 
+          # Commits-ahead with the same tree is the post-sync standing slot
+          # (#374 / #375). Do not open a release PR.
+          if trees_match; then
+            echo "dev is $AHEAD commit(s) ahead of main but the trees match; nothing to release."
+            echo "action=noop" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           echo "dev is $AHEAD commit(s) ahead of main; creating release PR."
 
           gh label create automated --color "0e8a16" --description "Automated PR" 2>/dev/null || true
-
-          cat > /tmp/release-pr-body.md <<'EOF'
-          ## Release Checklist
-
-          Automated release PR from `dev` to `main`.
-
-          ### Pre-merge Checklist
-          - [ ] All CI checks pass (Test-Matrix, Guard-Main-Origin, etc.)
-          - [ ] Test PyPI validation successful (version + commit SHA in the bot comment match the tip you are releasing)
-          - [ ] Documentation is up to date
-
-          ### Release Type
-          Add **exactly one** of these labels to determine the version bump:
-          - `release:major` — Breaking changes
-          - `release:minor` — New features (backwards compatible)
-          - `release:patch` — Bug fixes
-
-          ### After Merge
-          The release workflow will automatically:
-          1. Create a new git tag
-          2. Build and publish to PyPI
-          3. Create a GitHub Release
-
-          The Sync-Main-to-Dev workflow then records the squash on `dev` so
-          the *next* release PR stays MERGEABLE. See #202 / #203 / #206.
-          EOF
 
           URL=$(gh pr create --base main --head dev \
             --title "Release: dev → main" \
@@ -165,7 +260,7 @@ jobs:
 
       - name: Fail when the open release PR has merge conflicts
         # Same fail-closed REST contract as Guard-Main-Origin (#207 / #210).
-        if: steps.plan.outputs.action == 'revalidate'
+        if: steps.plan.outputs.action == 'revalidate' || steps.plan.outputs.action == 'empty-slot'
         id: mergeable
         uses: ./.github/actions/check-pr-mergeable
         with:
@@ -177,20 +272,35 @@ jobs:
             For a release PR (dev → main): sync main into dev with a merge
             commit (not squash), then re-push. See #202 / #207.
 
-      - name: Summarize revalidated release PR
-        if: steps.plan.outputs.action == 'revalidate'
+      - name: Summarize existing release PR
+        if: steps.plan.outputs.action == 'revalidate' || steps.plan.outputs.action == 'empty-slot'
         env:
+          ACTION: ${{ steps.plan.outputs.action }}
           PR_URL: ${{ steps.plan.outputs.pr_url }}
           MERGEABLE: ${{ steps.mergeable.outputs.mergeable }}
           MSTATE: ${{ steps.mergeable.outputs.mergeable_state }}
         run: |
           set -euo pipefail
-          echo "Existing release PR is healthy; nothing to create."
-          {
-            echo "## Release PR"
-            echo "Already open and healthy: ${PR_URL}"
-            echo ""
-            echo "- mergeable: \`${MERGEABLE}\`"
-            echo "- mergeable_state: \`${MSTATE}\`"
-            echo "- main is an ancestor of dev: yes"
-          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$ACTION" = "empty-slot" ]; then
+            echo "Existing release PR is an identical-tree slot (draft); nothing to create."
+            {
+              echo "## Release PR"
+              echo "Already open as an **empty slot** (identical trees): ${PR_URL}"
+              echo ""
+              echo "- action: \`empty-slot\`"
+              echo "- mergeable: \`${MERGEABLE}\`"
+              echo "- mergeable_state: \`${MSTATE}\`"
+              echo "- main is an ancestor of dev: yes"
+              echo "- do not squash-merge while trees match (#375)"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Existing release PR is healthy; nothing to create."
+            {
+              echo "## Release PR"
+              echo "Already open and healthy: ${PR_URL}"
+              echo ""
+              echo "- mergeable: \`${MERGEABLE}\`"
+              echo "- mergeable_state: \`${MSTATE}\`"
+              echo "- main is an ancestor of dev: yes"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
