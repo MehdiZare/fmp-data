@@ -36,6 +36,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Async retry tests patch `asyncio.sleep` (#358).** Tenacity 9.1.4
   async retries go through `_portable_async_sleep` → `asyncio.sleep`,
   not `tenacity.nap.sleep`. Sync tests keep the nap patch.
+- **Release-PR skips identical-tree standing slots (#375).** After a
+  squash + history-only sync, `dev` is commits-ahead of `main` with the
+  same tree. The job now treats `git diff --quiet origin/dev origin/main`
+  as nothing-to-release, converts an already-open empty slot to draft,
+  and restores it when a content delta appears. Opening an unlabeled
+  empty squash recreated the #202 ancestry break (#374).
 
 ## [2.7.0] - 2026-08-19
 
