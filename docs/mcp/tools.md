@@ -262,7 +262,7 @@ via a manifest; these return large payloads and several are CSV).
 | `senate_trades_by_id` | Get Senate trading data filtered by member id |
 | `senate_trades_by_name` | Get Senate trading data filtered by senator name |
 | `senate_trading` | Access Senate trading activity and disclosures including stock trades, transaction details, and filing information |
-| `senate_trading_rss` | Get real-time RSS feed of Senate trading disclosures including new filings and transaction updates |
+| `senate_trading_rss` | **Withdrawn / not in DEFAULT_TOOLS** — prefer `senate_latest` |
 | `social_sentiment_changes` | **Removed / not in DEFAULT_TOOLS** — raises `RemovedEndpointError` |
 | `stock_news` | Market-wide stock news feed of company events and corporate developments. Not filterable by symbol; narrow it by date range or page |
 | `stock_news_sentiments` | **Deprecated / not in DEFAULT_TOOLS** — client returns `[]` |

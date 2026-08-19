@@ -969,10 +969,9 @@ class TestValidateApiKey:
 
         monkeypatch.setattr("fmp_data.client.FMPDataClient", LeakyClient)
 
-        ok, reason = mcp_utils.validate_api_key(planted)
-        assert ok is False
-        assert reason == "unavailable"
-        assert planted not in reason
+        result = mcp_utils.validate_api_key(planted)
+        assert result == (False, "unavailable")
+        assert planted not in repr(result)
 
 
 # ---------------------------------------------------------------------------

@@ -690,3 +690,34 @@ def test_tool_error_envelope_redacts_reflected_api_keys(tmp_path: Any) -> None:
     rendered = repr(result)
     assert planted not in rendered, f"tool envelope leaked the key: {rendered}"
     assert "[REDACTED]" in rendered
+
+
+def test_validation_error_envelope_redacts_reflected_api_keys(tmp_path: Any) -> None:
+    """Field-error lines must use the redacted message, not raw ``str(e)``."""
+    planted = "PLANTEDCREDENTIALVALUE"
+    boom = ValueError(
+        "  extra  url "
+        f"'https://financialmodelingprep.com/stable/profile?apikey={planted}'"
+    )
+    client = cast(
+        BaseClient,
+        SimpleNamespace(
+            request=Mock(side_effect=boom),
+            sec=SimpleNamespace(
+                search_industry_classification=Mock(side_effect=boom),
+            ),
+        ),
+    )
+    registry = _sec_registry("industry_classification_search")
+    store = _store_with(client, registry, tmp_path)
+    info = registry.get_endpoint("search_industry_classification")
+    assert info is not None
+
+    result = cast(Any, store.create_tool(info)).invoke({"symbol": "AAPL"})
+
+    assert result["status"] == "error"
+    assert result["error_type"] == "validation_error"
+    rendered = repr(result)
+    assert planted not in rendered, f"validation envelope leaked the key: {rendered}"
+    assert planted not in "".join(result["details"]["validation_errors"])
+    assert "[REDACTED]" in rendered

@@ -53,7 +53,7 @@ Create or edit this file with the following content:
       "command": "python",
       "args": ["-m", "fmp_data.mcp"],
       "env": {
-        "FMP_API_KEY": "your_api_key_here"  # pragma: allowlist secret
+        "FMP_API_KEY": "your_api_key_here"
       }
     }
   }
@@ -187,7 +187,7 @@ We provide pre-configured tool sets for different use cases:
       "command": "python",
       "args": ["-m", "fmp_data.mcp"],
       "env": {
-        "FMP_API_KEY": "your_api_key_here"  # pragma: allowlist secret,
+        "FMP_API_KEY": "your_api_key_here",
         "FMP_MCP_MANIFEST": "examples/mcp/configurations/trading_manifest.py"
       }
     }
@@ -203,7 +203,7 @@ We provide pre-configured tool sets for different use cases:
       "command": "python",
       "args": ["-m", "fmp_data.mcp"],
       "env": {
-        "FMP_API_KEY": "your_api_key_here"  # pragma: allowlist secret,
+        "FMP_API_KEY": "your_api_key_here",
         "FMP_MCP_MANIFEST": "examples/mcp/configurations/research_manifest.py"
       }
     }
@@ -219,7 +219,7 @@ We provide pre-configured tool sets for different use cases:
       "command": "python",
       "args": ["-m", "fmp_data.mcp"],
       "env": {
-        "FMP_API_KEY": "your_api_key_here"  # pragma: allowlist secret,
+        "FMP_API_KEY": "your_api_key_here",
         "FMP_MCP_MANIFEST": "examples/mcp/configurations/crypto_manifest.py"
       }
     }

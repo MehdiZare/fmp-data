@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [2.7.0] - 2026-08-19
+
+Released from `dev`. A security-and-contracts minor in the same shape as
+2.6.0: credential config fields are now `pydantic.SecretStr`, so
+`model_dump()` can no longer leak an API key, and a large #252 / #273
+hardening pass closes the remaining redaction, publish-isolation, and
+CI-enforcement holes that 2.6.0 left open.
+
+This cut also aligns the client with the 2026 FMP `/stable` surface
+(diluted P/E, screener pagination, Senate/House `senateID`, rating-bulk
+scores, delisted companies), finishes the `Endpoint[T]` / `_unwrap_list`
+typing migration, types period / interval / timeframe as closed
+vocabularies (`Period`, `Interval`, `TechnicalInterval`, `Timeframe`),
+and adds a local VCR-backed client-method sweep.
+
+**Read before upgrading.** One public-type break, narrow:
+
+| Change | Who it affects | Migration |
+|---|---|---|
+| Credential config fields are `SecretStr` (#252 FMP-SEC-007) | anyone reading `ClientConfig.api_key`, `LangChainConfig.embedding_api_key`, `EmbeddingConfig.api_key`, or `CacheConfig.redis_url` as a `str` | call `.get_secret_value()` |
+
+Construction is unchanged — passing a plain `str` still works. `repr()` /
+`str()` were already redacted. What breaks is code that *reads* the field
+as a string (comparisons, slicing, or passing it into a `str` parameter).
+Passing a `SecretStr` where a string is expected often fails *silently*
+(`httpx` sends `apikey=**********` → 401). If you see unexplained auth
+failures after upgrading, look for a missed `.get_secret_value()`.
+
+Logger names no longer double `fmp_data.` (#238). If you filtered
+`fmp_data.fmp_data.*`, switch to `fmp_data.*`.
+
+**3.0 is still the removal cut.** The `Endpoint.arg_model` /
+`EndpointParam.required` deletions and the removal of withdrawn endpoints
+announced in 2.6.0 stay deprecated, not deleted. In-tree tripwires refuse
+a `## [3.x]` changelog heading until that work lands. Withdrawn tools
+still register and return `[]`.
+
 ### Added
 
 - **Senate and House trades by member id (#323).**
@@ -131,7 +168,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`validate_api_key` first classified a status-less `Invalid API KEY`
   body as invalid (#329).** That wizard-side copy matcher is superseded
-  by #340 in this same Unreleased section. Live `/stable/quote` returns
+  by #340 in this same 2.7.0 section. Live `/stable/quote` returns
   HTTP 401 for a junk key (probed 2026-08-15).
 
 - **Setup wizard offers the example MCP profiles again (#320).**
@@ -174,43 +211,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `["Invalid API KEY"]` now raises instead of falling through
   validation. Mixed-key rows whose copy is not the junk-key body stay
   on the validation path. Multi-row lists are still not walked.
-
-## [2.7.0] - 2026-08-14
-
-Released from `dev`. A security-and-contracts minor in the same shape as
-2.6.0: credential config fields are now `pydantic.SecretStr`, so
-`model_dump()` can no longer leak an API key, and a large #252 / #273
-hardening pass closes the remaining redaction, publish-isolation, and
-CI-enforcement holes that 2.6.0 left open.
-
-This cut also aligns the client with the 2026 FMP `/stable` surface
-(diluted P/E, screener pagination, Senate/House `senateID`, rating-bulk
-scores, delisted companies), finishes the `Endpoint[T]` / `_unwrap_list`
-typing migration, types period / interval / timeframe as closed
-vocabularies (`Period`, `Interval`, `TechnicalInterval`, `Timeframe`),
-and adds a local VCR-backed client-method sweep.
-
-**Read before upgrading.** One public-type break, narrow:
-
-| Change | Who it affects | Migration |
-|---|---|---|
-| Credential config fields are `SecretStr` (#252 FMP-SEC-007) | anyone reading `ClientConfig.api_key`, `LangChainConfig.embedding_api_key`, `EmbeddingConfig.api_key`, or `CacheConfig.redis_url` as a `str` | call `.get_secret_value()` |
-
-Construction is unchanged — passing a plain `str` still works. `repr()` /
-`str()` were already redacted. What breaks is code that *reads* the field
-as a string (comparisons, slicing, or passing it into a `str` parameter).
-Passing a `SecretStr` where a string is expected often fails *silently*
-(`httpx` sends `apikey=**********` → 401). If you see unexplained auth
-failures after upgrading, look for a missed `.get_secret_value()`.
-
-Logger names no longer double `fmp_data.` (#238). If you filtered
-`fmp_data.fmp_data.*`, switch to `fmp_data.*`.
-
-**3.0 is still the removal cut.** The `Endpoint.arg_model` /
-`EndpointParam.required` deletions and the removal of withdrawn endpoints
-announced in 2.6.0 stay deprecated, not deleted. In-tree tripwires refuse
-a `## [3.x]` changelog heading until that work lands. Withdrawn tools
-still register and return `[]`.
 
 ### FMP API surface (scan this first)
 
@@ -430,7 +430,11 @@ None. No FMP path we ship was newly retired by this changelog window.
   manifests accept ``TOOLS: list[str] = [...]``. Redis ``SCAN MATCH``
   escapes glob metacharacters in the key prefix. The release remote tag
   is created only after the sdist version check. Makefile ``.env``
-  loading strips dotenv-style inline comments.
+  loading strips dotenv-style inline comments, and quoted values keep
+  escaped quotes / backslashes. URL redaction covers ``?api-key=``.
+  LangChain tool validation envelopes reuse the already-redacted
+  message so a reflected ``apikey=`` cannot reach
+  ``details.validation_errors``.
 
 - **`HolderIndustryBreakdown.industry_title` accepts `null`.** A live
   13F industry-breakdown row sends `industryTitle: null`; the field was

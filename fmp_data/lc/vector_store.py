@@ -879,8 +879,9 @@ class EndpointVectorStore:
                     # cannot express (e.g. SEC search_industry_classification
                     # requiring at least one of symbol/cik/sic_code).
                     if "ValidationError" in error_type or error_type == "ValueError":
-                        # Parse validation error for better feedback
-                        error_details = str(e).split("\n")
+                        # Parse the already-redacted message so a reflected
+                        # ``apikey=`` cannot reach ``details.validation_errors``.
+                        error_details = error_message.split("\n")
                         field_errors = [
                             line.strip() for line in error_details if "  " in line
                         ]

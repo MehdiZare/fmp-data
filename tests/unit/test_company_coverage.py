@@ -1,7 +1,8 @@
 """Additional tests for company client to improve coverage"""
 
+from collections.abc import Callable
 from datetime import date
-from typing import get_type_hints
+from typing import Any, get_type_hints
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -319,13 +320,13 @@ class TestCompanyClientCoverage:
     @patch("httpx.Client.request")
     def test_revenue_segmentation_nested_structure(
         self,
-        mock_request,
-        fmp_client,
-        mock_response,
-        geographic_revenue_data,
-        method_name,
-        model_cls,
-    ):
+        mock_request: Mock,
+        fmp_client: Any,
+        mock_response: Callable[..., Any],
+        geographic_revenue_data: dict[str, Any],
+        method_name: str,
+        model_cls: type[object],
+    ) -> None:
         """structure=nested is forwarded; response model is unchanged."""
         mock_request.return_value = mock_response(
             status_code=200, json_data=[geographic_revenue_data]

@@ -16,6 +16,19 @@ import shlex
 import sys
 
 _INLINE_COMMENT = re.compile(r"\s+#")
+_SINGLE_ESCAPES = {"\\": "\\", "'": "'"}
+_DOUBLE_ESCAPES = {
+    "\\": "\\",
+    "'": "'",
+    '"': '"',
+    "a": "\a",
+    "b": "\b",
+    "f": "\f",
+    "n": "\n",
+    "r": "\r",
+    "t": "\t",
+    "v": "\v",
+}
 
 # A trusted .env can still clobber the maintainer shell if we export these.
 _BLOCKED_KEYS = frozenset(
@@ -41,6 +54,26 @@ _BLOCKED_KEYS = frozenset(
 )
 
 
+def _quoted_value(raw: str) -> str:
+    """Decode a python-dotenv quoted value; ignore text after the closer."""
+    quote = raw[0]
+    escapes = _SINGLE_ESCAPES if quote == "'" else _DOUBLE_ESCAPES
+    decoded: list[str] = []
+    index = 1
+    while index < len(raw):
+        char = raw[index]
+        if char == "\\" and index + 1 < len(raw):
+            nxt = raw[index + 1]
+            decoded.append(escapes.get(nxt, char + nxt))
+            index += 2
+            continue
+        if char == quote:
+            return "".join(decoded)
+        decoded.append(char)
+        index += 1
+    return "".join(decoded)
+
+
 def export_lines(text: str) -> list[str]:
     lines: list[str] = []
     for raw in text.splitlines():
@@ -59,12 +92,7 @@ def export_lines(text: str) -> list[str]:
             continue
         value = value.strip()
         if value and value[0] in {"'", '"'}:
-            quote = value[0]
-            end = value.find(quote, 1)
-            if end != -1:
-                value = value[1:end]
-            elif len(value) >= 2 and value[-1] == quote:
-                value = value[1:-1]
+            value = _quoted_value(value)
         else:
             value = _INLINE_COMMENT.split(value, maxsplit=1)[0].rstrip()
         lines.append(f"export {key}={shlex.quote(value)}")
