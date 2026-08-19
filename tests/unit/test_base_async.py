@@ -271,7 +271,11 @@ class TestAsyncRetry:
     async def test_request_async_with_retry_on_transient_failure(
         self, client_config, sample_endpoint
     ):
-        """Test that async request retries on transient failures."""
+        """Test that async request retries on transient failures.
+
+        Patches ``asyncio.sleep`` so the Tenacity 4-10s backoff is not a
+        real wait (#372 leftover of #358).
+        """
         from fmp_data.base import BaseClient
 
         client = BaseClient(client_config)
@@ -292,7 +296,10 @@ class TestAsyncRetry:
                 raise httpx.TimeoutException("Timeout")
             return mock_response
 
-        with patch.object(client, "_setup_async_client") as mock_setup:
+        with (
+            patch.object(client, "_setup_async_client") as mock_setup,
+            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        ):
             mock_async_client = AsyncMock()
             mock_async_client.request = mock_request
             mock_setup.return_value = mock_async_client
@@ -302,6 +309,12 @@ class TestAsyncRetry:
             # Should have been called 3 times (2 failures + 1 success)
             assert call_count == 3
             assert result == {"test": "data"}
+            # Two backoffs between the three attempts. Tenacity 9.1.4 async
+            # retries go through asyncio.sleep, not tenacity.nap.sleep (#372).
+            # wait_exponential(multiplier=1, min=4, max=10) clamps both
+            # waits to 4s (2^0 and 2^1 are below min).
+            assert mock_sleep.await_count == 2
+            assert [call.args[0] for call in mock_sleep.await_args_list] == [4, 4]
 
         await client.aclose()
 

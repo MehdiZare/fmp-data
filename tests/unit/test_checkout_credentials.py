@@ -2,11 +2,11 @@
 
 ``actions/checkout`` writes the job's token into ``.git/config`` unless told
 not to, where every later step can read it -- including dependency installs,
-build backends and third-party actions. Only two jobs in this repo actually
-push, so the rest have no reason to carry the credential at all.
+build backends and third-party actions. Only ``sync-main-to-dev`` still
+pushes, so every other checkout drops the credential.
 
-The exceptions are asserted by name rather than skipped, so adding a third one
-is a deliberate edit to this list and not an accident.
+The remaining exception is asserted by name rather than skipped, so adding
+another one is a deliberate edit to this list and not an accident.
 """
 
 from __future__ import annotations
@@ -18,14 +18,14 @@ import pytest
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-WORKFLOWS = sorted((REPO_ROOT / ".github" / "workflows").glob("*.yml"))
+WORKFLOWS_DIR = REPO_ROOT / ".github" / "workflows"
+WORKFLOWS = sorted(WORKFLOWS_DIR.glob("*.yml")) + sorted(WORKFLOWS_DIR.glob("*.yaml"))
+GITHUB_YAML = sorted((REPO_ROOT / ".github").rglob("*.yml")) + sorted(
+    (REPO_ROOT / ".github").rglob("*.yaml")
+)
 
 # job name -> why this one keeps its credential.
 ALLOWED_TO_PERSIST = {
-    "claude": (
-        "claude-code-action runs standard git commands to commit and push; "
-        "dropping the credential silently breaks @claude"
-    ),
     "sync-main-to-dev": "really runs `git push origin HEAD:refs/heads/...`",
 }
 
@@ -80,3 +80,24 @@ def test_read_only_checkouts_do_not_pass_an_explicit_token() -> None:
         if "token" in (step.get("with") or {}) and job not in ALLOWED_TO_PERSIST
     ]
     assert not offenders, offenders
+
+
+def test_claude_code_action_workflows_are_absent() -> None:
+    """#359: do not restore the unpinned marketplace review or @claude agent.
+
+    GitHub runs ``.yml`` and ``.yaml``. Composite actions under
+    ``.github/actions/`` are scanned too, so a vendored wrapper cannot
+    hide ``claude-code-action`` / ``plugin_marketplaces``.
+    """
+    for name in (
+        "claude.yml",
+        "claude.yaml",
+        "claude-code-review.yml",
+        "claude-code-review.yaml",
+    ):
+        assert not (WORKFLOWS_DIR / name).exists()
+    remaining = "\n".join(path.read_text(encoding="utf-8") for path in GITHUB_YAML)
+    assert "anthropics/claude-code-action" not in remaining
+    assert "CLAUDE_CODE_OAUTH_TOKEN" not in remaining
+    assert "plugin_marketplaces" not in remaining
+    assert "anthropics/claude-code.git" not in remaining

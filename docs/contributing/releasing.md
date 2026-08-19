@@ -130,14 +130,14 @@ the overlay in a hotfix-shaped PR.
   `contents: write` build job, then publishes to PyPI from a second job that
   only downloads the hashed artifacts and has `id-token: write` (environment
   `pypi`). Existing tags / releases / PyPI versions fail the job instead of
-  being skipped.
+  being skipped. Release notes are the matching `## [X.Y.Z]` section of
+  `CHANGELOG.md` (via `scripts/github_release_notes.py`), not the squash
+  commit list (#370). A missing or empty section fails the job.
 - External Actions are pinned to full commit SHAs. The PEP 517 frontend
   (`build`) and backend (`hatchling`, `hatch-vcs`) are installed from
   version floors in `.github/requirements-build.txt` (not a hashed lock).
   Publish jobs run `python -m build --no-isolation` so isolation cannot
   pull a different backend than the one just installed.
-- **Claude Code Review** is advisory: missing or expired OAuth tokens do not
-  fail the PR. Required gates live in `ci.yml` / the branch rulesets.
 
 ### Secrets used by release automation
 
@@ -164,7 +164,8 @@ the overlay in a hotfix-shaped PR.
 2. **Label Detection**: Action reads PR labels to determine version bump
 3. **Version Calculation**: New version is calculated based on current version + bump type
 4. **Git Tagging**: New git tag is created with the version
-5. **Release Creation**: GitHub release is created with auto-generated notes
+5. **Release Creation**: GitHub release notes are the matching
+   `## [X.Y.Z]` CHANGELOG section (`scripts/github_release_notes.py`)
 6. **PyPI Publishing**: Package is built and published to PyPI
 7. **History sync**: Sync-Main-to-Dev restores `main` as an ancestor of `dev`
 
@@ -240,11 +241,16 @@ For emergency releases or when automation fails:
    - Add exactly one version label: `release:major`, `release:minor`, or `release:patch`
    - Include release notes in description
 
-7. **Merge and Tag**
+7. **Merge, generate notes, then tag**
    ```bash
    # After PR approval and merge
    git checkout main
    git pull origin main
+   python3 scripts/github_release_notes.py \
+     --changelog CHANGELOG.md \
+     --version 1.2.3 \
+     --tag v1.2.3 \
+     --out release-notes.md
    git tag v1.2.3
    git push origin v1.2.3
    ```
@@ -256,10 +262,15 @@ For emergency releases or when automation fails:
    ```
 
 9. **Create GitHub Release**
-   - Go to GitHub Releases
-   - Create release from tag
-   - Add release notes
-   - Publish release
+   - Happy path: `release.yml` extracts `## [X.Y.Z]` via
+     `scripts/github_release_notes.py` (fail-closed, before tagging).
+   - If automation failed, use the file from step 7:
+     ```bash
+     gh release create v1.2.3 --notes-file release-notes.md
+     ```
+   - Fold `## Unreleased` into `## [X.Y.Z] - date` *before* adding a
+     `release:*` label. A heading that exists only under Unreleased
+     fails the job. Preview with `--version X.Y.Z`.
 
 ## Pre-release Process
 
@@ -300,58 +311,21 @@ pip install --pre fmp-data
 
 ## Release Notes
 
-### Automated Generation
+GitHub Release notes are the matching `## [X.Y.Z]` section of
+`CHANGELOG.md`, wrapped with install / docs links by
+`scripts/github_release_notes.py`. They are **not** the squash commit
+list, PR titles, or GitHub autogen.
 
-Release notes are automatically generated from:
-- PR titles and descriptions
-- Commit messages
-- Issue references
-- Breaking change callouts
+Before adding a `release:*` label, fold `## Unreleased` into
+`## [X.Y.Z] - YYYY-MM-DD` for the version that label will produce.
+Preview:
 
-### Manual Enhancement
-
-Enhance auto-generated notes with:
-- **Overview**: High-level summary of changes
-- **Highlights**: Key new features or improvements
-- **Breaking Changes**: Required user actions
-- **Migration Guide**: How to upgrade from previous version
-- **Contributors**: Thank contributors
-
-### Example Release Notes
-
-```markdown
-# v1.2.0 - Enhanced Market Data Support
-
-## Overview
-This release adds comprehensive market intelligence features and improves error handling across all clients.
-
-## ✨ New Features
-- Market Intelligence client with sentiment analysis
-- Enhanced company search with filtering options
-- Async support for all fundamental data endpoints
-
-## 🐛 Bug Fixes
-- Fixed rate limiting calculation for concurrent requests
-- Resolved memory leak in async client cleanup
-- Improved error messages for invalid API responses
-
-## 💥 Breaking Changes
-- `MarketClient.get_quotes()` now returns `List[Quote]` instead of `Dict`
-- Minimum Python version increased to 3.10
-
-## 📖 Documentation
-- Added comprehensive API reference
-- Updated getting started guide
-- New examples for market intelligence features
-
-## 🏗️ Internal Changes
-- Upgraded to Pydantic v2
-- Improved test coverage to 95%
-- Enhanced CI/CD pipeline
-
-## Contributors
-Thanks to @contributor1, @contributor2, and @contributor3 for their contributions!
+```bash
+python3 scripts/github_release_notes.py --version X.Y.Z --tag vX.Y.Z
 ```
+
+A missing or empty section fails the release job before the tag is
+created.
 
 ## Version Strategy
 

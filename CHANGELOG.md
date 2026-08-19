@@ -11,19 +11,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **GitHub Actions pins.** `github/codeql-action` 4.37.6 → 4.37.7
   (default bundle 2.26.3). `astral-sh/setup-uv` 10.0.0 → 10.0.1
-  (tolerate transient manifest timeouts). `anthropics/claude-code-action`
-  1.0.191 → 1.0.195. All remain 40-char SHA pins. The installed uv
-  floor is unchanged (`0.12.3`).
+  (tolerate transient manifest timeouts). All remain 40-char SHA pins.
+  The installed uv floor is unchanged (`0.12.3`).
 - **2.7.0 changelog subsections are unique (#360).** One Added / Changed /
   Fixed / Security under the version heading. `### FMP API surface` sits
   immediately under the intro. The uniqueness tripwire matches dated
-  `## [X.Y.Z] - date` headings; empty Unreleased stays valid. The
-  published GitHub Release notes are unchanged (they never used this
-  file's body).
+  `## [X.Y.Z] - date` headings; empty Unreleased stays valid.
+- **GitHub Release notes come from CHANGELOG.md (#370).** `release.yml`
+  runs `scripts/github_release_notes.py` to extract the matching
+  `## [X.Y.Z]` section (fail-closed if missing or empty) and wrap it
+  with install / docs links. The published `v2.7.0` notes were rewritten
+  to that body. They are no longer the squash commit stub.
 - **Withdrawn MCP catalog rows are marked in `docs/mcp/tools.md` (#361).**
   Every `WITHDRAWN_TOOLS` spec now carries **Withdrawn / not in
   DEFAULT_TOOLS** (with successor or none). Docs-sync fails if a
   withdrawn row omits the mark.
+
+### Removed
+
+- **Claude Code GitHub Actions (#359).** Dropped `claude-code-review.yml`
+  (automatic PR review that cloned `anthropics/claude-code` at HEAD) and
+  `claude.yml` (`@claude` mention agent with `contents: write`). Required
+  checks stay in `ci.yml`. Claude Desktop MCP setup is unchanged. Delete
+  the `CLAUDE_CODE_OAUTH_TOKEN` repository secret after this reaches
+  `main`.
 
 ### Fixed
 
@@ -36,12 +47,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Async retry tests patch `asyncio.sleep` (#358).** Tenacity 9.1.4
   async retries go through `_portable_async_sleep` → `asyncio.sleep`,
   not `tenacity.nap.sleep`. Sync tests keep the nap patch.
+- **Leftover async retry path in `test_base_async.py` patches
+  `asyncio.sleep` (#372).**
+  `test_request_async_with_retry_on_transient_failure` (`max_retries=3`)
+  no longer waits the real Tenacity 4–10s backoff. It asserts two
+  `asyncio.sleep` awaits on the fail-twice-then-succeed path.
 - **Release-PR skips identical-tree standing slots (#375).** After a
   squash + history-only sync, `dev` is commits-ahead of `main` with the
   same tree. The job now treats `git diff --quiet origin/dev origin/main`
   as nothing-to-release, converts an already-open empty slot to draft,
   and restores it when a content delta appears. Opening an unlabeled
   empty squash recreated the #202 ancestry break (#374).
+- **CHANGELOG notes generate before tagging (#370 leftover).** A missing
+  `## [X.Y.Z]` used to fail after the remote tag existed, leaving a tag
+  with no GitHub Release or PyPI artifact. The extract step now runs
+  immediately after version calculation.
+- **Release-note extractor keeps non-version ``##`` headings (#370).**
+  Split is only on ``## [X.Y.Z]`` so a section body can contain other
+  level-2 headings. CLI write failures print `error:` and exit 1.
+  Manual release docs generate notes before pushing the tag. Async
+  retry test asserts both Tenacity waits are 4s.
 
 ## [2.7.0] - 2026-08-19
 
