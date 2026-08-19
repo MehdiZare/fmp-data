@@ -14,6 +14,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (tolerate transient manifest timeouts). `anthropics/claude-code-action`
   1.0.191 → 1.0.195. All remain 40-char SHA pins. The installed uv
   floor is unchanged (`0.12.3`).
+- **2.7.0 changelog subsections are unique (#360).** One Added / Changed /
+  Fixed / Security under the version heading. `### FMP API surface` sits
+  immediately under the intro. The published GitHub Release notes are
+  unchanged (they never used this file's body).
+- **Withdrawn MCP catalog rows are marked in `docs/mcp/tools.md` (#361).**
+  Every `WITHDRAWN_TOOLS` spec now carries **Withdrawn / not in
+  DEFAULT_TOOLS** (with successor or none). Docs-sync fails if a
+  withdrawn row omits the mark.
+
+### Fixed
+
+- **Sync-Main-to-Dev here-docs compile under `run: |` (#363).** YAML
+  indent left the `EOF` terminator off column 0 after strip, so bash
+  swallowed the rest of the script and never pushed the `-s ours`
+  merge. Terminators now sit at the `run: |` base indent. `Actions
+  shell checks` runs `bash -n` on every workflow `run:` block.
+- **Async retry tests patch `asyncio.sleep` (#358).** Tenacity 9.1.4
+  async retries go through `_portable_async_sleep` → `asyncio.sleep`,
+  not `tenacity.nap.sleep`. Sync tests keep the nap patch.
 
 ## [2.7.0] - 2026-08-19
 
@@ -54,6 +73,47 @@ announced in 2.6.0 stay deprecated, not deleted. In-tree tripwires refuse
 a `## [3.x]` changelog heading until that work lands. Withdrawn tools
 still register and return `[]`.
 
+### FMP API surface (scan this first)
+
+Source: FMP public changelog
+([docs/changelog](https://site.financialmodelingprep.com/developer/docs/changelog))
+plus a live `/stable` probe on 2026-08-12. Marketing-only items (dashboard,
+localization, Insights Hub, plan add-ons) and FMP's hosted MCP product are
+out of scope.
+
+#### New (now first-class in this client)
+
+| Surface | What you get | Wire key / param | Client |
+|---|---|---|---|
+| Financial ratios | Diluted P/E | `priceToEarningsDilutedRatio` | `FinancialRatios.price_to_earnings_diluted_ratio` |
+| Financial ratios | Diluted PEG | `priceToEarningsDilutedGrowthRatio` | `FinancialRatios.price_to_earnings_diluted_growth_ratio` |
+| Ratios TTM (+ `ratios-ttm-bulk`) | Diluted P/E TTM | `priceToEarningsDilutedRatioTTM` | `FinancialRatiosTTM.price_to_earnings_diluted_ratio_ttm` |
+| Ratios TTM (+ `ratios-ttm-bulk`) | Diluted PEG TTM | `priceToEarningsDilutedGrowthRatioTTM` | `FinancialRatiosTTM.price_to_earnings_diluted_growth_ratio_ttm` |
+| Company screener | Pagination | `page` (optional, omitted when unset) | `market.get_company_screener(..., page=None)` |
+| Senate / House trades | Entity id | `senateID` (same key on House rows) | `SenateTrade.senate_id` / `HouseDisclosure.senate_id` |
+| Ratings bulk | Score columns | `discountedCashFlowScore`, `returnOnEquityScore`, `returnOnAssetsScore`, `debtToEquityScore`, `priceToEarningsScore`, `priceToBookScore` | `CompanyRating.*_score` |
+| Delisted companies | Slim delist list | `/stable/delisted-companies` (`page`, `limit`) | `company.get_delisted_companies` → `DelistedCompany` |
+
+#### Updated (path or contract still matches; no caller change)
+
+| FMP note | Path probed | Result |
+|---|---|---|
+| Exchange directory taxonomy (2025-06) | `/stable/available-exchanges` | 200. Keys `exchange`, `name`, `countryName`, `countryCode`, `delay`, `symbolSuffix` — already on `ExchangeSymbol`. |
+| Exchange variants (2025-05/06) | `/stable/search-exchange-variants?query=Apple` | 200. Profile-shaped rows still parse as `CompanySearchResult`. |
+| DCF valuations bulk naming (2025-06) | `/stable/dcf-bulk` | 200. Headers `symbol,date,dcf,Stock Price`. Client still remaps `Stock Price` → `stockPrice`. |
+| Historical S&P 500 symbol naming (2025-06) | `/stable/historical-sp500-constituent` | 200. `symbol` present; `HistoricalIndexConstituent` still parses. |
+| Stock ratings bulk field standardization (2025-06) | `/stable/rating-bulk` | 200. Score columns now typed on `CompanyRating` (see New). |
+| CUSIP on fund disclosure holders (2025-10) | `/stable/funds/disclosure-holders-latest` | Only `securityCusip`. Already modeled; no second key. |
+| ETF `isActivelyTrading` (2025-12) | `/stable/etf/info` | Present. Already modeled. |
+| Splits calendar `splitType` (2025-11) | `/stable/splits-calendar` | Present (may be `null`). Already modeled. |
+| Earnings `includeReportTimes` (2026-06) | `/stable/earnings-calendar?includeReportTimes=true` | Extra fields `confirmed`, `fiscalPeriod`, `fiscalYear`, `periodEnding`, `time`, `lastUpdated` already modeled. |
+| Profile bulk `part=0..3` (2024-10) | `/stable/profile-bulk?part=0` | 200. Multi-part scheme unchanged. |
+| Legacy route auth-gate (2025-08) | `/api/v3/profile/AAPL` | 403. No remaining live client path uses `APIVersion.V3`. The one leftover `V4` declaration is the already-withdrawn `stock-news-sentiments`. |
+
+#### Deprecated / withdrawn in this pass
+
+None. No FMP path we ship was newly retired by this changelog window.
+
 ### Added
 
 - **Senate and House trades by member id (#323).**
@@ -83,6 +143,68 @@ still register and return `[]`.
   It is `Literal["flat", "nested"]`. Live `/stable` returns the same
   list-of-objects for both (probed 2026-08-17). `StructureTypeEnum`
   stays leftover / deprecated.
+
+- **Closed request vocabularies for period, interval, and timeframe
+  (#306, #308).** Client methods now take `Period` / `PeriodFiscal` /
+  `PeriodAnnualQuarter`, `Interval`, and `Timeframe` (`Literal` aliases
+  in `fmp_data.schema`) instead of a naked `str`. Three period types on
+  purpose: financial reports and batch bulk accept only `FY`/`Q1`–`Q4`.
+  Endpoint `valid_values` are derived from the same aliases. Plain
+  strings still work at runtime. Re-exported from `fmp_data` (`__all__`):
+  `from fmp_data import Period, PeriodFiscal, PeriodAnnualQuarter,
+  Interval, Timeframe`. The e2e harness samples required closed params
+  from the method annotation, not a global `"annual"` table.
+
+- **Public re-export of `TechnicalInterval` (#311).** Annotate
+  `TechnicalClient.interval=` against
+  `from fmp_data import TechnicalInterval`. It is `Interval` plus
+  `"daily"` / `"hourly"`, not `Timeframe` (`1day`). Client-only leftover
+  aliases mapped by `_normalize_timeframe`; endpoint `valid_values` stay
+  on `Timeframe` / `Interval`.
+
+- **Local VCR-backed client-method e2e sweep.** Maintainer script
+  `scripts/e2e_endpoints.py` (`make e2e-record` / `make e2e-replay`) calls
+  every public sync `FMPDataClient` method, records gitignored cassettes
+  under `tests/e2e/vcr_cassettes/`, and prints a per-method report. Opt-in
+  (`-m not e2e` in addopts); not run by `make test`. First live pass
+  covered 265 methods: 239 ok, 26 deprecated skips.
+
+- **FMP hosted MCP vs `fmp-mcp` positioning (#230).** Docs-only: we are not
+  wrapping FMP's remote MCP URL. README + `docs/mcp/index.md` point at
+  `docs/mcp/hosted.md`, which records the 2026-08-12 decision (A+D: position
+  + coverage matrix), a live `tools/list` of **28** dataset tools (changelog
+  said 27; `tipranks` is a paid add-on), and when to use hosted MCP vs this
+  package. No runtime helper, no FastMCP dependency, no CI smoke.
+
+- **FMP changelog alignment (#229).** Three confirmed 2026 wire gaps, the
+  leftover 2025-10 delisted-companies wiring (#233), plus the older-note
+  re-probe above. Live `/stable` checks used the current API key on
+  2026-08-12.
+
+  - **Diluted P/E on ratios.** `FinancialRatios` and `FinancialRatiosTTM` now
+    declare the diluted PE / diluted PEG pair FMP added on 2026-07-30
+    (`priceToEarningsDilutedRatio`, `priceToEarningsDilutedGrowthRatio`, and
+    the `*TTM` names on TTM + `ratios-ttm-bulk`). They previously landed only
+    in `__pydantic_extra__` and could warn under `FMP_VALIDATION_MODE=warn`.
+  - **Screener `page`.** `market.get_company_screener` / async accept optional
+    `page: int | None = None`. Unset is omitted from the request (existing
+    callers keep the same wire). `page=0` is sent. Live: `limit=2&page=0`
+    and `limit=2&page=1` return distinct first rows.
+  - **`senateID` on Senate and House trades.** `SenateTrade.senate_id` and
+    `HouseDisclosure.senate_id` alias `senateID`. The wire name is kept on
+    House rows (Pelosi → `P000197`); we do not invent `house_id`.
+  - **`CompanyRating` score columns.** `rating-bulk` headers
+    `discountedCashFlowScore` / `returnOnEquityScore` / `returnOnAssetsScore`
+    / `debtToEquityScore` / `priceToEarningsScore` / `priceToBookScore` are
+    now typed attributes. Fractional CSV cells such as ``"3.0"`` coerce to
+    ``int`` so ``parse_csv_models`` does not skip the whole company row.
+  - **`company.get_delisted_companies`.** The 2025-10 delisted-companies
+    architecture sync left a live `/stable/delisted-companies` path whose
+    declaration used `CompanyProfile` and had no client method. Sync and
+    async clients now expose `get_delisted_companies(page=0, limit=100)`
+    returning `DelistedCompany` (`symbol`, `companyName`, `exchange`,
+    `ipoDate`, `delistedDate`). MCP: `company.delisted_companies` (in
+    `DEFAULT_TOOLS`). LangChain indexes the same semantics key.
 
 ### Changed
 
@@ -139,131 +261,6 @@ still register and return `[]`.
 - **`redact_credential_patterns` redacts hyphenated assignment names
   (#339).** `X-API-KEY=` / `FMP-API-KEY=` now match. Wizard placeholder
   `[YOUR_API_KEY]` and 32-char request ids are still left alone.
-
-### Fixed
-
-- **Remaining `httpx.RequestError` leftovers no longer leak `apikey=`
-  (#354).** `ProtocolError`, `ProxyError`, `DecodingError`,
-  `TooManyRedirects`, `UnsupportedProtocol`, and any future
-  `RequestError` now raise `FMPNetworkError` with `from None`. Same
-  secret-absent pin as #97 / #350 (`str` / `repr` / `__cause__` /
-  traceback / error log). `ProtocolError` / `ProxyError` stay
-  retryable; the others set `FMPNetworkError.retryable = False`.
-  Timeouts stay `FMPTimeoutError`. `validate_api_key` classifies
-  `FMPNetworkError` and raw non-timeout `httpx.RequestError` (fakes /
-  adapters) as `unavailable`.
-
-- **Timeout and network errors no longer leak `apikey=` (#350).**
-  `httpx.TimeoutException` / `httpx.NetworkError` now raise
-  `FMPTimeoutError` / `FMPNetworkError` with `from None`. The request
-  URL is not logged (`str(httpx_exc)` and `exc_info=True` are off that
-  path). Status errors were already mapped in #97; this is the leftover
-  transport path. Callers that caught raw httpx timeouts should catch
-  the new types (they remain `FMPError` subclasses and stay retryable).
-  `validate_api_key` classifies `FMPTimeoutError` as `timeout` and
-  `FMPNetworkError` as `unavailable` so a transport failure cannot
-  report a valid key.
-
-- **MCP setup helpers no longer echo subprocess stderr (#319).**
-  `validate_api_key` and `test_mcp_server` return classified reasons
-  (`valid` / `invalid` / `timeout` / `unavailable` and
-  `passed` / `started` / `failed` / `unavailable`). `fmp-mcp status`
-  and `fmp-mcp test` print sink-local literals so a key quoted in
-  child stderr cannot reach the terminal.
-
-- **`validate_api_key` now probes FMP (#317).**
-  A typed junk key no longer reports success. The helper constructs a
-  client and calls `company.get_quote("AAPL")`; 401 and 403 map to
-  `invalid`. Rate-limit / other HTTP errors still count as `valid`.
-
-- **`validate_api_key` first classified a status-less `Invalid API KEY`
-  body as invalid (#329).** That wizard-side copy matcher is superseded
-  by #340 in this same 2.7.0 section. Live `/stable/quote` returns
-  HTTP 401 for a junk key (probed 2026-08-15).
-
-- **Setup wizard offers the example MCP profiles again (#320).**
-  `get_manifest_choices` looks in `examples/mcp/configurations/` (the
-  real directory). The example Claude Desktop script, JSON profiles,
-  and README / troubleshooting copies use the same path.
-
-- **E2E sweep no longer treats Senate/House trades-by-id as allowed
-  empty (#337).** Those methods pin known-nonempty ids (`W000802` /
-  `P000197`); a 200/`[]` is the 404-as-empty class, not entity
-  emptiness. Name-based lookups stay on `ALLOW_EMPTY`.
-
-- **2xx `Invalid API KEY` bodies raise `AuthenticationError` (#340).**
-  `_check_error_response` types the known invalid-key copy instead of
-  a status-less `FMPError`. Unrelated 2xx bodies stay `FMPError`.
-  `validate_api_key`'s copy matcher is gone — the
-  `except AuthenticationError` path covers it.
-
-- **Net-worth integration tests lock nested objects, aggregated
-  aliases, and `model_extra` (#336).** Itemized rows must have empty
-  `model_extra` and at least one populated `valueRange` and
-  `debtDetails`. Aggregated pages must populate both `total` and
-  `stock`.
-
-- **Committed cassette-contract snapshot fails CI without YAML (#336).**
-  `tests/integration/cassette_contracts.json` lists required wire
-  aliases for government-trading models. The YAML payload check still
-  skips when cassettes are gitignored.
-
-- **List-shaped 2xx `Invalid API KEY` bodies raise
-  `AuthenticationError` (#342).** A one-element list whose only keys
-  are error keys is routed through `_raise_response_error`. Multi-row
-  lists are not walked. Unrelated singleton error lists stay
-  `FMPError`.
-
-- **Residual list-shaped 2xx error bodies type as
-  `AuthenticationError` (#344).** A one-element list with decorator
-  keys (`Error Message` plus data fields), a nested error value
-  (`{"message": "Invalid API KEY"}`), or a scalar
-  `["Invalid API KEY"]` now raises instead of falling through
-  validation. Mixed-key rows whose copy is not the junk-key body stay
-  on the validation path. Multi-row lists are still not walked.
-
-### FMP API surface (scan this first)
-
-Source: FMP public changelog
-([docs/changelog](https://site.financialmodelingprep.com/developer/docs/changelog))
-plus a live `/stable` probe on 2026-08-12. Marketing-only items (dashboard,
-localization, Insights Hub, plan add-ons) and FMP's hosted MCP product are
-out of scope.
-
-#### New (now first-class in this client)
-
-| Surface | What you get | Wire key / param | Client |
-|---|---|---|---|
-| Financial ratios | Diluted P/E | `priceToEarningsDilutedRatio` | `FinancialRatios.price_to_earnings_diluted_ratio` |
-| Financial ratios | Diluted PEG | `priceToEarningsDilutedGrowthRatio` | `FinancialRatios.price_to_earnings_diluted_growth_ratio` |
-| Ratios TTM (+ `ratios-ttm-bulk`) | Diluted P/E TTM | `priceToEarningsDilutedRatioTTM` | `FinancialRatiosTTM.price_to_earnings_diluted_ratio_ttm` |
-| Ratios TTM (+ `ratios-ttm-bulk`) | Diluted PEG TTM | `priceToEarningsDilutedGrowthRatioTTM` | `FinancialRatiosTTM.price_to_earnings_diluted_growth_ratio_ttm` |
-| Company screener | Pagination | `page` (optional, omitted when unset) | `market.get_company_screener(..., page=None)` |
-| Senate / House trades | Entity id | `senateID` (same key on House rows) | `SenateTrade.senate_id` / `HouseDisclosure.senate_id` |
-| Ratings bulk | Score columns | `discountedCashFlowScore`, `returnOnEquityScore`, `returnOnAssetsScore`, `debtToEquityScore`, `priceToEarningsScore`, `priceToBookScore` | `CompanyRating.*_score` |
-| Delisted companies | Slim delist list | `/stable/delisted-companies` (`page`, `limit`) | `company.get_delisted_companies` → `DelistedCompany` |
-
-#### Updated (path or contract still matches; no caller change)
-
-| FMP note | Path probed | Result |
-|---|---|---|
-| Exchange directory taxonomy (2025-06) | `/stable/available-exchanges` | 200. Keys `exchange`, `name`, `countryName`, `countryCode`, `delay`, `symbolSuffix` — already on `ExchangeSymbol`. |
-| Exchange variants (2025-05/06) | `/stable/search-exchange-variants?query=Apple` | 200. Profile-shaped rows still parse as `CompanySearchResult`. |
-| DCF valuations bulk naming (2025-06) | `/stable/dcf-bulk` | 200. Headers `symbol,date,dcf,Stock Price`. Client still remaps `Stock Price` → `stockPrice`. |
-| Historical S&P 500 symbol naming (2025-06) | `/stable/historical-sp500-constituent` | 200. `symbol` present; `HistoricalIndexConstituent` still parses. |
-| Stock ratings bulk field standardization (2025-06) | `/stable/rating-bulk` | 200. Score columns now typed on `CompanyRating` (see New). |
-| CUSIP on fund disclosure holders (2025-10) | `/stable/funds/disclosure-holders-latest` | Only `securityCusip`. Already modeled; no second key. |
-| ETF `isActivelyTrading` (2025-12) | `/stable/etf/info` | Present. Already modeled. |
-| Splits calendar `splitType` (2025-11) | `/stable/splits-calendar` | Present (may be `null`). Already modeled. |
-| Earnings `includeReportTimes` (2026-06) | `/stable/earnings-calendar?includeReportTimes=true` | Extra fields `confirmed`, `fiscalPeriod`, `fiscalYear`, `periodEnding`, `time`, `lastUpdated` already modeled. |
-| Profile bulk `part=0..3` (2024-10) | `/stable/profile-bulk?part=0` | 200. Multi-part scheme unchanged. |
-| Legacy route auth-gate (2025-08) | `/api/v3/profile/AAPL` | 403. No remaining live client path uses `APIVersion.V3`. The one leftover `V4` declaration is the already-withdrawn `stock-news-sentiments`. |
-
-#### Deprecated / withdrawn in this pass
-
-None. No FMP path we ship was newly retired by this changelog window.
-
-### Changed
 
 - **BREAKING: credential config fields are `pydantic.SecretStr` (#252
   FMP-SEC-007).** `ClientConfig.api_key`, `LangChainConfig.embedding_api_key`,
@@ -354,71 +351,120 @@ None. No FMP path we ship was newly retired by this changelog window.
   `TechnicalClient` signatures are unchanged. The arg-model types
   themselves stay until 3.0.
 
-### Added
+- **CI and local uv are 0.12.3+.** ``setup-uv`` v10 installs uv ``0.12.3``.
+  ``[tool.uv] required-version = ">=0.12.3"`` rejects older local
+  installs. The action pin remains the v10.0.0 SHA.
+- **Separate extras coverage gate for ``lc`` / ``mcp`` / Redis (#273).**
+  The core 80% report still omits those trees. ``nox -s coverage_extras``
+  (CI job ``extras-coverage``) installs the extras, measures only those
+  files, and fails under 65% (measured baseline 66.78% on 2026-08-13).
+  ``Test-MatrixExpected`` requires that job. The ``mcp-server`` session
+  now runs every ``tests/unit/test_mcp*.py`` file.
 
-- **Closed request vocabularies for period, interval, and timeframe
-  (#306, #308).** Client methods now take `Period` / `PeriodFiscal` /
-  `PeriodAnnualQuarter`, `Interval`, and `Timeframe` (`Literal` aliases
-  in `fmp_data.schema`) instead of a naked `str`. Three period types on
-  purpose: financial reports and batch bulk accept only `FY`/`Q1`–`Q4`.
-  Endpoint `valid_values` are derived from the same aliases. Plain
-  strings still work at runtime. Re-exported from `fmp_data` (`__all__`):
-  `from fmp_data import Period, PeriodFiscal, PeriodAnnualQuarter,
-  Interval, Timeframe`. The e2e harness samples required closed params
-  from the method annotation, not a global `"annual"` table.
-
-- **Public re-export of `TechnicalInterval` (#311).** Annotate
-  `TechnicalClient.interval=` against
-  `from fmp_data import TechnicalInterval`. It is `Interval` plus
-  `"daily"` / `"hourly"`, not `Timeframe` (`1day`). Client-only leftover
-  aliases mapped by `_normalize_timeframe`; endpoint `valid_values` stay
-  on `Timeframe` / `Interval`.
-
-- **Local VCR-backed client-method e2e sweep.** Maintainer script
-  `scripts/e2e_endpoints.py` (`make e2e-record` / `make e2e-replay`) calls
-  every public sync `FMPDataClient` method, records gitignored cassettes
-  under `tests/e2e/vcr_cassettes/`, and prints a per-method report. Opt-in
-  (`-m not e2e` in addopts); not run by `make test`. First live pass
-  covered 265 methods: 239 ok, 26 deprecated skips.
-
-- **FMP hosted MCP vs `fmp-mcp` positioning (#230).** Docs-only: we are not
-  wrapping FMP's remote MCP URL. README + `docs/mcp/index.md` point at
-  `docs/mcp/hosted.md`, which records the 2026-08-12 decision (A+D: position
-  + coverage matrix), a live `tools/list` of **28** dataset tools (changelog
-  said 27; `tipranks` is a paid add-on), and when to use hosted MCP vs this
-  package. No runtime helper, no FastMCP dependency, no CI smoke.
-
-- **FMP changelog alignment (#229).** Three confirmed 2026 wire gaps, the
-  leftover 2025-10 delisted-companies wiring (#233), plus the older-note
-  re-probe above. Live `/stable` checks used the current API key on
-  2026-08-12.
-
-  - **Diluted P/E on ratios.** `FinancialRatios` and `FinancialRatiosTTM` now
-    declare the diluted PE / diluted PEG pair FMP added on 2026-07-30
-    (`priceToEarningsDilutedRatio`, `priceToEarningsDilutedGrowthRatio`, and
-    the `*TTM` names on TTM + `ratios-ttm-bulk`). They previously landed only
-    in `__pydantic_extra__` and could warn under `FMP_VALIDATION_MODE=warn`.
-  - **Screener `page`.** `market.get_company_screener` / async accept optional
-    `page: int | None = None`. Unset is omitted from the request (existing
-    callers keep the same wire). `page=0` is sent. Live: `limit=2&page=0`
-    and `limit=2&page=1` return distinct first rows.
-  - **`senateID` on Senate and House trades.** `SenateTrade.senate_id` and
-    `HouseDisclosure.senate_id` alias `senateID`. The wire name is kept on
-    House rows (Pelosi → `P000197`); we do not invent `house_id`.
-  - **`CompanyRating` score columns.** `rating-bulk` headers
-    `discountedCashFlowScore` / `returnOnEquityScore` / `returnOnAssetsScore`
-    / `debtToEquityScore` / `priceToEarningsScore` / `priceToBookScore` are
-    now typed attributes. Fractional CSV cells such as ``"3.0"`` coerce to
-    ``int`` so ``parse_csv_models`` does not skip the whole company row.
-  - **`company.get_delisted_companies`.** The 2025-10 delisted-companies
-    architecture sync left a live `/stable/delisted-companies` path whose
-    declaration used `CompanyProfile` and had no client method. Sync and
-    async clients now expose `get_delisted_companies(page=0, limit=100)`
-    returning `DelistedCompany` (`symbol`, `companyName`, `exchange`,
-    `ipoDate`, `delistedDate`). MCP: `company.delisted_companies` (in
-    `DEFAULT_TOOLS`). LangChain indexes the same semantics key.
+- **Extras coverage gate raised to 80% and made a required check (#273, #282).**
+  Dedicated tests for `cache/redis_backend.py`, `lc/validation.py`,
+  `lc/__init__.py`, `mcp/utils.py` and `mcp/setup.py` took the measured extras
+  number from 66.78% to 86.99%, so `nox -s coverage_extras` now fails under 80
+  with ~7 points of headroom. `Extras Coverage`, `coverage`, `Secret Scan`,
+  `Actions shell checks` and `Test-MatrixExpected` are now required status
+  checks on **Protect Dev** and **Protect Main**; previously only
+  `tests (3.10–3.14)` were required, so a red extras or secret scan could not
+  block a merge. Also fixed the `Protocol` exclusion in `extras.coveragerc`,
+  which had been copied from TOML with `\\(` and so never matched.
+- **`uv.lock` stays uncommitted, by decision (#273).** Recorded in
+  `CONTRIBUTING.md` under "Lock file policy": this is a library, so the
+  compatibility contract is the floors in `pyproject.toml`; drift is caught by
+  `nox -s security` auditing a live `uv export` with `pip-audit --strict`
+  rather than frozen behind stale pins. The old `.gitignore` rationale cited a
+  non-existent "GitHub 500KB warning" (that threshold is pre-commit's
+  `check-added-large-files` default) and has been replaced.
+- **`fmp-mcp generate` writes JSON / YAML / TOML from the output suffix (#256).**
+  `.json` is preferred (`{"tools": [...]}`). `.yaml` / `.yml` and `.toml` use
+  the same `tools` object. A path with no suffix becomes `<name>.json`.
+  `.py` still writes the restricted `TOOLS = ["..."]` form so existing
+  scripts keep working. Unknown suffixes are refused.
 
 ### Fixed
+
+- **Remaining `httpx.RequestError` leftovers no longer leak `apikey=`
+  (#354).** `ProtocolError`, `ProxyError`, `DecodingError`,
+  `TooManyRedirects`, `UnsupportedProtocol`, and any future
+  `RequestError` now raise `FMPNetworkError` with `from None`. Same
+  secret-absent pin as #97 / #350 (`str` / `repr` / `__cause__` /
+  traceback / error log). `ProtocolError` / `ProxyError` stay
+  retryable; the others set `FMPNetworkError.retryable = False`.
+  Timeouts stay `FMPTimeoutError`. `validate_api_key` classifies
+  `FMPNetworkError` and raw non-timeout `httpx.RequestError` (fakes /
+  adapters) as `unavailable`.
+
+- **Timeout and network errors no longer leak `apikey=` (#350).**
+  `httpx.TimeoutException` / `httpx.NetworkError` now raise
+  `FMPTimeoutError` / `FMPNetworkError` with `from None`. The request
+  URL is not logged (`str(httpx_exc)` and `exc_info=True` are off that
+  path). Status errors were already mapped in #97; this is the leftover
+  transport path. Callers that caught raw httpx timeouts should catch
+  the new types (they remain `FMPError` subclasses and stay retryable).
+  `validate_api_key` classifies `FMPTimeoutError` as `timeout` and
+  `FMPNetworkError` as `unavailable` so a transport failure cannot
+  report a valid key.
+
+- **MCP setup helpers no longer echo subprocess stderr (#319).**
+  `validate_api_key` and `test_mcp_server` return classified reasons
+  (`valid` / `invalid` / `timeout` / `unavailable` and
+  `passed` / `started` / `failed` / `unavailable`). `fmp-mcp status`
+  and `fmp-mcp test` print sink-local literals so a key quoted in
+  child stderr cannot reach the terminal.
+
+- **`validate_api_key` now probes FMP (#317).**
+  A typed junk key no longer reports success. The helper constructs a
+  client and calls `company.get_quote("AAPL")`; 401 and 403 map to
+  `invalid`. Rate-limit / other HTTP errors still count as `valid`.
+
+- **`validate_api_key` first classified a status-less `Invalid API KEY`
+  body as invalid (#329).** That wizard-side copy matcher is superseded
+  by #340 in this same 2.7.0 section. Live `/stable/quote` returns
+  HTTP 401 for a junk key (probed 2026-08-15).
+
+- **Setup wizard offers the example MCP profiles again (#320).**
+  `get_manifest_choices` looks in `examples/mcp/configurations/` (the
+  real directory). The example Claude Desktop script, JSON profiles,
+  and README / troubleshooting copies use the same path.
+
+- **E2E sweep no longer treats Senate/House trades-by-id as allowed
+  empty (#337).** Those methods pin known-nonempty ids (`W000802` /
+  `P000197`); a 200/`[]` is the 404-as-empty class, not entity
+  emptiness. Name-based lookups stay on `ALLOW_EMPTY`.
+
+- **2xx `Invalid API KEY` bodies raise `AuthenticationError` (#340).**
+  `_check_error_response` types the known invalid-key copy instead of
+  a status-less `FMPError`. Unrelated 2xx bodies stay `FMPError`.
+  `validate_api_key`'s copy matcher is gone — the
+  `except AuthenticationError` path covers it.
+
+- **Net-worth integration tests lock nested objects, aggregated
+  aliases, and `model_extra` (#336).** Itemized rows must have empty
+  `model_extra` and at least one populated `valueRange` and
+  `debtDetails`. Aggregated pages must populate both `total` and
+  `stock`.
+
+- **Committed cassette-contract snapshot fails CI without YAML (#336).**
+  `tests/integration/cassette_contracts.json` lists required wire
+  aliases for government-trading models. The YAML payload check still
+  skips when cassettes are gitignored.
+
+- **List-shaped 2xx `Invalid API KEY` bodies raise
+  `AuthenticationError` (#342).** A one-element list whose only keys
+  are error keys is routed through `_raise_response_error`. Multi-row
+  lists are not walked. Unrelated singleton error lists stay
+  `FMPError`.
+
+- **Residual list-shaped 2xx error bodies type as
+  `AuthenticationError` (#344).** A one-element list with decorator
+  keys (`Error Message` plus data fields), a nested error value
+  (`{"message": "Invalid API KEY"}`), or a scalar
+  `["Invalid API KEY"]` now raises instead of falling through
+  validation. Mixed-key rows whose copy is not the junk-key body stay
+  on the validation path. Multi-row lists are still not walked.
 
 - **TestPyPI / Dev-Release / Release sdist version-assert no longer
   SIGPIPEs.** `set -euo pipefail` plus `tar -xOf … | awk … exit` made
@@ -487,17 +533,21 @@ None. No FMP path we ship was newly retired by this changelog window.
   had made every unsigned automation commit need `--admin` despite green checks;
   required Test-Matrix jobs, no force-push, and no branch deletion remain.
 
-### Changed
-
-- **CI and local uv are 0.12.3+.** ``setup-uv`` v10 installs uv ``0.12.3``.
-  ``[tool.uv] required-version = ">=0.12.3"`` rejects older local
-  installs. The action pin remains the v10.0.0 SHA.
-- **Separate extras coverage gate for ``lc`` / ``mcp`` / Redis (#273).**
-  The core 80% report still omits those trees. ``nox -s coverage_extras``
-  (CI job ``extras-coverage``) installs the extras, measures only those
-  files, and fails under 65% (measured baseline 66.78% on 2026-08-13).
-  ``Test-MatrixExpected`` requires that job. The ``mcp-server`` session
-  now runs every ``tests/unit/test_mcp*.py`` file.
+- **Async requests work again (#252 FMP-SEC-004).** `httpx.AsyncClient` *awaits*
+  every response hook (`await hook(response)`), while `httpx.Client` calls it
+  plainly. The cross-origin redirect guard added for FMP-SEC-004 was a plain
+  `def` registered on both clients, so httpx awaited `None` and **every**
+  successful async response raised
+  `TypeError: object NoneType can't be used in 'await' expression` — not only
+  redirects. `_areject_cross_origin_redirect` now wraps the check for the async
+  client. Unreleased regression: it never shipped in a tagged version. The async
+  tests replaced the client with `AsyncMock` and asserted only hook membership,
+  so nothing exercised the real send path; they now drive
+  `httpx.MockTransport` and assert the hook is a coroutine function.
+- **`_unwrap_list_result` refuses a bytes file (#253).** `request_list` already
+  raised `TypeError` for `Endpoint[bytes]`, but the shared unwrap helper still
+  treated `isinstance(payload, bytes)` as a lone row and returned `[bytes]`.
+  Quote-list unwrap is unchanged.
 
 ### Security
 
@@ -691,51 +741,6 @@ None. No FMP path we ship was newly retired by this changelog window.
   TOML uses `tomli` from the `mcp` extra; 3.11+ uses stdlib `tomllib`.
   Existing generated and example `.py` manifests keep working. A file
   that previously ran arbitrary code as "validation" now fails closed.
-
-### Fixed
-
-- **Async requests work again (#252 FMP-SEC-004).** `httpx.AsyncClient` *awaits*
-  every response hook (`await hook(response)`), while `httpx.Client` calls it
-  plainly. The cross-origin redirect guard added for FMP-SEC-004 was a plain
-  `def` registered on both clients, so httpx awaited `None` and **every**
-  successful async response raised
-  `TypeError: object NoneType can't be used in 'await' expression` — not only
-  redirects. `_areject_cross_origin_redirect` now wraps the check for the async
-  client. Unreleased regression: it never shipped in a tagged version. The async
-  tests replaced the client with `AsyncMock` and asserted only hook membership,
-  so nothing exercised the real send path; they now drive
-  `httpx.MockTransport` and assert the hook is a coroutine function.
-- **`_unwrap_list_result` refuses a bytes file (#253).** `request_list` already
-  raised `TypeError` for `Endpoint[bytes]`, but the shared unwrap helper still
-  treated `isinstance(payload, bytes)` as a lone row and returned `[bytes]`.
-  Quote-list unwrap is unchanged.
-
-### Changed
-
-- **Extras coverage gate raised to 80% and made a required check (#273, #282).**
-  Dedicated tests for `cache/redis_backend.py`, `lc/validation.py`,
-  `lc/__init__.py`, `mcp/utils.py` and `mcp/setup.py` took the measured extras
-  number from 66.78% to 86.99%, so `nox -s coverage_extras` now fails under 80
-  with ~7 points of headroom. `Extras Coverage`, `coverage`, `Secret Scan`,
-  `Actions shell checks` and `Test-MatrixExpected` are now required status
-  checks on **Protect Dev** and **Protect Main**; previously only
-  `tests (3.10–3.14)` were required, so a red extras or secret scan could not
-  block a merge. Also fixed the `Protocol` exclusion in `extras.coveragerc`,
-  which had been copied from TOML with `\\(` and so never matched.
-- **`uv.lock` stays uncommitted, by decision (#273).** Recorded in
-  `CONTRIBUTING.md` under "Lock file policy": this is a library, so the
-  compatibility contract is the floors in `pyproject.toml`; drift is caught by
-  `nox -s security` auditing a live `uv export` with `pip-audit --strict`
-  rather than frozen behind stale pins. The old `.gitignore` rationale cited a
-  non-existent "GitHub 500KB warning" (that threshold is pre-commit's
-  `check-added-large-files` default) and has been replaced.
-- **`fmp-mcp generate` writes JSON / YAML / TOML from the output suffix (#256).**
-  `.json` is preferred (`{"tools": [...]}`). `.yaml` / `.yml` and `.toml` use
-  the same `tools` object. A path with no suffix becomes `<name>.json`.
-  `.py` still writes the restricted `TOOLS = ["..."]` form so existing
-  scripts keep working. Unknown suffixes are refused.
-
-### Security
 
 - **TestPyPI tag guard cannot be shadowed by a tag (#252 FMP-SEC-003).** The
   ancestry check compared against the *unqualified* rev `origin/main`. Git

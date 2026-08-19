@@ -160,48 +160,49 @@ jobs:
             git merge -s ours origin/main \
               -m "chore: merge main into dev after release (history sync)"
 
-            # Body must stay indented for YAML; strip the common prefix after.
+            # The terminator must sit at the `run: |` base indent. Extra spaces
+            # survive YAML strip, bash never closes the here-doc, and the rest
+            # of the script is swallowed (#363).
             cat > /tmp/sync-pr-body.md <<'EOF'
-            ## Automatic Sync
+          ## Automatic Sync
 
-            `main` was not an ancestor of `dev`. This PR restores reachability so
-            the next `dev → main` release PR stays MERGEABLE and gets full CI.
+          `main` was not an ancestor of `dev`. This PR restores reachability so
+          the next `dev → main` release PR stays MERGEABLE and gets full CI.
 
-            ### Why this is not a content sync
-            After a squash-merge release, trees are usually identical but histories
-            diverge. Comparing content (`git diff`) misses that; comparing
-            reachability (`git merge-base --is-ancestor`) catches it at the right
-            moment — right after the release — instead of as 20+ conflicts on the
-            next release PR. See #202.
+          ### Why this is not a content sync
+          After a squash-merge release, trees are usually identical but histories
+          diverge. Comparing content (`git diff`) misses that; comparing
+          reachability (`git merge-base --is-ancestor`) catches it at the right
+          moment — right after the release — instead of as 20+ conflicts on the
+          next release PR. See #202.
 
-            ### Merge policy
-            - Auto-merge is enabled with a **merge commit** when required checks
-              (Test-Matrix) are green. Do **not** squash — that re-creates the
-              ancestry break this PR fixes.
-            - Content is usually empty for a pure history merge; review only if
-              the diff is non-empty (unexpected).
-            EOF
-            sed -i 's/^            //' /tmp/sync-pr-body.md
+          ### Merge policy
+          - Auto-merge is enabled with a **merge commit** when required checks
+            (Test-Matrix) are green. Do **not** squash — that re-creates the
+            ancestry break this PR fixes.
+          - Content is usually empty for a pure history merge; review only if
+            the diff is non-empty (unexpected).
+          EOF
 
             open_or_update_pr "Sync: main → dev (history reachability)" /tmp/sync-pr-body.md
           else
             # Hotfix (or other content) landed on main that dev does not have.
             if git merge origin/main \
               -m "chore: merge main into dev (sync after release/hotfix)"; then
+              # Same rule as the history-only body: terminator at run: | base (#363).
               cat > /tmp/sync-pr-body.md <<'EOF'
-              ## Automatic Sync
+          ## Automatic Sync
 
-              `main` was not an ancestor of `dev` and carried content `dev` did not
-              have (hotfix or direct-to-main commit). This PR merges that content
-              back so histories stay connected. See #202.
+          `main` was not an ancestor of `dev` and carried content `dev` did not
+          have (hotfix or direct-to-main commit). This PR merges that content
+          back so histories stay connected. See #202.
 
-              ### Merge policy
-              - Review the content delta before it lands (auto-merge waits for
-                Test-Matrix).
-              - Auto-merge uses a **merge commit** only — do not squash, or the
-                ancestry link is lost again.
-              EOF
-              sed -i 's/^              //' /tmp/sync-pr-body.md
+          ### Merge policy
+          - Review the content delta before it lands (auto-merge waits for
+            Test-Matrix).
+          - Auto-merge uses a **merge commit** only — do not squash, or the
+            ancestry link is lost again.
+          EOF
               open_or_update_pr "Sync: main → dev" /tmp/sync-pr-body.md
             else
               # Do NOT force-push origin/dev over sync/main-to-dev or open an

@@ -934,7 +934,7 @@ async def test_async_timeout_does_not_leak_apikey_via_cause_or_logs(
         with (
             patch.object(client, "_setup_async_client", return_value=mock_async_client),
             patch.object(client.logger, "error") as mock_error,
-            patch("tenacity.nap.sleep", return_value=None),
+            patch("asyncio.sleep", new_callable=AsyncMock),
             pytest.raises(FMPTimeoutError) as exc_info,
         ):
             await client.request_async(mock_endpoint)
@@ -972,7 +972,7 @@ async def test_async_network_error_does_not_leak_apikey_via_cause_or_logs(
         with (
             patch.object(client, "_setup_async_client", return_value=mock_async_client),
             patch.object(client.logger, "error") as mock_error,
-            patch("tenacity.nap.sleep", return_value=None),
+            patch("asyncio.sleep", new_callable=AsyncMock),
             pytest.raises(FMPNetworkError) as exc_info,
         ):
             await client.request_async(mock_endpoint)
@@ -1065,7 +1065,7 @@ async def test_async_leftover_request_error_does_not_leak_apikey_via_cause_or_lo
         with (
             patch.object(client, "_setup_async_client", return_value=mock_async_client),
             patch.object(client.logger, "error") as mock_error,
-            patch("tenacity.nap.sleep", return_value=None),
+            patch("asyncio.sleep", new_callable=AsyncMock),
             pytest.raises(FMPNetworkError) as exc_info,
         ):
             await client.request_async(mock_endpoint)
@@ -1536,7 +1536,7 @@ async def test_async_protocol_error_is_retried(mock_endpoint, client_config) -> 
     try:
         with (
             patch.object(client, "_setup_async_client", return_value=mock_async_client),
-            patch("tenacity.nap.sleep", return_value=None),
+            patch("asyncio.sleep", new_callable=AsyncMock),
             pytest.raises(FMPNetworkError) as exc_info,
         ):
             await client.request_async(mock_endpoint)

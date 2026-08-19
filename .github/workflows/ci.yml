@@ -240,12 +240,18 @@ jobs:
             exit 1
           fi
           sudo apt-get update -qq
-          sudo apt-get install -y -qq shellcheck
+          sudo apt-get install -y -qq shellcheck python3-yaml
           shellcheck --version
           shellcheck "${scripts[@]}"
 
       - name: 🧪 check-pr-mergeable mock matrix
         run: bash .github/actions/check-pr-mergeable/test-check.sh
+
+      # YAML `run: |` strips the common indent, then bash parses the result.
+      # An indented here-doc terminator is not recognized (#363). This is the
+      # same checker as tests/unit/test_workflow_run_scripts.py.
+      - name: 🔍 bash -n every workflow run block
+        run: python3 tests/unit/test_workflow_run_scripts.py
 
   test-matrix-expected:
     name: Test-MatrixExpected
