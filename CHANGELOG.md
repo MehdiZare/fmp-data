@@ -36,6 +36,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Async retry tests patch `asyncio.sleep` (#358).** Tenacity 9.1.4
   async retries go through `_portable_async_sleep` → `asyncio.sleep`,
   not `tenacity.nap.sleep`. Sync tests keep the nap patch.
+- **Leftover async retry path in `test_base_async.py` patches
+  `asyncio.sleep` (#372).**
+  `test_request_async_with_retry_on_transient_failure` (`max_retries=3`)
+  no longer waits the real Tenacity 4–10s backoff. It asserts two
+  `asyncio.sleep` awaits on the fail-twice-then-succeed path.
 - **Release-PR skips identical-tree standing slots (#375).** After a
   squash + history-only sync, `dev` is commits-ahead of `main` with the
   same tree. The job now treats `git diff --quiet origin/dev origin/main`
