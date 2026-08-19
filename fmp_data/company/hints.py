@@ -1,8 +1,5 @@
 from fmp_data.lc.models import ParameterHint, ResponseFieldInfo
 
-# Live /stable returns the same list-of-objects for flat and nested
-# (probed 2026-08-17). Method docstrings and endpoint descriptions say
-# this; the extra clue keeps LangChain tool text aligned (#352).
 STRUCTURE_HINT = ParameterHint(
     natural_names=["structure", "format", "data format"],
     extraction_patterns=[r"\b(flat|nested)\b"],

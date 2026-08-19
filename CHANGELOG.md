@@ -81,9 +81,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   defaults (`flat` / `annual` / `FY`). Segmentation methods now take
   `structure: Structure = "flat"` (`Literal["flat", "nested"]`).
   Stable currently returns the same list-of-objects for both
-  (probed 2026-08-17). `Structure` is not re-exported from
-  `fmp_data`. No remaining mandatory-plus-default params in the
-  catalogue.
+  (probed 2026-08-17). No remaining mandatory-plus-default params in
+  the catalogue.
 
 - **`SenateNetWorthValueRange` no longer shadows builtins (#336).**
   Fields are `minimum` / `maximum` (wire aliases `min` / `max`).
