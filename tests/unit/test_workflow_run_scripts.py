@@ -159,6 +159,21 @@ def test_sync_main_to_dev_is_among_the_compiled_scripts() -> None:
     assert matching, "sync-main-to-dev.yml produced no run: blocks"
 
 
+def test_sync_main_to_dev_here_docs_survive_yaml_strip() -> None:
+    """#363 is the here-docs, not merely the presence of the workflow file."""
+    scripts = [
+        script
+        for path in _workflow_paths()
+        if path.name == "sync-main-to-dev.yml"
+        for _, script in _load_run_scripts(path)
+        if any(_HEREDOC_START.search(line) for line in script.splitlines())
+    ]
+    assert scripts, "sync-main-to-dev.yml produced no here-doc run: block"
+    for script in scripts:
+        assert _heredoc_problems(script) == []
+        assert "EOF" in script.splitlines(), "column-0 EOF missing after YAML strip"
+
+
 def test_indented_heredoc_terminator_is_flagged() -> None:
     """Spaces in front of EOF survive YAML strip; bash never closes the doc."""
     script = "cat <<'EOF'\nhello\n  EOF\n"
