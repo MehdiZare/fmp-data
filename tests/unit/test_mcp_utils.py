@@ -835,6 +835,43 @@ class TestValidateApiKey:
         assert mcp_utils.validate_api_key("KEY123") == (False, "unavailable")
         assert NetworkClient.instances[-1].closed is True
 
+    def test_leftover_fmp_network_error_is_unavailable(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """#354: non-retryable leftover RequestError mapping is still unavailable."""
+        from fmp_data.exceptions import FMPNetworkError
+
+        class TransportClient(_FakeFmpClient):
+            def __init__(self, **kwargs: Any) -> None:
+                super().__init__(**kwargs)
+                self.company = _FakeCompany(
+                    raises=FMPNetworkError("Transport error", retryable=False)
+                )
+
+        monkeypatch.setattr("fmp_data.client.FMPDataClient", TransportClient)
+
+        assert mcp_utils.validate_api_key("KEY123") == (False, "unavailable")
+        assert TransportClient.instances[-1].closed is True
+
+    def test_httpx_protocol_error_is_unavailable(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """#354: raw leftover RequestError fakes stay unavailable."""
+        import httpx
+
+        class ProtocolClient(_FakeFmpClient):
+            def __init__(self, **kwargs: Any) -> None:
+                super().__init__(**kwargs)
+                request = httpx.Request("GET", "https://example.test/quote")
+                self.company = _FakeCompany(
+                    raises=httpx.ProtocolError("broken", request=request)
+                )
+
+        monkeypatch.setattr("fmp_data.client.FMPDataClient", ProtocolClient)
+
+        assert mcp_utils.validate_api_key("KEY123") == (False, "unavailable")
+        assert ProtocolClient.instances[-1].closed is True
+
     def test_non_auth_fmp_error_still_counts_as_valid(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:

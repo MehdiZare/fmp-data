@@ -348,9 +348,10 @@ def validate_api_key(api_key: str) -> tuple[bool, ApiKeyCheckReason]:
         # #350 maps client timeouts to FMPTimeoutError. Keep the raw
         # httpx type for fakes/adapters that still raise it.
         return False, "timeout"
-    except FMPNetworkError:
-        # Same mapping: a connect failure is not proof the key works.
-        # Raw httpx.NetworkError still lands in except Exception below.
+    except (FMPNetworkError, httpx.RequestError):
+        # #350 / #354: leftover RequestError subclasses map to
+        # FMPNetworkError. Keep the raw httpx type for fakes/adapters.
+        # TimeoutException is a RequestError and is handled above.
         return False, "unavailable"
     except FMPError as exc:
         # AuthenticationError (HTTP 401 and typed 2xx invalid-key

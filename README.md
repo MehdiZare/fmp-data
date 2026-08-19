@@ -732,7 +732,7 @@ from fmp_data import FMPDataClient
 from fmp_data.exceptions import (
     FMPError,  # Base exception for all FMP errors
     FMPTimeoutError,  # HTTP request timed out
-    FMPNetworkError,  # Transport / connect failure
+    FMPNetworkError,  # Transport / leftover RequestError
     RateLimitError,  # API rate limit exceeded
     AuthenticationError,  # Invalid or missing API key
     ValidationError,  # Invalid request parameters

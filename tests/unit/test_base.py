@@ -789,6 +789,23 @@ def test_is_retryable_error_includes_mapped_5xx_fmp_errors():
     assert not BaseClient._is_retryable_error(ValueError("other"))
     assert BaseClient._is_retryable_error(FMPTimeoutError("Request timed out"))
     assert BaseClient._is_retryable_error(FMPNetworkError("Network error"))
+    assert BaseClient._is_retryable_error(FMPNetworkError("Protocol error"))
+    assert not BaseClient._is_retryable_error(
+        FMPNetworkError("Transport error", retryable=False)
+    )
+    assert BaseClient._is_retryable_error(
+        httpx.ProtocolError("protocol", request=request)
+    )
+    assert BaseClient._is_retryable_error(httpx.ProxyError("proxy", request=request))
+    assert not BaseClient._is_retryable_error(
+        httpx.TooManyRedirects("redirects", request=request)
+    )
+    assert not BaseClient._is_retryable_error(
+        httpx.UnsupportedProtocol("scheme", request=request)
+    )
+    assert not BaseClient._is_retryable_error(
+        httpx.DecodingError("decode", request=request)
+    )
 
 
 _LEAK_SECRET = "SECRET_FMP_KEY_123"  # noqa: S105  # pragma: allowlist secret
@@ -813,9 +830,17 @@ def _assert_secret_stays_off_exception(exc: BaseException, secret: str) -> None:
     assert secret not in repr(exc)
     assert secret not in repr(exc.__cause__)
     assert secret not in rendered
-    assert "httpx.TimeoutException" not in rendered
-    assert "httpx.ConnectError" not in rendered
-    assert "httpx.NetworkError" not in rendered
+    for name in (
+        "httpx.TimeoutException",
+        "httpx.ConnectError",
+        "httpx.NetworkError",
+        "httpx.ProtocolError",
+        "httpx.ProxyError",
+        "httpx.DecodingError",
+        "httpx.TooManyRedirects",
+        "httpx.UnsupportedProtocol",
+    ):
+        assert name not in rendered, name
 
 
 @patch("httpx.Client.request")
@@ -955,6 +980,101 @@ async def test_async_network_error_does_not_leak_apikey_via_cause_or_logs(
         await client.aclose()
         client.close()
 
+    _assert_secret_stays_off_exception(exc_info.value, _LEAK_SECRET)
+    mock_error.assert_called()
+    for call in mock_error.call_args_list:
+        assert _LEAK_SECRET not in str(call)
+        assert call.kwargs.get("exc_info") is not True
+
+
+_LEFTOVER_REQUEST_CASES = (
+    (httpx.ProtocolError, "Protocol error", True),
+    (httpx.ProxyError, "Proxy error", True),
+    (httpx.TooManyRedirects, "Transport error", False),
+    (httpx.UnsupportedProtocol, "Transport error", False),
+    (httpx.DecodingError, "Transport error", False),
+)
+
+
+@pytest.mark.parametrize(("exc_cls", "message", "retryable"), _LEFTOVER_REQUEST_CASES)
+@patch("httpx.Client.request")
+def test_leftover_request_error_does_not_leak_apikey_via_cause_or_logs(
+    mock_request,
+    mock_endpoint,
+    client_config,
+    exc_cls: type[httpx.RequestError],
+    message: str,
+    retryable: bool,
+) -> None:
+    """#354: leftover RequestError subclasses must not chain httpx or log the URL."""
+    mock_request.side_effect = _httpx_error_with_key(exc_cls, _LEAK_SECRET)
+    mock_endpoint.method = MagicMock()
+    mock_endpoint.method.value = "GET"
+    mock_endpoint.response_model = SampleResponse
+    config = ClientConfig(
+        api_key=_LEAK_SECRET,
+        base_url=client_config.base_url,
+        max_retries=1,
+        max_rate_limit_retries=0,
+    )
+    client = BaseClient(config)
+    try:
+        with (
+            patch.object(client.logger, "error") as mock_error,
+            patch("tenacity.nap.sleep", return_value=None),
+            pytest.raises(FMPNetworkError) as exc_info,
+        ):
+            client.request(mock_endpoint)
+    finally:
+        client.close()
+
+    assert exc_info.value.message == message
+    assert exc_info.value.retryable is retryable
+    _assert_secret_stays_off_exception(exc_info.value, _LEAK_SECRET)
+    mock_error.assert_called()
+    for call in mock_error.call_args_list:
+        assert _LEAK_SECRET not in str(call)
+        assert call.kwargs.get("exc_info") is not True
+
+
+@pytest.mark.parametrize(("exc_cls", "message", "retryable"), _LEFTOVER_REQUEST_CASES)
+@pytest.mark.asyncio
+async def test_async_leftover_request_error_does_not_leak_apikey_via_cause_or_logs(
+    mock_endpoint,
+    client_config,
+    exc_cls: type[httpx.RequestError],
+    message: str,
+    retryable: bool,
+) -> None:
+    """#354 async twin of the leftover RequestError pin."""
+    mock_endpoint.method = MagicMock()
+    mock_endpoint.method.value = "GET"
+    mock_endpoint.response_model = SampleResponse
+    config = ClientConfig(
+        api_key=_LEAK_SECRET,
+        base_url=client_config.base_url,
+        max_retries=1,
+        max_rate_limit_retries=0,
+    )
+    client = BaseClient(config)
+    mock_async_client = AsyncMock()
+    mock_async_client.request = AsyncMock(
+        side_effect=_httpx_error_with_key(exc_cls, _LEAK_SECRET)
+    )
+    try:
+        with (
+            patch.object(client, "_setup_async_client", return_value=mock_async_client),
+            patch.object(client.logger, "error") as mock_error,
+            patch("tenacity.nap.sleep", return_value=None),
+            pytest.raises(FMPNetworkError) as exc_info,
+        ):
+            await client.request_async(mock_endpoint)
+    finally:
+        await client.aclose()
+        client.close()
+
+    assert exc_info.value.message == message
+    assert exc_info.value.retryable is retryable
     _assert_secret_stays_off_exception(exc_info.value, _LEAK_SECRET)
     mock_error.assert_called()
     for call in mock_error.call_args_list:
@@ -1365,6 +1485,100 @@ def test_request_non_retryable_error(mock_request, mock_endpoint, base_client):
         base_client.request(mock_endpoint)
 
     assert mock_request.call_count == 1  # Should not retry
+
+
+@patch("httpx.Client.request")
+def test_protocol_error_is_retried(mock_request, mock_endpoint, base_client) -> None:
+    """#354: ProtocolError stays retryable after mapping."""
+    mock_request.side_effect = _httpx_error_with_key(httpx.ProtocolError, _LEAK_SECRET)
+    with (
+        patch("tenacity.nap.sleep", return_value=None),
+        pytest.raises(FMPNetworkError) as exc_info,
+    ):
+        base_client.request(mock_endpoint)
+    assert exc_info.value.retryable is True
+    assert mock_request.call_count == base_client.config.max_retries
+    _assert_secret_stays_off_exception(exc_info.value, _LEAK_SECRET)
+
+
+@patch("httpx.Client.request")
+def test_too_many_redirects_is_not_retried(
+    mock_request, mock_endpoint, base_client
+) -> None:
+    """#354: leftover RequestErrors such as TooManyRedirects are not retried."""
+    mock_request.side_effect = _httpx_error_with_key(
+        httpx.TooManyRedirects, _LEAK_SECRET
+    )
+    with pytest.raises(FMPNetworkError) as exc_info:
+        base_client.request(mock_endpoint)
+    assert exc_info.value.retryable is False
+    assert mock_request.call_count == 1
+    _assert_secret_stays_off_exception(exc_info.value, _LEAK_SECRET)
+
+
+@pytest.mark.asyncio
+async def test_async_protocol_error_is_retried(mock_endpoint, client_config) -> None:
+    """#354: ProtocolError uses the configured attempt count on the async path."""
+    mock_endpoint.method = MagicMock()
+    mock_endpoint.method.value = "GET"
+    mock_endpoint.response_model = SampleResponse
+    config = ClientConfig(
+        api_key=_LEAK_SECRET,
+        base_url=client_config.base_url,
+        max_retries=3,
+        max_rate_limit_retries=0,
+    )
+    client = BaseClient(config)
+    mock_async_client = AsyncMock()
+    mock_async_client.request = AsyncMock(
+        side_effect=_httpx_error_with_key(httpx.ProtocolError, _LEAK_SECRET)
+    )
+    try:
+        with (
+            patch.object(client, "_setup_async_client", return_value=mock_async_client),
+            patch("tenacity.nap.sleep", return_value=None),
+            pytest.raises(FMPNetworkError) as exc_info,
+        ):
+            await client.request_async(mock_endpoint)
+    finally:
+        await client.aclose()
+        client.close()
+    assert exc_info.value.retryable is True
+    assert mock_async_client.request.call_count == config.max_retries
+    _assert_secret_stays_off_exception(exc_info.value, _LEAK_SECRET)
+
+
+@pytest.mark.asyncio
+async def test_async_too_many_redirects_is_not_retried(
+    mock_endpoint, client_config
+) -> None:
+    """#354: TooManyRedirects is a single attempt on the async path."""
+    mock_endpoint.method = MagicMock()
+    mock_endpoint.method.value = "GET"
+    mock_endpoint.response_model = SampleResponse
+    config = ClientConfig(
+        api_key=_LEAK_SECRET,
+        base_url=client_config.base_url,
+        max_retries=3,
+        max_rate_limit_retries=0,
+    )
+    client = BaseClient(config)
+    mock_async_client = AsyncMock()
+    mock_async_client.request = AsyncMock(
+        side_effect=_httpx_error_with_key(httpx.TooManyRedirects, _LEAK_SECRET)
+    )
+    try:
+        with (
+            patch.object(client, "_setup_async_client", return_value=mock_async_client),
+            pytest.raises(FMPNetworkError) as exc_info,
+        ):
+            await client.request_async(mock_endpoint)
+    finally:
+        await client.aclose()
+        client.close()
+    assert exc_info.value.retryable is False
+    assert mock_async_client.request.call_count == 1
+    _assert_secret_stays_off_exception(exc_info.value, _LEAK_SECRET)
 
 
 def test_request_retries_on_http_5xx(base_client):
