@@ -465,9 +465,17 @@ class BaseClient:
 
     @staticmethod
     def _is_retryable_error(exc: BaseException) -> bool:
-        if isinstance(exc, FMPTimeoutError | FMPNetworkError):
+        if isinstance(exc, FMPTimeoutError):
             return True
-        if isinstance(exc, httpx.TimeoutException | httpx.NetworkError):
+        if isinstance(exc, FMPNetworkError):
+            return exc.retryable
+        if isinstance(
+            exc,
+            httpx.TimeoutException
+            | httpx.NetworkError
+            | httpx.ProtocolError
+            | httpx.ProxyError,
+        ):
             return True
         if isinstance(exc, RateLimitError):
             return True
@@ -485,10 +493,11 @@ class BaseClient:
     def _reraise_transport_failure(
         self, exc: BaseException, *, endpoint_name: str
     ) -> NoReturn:
-        """Map timeout/network httpx errors without chaining the request URL.
+        """Map request-layer httpx errors without chaining the request URL.
 
         ``from None`` is the same pin as ``_raise_fmp_http_error`` (#97):
-        httpx stringifies ``request.url``, which carries ``apikey=`` (#350).
+        httpx stringifies ``request.url``, which carries ``apikey=``
+        (#350 / #354).
         """
         if isinstance(exc, httpx.TimeoutException):
             self.logger.error(
@@ -502,13 +511,31 @@ class BaseClient:
                 extra={"endpoint": endpoint_name},
             )
             raise FMPNetworkError("Network error") from None
+        if isinstance(exc, httpx.ProtocolError):
+            self.logger.error(
+                "Protocol error",
+                extra={"endpoint": endpoint_name},
+            )
+            raise FMPNetworkError("Protocol error") from None
+        if isinstance(exc, httpx.ProxyError):
+            self.logger.error(
+                "Proxy error",
+                extra={"endpoint": endpoint_name},
+            )
+            raise FMPNetworkError("Proxy error") from None
+        if isinstance(exc, httpx.RequestError):
+            self.logger.error(
+                "Transport error",
+                extra={"endpoint": endpoint_name},
+            )
+            raise FMPNetworkError("Transport error", retryable=False) from None
         raise exc
 
     def _handle_execute_failure(
         self, exc: BaseException, *, endpoint_name: str
     ) -> None:
-        """Log a failed attempt, mapping transport errors first (#350)."""
-        if isinstance(exc, httpx.TimeoutException | httpx.NetworkError):
+        """Log a failed attempt, mapping transport errors first (#350 / #354)."""
+        if isinstance(exc, httpx.RequestError):
             self._reraise_transport_failure(exc, endpoint_name=endpoint_name)
         self.logger.error(
             "Request failed: %s",

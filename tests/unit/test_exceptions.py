@@ -312,6 +312,10 @@ class TestFMPNetworkError:
         assert fmp_data.FMPNetworkError is FMPNetworkError
         assert "FMPNetworkError" in fmp_data.__all__
 
+    def test_retryable_defaults_true_and_can_be_cleared(self) -> None:
+        assert FMPNetworkError("Network error").retryable is True
+        assert FMPNetworkError("Transport error", retryable=False).retryable is False
+
 
 class TestFMPNotFound:
     """Tests for FMPNotFound"""

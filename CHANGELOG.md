@@ -90,6 +90,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Remaining `httpx.RequestError` leftovers no longer leak `apikey=`
+  (#354).** `ProtocolError`, `ProxyError`, `DecodingError`,
+  `TooManyRedirects`, `UnsupportedProtocol`, and any future
+  `RequestError` now raise `FMPNetworkError` with `from None`. Same
+  secret-absent pin as #97 / #350 (`str` / `repr` / `__cause__` /
+  traceback / error log). `ProtocolError` / `ProxyError` stay
+  retryable; the others set `FMPNetworkError.retryable = False`.
+  Timeouts stay `FMPTimeoutError`. `validate_api_key` already classifies
+  `FMPNetworkError` as `unavailable`.
+
 - **Timeout and network errors no longer leak `apikey=` (#350).**
   `httpx.TimeoutException` / `httpx.NetworkError` now raise
   `FMPTimeoutError` / `FMPNetworkError` with `from None`. The request
