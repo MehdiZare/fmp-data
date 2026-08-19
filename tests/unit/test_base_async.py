@@ -311,7 +311,10 @@ class TestAsyncRetry:
             assert result == {"test": "data"}
             # Two backoffs between the three attempts. Tenacity 9.1.4 async
             # retries go through asyncio.sleep, not tenacity.nap.sleep (#372).
+            # wait_exponential(multiplier=1, min=4, max=10) clamps both
+            # waits to 4s (2^0 and 2^1 are below min).
             assert mock_sleep.await_count == 2
+            assert [call.args[0] for call in mock_sleep.await_args_list] == [4, 4]
 
         await client.aclose()
 

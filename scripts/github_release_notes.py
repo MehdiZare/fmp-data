@@ -19,6 +19,9 @@ import re
 import sys
 
 _VERSION_HEADING = re.compile(r"^## \[([^\]]+)\](?:\s+-.*)?\s*$")
+# Split only on dated/undated Keep-a-Changelog version headings so a
+# non-version ``## `` inside a section stays in that section's body.
+_VERSION_CHUNK_START = re.compile(r"(?=^## \[[^\]]+\](?:\s+-.*)?\s*$)", re.M)
 
 
 def normalize_version(version: str) -> str:
@@ -33,7 +36,7 @@ def extract_section(text: str, version: str) -> str:
         ValueError: the heading is missing, or the section has no body.
     """
     wanted = normalize_version(version)
-    chunks = re.split(r"(?=^## )", text, flags=re.M)
+    chunks = _VERSION_CHUNK_START.split(text)
     for chunk in chunks:
         lines = chunk.splitlines()
         if not lines:
@@ -108,8 +111,12 @@ def main(argv: list[str] | None = None) -> int:
     rendered = render_github_release(tag=tag, version=args.version, body=body)
     if args.out is None:
         sys.stdout.write(rendered)
-    else:
+        return 0
+    try:
         args.out.write_text(rendered, encoding="utf-8")
+    except OSError as exc:
+        print(f"error: cannot write {args.out}: {exc}", file=sys.stderr)
+        return 1
     return 0
 
 

@@ -62,6 +62,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `## [X.Y.Z]` used to fail after the remote tag existed, leaving a tag
   with no GitHub Release or PyPI artifact. The extract step now runs
   immediately after version calculation.
+- **Release-note extractor keeps non-version ``##`` headings (#370).**
+  Split is only on ``## [X.Y.Z]`` so a section body can contain other
+  level-2 headings. CLI write failures print `error:` and exit 1.
+  Manual release docs generate notes before pushing the tag. Async
+  retry test asserts both Tenacity waits are 4s.
 
 ## [2.7.0] - 2026-08-19
 
