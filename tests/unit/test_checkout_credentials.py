@@ -18,7 +18,11 @@ import pytest
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-WORKFLOWS = sorted((REPO_ROOT / ".github" / "workflows").glob("*.yml"))
+WORKFLOWS_DIR = REPO_ROOT / ".github" / "workflows"
+WORKFLOWS = sorted(WORKFLOWS_DIR.glob("*.yml")) + sorted(WORKFLOWS_DIR.glob("*.yaml"))
+GITHUB_YAML = sorted((REPO_ROOT / ".github").rglob("*.yml")) + sorted(
+    (REPO_ROOT / ".github").rglob("*.yaml")
+)
 
 # job name -> why this one keeps its credential.
 ALLOWED_TO_PERSIST = {
@@ -79,10 +83,21 @@ def test_read_only_checkouts_do_not_pass_an_explicit_token() -> None:
 
 
 def test_claude_code_action_workflows_are_absent() -> None:
-    """#359: do not restore the unpinned marketplace review or @claude agent."""
-    workflows = REPO_ROOT / ".github" / "workflows"
-    assert not (workflows / "claude.yml").exists()
-    assert not (workflows / "claude-code-review.yml").exists()
-    remaining = "\n".join(path.read_text(encoding="utf-8") for path in WORKFLOWS)
+    """#359: do not restore the unpinned marketplace review or @claude agent.
+
+    GitHub runs ``.yml`` and ``.yaml``. Composite actions under
+    ``.github/actions/`` are scanned too, so a vendored wrapper cannot
+    hide ``claude-code-action`` / ``plugin_marketplaces``.
+    """
+    for name in (
+        "claude.yml",
+        "claude.yaml",
+        "claude-code-review.yml",
+        "claude-code-review.yaml",
+    ):
+        assert not (WORKFLOWS_DIR / name).exists()
+    remaining = "\n".join(path.read_text(encoding="utf-8") for path in GITHUB_YAML)
     assert "anthropics/claude-code-action" not in remaining
     assert "CLAUDE_CODE_OAUTH_TOKEN" not in remaining
+    assert "plugin_marketplaces" not in remaining
+    assert "anthropics/claude-code.git" not in remaining
