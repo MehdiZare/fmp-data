@@ -5,8 +5,9 @@ import os
 from typing import Any
 
 from langchain_core.embeddings import Embeddings
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_serializer
 
+from fmp_data._redaction import redact_mapping
 from fmp_data.exceptions import ConfigError
 from fmp_data.lc.utils import check_package_dependency
 
@@ -28,15 +29,48 @@ class EmbeddingConfig(BaseModel):
     model_name: str | None = Field(
         default=None, description="Model name for the embedding provider"
     )
-    api_key: str | None = Field(
-        default=None, description="API key for the embedding provider"
+    api_key: SecretStr | None = Field(
+        default=None,
+        description=(
+            "API key for the embedding provider. Read the value with "
+            "`config.api_key.get_secret_value()`."
+        ),
+        repr=False,
     )
     additional_kwargs: dict[str, Any] = Field(
         default_factory=dict,
         description="Additional keyword arguments for the embedding provider",
+        repr=False,
     )
 
     model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
+
+    @field_serializer("additional_kwargs")
+    def _serialize_additional_kwargs(self, value: dict[str, Any]) -> dict[str, Any]:
+        """Redact on ``model_dump`` too, not only in ``repr`` (#252).
+
+        ``additional_kwargs`` is ``dict[str, Any]``, so ``SecretStr`` cannot
+        reach inside it -- providers take credential-bearing nested kwargs
+        such as ``default_headers={"Authorization": ...}``. A serializer is
+        the only place to catch those on the dump path, and it covers a third
+        party calling ``model_dump()`` directly.
+
+        Safe here, unlike on ``ClientConfig``: every consumer reads the
+        attribute (``**self.additional_kwargs``), so nothing rebuilds this
+        model from its own dump. ``ClientConfig`` cannot use this approach
+        because ``LangChainConfig.from_env`` round-trips through
+        ``model_dump()`` and would rebuild itself from the masked values.
+        """
+        return redact_mapping(value)
+
+    def __repr__(self) -> str:
+        """Hide API keys and secret-shaped kwargs from ``repr`` (#273)."""
+        return (
+            f"{type(self).__name__}("
+            f"provider={self.provider!r}, "
+            f"model_name={self.model_name!r}, "
+            f"additional_kwargs={redact_mapping(self.additional_kwargs)!r})"
+        )
 
     def get_embeddings(self) -> Embeddings:
         """
@@ -64,7 +98,9 @@ class EmbeddingConfig(BaseModel):
                 from langchain_openai import OpenAIEmbeddings
 
                 return OpenAIEmbeddings(
-                    openai_api_key=self.api_key,
+                    # Providers take a plain string; a SecretStr would be
+                    # stringified to its mask and authenticate as nobody (#252).
+                    openai_api_key=self.api_key.get_secret_value(),
                     model=self.model_name or "text-embedding-ada-002",
                     **self.additional_kwargs,
                 )
@@ -93,7 +129,7 @@ class EmbeddingConfig(BaseModel):
                 from langchain_community.embeddings import CohereEmbeddings
 
                 return CohereEmbeddings(
-                    cohere_api_key=self.api_key,
+                    cohere_api_key=self.api_key.get_secret_value(),
                     model=self.model_name or "embed-english-v2.0",
                     **self.additional_kwargs,
                 )

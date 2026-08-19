@@ -69,6 +69,31 @@ Access API groups via the main client:
 
 Async equivalents exist on `AsyncFMPDataClient` with the same method names.
 
+## Closed request vocabularies
+Period, interval, and timeframe parameters are typed `Literal` aliases.
+Import them from the package root when annotating:
+
+```python
+from fmp_data import (
+    Interval,
+    Period,
+    PeriodAnnualQuarter,
+    PeriodFiscal,
+    Structure,
+    TechnicalInterval,
+    Timeframe,
+)
+```
+
+Keep the three period types distinct. Most statement endpoints take `Period`
+(`annual` / `quarter` / `FY` / `Q1`–`Q4`). Financial reports and batch bulk
+take only `PeriodFiscal`. Some company series take only `PeriodAnnualQuarter`.
+`Timeframe` is `Interval` plus `"1day"`. `TechnicalClient.interval=` takes
+`TechnicalInterval` (`Interval` plus `"daily"` / `"hourly"`), not
+`Timeframe`. Revenue segmentation `structure=` takes `Structure`
+(`flat` / `nested`); live `/stable` returns the same list-of-objects for
+both. Plain strings still work at runtime.
+
 ## Responses and data handling
 Endpoints return Pydantic models (or lists of models). Use attributes directly
 or call `model_dump()` / `model_dump_json()` for raw data.
@@ -96,6 +121,8 @@ or call `model_dump()` / `model_dump_json()` for raw data.
   - CLI: `fmp-mcp setup` or `fmp-mcp`
   - Server API: `from fmp_data.mcp.server import create_app`
   - Tool catalog: `fmp-mcp list` (MCP tools are the endpoints with tool semantics)
+  - FMP also hosts a remote MCP (28 dataset tools). That is not this package;
+    see `docs/mcp/hosted.md`.
 
 ## Pointers
 - Examples: `examples/`

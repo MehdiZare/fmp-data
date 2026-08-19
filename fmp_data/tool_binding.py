@@ -259,8 +259,9 @@ def partition_params_for_method(
     method will fill it. Endpoint params that do not resolve to any method
     parameter are omitted entirely: method dispatch drops unmapped kwargs at
     invoke time, so advertising them as required would force LLMs to supply
-    values that never reach the API (e.g. revenue ``structure``, employee
-    ``limit``). Without a resolvable method the endpoint lists are returned
+    values that never reach the API (e.g. employee-count ``limit``).
+    Revenue ``structure`` is advertised once the method accepts it.
+    Without a resolvable method the endpoint lists are returned
     unchanged (the pre-#172 behaviour).
 
     Takes and returns ``EndpointParam``-shaped objects, but only reads

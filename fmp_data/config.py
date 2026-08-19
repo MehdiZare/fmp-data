@@ -10,15 +10,74 @@ File: fmp_data/config.py
 from __future__ import annotations
 
 from collections.abc import Callable
+from ipaddress import ip_address
 import os
 from pathlib import Path
 from typing import Any, Literal
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlsplit, urlunsplit
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SecretStr,
+    field_serializer,
+    field_validator,
+)
 
+from fmp_data._redaction import redact_mapping
 from fmp_data.cache.config import CacheConfig
 from fmp_data.exceptions import ConfigError
+
+
+def _reveal(value: SecretStr | str | None) -> str | None:
+    """Unwrap a possibly-``SecretStr`` credential for use at the wire.
+
+    Credential fields are ``SecretStr`` so ``model_dump`` and
+    ``model_dump_json`` cannot emit them (#252); every point that actually
+    *uses* the value goes through here.
+    """
+    if value is None:
+        return None
+    return value.get_secret_value() if isinstance(value, SecretStr) else value
+
+
+def _is_loopback_host(hostname: str | None) -> bool:
+    """True for localhost / loopback *addresses* used by local test servers.
+
+    A prefix check on ``127.`` is not enough: ``127.evil.example`` would
+    then be treated as loopback and ``http://`` would be allowed, sending
+    ``apikey`` without TLS.
+    """
+    if not hostname:
+        return False
+    host = hostname.strip("[]").lower()
+    if host == "localhost":
+        return True
+    try:
+        return ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def _mask_secret(value: SecretStr | str) -> str:
+    revealed = _reveal(value) or ""
+    if len(revealed) > 4:
+        return f"{revealed[:4]}***"
+    return "***"
+
+
+def _redact_url_userinfo(url: SecretStr | str) -> str:
+    """Drop userinfo from a URL so ``redis://:hunter2@host`` cannot leak."""
+    revealed = _reveal(url) or ""
+    parts = urlsplit(revealed)
+    if not (parts.username or parts.password):
+        return revealed
+    host = parts.hostname or ""
+    if parts.port:
+        host = f"{host}:{parts.port}"
+    netloc = f"***@{host}" if (parts.username or parts.password) else host
+    return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
 
 
 def _safe_int_from_env(env_var: str, default: int, *, min_val: int = 0) -> int:
@@ -45,6 +104,22 @@ class LogHandlerConfig(BaseModel):
         default_factory=dict,
         description="Additional arguments for handler initialization",
     )
+
+    @field_serializer("handler_kwargs")
+    def _serialize_handler_kwargs(self, value: dict[str, Any]) -> dict[str, Any]:
+        """Redact on the dump path too, not only in ``__str__`` (#252).
+
+        ``dict[str, Any]`` is out of reach for ``SecretStr``, and these kwargs
+        go straight to a logging handler -- a ``SysLogHandler`` password or an
+        HTTP handler's credentials live here. ``__str__`` was fixed to sweep
+        them, but ``model_dump()`` / ``model_dump_json()`` still emitted them,
+        so anything serializing a config leaked.
+
+        Safe here for the same reason as ``EmbeddingConfig``: the only
+        consumer reads the attribute (``config.handler_kwargs.copy()`` in
+        ``logger.py``), so nothing rebuilds this model from its own dump.
+        """
+        return redact_mapping(value)
 
     @field_validator("level")
     @classmethod
@@ -177,15 +252,26 @@ class RateLimitConfig(BaseModel):
 
 
 class ClientConfig(BaseModel):
-    """Base client configuration for FMP Data API"""
+    """Base client configuration for FMP Data API.
+
+    Adding a credential field, here or on a subclass: type it ``SecretStr``
+    and mark it ``repr=False``. ``SecretStr`` keeps it out of ``model_dump``
+    and ``model_dump_json``; ``repr=False`` keeps it out of ``__str__`` and
+    ``__repr__``. Neither is a name allowlist, so nothing here needs editing
+    to make a new field safe -- read the value back with
+    ``.get_secret_value()`` (#252).
+    """
 
     # Configure model
     model_config = ConfigDict(
         str_strip_whitespace=True,
     )
 
-    api_key: str = Field(
-        description="FMP API key. Can be set via FMP_API_KEY environment variable",
+    api_key: SecretStr = Field(
+        description=(
+            "FMP API key. Can be set via FMP_API_KEY environment variable. "
+            "Read the value with `config.api_key.get_secret_value()`."
+        ),
         repr=False,  # Exclude API key from repr
     )
     timeout: int = Field(default=30, gt=0, description="Request timeout in seconds")
@@ -217,9 +303,9 @@ class ClientConfig(BaseModel):
     validation_mode: Literal["lenient", "warn", "strict"] = Field(
         default="warn",
         description=(
-            "Response validation policy. "
+            "Response validation policy for JSON and bulk CSV extras. "
             "'lenient' ignores unknown fields, "
-            "'warn' logs unknown fields, "
+            "'warn' logs unknown fields once per endpoint+field set, "
             "'strict' raises on unknown fields."
         ),
     )
@@ -242,16 +328,39 @@ class ClientConfig(BaseModel):
 
     @field_validator("api_key")
     @classmethod
-    def validate_api_key(cls, v: str) -> str:
-        """Validate API key is not empty"""
-        if not v or not v.strip():
+    def validate_api_key(cls, v: SecretStr) -> SecretStr:
+        """Validate API key is not empty.
+
+        Unwraps first: ``model_config``'s ``str_strip_whitespace`` does not
+        reach inside a ``SecretStr``, and ``SecretStr`` has no ``.strip()``,
+        so the stripping this validator has always done has to be explicit
+        now (#252).
+        """
+        revealed = (_reveal(v) or "").strip()
+        if not revealed:
             raise ValueError("API key cannot be empty")
-        return v.strip()
+        if set(revealed) == {"*"}:
+            # A value of nothing but asterisks is a redaction marker that has
+            # been round-tripped back in as if it were real -- e.g. rebuilding
+            # a config from `model_dump(mode="json")`. Accepting it produces a
+            # client that 401s on every call with no local error, so fail here
+            # where the cause is still visible (#252).
+            raise ValueError(
+                "API key looks like a redaction mask, not a key. It was "
+                "probably read back from a masked dump; use "
+                "`config.api_key.get_secret_value()` to obtain the real value."
+            )
+        return SecretStr(revealed)
 
     @field_validator("base_url")
     @classmethod
     def validate_base_url(cls, v: str) -> str:
-        """Validate base URL format"""
+        """Validate base URL format.
+
+        HTTPS is required except for loopback HTTP (local mocks). A
+        non-loopback ``http://`` origin would send ``apikey`` in the clear
+        (#252 FMP-SEC-004).
+        """
         if not v or not v.strip():
             raise ValueError("Base URL cannot be empty")
 
@@ -262,22 +371,58 @@ class ClientConfig(BaseModel):
                 raise ValueError(f"Invalid URL format: {v}")
             if parsed.scheme not in ("http", "https"):
                 raise ValueError(f"URL scheme must be http or https: {v}")
+            if parsed.scheme == "http" and not _is_loopback_host(parsed.hostname):
+                raise ValueError(
+                    f"base_url must use https except for loopback HTTP: {v}"
+                )
+        except ValueError:
+            raise
         except Exception as e:
             raise ValueError(f"Invalid URL: {v}") from e
 
         return v
 
     def __str__(self) -> str:
-        """String representation with masked API key"""
-        # Create a copy of the model dict with masked API key
+        """String representation with credentials masked.
+
+        Redaction is driven by field metadata and key shape, not by a list of
+        field names. The previous version dumped the whole model and masked
+        three names it knew about, so anything else rendered verbatim: a
+        subclass field, or a secret inside ``LogHandlerConfig.handler_kwargs``
+        -- a bare ``dict[str, Any]`` that needs no subclass to reach (#252).
+
+        Three passes, narrowest signal first:
+
+        1. ``repr=False`` fields. That is pydantic's own "not for display"
+           marker and every credential field already carries it, so a subclass
+           gets correct behaviour from the standard idiom rather than from
+           being added to a list here.
+        2. A recursive sweep for secret-shaped *keys*, which is the only
+           handle available on untyped ``dict[str, Any]`` bags.
+        3. The two values worth rendering richer than ``***``.
+
+        The richer masks are computed from the *fields*, not from the dump:
+        credential fields are ``SecretStr``, so the dump already holds
+        ``SecretStr('**********')`` and re-masking that would print a mask of
+        a mask -- losing the leading-4-character affordance that makes this
+        string useful for telling two keys apart.
+        """
         data = self.model_dump()
-        if data.get("api_key"):
-            # Mask the API key, showing only first 4 characters
-            api_key = data["api_key"]
-            if len(api_key) > 4:
-                data["api_key"] = f"{api_key[:4]}***"
-            else:
-                data["api_key"] = "***"
+
+        for name, field in type(self).model_fields.items():
+            if field.repr is False and data.get(name) is not None:
+                data[name] = "***"
+
+        data = redact_mapping(data)
+
+        if getattr(self, "api_key", None):
+            data["api_key"] = _mask_secret(self.api_key)
+        embedding_api_key = getattr(self, "embedding_api_key", None)
+        if embedding_api_key:
+            data["embedding_api_key"] = _mask_secret(embedding_api_key)
+        cache = data.get("cache")
+        if isinstance(cache, dict) and self.cache and self.cache.redis_url:
+            cache["redis_url"] = _redact_url_userinfo(self.cache.redis_url)
 
         # Create a string representation from the masked data
         fields = []

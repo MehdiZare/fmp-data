@@ -2,7 +2,8 @@
 from datetime import date
 from enum import Enum
 import inspect
-from typing import Any
+from types import UnionType
+from typing import Any, Literal, TypeAlias, Union, get_args, get_origin
 import warnings
 
 from pydantic import (
@@ -157,34 +158,74 @@ class BaseEnum(str, Enum):
         return [e.value for e in cls]
 
 
-class ReportingPeriodEnum(BaseEnum):
-    """Standard reporting periods"""
+# Closed request vocabularies used by client methods and endpoint valid_values.
+# Three period aliases on purpose: financial-reports and batch bulk reject
+# ``annual``/``quarter``. Period is the union of those two contracts so the
+# wide set cannot drift. Do not collapse these into ReportingPeriodEnum.
+PeriodAnnualQuarter: TypeAlias = Literal["annual", "quarter"]
+PeriodFiscal: TypeAlias = Literal["FY", "Q1", "Q2", "Q3", "Q4"]
+Period: TypeAlias = PeriodAnnualQuarter | PeriodFiscal
+Interval: TypeAlias = Literal["1min", "5min", "15min", "30min", "1hour", "4hour"]
+Timeframe: TypeAlias = Interval | Literal["1day"]
+# Client-only aliases mapped onto Timeframe by TechnicalClient._normalize_timeframe.
+IntervalAlias: TypeAlias = Literal["daily", "hourly"]
+TechnicalInterval: TypeAlias = Interval | IntervalAlias
+Structure: TypeAlias = Literal["flat", "nested"]
 
-    ANNUAL = "annual"
-    QUARTER = "quarter"
-    FY = "FY"
-    Q1 = "Q1"
-    Q2 = "Q2"
-    Q3 = "Q3"
-    Q4 = "Q4"
+
+def literal_values(typ: Any) -> tuple[Any, ...]:
+    """Members of a ``Literal`` alias (or a union of them), in declaration order."""
+    origin = get_origin(typ)
+    if origin is Literal:
+        return get_args(typ)
+    if origin in {Union, UnionType}:
+        collected: list[Any] = []
+        for arg in get_args(typ):
+            collected.extend(literal_values(arg))
+        if collected:
+            return tuple(collected)
+    raise TypeError(f"{typ!r} is not a typing.Literal alias")
+
+
+PERIOD_ANNUAL_QUARTER_VALUES: tuple[str, ...] = literal_values(PeriodAnnualQuarter)
+PERIOD_FISCAL_VALUES: tuple[str, ...] = literal_values(PeriodFiscal)
+PERIOD_VALUES: tuple[str, ...] = literal_values(Period)
+INTERVAL_VALUES: tuple[str, ...] = literal_values(Interval)
+TIMEFRAME_VALUES: tuple[str, ...] = literal_values(Timeframe)
+TECHNICAL_INTERVAL_VALUES: tuple[str, ...] = literal_values(TechnicalInterval)
+STRUCTURE_VALUES: tuple[str, ...] = literal_values(Structure)
 
 
 class StructureTypeEnum(BaseEnum):
-    """Data structure types"""
+    """Data structure types.
 
-    FLAT = "flat"
-    NESTED = "nested"
+    Member *values* come from ``Structure``. Retired with the
+    deprecated arg models in 3.0 (#153, #307).
+    """
+
+    FLAT, NESTED = STRUCTURE_VALUES
+
+
+class ReportingPeriodEnum(BaseEnum):
+    """Standard reporting periods.
+
+    Member *values* come from the two Period contracts so a union reorder
+    cannot swap annual/quarter onto FY/Qn. Member names stay stable for
+    the deprecated arg models. Retired with those models in 3.0 (#153, #307).
+    """
+
+    ANNUAL, QUARTER = PERIOD_ANNUAL_QUARTER_VALUES
+    FY, Q1, Q2, Q3, Q4 = PERIOD_FISCAL_VALUES
 
 
 class IntervalEnum(BaseEnum):
-    """Standard time intervals"""
+    """Standard time intervals.
 
-    MIN_1 = "1min"
-    MIN_5 = "5min"
-    MIN_15 = "15min"
-    MIN_30 = "30min"
-    HOUR_1 = "1hour"
-    HOUR_4 = "4hour"
+    Member *values* come from ``Interval``. ``1day`` lives on ``Timeframe``.
+    Retired with the deprecated arg models in 3.0 (#153, #307).
+    """
+
+    MIN_1, MIN_5, MIN_15, MIN_30, HOUR_1, HOUR_4 = INTERVAL_VALUES
 
 
 # Base argument models

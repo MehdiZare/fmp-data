@@ -1,8 +1,17 @@
 # fmp_data/fundamental/models.py
 from datetime import datetime
-from typing import Any
+from decimal import Decimal, InvalidOperation
+import math
+from typing import Annotated, Any
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    model_validator,
+)
 from pydantic.alias_generators import to_camel
 
 from fmp_data.models import CIK
@@ -14,6 +23,52 @@ default_model_config = ConfigDict(
     extra="allow",
     alias_generator=to_camel,
 )
+
+
+def _integral_int(number: float, original: Any) -> Any:
+    """Return ``int(number)`` only when ``number`` is a finite whole value."""
+    if not math.isfinite(number):
+        return original
+    if number != int(number):
+        raise ValueError(f"rating score must be a whole number, got {original!r}")
+    return int(number)
+
+
+def coerce_rating_score(value: Any) -> Any:
+    """Coerce rating-bulk score cells to int.
+
+    ``rating-bulk`` CSV may emit a whole score as ``"3"`` or ``"3.0"``. A
+    strict ``int`` field rejects the latter and ``parse_csv_models`` then
+    skips the entire company row. Empty cells are already ``None``.
+    Non-integral values (``"3.5"``) raise so they fail validation instead
+    of being truncated. Non-numeric or non-finite values pass through and
+    still fail the ``int`` field.
+    """
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return _integral_int(value, value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return None
+        try:
+            number = Decimal(stripped)
+        except InvalidOperation:
+            return value
+        if not number.is_finite():
+            return value
+        if number != number.to_integral_value():
+            raise ValueError(f"rating score must be a whole number, got {value!r}")
+        return int(number)
+    return value
+
+
+RatingScore = Annotated[int | None, BeforeValidator(coerce_rating_score)]
 
 
 class FinancialStatementBase(BaseModel):
@@ -1099,10 +1154,20 @@ class FinancialRatios(BaseModel):
         alias="priceToEarningsRatio",
         description="Price to earnings ratio",
     )
+    price_to_earnings_diluted_ratio: float | None = Field(
+        default=None,
+        alias="priceToEarningsDilutedRatio",
+        description="Price to diluted earnings ratio",
+    )
     price_to_earnings_growth_ratio: float | None = Field(
         default=None,
         alias="priceToEarningsGrowthRatio",
         description="Price to earnings growth ratio (PEG)",
+    )
+    price_to_earnings_diluted_growth_ratio: float | None = Field(
+        default=None,
+        alias="priceToEarningsDilutedGrowthRatio",
+        description="Price to diluted earnings growth ratio (diluted PEG)",
     )
     forward_price_to_earnings_growth_ratio: float | None = Field(
         default=None,
@@ -1365,10 +1430,20 @@ class FinancialRatiosTTM(BaseModel):
         alias="priceToEarningsRatioTTM",
         description="Price to earnings ratio TTM",
     )
+    price_to_earnings_diluted_ratio_ttm: float | None = Field(
+        default=None,
+        alias="priceToEarningsDilutedRatioTTM",
+        description="Price to diluted earnings ratio TTM",
+    )
     price_to_earnings_growth_ratio_ttm: float | None = Field(
         default=None,
         alias="priceToEarningsGrowthRatioTTM",
         description="Price to earnings growth ratio TTM",
+    )
+    price_to_earnings_diluted_growth_ratio_ttm: float | None = Field(
+        default=None,
+        alias="priceToEarningsDilutedGrowthRatioTTM",
+        description="Price to diluted earnings growth ratio TTM",
     )
     forward_price_to_earnings_growth_ratio_ttm: float | None = Field(
         default=None,
@@ -2617,7 +2692,36 @@ class CompanyRating(BaseModel):
     date: datetime = Field(description="Rating date")
     rating: str = Field(description="Overall rating")
     recommendation: str | None = Field(None, description="Investment recommendation")
-    # Add more fields as needed
+    discounted_cash_flow_score: RatingScore = Field(
+        default=None,
+        alias="discountedCashFlowScore",
+        description="Discounted cash flow score from rating-bulk",
+    )
+    return_on_equity_score: RatingScore = Field(
+        default=None,
+        alias="returnOnEquityScore",
+        description="Return on equity score from rating-bulk",
+    )
+    return_on_assets_score: RatingScore = Field(
+        default=None,
+        alias="returnOnAssetsScore",
+        description="Return on assets score from rating-bulk",
+    )
+    debt_to_equity_score: RatingScore = Field(
+        default=None,
+        alias="debtToEquityScore",
+        description="Debt to equity score from rating-bulk",
+    )
+    price_to_earnings_score: RatingScore = Field(
+        default=None,
+        alias="priceToEarningsScore",
+        description="Price to earnings score from rating-bulk",
+    )
+    price_to_book_score: RatingScore = Field(
+        default=None,
+        alias="priceToBookScore",
+        description="Price to book score from rating-bulk",
+    )
 
 
 class EnterpriseValue(BaseModel):

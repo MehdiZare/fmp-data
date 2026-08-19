@@ -34,7 +34,7 @@ from fmp_data.models import (
     URLType,
 )
 
-FORM_13F: Endpoint = Endpoint(
+FORM_13F: Endpoint[Form13F] = Endpoint(
     name="form_13f",
     path="institutional-ownership/extract",
     version=APIVersion.STABLE,
@@ -65,7 +65,7 @@ FORM_13F: Endpoint = Endpoint(
     response_model=Form13F,
 )
 
-FORM_13F_DATES: Endpoint = Endpoint(
+FORM_13F_DATES: Endpoint[Form13FDate] = Endpoint(
     name="form_13f_dates",
     path="institutional-ownership/dates",
     version=APIVersion.STABLE,
@@ -84,7 +84,7 @@ FORM_13F_DATES: Endpoint = Endpoint(
     response_model=Form13FDate,
 )
 
-ASSET_ALLOCATION: Endpoint = Endpoint(
+ASSET_ALLOCATION: Endpoint[AssetAllocation] = Endpoint(
     name="asset_allocation",
     path="13f-asset-allocation",
     version=APIVersion.STABLE,
@@ -108,7 +108,7 @@ ASSET_ALLOCATION: Endpoint = Endpoint(
     response_model=AssetAllocation,
 )
 
-INSTITUTIONAL_HOLDERS: Endpoint = Endpoint(
+INSTITUTIONAL_HOLDERS: Endpoint[InstitutionalHolder] = Endpoint(
     name="institutional_holders",
     path="institutional-ownership/latest",
     version=APIVersion.STABLE,
@@ -135,7 +135,7 @@ INSTITUTIONAL_HOLDERS: Endpoint = Endpoint(
     response_model=InstitutionalHolder,
 )
 
-INSTITUTIONAL_HOLDINGS: Endpoint = Endpoint(
+INSTITUTIONAL_HOLDINGS: Endpoint[InstitutionalHolding] = Endpoint(
     name="institutional_holdings",
     path="institutional-ownership/symbol-positions-summary",
     version=APIVersion.STABLE,
@@ -166,7 +166,7 @@ INSTITUTIONAL_HOLDINGS: Endpoint = Endpoint(
     response_model=InstitutionalHolding,
 )
 
-INSIDER_TRADES: Endpoint = Endpoint(
+INSIDER_TRADES: Endpoint[InsiderTrade] = Endpoint(
     name="insider_trades",
     path="insider-trading/search",
     version=APIVersion.STABLE,
@@ -200,7 +200,7 @@ INSIDER_TRADES: Endpoint = Endpoint(
     response_model=InsiderTrade,
 )
 
-TRANSACTION_TYPES: Endpoint = Endpoint(
+TRANSACTION_TYPES: Endpoint[InsiderTransactionType] = Endpoint(
     name="transaction_types",
     path="insider-trading-transaction-type",
     version=APIVersion.STABLE,
@@ -212,7 +212,7 @@ TRANSACTION_TYPES: Endpoint = Endpoint(
     response_model=InsiderTransactionType,
 )
 
-INSIDER_ROSTER: Endpoint = Endpoint(
+INSIDER_ROSTER: Endpoint[InsiderRoster] = Endpoint(
     name="insider_roster",
     path="insider-trading/search",
     version=APIVersion.STABLE,
@@ -250,7 +250,7 @@ INSIDER_STATISTICS: Endpoint[InsiderStatistic] = Endpoint(
     response_model=InsiderStatistic,
 )
 
-CIK_MAPPER: Endpoint = Endpoint(
+CIK_MAPPER: Endpoint[CIKMapping] = Endpoint(
     name="cik_mapper",
     path="cik-list",
     version=APIVersion.STABLE,
@@ -282,7 +282,7 @@ CIK_MAPPER: Endpoint = Endpoint(
 # .search_cik_by_name`` remains the interface: it calls ``CIK_MAPPER`` with
 # ``limit=10000`` and filters locally.
 
-BENEFICIAL_OWNERSHIP: Endpoint = Endpoint(
+BENEFICIAL_OWNERSHIP: Endpoint[BeneficialOwnership] = Endpoint(
     name="beneficial_ownership",
     path="acquisition-of-beneficial-ownership",
     version=APIVersion.STABLE,
@@ -299,7 +299,7 @@ BENEFICIAL_OWNERSHIP: Endpoint = Endpoint(
     response_model=BeneficialOwnership,
 )
 
-FAIL_TO_DELIVER: Endpoint = Endpoint(
+FAIL_TO_DELIVER: Endpoint[FailToDeliver] = Endpoint(
     # The second naming oddity #166 raised: underscores in a ``path`` where
     # every other path in the catalogue uses hyphens, and ``name == path``.
     # Left alone deliberately, and not for lack of checking -- probed against
@@ -339,7 +339,7 @@ FAIL_TO_DELIVER: Endpoint = Endpoint(
 )
 
 # Insider Trading Endpoints
-INSIDER_TRADING_LATEST: Endpoint = Endpoint(
+INSIDER_TRADING_LATEST: Endpoint[InsiderTradingLatest] = Endpoint(
     name="insider_trading_latest",
     path="insider-trading/latest",
     version=APIVersion.STABLE,
@@ -372,7 +372,7 @@ INSIDER_TRADING_LATEST: Endpoint = Endpoint(
     response_model=InsiderTradingLatest,
 )
 
-INSIDER_TRADING_SEARCH: Endpoint = Endpoint(
+INSIDER_TRADING_SEARCH: Endpoint[InsiderTradingSearch] = Endpoint(
     name="insider_trading_search",
     path="insider-trading/search",
     version=APIVersion.STABLE,
@@ -423,7 +423,7 @@ INSIDER_TRADING_SEARCH: Endpoint = Endpoint(
     response_model=InsiderTradingSearch,
 )
 
-INSIDER_TRADING_BY_NAME: Endpoint = Endpoint(
+INSIDER_TRADING_BY_NAME: Endpoint[InsiderTradingByName] = Endpoint(
     name="insider_trading_by_name",
     path="insider-trading/reporting-name",
     version=APIVersion.STABLE,
@@ -470,7 +470,7 @@ INSIDER_TRADING_STATISTICS_ENHANCED: Endpoint[InsiderTradingStatistics] = Endpoi
 )
 
 # Form 13F Endpoints
-INSTITUTIONAL_OWNERSHIP_LATEST: Endpoint = Endpoint(
+INSTITUTIONAL_OWNERSHIP_LATEST: Endpoint[InstitutionalOwnershipLatest] = Endpoint(
     name="institutional_ownership_latest",
     path="institutional-ownership/latest",
     version=APIVersion.STABLE,
@@ -503,7 +503,7 @@ INSTITUTIONAL_OWNERSHIP_LATEST: Endpoint = Endpoint(
     response_model=InstitutionalOwnershipLatest,
 )
 
-INSTITUTIONAL_OWNERSHIP_EXTRACT: Endpoint = Endpoint(
+INSTITUTIONAL_OWNERSHIP_EXTRACT: Endpoint[InstitutionalOwnershipExtract] = Endpoint(
     name="institutional_ownership_extract",
     path="institutional-ownership/extract",
     version=APIVersion.STABLE,
@@ -534,7 +534,7 @@ INSTITUTIONAL_OWNERSHIP_EXTRACT: Endpoint = Endpoint(
     response_model=InstitutionalOwnershipExtract,
 )
 
-INSTITUTIONAL_OWNERSHIP_DATES: Endpoint = Endpoint(
+INSTITUTIONAL_OWNERSHIP_DATES: Endpoint[InstitutionalOwnershipDates] = Endpoint(
     name="institutional_ownership_dates",
     path="institutional-ownership/dates",
     version=APIVersion.STABLE,
@@ -553,7 +553,7 @@ INSTITUTIONAL_OWNERSHIP_DATES: Endpoint = Endpoint(
     response_model=InstitutionalOwnershipDates,
 )
 
-INSTITUTIONAL_OWNERSHIP_ANALYTICS: Endpoint = Endpoint(
+INSTITUTIONAL_OWNERSHIP_ANALYTICS: Endpoint[InstitutionalOwnershipAnalytics] = Endpoint(
     name="institutional_ownership_analytics",
     path="institutional-ownership/extract-analytics/holder",
     version=APIVersion.STABLE,
@@ -599,7 +599,7 @@ INSTITUTIONAL_OWNERSHIP_ANALYTICS: Endpoint = Endpoint(
     response_model=InstitutionalOwnershipAnalytics,
 )
 
-HOLDER_PERFORMANCE_SUMMARY: Endpoint = Endpoint(
+HOLDER_PERFORMANCE_SUMMARY: Endpoint[HolderPerformanceSummary] = Endpoint(
     name="holder_performance_summary",
     path="institutional-ownership/holder-performance-summary",
     version=APIVersion.STABLE,
@@ -638,7 +638,7 @@ HOLDER_PERFORMANCE_SUMMARY: Endpoint = Endpoint(
     response_model=HolderPerformanceSummary,
 )
 
-HOLDER_INDUSTRY_BREAKDOWN: Endpoint = Endpoint(
+HOLDER_INDUSTRY_BREAKDOWN: Endpoint[HolderIndustryBreakdown] = Endpoint(
     name="holder_industry_breakdown",
     path="institutional-ownership/holder-industry-breakdown",
     version=APIVersion.STABLE,
@@ -669,7 +669,7 @@ HOLDER_INDUSTRY_BREAKDOWN: Endpoint = Endpoint(
     response_model=HolderIndustryBreakdown,
 )
 
-SYMBOL_POSITIONS_SUMMARY: Endpoint = Endpoint(
+SYMBOL_POSITIONS_SUMMARY: Endpoint[SymbolPositionsSummary] = Endpoint(
     name="symbol_positions_summary",
     path="institutional-ownership/symbol-positions-summary",
     version=APIVersion.STABLE,
@@ -700,7 +700,7 @@ SYMBOL_POSITIONS_SUMMARY: Endpoint = Endpoint(
     response_model=SymbolPositionsSummary,
 )
 
-INDUSTRY_PERFORMANCE_SUMMARY: Endpoint = Endpoint(
+INDUSTRY_PERFORMANCE_SUMMARY: Endpoint[IndustryPerformanceSummary] = Endpoint(
     name="industry_performance_summary",
     path="institutional-ownership/industry-summary",
     version=APIVersion.STABLE,

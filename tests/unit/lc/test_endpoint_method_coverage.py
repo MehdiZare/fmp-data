@@ -21,8 +21,8 @@ This guard walks every ``(endpoint_map x semantics)`` pair that
    gain more debt.
 3. **mandatory wire dropped under method dispatch** — a mandatory endpoint
    field maps to no method parameter, so method dispatch omits it from the
-   tool schema. Known cases (e.g. revenue ``structure``) are allowlisted;
-   new ones fail until reviewed.
+   tool schema. The dropped-mandatory allowlist is empty; a new
+   dropped-mandatory is a PR failure.
 
 Optional wire fields dropped under method dispatch are intentionally out of
 scope here (they are not required for a successful call). MCP registers the
@@ -59,7 +59,7 @@ from fmp_data.tool_binding import (
 
 # Floors, not equalities: a walk that stops yielding must fail rather than
 # pass vacuously. Observed on the catalogue at time of writing: 215 triples,
-# all 215 method-compatible, 0 request-fallback, 2 dropped-mandatory.
+# all 215 method-compatible, 0 request-fallback, 0 dropped-mandatory.
 _MIN_PAIRS = 200
 _MIN_METHOD_COMPATIBLE = 200
 
@@ -85,14 +85,10 @@ _KNOWN_REQUEST_FALLBACK_METHODS: frozenset[tuple[str, str]] = frozenset(
 # ``(client_name, method_name, wire_param)``: mandatory endpoint fields that
 # method dispatch intentionally omits from the tool schema because the
 # client method does not accept them.
-KNOWN_DROPPED_MANDATORY_WIRE: frozenset[tuple[str, str, str]] = frozenset(
-    {
-        # Endpoint still declares structure (flat|nested, default "flat");
-        # methods only take symbol + period and hardcode structure="flat".
-        ("company", "get_product_revenue_segmentation", "structure"),
-        ("company", "get_geographic_revenue_segmentation", "structure"),
-    }
-)
+#
+# Empty since #349: revenue ``structure`` is optional. A new
+# dropped-mandatory is a PR failure.
+KNOWN_DROPPED_MANDATORY_WIRE: frozenset[tuple[str, str, str]] = frozenset()
 
 
 def _catalog() -> list[tuple[str, Endpoint[Any], Any]]:

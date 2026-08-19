@@ -29,7 +29,10 @@ class TranscriptsClient(EndpointGroup):
         Returns:
             List of recent earnings transcripts
         """
-        return self.client.request(LATEST_TRANSCRIPTS, page=page, limit=limit)
+        return self._unwrap_list(
+            self.client.request(LATEST_TRANSCRIPTS, page=page, limit=limit),
+            EarningsTranscript,
+        )
 
     def get_transcript(
         self,
@@ -56,7 +59,10 @@ class TranscriptsClient(EndpointGroup):
         }
         if limit is not None:
             params["limit"] = limit
-        return self.client.request(EARNINGS_TRANSCRIPT, **params)
+        return self._unwrap_list(
+            self.client.request(EARNINGS_TRANSCRIPT, **params),
+            EarningsTranscript,
+        )
 
     def get_available_dates(self, symbol: str) -> list[TranscriptDate]:
         """Get available transcript dates for a specific company
@@ -67,7 +73,9 @@ class TranscriptsClient(EndpointGroup):
         Returns:
             List of available transcript dates
         """
-        return self.client.request(TRANSCRIPT_DATES, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(TRANSCRIPT_DATES, symbol=symbol), TranscriptDate
+        )
 
     def get_available_symbols(self) -> list[TranscriptSymbol]:
         """Get list of all symbols with available earnings transcripts
@@ -75,4 +83,6 @@ class TranscriptsClient(EndpointGroup):
         Returns:
             List of symbols with transcripts
         """
-        return self.client.request(TRANSCRIPT_SYMBOLS)
+        return self._unwrap_list(
+            self.client.request(TRANSCRIPT_SYMBOLS), TranscriptSymbol
+        )

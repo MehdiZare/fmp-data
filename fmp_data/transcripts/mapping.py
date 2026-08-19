@@ -1,6 +1,8 @@
 # fmp_data/transcripts/mapping.py
 from __future__ import annotations
 
+from typing import Any
+
 from fmp_data.lc.hints import (
     LIMIT_HINT,
     PAGE_HINT,
@@ -9,6 +11,7 @@ from fmp_data.lc.hints import (
     YEAR_HINT,
 )
 from fmp_data.lc.models import EndpointSemantics, SemanticCategory
+from fmp_data.models import Endpoint
 from fmp_data.transcripts.endpoints import (
     EARNINGS_TRANSCRIPT,
     LATEST_TRANSCRIPTS,
@@ -17,7 +20,7 @@ from fmp_data.transcripts.endpoints import (
 )
 
 # Transcripts endpoints mapping
-TRANSCRIPTS_ENDPOINT_MAP = {
+TRANSCRIPTS_ENDPOINT_MAP: dict[str, Endpoint[Any]] = {
     "get_latest": LATEST_TRANSCRIPTS,
     "get_transcript": EARNINGS_TRANSCRIPT,
     "get_available_dates": TRANSCRIPT_DATES,

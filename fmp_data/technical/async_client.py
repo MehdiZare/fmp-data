@@ -2,12 +2,13 @@
 """Async client for technical analysis endpoints."""
 
 from datetime import date
-from typing import Any, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel
 
 from fmp_data.base import AsyncEndpointGroup
 from fmp_data.models import Endpoint
+from fmp_data.schema import TechnicalInterval, Timeframe
 from fmp_data.technical.endpoints import (
     ADX,
     DEMA,
@@ -38,7 +39,9 @@ class AsyncTechnicalClient(AsyncEndpointGroup):
     """Async client for technical analysis endpoints."""
 
     @staticmethod
-    def _normalize_timeframe(timeframe: str, interval: str | None) -> str:
+    def _normalize_timeframe(
+        timeframe: Timeframe, interval: TechnicalInterval | None
+    ) -> str:
         if interval is None:
             return timeframe
         normalized = interval.lower()
@@ -53,11 +56,11 @@ class AsyncTechnicalClient(AsyncEndpointGroup):
         endpoint: Endpoint[T],
         symbol: str,
         period_length: int,
-        timeframe: str,
-        interval: str | None,
+        timeframe: Timeframe,
+        interval: TechnicalInterval | None,
         start_date: date | None,
         end_date: date | None,
-    ) -> list[Any]:
+    ) -> list[T]:
         """Generic helper to fetch technical indicator data
 
         Args:
@@ -71,24 +74,27 @@ class AsyncTechnicalClient(AsyncEndpointGroup):
         Returns:
             List of indicator values
         """
-        timeframe = self._normalize_timeframe(timeframe, interval)
+        resolved = self._normalize_timeframe(timeframe, interval)
         params: dict[str, str | int] = {
             "symbol": symbol,
             "periodLength": period_length,
-            "timeframe": timeframe,
+            "timeframe": resolved,
         }
         if start_date:
             params["from"] = start_date.strftime("%Y-%m-%d")
         if end_date:
             params["to"] = end_date.strftime("%Y-%m-%d")
-        return await self.client.request_async(endpoint, **params)
+        return self._unwrap_list(
+            await self.client.request_async(endpoint, **params),
+            endpoint.response_model,
+        )
 
     async def get_sma(
         self,
         symbol: str,
         period_length: int = 20,
-        timeframe: str = "1day",
-        interval: str | None = None,
+        timeframe: Timeframe = "1day",
+        interval: TechnicalInterval | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[SMAIndicator]:
@@ -101,8 +107,8 @@ class AsyncTechnicalClient(AsyncEndpointGroup):
         self,
         symbol: str,
         period_length: int = 20,
-        timeframe: str = "1day",
-        interval: str | None = None,
+        timeframe: Timeframe = "1day",
+        interval: TechnicalInterval | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[EMAIndicator]:
@@ -115,8 +121,8 @@ class AsyncTechnicalClient(AsyncEndpointGroup):
         self,
         symbol: str,
         period_length: int = 20,
-        timeframe: str = "1day",
-        interval: str | None = None,
+        timeframe: Timeframe = "1day",
+        interval: TechnicalInterval | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[WMAIndicator]:
@@ -129,8 +135,8 @@ class AsyncTechnicalClient(AsyncEndpointGroup):
         self,
         symbol: str,
         period_length: int = 20,
-        timeframe: str = "1day",
-        interval: str | None = None,
+        timeframe: Timeframe = "1day",
+        interval: TechnicalInterval | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[DEMAIndicator]:
@@ -143,8 +149,8 @@ class AsyncTechnicalClient(AsyncEndpointGroup):
         self,
         symbol: str,
         period_length: int = 20,
-        timeframe: str = "1day",
-        interval: str | None = None,
+        timeframe: Timeframe = "1day",
+        interval: TechnicalInterval | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[TEMAIndicator]:
@@ -157,8 +163,8 @@ class AsyncTechnicalClient(AsyncEndpointGroup):
         self,
         symbol: str,
         period_length: int = 14,
-        timeframe: str = "1day",
-        interval: str | None = None,
+        timeframe: Timeframe = "1day",
+        interval: TechnicalInterval | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[WilliamsIndicator]:
@@ -171,8 +177,8 @@ class AsyncTechnicalClient(AsyncEndpointGroup):
         self,
         symbol: str,
         period_length: int = 14,
-        timeframe: str = "1day",
-        interval: str | None = None,
+        timeframe: Timeframe = "1day",
+        interval: TechnicalInterval | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[RSIIndicator]:
@@ -185,8 +191,8 @@ class AsyncTechnicalClient(AsyncEndpointGroup):
         self,
         symbol: str,
         period_length: int = 14,
-        timeframe: str = "1day",
-        interval: str | None = None,
+        timeframe: Timeframe = "1day",
+        interval: TechnicalInterval | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[ADXIndicator]:
@@ -199,8 +205,8 @@ class AsyncTechnicalClient(AsyncEndpointGroup):
         self,
         symbol: str,
         period_length: int = 20,
-        timeframe: str = "1day",
-        interval: str | None = None,
+        timeframe: Timeframe = "1day",
+        interval: TechnicalInterval | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[StandardDeviationIndicator]:

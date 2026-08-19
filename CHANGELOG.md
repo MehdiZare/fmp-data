@@ -7,7 +7,470 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [2.7.0] - 2026-08-19
+
+Released from `dev`. A security-and-contracts minor in the same shape as
+2.6.0: credential config fields are now `pydantic.SecretStr`, so
+`model_dump()` can no longer leak an API key, and a large #252 / #273
+hardening pass closes the remaining redaction, publish-isolation, and
+CI-enforcement holes that 2.6.0 left open.
+
+This cut also aligns the client with the 2026 FMP `/stable` surface
+(diluted P/E, screener pagination, Senate/House `senateID`, rating-bulk
+scores, delisted companies), finishes the `Endpoint[T]` / `_unwrap_list`
+typing migration, types period / interval / timeframe as closed
+vocabularies (`Period`, `Interval`, `TechnicalInterval`, `Timeframe`),
+and adds a local VCR-backed client-method sweep.
+
+**Read before upgrading.** Three public-type breaks, all narrow:
+
+| Change | Who it affects | Migration |
+|---|---|---|
+| Credential config fields are `SecretStr` (#252 FMP-SEC-007) | anyone reading `ClientConfig.api_key`, `LangChainConfig.embedding_api_key`, `EmbeddingConfig.api_key`, or `CacheConfig.redis_url` as a `str` | call `.get_secret_value()` |
+| Senate/House trade dates are `date`, not `datetime` (#338) | anyone comparing `SenateTrade` / `HouseDisclosure` `disclosure_date`, `transaction_date`, or `SenateTrade.date_received` to `datetime.now()` | compare with `date.today()` |
+| `SenateNetWorthValueRange` dropped `.min` / `.max` (#336) | anyone reading those attributes | use `.minimum` / `.maximum` (wire aliases `min` / `max` unchanged) |
+
+Construction is unchanged — passing a plain `str` still works. `repr()` /
+`str()` were already redacted. What breaks is code that *reads* the field
+as a string (comparisons, slicing, or passing it into a `str` parameter).
+Passing a `SecretStr` where a string is expected often fails *silently*
+(`httpx` sends `apikey=**********` → 401). If you see unexplained auth
+failures after upgrading, look for a missed `.get_secret_value()`.
+
+Logger names no longer double `fmp_data.` (#238). If you filtered
+`fmp_data.fmp_data.*`, switch to `fmp_data.*`.
+
+**3.0 is still the removal cut.** The `Endpoint.arg_model` /
+`EndpointParam.required` deletions and the removal of withdrawn endpoints
+announced in 2.6.0 stay deprecated, not deleted. In-tree tripwires refuse
+a `## [3.x]` changelog heading until that work lands. Withdrawn tools
+still register and return `[]`.
+
+### Added
+
+- **Senate and House trades by member id (#323).**
+  `get_senate_trades_by_id` / `get_house_trades_by_id` (sync + async)
+  call `/stable/senate-trades-by-id` and `/stable/house-trades-by-id`
+  with query param `senateID`. Reuses `SenateTrade` / `HouseDisclosure`.
+  The docs example `S000033` currently returns an empty list; Whitehouse
+  `W000802` and Pelosi `P000197` return rows (probed 2026-08-15).
+
+- **Senate member profiles and term history (#324).**
+  `get_senate_profile` / `get_senate_positions` (sync + async) call
+  `/stable/senate-profile` and `/stable/senate-positions`. New models
+  `SenateProfile` and `SenatePosition`. Unset optional filters are
+  omitted from the query string. Sample rows include House members;
+  FMP's path names are kept.
+
+- **Senate net-worth disclosures (#325).**
+  `get_senate_net_worth` / `get_senate_net_worth_aggregated` (sync +
+  async) call `/stable/senate-net-worth` and
+  `/stable/senate-net-worth-aggregated`. Nested `valueRange` /
+  `debtDetails` stay nested. `totalsCol` is optional: a live probe on
+  2026-08-15 returned 200 with 12 yearly rows when it was omitted,
+  sent empty, or set to `total`. Missing `senateID` is 400.
+
+- **Public re-export of `Structure` (#352).** Annotate revenue
+  segmentation `structure=` against `from fmp_data import Structure`.
+  It is `Literal["flat", "nested"]`. Live `/stable` returns the same
+  list-of-objects for both (probed 2026-08-17). `StructureTypeEnum`
+  stays leftover / deprecated.
+
+### Changed
+
+- **One module now owns credential display redaction (#316).**
+  `redact_credential_patterns` is the shared query/assignment/encoded
+  path (CodeQL-safe for stdout / logging sinks; never takes the live
+  secret). `redact_held_secret` is exact-replace for prompts /
+  `getpass` only. The setup wizard also runs `redact_key_shaped_tokens`
+  (sk-/32-char heuristics); those stay off HTTP error bodies so request
+  ids are not blanked.
+
+- **`redact_credential_patterns` redacts `FMP_API_KEY=` assignments
+  (#330).** The #316 lookbehind skipped every `*_API_KEY=` assignment
+  so wizard copy `export FMP_API_KEY="[YOUR_API_KEY]"` survived — and
+  so did a real token in an HTTP error body. Prefixed names now match;
+  only the wizard placeholder `[YOUR_API_KEY]` is left alone.
+  Wizard 32-char / hex-40 heuristics stay off this path.
+
+- **`SenateId` branded type on every `senate_id` field (#338).** Shared
+  `Annotated` type (like `CIK`) on `SenateTrade`, `HouseDisclosure`,
+  `SenateProfile`, `SenatePosition`, and the net-worth rows. Strings
+  pass through untouched.
+
+- **Senate/House trade dates are `date`, not `datetime` (#338).**
+  `SenateTrade` / `HouseDisclosure` `disclosure_date` and
+  `transaction_date` (and `SenateTrade.date_received`) now match the
+  profile / net-worth family. Breaking for callers that compared those
+  fields to `datetime.now()`.
+
+- **`SENATE_LATEST` / `HOUSE_LATEST` pagination is optional (#338).**
+  `page` / `limit` move to `optional_params`, same rule as trades-by-id.
+
+- **RSS pagination leftovers are optional (#345).**
+  `SENATE_TRADING_RSS.page`, `CROWDFUNDING_RSS` `page`/`limit`, and
+  adjacent `EQUITY_OFFERING_RSS` `page`/`limit` move to
+  `optional_params` so `validate_params({})` applies the documented
+  defaults. Not `PaginationArg` (1-based, different defaults).
+
+- **Company segmentation/report leftover defaults are optional (#349).**
+  `structure` / `period` on product and geographic revenue
+  segmentation, and `period` on financial-reports JSON/XLSX, move to
+  `optional_params` so `validate_params` applies the documented
+  defaults (`flat` / `annual` / `FY`). Segmentation methods now take
+  `structure: Structure = "flat"` (`Literal["flat", "nested"]`).
+  Stable currently returns the same list-of-objects for both
+  (probed 2026-08-17). No remaining mandatory-plus-default params in
+  the catalogue.
+
+- **`SenateNetWorthValueRange` no longer shadows builtins (#336).**
+  Fields are `minimum` / `maximum` (wire aliases `min` / `max`).
+  Inverted and non-finite ranges are rejected. Callers using `.min` /
+  `.max` must switch.
+
+- **`redact_credential_patterns` redacts hyphenated assignment names
+  (#339).** `X-API-KEY=` / `FMP-API-KEY=` now match. Wizard placeholder
+  `[YOUR_API_KEY]` and 32-char request ids are still left alone.
+
 ### Fixed
+
+- **Remaining `httpx.RequestError` leftovers no longer leak `apikey=`
+  (#354).** `ProtocolError`, `ProxyError`, `DecodingError`,
+  `TooManyRedirects`, `UnsupportedProtocol`, and any future
+  `RequestError` now raise `FMPNetworkError` with `from None`. Same
+  secret-absent pin as #97 / #350 (`str` / `repr` / `__cause__` /
+  traceback / error log). `ProtocolError` / `ProxyError` stay
+  retryable; the others set `FMPNetworkError.retryable = False`.
+  Timeouts stay `FMPTimeoutError`. `validate_api_key` classifies
+  `FMPNetworkError` and raw non-timeout `httpx.RequestError` (fakes /
+  adapters) as `unavailable`.
+
+- **Timeout and network errors no longer leak `apikey=` (#350).**
+  `httpx.TimeoutException` / `httpx.NetworkError` now raise
+  `FMPTimeoutError` / `FMPNetworkError` with `from None`. The request
+  URL is not logged (`str(httpx_exc)` and `exc_info=True` are off that
+  path). Status errors were already mapped in #97; this is the leftover
+  transport path. Callers that caught raw httpx timeouts should catch
+  the new types (they remain `FMPError` subclasses and stay retryable).
+  `validate_api_key` classifies `FMPTimeoutError` as `timeout` and
+  `FMPNetworkError` as `unavailable` so a transport failure cannot
+  report a valid key.
+
+- **MCP setup helpers no longer echo subprocess stderr (#319).**
+  `validate_api_key` and `test_mcp_server` return classified reasons
+  (`valid` / `invalid` / `timeout` / `unavailable` and
+  `passed` / `started` / `failed` / `unavailable`). `fmp-mcp status`
+  and `fmp-mcp test` print sink-local literals so a key quoted in
+  child stderr cannot reach the terminal.
+
+- **`validate_api_key` now probes FMP (#317).**
+  A typed junk key no longer reports success. The helper constructs a
+  client and calls `company.get_quote("AAPL")`; 401 and 403 map to
+  `invalid`. Rate-limit / other HTTP errors still count as `valid`.
+
+- **`validate_api_key` first classified a status-less `Invalid API KEY`
+  body as invalid (#329).** That wizard-side copy matcher is superseded
+  by #340 in this same 2.7.0 section. Live `/stable/quote` returns
+  HTTP 401 for a junk key (probed 2026-08-15).
+
+- **Setup wizard offers the example MCP profiles again (#320).**
+  `get_manifest_choices` looks in `examples/mcp/configurations/` (the
+  real directory). The example Claude Desktop script, JSON profiles,
+  and README / troubleshooting copies use the same path.
+
+- **E2E sweep no longer treats Senate/House trades-by-id as allowed
+  empty (#337).** Those methods pin known-nonempty ids (`W000802` /
+  `P000197`); a 200/`[]` is the 404-as-empty class, not entity
+  emptiness. Name-based lookups stay on `ALLOW_EMPTY`.
+
+- **2xx `Invalid API KEY` bodies raise `AuthenticationError` (#340).**
+  `_check_error_response` types the known invalid-key copy instead of
+  a status-less `FMPError`. Unrelated 2xx bodies stay `FMPError`.
+  `validate_api_key`'s copy matcher is gone — the
+  `except AuthenticationError` path covers it.
+
+- **Net-worth integration tests lock nested objects, aggregated
+  aliases, and `model_extra` (#336).** Itemized rows must have empty
+  `model_extra` and at least one populated `valueRange` and
+  `debtDetails`. Aggregated pages must populate both `total` and
+  `stock`.
+
+- **Committed cassette-contract snapshot fails CI without YAML (#336).**
+  `tests/integration/cassette_contracts.json` lists required wire
+  aliases for government-trading models. The YAML payload check still
+  skips when cassettes are gitignored.
+
+- **List-shaped 2xx `Invalid API KEY` bodies raise
+  `AuthenticationError` (#342).** A one-element list whose only keys
+  are error keys is routed through `_raise_response_error`. Multi-row
+  lists are not walked. Unrelated singleton error lists stay
+  `FMPError`.
+
+- **Residual list-shaped 2xx error bodies type as
+  `AuthenticationError` (#344).** A one-element list with decorator
+  keys (`Error Message` plus data fields), a nested error value
+  (`{"message": "Invalid API KEY"}`), or a scalar
+  `["Invalid API KEY"]` now raises instead of falling through
+  validation. Mixed-key rows whose copy is not the junk-key body stay
+  on the validation path. Multi-row lists are still not walked.
+
+### FMP API surface (scan this first)
+
+Source: FMP public changelog
+([docs/changelog](https://site.financialmodelingprep.com/developer/docs/changelog))
+plus a live `/stable` probe on 2026-08-12. Marketing-only items (dashboard,
+localization, Insights Hub, plan add-ons) and FMP's hosted MCP product are
+out of scope.
+
+#### New (now first-class in this client)
+
+| Surface | What you get | Wire key / param | Client |
+|---|---|---|---|
+| Financial ratios | Diluted P/E | `priceToEarningsDilutedRatio` | `FinancialRatios.price_to_earnings_diluted_ratio` |
+| Financial ratios | Diluted PEG | `priceToEarningsDilutedGrowthRatio` | `FinancialRatios.price_to_earnings_diluted_growth_ratio` |
+| Ratios TTM (+ `ratios-ttm-bulk`) | Diluted P/E TTM | `priceToEarningsDilutedRatioTTM` | `FinancialRatiosTTM.price_to_earnings_diluted_ratio_ttm` |
+| Ratios TTM (+ `ratios-ttm-bulk`) | Diluted PEG TTM | `priceToEarningsDilutedGrowthRatioTTM` | `FinancialRatiosTTM.price_to_earnings_diluted_growth_ratio_ttm` |
+| Company screener | Pagination | `page` (optional, omitted when unset) | `market.get_company_screener(..., page=None)` |
+| Senate / House trades | Entity id | `senateID` (same key on House rows) | `SenateTrade.senate_id` / `HouseDisclosure.senate_id` |
+| Ratings bulk | Score columns | `discountedCashFlowScore`, `returnOnEquityScore`, `returnOnAssetsScore`, `debtToEquityScore`, `priceToEarningsScore`, `priceToBookScore` | `CompanyRating.*_score` |
+| Delisted companies | Slim delist list | `/stable/delisted-companies` (`page`, `limit`) | `company.get_delisted_companies` → `DelistedCompany` |
+
+#### Updated (path or contract still matches; no caller change)
+
+| FMP note | Path probed | Result |
+|---|---|---|
+| Exchange directory taxonomy (2025-06) | `/stable/available-exchanges` | 200. Keys `exchange`, `name`, `countryName`, `countryCode`, `delay`, `symbolSuffix` — already on `ExchangeSymbol`. |
+| Exchange variants (2025-05/06) | `/stable/search-exchange-variants?query=Apple` | 200. Profile-shaped rows still parse as `CompanySearchResult`. |
+| DCF valuations bulk naming (2025-06) | `/stable/dcf-bulk` | 200. Headers `symbol,date,dcf,Stock Price`. Client still remaps `Stock Price` → `stockPrice`. |
+| Historical S&P 500 symbol naming (2025-06) | `/stable/historical-sp500-constituent` | 200. `symbol` present; `HistoricalIndexConstituent` still parses. |
+| Stock ratings bulk field standardization (2025-06) | `/stable/rating-bulk` | 200. Score columns now typed on `CompanyRating` (see New). |
+| CUSIP on fund disclosure holders (2025-10) | `/stable/funds/disclosure-holders-latest` | Only `securityCusip`. Already modeled; no second key. |
+| ETF `isActivelyTrading` (2025-12) | `/stable/etf/info` | Present. Already modeled. |
+| Splits calendar `splitType` (2025-11) | `/stable/splits-calendar` | Present (may be `null`). Already modeled. |
+| Earnings `includeReportTimes` (2026-06) | `/stable/earnings-calendar?includeReportTimes=true` | Extra fields `confirmed`, `fiscalPeriod`, `fiscalYear`, `periodEnding`, `time`, `lastUpdated` already modeled. |
+| Profile bulk `part=0..3` (2024-10) | `/stable/profile-bulk?part=0` | 200. Multi-part scheme unchanged. |
+| Legacy route auth-gate (2025-08) | `/api/v3/profile/AAPL` | 403. No remaining live client path uses `APIVersion.V3`. The one leftover `V4` declaration is the already-withdrawn `stock-news-sentiments`. |
+
+#### Deprecated / withdrawn in this pass
+
+None. No FMP path we ship was newly retired by this changelog window.
+
+### Changed
+
+- **BREAKING: credential config fields are `pydantic.SecretStr` (#252
+  FMP-SEC-007).** `ClientConfig.api_key`, `LangChainConfig.embedding_api_key`,
+  `EmbeddingConfig.api_key` and `CacheConfig.redis_url` changed type.
+
+  `repr()` and `str()` were already redacted, but `model_dump()` and
+  `model_dump_json()` returned every one of them in cleartext — so anything
+  serializing a config (a structured log, a JSON dump, an error report) leaked
+  the key. `SecretStr` closes that at the type level, including for
+  third-party callers who invoke `model_dump()` themselves.
+
+  **Migration:** read the value with `.get_secret_value()`.
+
+  ```python
+  # before
+  client = FMPDataClient(api_key=config.api_key)
+  # after
+  client = FMPDataClient(api_key=config.api_key.get_secret_value())
+  ```
+
+  Construction is unchanged — passing a plain `str` still works, pydantic
+  coerces it. Truthiness checks (`if not config.api_key`) still work. What
+  breaks is code that *reads* the field expecting a `str`: comparisons
+  against a string, slicing, or passing it into a `str`-typed parameter.
+
+  Note that passing a `SecretStr` where a string is expected often fails
+  *silently* rather than loudly — `httpx` accepts it and sends
+  `apikey=**********`, producing 401s with no local error. If you see
+  unexplained auth failures after upgrading, look for a missed
+  `.get_secret_value()`.
+
+  `ClientConfig.validate_api_key` now also rejects a key consisting only of
+  asterisks, which is what rebuilding a config from a masked dump produces.
+
+- **List-returning requests are `list[T]` without collapsing `request()` (#235).**
+  `BaseClient.request` stays `Endpoint[T] -> T | list[T]`. Company list
+  methods stay on `request()` (so existing mocks still work) and normalize
+  through `EndpointGroup._unwrap_list`. `request_list` / `request_async_list`
+  are the typed `Endpoint[T] -> list[T]` façade for callers that do not
+  need to mock `request`. A lone object becomes `[row]`; an empty list
+  stays empty.
+
+- **Remaining list endpoints and methods now go through `_unwrap_list` /
+  `Endpoint[T]` (#242).** Market, fundamental, investment, intelligence,
+  institutional, alternative, economics, and technical list surfaces bind
+  the row type (`Endpoint[T]`, not `Endpoint[list[T]]`) and normalize
+  `request()` / `request_async()` with `_unwrap_list`. Company historical
+  EOD helpers unwrap rows then wrap `HistoricalData`. `request()` stays
+  `T | list[T]`. Methods are not switched to `request_list`.
+  `get_mutual_fund_dates` / `get_fund_disclosure_dates` are annotated
+  `list[PortfolioDate]` (runtime already returned `PortfolioDate` rows).
+
+- **Leftover index, SEC, transcripts, and batch quote lists go through
+  `_unwrap_list` / `Endpoint[T]` (#245).** Index constituents, SEC list
+  surfaces (not `SEC_PROFILE`), transcripts, and batch JSON quote lists
+  bind the row type and normalize `request()` / `request_async()`.
+  `get_profile` stays `_unwrap_single`. Bulk-bytes / CSV paths stay on
+  `_request_csv`. `request()` stays `T | list[T]`.
+
+- **Batch bulk-bytes / CSV endpoints are `Endpoint[bytes]` (#247).**
+  All 18 `*_BULK` CSV downloads bind `bytes` (not a row type). In batch,
+  `_request_csv` is the only bytes helper. Quote lists stay on
+  `_unwrap_list` (#246). `request()` stays `T | list[T]`.
+  `FINANCIAL_REPORTS_XLSX` is unchanged: company XLSX download, still a
+  bare `Endpoint`, not `_request_csv`.
+
+- **`request(Endpoint[bytes])` is `bytes`; `request_list` refuses bytes
+  (#249).** `request()` / `request_async()` overload to `bytes` for file
+  downloads and stay `T | list[T]` for every other `T`.
+  `request_list` / `request_async_list` overload to `NoReturn` and raise
+  `TypeError` on `response_model is bytes` instead of wrapping the file
+  as `[bytes]`. Quote lists still unwrap to `list[T]`.
+
+- **Company financial-report endpoints are `Endpoint[T]` (#250).**
+  `FINANCIAL_REPORTS_JSON` is `Endpoint[FinancialReportJSON]`;
+  `FINANCIAL_REPORTS_XLSX` is `Endpoint[bytes]`. Client methods keep
+  their existing type checks and still return `dict` / `bytes`. XLSX
+  stays off batch `_request_csv`.
+
+- **Leftover period/interval enums track the Literal contracts (#307,
+  #309).** `ReportingPeriodEnum`, `IntervalEnum`, and
+  `IntradayTimeInterval` unpack member *values* from the Literal tuples
+  so they cannot drift; member names are unchanged. Deprecated
+  `technical.schema.TimeInterval` is now an alias of `TechnicalInterval`
+  (`daily` / `hourly` included). Deprecated
+  `alternative.schema.BaseIntradayArgs` no longer keeps a second
+  hardcoded interval list; the field type is `Interval`. Live
+  `TechnicalClient` signatures are unchanged. The arg-model types
+  themselves stay until 3.0.
+
+### Added
+
+- **Closed request vocabularies for period, interval, and timeframe
+  (#306, #308).** Client methods now take `Period` / `PeriodFiscal` /
+  `PeriodAnnualQuarter`, `Interval`, and `Timeframe` (`Literal` aliases
+  in `fmp_data.schema`) instead of a naked `str`. Three period types on
+  purpose: financial reports and batch bulk accept only `FY`/`Q1`–`Q4`.
+  Endpoint `valid_values` are derived from the same aliases. Plain
+  strings still work at runtime. Re-exported from `fmp_data` (`__all__`):
+  `from fmp_data import Period, PeriodFiscal, PeriodAnnualQuarter,
+  Interval, Timeframe`. The e2e harness samples required closed params
+  from the method annotation, not a global `"annual"` table.
+
+- **Public re-export of `TechnicalInterval` (#311).** Annotate
+  `TechnicalClient.interval=` against
+  `from fmp_data import TechnicalInterval`. It is `Interval` plus
+  `"daily"` / `"hourly"`, not `Timeframe` (`1day`). Client-only leftover
+  aliases mapped by `_normalize_timeframe`; endpoint `valid_values` stay
+  on `Timeframe` / `Interval`.
+
+- **Local VCR-backed client-method e2e sweep.** Maintainer script
+  `scripts/e2e_endpoints.py` (`make e2e-record` / `make e2e-replay`) calls
+  every public sync `FMPDataClient` method, records gitignored cassettes
+  under `tests/e2e/vcr_cassettes/`, and prints a per-method report. Opt-in
+  (`-m not e2e` in addopts); not run by `make test`. First live pass
+  covered 265 methods: 239 ok, 26 deprecated skips.
+
+- **FMP hosted MCP vs `fmp-mcp` positioning (#230).** Docs-only: we are not
+  wrapping FMP's remote MCP URL. README + `docs/mcp/index.md` point at
+  `docs/mcp/hosted.md`, which records the 2026-08-12 decision (A+D: position
+  + coverage matrix), a live `tools/list` of **28** dataset tools (changelog
+  said 27; `tipranks` is a paid add-on), and when to use hosted MCP vs this
+  package. No runtime helper, no FastMCP dependency, no CI smoke.
+
+- **FMP changelog alignment (#229).** Three confirmed 2026 wire gaps, the
+  leftover 2025-10 delisted-companies wiring (#233), plus the older-note
+  re-probe above. Live `/stable` checks used the current API key on
+  2026-08-12.
+
+  - **Diluted P/E on ratios.** `FinancialRatios` and `FinancialRatiosTTM` now
+    declare the diluted PE / diluted PEG pair FMP added on 2026-07-30
+    (`priceToEarningsDilutedRatio`, `priceToEarningsDilutedGrowthRatio`, and
+    the `*TTM` names on TTM + `ratios-ttm-bulk`). They previously landed only
+    in `__pydantic_extra__` and could warn under `FMP_VALIDATION_MODE=warn`.
+  - **Screener `page`.** `market.get_company_screener` / async accept optional
+    `page: int | None = None`. Unset is omitted from the request (existing
+    callers keep the same wire). `page=0` is sent. Live: `limit=2&page=0`
+    and `limit=2&page=1` return distinct first rows.
+  - **`senateID` on Senate and House trades.** `SenateTrade.senate_id` and
+    `HouseDisclosure.senate_id` alias `senateID`. The wire name is kept on
+    House rows (Pelosi → `P000197`); we do not invent `house_id`.
+  - **`CompanyRating` score columns.** `rating-bulk` headers
+    `discountedCashFlowScore` / `returnOnEquityScore` / `returnOnAssetsScore`
+    / `debtToEquityScore` / `priceToEarningsScore` / `priceToBookScore` are
+    now typed attributes. Fractional CSV cells such as ``"3.0"`` coerce to
+    ``int`` so ``parse_csv_models`` does not skip the whole company row.
+  - **`company.get_delisted_companies`.** The 2025-10 delisted-companies
+    architecture sync left a live `/stable/delisted-companies` path whose
+    declaration used `CompanyProfile` and had no client method. Sync and
+    async clients now expose `get_delisted_companies(page=0, limit=100)`
+    returning `DelistedCompany` (`symbol`, `companyName`, `exchange`,
+    `ipoDate`, `delistedDate`). MCP: `company.delisted_companies` (in
+    `DEFAULT_TOOLS`). LangChain indexes the same semantics key.
+
+### Fixed
+
+- **TestPyPI / Dev-Release / Release sdist version-assert no longer
+  SIGPIPEs.** `set -euo pipefail` plus `tar -xOf … | awk … exit` made
+  GNU tar exit 2 after a successful build (awk closed the pipe on the
+  first `Version:` line). The sdist was fine; the job still went red,
+  so the 2.7.0 release PR never published a TestPyPI comment. PKG-INFO
+  is now read in full before the version line is parsed.
+
+- **MCP setup wizard no longer prints validator stderr or the key
+  (#315).** Failed validation, the MCP smoke-test, and unexpected
+  crashes print static copy. Console output is pattern-redacted and
+  never interpolates the getpass-held key or exception text (CodeQL
+  ``py/clear-text-logging-sensitive-data``). Persistence hints use
+  ``[YOUR_API_KEY]``, not a prefix/suffix of the secret.
+
+- **Release-PR review follow-ups (#304).** Loopback HTTP now requires a
+  real loopback *address* (``127.evil.example`` is rejected). Log extras
+  redact string leaves and ``Authorization`` mapping keys. MCP Python
+  manifests accept ``TOOLS: list[str] = [...]``. Redis ``SCAN MATCH``
+  escapes glob metacharacters in the key prefix. The release remote tag
+  is created only after the sdist version check. Makefile ``.env``
+  loading strips dotenv-style inline comments, and quoted values keep
+  escaped quotes / backslashes. URL redaction covers ``?api-key=``.
+  LangChain tool validation envelopes reuse the already-redacted
+  message so a reflected ``apikey=`` cannot reach
+  ``details.validation_errors``. Claude Desktop troubleshooting
+  samples that users copy into a config file are valid JSON.
+
+- **`HolderIndustryBreakdown.industry_title` accepts `null`.** A live
+  13F industry-breakdown row sends `industryTitle: null`; the field was
+  required `str` and the whole call raised `ValidationError`.
+- **`CryptoNewsArticle.symbol` accepts `null`.** General crypto news
+  often has no pair; the required `str` field rejected those rows.
+
+- **`FMPLogger.get_logger(__name__)` no longer doubles `fmp_data.` (#238).**
+  The root logger is already `fmp_data`; `getChild(__name__)` was emitting
+  `fmp_data.fmp_data.base`, so `caplog` and log aggregators filtering
+  `fmp_data.base` missed extras / HTTP warnings. Qualified `fmp_data.*`
+  names are now used as-is. If you already filtered the doubled name
+  (`fmp_data.fmp_data.*`), switch to `fmp_data.*`. Handler and filter
+  attachment is unchanged.
+
+- **Remaining logging entry points go through `FMPLogger` (#241).**
+  Production `logging.getLogger(__name__)` call sites (CSV extras, secure
+  log-file chmod, cache backends, rate limiter, investment async) now use
+  `FMPLogger().get_logger(__name__)`. LangChain class-name loggers use
+  `__name__` + `.getChild(class)` so `ValidationRule` lands on
+  `fmp_data.lc.validation.ValidationRule` rather than `fmp_data.ValidationRule`.
+  Extras tests listen on `fmp_data.base` via `caplog`. Handler and filter
+  attachment is unchanged.
+
+- **CSV bulk parsing now honors `FMP_VALIDATION_MODE` (#232).** `parse_csv_models`
+  used `model.model_validate` directly, so unknown bulk headers (`overallScore`
+  on `rating-bulk`, a misspelled diluted-PE column) landed in
+  `__pydantic_extra__` with no warn and no failure. They now share the JSON
+  extras policy (`warn` / `strict` / `lenient`), keyed per bulk endpoint +
+  field set. Invalid cells still retry URL fields, then **skip the row** in
+  `lenient`/`warn` (logged) or **fail the request** in `strict`. Default mode
+  is unchanged (`warn`). `rating-bulk` scores coerce only whole values
+  (`"3.0"` → `3`); `"3.5"` is no longer truncated to `3`.
 
 - **CI: post-release main→dev sync auto-merges and no longer needs admin bypass.**
   Sync-Main-to-Dev enables `gh pr merge --auto --merge` on the history-reachability
@@ -15,6 +478,329 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (it would re-break ancestry). Protect Dev dropped `required_signatures`, which
   had made every unsigned automation commit need `--admin` despite green checks;
   required Test-Matrix jobs, no force-push, and no branch deletion remain.
+
+### Changed
+
+- **CI and local uv are 0.12.3+.** ``setup-uv`` v10 installs uv ``0.12.3``.
+  ``[tool.uv] required-version = ">=0.12.3"`` rejects older local
+  installs. The action pin remains the v10.0.0 SHA.
+- **Separate extras coverage gate for ``lc`` / ``mcp`` / Redis (#273).**
+  The core 80% report still omits those trees. ``nox -s coverage_extras``
+  (CI job ``extras-coverage``) installs the extras, measures only those
+  files, and fails under 65% (measured baseline 66.78% on 2026-08-13).
+  ``Test-MatrixExpected`` requires that job. The ``mcp-server`` session
+  now runs every ``tests/unit/test_mcp*.py`` file.
+
+### Security
+
+- **`LogHandlerConfig.handler_kwargs` is redacted on the dump path too
+  (#252 FMP-SEC-007).** `__str__` was swept in the metadata-driven
+  redaction change, but `model_dump()` / `model_dump_json()` still emitted
+  these verbatim — and they are a bare `dict[str, Any]` handed straight to
+  a logging handler, so a `SysLogHandler` password or an HTTP handler's
+  credentials live there. `SecretStr` cannot reach inside an untyped bag,
+  so a `field_serializer` closes it, the same approach used for
+  `EmbeddingConfig.additional_kwargs`. Safe here because the only consumer
+  reads the attribute (`config.handler_kwargs.copy()` in `logger.py`),
+  so nothing rebuilds the model from its own dump. Operational kwargs such
+  as `maxBytes` and `backupCount` are still shown.
+- **Log redaction is type-complete and happens on the record (#252
+  FMP-SEC-005).** Four gaps sharing one root cause — the filter gated on
+  `isinstance(v, str | int | float)` to mask and `dict | list` to recurse:
+  - `extra={"api_key": <bytes|tuple|set>}` was logged in the clear; only
+    `str`/`int`/`float` were masked. Every container type is now walked,
+    and `bytes` is decoded before masking rather than having its `repr`
+    masked (`b'****…'` was misleading about both value and length).
+  - A secret reachable only through a tuple was never reached.
+  - Nested extras were redacted inside `JsonFormatter.format` rather than
+    on the `LogRecord`, so a **second handler** — `logging.basicConfig()`,
+    a Sentry or OTel exporter — received the raw value from the same
+    record. Redaction now happens once on the record, so every handler
+    inherits it.
+  - `log_api_call` put positional arguments into `call_args` as a raw
+    tuple. Positional arguments have no names, so nothing downstream can
+    tell a credential from a ticker symbol; it now logs their *types*.
+    `call_kwargs` is named, and is masked as before.
+- **The LangChain tool error envelope redacts API keys (#252
+  FMP-SEC-005).** `fmp_data/lc/vector_store.py` returned `str(e)` inside
+  the tool's result dict, which goes into the agent scratchpad, the chat
+  history and any tracing backend. `str()` of an `httpx.HTTPStatusError`
+  stringifies the request URL, which carries `apikey=` — the exact leak
+  `base.py` suppresses on its own paths, while nothing under `lc/` was
+  redacting. Now redacted at the point of capture, so every branch of the
+  envelope inherits it.
+- **Publish workflows serialize (#252).** `release.yml`,
+  `dev-release.yml` and `publish-testpypi.yml` had no `concurrency` group,
+  so two pushes to the same PR could both build and publish and the
+  slower run's comment could overwrite the newer one — advertising a
+  stale version, the exact invariant #204 exists to protect.
+  `cancel-in-progress` is deliberately `false`: making the second run
+  wait is strictly better than aborting one mid-upload.
+- **Ruff's bandit twins are no longer globally ignored (#252
+  FMP-SEC-008).** #278 removed `B603`/`B607` from `[tool.bandit] skips`,
+  but their flake8-bandit equivalents `S603`/`S607` stayed in
+  `[tool.ruff.lint] ignore` — so the narrowing looked done while the rule
+  was enforced by *neither* tool. The global ignore is now just `S101`;
+  the five real call sites carry a targeted `# noqa` with a reason
+  alongside the existing `# nosec`. `scripts/` was also exempt from both
+  ruff's `S` rules and bandit's `exclude_dirs`; both exemptions are gone
+  and both tools pass. A test pins the ruff ignore list next to the
+  existing bandit one, since splitting them is what let this drift.
+- **`ClientConfig.__str__` redaction is metadata-driven, not a name
+  allowlist (#252 FMP-SEC-007).** It dumped the whole model and masked the
+  three field names it knew about, so everything else rendered verbatim —
+  including a secret inside `LogHandlerConfig.handler_kwargs`, a bare
+  `dict[str, Any]` that needs no subclass to reach, and any credential
+  field added by a subclass. Redaction now runs in three passes: fields
+  marked `repr=False` (pydantic's own not-for-display signal, which every
+  credential field already carries, so a subclass gets correct behaviour
+  from the standard idiom); a recursive sweep for secret-shaped keys,
+  which is the only handle available on untyped bags; then the two values
+  worth rendering richer than `***` (the API key's leading characters and
+  the Redis host). The shape rules moved to `fmp_data/_redaction.py` and
+  are shared with `EmbeddingConfig.__repr__`, which previously recursed
+  while the config side did not. Non-secret values such as `maxBytes` are
+  still shown.
+- **Checkouts no longer leave a repo-write token in the workspace
+  (#252 FMP-SEC-002).** Only 4 of 17 `actions/checkout` steps set
+  `persist-credentials: false`, so the rest wrote the job's token into
+  `.git/config` where every later step could read it — dependency
+  installs, build backends, third-party actions. Ten more now drop it.
+  The two that keep it are documented in place: `sync-main-to-dev.yml`
+  really pushes (and persists a *PAT*, broader than `GITHUB_TOKEN`), and
+  `claude.yml` runs an action whose default `use_commit_signing: false`
+  means it commits with standard git commands. A test asserts the
+  exception list by name so a third one has to be deliberate.
+- **`CODECOV_TOKEN` is no longer present in a job that runs PR code
+  (#252).** `nox -s coverage_local` executes the PR branch's own noxfile
+  and test suite; the upload token sat in that same job. Coverage now
+  uploads `coverage.xml` as an artifact and a separate `coverage-upload`
+  job — no secrets in the first, no repository code in the second —
+  performs the upload. It is deliberately not a required check: the
+  coverage threshold is still enforced in the `coverage` job, and a
+  telemetry upload should not gate merges.
+- **Release notes use a random `$GITHUB_OUTPUT` heredoc delimiter (#252).**
+  Not a live hole: `--pretty=format:"- %s"` prefixes every commit line, so
+  a commit subject of `EOF` emits `- EOF` and cannot close the heredoc
+  (verified both ways). But that protection is a side effect of a format
+  string — dropping the `- ` prefix would make every following line a
+  workflow command. The delimiter is now random per run, so the guard is
+  deliberate.
+- **The release build job no longer carries a persisted git credential
+  (#252 FMP-SEC-002).** `release.yml`'s build job legitimately needs
+  `contents: write` — it pushes the release tag and creates the GitHub
+  Release — but it checked out with `token: ${{ secrets.GITHUB_TOKEN }}`,
+  leaving repo-write credentials in `.git/config` for the whole job,
+  including while it installs a PEP 517 frontend and backend and runs a
+  build. Exactly one step needed remote write; it now creates the tag
+  through the API with an explicitly scoped `GH_TOKEN`, so the checkout
+  uses `persist-credentials: false`. The tag is still created locally
+  first (hatch-vcs derives the version from the local tag, and the build
+  runs after) and the remote tag is created as an annotated tag object
+  rather than a bare ref, so it matches.
+- **`get_company_logo_url` escapes the symbol (#252 FMP-SEC-010).** That
+  builder assembles its URL with a raw f-string and never calls
+  `Endpoint.build_url`, so it did not inherit the path sanitizing added
+  when FMP-SEC-010 was closed — the sweep behind that fix only covered
+  `build_url` callers. `symbol` reaches this method from an LLM through
+  the `company_logo_url` MCP tool, and
+  `get_company_logo_url("../../stable/profile")` returned a URL pointing
+  at a different path on the origin. Now percent-encoded and rejected
+  for separators and dot-segments, matching every other path parameter.
+  Dotted tickers such as `BRK.B` still work.
+- **The TestPyPI publish job no longer holds repo-write (#252 FMP-SEC-002).**
+  ``test-release-publish`` carried ``pull-requests: write`` and
+  ``issues: write`` alongside ``id-token: write`` purely so it could post
+  the "test release published" PR comment. Anything running in that job —
+  a compromised action, a malicious build dependency — could reach both
+  the TestPyPI OIDC token and the repository. The comment now runs in a
+  separate ``test-release-comment`` job with no OIDC token and no access
+  to the artifact; the publishing job is down to ``id-token: write`` plus
+  ``contents: read``. A new test walks every workflow and fails on any
+  job combining ``id-token: write`` with another write scope (the
+  ``actions/deploy-pages`` job is exempted narrowly, scoped to the
+  ``github-pages`` environment, since that pairing is mandatory there).
+- **``Authorization: Bearer`` no longer crashes the log filter, and
+  tracebacks are actually redacted (#252 FMP-SEC-005).**
+  ``SensitiveDataFilter`` read capture group 3 for every pattern, but
+  ``authorization`` defines only two groups. Any log line containing
+  ``Authorization: Bearer <token>`` raised ``IndexError: no such group``
+  from inside ``logging``, so the Bearer rule never redacted *and* the
+  filter's own exception replaced the caller's — reachable through
+  ``FMPDataClient.__exit__``, which logs with ``exc_info=True``.
+  Separately, filters run before formatting, so ``record.exc_text`` was
+  still ``None`` when the filter looked at it: the ``exc_text`` branch
+  never fired on a live ``exc_info=True`` call and tracebacks reached
+  handlers unredacted. The filter now renders and masks the traceback
+  itself, and ``JsonFormatter`` masks the exception message and
+  traceback it derives from ``record.exc_info``.
+- **Non-JSON and scalar error bodies redact the API key (#252 FMP-SEC-005).**
+  ``handle_response``'s ``json.JSONDecodeError`` branch built
+  ``FMPError.response`` from the raw bytes with no redaction, while the
+  5xx sibling ran the same bytes through ``_redact_api_keys`` — so a 2xx
+  carrying a non-JSON body leaked the live key into the exception. This
+  is routine, not exotic: WAF and CDN block pages echo the full request
+  URL, and ours carries ``apikey=``. A bare JSON *string* body took the
+  same unredacted route through ``_parse_json_response``. Both now
+  redact, and the body is decoded with ``errors="replace"`` so a
+  non-UTF-8 payload cannot raise ``UnicodeDecodeError`` from inside the
+  JSON error handler and mask the real failure.
+- **``pip-audit --strict`` audits a live extras export (#252 FMP-SEC-008).**
+  ``nox -s security`` runs ``uv export`` for the published extras
+  (langchain, mcp, cache-redis) and audits that pin set. There is no
+  committed hashed lock — a ``pyproject.toml`` floor bump is enough to
+  pick up newer deps. Nox installs the ``dev`` group from pyproject
+  instead of a second, stale pin list.
+- **Secret scan covers the committed tree, including tests (#252 FMP-SEC-008).**
+  CI no longer skips when VCR cassettes are absent. ``detect-secrets``
+  compares the whole tree to ``.secrets.baseline``; dummy keys in tests
+  are baselined. Cassettes stay zero-tolerance when present.
+- **CodeQL analyzes the Python tree on every PR (#252 FMP-SEC-008).**
+  Findings upload to GitHub code scanning. The workflow is SHA-pinned
+  and uses ``build-mode: none``.
+
+- **Isolated PyPI publishing and immutable Actions pins (#252).** Release,
+  Dev-Release, and Publish-to-TestPyPI now build in a job with no OIDC token
+  and publish from a second job that only downloads hashed artifacts. Publish
+  jobs use the `pypi` / `testpypi` GitHub environments. All external
+  `uses:` entries are pinned to full commit SHAs. The PEP 517 frontend
+  (`build`) and backend (`hatchling`, `hatch-vcs`) are installed from
+  version floors in `.github/requirements-build.txt` (not a hashed lock),
+  and builds run `--no-isolation` so isolation cannot fetch a different
+  backend than the one just installed.
+  `workflow_dispatch` on Dev-Release is bound to `refs/heads/dev`. The
+  TestPyPI PR path requires `head.repo.full_name == github.repository`.
+  Tag-based TestPyPI publishes no longer `skip-existing`. **Before the next
+  release**, set the PyPI and TestPyPI Trusted Publisher environment names
+  to `pypi` and `testpypi` to match the workflows.
+
+- **MCP manifests are data, not executed code (#252).** `load_manifest_tools`
+  and `fmp-mcp validate` no longer `exec` user-supplied Python. Legacy
+  `TOOLS = ["..."]` files are parsed with a restricted AST (docstring + that
+  assignment only). Imports, calls, and any other statement are rejected.
+  JSON and YAML accept a top-level list or `{"tools": ["..."]}`. TOML
+  accepts `tools = ["..."]` only (no top-level array). On Python 3.10
+  TOML uses `tomli` from the `mcp` extra; 3.11+ uses stdlib `tomllib`.
+  Existing generated and example `.py` manifests keep working. A file
+  that previously ran arbitrary code as "validation" now fails closed.
+
+### Fixed
+
+- **Async requests work again (#252 FMP-SEC-004).** `httpx.AsyncClient` *awaits*
+  every response hook (`await hook(response)`), while `httpx.Client` calls it
+  plainly. The cross-origin redirect guard added for FMP-SEC-004 was a plain
+  `def` registered on both clients, so httpx awaited `None` and **every**
+  successful async response raised
+  `TypeError: object NoneType can't be used in 'await' expression` — not only
+  redirects. `_areject_cross_origin_redirect` now wraps the check for the async
+  client. Unreleased regression: it never shipped in a tagged version. The async
+  tests replaced the client with `AsyncMock` and asserted only hook membership,
+  so nothing exercised the real send path; they now drive
+  `httpx.MockTransport` and assert the hook is a coroutine function.
+- **`_unwrap_list_result` refuses a bytes file (#253).** `request_list` already
+  raised `TypeError` for `Endpoint[bytes]`, but the shared unwrap helper still
+  treated `isinstance(payload, bytes)` as a lone row and returned `[bytes]`.
+  Quote-list unwrap is unchanged.
+
+### Changed
+
+- **Extras coverage gate raised to 80% and made a required check (#273, #282).**
+  Dedicated tests for `cache/redis_backend.py`, `lc/validation.py`,
+  `lc/__init__.py`, `mcp/utils.py` and `mcp/setup.py` took the measured extras
+  number from 66.78% to 86.99%, so `nox -s coverage_extras` now fails under 80
+  with ~7 points of headroom. `Extras Coverage`, `coverage`, `Secret Scan`,
+  `Actions shell checks` and `Test-MatrixExpected` are now required status
+  checks on **Protect Dev** and **Protect Main**; previously only
+  `tests (3.10–3.14)` were required, so a red extras or secret scan could not
+  block a merge. Also fixed the `Protocol` exclusion in `extras.coveragerc`,
+  which had been copied from TOML with `\\(` and so never matched.
+- **`uv.lock` stays uncommitted, by decision (#273).** Recorded in
+  `CONTRIBUTING.md` under "Lock file policy": this is a library, so the
+  compatibility contract is the floors in `pyproject.toml`; drift is caught by
+  `nox -s security` auditing a live `uv export` with `pip-audit --strict`
+  rather than frozen behind stale pins. The old `.gitignore` rationale cited a
+  non-existent "GitHub 500KB warning" (that threshold is pre-commit's
+  `check-added-large-files` default) and has been replaced.
+- **`fmp-mcp generate` writes JSON / YAML / TOML from the output suffix (#256).**
+  `.json` is preferred (`{"tools": [...]}`). `.yaml` / `.yml` and `.toml` use
+  the same `tools` object. A path with no suffix becomes `<name>.json`.
+  `.py` still writes the restricted `TOOLS = ["..."]` form so existing
+  scripts keep working. Unknown suffixes are refused.
+
+### Security
+
+- **TestPyPI tag guard cannot be shadowed by a tag (#252 FMP-SEC-003).** The
+  ancestry check compared against the *unqualified* rev `origin/main`. Git
+  resolves `refs/tags/<name>` before `refs/remotes/<name>`, and
+  `actions/checkout` with `fetch-depth: 0` mirrors every tag verbatim, so a tag
+  literally named `origin/main` shadowed the remote-tracking branch and the
+  guard compared HEAD against an attacker-chosen commit — passing with only a
+  "refname is ambiguous" warning, which `set -euo pipefail` does not trap. Both
+  comparisons now use `refs/remotes/origin/{main,dev}` and the guard fetches
+  with `--no-tags` and an explicit refspec.
+- **Bandit actually runs in CI (#273).** #278 replaced the blanket `B404` /
+  `B603` / `B607` / `B608` skips with narrow file-local `# nosec` notes, but
+  bandit was only wired into `.pre-commit-config.yaml` and there is no
+  pre-commit CI job — so the narrowing was unenforced and a new `subprocess`
+  call could land unreviewed. `nox -s security` now runs bandit over the
+  library before the dependency audit. Current tree: 0 findings.
+  `examples/mcp/claude_desktop/setup_claude_desktop.py` also picked up the
+  same file-local notes: #278 dropped the global skips without annotating it,
+  which left `pre-commit run --all-files` failing on the example.
+- **Embedding ``additional_kwargs`` redaction is recursive (#273).** The
+  top-level scan copied nested containers by reference, so a credential under a
+  real provider kwarg — `default_headers={"Authorization": ...}` or
+  `model_kwargs={"api_key": ...}`, both accepted by `OpenAIEmbeddings` and
+  splatted straight through — was printed verbatim by `repr`. Nested dicts,
+  lists, tuples and sets are now walked (depth-bounded); the live kwargs are
+  left unmutated.
+- **Embedding ``additional_kwargs`` no longer leak secrets in ``repr`` (#273).**
+  Secret-shaped keys are replaced with ``***``; ``api_key`` stays off the
+  default field repr.
+- **Makefile ``.env`` loader drops process-hijack keys (#273).**
+  ``PATH``, ``LD_PRELOAD``, ``PYTHONPATH``, ``DYLD_*``, and similar
+  identifiers are ignored so a trusted local file cannot rewrite the
+  maintainer shell.
+- **Bandit skips are limited to `assert` used in the library (#273).**
+  Global `B404` / `B603` / `B607` / `B608` skips are gone. MCP subprocess
+  calls keep file-local `nosec` notes; there is no SQL to justify `B608`.
+- **API key stays on origin (#252 FMP-SEC-004).** `base_url` must be HTTPS
+  except loopback HTTP. The key is sent only as the `apikey` query parameter
+  (no client-wide header that a 302 would forward). Cross-origin redirects
+  are refused by inspecting the `Location` header: httpx only sets
+  `next_request` when `follow_redirects` is false, so a next-request-only
+  check was a no-op in production. An unparsable `Location` is refused
+  rather than left for httpx to handle after the hook returns.
+- **Log redaction applies to child loggers and ``api_key=%s`` (#252 FMP-SEC-005).**
+  The filter formats the message before masking, so a ``%s`` value is not
+  treated as the secret (which previously crashed logging and printed the
+  raw key). The filter is attached to each handler and each child logger.
+  JSON extras and exception text are redacted.
+- **MCP Claude config is written ``0600`` and the API key is prompted with
+  echo off (#252 FMP-SEC-006).** Directory ``0700``; backups ``0600``;
+  atomic replace.
+- **Secondary secrets no longer survive ``str``/``repr`` (#252 FMP-SEC-007).**
+  ``embedding_api_key`` and embedding ``api_key`` are ``repr=False``.
+  ``CacheConfig.redis_url`` userinfo is redacted. Nested cache URLs on
+  ``ClientConfig`` are redacted the same way.
+- **VCR sanitization no longer logs the raw API key (#252 FMP-SEC-009).**
+  DEBUG logs method/host/path only. Cassette leak assertions name
+  file/line/credential type, not the captured value.
+- **Company intraday ``interval`` is whitelisted and path params are encoded
+  (#252 FMP-SEC-010).** ``../../stable/profile`` is rejected; remaining path
+  segments are percent-encoded so httpx cannot normalize them into another
+  endpoint.
+- **Claude workflows no longer mint an OIDC token (#252 FMP-SEC-012).**
+  Review is ``contents: read`` plus PR/issue write. Interactive Claude keeps
+  ``contents: write`` so it can land commits; both use the OAuth secret, not
+  ``id-token: write``.
+- **Added ``SECURITY.md`` (#252 FMP-SEC-013).** Private disclosure via GitHub
+  advisories; supported versions and target response times are documented.
+- **Tag-based TestPyPI builds require the tag to sit on ``main`` or ``dev``
+  (#252 FMP-SEC-003).** A tag of an unrelated commit no longer publishes.
+- **Makefile loads ``.env`` as data, not as shell (#252 FMP-SEC-011).**
+  ``test`` / integration targets call ``scripts/export_dotenv.py`` instead of
+  ``set -a; . ./.env``.
 
 ## [2.6.0] - 2026-08-10
 

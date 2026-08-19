@@ -29,6 +29,10 @@ from fmp_data.intelligence.models import (
     PressReleaseBySymbol,
     PriceTargetNews,
     RatingsSnapshot,
+    SenateNetWorthAggregated,
+    SenateNetWorthItem,
+    SenatePosition,
+    SenateProfile,
     SenateTrade,
     StockGrade,
     StockGradeNews,
@@ -504,7 +508,7 @@ class TestIntelligenceEndpoints(BaseTestCase):
             if len(trades) > 0:
                 for trade in trades:
                     assert isinstance(trade, SenateTrade)
-                    assert isinstance(trade.disclosure_date, datetime)
+                    assert type(trade.disclosure_date) is date
                     assert isinstance(trade.amount, str)
                     assert isinstance(trade.first_name, str)
                     assert isinstance(trade.last_name, str)
@@ -540,6 +544,22 @@ class TestIntelligenceEndpoints(BaseTestCase):
                     assert trade.first_name
                     assert trade.last_name
 
+    def test_get_senate_trades_by_id(self, fmp_client: FMPDataClient, vcr_instance):
+        """Docs example S000033 is empty; W000802 has rows (probed 2026-08-15)."""
+        with vcr_instance.use_cassette("intelligence/senate_trades_by_id.yaml"):
+            trades = self._handle_rate_limit(
+                fmp_client.intelligence.get_senate_trades_by_id,
+                "W000802",
+                page=0,
+                limit=5,
+            )
+
+            assert isinstance(trades, list)
+            assert trades
+            for trade in trades:
+                assert isinstance(trade, SenateTrade)
+                assert trade.senate_id == "W000802"
+
     def test_get_senate_trading_rss(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting senate trading RSS feed"""
         with vcr_instance.use_cassette("intelligence/senate_trading_rss.yaml"):
@@ -553,7 +573,7 @@ class TestIntelligenceEndpoints(BaseTestCase):
             if len(trades) > 0:
                 for trade in trades:
                     assert isinstance(trade, SenateTrade)
-                    assert isinstance(trade.disclosure_date, datetime)
+                    assert type(trade.disclosure_date) is date
                     assert isinstance(trade.amount, str)
                     assert isinstance(trade.first_name, str)
                     assert isinstance(trade.last_name, str)
@@ -587,8 +607,8 @@ class TestIntelligenceEndpoints(BaseTestCase):
             if len(disclosures) > 0:
                 for disclosure in disclosures:
                     assert isinstance(disclosure, HouseDisclosure)
-                    assert isinstance(disclosure.disclosure_date, datetime)
-                    assert isinstance(disclosure.transaction_date, datetime)
+                    assert type(disclosure.disclosure_date) is date
+                    assert type(disclosure.transaction_date) is date
                     assert isinstance(disclosure.amount, str)
                     assert isinstance(disclosure.first_name, str)
                     assert isinstance(disclosure.last_name, str)
@@ -609,6 +629,105 @@ class TestIntelligenceEndpoints(BaseTestCase):
                     assert isinstance(disclosure, HouseDisclosure)
                     assert disclosure.first_name
                     assert disclosure.last_name
+
+    def test_get_house_trades_by_id(self, fmp_client: FMPDataClient, vcr_instance):
+        with vcr_instance.use_cassette("intelligence/house_trades_by_id.yaml"):
+            disclosures = self._handle_rate_limit(
+                fmp_client.intelligence.get_house_trades_by_id,
+                "P000197",
+                page=0,
+                limit=5,
+            )
+
+            assert isinstance(disclosures, list)
+            assert disclosures
+            for disclosure in disclosures:
+                assert isinstance(disclosure, HouseDisclosure)
+                assert disclosure.senate_id == "P000197"
+
+    def test_get_senate_profile(self, fmp_client: FMPDataClient, vcr_instance):
+        with vcr_instance.use_cassette("intelligence/senate_profile.yaml"):
+            rows = self._handle_rate_limit(
+                fmp_client.intelligence.get_senate_profile,
+                page=0,
+                limit=2,
+            )
+
+            assert isinstance(rows, list)
+            assert rows
+            for row in rows:
+                assert isinstance(row, SenateProfile)
+                assert row.senate_id
+                assert row.birth_date is None or hasattr(row.birth_date, "year")
+
+    def test_get_senate_profile_by_id(self, fmp_client: FMPDataClient, vcr_instance):
+        with vcr_instance.use_cassette("intelligence/senate_profile_by_id.yaml"):
+            rows = self._handle_rate_limit(
+                fmp_client.intelligence.get_senate_profile,
+                senate_id="P000197",
+            )
+
+            assert isinstance(rows, list)
+            assert rows
+            assert all(row.senate_id == "P000197" for row in rows)
+
+    def test_get_senate_positions(self, fmp_client: FMPDataClient, vcr_instance):
+        with vcr_instance.use_cassette("intelligence/senate_positions.yaml"):
+            rows = self._handle_rate_limit(
+                fmp_client.intelligence.get_senate_positions,
+                page=0,
+                limit=2,
+            )
+
+            assert isinstance(rows, list)
+            assert rows
+            for row in rows:
+                assert isinstance(row, SenatePosition)
+                assert row.senate_id
+
+    def test_get_senate_net_worth(self, fmp_client: FMPDataClient, vcr_instance):
+        with vcr_instance.use_cassette("intelligence/senate_net_worth.yaml"):
+            rows = self._handle_rate_limit(
+                fmp_client.intelligence.get_senate_net_worth,
+                "P000197",
+                page=0,
+                limit=5,
+            )
+
+            assert isinstance(rows, list)
+            assert rows
+            for row in rows:
+                assert isinstance(row, SenateNetWorthItem)
+                assert row.senate_id == "P000197"
+                assert not row.model_extra
+            assert any(row.value_range is not None for row in rows), (
+                "expected a populated valueRange"
+            )
+            assert any(row.debt_details is not None for row in rows), (
+                "expected a populated debtDetails"
+            )
+
+    def test_get_senate_net_worth_aggregated(
+        self, fmp_client: FMPDataClient, vcr_instance
+    ):
+        with vcr_instance.use_cassette("intelligence/senate_net_worth_aggregated.yaml"):
+            rows = self._handle_rate_limit(
+                fmp_client.intelligence.get_senate_net_worth_aggregated,
+                "P000197",
+            )
+
+            assert isinstance(rows, list)
+            assert rows
+            for row in rows:
+                assert isinstance(row, SenateNetWorthAggregated)
+                assert row.senate_id == "P000197"
+                assert row.year is not None
+            assert any(row.total is not None for row in rows), (
+                "expected a populated total"
+            )
+            assert any(row.stock is not None for row in rows), (
+                "expected a populated stock"
+            )
 
     def test_get_crowdfunding_rss(self, fmp_client: FMPDataClient, vcr_instance):
         """Test getting latest crowdfunding offerings"""

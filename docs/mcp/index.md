@@ -1,8 +1,12 @@
 # MCP Integration
 
-FMP Data ships an MCP server for Claude Desktop and other MCP clients.
-The MCP tool catalog covers endpoints with MCP tool semantics; for full endpoint
-coverage, use the Python client.
+FMP Data ships **`fmp-mcp`**, a local MCP server for Claude Desktop and other
+MCP clients. The MCP tool catalog covers endpoints with MCP tool semantics;
+for full endpoint coverage, use the Python client.
+
+FMP also hosts their own remote MCP server. That is a different product.
+See [FMP hosted MCP vs `fmp-mcp`](hosted.md) for when to use which
+(decision recorded in [#230](https://github.com/MehdiZare/fmp-data/issues/230)).
 
 Tool naming defaults to semantic keys (e.g., `profile`). For collision-free tool
 names, set `FMP_MCP_TOOL_NAME_STYLE=spec` to expose fully qualified names like
@@ -48,3 +52,4 @@ names on MCP, wire names on LangChain.
 - Configuration profiles and manifests: [Configuration Profiles](configurations.md)
 - Troubleshooting: [Troubleshooting](troubleshooting.md)
 - Tools reference: [Tools Reference](tools.md)
+- FMP hosted MCP vs this package: [Hosted MCP](hosted.md)

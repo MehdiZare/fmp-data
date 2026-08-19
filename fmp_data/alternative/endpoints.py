@@ -23,11 +23,12 @@ from fmp_data.models import (
     ParamType,
     URLType,
 )
+from fmp_data.schema import INTERVAL_VALUES
 
 # Validation constants
-VALID_INTERVALS = ["1min", "5min", "15min", "30min", "1hour", "4hour"]
+VALID_INTERVALS = list(INTERVAL_VALUES)
 
-CRYPTO_LIST: Endpoint = Endpoint(
+CRYPTO_LIST: Endpoint[CryptoPair] = Endpoint(
     name="crypto_list",
     path="cryptocurrency-list",
     version=APIVersion.STABLE,
@@ -48,7 +49,7 @@ CRYPTO_LIST: Endpoint = Endpoint(
     ],
 )
 
-CRYPTO_QUOTES: Endpoint = Endpoint(
+CRYPTO_QUOTES: Endpoint[CryptoQuote] = Endpoint(
     name="crypto_quotes",
     path="quotes/crypto",
     version=APIVersion.STABLE,
@@ -99,7 +100,7 @@ CRYPTO_QUOTE: Endpoint[CryptoQuote] = Endpoint(
     ],
 )
 
-CRYPTO_HISTORICAL: Endpoint = Endpoint(
+CRYPTO_HISTORICAL: Endpoint[CryptoHistoricalPrice] = Endpoint(
     name="crypto_historical",
     path="historical-price-eod/full",
     version=APIVersion.STABLE,
@@ -143,7 +144,7 @@ CRYPTO_HISTORICAL: Endpoint = Endpoint(
     ],
 )
 
-CRYPTO_INTRADAY: Endpoint = Endpoint(
+CRYPTO_INTRADAY: Endpoint[CryptoIntradayPrice] = Endpoint(
     name="crypto_intraday",
     path="historical-chart/{interval}",
     version=APIVersion.STABLE,
@@ -179,7 +180,7 @@ CRYPTO_INTRADAY: Endpoint = Endpoint(
     ],
 )
 
-FOREX_LIST: Endpoint = Endpoint(
+FOREX_LIST: Endpoint[ForexPair] = Endpoint(
     name="forex_list",
     path="forex-list",
     version=APIVersion.STABLE,
@@ -200,7 +201,7 @@ FOREX_LIST: Endpoint = Endpoint(
     ],
 )
 
-FOREX_QUOTES: Endpoint = Endpoint(
+FOREX_QUOTES: Endpoint[ForexQuote] = Endpoint(
     name="forex_quotes",
     path="quotes/forex",
     version=APIVersion.STABLE,
@@ -250,7 +251,7 @@ FOREX_QUOTE: Endpoint[ForexQuote] = Endpoint(
     ],
 )
 
-FOREX_HISTORICAL: Endpoint = Endpoint(
+FOREX_HISTORICAL: Endpoint[ForexHistoricalPrice] = Endpoint(
     name="forex_historical",
     path="historical-price-eod/full",
     version=APIVersion.STABLE,
@@ -293,7 +294,7 @@ FOREX_HISTORICAL: Endpoint = Endpoint(
     ],
 )
 
-FOREX_INTRADAY: Endpoint = Endpoint(
+FOREX_INTRADAY: Endpoint[ForexIntradayPrice] = Endpoint(
     name="forex_intraday",
     path="historical-chart/{interval}",
     version=APIVersion.STABLE,
@@ -329,7 +330,7 @@ FOREX_INTRADAY: Endpoint = Endpoint(
     ],
 )
 
-COMMODITIES_LIST: Endpoint = Endpoint(
+COMMODITIES_LIST: Endpoint[Commodity] = Endpoint(
     name="commodities_list",
     path="commodities-list",
     version=APIVersion.STABLE,
@@ -350,7 +351,7 @@ COMMODITIES_LIST: Endpoint = Endpoint(
     ],
 )
 
-COMMODITIES_QUOTES: Endpoint = Endpoint(
+COMMODITIES_QUOTES: Endpoint[CommodityQuote] = Endpoint(
     name="commodities_quotes",
     path="quotes/commodity",
     version=APIVersion.STABLE,
@@ -402,7 +403,7 @@ COMMODITY_QUOTE: Endpoint[CommodityQuote] = Endpoint(
     ],
 )
 
-COMMODITY_HISTORICAL: Endpoint = Endpoint(
+COMMODITY_HISTORICAL: Endpoint[CommodityHistoricalPrice] = Endpoint(
     name="commodity_historical",
     path="historical-price-eod/full",
     version=APIVersion.STABLE,
@@ -449,7 +450,7 @@ COMMODITY_HISTORICAL: Endpoint = Endpoint(
     ],
 )
 
-COMMODITY_INTRADAY: Endpoint = Endpoint(
+COMMODITY_INTRADAY: Endpoint[CommodityIntradayPrice] = Endpoint(
     name="commodity_intraday",
     path="historical-chart/{interval}",
     version=APIVersion.STABLE,

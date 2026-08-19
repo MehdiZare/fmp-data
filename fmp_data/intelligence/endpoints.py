@@ -23,6 +23,10 @@ from fmp_data.intelligence.models import (
     PressReleaseBySymbol,
     PriceTargetNews,
     RatingsSnapshot,
+    SenateNetWorthAggregated,
+    SenateNetWorthItem,
+    SenatePosition,
+    SenateProfile,
     SenateTrade,
     SocialSentimentChanges,
     StockGrade,
@@ -43,7 +47,7 @@ from fmp_data.models import (
     URLType,
 )
 
-EARNINGS_CALENDAR: Endpoint = Endpoint(
+EARNINGS_CALENDAR: Endpoint[EarningEvent] = Endpoint(
     name="earnings_calendar",
     path="earnings-calendar",
     version=APIVersion.STABLE,
@@ -80,7 +84,7 @@ EARNINGS_CALENDAR: Endpoint = Endpoint(
     response_model=EarningEvent,
 )
 
-EARNINGS_CONFIRMED: Endpoint = Endpoint(
+EARNINGS_CONFIRMED: Endpoint[EarningConfirmed] = Endpoint(
     name="earnings_confirmed",
     path="earning-calendar-confirmed",
     version=APIVersion.STABLE,
@@ -107,7 +111,7 @@ EARNINGS_CONFIRMED: Endpoint = Endpoint(
     response_model=EarningConfirmed,
 )
 
-EARNINGS_SURPRISES: Endpoint = Endpoint(
+EARNINGS_SURPRISES: Endpoint[EarningSurprise] = Endpoint(
     name="earnings_surprises",
     path="earnings-surprises",
     version=APIVersion.STABLE,
@@ -126,7 +130,7 @@ EARNINGS_SURPRISES: Endpoint = Endpoint(
     response_model=EarningSurprise,
 )
 
-HISTORICAL_EARNINGS: Endpoint = Endpoint(
+HISTORICAL_EARNINGS: Endpoint[EarningEvent] = Endpoint(
     name="historical_earnings",
     path="earnings",
     version=APIVersion.STABLE,
@@ -162,7 +166,7 @@ HISTORICAL_EARNINGS: Endpoint = Endpoint(
     response_model=EarningEvent,
 )
 
-DIVIDENDS_CALENDAR: Endpoint = Endpoint(
+DIVIDENDS_CALENDAR: Endpoint[DividendEvent] = Endpoint(
     name="dividends_calendar",
     path="dividends-calendar",
     version=APIVersion.STABLE,
@@ -189,7 +193,7 @@ DIVIDENDS_CALENDAR: Endpoint = Endpoint(
     response_model=DividendEvent,
 )
 
-STOCK_SPLITS_CALENDAR: Endpoint = Endpoint(
+STOCK_SPLITS_CALENDAR: Endpoint[StockSplitEvent] = Endpoint(
     name="stock_splits_calendar",
     path="splits-calendar",
     version=APIVersion.STABLE,
@@ -216,7 +220,7 @@ STOCK_SPLITS_CALENDAR: Endpoint = Endpoint(
     response_model=StockSplitEvent,
 )
 
-IPO_CALENDAR: Endpoint = Endpoint(
+IPO_CALENDAR: Endpoint[IPOEvent] = Endpoint(
     name="ipo_calendar",
     path="ipos-calendar",
     version=APIVersion.STABLE,
@@ -243,7 +247,7 @@ IPO_CALENDAR: Endpoint = Endpoint(
     response_model=IPOEvent,
 )
 
-FMP_ARTICLES_ENDPOINT: Endpoint = Endpoint(
+FMP_ARTICLES_ENDPOINT: Endpoint[FMPArticle] = Endpoint(
     name="fmp_articles",
     path="fmp-articles",
     version=APIVersion.STABLE,
@@ -268,7 +272,7 @@ FMP_ARTICLES_ENDPOINT: Endpoint = Endpoint(
     response_model=FMPArticle,
 )
 
-GENERAL_NEWS_ENDPOINT: Endpoint = Endpoint(
+GENERAL_NEWS_ENDPOINT: Endpoint[GeneralNewsArticle] = Endpoint(
     name="general_news",
     path="news/general-latest",
     version=APIVersion.STABLE,
@@ -307,7 +311,7 @@ GENERAL_NEWS_ENDPOINT: Endpoint = Endpoint(
     response_model=GeneralNewsArticle,
 )
 
-STOCK_NEWS_ENDPOINT: Endpoint = Endpoint(
+STOCK_NEWS_ENDPOINT: Endpoint[StockNewsArticle] = Endpoint(
     name="stock_news",
     path="news/stock-latest",
     version=APIVersion.STABLE,
@@ -346,7 +350,7 @@ STOCK_NEWS_ENDPOINT: Endpoint = Endpoint(
     response_model=StockNewsArticle,
 )
 
-STOCK_SYMBOL_NEWS_ENDPOINT: Endpoint = Endpoint(
+STOCK_SYMBOL_NEWS_ENDPOINT: Endpoint[StockNewsArticle] = Endpoint(
     name="stock_news_symbol",
     path="news/stock",
     version=APIVersion.STABLE,
@@ -392,7 +396,7 @@ STOCK_SYMBOL_NEWS_ENDPOINT: Endpoint = Endpoint(
     response_model=StockNewsArticle,
 )
 
-STOCK_NEWS_SENTIMENTS_ENDPOINT: Endpoint = Endpoint(
+STOCK_NEWS_SENTIMENTS_ENDPOINT: Endpoint[StockNewsSentiment] = Endpoint(
     name="stock_news_sentiments",
     path="stock-news-sentiments-rss-feed",
     version=APIVersion.V4,
@@ -409,7 +413,7 @@ STOCK_NEWS_SENTIMENTS_ENDPOINT: Endpoint = Endpoint(
     response_model=StockNewsSentiment,
 )
 
-FOREX_NEWS_ENDPOINT: Endpoint = Endpoint(
+FOREX_NEWS_ENDPOINT: Endpoint[ForexNewsArticle] = Endpoint(
     name="forex_news",
     path="news/forex-latest",
     version=APIVersion.STABLE,
@@ -448,7 +452,7 @@ FOREX_NEWS_ENDPOINT: Endpoint = Endpoint(
     response_model=ForexNewsArticle,
 )
 
-CRYPTO_NEWS_ENDPOINT: Endpoint = Endpoint(
+CRYPTO_NEWS_ENDPOINT: Endpoint[CryptoNewsArticle] = Endpoint(
     name="crypto_news",
     path="news/crypto-latest",
     version=APIVersion.STABLE,
@@ -487,7 +491,7 @@ CRYPTO_NEWS_ENDPOINT: Endpoint = Endpoint(
     response_model=CryptoNewsArticle,
 )
 
-FOREX_SYMBOL_NEWS_ENDPOINT: Endpoint = Endpoint(
+FOREX_SYMBOL_NEWS_ENDPOINT: Endpoint[ForexNewsArticle] = Endpoint(
     name="forex_news_symbol",
     path="news/forex",
     version=APIVersion.STABLE,
@@ -534,7 +538,7 @@ FOREX_SYMBOL_NEWS_ENDPOINT: Endpoint = Endpoint(
     response_model=ForexNewsArticle,
 )
 
-CRYPTO_SYMBOL_NEWS_ENDPOINT: Endpoint = Endpoint(
+CRYPTO_SYMBOL_NEWS_ENDPOINT: Endpoint[CryptoNewsArticle] = Endpoint(
     name="crypto_news_symbol",
     path="news/crypto",
     version=APIVersion.STABLE,
@@ -581,7 +585,7 @@ CRYPTO_SYMBOL_NEWS_ENDPOINT: Endpoint = Endpoint(
     response_model=CryptoNewsArticle,
 )
 
-PRESS_RELEASES_ENDPOINT: Endpoint = Endpoint(
+PRESS_RELEASES_ENDPOINT: Endpoint[PressRelease] = Endpoint(
     name="press_releases",
     path="news/press-releases-latest",
     version=APIVersion.STABLE,
@@ -620,7 +624,7 @@ PRESS_RELEASES_ENDPOINT: Endpoint = Endpoint(
     response_model=PressRelease,
 )
 
-PRESS_RELEASES_BY_SYMBOL_ENDPOINT: Endpoint = Endpoint(
+PRESS_RELEASES_BY_SYMBOL_ENDPOINT: Endpoint[PressReleaseBySymbol] = Endpoint(
     name="press_releases_by_symbol",
     path="news/press-releases",
     version=APIVersion.STABLE,
@@ -667,7 +671,7 @@ PRESS_RELEASES_BY_SYMBOL_ENDPOINT: Endpoint = Endpoint(
     response_model=PressReleaseBySymbol,
 )
 
-HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT: Endpoint = Endpoint(
+HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT: Endpoint[HistoricalSocialSentiment] = Endpoint(
     name="historical_social_sentiment",
     path="historical/social-sentiment",
     version=APIVersion.STABLE,
@@ -691,7 +695,7 @@ HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT: Endpoint = Endpoint(
     response_model=HistoricalSocialSentiment,
 )
 
-TRENDING_SOCIAL_SENTIMENT_ENDPOINT: Endpoint = Endpoint(
+TRENDING_SOCIAL_SENTIMENT_ENDPOINT: Endpoint[TrendingSocialSentiment] = Endpoint(
     name="trending_social_sentiment",
     path="social-sentiments/trending",
     version=APIVersion.STABLE,
@@ -714,7 +718,7 @@ TRENDING_SOCIAL_SENTIMENT_ENDPOINT: Endpoint = Endpoint(
     response_model=TrendingSocialSentiment,
 )
 
-SOCIAL_SENTIMENT_CHANGES_ENDPOINT: Endpoint = Endpoint(
+SOCIAL_SENTIMENT_CHANGES_ENDPOINT: Endpoint[SocialSentimentChanges] = Endpoint(
     name="social_sentiment_changes",
     path="social-sentiments/change",
     version=APIVersion.STABLE,
@@ -772,7 +776,7 @@ ESG_RATINGS: Endpoint[ESGRating] = Endpoint(
     response_model=ESGRating,
 )
 
-ESG_BENCHMARK: Endpoint = Endpoint(
+ESG_BENCHMARK: Endpoint[ESGBenchmark] = Endpoint(
     name="esg_benchmark",
     path="esg-benchmark",
     version=APIVersion.STABLE,
@@ -783,12 +787,13 @@ ESG_BENCHMARK: Endpoint = Endpoint(
 )
 
 # Government Trading Endpoints
-SENATE_LATEST: Endpoint = Endpoint(
+SENATE_LATEST: Endpoint[SenateTrade] = Endpoint(
     name="senate_latest",
     path="senate-latest",
     version=APIVersion.STABLE,
     description="Get latest Senate financial disclosures",
-    mandatory_params=[
+    mandatory_params=[],
+    optional_params=[
         EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
@@ -804,11 +809,10 @@ SENATE_LATEST: Endpoint = Endpoint(
             default=100,
         ),
     ],
-    optional_params=[],
     response_model=SenateTrade,
 )
 
-SENATE_TRADING: Endpoint = Endpoint(
+SENATE_TRADING: Endpoint[SenateTrade] = Endpoint(
     name="senate_trading",
     path="senate-trades",
     version=APIVersion.STABLE,
@@ -825,7 +829,7 @@ SENATE_TRADING: Endpoint = Endpoint(
     response_model=SenateTrade,
 )
 
-SENATE_TRADES_BY_NAME: Endpoint = Endpoint(
+SENATE_TRADES_BY_NAME: Endpoint[SenateTrade] = Endpoint(
     name="senate_trades_by_name",
     path="senate-trades-by-name",
     version=APIVersion.STABLE,
@@ -842,7 +846,40 @@ SENATE_TRADES_BY_NAME: Endpoint = Endpoint(
     response_model=SenateTrade,
 )
 
-SENATE_TRADING_RSS: Endpoint = Endpoint(
+SENATE_TRADES_BY_ID: Endpoint[SenateTrade] = Endpoint(
+    name="senate_trades_by_id",
+    path="senate-trades-by-id",
+    version=APIVersion.STABLE,
+    description="Get Senate trading data by member id",
+    mandatory_params=[
+        EndpointParam(
+            name="senate_id",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="FMP senate member id (wire key senateID)",
+            alias="senateID",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Page number",
+            default=0,
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Number of results (max 250)",
+            default=100,
+        ),
+    ],
+    response_model=SenateTrade,
+)
+
+SENATE_TRADING_RSS: Endpoint[SenateTrade] = Endpoint(
     name="senate_trading_rss",
     path="senate-trading-rss-feed",
     version=APIVersion.STABLE,
@@ -851,7 +888,8 @@ SENATE_TRADING_RSS: Endpoint = Endpoint(
         "select it. The live senate-latest endpoint is already exposed as "
         "intelligence.get_senate_latest and returns the same rows."
     ),
-    mandatory_params=[
+    mandatory_params=[],
+    optional_params=[
         EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
@@ -860,16 +898,16 @@ SENATE_TRADING_RSS: Endpoint = Endpoint(
             default=0,
         )
     ],
-    optional_params=[],
     response_model=SenateTrade,
 )
 
-HOUSE_LATEST: Endpoint = Endpoint(
+HOUSE_LATEST: Endpoint[HouseDisclosure] = Endpoint(
     name="house_latest",
     path="house-latest",
     version=APIVersion.STABLE,
     description="Get latest House financial disclosures",
-    mandatory_params=[
+    mandatory_params=[],
+    optional_params=[
         EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
@@ -885,11 +923,10 @@ HOUSE_LATEST: Endpoint = Endpoint(
             default=100,
         ),
     ],
-    optional_params=[],
     response_model=HouseDisclosure,
 )
 
-HOUSE_DISCLOSURE: Endpoint = Endpoint(
+HOUSE_DISCLOSURE: Endpoint[HouseDisclosure] = Endpoint(
     name="house_disclosure",
     path="house-trades",
     version=APIVersion.STABLE,
@@ -906,7 +943,7 @@ HOUSE_DISCLOSURE: Endpoint = Endpoint(
     response_model=HouseDisclosure,
 )
 
-HOUSE_TRADES_BY_NAME: Endpoint = Endpoint(
+HOUSE_TRADES_BY_NAME: Endpoint[HouseDisclosure] = Endpoint(
     name="house_trades_by_name",
     path="house-trades-by-name",
     version=APIVersion.STABLE,
@@ -923,13 +960,209 @@ HOUSE_TRADES_BY_NAME: Endpoint = Endpoint(
     response_model=HouseDisclosure,
 )
 
+SENATE_PROFILE: Endpoint[SenateProfile] = Endpoint(
+    name="senate_profile",
+    path="senate-profile",
+    version=APIVersion.STABLE,
+    description="Get Congress member profiles (path is senate-profile; includes House)",
+    mandatory_params=[],
+    optional_params=[
+        EndpointParam(
+            name="senate_id",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="FMP member id (wire key senateID)",
+            alias="senateID",
+        ),
+        EndpointParam(
+            name="active",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            description="Filter to currently active members",
+        ),
+        EndpointParam(
+            name="latest_party",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="Filter by latest party",
+            alias="latestParty",
+        ),
+        EndpointParam(
+            name="latest_position",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="Filter by latest position",
+            alias="latestPosition",
+        ),
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Page number (max 20)",
+            default=0,
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Number of results (max 500)",
+            default=500,
+        ),
+    ],
+    response_model=SenateProfile,
+)
+
+SENATE_POSITIONS: Endpoint[SenatePosition] = Endpoint(
+    name="senate_positions",
+    path="senate-positions",
+    version=APIVersion.STABLE,
+    description="Get Congress member term history",
+    mandatory_params=[],
+    optional_params=[
+        EndpointParam(
+            name="senate_id",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="FMP member id (wire key senateID)",
+            alias="senateID",
+        ),
+        EndpointParam(
+            name="party",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="Filter by party",
+        ),
+        EndpointParam(
+            name="position",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="Filter by position",
+        ),
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Page number (max 50)",
+            default=0,
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Number of results (max 300)",
+            default=300,
+        ),
+    ],
+    response_model=SenatePosition,
+)
+
+SENATE_NET_WORTH: Endpoint[SenateNetWorthItem] = Endpoint(
+    name="senate_net_worth",
+    path="senate-net-worth",
+    version=APIVersion.STABLE,
+    description="Get itemized Senate/House net-worth disclosures by member id",
+    mandatory_params=[
+        EndpointParam(
+            name="senate_id",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="FMP member id (wire key senateID)",
+            alias="senateID",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Page number (max 100)",
+            default=0,
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Number of results (max 250)",
+            default=250,
+        ),
+    ],
+    response_model=SenateNetWorthItem,
+)
+
+SENATE_NET_WORTH_AGGREGATED: Endpoint[SenateNetWorthAggregated] = Endpoint(
+    name="senate_net_worth_aggregated",
+    path="senate-net-worth-aggregated",
+    version=APIVersion.STABLE,
+    description="Get yearly aggregated Senate/House net-worth totals by member id",
+    mandatory_params=[
+        EndpointParam(
+            name="senate_id",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="FMP member id (wire key senateID)",
+            alias="senateID",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="totals_col",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description=(
+                "Optional totals column. Docs mark totalsCol required but "
+                "give no example; live /stable/senate-net-worth-aggregated "
+                "returns 200 without it (probed 2026-08-15)."
+            ),
+            alias="totalsCol",
+        )
+    ],
+    response_model=SenateNetWorthAggregated,
+)
+
+HOUSE_TRADES_BY_ID: Endpoint[HouseDisclosure] = Endpoint(
+    name="house_trades_by_id",
+    path="house-trades-by-id",
+    version=APIVersion.STABLE,
+    description="Get House trading data by member id",
+    mandatory_params=[
+        EndpointParam(
+            name="senate_id",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description=(
+                "FMP member id. House rows use the wire key senateID "
+                "(e.g. Pelosi is P000197)"
+            ),
+            alias="senateID",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Page number",
+            default=0,
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Number of results (max 250)",
+            default=100,
+        ),
+    ],
+    response_model=HouseDisclosure,
+)
+
 # Fundraising Endpoints
-CROWDFUNDING_RSS: Endpoint = Endpoint(
+CROWDFUNDING_RSS: Endpoint[CrowdfundingOffering] = Endpoint(
     name="crowdfunding_rss",
     path="crowdfunding-offerings-latest",
     version=APIVersion.STABLE,
     description="Get latest crowdfunding offerings",
-    mandatory_params=[
+    mandatory_params=[],
+    optional_params=[
         EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
@@ -945,11 +1178,10 @@ CROWDFUNDING_RSS: Endpoint = Endpoint(
             default=100,
         ),
     ],
-    optional_params=[],
     response_model=CrowdfundingOffering,
 )
 
-CROWDFUNDING_SEARCH: Endpoint = Endpoint(
+CROWDFUNDING_SEARCH: Endpoint[CrowdfundingOfferingSearchItem] = Endpoint(
     name="crowdfunding_search",
     path="crowdfunding-offerings-search",
     version=APIVersion.STABLE,
@@ -966,7 +1198,7 @@ CROWDFUNDING_SEARCH: Endpoint = Endpoint(
     response_model=CrowdfundingOfferingSearchItem,
 )
 
-CROWDFUNDING_BY_CIK: Endpoint = Endpoint(
+CROWDFUNDING_BY_CIK: Endpoint[CrowdfundingOffering] = Endpoint(
     name="crowdfunding_by_cik",
     path="crowdfunding-offerings",
     version=APIVersion.STABLE,
@@ -983,12 +1215,13 @@ CROWDFUNDING_BY_CIK: Endpoint = Endpoint(
     response_model=CrowdfundingOffering,
 )
 
-EQUITY_OFFERING_RSS: Endpoint = Endpoint(
+EQUITY_OFFERING_RSS: Endpoint[EquityOffering] = Endpoint(
     name="equity_offering_rss",
     path="fundraising-latest",
     version=APIVersion.STABLE,
     description="Get latest equity offerings",
-    mandatory_params=[
+    mandatory_params=[],
+    optional_params=[
         EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
@@ -1003,8 +1236,6 @@ EQUITY_OFFERING_RSS: Endpoint = Endpoint(
             description="Number of results",
             default=10,
         ),
-    ],
-    optional_params=[
         EndpointParam(
             name="cik",
             location=ParamLocation.QUERY,
@@ -1015,7 +1246,7 @@ EQUITY_OFFERING_RSS: Endpoint = Endpoint(
     response_model=EquityOffering,
 )
 
-EQUITY_OFFERING_SEARCH: Endpoint = Endpoint(
+EQUITY_OFFERING_SEARCH: Endpoint[EquityOfferingSearchItem] = Endpoint(
     name="equity_offering_search",
     path="fundraising-search",
     version=APIVersion.STABLE,
@@ -1032,7 +1263,7 @@ EQUITY_OFFERING_SEARCH: Endpoint = Endpoint(
     response_model=EquityOfferingSearchItem,
 )
 
-EQUITY_OFFERING_BY_CIK: Endpoint = Endpoint(
+EQUITY_OFFERING_BY_CIK: Endpoint[EquityOffering] = Endpoint(
     name="equity_offering_by_cik",
     path="fundraising",
     version=APIVersion.STABLE,
@@ -1067,7 +1298,7 @@ RATINGS_SNAPSHOT: Endpoint[RatingsSnapshot] = Endpoint(
     response_model=RatingsSnapshot,
 )
 
-RATINGS_HISTORICAL: Endpoint = Endpoint(
+RATINGS_HISTORICAL: Endpoint[HistoricalRating] = Endpoint(
     name="ratings_historical",
     path="ratings-historical",
     version=APIVersion.STABLE,
@@ -1092,7 +1323,7 @@ RATINGS_HISTORICAL: Endpoint = Endpoint(
     response_model=HistoricalRating,
 )
 
-PRICE_TARGET_NEWS: Endpoint = Endpoint(
+PRICE_TARGET_NEWS: Endpoint[PriceTargetNews] = Endpoint(
     name="price_target_news",
     path="price-target-news",
     version=APIVersion.STABLE,
@@ -1117,7 +1348,7 @@ PRICE_TARGET_NEWS: Endpoint = Endpoint(
     response_model=PriceTargetNews,
 )
 
-PRICE_TARGET_LATEST_NEWS: Endpoint = Endpoint(
+PRICE_TARGET_LATEST_NEWS: Endpoint[PriceTargetNews] = Endpoint(
     name="price_target_latest_news",
     path="price-target-latest-news",
     version=APIVersion.STABLE,
@@ -1135,7 +1366,7 @@ PRICE_TARGET_LATEST_NEWS: Endpoint = Endpoint(
     response_model=PriceTargetNews,
 )
 
-GRADES: Endpoint = Endpoint(
+GRADES: Endpoint[StockGrade] = Endpoint(
     name="grades",
     path="grades",
     version=APIVersion.STABLE,
@@ -1160,7 +1391,7 @@ GRADES: Endpoint = Endpoint(
     response_model=StockGrade,
 )
 
-GRADES_HISTORICAL: Endpoint = Endpoint(
+GRADES_HISTORICAL: Endpoint[HistoricalStockGrade] = Endpoint(
     name="grades_historical",
     path="grades-historical",
     version=APIVersion.STABLE,
@@ -1202,7 +1433,7 @@ GRADES_CONSENSUS: Endpoint[StockGradesConsensus] = Endpoint(
     response_model=StockGradesConsensus,
 )
 
-GRADES_NEWS: Endpoint = Endpoint(
+GRADES_NEWS: Endpoint[StockGradeNews] = Endpoint(
     name="grades_news",
     path="grades-news",
     version=APIVersion.STABLE,
@@ -1227,7 +1458,7 @@ GRADES_NEWS: Endpoint = Endpoint(
     response_model=StockGradeNews,
 )
 
-GRADES_LATEST_NEWS: Endpoint = Endpoint(
+GRADES_LATEST_NEWS: Endpoint[StockGradeNews] = Endpoint(
     name="grades_latest_news",
     path="grades-latest-news",
     version=APIVersion.STABLE,

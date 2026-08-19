@@ -23,7 +23,9 @@ def create_app(tools: ToolIterable | None = None) -> MCPServerType:
     ----------
     tools
         * **None** (default)    - look for env-var ``FMP_MCP_MANIFEST`` or use defaults.
-        * **str | Path**        - path to a *.py* manifest that defines ``TOOLS``.
+        * **str | Path**        - path to a data-only manifest (``.json``,
+          ``.yaml``, ``.toml``, or a restricted ``TOOLS = ["..."]`` ``.py``
+          file). The file is never executed.
         * **Iterable[str]**     - already-constructed list/tuple/etc. of tool specs.
 
     Returns

@@ -14,7 +14,7 @@ from fmp_data.transcripts.models import (
     TranscriptSymbol,
 )
 
-LATEST_TRANSCRIPTS: Endpoint = Endpoint(
+LATEST_TRANSCRIPTS: Endpoint[EarningsTranscript] = Endpoint(
     name="latest_transcripts",
     path="earning-call-transcript-latest",
     version=APIVersion.STABLE,
@@ -46,7 +46,7 @@ LATEST_TRANSCRIPTS: Endpoint = Endpoint(
     ],
 )
 
-EARNINGS_TRANSCRIPT: Endpoint = Endpoint(
+EARNINGS_TRANSCRIPT: Endpoint[EarningsTranscript] = Endpoint(
     name="earnings_transcript",
     path="earning-call-transcript",
     version=APIVersion.STABLE,
@@ -90,7 +90,7 @@ EARNINGS_TRANSCRIPT: Endpoint = Endpoint(
     ],
 )
 
-TRANSCRIPT_DATES: Endpoint = Endpoint(
+TRANSCRIPT_DATES: Endpoint[TranscriptDate] = Endpoint(
     name="transcript_dates",
     path="earning-call-transcript-dates",
     version=APIVersion.STABLE,
@@ -114,7 +114,7 @@ TRANSCRIPT_DATES: Endpoint = Endpoint(
     ],
 )
 
-TRANSCRIPT_SYMBOLS: Endpoint = Endpoint(
+TRANSCRIPT_SYMBOLS: Endpoint[TranscriptSymbol] = Endpoint(
     name="transcript_symbols",
     path="earnings-transcript-list",
     version=APIVersion.STABLE,

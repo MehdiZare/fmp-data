@@ -55,6 +55,7 @@ SKIPPED_MODULES: dict[str, str] = {}
 #: equalities: without one, a walk that stops yielding reads as a pass.
 _MIN_ENDPOINTS = 250
 _MIN_PARAMS = 500
+_MIN_MANDATORY_PARAMS = 200
 
 
 def _endpoints() -> list[tuple[str, str, Endpoint]]:
@@ -165,6 +166,32 @@ def test_required_is_derived_from_list_membership() -> None:
     )
     assert checked >= _MIN_PARAMS, (
         f"only {checked} params inspected; is the walk working? "
+        f"skipped: {SKIPPED_MODULES}"
+    )
+
+
+def test_mandatory_params_do_not_carry_defaults() -> None:
+    """A default on a mandatory param never applies (#165 / #349)."""
+    leftovers: list[str] = []
+    checked = 0
+    endpoints = _endpoints()
+    for module_name, attr, endpoint in endpoints:
+        for param in endpoint.mandatory_params:
+            checked += 1
+            if param.default is not None:
+                leftovers.append(
+                    f"{module_name}.{attr}.{param.name}: default={param.default!r}"
+                )
+    assert not leftovers, (
+        "mandatory params with a default never apply; move them to "
+        "optional_params:\n  " + "\n  ".join(leftovers)
+    )
+    assert len(endpoints) >= _MIN_ENDPOINTS, (
+        f"only {len(endpoints)} endpoints inspected; is the walk working? "
+        f"skipped: {SKIPPED_MODULES}"
+    )
+    assert checked >= _MIN_MANDATORY_PARAMS, (
+        f"only {checked} mandatory params inspected; is the walk working? "
         f"skipped: {SKIPPED_MODULES}"
     )
 

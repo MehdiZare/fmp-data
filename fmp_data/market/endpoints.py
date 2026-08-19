@@ -30,7 +30,7 @@ from fmp_data.models import (
     URLType,
 )
 
-STOCK_LIST: Endpoint = Endpoint(
+STOCK_LIST: Endpoint[CompanySymbol] = Endpoint(
     name="stock_list",
     path="stock-list",
     version=APIVersion.STABLE,
@@ -53,7 +53,7 @@ STOCK_LIST: Endpoint = Endpoint(
     ],
 )
 
-ETF_LIST: Endpoint = Endpoint(
+ETF_LIST: Endpoint[CompanySymbol] = Endpoint(
     name="etf_list",
     path="etf-list",
     version=APIVersion.STABLE,
@@ -74,7 +74,7 @@ ETF_LIST: Endpoint = Endpoint(
         "Show all exchange traded funds",
     ],
 )
-AVAILABLE_INDEXES: Endpoint = Endpoint(
+AVAILABLE_INDEXES: Endpoint[AvailableIndex] = Endpoint(
     name="available_indexes",
     path="index-list",
     version=APIVersion.STABLE,
@@ -97,7 +97,7 @@ AVAILABLE_INDEXES: Endpoint = Endpoint(
         "Show all benchmark indexes",
     ],
 )
-SEARCH_COMPANY: Endpoint = Endpoint(
+SEARCH_COMPANY: Endpoint[CompanySearchResult] = Endpoint(
     # ``name`` is snake_case like every other endpoint in the catalogue;
     # ``path`` keeps the hyphen because that is the real API path (#166).
     # Renaming ``name`` moved this endpoint's cache-key prefix and its
@@ -144,7 +144,7 @@ SEARCH_COMPANY: Endpoint = Endpoint(
         "Find companies matching 'renewable energy'",
     ],
 )
-CIK_SEARCH: Endpoint = Endpoint(
+CIK_SEARCH: Endpoint[CIKResult] = Endpoint(
     name="cik_search",
     path="search-cik",
     version=APIVersion.STABLE,
@@ -187,7 +187,7 @@ CIK_SEARCH: Endpoint = Endpoint(
     ],
 )
 
-CUSIP_SEARCH: Endpoint = Endpoint(
+CUSIP_SEARCH: Endpoint[CUSIPResult] = Endpoint(
     name="cusip_search",
     path="search-cusip",
     version=APIVersion.STABLE,
@@ -218,7 +218,7 @@ CUSIP_SEARCH: Endpoint = Endpoint(
     ],
 )
 
-ISIN_SEARCH: Endpoint = Endpoint(
+ISIN_SEARCH: Endpoint[ISINResult] = Endpoint(
     name="isin_search",
     path="search-isin",
     version=APIVersion.STABLE,
@@ -276,7 +276,7 @@ ALL_EXCHANGE_MARKET_HOURS: Endpoint[MarketHours] = Endpoint(
     response_model=MarketHours,
 )
 
-HOLIDAYS_BY_EXCHANGE: Endpoint = Endpoint(
+HOLIDAYS_BY_EXCHANGE: Endpoint[MarketHoliday] = Endpoint(
     name="holidays_by_exchange",
     path="holidays-by-exchange",
     version=APIVersion.STABLE,
@@ -294,7 +294,7 @@ HOLIDAYS_BY_EXCHANGE: Endpoint = Endpoint(
     response_model=MarketHoliday,
 )
 
-GAINERS: Endpoint = Endpoint(
+GAINERS: Endpoint[MarketMover] = Endpoint(
     name="gainers",
     path="biggest-gainers",
     version=APIVersion.STABLE,
@@ -304,7 +304,7 @@ GAINERS: Endpoint = Endpoint(
     response_model=MarketMover,
 )
 
-LOSERS: Endpoint = Endpoint(
+LOSERS: Endpoint[MarketMover] = Endpoint(
     name="losers",
     path="biggest-losers",
     version=APIVersion.STABLE,
@@ -314,7 +314,7 @@ LOSERS: Endpoint = Endpoint(
     response_model=MarketMover,
 )
 
-MOST_ACTIVE: Endpoint = Endpoint(
+MOST_ACTIVE: Endpoint[MarketMover] = Endpoint(
     name="most_active",
     path="most-actives",
     version=APIVersion.STABLE,
@@ -324,7 +324,7 @@ MOST_ACTIVE: Endpoint = Endpoint(
     response_model=MarketMover,
 )
 
-SECTOR_PERFORMANCE: Endpoint = Endpoint(
+SECTOR_PERFORMANCE: Endpoint[SectorPerformance] = Endpoint(
     name="sector_performance",
     path="sector-performance-snapshot",
     version=APIVersion.STABLE,
@@ -354,7 +354,7 @@ SECTOR_PERFORMANCE: Endpoint = Endpoint(
     response_model=SectorPerformance,
 )
 
-INDUSTRY_PERFORMANCE_SNAPSHOT: Endpoint = Endpoint(
+INDUSTRY_PERFORMANCE_SNAPSHOT: Endpoint[IndustryPerformance] = Endpoint(
     name="industry_performance_snapshot",
     path="industry-performance-snapshot",
     version=APIVersion.STABLE,
@@ -384,7 +384,7 @@ INDUSTRY_PERFORMANCE_SNAPSHOT: Endpoint = Endpoint(
     response_model=IndustryPerformance,
 )
 
-HISTORICAL_SECTOR_PERFORMANCE: Endpoint = Endpoint(
+HISTORICAL_SECTOR_PERFORMANCE: Endpoint[SectorPerformance] = Endpoint(
     name="historical_sector_performance",
     path="historical-sector-performance",
     version=APIVersion.STABLE,
@@ -420,7 +420,7 @@ HISTORICAL_SECTOR_PERFORMANCE: Endpoint = Endpoint(
     response_model=SectorPerformance,
 )
 
-HISTORICAL_INDUSTRY_PERFORMANCE: Endpoint = Endpoint(
+HISTORICAL_INDUSTRY_PERFORMANCE: Endpoint[IndustryPerformance] = Endpoint(
     name="historical_industry_performance",
     path="historical-industry-performance",
     version=APIVersion.STABLE,
@@ -456,7 +456,7 @@ HISTORICAL_INDUSTRY_PERFORMANCE: Endpoint = Endpoint(
     response_model=IndustryPerformance,
 )
 
-SECTOR_PE_SNAPSHOT: Endpoint = Endpoint(
+SECTOR_PE_SNAPSHOT: Endpoint[SectorPESnapshot] = Endpoint(
     name="sector_pe_snapshot",
     path="sector-pe-snapshot",
     version=APIVersion.STABLE,
@@ -486,7 +486,7 @@ SECTOR_PE_SNAPSHOT: Endpoint = Endpoint(
     response_model=SectorPESnapshot,
 )
 
-INDUSTRY_PE_SNAPSHOT: Endpoint = Endpoint(
+INDUSTRY_PE_SNAPSHOT: Endpoint[IndustryPESnapshot] = Endpoint(
     name="industry_pe_snapshot",
     path="industry-pe-snapshot",
     version=APIVersion.STABLE,
@@ -516,7 +516,7 @@ INDUSTRY_PE_SNAPSHOT: Endpoint = Endpoint(
     response_model=IndustryPESnapshot,
 )
 
-HISTORICAL_SECTOR_PE: Endpoint = Endpoint(
+HISTORICAL_SECTOR_PE: Endpoint[SectorPESnapshot] = Endpoint(
     name="historical_sector_pe",
     path="historical-sector-pe",
     version=APIVersion.STABLE,
@@ -552,7 +552,7 @@ HISTORICAL_SECTOR_PE: Endpoint = Endpoint(
     response_model=SectorPESnapshot,
 )
 
-HISTORICAL_INDUSTRY_PE: Endpoint = Endpoint(
+HISTORICAL_INDUSTRY_PE: Endpoint[IndustryPESnapshot] = Endpoint(
     name="historical_industry_pe",
     path="historical-industry-pe",
     version=APIVersion.STABLE,
@@ -588,7 +588,7 @@ HISTORICAL_INDUSTRY_PE: Endpoint = Endpoint(
     response_model=IndustryPESnapshot,
 )
 
-PRE_POST_MARKET: Endpoint = Endpoint(
+PRE_POST_MARKET: Endpoint[PrePostMarketQuote] = Endpoint(
     name="pre_post_market",
     path="pre-post-market",
     version=APIVersion.STABLE,
@@ -603,7 +603,7 @@ PRE_POST_MARKET: Endpoint = Endpoint(
     response_model=PrePostMarketQuote,
 )
 
-ALL_SHARES_FLOAT: Endpoint = Endpoint(
+ALL_SHARES_FLOAT: Endpoint[ShareFloat] = Endpoint(
     name="all_shares_float",
     path="shares-float-all",
     version=APIVersion.STABLE,
@@ -624,7 +624,7 @@ ALL_SHARES_FLOAT: Endpoint = Endpoint(
     ],
 )
 
-FINANCIAL_STATEMENT_SYMBOL_LIST: Endpoint = Endpoint(
+FINANCIAL_STATEMENT_SYMBOL_LIST: Endpoint[CompanySymbol] = Endpoint(
     name="financial_statement_symbol_list",
     path="financial-statement-symbol-list",
     version=APIVersion.STABLE,
@@ -634,7 +634,7 @@ FINANCIAL_STATEMENT_SYMBOL_LIST: Endpoint = Endpoint(
     response_model=CompanySymbol,
 )
 
-CIK_LIST: Endpoint = Endpoint(
+CIK_LIST: Endpoint[CIKListEntry] = Endpoint(
     name="cik_list",
     path="cik-list",
     version=APIVersion.STABLE,
@@ -657,7 +657,7 @@ CIK_LIST: Endpoint = Endpoint(
     response_model=CIKListEntry,
 )
 
-ACTIVELY_TRADING_LIST: Endpoint = Endpoint(
+ACTIVELY_TRADING_LIST: Endpoint[CompanySymbol] = Endpoint(
     name="actively_trading_list",
     path="actively-trading-list",
     version=APIVersion.STABLE,
@@ -667,7 +667,7 @@ ACTIVELY_TRADING_LIST: Endpoint = Endpoint(
     response_model=CompanySymbol,
 )
 
-TRADABLE_SEARCH: Endpoint = Endpoint(
+TRADABLE_SEARCH: Endpoint[CompanySymbol] = Endpoint(
     name="tradable_search",
     path="tradable-list",
     version=APIVersion.STABLE,
@@ -696,7 +696,7 @@ TRADABLE_SEARCH: Endpoint = Endpoint(
     response_model=CompanySymbol,
 )
 
-SEARCH_SYMBOL: Endpoint = Endpoint(
+SEARCH_SYMBOL: Endpoint[CompanySearchResult] = Endpoint(
     name="search_symbol",
     path="search-symbol",
     version=APIVersion.STABLE,
@@ -726,7 +726,7 @@ SEARCH_SYMBOL: Endpoint = Endpoint(
     response_model=CompanySearchResult,
 )
 
-COMPANY_SCREENER: Endpoint = Endpoint(
+COMPANY_SCREENER: Endpoint[CompanySearchResult] = Endpoint(
     name="company_screener",
     path="company-screener",
     version=APIVersion.STABLE,
@@ -855,6 +855,15 @@ COMPANY_SCREENER: Endpoint = Endpoint(
             description="Number of results to return",
         ),
         EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description=(
+                "Zero-based page of screener results. Omitted from the "
+                "request when unset so existing callers keep their wire shape."
+            ),
+        ),
+        EndpointParam(
             name="include_all_share_classes",
             location=ParamLocation.QUERY,
             param_type=ParamType.BOOLEAN,
@@ -865,7 +874,7 @@ COMPANY_SCREENER: Endpoint = Endpoint(
     response_model=CompanySearchResult,
 )
 
-SEARCH_EXCHANGE_VARIANTS: Endpoint = Endpoint(
+SEARCH_EXCHANGE_VARIANTS: Endpoint[CompanySearchResult] = Endpoint(
     name="search_exchange_variants",
     path="search-exchange-variants",
     version=APIVersion.STABLE,
@@ -882,7 +891,7 @@ SEARCH_EXCHANGE_VARIANTS: Endpoint = Endpoint(
     response_model=CompanySearchResult,
 )
 
-AVAILABLE_EXCHANGES: Endpoint = Endpoint(
+AVAILABLE_EXCHANGES: Endpoint[ExchangeSymbol] = Endpoint(
     name="available_exchanges",
     path="available-exchanges",
     version=APIVersion.STABLE,
@@ -892,7 +901,7 @@ AVAILABLE_EXCHANGES: Endpoint = Endpoint(
     response_model=ExchangeSymbol,
 )
 
-AVAILABLE_SECTORS: Endpoint = Endpoint(
+AVAILABLE_SECTORS: Endpoint[str] = Endpoint(
     name="available_sectors",
     path="available-sectors",
     version=APIVersion.STABLE,
@@ -902,7 +911,7 @@ AVAILABLE_SECTORS: Endpoint = Endpoint(
     response_model=str,  # Returns list of strings
 )
 
-AVAILABLE_INDUSTRIES: Endpoint = Endpoint(
+AVAILABLE_INDUSTRIES: Endpoint[str] = Endpoint(
     name="available_industries",
     path="available-industries",
     version=APIVersion.STABLE,
@@ -912,7 +921,7 @@ AVAILABLE_INDUSTRIES: Endpoint = Endpoint(
     response_model=str,  # Returns list of strings
 )
 
-AVAILABLE_COUNTRIES: Endpoint = Endpoint(
+AVAILABLE_COUNTRIES: Endpoint[str] = Endpoint(
     name="available_countries",
     path="available-countries",
     version=APIVersion.STABLE,
@@ -922,7 +931,7 @@ AVAILABLE_COUNTRIES: Endpoint = Endpoint(
     response_model=str,  # Returns list of strings
 )
 
-IPO_DISCLOSURE: Endpoint = Endpoint(
+IPO_DISCLOSURE: Endpoint[IPODisclosure] = Endpoint(
     name="ipo_disclosure",
     path="ipos-disclosure",
     version=APIVersion.STABLE,
@@ -963,7 +972,7 @@ IPO_DISCLOSURE: Endpoint = Endpoint(
     ],
 )
 
-IPO_PROSPECTUS: Endpoint = Endpoint(
+IPO_PROSPECTUS: Endpoint[IPOProspectus] = Endpoint(
     name="ipo_prospectus",
     path="ipos-prospectus",
     version=APIVersion.STABLE,

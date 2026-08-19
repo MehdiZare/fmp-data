@@ -2,22 +2,53 @@ from datetime import date, datetime
 from typing import Any
 from unittest.mock import Mock, patch
 
+from pydantic import ValidationError
 import pytest
 
+from fmp_data.base import BaseClient, EndpointGroup
 from fmp_data.company import CompanyClient
+from fmp_data.company.endpoints import (
+    ANALYST_RECOMMENDATIONS,
+    COMPANY_OUTLOOK,
+    COMPANY_PEERS,
+    DELISTED_COMPANIES,
+    HISTORICAL_EMPLOYEE_COUNT,
+    HISTORICAL_PRICE,
+    HISTORICAL_PRICE_DIVIDEND_ADJUSTED,
+    HISTORICAL_PRICE_LIGHT,
+    HISTORICAL_PRICE_NON_SPLIT_ADJUSTED,
+    HISTORICAL_SHARE_FLOAT,
+    INCOME_STATEMENT_TTM,
+    KEY_EXECUTIVES,
+    MERGERS_ACQUISITIONS_LATEST,
+    PRICE_TARGET,
+    STOCK_SCREENER,
+    SYMBOL_CHANGES,
+    UPGRADES_DOWNGRADES,
+)
 from fmp_data.company.models import (
     AnalystEstimate,
+    AnalystRecommendation,
     CompanyExecutive,
+    CompanyOutlook,
+    CompanyPeer,
     CompanyProfile,
+    DelistedCompany,
+    EmployeeCount,
     ExecutiveCompensationBenchmark,
     HistoricalData,
     HistoricalPrice,
+    HistoricalShareFloat,
     IntradayPrice,
     MergerAcquisition,
+    PriceTarget,
     PriceTargetSummary,
     Quote,
     SimpleQuote,
+    SymbolChange,
+    UpgradeDowngrade,
 )
+from fmp_data.fundamental.models import IncomeStatement
 from fmp_data.intelligence.models import DividendEvent, EarningEvent, StockSplitEvent
 from fmp_data.models import CompanySymbol
 
@@ -791,6 +822,123 @@ class TestMergersAcquisitions:
         assert call_args[1]["limit"] == 20
 
 
+class TestDelistedCompanies:
+    """Tests for the slim delisted-companies list (#229 leftover)."""
+
+    def test_delisted_company_alias_round_trip(self):
+        row = DelistedCompany.model_validate(
+            {
+                "symbol": "2958.HK",
+                "companyName": "Vision Values Holdings Limited",
+                "exchange": "HKSE",
+                "ipoDate": "2026-05-27",
+                "delistedDate": "2026-08-17",
+            }
+        )
+        assert row.symbol == "2958.HK"
+        assert row.company_name == "Vision Values Holdings Limited"
+        assert row.exchange == "HKSE"
+        assert row.ipo_date == date(2026, 5, 27)
+        assert row.delisted_date == date(2026, 8, 17)
+        dumped = row.model_dump(by_alias=True)
+        assert dumped["companyName"] == "Vision Values Holdings Limited"
+        assert dumped["ipoDate"] == date(2026, 5, 27)
+        assert dumped["delistedDate"] == date(2026, 8, 17)
+
+    def test_delisted_endpoint_parses_slim_row_not_profile(self):
+        """CI lock: the leftover CompanyProfile binding must not return."""
+        slim = {
+            "symbol": "2958.HK",
+            "companyName": "Vision Values Holdings Limited",
+            "exchange": "HKSE",
+            "ipoDate": "2026-05-27",
+            "delistedDate": "2026-08-17",
+        }
+
+        assert DELISTED_COMPANIES.response_model is DelistedCompany
+        rows = EndpointGroup._unwrap_list(
+            BaseClient._process_response(DELISTED_COMPANIES, [slim]),
+            DelistedCompany,
+        )
+
+        assert len(rows) == 1
+        row = rows[0]
+        assert type(row) is DelistedCompany
+        assert row.symbol == "2958.HK"
+        assert row.company_name == "Vision Values Holdings Limited"
+        assert row.ipo_date == date(2026, 5, 27)
+        assert row.delisted_date == date(2026, 8, 17)
+
+    def test_delisted_company_optional_fields_may_be_absent(self):
+        row = DelistedCompany.model_validate({"symbol": "XYZ"})
+        assert row.symbol == "XYZ"
+        assert row.company_name is None
+        assert row.exchange is None
+        assert row.ipo_date is None
+        assert row.delisted_date is None
+
+    def test_delisted_company_rejects_empty_symbol(self):
+        with pytest.raises(ValidationError):
+            DelistedCompany.model_validate({"symbol": ""})
+        with pytest.raises(ValidationError):
+            DelistedCompany.model_validate({"symbol": "   "})
+
+    def test_delisted_endpoint_applies_page_limit_defaults(self):
+        params = DELISTED_COMPANIES.validate_params({})
+        assert params["page"] == 0
+        assert params["limit"] == 100
+
+    def test_get_delisted_companies(self, fmp_client, mock_client):
+        mock_client.request.return_value = [
+            DelistedCompany.model_validate(
+                {
+                    "symbol": "2958.HK",
+                    "companyName": "Vision Values Holdings Limited",
+                    "exchange": "HKSE",
+                    "ipoDate": "2026-05-27",
+                    "delistedDate": "2026-08-17",
+                }
+            )
+        ]
+
+        result = fmp_client.get_delisted_companies(page=1, limit=2)
+
+        assert len(result) == 1
+        assert isinstance(result[0], DelistedCompany)
+        assert result[0].symbol == "2958.HK"
+        mock_client.request.assert_called_once_with(DELISTED_COMPANIES, page=1, limit=2)
+
+    def test_get_delisted_companies_defaults(self, fmp_client, mock_client):
+        mock_client.request.return_value = []
+
+        fmp_client.get_delisted_companies()
+
+        mock_client.request.assert_called_once_with(
+            DELISTED_COMPANIES, page=0, limit=100
+        )
+
+    def test_get_delisted_companies_wraps_single_row(self, fmp_client, mock_client):
+        """A lone object from request() is still list[DelistedCompany] (#235)."""
+        row = DelistedCompany.model_validate(
+            {
+                "symbol": "2958.HK",
+                "companyName": "Vision Values Holdings Limited",
+                "exchange": "HKSE",
+                "ipoDate": "2026-05-27",
+                "delistedDate": "2026-08-17",
+            }
+        )
+        mock_client.request.return_value = row
+
+        result = fmp_client.get_delisted_companies()
+
+        assert result == [row]
+
+    def test_delisted_endpoint_is_parameterized_row_type(self):
+        """List endpoints bind T as the row, not list[T] (#235)."""
+        assert DELISTED_COMPANIES.response_model is DelistedCompany
+
+
 class TestExecutiveCompensationBenchmark:
     """Tests for Executive Compensation Benchmark endpoint"""
 
@@ -1330,3 +1478,240 @@ class TestCompanyCalendarEndpoints:
         assert all(isinstance(div, DividendEvent) for div in result)
         assert result[0].dividend == 0.25
         assert result[1].dividend == 0.24
+
+
+# Company list methods that go through _unwrap_list. Keep this table in
+# lockstep with new list-returning company methods so patch coverage and
+# wrap-single stay on the mechanical wrappers.
+_COMPANY_LIST_UNWRAP_CASES = [
+    ("get_executives", {"symbol": "AAPL"}),
+    ("get_employee_count", {"symbol": "AAPL"}),
+    ("get_company_notes", {"symbol": "AAPL"}),
+    ("get_intraday_prices", {"symbol": "AAPL"}),
+    ("get_executive_compensation", {"symbol": "AAPL"}),
+    ("get_product_revenue_segmentation", {"symbol": "AAPL"}),
+    ("get_geographic_revenue_segmentation", {"symbol": "AAPL"}),
+    ("get_symbol_changes", {}),
+    ("get_delisted_companies", {}),
+    ("get_historical_market_cap", {"symbol": "AAPL"}),
+    ("get_analyst_estimates", {"symbol": "AAPL"}),
+    ("get_company_peers", {"symbol": "AAPL"}),
+    ("get_mergers_acquisitions_latest", {}),
+    ("get_mergers_acquisitions_search", {"name": "Apple"}),
+    ("get_executive_compensation_benchmark", {"year": 2023}),
+    ("get_dividends", {"symbol": "AAPL"}),
+    ("get_earnings", {"symbol": "AAPL"}),
+    ("get_stock_splits", {"symbol": "AAPL"}),
+    ("get_income_statement_ttm", {"symbol": "AAPL"}),
+    ("get_balance_sheet_ttm", {"symbol": "AAPL"}),
+    ("get_cash_flow_ttm", {"symbol": "AAPL"}),
+    ("get_key_metrics_ttm", {"symbol": "AAPL"}),
+    ("get_financial_ratios_ttm", {"symbol": "AAPL"}),
+    ("get_financial_scores", {"symbol": "AAPL"}),
+    ("get_enterprise_values", {"symbol": "AAPL"}),
+    ("get_income_statement_growth", {"symbol": "AAPL"}),
+    ("get_balance_sheet_growth", {"symbol": "AAPL"}),
+    ("get_cash_flow_growth", {"symbol": "AAPL"}),
+    ("get_financial_growth", {"symbol": "AAPL"}),
+    ("get_income_statement_as_reported", {"symbol": "AAPL"}),
+    ("get_balance_sheet_as_reported", {"symbol": "AAPL"}),
+    ("get_cash_flow_as_reported", {"symbol": "AAPL"}),
+]
+
+
+class TestCompanyListUnwrap:
+    """Mechanical _unwrap_list wrappers on CompanyClient (#235)."""
+
+    @pytest.mark.parametrize("method_name,kwargs", _COMPANY_LIST_UNWRAP_CASES)
+    def test_list_methods_wrap_single_and_keep_empty(
+        self, fmp_client, mock_client, method_name, kwargs
+    ):
+        row = object()
+        method = getattr(fmp_client, method_name)
+
+        mock_client.request.return_value = row
+        assert method(**kwargs) == [row]
+
+        mock_client.request.return_value = []
+        assert method(**kwargs) == []
+        mock_client.request.assert_called()
+
+    @pytest.mark.parametrize(
+        "endpoint,row_type",
+        [
+            (DELISTED_COMPANIES, DelistedCompany),
+            (SYMBOL_CHANGES, SymbolChange),
+            (MERGERS_ACQUISITIONS_LATEST, MergerAcquisition),
+            (COMPANY_PEERS, CompanyPeer),
+            (KEY_EXECUTIVES, CompanyExecutive),
+            (INCOME_STATEMENT_TTM, IncomeStatement),
+        ],
+    )
+    def test_list_endpoints_bind_row_type(self, endpoint, row_type):
+        """List endpoints bind T as the row, not list[T]."""
+        assert endpoint.response_model is row_type
+
+
+class TestCompanyHistoricalEODUnwrap:
+    """Historical EOD helpers unwrap rows then wrap HistoricalData (#242)."""
+
+    @pytest.fixture
+    def historical_price_data(self):
+        return {
+            "date": "2024-01-05T00:00:00",
+            "open": 149.00,
+            "high": 151.00,
+            "low": 148.50,
+            "close": 150.25,
+            "volume": 82034567,
+            "change": 2.25,
+            "changePercent": 1.5,
+            "vwap": 149.92,
+        }
+
+    @pytest.mark.parametrize(
+        "endpoint",
+        [
+            HISTORICAL_PRICE,
+            HISTORICAL_PRICE_LIGHT,
+            HISTORICAL_PRICE_NON_SPLIT_ADJUSTED,
+            HISTORICAL_PRICE_DIVIDEND_ADJUSTED,
+        ],
+    )
+    def test_historical_price_endpoints_bind_row_type(self, endpoint):
+        assert endpoint.response_model is HistoricalPrice
+
+    def test_get_historical_prices_wraps_lone_row(
+        self, fmp_client, mock_client, historical_price_data
+    ):
+        row = HistoricalPrice(**historical_price_data)
+        mock_client.request.return_value = row
+
+        result = fmp_client.get_historical_prices("AAPL")
+
+        assert isinstance(result, HistoricalData)
+        assert result.symbol == "AAPL"
+        assert result.historical == [row]
+
+    def test_get_historical_prices_empty_list_stays_empty(
+        self, fmp_client, mock_client
+    ):
+        mock_client.request.return_value = []
+
+        result = fmp_client.get_historical_prices("AAPL")
+
+        assert isinstance(result, HistoricalData)
+        assert result.symbol == "AAPL"
+        assert result.historical == []
+
+    @pytest.mark.parametrize(
+        "endpoint,row_type",
+        [
+            (HISTORICAL_SHARE_FLOAT, HistoricalShareFloat),
+            (PRICE_TARGET, PriceTarget),
+            (ANALYST_RECOMMENDATIONS, AnalystRecommendation),
+            (UPGRADES_DOWNGRADES, UpgradeDowngrade),
+            (HISTORICAL_EMPLOYEE_COUNT, EmployeeCount),
+            (STOCK_SCREENER, CompanyProfile),
+            (COMPANY_OUTLOOK, CompanyOutlook),
+        ],
+    )
+    def test_leftover_company_endpoints_bind_row_type(self, endpoint, row_type):
+        """Leftover company declarations bind T as the payload/row type."""
+        assert endpoint.response_model is row_type
+
+
+class TestCompanyLogoUrl:
+    """`get_company_logo_url` bypasses `Endpoint.build_url` (#252 FMP-SEC-010).
+
+    The original sweep only covered `build_url` callers, so this raw f-string
+    was missed -- and `symbol` reaches it from an LLM through the
+    `company_logo_url` MCP tool.
+    """
+
+    @staticmethod
+    def _client() -> CompanyClient:
+        from fmp_data.config import ClientConfig
+
+        config = ClientConfig(
+            api_key="test_key",  # pragma: allowlist secret
+            base_url="https://example.com",
+        )
+        return CompanyClient(BaseClient(config))
+
+    def test_normal_symbol_is_unchanged(self) -> None:
+        assert (
+            self._client().get_company_logo_url("AAPL")
+            == "https://example.com/image-stock/AAPL.png"
+        )
+
+    def test_dotted_ticker_still_works(self) -> None:
+        """`BRK.B` is a real ticker; only `.`/`..` segments are traversal."""
+        assert (
+            self._client().get_company_logo_url("BRK.B")
+            == "https://example.com/image-stock/BRK.B.png"
+        )
+
+    @pytest.mark.parametrize(
+        "symbol",
+        ["../../stable/profile", "a/b", "..", "%2f..%2f", "a\\b"],
+    )
+    def test_path_escapes_are_rejected(self, symbol: str) -> None:
+        with pytest.raises(Exception, match="Invalid path parameter"):
+            self._client().get_company_logo_url(symbol)
+
+
+class TestSegmentationAndReportDefaults:
+    """Leftover structure/period defaults apply only as optional_params (#349)."""
+
+    def test_segmentation_structure_and_period_are_optional(self) -> None:
+        from fmp_data.company.endpoints import (
+            GEOGRAPHIC_REVENUE_SEGMENTATION,
+            PRODUCT_REVENUE_SEGMENTATION,
+        )
+        from fmp_data.exceptions import ValidationError as FMPValidationError
+        from fmp_data.schema import STRUCTURE_VALUES
+
+        for endpoint in (
+            PRODUCT_REVENUE_SEGMENTATION,
+            GEOGRAPHIC_REVENUE_SEGMENTATION,
+        ):
+            mandatory = {param.name for param in endpoint.mandatory_params}
+            optional = {param.name for param in endpoint.optional_params or []}
+            assert mandatory == {"symbol"}, endpoint.name
+            assert "structure" in optional, endpoint.name
+            assert "period" in optional, endpoint.name
+            assert "structure" not in mandatory, endpoint.name
+            assert "period" not in mandatory, endpoint.name
+            injected = endpoint.validate_params({"symbol": "AAPL"})
+            assert injected["symbol"] == "AAPL"
+            assert injected["structure"] == "flat"
+            assert injected["period"] == "annual"
+            structure = next(
+                param
+                for param in (endpoint.optional_params or [])
+                if param.name == "structure"
+            )
+            assert tuple(str(v) for v in (structure.valid_values or ())) == (
+                STRUCTURE_VALUES
+            )
+            with pytest.raises(FMPValidationError, match="Must be one of"):
+                endpoint.validate_params({"symbol": "AAPL", "structure": "tree"})
+
+    def test_report_period_is_optional(self) -> None:
+        from fmp_data.company.endpoints import (
+            FINANCIAL_REPORTS_JSON,
+            FINANCIAL_REPORTS_XLSX,
+        )
+        from fmp_data.exceptions import ValidationError as FMPValidationError
+
+        for endpoint in (FINANCIAL_REPORTS_JSON, FINANCIAL_REPORTS_XLSX):
+            mandatory = {param.name for param in endpoint.mandatory_params}
+            optional = {param.name for param in endpoint.optional_params or []}
+            assert mandatory == {"symbol", "year"}, endpoint.name
+            assert "period" in optional, endpoint.name
+            assert "period" not in mandatory, endpoint.name
+            injected = endpoint.validate_params({"symbol": "AAPL", "year": 2024})
+            assert injected["period"] == "FY"
+            with pytest.raises(FMPValidationError, match="Missing mandatory parameter"):
+                endpoint.validate_params({"symbol": "AAPL"})

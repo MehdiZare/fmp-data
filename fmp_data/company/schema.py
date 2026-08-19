@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 
 from fmp_data.models import BaseSymbolArg
 from fmp_data.schema import (
+    INTERVAL_VALUES,
     NoParamArg,
     ReportingPeriodEnum,
     StructureTypeEnum,
@@ -15,14 +16,20 @@ from fmp_data.schema import (
 
 
 class IntradayTimeInterval(str, Enum):
-    """Available time intervals for intraday data"""
+    """Available time intervals for intraday data.
 
-    ONE_MINUTE = "1min"
-    FIVE_MINUTES = "5min"
-    FIFTEEN_MINUTES = "15min"
-    THIRTY_MINUTES = "30min"
-    ONE_HOUR = "1hour"
-    FOUR_HOURS = "4hour"
+    Member *values* come from ``Interval``. Member names stay stable for
+    callers that still import this leftover enum (#307).
+    """
+
+    (
+        ONE_MINUTE,
+        FIVE_MINUTES,
+        FIFTEEN_MINUTES,
+        THIRTY_MINUTES,
+        ONE_HOUR,
+        FOUR_HOURS,
+    ) = INTERVAL_VALUES
 
 
 # Profile and Core Information
@@ -82,7 +89,11 @@ class RevenueSegmentationArgs(SymbolArg):
 
     structure: StructureTypeEnum = Field(
         default=StructureTypeEnum.FLAT,
-        description="Data structure format",
+        description=(
+            "Response layout (flat or nested). Stable currently "
+            "returns the same list-of-objects for both "
+            "(probed 2026-08-17)."
+        ),
         json_schema_extra={"enum": ["flat", "nested"], "examples": ["flat"]},
     )
     period: ReportingPeriodEnum = Field(

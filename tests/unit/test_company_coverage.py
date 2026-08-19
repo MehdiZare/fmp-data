@@ -1,10 +1,13 @@
 """Additional tests for company client to improve coverage"""
 
+from collections.abc import Callable
 from datetime import date
-from unittest.mock import patch
+from typing import Any, get_type_hints
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+from fmp_data.company.async_client import AsyncCompanyClient
 from fmp_data.company.models import (
     AftermarketQuote,
     AftermarketTrade,
@@ -18,12 +21,23 @@ from fmp_data.company.models import (
     HistoricalPrice,
     IntradayPrice,
     MergerAcquisition,
+    ProductRevenueSegment,
     Quote,
     RevenueSegmentItem,
     SimpleQuote,
     StockPriceChange,
 )
+from fmp_data.exceptions import InvalidResponseTypeError
 from fmp_data.market.models import CompanySearchResult
+
+_XLSX_BYTES = b"PK\x03\x04xlsx"
+_REPORT_DICT = {"symbol": "AAPL", "period": "FY", "year": 2024}
+
+
+def _async_company(payload: object) -> AsyncCompanyClient:
+    mock_base = Mock()
+    mock_base.request_async = AsyncMock(return_value=payload)
+    return AsyncCompanyClient(mock_base)
 
 
 class TestCompanyClientCoverage:
@@ -293,6 +307,37 @@ class TestCompanyClientCoverage:
         assert isinstance(result[0], GeographicRevenueSegment)
         params = mock_request.call_args.kwargs["params"]
         assert params["symbol"] == "AAPL"
+        assert params["period"] == "annual"
+        assert params["structure"] == "flat"
+
+    @pytest.mark.parametrize(
+        "method_name,model_cls",
+        [
+            ("get_geographic_revenue_segmentation", GeographicRevenueSegment),
+            ("get_product_revenue_segmentation", ProductRevenueSegment),
+        ],
+    )
+    @patch("httpx.Client.request")
+    def test_revenue_segmentation_nested_structure(
+        self,
+        mock_request: Mock,
+        fmp_client: Any,
+        mock_response: Callable[..., Any],
+        geographic_revenue_data: dict[str, Any],
+        method_name: str,
+        model_cls: type[object],
+    ) -> None:
+        """structure=nested is forwarded; response model is unchanged."""
+        mock_request.return_value = mock_response(
+            status_code=200, json_data=[geographic_revenue_data]
+        )
+
+        result = getattr(fmp_client.company, method_name)("AAPL", structure="nested")
+
+        assert len(result) == 1
+        assert isinstance(result[0], model_cls)
+        params = mock_request.call_args.kwargs["params"]
+        assert params["structure"] == "nested"
         assert params["period"] == "annual"
 
     @patch("httpx.Client.request")
@@ -612,6 +657,85 @@ class TestNewModelFields:
         assert ma.link == "https://sec.gov/filing/123"
 
 
+class TestFinancialReportsEndpointBindings:
+    """Company financial-report downloads are the last bare Endpoints (#250)."""
+
+    def test_json_endpoint_is_parameterized(self) -> None:
+        from fmp_data.company import endpoints as company_endpoints
+        from fmp_data.models import Endpoint
+
+        hints = get_type_hints(company_endpoints)
+        assert hints["FINANCIAL_REPORTS_JSON"] == Endpoint[FinancialReportJSON]
+        assert (
+            company_endpoints.FINANCIAL_REPORTS_JSON.response_model
+            is FinancialReportJSON
+        )
+
+    def test_xlsx_endpoint_is_bytes_and_returns_bytes_not_list(
+        self, fmp_client
+    ) -> None:
+        from fmp_data.company import endpoints as company_endpoints
+        from fmp_data.models import Endpoint
+
+        hints = get_type_hints(company_endpoints)
+        assert hints["FINANCIAL_REPORTS_XLSX"] == Endpoint[bytes]
+        assert company_endpoints.FINANCIAL_REPORTS_XLSX.response_model is bytes
+
+        with patch.object(
+            fmp_client.company.client, "request", return_value=_XLSX_BYTES
+        ):
+            result = fmp_client.company.get_financial_reports_xlsx("AAPL", 2024)
+        assert type(result) is bytes
+        assert result == _XLSX_BYTES
+
+    def test_request_xlsx_endpoint_returns_bytes_via_base_client(
+        self, fmp_client
+    ) -> None:
+        from fmp_data.company.endpoints import FINANCIAL_REPORTS_XLSX
+
+        response = Mock()
+        response.status_code = 200
+        response.content = _XLSX_BYTES
+        response.close = Mock()
+        with patch.object(
+            fmp_client.company.client.client, "request", return_value=response
+        ):
+            result = fmp_client.company.client.request(
+                FINANCIAL_REPORTS_XLSX, symbol="AAPL", year=2024, period="FY"
+            )
+        assert type(result) is bytes
+        assert result == _XLSX_BYTES
+
+    def test_sync_xlsx_rejects_non_bytes(self, fmp_client) -> None:
+        with (
+            patch.object(
+                fmp_client.company.client, "request", return_value={"file": 1}
+            ),
+            pytest.raises(InvalidResponseTypeError, match="financial_reports_xlsx"),
+        ):
+            fmp_client.company.get_financial_reports_xlsx("AAPL", 2024)
+
+    @pytest.mark.asyncio
+    async def test_async_xlsx_returns_bytes(self) -> None:
+        result = await _async_company(_XLSX_BYTES).get_financial_reports_xlsx(
+            "AAPL", 2024
+        )
+        assert type(result) is bytes
+        assert result == _XLSX_BYTES
+
+    def test_sync_xlsx_accepts_bytearray(self, fmp_client) -> None:
+        raw = bytearray(_XLSX_BYTES)
+        with patch.object(fmp_client.company.client, "request", return_value=raw):
+            result = fmp_client.company.get_financial_reports_xlsx("AAPL", 2024)
+        assert type(result) is bytes
+        assert result == _XLSX_BYTES
+
+    @pytest.mark.asyncio
+    async def test_async_xlsx_rejects_non_bytes(self) -> None:
+        with pytest.raises(InvalidResponseTypeError, match="financial_reports_xlsx"):
+            await _async_company({"file": 1}).get_financial_reports_xlsx("AAPL", 2024)
+
+
 class TestFinancialReportsJSONClient:
     """Tests for sync/async financial_reports_json FinancialReportJSON path."""
 
@@ -656,22 +780,41 @@ class TestFinancialReportsJSONClient:
     @pytest.mark.asyncio
     async def test_async_financial_reports_json_model_dump_path(self):
         """Verify async path converts FinancialReportJSON to dict."""
-        from unittest.mock import AsyncMock
-
-        from fmp_data.company.async_client import AsyncCompanyClient
-        from fmp_data.company.models import FinancialReportJSON
-
-        report = FinancialReportJSON.model_validate(
-            {"symbol": "AAPL", "period": "FY", "year": 2024}
-        )
-
-        mock_base = AsyncMock()
-        mock_base.request_async = AsyncMock(return_value=report)
-        async_client = AsyncCompanyClient.__new__(AsyncCompanyClient)
-        async_client._client = mock_base
-
-        result = await async_client.get_financial_reports_json(
+        report = FinancialReportJSON.model_validate(_REPORT_DICT)
+        result = await _async_company(report).get_financial_reports_json(
             "AAPL", 2024, period="FY"
         )
         assert isinstance(result, dict)
         assert result["symbol"] == "AAPL"
+
+    def test_sync_returns_raw_dict_without_model_dump(self, fmp_client) -> None:
+        raw = dict(_REPORT_DICT)
+        with patch.object(fmp_client.company.client, "request", return_value=raw):
+            result = fmp_client.company.get_financial_reports_json(
+                "AAPL", 2024, period="FY"
+            )
+        assert result is raw
+
+    def test_sync_rejects_non_dict_non_model_payload(self, fmp_client) -> None:
+        with (
+            patch.object(
+                fmp_client.company.client, "request", return_value=[_REPORT_DICT]
+            ),
+            pytest.raises(InvalidResponseTypeError, match="financial_reports_json"),
+        ):
+            fmp_client.company.get_financial_reports_json("AAPL", 2024, period="FY")
+
+    @pytest.mark.asyncio
+    async def test_async_returns_raw_dict_without_model_dump(self) -> None:
+        raw = dict(_REPORT_DICT)
+        result = await _async_company(raw).get_financial_reports_json(
+            "AAPL", 2024, period="FY"
+        )
+        assert result is raw
+
+    @pytest.mark.asyncio
+    async def test_async_rejects_non_dict_non_model_payload(self) -> None:
+        with pytest.raises(InvalidResponseTypeError, match="financial_reports_json"):
+            await _async_company([_REPORT_DICT]).get_financial_reports_json(
+                "AAPL", 2024, period="FY"
+            )

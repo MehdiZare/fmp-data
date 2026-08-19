@@ -13,3 +13,14 @@ updates:
     schedule:
       interval: "weekly"
     target-branch: "dev"
+    # These actions share runtime state. A split major bump leaves CI or
+    # release jobs mixed across incompatible majors (CodeQL init/analyze,
+    # upload/download-artifact). Group so Dependabot opens one PR per pair.
+    groups:
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
+      artifact-actions:
+        patterns:
+          - "actions/upload-artifact"
+          - "actions/download-artifact"

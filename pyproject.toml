@@ -69,6 +69,8 @@ mcp = [
     # security-fixes only).
     "mcp[cli]>=2.0.0",
     "pyyaml>=6.0.3",
+    # stdlib tomllib is 3.11+; keep TOML manifests working on 3.10.
+    "tomli>=2.0.1; python_version < '3.11'",
 ]
 cache-redis = [
     "redis>=8.1.0",
@@ -148,6 +150,9 @@ mcp = [
     "pyyaml>=6.0.3",
 ]
 
+[tool.uv]
+required-version = ">=0.12.3"
+
 [tool.hatch.version]
 source = "vcs"
 
@@ -186,6 +191,12 @@ extend-exclude = [
     "__pycache__",
     "build",
     "dist",
+    "extras.coveragerc",
+    # Dated, archival process documents. `ruff format` reflows Python inside
+    # Markdown fences, and these record *excerpts* -- partial bodies lifted out
+    # of their enclosing function. Reformatting re-indents them as if they were
+    # standalone modules, which corrupts the record rather than tidying it.
+    "docs/superpowers",
 ]
 
 [tool.ruff.lint]
@@ -202,8 +213,6 @@ select = [
 ]
 ignore = [
     "S101",
-    "S603",
-    "S607",
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -211,10 +220,6 @@ ignore = [
     "S101",
     "S106",
     "S107",
-]
-"scripts/*" = [
-    "S603",
-    "S607",
 ]
 "**/conftest.py" = [
     "S101",
@@ -282,6 +287,8 @@ module = [
     "redis",
     "yaml.*",
     "yaml",
+    "tomli",
+    "tomli.*",
     "rich.*",
     "tqdm.*",
     "pandas.*",
@@ -323,6 +330,15 @@ module = [
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
 ignore_missing_imports = true
+# Tests are type-checked in two different dependency environments: the
+# `typecheck` nox session installs core + dev only, while a local
+# `--all-extras` run resolves langchain/mcp/redis types. An ignore that is
+# required when a stub is passed to a fully-typed langchain signature is
+# therefore redundant when that package is absent (the signature degrades to
+# Any), and vice versa. Warning on unused ignores makes those two envs
+# mutually unsatisfiable, so it stays off for tests only; the library keeps
+# the strict global setting.
+warn_unused_ignores = false
 disable_error_code = [
     "import-untyped",
     "import-not-found",
@@ -338,13 +354,13 @@ addopts = [
     "--disable-warnings",
     "--strict-markers",
     "--strict-config",
-    # Live-API tests are opt-in. `make test` sources .env and promotes
-    # FMP_API_KEY to FMP_TEST_API_KEY, so without this a maintainer running
-    # the project's own test command spends ~700 requests against a 250/day
-    # quota. Override with `-m live` on the command line, which wins over
-    # addopts.
+    # Live-API tests and the VCR client-method sweep are opt-in. `make test`
+    # sources .env and promotes FMP_API_KEY to FMP_TEST_API_KEY, so without
+    # this a maintainer running the project's own test command spends ~700
+    # requests against a 250/day quota. Override with `-m live` or `-m e2e`
+    # on the command line, which wins over addopts.
     "-m",
-    "not live",
+    "not live and not e2e",
 ]
 testpaths = [
     "tests",
@@ -371,6 +387,7 @@ markers = [
     "asyncio: marks tests as asyncio tests",
     "mcp: marks tests as MCP-specific tests",
     "live: hits the real FMP API and spends quota; deselected by default, run with -m live",
+    "e2e: full client-method VCR sweep; deselected by default, record with scripts/e2e_endpoints.py",
 ]
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
@@ -399,6 +416,8 @@ omit = [
     "fmp_data/lc/*",
     "fmp_data/mcp/*",
     "fmp_data/cache/redis_backend.py",
+    # Extras stay omitted from the core 80% gate. extras.coveragerc +
+    # `nox -s coverage_extras` measure them separately (#273).
 ]
 
 [tool.coverage.paths]
@@ -428,6 +447,8 @@ exclude_lines = [
     "def main():",
     "class .*\\(Protocol\\):",
     "@abstractmethod",
+    "@overload",
+    "\\.\\.\\.$",
 ]
 show_missing = true
 fail_under = 80
@@ -446,7 +467,6 @@ output = "coverage.xml"
 [tool.bandit]
 exclude_dirs = [
     "tests",
-    "scripts",
     ".nox",
     ".venv",
     "build",
@@ -454,10 +474,6 @@ exclude_dirs = [
 ]
 skips = [
     "B101",
-    "B404",
-    "B603",
-    "B607",
-    "B608",
 ]
 
 [tool.bandit.assert_used]

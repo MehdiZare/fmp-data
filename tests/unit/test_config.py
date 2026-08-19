@@ -368,7 +368,7 @@ class TestClientConfig:
         config = ClientConfig(
             api_key="test_key", base_url="https://api.test.com", timeout=60
         )
-        assert config.api_key == "test_key"
+        assert config.api_key.get_secret_value() == "test_key"
         assert config.base_url == "https://api.test.com"
         assert config.timeout == 60
 
@@ -418,17 +418,25 @@ class TestClientConfig:
             "https://",
             "",
             "just_text",
+            "http://example.com",
         ]
 
         for url in invalid_urls:
             with pytest.raises(ValidationError):
                 ClientConfig(api_key="test_key", base_url=url)
 
+    def test_http_loopback_prefix_is_not_enough(self) -> None:
+        """``127.evil.example`` is not a loopback address."""
+        with pytest.raises(ValidationError, match="https except for loopback"):
+            ClientConfig(api_key="test_key", base_url="http://127.evil.example")
+        config = ClientConfig(api_key="test_key", base_url="http://127.0.0.1:8000")
+        assert config.base_url == "http://127.0.0.1:8000"
+
     def test_api_key_validation(self):
         """Test API key validation"""
         # Valid API key
         config = ClientConfig(api_key="valid_key")
-        assert config.api_key == "valid_key"
+        assert config.api_key.get_secret_value() == "valid_key"
 
         # Empty API key should fail
         with pytest.raises(ValidationError):
@@ -484,7 +492,7 @@ class TestClientConfig:
             )
 
             config = ClientConfig.from_env()
-            assert config.api_key == "env_test_key"
+            assert config.api_key.get_secret_value() == "env_test_key"
             assert config.base_url == "https://env.api.com"
             assert config.timeout == 45
             assert config.max_retries == 4
@@ -512,7 +520,7 @@ class TestClientConfig:
             # Don't set other variables
 
             config = ClientConfig.from_env()
-            assert config.api_key == "test_key"
+            assert config.api_key.get_secret_value() == "test_key"
             # Should use defaults for other values
             assert config.timeout == 30
             assert config.max_retries == 3
@@ -648,7 +656,7 @@ class TestConfigEdgeCases:
             )
 
             config = ClientConfig.from_env()
-            assert config.api_key == "test_key"
+            assert config.api_key.get_secret_value() == "test_key"
             # Should use defaults and not be affected by unknown vars
 
     def test_path_handling_edge_cases(self, tmp_path):
@@ -688,7 +696,7 @@ class TestConfigEdgeCases:
             base_url="https://api-test.example.com",  # Using simple ASCII URL
         )
 
-        assert config.api_key == "test_key_with_特殊字符"
+        assert config.api_key.get_secret_value() == "test_key_with_特殊字符"
 
     def test_nested_config_modification(self):
         """Test modifying nested configuration objects"""
@@ -701,3 +709,23 @@ class TestConfigEdgeCases:
         # Modify nested logging config
         config.logging.level = "ERROR"
         assert config.logging.level == "ERROR"
+
+
+def test_cache_and_client_repr_hide_redis_userinfo() -> None:
+    from fmp_data.cache.config import CacheConfig
+
+    cache = CacheConfig(
+        backend="redis",
+        redis_url="redis://:hunter2@localhost:6379/0",
+    )
+    assert "hunter2" not in str(cache)
+    assert "hunter2" not in repr(cache)
+
+    client = ClientConfig(
+        api_key="abcd-secret",
+        cache=cache,
+    )
+    text = str(client)
+    assert "hunter2" not in text
+    assert "abcd-secret" not in text
+    assert "abcd***" in text

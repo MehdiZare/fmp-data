@@ -14,47 +14,61 @@ on:
       - 'v*.*.*b*'             # Beta releases (v1.2.3b1)
       - 'v*.*.*dev*'           # Dev releases (v1.2.3dev1)
 
+# Serialize TestPyPI publishes. Two pushes to the same PR would otherwise
+# race, and the slower run's comment could overwrite the newer one --
+# advertising a stale version, the exact invariant #204 exists to protect.
+# Serializing (rather than cancelling) also avoids aborting an upload.
+concurrency:
+  group: publish-testpypi
+  cancel-in-progress: false
+
 permissions:
-  id-token: write              # OIDC → Trusted Publishing
-  pull-requests: write         # Comment on PRs
-  contents: read               # Read repository contents
-  issues: write                # Use Issues API for PR comments
+  contents: read
 
 jobs:
   test-release-build:
-    # Only run for PRs from dev with release labels
+    # Same-repo `dev` only. Forks named `dev` must not mint a TestPyPI OIDC
+    # token even if a maintainer adds a release label (#252 FMP-SEC-003).
     if: |
       github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.head.ref == 'dev' &&
       (contains(github.event.pull_request.labels.*.name, 'release:major') ||
        contains(github.event.pull_request.labels.*.name, 'release:minor') ||
        contains(github.event.pull_request.labels.*.name, 'release:patch'))
 
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.TEST_VERSION }}
+      head_sha: ${{ steps.version.outputs.HEAD_SHA }}
+      head_short: ${{ steps.version.outputs.HEAD_SHORT }}
     env:
       PYTHON_VERSION: "3.12"
 
     steps:
       - name: 🛎️  Checkout repository
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0  # Needed for version calculation
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
 
       - name: 🐍  Set up Python
-        uses: actions/setup-python@v7.0.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: ⚡  Install uv
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d  # v10.0.0
         with:
+          version: "0.12.3"
           enable-cache: false
 
-      - name: 📦  Install build tools
+      - name: 📦  Install build frontend and backend (version floors)
         run: |
-          uv pip install --system build hatch
+          uv pip install --system -r .github/requirements-build.txt
 
       - name: 🏷️  Calculate and create test version tag
         id: version
@@ -112,7 +126,7 @@ jobs:
           git describe --tags --always
           echo "📦 Building package..."
 
-          python -m build --wheel --sdist
+          python -m build --no-isolation --wheel --sdist
 
           echo "📦 Build completed. Contents of dist/:"
           ls -la dist/
@@ -126,8 +140,11 @@ jobs:
             exit 1
           fi
           SDIST="${sdists[0]}"
-          META_VERSION=$(tar -xOf "$SDIST" --wildcards '*/PKG-INFO' 2>/dev/null \
-            | awk -F': ' '/^Version:/{print $2; exit}')
+          # Read PKG-INFO in full first. `tar | awk ... exit` under pipefail
+          # dies with tar's SIGPIPE (exit 2) after awk closes the pipe — the
+          # sdist is fine, the job is not.
+          PKG_INFO=$(tar -xOf "$SDIST" --wildcards '*/PKG-INFO')
+          META_VERSION=$(awk -F': ' '/^Version:/{print $2; exit}' <<<"$PKG_INFO")
           if [ -z "${META_VERSION:-}" ]; then
             echo "::error::Could not read Version: from sdist PKG-INFO"
             exit 1
@@ -138,11 +155,48 @@ jobs:
           fi
           echo "📋 Built package version matches: $META_VERSION"
 
+          (cd dist && sha256sum ./* > ../SHA256SUMS)
+          cat SHA256SUMS
+
+      - name: 📤 Upload dist artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: test-release-dist
+          path: |
+            dist/
+            SHA256SUMS
+          if-no-files-found: error
+
+  test-release-publish:
+    needs: test-release-build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/fmp-data/${{ needs.test-release-build.outputs.version }}/
+    # Publishing credential only. `pull-requests: write` / `issues: write`
+    # existed solely to post the PR comment, which now runs in its own job:
+    # nothing that holds the TestPyPI OIDC token should also be able to write
+    # to the repository (#252 FMP-SEC-002).
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: 📥 Download dist artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: test-release-dist
+
+      - name: 🔐 Verify artifact checksums
+        run: |
+          set -euo pipefail
+          (cd dist && sha256sum -c ../SHA256SUMS)
+
       - name: 🧪  Upload to Test PyPI
         # skip-existing is intentionally OFF. With a unique version there is
         # nothing legitimate to skip; a collision must fail loudly rather than
         # report success while leaving a stale wheel installed. See #204.
-        uses: pypa/gh-action-pypi-publish@v1.14.2
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # v1.14.2
         with:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: dist
@@ -150,13 +204,24 @@ jobs:
           verbose: true
           print-hash: true
 
+  test-release-comment:
+    # Repo-write scopes live here, isolated from the publishing credential.
+    # This job never sees an OIDC token and never touches the artifact.
+    needs: [test-release-build, test-release-publish]
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+      contents: read
+
+    steps:
       - name: 📝  Comment on PR
-        uses: actions/github-script@v9.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
         with:
           script: |
-            const version = '${{ steps.version.outputs.TEST_VERSION }}';
-            const sha = '${{ steps.version.outputs.HEAD_SHA }}';
-            const short = '${{ steps.version.outputs.HEAD_SHORT }}';
+            const version = '${{ needs.test-release-build.outputs.version }}';
+            const sha = '${{ needs.test-release-build.outputs.head_sha }}';
+            const short = '${{ needs.test-release-build.outputs.head_short }}';
             const comment = `## 🧪 Test Release Published
 
             A test version has been published to TestPyPI for verification.
@@ -211,38 +276,98 @@ jobs:
               });
             }
 
-  # Original job for tag-based releases
-  publish-prerelease:
+  prerelease-build:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       PYTHON_VERSION: "3.12"
 
     steps:
       - name: 🛎️  Checkout repository
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0  # Needed for hatch-vcs versioning
           persist-credentials: false
 
+      - name: Require tag commit reachable from main or dev
+        run: |
+          set -euo pipefail
+          # Fully-qualified refs only. `origin/main` is an *unqualified* rev:
+          # git resolves refs/tags/<name> BEFORE refs/remotes/<name>, and
+          # checkout with fetch-depth:0 mirrors every tag verbatim
+          # (+refs/tags/*:refs/tags/*). A tag literally named "origin/main"
+          # therefore shadowed the remote-tracking branch and this guard
+          # compared HEAD against an attacker-chosen commit, passing with only
+          # a "refname is ambiguous" warning. --no-tags plus an explicit
+          # refspec keeps the comparison targets under refs/remotes/
+          # (#252 FMP-SEC-003).
+          git fetch --no-tags --force origin \
+            "+refs/heads/main:refs/remotes/origin/main" \
+            "+refs/heads/dev:refs/remotes/origin/dev"
+          HEAD="$(git rev-parse HEAD)"
+          if git merge-base --is-ancestor "$HEAD" refs/remotes/origin/main \
+            || git merge-base --is-ancestor "$HEAD" refs/remotes/origin/dev; then
+            echo "Tag $HEAD is reachable from origin/main or origin/dev"
+          else
+            echo "::error::Tag commit $HEAD is not an ancestor of origin/main or origin/dev (#252 FMP-SEC-003)"
+            exit 1
+          fi
+
       - name: 🐍  Set up Python
-        uses: actions/setup-python@v7.0.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: ⚡  Install uv
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d  # v10.0.0
         with:
+          version: "0.12.3"
           enable-cache: false
 
       - name: 📦  Build wheel & sdist
         run: |
-          uv pip install --system build hatch
-          python -m build --wheel --sdist
+          set -euo pipefail
+          uv pip install --system -r .github/requirements-build.txt
+          python -m build --no-isolation --wheel --sdist
+          (cd dist && sha256sum ./* > ../SHA256SUMS)
+          cat SHA256SUMS
+
+      - name: 📤 Upload dist artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: prerelease-dist
+          path: |
+            dist/
+            SHA256SUMS
+          if-no-files-found: error
+
+  prerelease-publish:
+    needs: prerelease-build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: 📥 Download dist artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: prerelease-dist
+
+      - name: 🔐 Verify artifact checksums
+        run: |
+          set -euo pipefail
+          (cd dist && sha256sum -c ../SHA256SUMS)
 
       - name: 🚀  Upload to Test PyPI
-        uses: pypa/gh-action-pypi-publish@v1.14.2
+        # skip-existing OFF: a colliding prerelease tag is a real bug, not
+        # a reason to advertise whatever was already on TestPyPI (#252).
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # v1.14.2
         with:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: dist
-          skip-existing: true
+          skip-existing: false

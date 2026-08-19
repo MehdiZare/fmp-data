@@ -32,7 +32,7 @@ This project uses UV as the primary package management tool for several key bene
 - Automatic retries with exponential backoff
 - 85%+ test coverage with comprehensive test suite
 - VCR cassette-backed integration tests with 100% endpoint contract validation
-- Automated API key leak scanning across all cassettes (pre-commit + CI)
+- Automated secret scanning of the committed tree (pre-commit + CI)
 - Secure API key handling
 - 100% coverage of FMP stable endpoints
 - Detailed error messages
@@ -129,7 +129,15 @@ export FMP_CACHE_REDIS_URL=redis://localhost:6379/0
 
 ## MCP Server (Claude Desktop Integration)
 
-Model Context Protocol (MCP) server provides financial data access through a standardized protocol, enabling Claude Desktop to query FMP data seamlessly.
+`fmp-mcp` is this package's **local** Model Context Protocol server. It exposes
+our typed client as stdio tools for Claude Desktop and other MCP hosts.
+
+FMP also ships a **hosted** MCP server at
+`https://financialmodelingprep.com/mcp` (28 dataset-oriented tools, API key in
+the URL). That is a different product. Use hosted MCP for a zero-install
+agent connector; use `fmp-mcp` for the broader MCP tool catalog, manifests,
+and typed local control. Comparison and coverage matrix:
+[docs/mcp/hosted.md](docs/mcp/hosted.md).
 
 ### Quick Setup for Claude Desktop
 
@@ -176,14 +184,11 @@ Full tool list: [docs/mcp/tools.md](https://github.com/MehdiZare/fmp-data/blob/m
 export FMP_API_KEY=your_api_key_here
 export FMP_MCP_MANIFEST=/path/to/custom/manifest.py
 
-# Custom manifest example (manifest.py)
-TOOLS = [
-    "company.profile",
-    "market.search",
-    "company.quote",
-    "fundamental.income_statement",
-    "fundamental.balance_sheet"
-]
+# Custom manifest example (manifest.json — preferred)
+# { "tools": ["company.profile", "company.quote"] }
+#
+# Legacy Python is parsed as data, not executed:
+# TOOLS = ["company.profile", "company.quote"]
 ```
 
 ### Integration with AI Assistants
@@ -293,8 +298,10 @@ client = FMPDataClient(config=config)
 
 # Create vector store using the config
 vector_store = create_vector_store(
-    fmp_api_key=config.api_key,  # pragma: allowlist secret
-    openai_api_key=config.embedding_api_key,  # pragma: allowlist secret
+    # Credential fields are `SecretStr`, so `model_dump()` cannot leak them.
+    # Unwrap with `.get_secret_value()` wherever a plain string is required.
+    fmp_api_key=config.api_key.get_secret_value(),  # pragma: allowlist secret
+    openai_api_key=config.embedding_api_key.get_secret_value(),  # pragma: allowlist secret
     cache_dir=config.vector_store_path,
     embedding_provider=config.embedding_provider,
     embedding_model=config.embedding_model,
@@ -457,13 +464,14 @@ with FMPDataClient.from_env() as client:
 
 ### 2. Financial Statements
 ```python
-from fmp_data import FMPDataClient
+from fmp_data import FMPDataClient, Period
 
 with FMPDataClient.from_env() as client:
     # Get income statements
+    period: Period = "quarter"
     income_stmt = client.fundamental.get_income_statement(
         "AAPL",
-        period="quarter",  # or "annual"
+        period=period,
         limit=4,
     )
 
@@ -476,6 +484,8 @@ with FMPDataClient.from_env() as client:
 
 ### 3. Market Data
 ```python
+from datetime import date
+
 from fmp_data import FMPDataClient
 
 with FMPDataClient.from_env() as client:
@@ -488,25 +498,27 @@ with FMPDataClient.from_env() as client:
     )
 
     # Get intraday prices
-    intraday = client.company.get_intraday_prices("TSLA", interval="5min")
+    from fmp_data import Interval
+
+    interval: Interval = "5min"
+    intraday = client.company.get_intraday_prices("TSLA", interval=interval)
 ```
 
 ### 4. Technical Indicators
 ```python
-from fmp_data import FMPDataClient
-from datetime import date
+from fmp_data import FMPDataClient, TechnicalInterval, Timeframe
 
 with FMPDataClient.from_env() as client:
     # Simple Moving Average
-    sma = client.technical.get_sma("AAPL", period_length=20, timeframe="1day")
+    timeframe: Timeframe = "1day"
+    sma = client.technical.get_sma("AAPL", period_length=20, timeframe=timeframe)
+
+    # leftover interval aliases map onto Timeframe (daily→1day)
+    interval: TechnicalInterval = "daily"
+    sma_daily = client.technical.get_sma("AAPL", period_length=20, interval=interval)
 
     # RSI (Relative Strength Index)
     rsi = client.technical.get_rsi("AAPL", period_length=14, timeframe="1day")
-
-    # MACD
-    macd = client.technical.get_macd(
-        "AAPL", fast_period=12, slow_period=26, signal_period=9
-    )
 ```
 
 ### 5. Alternative Data
@@ -719,6 +731,8 @@ The library provides a comprehensive exception hierarchy for robust error handli
 from fmp_data import FMPDataClient
 from fmp_data.exceptions import (
     FMPError,  # Base exception for all FMP errors
+    FMPTimeoutError,  # HTTP request timed out
+    FMPNetworkError,  # Transport / leftover RequestError
     RateLimitError,  # API rate limit exceeded
     AuthenticationError,  # Invalid or missing API key
     ValidationError,  # Invalid request parameters

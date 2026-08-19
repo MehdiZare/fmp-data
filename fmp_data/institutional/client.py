@@ -119,16 +119,15 @@ class InstitutionalClient(EndpointGroup):
             )
             return []
 
-        if isinstance(result, list):
-            if not result:
-                self.client.logger.warning(
-                    "No Form 13F data found for CIK %s in %s Q%s.",
-                    cik,
-                    year,
-                    quarter,
-                )
-            return result
-        return [result]
+        result = self._unwrap_list(result, Form13F)
+        if not result:
+            self.client.logger.warning(
+                "No Form 13F data found for CIK %s in %s Q%s.",
+                cik,
+                year,
+                quarter,
+            )
+        return result
 
     def get_form_13f(self, cik: str | int, report_date: date) -> list[Form13F]:
         """
@@ -158,8 +157,7 @@ class InstitutionalClient(EndpointGroup):
         """
         try:
             result = self.client.request(FORM_13F_DATES, cik=cik)
-            # Ensure we always return a list
-            return result if isinstance(result, list) else [result]
+            return self._unwrap_list(result, Form13FDate)
         except (FMPError, ValidationError) as e:
             # API errors (404, validation, etc.) return empty list for convenience
             self.client.logger.warning(
@@ -189,7 +187,10 @@ class InstitutionalClient(EndpointGroup):
         self, page: int = 0, limit: int = 100
     ) -> list[InstitutionalHolder]:
         """Get list of institutional holders"""
-        return self.client.request(INSTITUTIONAL_HOLDERS, page=page, limit=limit)
+        return self._unwrap_list(
+            self.client.request(INSTITUTIONAL_HOLDERS, page=page, limit=limit),
+            InstitutionalHolder,
+        )
 
     def get_institutional_holdings_by_quarter(
         self, symbol: str, year: int, quarter: int
@@ -207,8 +208,11 @@ class InstitutionalClient(EndpointGroup):
             year: Filing year (e.g., 2023)
             quarter: Calendar quarter, 1-4
         """
-        return self.client.request(
-            INSTITUTIONAL_HOLDINGS, symbol=symbol, year=year, quarter=quarter
+        return self._unwrap_list(
+            self.client.request(
+                INSTITUTIONAL_HOLDINGS, symbol=symbol, year=year, quarter=quarter
+            ),
+            InstitutionalHolding,
         )
 
     def get_institutional_holdings(
@@ -244,17 +248,22 @@ class InstitutionalClient(EndpointGroup):
         self, symbol: str, page: int = 0, limit: int = 100
     ) -> list[InsiderTrade]:
         """Get insider trades"""
-        return self.client.request(
-            INSIDER_TRADES, symbol=symbol, page=page, limit=limit
+        return self._unwrap_list(
+            self.client.request(INSIDER_TRADES, symbol=symbol, page=page, limit=limit),
+            InsiderTrade,
         )
 
     def get_transaction_types(self) -> list[InsiderTransactionType]:
         """Get insider transaction types"""
-        return self.client.request(TRANSACTION_TYPES)
+        return self._unwrap_list(
+            self.client.request(TRANSACTION_TYPES), InsiderTransactionType
+        )
 
     def get_insider_roster(self, symbol: str) -> list[InsiderRoster]:
         """Get insider roster"""
-        return self.client.request(INSIDER_ROSTER, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(INSIDER_ROSTER, symbol=symbol), InsiderRoster
+        )
 
     def get_insider_statistics(self, symbol: str) -> InsiderStatistic:
         """Get insider trading statistics"""
@@ -263,7 +272,9 @@ class InstitutionalClient(EndpointGroup):
 
     def get_cik_mappings(self, page: int = 0, limit: int = 1000) -> list[CIKMapping]:
         """Get CIK to name mappings"""
-        return self.client.request(CIK_MAPPER, page=page, limit=limit)
+        return self._unwrap_list(
+            self.client.request(CIK_MAPPER, page=page, limit=limit), CIKMapping
+        )
 
     def search_cik_by_name(self, name: str, page: int = 0) -> list[CIKMapping]:
         """
@@ -284,9 +295,10 @@ class InstitutionalClient(EndpointGroup):
         if not name_upper:
             raise ValidationError("Name must be non-empty for CIK search")
 
-        results = self.client.request(CIK_MAPPER, page=page, limit=10000)
-        if not isinstance(results, list):
-            results = [results]
+        results = self._unwrap_list(
+            self.client.request(CIK_MAPPER, page=page, limit=10000),
+            CIKMapping,
+        )
         return [
             item
             for item in results
@@ -296,7 +308,10 @@ class InstitutionalClient(EndpointGroup):
 
     def get_beneficial_ownership(self, symbol: str) -> list[BeneficialOwnership]:
         """Get beneficial ownership data for a symbol"""
-        return self.client.request(BENEFICIAL_OWNERSHIP, symbol=symbol)
+        return self._unwrap_list(
+            self.client.request(BENEFICIAL_OWNERSHIP, symbol=symbol),
+            BeneficialOwnership,
+        )
 
     @deprecated(
         "The FMP API no longer serves fail-to-deliver data and publishes no "
@@ -322,7 +337,9 @@ class InstitutionalClient(EndpointGroup):
         params: dict[str, int | str] = {"page": page, "limit": limit}
         if trade_date is not None:
             params["date"] = trade_date.strftime("%Y-%m-%d")
-        return self.client.request(INSIDER_TRADING_LATEST, **params)
+        return self._unwrap_list(
+            self.client.request(INSIDER_TRADING_LATEST, **params), InsiderTradingLatest
+        )
 
     def search_insider_trading(
         self,
@@ -343,14 +360,19 @@ class InstitutionalClient(EndpointGroup):
             params["companyCik"] = company_cik
         if transaction_type:
             params["transactionType"] = transaction_type
-        return self.client.request(INSIDER_TRADING_SEARCH, **params)
+        return self._unwrap_list(
+            self.client.request(INSIDER_TRADING_SEARCH, **params), InsiderTradingSearch
+        )
 
     def get_insider_trading_by_name(
         self, reporting_name: str, page: int = 0
     ) -> list[InsiderTradingByName]:
         """Search insider trades by reporting name"""
-        return self.client.request(
-            INSIDER_TRADING_BY_NAME, name=reporting_name, page=page
+        return self._unwrap_list(
+            self.client.request(
+                INSIDER_TRADING_BY_NAME, name=reporting_name, page=page
+            ),
+            InsiderTradingByName,
         )
 
     def get_insider_trading_statistics_enhanced(
@@ -368,7 +390,10 @@ class InstitutionalClient(EndpointGroup):
         params: dict[str, str | int] = {"page": page, "limit": limit}
         if cik:
             params["cik"] = cik
-        return self.client.request(INSTITUTIONAL_OWNERSHIP_LATEST, **params)
+        return self._unwrap_list(
+            self.client.request(INSTITUTIONAL_OWNERSHIP_LATEST, **params),
+            InstitutionalOwnershipLatest,
+        )
 
     def get_institutional_ownership_extract_by_quarter(
         self, cik: str | int, year: int, quarter: int
@@ -379,8 +404,11 @@ class InstitutionalClient(EndpointGroup):
         query parameters the API takes. :meth:`get_institutional_ownership_extract`
         is the date-shaped convenience layered over this method.
         """
-        return self.client.request(
-            INSTITUTIONAL_OWNERSHIP_EXTRACT, cik=cik, year=year, quarter=quarter
+        return self._unwrap_list(
+            self.client.request(
+                INSTITUTIONAL_OWNERSHIP_EXTRACT, cik=cik, year=year, quarter=quarter
+            ),
+            InstitutionalOwnershipExtract,
         )
 
     def get_institutional_ownership_extract(
@@ -394,7 +422,10 @@ class InstitutionalClient(EndpointGroup):
         self, cik: str | int
     ) -> list[InstitutionalOwnershipDates]:
         """Get Form 13F filing dates"""
-        return self.client.request(INSTITUTIONAL_OWNERSHIP_DATES, cik=cik)
+        return self._unwrap_list(
+            self.client.request(INSTITUTIONAL_OWNERSHIP_DATES, cik=cik),
+            InstitutionalOwnershipDates,
+        )
 
     def get_institutional_ownership_analytics_by_quarter(
         self,
@@ -410,13 +441,16 @@ class InstitutionalClient(EndpointGroup):
         :meth:`get_institutional_ownership_analytics` is the date-shaped
         convenience layered over this method.
         """
-        return self.client.request(
-            INSTITUTIONAL_OWNERSHIP_ANALYTICS,
-            symbol=symbol,
-            year=year,
-            quarter=quarter,
-            page=page,
-            limit=limit,
+        return self._unwrap_list(
+            self.client.request(
+                INSTITUTIONAL_OWNERSHIP_ANALYTICS,
+                symbol=symbol,
+                year=year,
+                quarter=quarter,
+                page=page,
+                limit=limit,
+            ),
+            InstitutionalOwnershipAnalytics,
         )
 
     def get_institutional_ownership_analytics(
@@ -441,7 +475,10 @@ class InstitutionalClient(EndpointGroup):
             params["year"] = year
         if quarter is not None:
             params["quarter"] = quarter
-        return self.client.request(HOLDER_PERFORMANCE_SUMMARY, **params)
+        return self._unwrap_list(
+            self.client.request(HOLDER_PERFORMANCE_SUMMARY, **params),
+            HolderPerformanceSummary,
+        )
 
     def get_holder_performance_summary_by_quarter(
         self, cik: str | int, year: int, quarter: int, page: int = 0
@@ -495,8 +532,11 @@ class InstitutionalClient(EndpointGroup):
         Wire shape of the industry-breakdown endpoint.
         :meth:`get_holder_industry_breakdown` is the date-shaped convenience.
         """
-        return self.client.request(
-            HOLDER_INDUSTRY_BREAKDOWN, cik=cik, year=year, quarter=quarter
+        return self._unwrap_list(
+            self.client.request(
+                HOLDER_INDUSTRY_BREAKDOWN, cik=cik, year=year, quarter=quarter
+            ),
+            HolderIndustryBreakdown,
         )
 
     def get_holder_industry_breakdown(
@@ -514,8 +554,11 @@ class InstitutionalClient(EndpointGroup):
         Wire shape of the symbol-positions-summary endpoint.
         :meth:`get_symbol_positions_summary` is the date-shaped convenience.
         """
-        return self.client.request(
-            SYMBOL_POSITIONS_SUMMARY, symbol=symbol, year=year, quarter=quarter
+        return self._unwrap_list(
+            self.client.request(
+                SYMBOL_POSITIONS_SUMMARY, symbol=symbol, year=year, quarter=quarter
+            ),
+            SymbolPositionsSummary,
         )
 
     def get_symbol_positions_summary(
@@ -533,8 +576,11 @@ class InstitutionalClient(EndpointGroup):
         Wire shape of the industry-performance endpoint.
         :meth:`get_industry_performance_summary` is the date-shaped convenience.
         """
-        return self.client.request(
-            INDUSTRY_PERFORMANCE_SUMMARY, year=year, quarter=quarter
+        return self._unwrap_list(
+            self.client.request(
+                INDUSTRY_PERFORMANCE_SUMMARY, year=year, quarter=quarter
+            ),
+            IndustryPerformanceSummary,
         )
 
     def get_industry_performance_summary(

@@ -199,6 +199,11 @@ def mock_response():
         payload = {} if json_data is None else json_data
         response.json.return_value = payload
         response.text = json.dumps(payload) if payload is not None else ""
+        # Real responses carry bytes here. Leaving it a bare Mock let
+        # `response.content.decode()` return another Mock that flowed into
+        # error payloads unnoticed, so any code that actually *inspected* the
+        # body (redaction, decoding) was never exercised by these tests.
+        response.content = response.text.encode()
 
         if raise_error:
             response.raise_for_status.side_effect = httpx.HTTPStatusError(

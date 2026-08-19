@@ -25,6 +25,7 @@ from fmp_data.company.endpoints import (
     COMPANY_NOTES,
     COMPANY_PEERS,
     COMPANY_SPLITS,
+    DELISTED_COMPANIES,
     EMPLOYEE_COUNT,
     ENTERPRISE_VALUES,
     EXECUTIVE_COMPENSATION,
@@ -70,12 +71,14 @@ from fmp_data.company.models import (
     CompanyNote,
     CompanyPeer,
     CompanyProfile,
+    DelistedCompany,
     EmployeeCount,
     ExecutiveCompensation,
     ExecutiveCompensationBenchmark,
     FinancialReportJSON,
     GeographicRevenueSegment,
     HistoricalData,
+    HistoricalPrice,
     HistoricalShareFloat,
     IntradayPrice,
     MergerAcquisition,
@@ -111,7 +114,14 @@ from fmp_data.fundamental.models import (
 )
 from fmp_data.helpers import deprecated
 from fmp_data.intelligence.models import DividendEvent, EarningEvent, StockSplitEvent
-from fmp_data.models import MarketCapitalization
+from fmp_data.models import MarketCapitalization, _safe_path_segment
+from fmp_data.schema import (
+    Interval,
+    Period,
+    PeriodAnnualQuarter,
+    PeriodFiscal,
+    Structure,
+)
 
 
 def _format_date(value: date | None) -> str | None:
@@ -167,22 +177,35 @@ class AsyncCompanyClient(AsyncEndpointGroup):
 
     async def get_executives(self, symbol: str) -> list[CompanyExecutive]:
         """Get company executives information"""
-        return await self.client.request_async(KEY_EXECUTIVES, symbol=symbol)
+        return self._unwrap_list(
+            await self.client.request_async(KEY_EXECUTIVES, symbol=symbol),
+            CompanyExecutive,
+        )
 
     async def get_employee_count(self, symbol: str) -> list[EmployeeCount]:
         """Get company employee count history"""
-        return await self.client.request_async(EMPLOYEE_COUNT, symbol=symbol)
+        return self._unwrap_list(
+            await self.client.request_async(EMPLOYEE_COUNT, symbol=symbol),
+            EmployeeCount,
+        )
 
     async def get_company_notes(self, symbol: str) -> list[CompanyNote]:
         """Get company financial notes"""
-        return await self.client.request_async(COMPANY_NOTES, symbol=symbol)
+        return self._unwrap_list(
+            await self.client.request_async(COMPANY_NOTES, symbol=symbol), CompanyNote
+        )
 
     def get_company_logo_url(self, symbol: str) -> str:
         """Get the company logo URL (sync, no API call needed)"""
         if not symbol or not symbol.strip():
             raise InvalidSymbolError()
         base_url = self.client.config.base_url.rstrip("/")
-        return f"{base_url}/image-stock/{symbol}.png"
+        # This builder never goes through `Endpoint.build_url`, so it does not
+        # inherit that method's path sanitizing -- the #252 FMP-SEC-010 sweep
+        # only covered `build_url` callers and missed it. `symbol` reaches here
+        # from an LLM via the `company_logo_url` MCP tool, so escape it the same
+        # way rather than interpolating it raw.
+        return f"{base_url}/image-stock/{_safe_path_segment(symbol)}.png"
 
     async def get_quote(self, symbol: str) -> Quote:
         """Get real-time stock quote"""
@@ -233,17 +256,16 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         if end_date:
             params["end_date"] = end_date
 
-        result = await self.client.request_async(HISTORICAL_PRICE, **params)
-
-        if isinstance(result, list):
-            return HistoricalData(symbol=symbol, historical=result)
-        else:
-            return HistoricalData(symbol=symbol, historical=[result])
+        rows = self._unwrap_list(
+            await self.client.request_async(HISTORICAL_PRICE, **params),
+            HistoricalPrice,
+        )
+        return HistoricalData(symbol=symbol, historical=rows)
 
     async def get_intraday_prices(
         self,
         symbol: str,
-        interval: str = "1min",
+        interval: Interval = "1min",
         from_date: date | None = None,
         to_date: date | None = None,
         nonadjusted: bool | None = None,
@@ -259,20 +281,26 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         """
         start_date = _format_date(from_date)
         end_date = _format_date(to_date)
-        return await self.client.request_async(
-            INTRADAY_PRICE,
-            symbol=symbol,
-            interval=interval,
-            start_date=start_date,
-            end_date=end_date,
-            nonadjusted=nonadjusted,
+        return self._unwrap_list(
+            await self.client.request_async(
+                INTRADAY_PRICE,
+                symbol=symbol,
+                interval=interval,
+                start_date=start_date,
+                end_date=end_date,
+                nonadjusted=nonadjusted,
+            ),
+            IntradayPrice,
         )
 
     async def get_executive_compensation(
         self, symbol: str
     ) -> list[ExecutiveCompensation]:
         """Get executive compensation data for a company"""
-        return await self.client.request_async(EXECUTIVE_COMPENSATION, symbol=symbol)
+        return self._unwrap_list(
+            await self.client.request_async(EXECUTIVE_COMPENSATION, symbol=symbol),
+            ExecutiveCompensation,
+        )
 
     @deprecated(
         "historical/shares-float is dead. The live path shares-float is "
@@ -297,46 +325,84 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         return []
 
     async def get_product_revenue_segmentation(
-        self, symbol: str, period: str = "annual"
+        self,
+        symbol: str,
+        period: PeriodAnnualQuarter = "annual",
+        structure: Structure = "flat",
     ) -> list[ProductRevenueSegment]:
         """Get revenue segmentation by product.
 
         Args:
             symbol: Company symbol
             period: Data period ('annual' or 'quarter')
+            structure: Response layout ('flat' or 'nested'). Stable
+                currently returns the same list-of-objects for both
+                (probed 2026-08-17).
 
         Returns:
             List of product revenue segments by fiscal year
         """
-        return await self.client.request_async(
-            PRODUCT_REVENUE_SEGMENTATION,
-            symbol=symbol,
-            structure="flat",
-            period=period,
+        return self._unwrap_list(
+            await self.client.request_async(
+                PRODUCT_REVENUE_SEGMENTATION,
+                symbol=symbol,
+                structure=structure,
+                period=period,
+            ),
+            ProductRevenueSegment,
         )
 
     async def get_geographic_revenue_segmentation(
-        self, symbol: str, period: str = "annual"
+        self,
+        symbol: str,
+        period: PeriodAnnualQuarter = "annual",
+        structure: Structure = "flat",
     ) -> list[GeographicRevenueSegment]:
         """Get revenue segmentation by geographic region.
 
         Args:
             symbol: Company symbol
             period: Data period ('annual' or 'quarter')
+            structure: Response layout ('flat' or 'nested'). Stable
+                currently returns the same list-of-objects for both
+                (probed 2026-08-17).
 
         Returns:
             List of geographic revenue segments by fiscal year
         """
-        return await self.client.request_async(
-            GEOGRAPHIC_REVENUE_SEGMENTATION,
-            symbol=symbol,
-            structure="flat",
-            period=period,
+        return self._unwrap_list(
+            await self.client.request_async(
+                GEOGRAPHIC_REVENUE_SEGMENTATION,
+                symbol=symbol,
+                structure=structure,
+                period=period,
+            ),
+            GeographicRevenueSegment,
         )
 
     async def get_symbol_changes(self) -> list[SymbolChange]:
         """Get symbol change history"""
-        return await self.client.request_async(SYMBOL_CHANGES)
+        return self._unwrap_list(
+            await self.client.request_async(SYMBOL_CHANGES), SymbolChange
+        )
+
+    async def get_delisted_companies(
+        self, page: int = 0, limit: int = 100
+    ) -> list[DelistedCompany]:
+        """Get companies FMP reports as delisted.
+
+        Args:
+            page: Page number for pagination (default 0)
+            limit: Number of results per page (default 100)
+
+        Returns:
+            List of slim delisted rows (symbol, companyName, exchange,
+            IPO and delist dates).
+        """
+        return self._unwrap_list(
+            await self.client.request_async(DELISTED_COMPANIES, page=page, limit=limit),
+            DelistedCompany,
+        )
 
     async def get_share_float(self, symbol: str) -> ShareFloat:
         """Get current share float data for a company"""
@@ -352,7 +418,10 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         self, symbol: str
     ) -> list[MarketCapitalization]:
         """Get historical market capitalization data"""
-        return await self.client.request_async(HISTORICAL_MARKET_CAP, symbol=symbol)
+        return self._unwrap_list(
+            await self.client.request_async(HISTORICAL_MARKET_CAP, symbol=symbol),
+            MarketCapitalization,
+        )
 
     @deprecated(
         "The FMP API no longer serves the price-target series. Use "
@@ -386,17 +455,20 @@ class AsyncCompanyClient(AsyncEndpointGroup):
     async def get_analyst_estimates(
         self,
         symbol: str,
-        period: str = "annual",
+        period: PeriodAnnualQuarter = "annual",
         page: int = 0,
         limit: int = 10,
     ) -> list[AnalystEstimate]:
         """Get analyst estimates"""
-        return await self.client.request_async(
-            ANALYST_ESTIMATES,
-            symbol=symbol,
-            period=period,
-            page=page,
-            limit=limit,
+        return self._unwrap_list(
+            await self.client.request_async(
+                ANALYST_ESTIMATES,
+                symbol=symbol,
+                period=period,
+                page=page,
+                limit=limit,
+            ),
+            AnalystEstimate,
         )
 
     @deprecated(
@@ -464,7 +536,9 @@ class AsyncCompanyClient(AsyncEndpointGroup):
 
     async def get_company_peers(self, symbol: str) -> list[CompanyPeer]:
         """Get company peers"""
-        return await self.client.request_async(COMPANY_PEERS, symbol=symbol)
+        return self._unwrap_list(
+            await self.client.request_async(COMPANY_PEERS, symbol=symbol), CompanyPeer
+        )
 
     async def get_mergers_acquisitions_latest(
         self, page: int = 0, limit: int = 100
@@ -478,8 +552,11 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             List of recent M&A transactions
         """
-        return await self.client.request_async(
-            MERGERS_ACQUISITIONS_LATEST, page=page, limit=limit
+        return self._unwrap_list(
+            await self.client.request_async(
+                MERGERS_ACQUISITIONS_LATEST, page=page, limit=limit
+            ),
+            MergerAcquisition,
         )
 
     async def get_mergers_acquisitions_search(
@@ -495,8 +572,11 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             List of M&A transactions matching the search
         """
-        return await self.client.request_async(
-            MERGERS_ACQUISITIONS_SEARCH, name=name, page=page, limit=limit
+        return self._unwrap_list(
+            await self.client.request_async(
+                MERGERS_ACQUISITIONS_SEARCH, name=name, page=page, limit=limit
+            ),
+            MergerAcquisition,
         )
 
     async def get_executive_compensation_benchmark(
@@ -510,8 +590,11 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             List of executive compensation benchmarks by industry
         """
-        return await self.client.request_async(
-            EXECUTIVE_COMPENSATION_BENCHMARK, year=year
+        return self._unwrap_list(
+            await self.client.request_async(
+                EXECUTIVE_COMPENSATION_BENCHMARK, year=year
+            ),
+            ExecutiveCompensationBenchmark,
         )
 
     async def get_historical_prices_light(
@@ -538,12 +621,11 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         if end_date:
             params["end_date"] = end_date
 
-        result = await self.client.request_async(HISTORICAL_PRICE_LIGHT, **params)
-
-        if isinstance(result, list):
-            return HistoricalData(symbol=symbol, historical=result)
-        else:
-            return HistoricalData(symbol=symbol, historical=[result])
+        rows = self._unwrap_list(
+            await self.client.request_async(HISTORICAL_PRICE_LIGHT, **params),
+            HistoricalPrice,
+        )
+        return HistoricalData(symbol=symbol, historical=rows)
 
     async def get_historical_prices_non_split_adjusted(
         self,
@@ -569,14 +651,13 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         if end_date:
             params["end_date"] = end_date
 
-        result = await self.client.request_async(
-            HISTORICAL_PRICE_NON_SPLIT_ADJUSTED, **params
+        rows = self._unwrap_list(
+            await self.client.request_async(
+                HISTORICAL_PRICE_NON_SPLIT_ADJUSTED, **params
+            ),
+            HistoricalPrice,
         )
-
-        if isinstance(result, list):
-            return HistoricalData(symbol=symbol, historical=result)
-        else:
-            return HistoricalData(symbol=symbol, historical=[result])
+        return HistoricalData(symbol=symbol, historical=rows)
 
     async def get_historical_prices_dividend_adjusted(
         self,
@@ -602,14 +683,13 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         if end_date:
             params["end_date"] = end_date
 
-        result = await self.client.request_async(
-            HISTORICAL_PRICE_DIVIDEND_ADJUSTED, **params
+        rows = self._unwrap_list(
+            await self.client.request_async(
+                HISTORICAL_PRICE_DIVIDEND_ADJUSTED, **params
+            ),
+            HistoricalPrice,
         )
-
-        if isinstance(result, list):
-            return HistoricalData(symbol=symbol, historical=result)
-        else:
-            return HistoricalData(symbol=symbol, historical=[result])
+        return HistoricalData(symbol=symbol, historical=rows)
 
     async def get_dividends(
         self,
@@ -638,7 +718,9 @@ class AsyncCompanyClient(AsyncEndpointGroup):
             params["to_date"] = end_date
         if limit is not None:
             params["limit"] = limit
-        return await self.client.request_async(COMPANY_DIVIDENDS, **params)
+        return self._unwrap_list(
+            await self.client.request_async(COMPANY_DIVIDENDS, **params), DividendEvent
+        )
 
     async def get_earnings(self, symbol: str, limit: int = 20) -> list[EarningEvent]:
         """Get historical earnings reports for a specific company
@@ -650,8 +732,11 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             List of EarningEvent objects containing earnings history
         """
-        return await self.client.request_async(
-            COMPANY_EARNINGS, symbol=symbol, limit=limit
+        return self._unwrap_list(
+            await self.client.request_async(
+                COMPANY_EARNINGS, symbol=symbol, limit=limit
+            ),
+            EarningEvent,
         )
 
     async def get_stock_splits(
@@ -681,7 +766,9 @@ class AsyncCompanyClient(AsyncEndpointGroup):
             params["to_date"] = end_date
         if limit is not None:
             params["limit"] = limit
-        return await self.client.request_async(COMPANY_SPLITS, **params)
+        return self._unwrap_list(
+            await self.client.request_async(COMPANY_SPLITS, **params), StockSplitEvent
+        )
 
     # Financial Statement Methods
     async def get_income_statement_ttm(
@@ -696,8 +783,11 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             List of TTM income statement data
         """
-        return await self.client.request_async(
-            INCOME_STATEMENT_TTM, symbol=symbol, limit=limit
+        return self._unwrap_list(
+            await self.client.request_async(
+                INCOME_STATEMENT_TTM, symbol=symbol, limit=limit
+            ),
+            IncomeStatement,
         )
 
     async def get_balance_sheet_ttm(
@@ -712,8 +802,11 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             List of TTM balance sheet data
         """
-        return await self.client.request_async(
-            BALANCE_SHEET_TTM, symbol=symbol, limit=limit
+        return self._unwrap_list(
+            await self.client.request_async(
+                BALANCE_SHEET_TTM, symbol=symbol, limit=limit
+            ),
+            BalanceSheet,
         )
 
     async def get_cash_flow_ttm(
@@ -728,8 +821,9 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             List of TTM cash flow data
         """
-        return await self.client.request_async(
-            CASH_FLOW_TTM, symbol=symbol, limit=limit
+        return self._unwrap_list(
+            await self.client.request_async(CASH_FLOW_TTM, symbol=symbol, limit=limit),
+            CashFlowStatement,
         )
 
     async def get_key_metrics_ttm(self, symbol: str) -> list[KeyMetricsTTM]:
@@ -741,7 +835,10 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             List of TTM key metrics
         """
-        return await self.client.request_async(KEY_METRICS_TTM, symbol=symbol)
+        return self._unwrap_list(
+            await self.client.request_async(KEY_METRICS_TTM, symbol=symbol),
+            KeyMetricsTTM,
+        )
 
     async def get_financial_ratios_ttm(self, symbol: str) -> list[FinancialRatiosTTM]:
         """Get trailing twelve months (TTM) financial ratios
@@ -752,7 +849,10 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             List of TTM financial ratios
         """
-        return await self.client.request_async(FINANCIAL_RATIOS_TTM, symbol=symbol)
+        return self._unwrap_list(
+            await self.client.request_async(FINANCIAL_RATIOS_TTM, symbol=symbol),
+            FinancialRatiosTTM,
+        )
 
     async def get_financial_scores(self, symbol: str) -> list[FinancialScore]:
         """Get comprehensive financial health scores
@@ -763,10 +863,13 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             List of financial scores including Altman Z-Score and Piotroski Score
         """
-        return await self.client.request_async(FINANCIAL_SCORES, symbol=symbol)
+        return self._unwrap_list(
+            await self.client.request_async(FINANCIAL_SCORES, symbol=symbol),
+            FinancialScore,
+        )
 
     async def get_enterprise_values(
-        self, symbol: str, period: str = "annual", limit: int = 20
+        self, symbol: str, period: Period = "annual", limit: int = 20
     ) -> list[EnterpriseValue]:
         """Get historical enterprise value data
 
@@ -778,12 +881,15 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             List of enterprise value data
         """
-        return await self.client.request_async(
-            ENTERPRISE_VALUES, symbol=symbol, period=period, limit=limit
+        return self._unwrap_list(
+            await self.client.request_async(
+                ENTERPRISE_VALUES, symbol=symbol, period=period, limit=limit
+            ),
+            EnterpriseValue,
         )
 
     async def get_income_statement_growth(
-        self, symbol: str, period: str = "annual", limit: int = 20
+        self, symbol: str, period: Period = "annual", limit: int = 20
     ) -> list[FinancialGrowth]:
         """Get year-over-year growth rates for income statement items
 
@@ -795,12 +901,15 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             List of income statement growth data
         """
-        return await self.client.request_async(
-            INCOME_STATEMENT_GROWTH, symbol=symbol, period=period, limit=limit
+        return self._unwrap_list(
+            await self.client.request_async(
+                INCOME_STATEMENT_GROWTH, symbol=symbol, period=period, limit=limit
+            ),
+            FinancialGrowth,
         )
 
     async def get_balance_sheet_growth(
-        self, symbol: str, period: str = "annual", limit: int = 20
+        self, symbol: str, period: Period = "annual", limit: int = 20
     ) -> list[FinancialGrowth]:
         """Get year-over-year growth rates for balance sheet items
 
@@ -812,12 +921,15 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             List of balance sheet growth data
         """
-        return await self.client.request_async(
-            BALANCE_SHEET_GROWTH, symbol=symbol, period=period, limit=limit
+        return self._unwrap_list(
+            await self.client.request_async(
+                BALANCE_SHEET_GROWTH, symbol=symbol, period=period, limit=limit
+            ),
+            FinancialGrowth,
         )
 
     async def get_cash_flow_growth(
-        self, symbol: str, period: str = "annual", limit: int = 20
+        self, symbol: str, period: Period = "annual", limit: int = 20
     ) -> list[FinancialGrowth]:
         """Get year-over-year growth rates for cash flow items
 
@@ -829,12 +941,15 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             List of cash flow growth data
         """
-        return await self.client.request_async(
-            CASH_FLOW_GROWTH, symbol=symbol, period=period, limit=limit
+        return self._unwrap_list(
+            await self.client.request_async(
+                CASH_FLOW_GROWTH, symbol=symbol, period=period, limit=limit
+            ),
+            FinancialGrowth,
         )
 
     async def get_financial_growth(
-        self, symbol: str, period: str = "annual", limit: int = 20
+        self, symbol: str, period: Period = "annual", limit: int = 20
     ) -> list[FinancialGrowth]:
         """Get comprehensive financial growth metrics
 
@@ -846,12 +961,15 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             List of comprehensive financial growth data
         """
-        return await self.client.request_async(
-            FINANCIAL_GROWTH, symbol=symbol, period=period, limit=limit
+        return self._unwrap_list(
+            await self.client.request_async(
+                FINANCIAL_GROWTH, symbol=symbol, period=period, limit=limit
+            ),
+            FinancialGrowth,
         )
 
     async def get_financial_reports_json(
-        self, symbol: str, year: int, period: str = "FY"
+        self, symbol: str, year: int, period: PeriodFiscal = "FY"
     ) -> dict:
         """Get Form 10-K financial reports in JSON format
 
@@ -869,18 +987,20 @@ class AsyncCompanyClient(AsyncEndpointGroup):
             "period": period,
         }
         result = await self.client.request_async(FINANCIAL_REPORTS_JSON, **params)
-        if isinstance(result, FinancialReportJSON):
-            return result.model_dump(mode="json")
-        if not isinstance(result, dict):
+        # Widen so a mock dict is not an illegal FinancialReportJSON | list.
+        payload: object = result
+        if isinstance(payload, FinancialReportJSON):
+            return payload.model_dump(mode="json")
+        if not isinstance(payload, dict):
             raise InvalidResponseTypeError(
                 endpoint_name="financial_reports_json",
                 expected_type="dict or FinancialReportJSON",
-                actual_type=type(result).__name__,
+                actual_type=type(payload).__name__,
             )
-        return result
+        return payload
 
     async def get_financial_reports_xlsx(
-        self, symbol: str, year: int, period: str = "FY"
+        self, symbol: str, year: int, period: PeriodFiscal = "FY"
     ) -> bytes:
         """Get Form 10-K financial reports in Excel format
 
@@ -898,16 +1018,18 @@ class AsyncCompanyClient(AsyncEndpointGroup):
             "period": period,
         }
         result = await self.client.request_async(FINANCIAL_REPORTS_XLSX, **params)
-        if not isinstance(result, bytes | bytearray):
+        # Widen so a mock bytearray stays legal next to the bytes overload.
+        payload: object = result
+        if not isinstance(payload, bytes | bytearray):
             raise InvalidResponseTypeError(
                 endpoint_name="financial_reports_xlsx",
                 expected_type="bytes",
-                actual_type=type(result).__name__,
+                actual_type=type(payload).__name__,
             )
-        return bytes(result)
+        return bytes(payload)
 
     async def get_income_statement_as_reported(
-        self, symbol: str, period: str = "annual", limit: int = 10
+        self, symbol: str, period: PeriodAnnualQuarter = "annual", limit: int = 10
     ) -> list[AsReportedIncomeStatement]:
         """Get income statement as originally reported
 
@@ -919,12 +1041,15 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             List of as-reported income statements
         """
-        return await self.client.request_async(
-            INCOME_STATEMENT_AS_REPORTED, symbol=symbol, period=period, limit=limit
+        return self._unwrap_list(
+            await self.client.request_async(
+                INCOME_STATEMENT_AS_REPORTED, symbol=symbol, period=period, limit=limit
+            ),
+            AsReportedIncomeStatement,
         )
 
     async def get_balance_sheet_as_reported(
-        self, symbol: str, period: str = "annual", limit: int = 10
+        self, symbol: str, period: PeriodAnnualQuarter = "annual", limit: int = 10
     ) -> list[AsReportedBalanceSheet]:
         """Get balance sheet as originally reported
 
@@ -936,12 +1061,15 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             List of as-reported balance sheets
         """
-        return await self.client.request_async(
-            BALANCE_SHEET_AS_REPORTED, symbol=symbol, period=period, limit=limit
+        return self._unwrap_list(
+            await self.client.request_async(
+                BALANCE_SHEET_AS_REPORTED, symbol=symbol, period=period, limit=limit
+            ),
+            AsReportedBalanceSheet,
         )
 
     async def get_cash_flow_as_reported(
-        self, symbol: str, period: str = "annual", limit: int = 10
+        self, symbol: str, period: PeriodAnnualQuarter = "annual", limit: int = 10
     ) -> list[AsReportedCashFlowStatement]:
         """Get cash flow statement as originally reported
 
@@ -953,6 +1081,9 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         Returns:
             List of as-reported cash flow statements
         """
-        return await self.client.request_async(
-            CASH_FLOW_AS_REPORTED, symbol=symbol, period=period, limit=limit
+        return self._unwrap_list(
+            await self.client.request_async(
+                CASH_FLOW_AS_REPORTED, symbol=symbol, period=period, limit=limit
+            ),
+            AsReportedCashFlowStatement,
         )

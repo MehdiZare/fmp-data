@@ -10,7 +10,9 @@ from fmp_data.fundamental.endpoints import (
     OWNER_EARNINGS,
 )
 from fmp_data.fundamental.models import (
+    CompanyRating,
     FinancialRatios,
+    FinancialRatiosTTM,
     FinancialReportDate,
     FinancialStatementFull,
     IncomeStatement,
@@ -258,6 +260,131 @@ class TestFundamentalEndpoints(unittest.TestCase):
         assert ratio.current_ratio is not None
         self.assertAlmostEqual(ratio.current_ratio, 0.8673125765340832)
 
+    def test_financial_ratios_diluted_pe_alias_round_trip(self):
+        """Diluted PE / PEG are first-class fields, not extras (#229)."""
+        ratio = FinancialRatios.model_validate(
+            {
+                "symbol": "AAPL",
+                "priceToEarningsDilutedRatio": 34.24,
+                "priceToEarningsDilutedGrowthRatio": 1.51,
+            }
+        )
+        assert ratio.price_to_earnings_diluted_ratio is not None
+        assert ratio.price_to_earnings_diluted_growth_ratio is not None
+        self.assertAlmostEqual(ratio.price_to_earnings_diluted_ratio, 34.24)
+        self.assertAlmostEqual(ratio.price_to_earnings_diluted_growth_ratio, 1.51)
+        dumped = ratio.model_dump(by_alias=True)
+        self.assertAlmostEqual(dumped["priceToEarningsDilutedRatio"], 34.24)
+        self.assertAlmostEqual(dumped["priceToEarningsDilutedGrowthRatio"], 1.51)
+
+    def test_financial_ratios_ttm_diluted_pe_alias_round_trip(self):
+        """TTM diluted PE / PEG aliases match the 2026-07-30 wire keys."""
+        ratio = FinancialRatiosTTM.model_validate(
+            {
+                "symbol": "AAPL",
+                "priceToEarningsDilutedRatioTTM": 34.64,
+                "priceToEarningsDilutedGrowthRatioTTM": 1.07,
+            }
+        )
+        assert ratio.price_to_earnings_diluted_ratio_ttm is not None
+        assert ratio.price_to_earnings_diluted_growth_ratio_ttm is not None
+        self.assertAlmostEqual(ratio.price_to_earnings_diluted_ratio_ttm, 34.64)
+        self.assertAlmostEqual(ratio.price_to_earnings_diluted_growth_ratio_ttm, 1.07)
+        dumped = ratio.model_dump(by_alias=True)
+        self.assertAlmostEqual(dumped["priceToEarningsDilutedRatioTTM"], 34.64)
+        self.assertAlmostEqual(dumped["priceToEarningsDilutedGrowthRatioTTM"], 1.07)
+
+    def test_company_rating_bulk_score_alias_round_trip(self):
+        """rating-bulk score columns bind on CompanyRating (#229 re-probe)."""
+        rating = CompanyRating.model_validate(
+            {
+                "symbol": "AAPL",
+                "date": "2026-08-12",
+                "rating": "A-",
+                "discountedCashFlowScore": 1,
+                "returnOnEquityScore": 2,
+                "returnOnAssetsScore": 3,
+                "debtToEquityScore": 4,
+                "priceToEarningsScore": 5,
+                "priceToBookScore": 6,
+            }
+        )
+        self.assertEqual(rating.discounted_cash_flow_score, 1)
+        self.assertEqual(rating.return_on_equity_score, 2)
+        self.assertEqual(rating.return_on_assets_score, 3)
+        self.assertEqual(rating.debt_to_equity_score, 4)
+        self.assertEqual(rating.price_to_earnings_score, 5)
+        self.assertEqual(rating.price_to_book_score, 6)
+        self.assertFalse(rating.__pydantic_extra__)
+        dumped = rating.model_dump(by_alias=True)
+        self.assertEqual(dumped["discountedCashFlowScore"], 1)
+        self.assertEqual(dumped["returnOnEquityScore"], 2)
+        self.assertEqual(dumped["returnOnAssetsScore"], 3)
+        self.assertEqual(dumped["debtToEquityScore"], 4)
+        self.assertEqual(dumped["priceToEarningsScore"], 5)
+        self.assertEqual(dumped["priceToBookScore"], 6)
+
+    def test_company_rating_scores_optional_without_bulk_columns(self):
+        """Letter-grade-only payloads leave every score unset."""
+        rating = CompanyRating.model_validate(
+            {"symbol": "AAPL", "date": "2026-08-12", "rating": "A-"}
+        )
+        self.assertIsNone(rating.discounted_cash_flow_score)
+        self.assertIsNone(rating.return_on_equity_score)
+        self.assertIsNone(rating.return_on_assets_score)
+        self.assertIsNone(rating.debt_to_equity_score)
+        self.assertIsNone(rating.price_to_earnings_score)
+        self.assertIsNone(rating.price_to_book_score)
+
+    def test_company_rating_coerces_fractional_csv_score_strings(self):
+        """\"3.0\" score cells must not drop the row (parse_csv_models skip)."""
+        rating = CompanyRating.model_validate(
+            {
+                "symbol": "AAPL",
+                "date": "2026-08-12",
+                "rating": "A-",
+                "discountedCashFlowScore": "3.0",
+            }
+        )
+        self.assertEqual(rating.discounted_cash_flow_score, 3)
+
+    def test_company_rating_rejects_non_integral_score(self):
+        """\"3.5\" must not silently become 3 (#231 review / #232)."""
+        from pydantic import ValidationError as PydanticValidationError
+
+        with self.assertRaises(PydanticValidationError):
+            CompanyRating.model_validate(
+                {
+                    "symbol": "AAPL",
+                    "date": "2026-08-12",
+                    "rating": "A-",
+                    "discountedCashFlowScore": "3.5",
+                }
+            )
+        with self.assertRaises(PydanticValidationError):
+            CompanyRating.model_validate(
+                {
+                    "symbol": "AAPL",
+                    "date": "2026-08-12",
+                    "rating": "A-",
+                    "discountedCashFlowScore": 3.5,
+                }
+            )
+
+    def test_company_rating_rejects_high_precision_fractional_score_text(self):
+        """float() would round this to 3.0; Decimal must still reject it."""
+        from pydantic import ValidationError as PydanticValidationError
+
+        with self.assertRaises(PydanticValidationError):
+            CompanyRating.model_validate(
+                {
+                    "symbol": "AAPL",
+                    "date": "2026-08-12",
+                    "rating": "A-",
+                    "discountedCashFlowScore": "3.0000000000000001",
+                }
+            )
+
     def test_get_financial_reports_dates(self):
         """Test getting financial report dates"""
         # Configure mock to return model instances
@@ -378,15 +505,14 @@ class TestFundamentalEndpoints(unittest.TestCase):
         self.assertIsNone(income_stmt.gross_profit)
 
     def test_invalid_period_parameter(self):
-        """Test handling of invalid period parameter"""
+        """Client methods propagate request errors from the shared client."""
         with self.assertRaises(ValueError) as context:
-            self.mock_client.request.side_effect = ValueError(
-                "Invalid value for period. Must be one of: ['annual', 'quarter']"
-            )
+            self.mock_client.request.side_effect = ValueError("request failed")
             self.fundamental_client.get_income_statement(
-                symbol=self.symbol, period="invalid"
+                symbol=self.symbol,
+                period="invalid",  # type: ignore[arg-type]
             )
-        self.assertIn("Must be one of: ['annual', 'quarter']", str(context.exception))
+        self.assertIn("request failed", str(context.exception))
 
     def test_missing_required_parameter(self):
         """Test handling of missing required parameter"""

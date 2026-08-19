@@ -12,6 +12,7 @@ from fmp_data.company.models import (
     CompanyOutlook,
     CompanyPeer,
     CompanyProfile,
+    DelistedCompany,
     EmployeeCount,
     ExecutiveCompensation,
     ExecutiveCompensationBenchmark,
@@ -56,6 +57,13 @@ from fmp_data.models import (
     ParamLocation,
     ParamType,
     URLType,
+)
+from fmp_data.schema import (
+    INTERVAL_VALUES,
+    PERIOD_ANNUAL_QUARTER_VALUES,
+    PERIOD_FISCAL_VALUES,
+    PERIOD_VALUES,
+    STRUCTURE_VALUES,
 )
 
 QUOTE: Endpoint[Quote] = Endpoint(
@@ -143,7 +151,7 @@ STOCK_PRICE_CHANGE: Endpoint[StockPriceChange] = Endpoint(
     response_model=StockPriceChange,
 )
 
-HISTORICAL_PRICE: Endpoint = Endpoint(
+HISTORICAL_PRICE: Endpoint[HistoricalPrice] = Endpoint(
     name="historical_price",
     path="historical-price-eod/full",
     version=APIVersion.STABLE,
@@ -175,7 +183,7 @@ HISTORICAL_PRICE: Endpoint = Endpoint(
     response_model=HistoricalPrice,
 )
 
-HISTORICAL_PRICE_LIGHT: Endpoint = Endpoint(
+HISTORICAL_PRICE_LIGHT: Endpoint[HistoricalPrice] = Endpoint(
     name="historical_price_light",
     path="historical-price-eod/light",
     version=APIVersion.STABLE,
@@ -207,7 +215,7 @@ HISTORICAL_PRICE_LIGHT: Endpoint = Endpoint(
     response_model=HistoricalPrice,
 )
 
-HISTORICAL_PRICE_NON_SPLIT_ADJUSTED: Endpoint = Endpoint(
+HISTORICAL_PRICE_NON_SPLIT_ADJUSTED: Endpoint[HistoricalPrice] = Endpoint(
     name="historical_price_non_split_adjusted",
     path="historical-price-eod/non-split-adjusted",
     version=APIVersion.STABLE,
@@ -239,7 +247,7 @@ HISTORICAL_PRICE_NON_SPLIT_ADJUSTED: Endpoint = Endpoint(
     response_model=HistoricalPrice,
 )
 
-HISTORICAL_PRICE_DIVIDEND_ADJUSTED: Endpoint = Endpoint(
+HISTORICAL_PRICE_DIVIDEND_ADJUSTED: Endpoint[HistoricalPrice] = Endpoint(
     name="historical_price_dividend_adjusted",
     path="historical-price-eod/dividend-adjusted",
     version=APIVersion.STABLE,
@@ -271,7 +279,7 @@ HISTORICAL_PRICE_DIVIDEND_ADJUSTED: Endpoint = Endpoint(
     response_model=HistoricalPrice,
 )
 
-INTRADAY_PRICE: Endpoint = Endpoint(
+INTRADAY_PRICE: Endpoint[IntradayPrice] = Endpoint(
     name="intraday_price",
     path="historical-chart/{interval}",
     version=APIVersion.STABLE,
@@ -282,6 +290,7 @@ INTRADAY_PRICE: Endpoint = Endpoint(
             location=ParamLocation.PATH,
             param_type=ParamType.STRING,
             description="Time interval (1min, 5min, 15min, 30min, 1hour, 4hour)",
+            valid_values=list(INTERVAL_VALUES),
         ),
         EndpointParam(
             name="symbol",
@@ -380,7 +389,7 @@ CORE_INFORMATION: Endpoint[CompanyCoreInformation] = Endpoint(
 # Search Endpoints
 
 # Executive Information Endpoints
-KEY_EXECUTIVES: Endpoint = Endpoint(
+KEY_EXECUTIVES: Endpoint[CompanyExecutive] = Endpoint(
     name="key_executives",
     path="key-executives",
     version=APIVersion.STABLE,
@@ -410,7 +419,7 @@ KEY_EXECUTIVES: Endpoint = Endpoint(
     ],
 )
 
-EXECUTIVE_COMPENSATION: Endpoint = Endpoint(
+EXECUTIVE_COMPENSATION: Endpoint[ExecutiveCompensation] = Endpoint(
     name="executive_compensation",
     path="governance-executive-compensation",
     version=APIVersion.STABLE,
@@ -438,7 +447,7 @@ EXECUTIVE_COMPENSATION: Endpoint = Endpoint(
     ],
 )
 
-EMPLOYEE_COUNT: Endpoint = Endpoint(
+EMPLOYEE_COUNT: Endpoint[EmployeeCount] = Endpoint(
     name="employee_count",
     path="employee-count",
     version=APIVersion.STABLE,
@@ -477,7 +486,7 @@ EMPLOYEE_COUNT: Endpoint = Endpoint(
 
 # Symbol Related Endpoints
 # Company Operational Data
-COMPANY_NOTES: Endpoint = Endpoint(
+COMPANY_NOTES: Endpoint[CompanyNote] = Endpoint(
     name="company_notes",
     path="company-notes",
     version=APIVersion.STABLE,
@@ -507,7 +516,7 @@ COMPANY_NOTES: Endpoint = Endpoint(
     ],
 )
 
-HISTORICAL_SHARE_FLOAT: Endpoint = Endpoint(
+HISTORICAL_SHARE_FLOAT: Endpoint[HistoricalShareFloat] = Endpoint(
     name="historical_share_float",
     path="historical/shares-float",
     version=APIVersion.STABLE,
@@ -536,7 +545,7 @@ HISTORICAL_SHARE_FLOAT: Endpoint = Endpoint(
 )
 
 # Revenue Analysis Endpoints
-PRODUCT_REVENUE_SEGMENTATION: Endpoint = Endpoint(
+PRODUCT_REVENUE_SEGMENTATION: Endpoint[ProductRevenueSegment] = Endpoint(
     name="product_revenue_segmentation",
     path="revenue-product-segmentation",
     version=APIVersion.STABLE,
@@ -552,12 +561,19 @@ PRODUCT_REVENUE_SEGMENTATION: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             description="Company symbol",
         ),
+    ],
+    optional_params=[
         EndpointParam(
             name="structure",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            description="Data structure format",
+            description=(
+                "Response layout (flat or nested). Stable currently "
+                "returns the same list-of-objects for both "
+                "(probed 2026-08-17)."
+            ),
             default="flat",
+            valid_values=list(STRUCTURE_VALUES),
         ),
         EndpointParam(
             name="period",
@@ -565,10 +581,9 @@ PRODUCT_REVENUE_SEGMENTATION: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             description="Annual or quarterly data",
             default="annual",
-            valid_values=["annual", "quarter"],
+            valid_values=list(PERIOD_ANNUAL_QUARTER_VALUES),
         ),
     ],
-    optional_params=[],
     response_model=ProductRevenueSegment,
     example_queries=[
         "Show Apple's revenue by product",
@@ -579,7 +594,7 @@ PRODUCT_REVENUE_SEGMENTATION: Endpoint = Endpoint(
     ],
 )
 
-GEOGRAPHIC_REVENUE_SEGMENTATION: Endpoint = Endpoint(
+GEOGRAPHIC_REVENUE_SEGMENTATION: Endpoint[GeographicRevenueSegment] = Endpoint(
     name="geographic_revenue_segmentation",
     path="revenue-geographic-segmentation",
     version=APIVersion.STABLE,
@@ -595,12 +610,19 @@ GEOGRAPHIC_REVENUE_SEGMENTATION: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             description="Company symbol",
         ),
+    ],
+    optional_params=[
         EndpointParam(
             name="structure",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            description="Data structure format",
+            description=(
+                "Response layout (flat or nested). Stable currently "
+                "returns the same list-of-objects for both "
+                "(probed 2026-08-17)."
+            ),
             default="flat",
+            valid_values=list(STRUCTURE_VALUES),
         ),
         EndpointParam(
             name="period",
@@ -608,10 +630,9 @@ GEOGRAPHIC_REVENUE_SEGMENTATION: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             description="Annual or quarterly data",
             default="annual",
-            valid_values=["annual", "quarter"],
+            valid_values=list(PERIOD_ANNUAL_QUARTER_VALUES),
         ),
     ],
-    optional_params=[],
     response_model=GeographicRevenueSegment,
     example_queries=[
         "Show Apple's revenue by region",
@@ -622,7 +643,7 @@ GEOGRAPHIC_REVENUE_SEGMENTATION: Endpoint = Endpoint(
     ],
 )
 
-SYMBOL_CHANGES: Endpoint = Endpoint(
+SYMBOL_CHANGES: Endpoint[SymbolChange] = Endpoint(
     name="symbol_changes",
     path="symbol-change",
     version=APIVersion.STABLE,
@@ -688,7 +709,7 @@ MARKET_CAP: Endpoint[MarketCapitalization] = Endpoint(
     response_model=MarketCapitalization,
 )
 
-HISTORICAL_MARKET_CAP: Endpoint = Endpoint(
+HISTORICAL_MARKET_CAP: Endpoint[MarketCapitalization] = Endpoint(
     name="historical_market_cap",
     path="historical-market-capitalization",
     version=APIVersion.STABLE,
@@ -704,7 +725,7 @@ HISTORICAL_MARKET_CAP: Endpoint = Endpoint(
     optional_params=[],
     response_model=MarketCapitalization,
 )
-PRICE_TARGET: Endpoint = Endpoint(
+PRICE_TARGET: Endpoint[PriceTarget] = Endpoint(
     name="price_target",
     path="price-target",
     version=APIVersion.STABLE,
@@ -766,7 +787,7 @@ PRICE_TARGET_CONSENSUS: Endpoint[PriceTargetConsensus] = Endpoint(
     response_model=PriceTargetConsensus,
 )
 
-ANALYST_ESTIMATES: Endpoint = Endpoint(
+ANALYST_ESTIMATES: Endpoint[AnalystEstimate] = Endpoint(
     name="analyst_estimates",
     path="analyst-estimates",
     version=APIVersion.STABLE,
@@ -785,7 +806,7 @@ ANALYST_ESTIMATES: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             description="Estimate period (annual or quarter)",
-            valid_values=["annual", "quarter"],
+            valid_values=list(PERIOD_ANNUAL_QUARTER_VALUES),
         ),
     ],
     optional_params=[
@@ -807,7 +828,7 @@ ANALYST_ESTIMATES: Endpoint = Endpoint(
     response_model=AnalystEstimate,
 )
 
-ANALYST_RECOMMENDATIONS: Endpoint = Endpoint(
+ANALYST_RECOMMENDATIONS: Endpoint[AnalystRecommendation] = Endpoint(
     name="analyst_recommendations",
     path="analyst-stock-recommendations",
     version=APIVersion.STABLE,
@@ -831,7 +852,7 @@ ANALYST_RECOMMENDATIONS: Endpoint = Endpoint(
     response_model=AnalystRecommendation,
 )
 
-UPGRADES_DOWNGRADES: Endpoint = Endpoint(
+UPGRADES_DOWNGRADES: Endpoint[UpgradeDowngrade] = Endpoint(
     name="upgrades_downgrades",
     path="upgrades-downgrades",
     version=APIVersion.STABLE,
@@ -879,7 +900,7 @@ UPGRADES_DOWNGRADES_CONSENSUS: Endpoint[UpgradeDowngradeConsensus] = Endpoint(
     response_model=UpgradeDowngradeConsensus,
 )
 
-COMPANY_PEERS: Endpoint = Endpoint(
+COMPANY_PEERS: Endpoint[CompanyPeer] = Endpoint(
     name="stock_peers",
     path="stock-peers",
     version=APIVersion.STABLE,
@@ -914,30 +935,36 @@ PROFILE_CIK: Endpoint[CompanyProfile] = Endpoint(
     response_model=CompanyProfile,
 )
 
-DELISTED_COMPANIES: Endpoint = Endpoint(
+DELISTED_COMPANIES: Endpoint[DelistedCompany] = Endpoint(
     name="delisted_companies",
     path="delisted-companies",
     version=APIVersion.STABLE,
-    description="Get list of delisted companies",
+    description=(
+        "Get companies FMP reports as delisted. Live rows are the slim "
+        "five-field shape (symbol, companyName, exchange, ipoDate, "
+        "delistedDate), not a company profile."
+    ),
     mandatory_params=[],
     optional_params=[
         EndpointParam(
             name="page",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
-            description="Page number for pagination",
+            description="Page number for pagination (0-based)",
+            default=0,
         ),
         EndpointParam(
             name="limit",
             location=ParamLocation.QUERY,
             param_type=ParamType.INTEGER,
             description="Number of results per page",
+            default=100,
         ),
     ],
-    response_model=CompanyProfile,
+    response_model=DelistedCompany,
 )
 
-HISTORICAL_EMPLOYEE_COUNT: Endpoint = Endpoint(
+HISTORICAL_EMPLOYEE_COUNT: Endpoint[EmployeeCount] = Endpoint(
     name="historical_employee_count",
     path="historical/employee-count",
     version=APIVersion.STABLE,
@@ -958,7 +985,7 @@ HISTORICAL_EMPLOYEE_COUNT: Endpoint = Endpoint(
     response_model=EmployeeCount,
 )
 
-COMPANY_OUTLOOK: Endpoint = Endpoint(
+COMPANY_OUTLOOK: Endpoint[CompanyOutlook] = Endpoint(
     name="company_outlook",
     path="company-outlook",
     version=APIVersion.STABLE,
@@ -980,7 +1007,7 @@ COMPANY_OUTLOOK: Endpoint = Endpoint(
     response_model=CompanyOutlook,
 )
 
-STOCK_SCREENER: Endpoint = Endpoint(
+STOCK_SCREENER: Endpoint[CompanyProfile] = Endpoint(
     name="stock_screener",
     path="stock-screener",
     version=APIVersion.STABLE,
@@ -1103,7 +1130,7 @@ STOCK_SCREENER: Endpoint = Endpoint(
     response_model=CompanyProfile,
 )
 
-MERGERS_ACQUISITIONS_LATEST: Endpoint = Endpoint(
+MERGERS_ACQUISITIONS_LATEST: Endpoint[MergerAcquisition] = Endpoint(
     name="mergers_acquisitions_latest",
     path="mergers-acquisitions-latest",
     version=APIVersion.STABLE,
@@ -1128,7 +1155,7 @@ MERGERS_ACQUISITIONS_LATEST: Endpoint = Endpoint(
     response_model=MergerAcquisition,
 )
 
-MERGERS_ACQUISITIONS_SEARCH: Endpoint = Endpoint(
+MERGERS_ACQUISITIONS_SEARCH: Endpoint[MergerAcquisition] = Endpoint(
     name="mergers_acquisitions_search",
     path="mergers-acquisitions-search",
     version=APIVersion.STABLE,
@@ -1160,7 +1187,7 @@ MERGERS_ACQUISITIONS_SEARCH: Endpoint = Endpoint(
     response_model=MergerAcquisition,
 )
 
-EXECUTIVE_COMPENSATION_BENCHMARK: Endpoint = Endpoint(
+EXECUTIVE_COMPENSATION_BENCHMARK: Endpoint[ExecutiveCompensationBenchmark] = Endpoint(
     name="executive_compensation_benchmark",
     path="executive-compensation-benchmark",
     version=APIVersion.STABLE,
@@ -1177,7 +1204,7 @@ EXECUTIVE_COMPENSATION_BENCHMARK: Endpoint = Endpoint(
     response_model=ExecutiveCompensationBenchmark,
 )
 
-COMPANY_DIVIDENDS: Endpoint = Endpoint(
+COMPANY_DIVIDENDS: Endpoint[DividendEvent] = Endpoint(
     name="company_dividends",
     path="dividends",
     version=APIVersion.STABLE,
@@ -1227,7 +1254,7 @@ COMPANY_DIVIDENDS: Endpoint = Endpoint(
     ],
 )
 
-COMPANY_EARNINGS: Endpoint = Endpoint(
+COMPANY_EARNINGS: Endpoint[EarningEvent] = Endpoint(
     name="company_earnings",
     path="earnings",
     version=APIVersion.STABLE,
@@ -1264,7 +1291,7 @@ COMPANY_EARNINGS: Endpoint = Endpoint(
     ],
 )
 
-COMPANY_SPLITS: Endpoint = Endpoint(
+COMPANY_SPLITS: Endpoint[StockSplitEvent] = Endpoint(
     name="company_splits",
     path="splits",
     version=APIVersion.STABLE,
@@ -1314,7 +1341,7 @@ COMPANY_SPLITS: Endpoint = Endpoint(
     ],
 )
 
-INCOME_STATEMENT_TTM: Endpoint = Endpoint(
+INCOME_STATEMENT_TTM: Endpoint[IncomeStatement] = Endpoint(
     name="income_statement_ttm",
     path="income-statement-ttm",
     version=APIVersion.STABLE,
@@ -1343,7 +1370,7 @@ INCOME_STATEMENT_TTM: Endpoint = Endpoint(
     response_model=IncomeStatement,
 )
 
-BALANCE_SHEET_TTM: Endpoint = Endpoint(
+BALANCE_SHEET_TTM: Endpoint[BalanceSheet] = Endpoint(
     name="balance_sheet_ttm",
     path="balance-sheet-statement-ttm",
     version=APIVersion.STABLE,
@@ -1372,7 +1399,7 @@ BALANCE_SHEET_TTM: Endpoint = Endpoint(
     response_model=BalanceSheet,
 )
 
-CASH_FLOW_TTM: Endpoint = Endpoint(
+CASH_FLOW_TTM: Endpoint[CashFlowStatement] = Endpoint(
     name="cash_flow_ttm",
     path="cash-flow-statement-ttm",
     version=APIVersion.STABLE,
@@ -1401,7 +1428,7 @@ CASH_FLOW_TTM: Endpoint = Endpoint(
     response_model=CashFlowStatement,
 )
 
-KEY_METRICS_TTM: Endpoint = Endpoint(
+KEY_METRICS_TTM: Endpoint[KeyMetricsTTM] = Endpoint(
     name="key_metrics_ttm",
     path="key-metrics-ttm",
     version=APIVersion.STABLE,
@@ -1423,7 +1450,7 @@ KEY_METRICS_TTM: Endpoint = Endpoint(
     response_model=KeyMetricsTTM,
 )
 
-FINANCIAL_RATIOS_TTM: Endpoint = Endpoint(
+FINANCIAL_RATIOS_TTM: Endpoint[FinancialRatiosTTM] = Endpoint(
     name="financial_ratios_ttm",
     path="ratios-ttm",
     version=APIVersion.STABLE,
@@ -1445,7 +1472,7 @@ FINANCIAL_RATIOS_TTM: Endpoint = Endpoint(
     response_model=FinancialRatiosTTM,
 )
 
-FINANCIAL_SCORES: Endpoint = Endpoint(
+FINANCIAL_SCORES: Endpoint[FinancialScore] = Endpoint(
     name="financial_scores",
     path="financial-scores",
     version=APIVersion.STABLE,
@@ -1467,7 +1494,7 @@ FINANCIAL_SCORES: Endpoint = Endpoint(
     response_model=FinancialScore,
 )
 
-ENTERPRISE_VALUES: Endpoint = Endpoint(
+ENTERPRISE_VALUES: Endpoint[EnterpriseValue] = Endpoint(
     name="enterprise_values",
     path="enterprise-values",
     version=APIVersion.STABLE,
@@ -1492,7 +1519,7 @@ ENTERPRISE_VALUES: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             description="Period type (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
+            valid_values=list(PERIOD_VALUES),
         ),
         EndpointParam(
             name="limit",
@@ -1505,7 +1532,7 @@ ENTERPRISE_VALUES: Endpoint = Endpoint(
     response_model=EnterpriseValue,
 )
 
-INCOME_STATEMENT_GROWTH: Endpoint = Endpoint(
+INCOME_STATEMENT_GROWTH: Endpoint[FinancialGrowth] = Endpoint(
     name="income_statement_growth",
     path="income-statement-growth",
     version=APIVersion.STABLE,
@@ -1530,7 +1557,7 @@ INCOME_STATEMENT_GROWTH: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             description="Period type (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
+            valid_values=list(PERIOD_VALUES),
         ),
         EndpointParam(
             name="limit",
@@ -1543,7 +1570,7 @@ INCOME_STATEMENT_GROWTH: Endpoint = Endpoint(
     response_model=FinancialGrowth,
 )
 
-BALANCE_SHEET_GROWTH: Endpoint = Endpoint(
+BALANCE_SHEET_GROWTH: Endpoint[FinancialGrowth] = Endpoint(
     name="balance_sheet_growth",
     path="balance-sheet-statement-growth",
     version=APIVersion.STABLE,
@@ -1568,7 +1595,7 @@ BALANCE_SHEET_GROWTH: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             description="Period type (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
+            valid_values=list(PERIOD_VALUES),
         ),
         EndpointParam(
             name="limit",
@@ -1581,7 +1608,7 @@ BALANCE_SHEET_GROWTH: Endpoint = Endpoint(
     response_model=FinancialGrowth,
 )
 
-CASH_FLOW_GROWTH: Endpoint = Endpoint(
+CASH_FLOW_GROWTH: Endpoint[FinancialGrowth] = Endpoint(
     name="cash_flow_growth",
     path="cash-flow-statement-growth",
     version=APIVersion.STABLE,
@@ -1606,7 +1633,7 @@ CASH_FLOW_GROWTH: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             description="Period type (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
+            valid_values=list(PERIOD_VALUES),
         ),
         EndpointParam(
             name="limit",
@@ -1619,7 +1646,7 @@ CASH_FLOW_GROWTH: Endpoint = Endpoint(
     response_model=FinancialGrowth,
 )
 
-FINANCIAL_GROWTH: Endpoint = Endpoint(
+FINANCIAL_GROWTH: Endpoint[FinancialGrowth] = Endpoint(
     name="financial_growth",
     path="financial-growth",
     version=APIVersion.STABLE,
@@ -1644,7 +1671,7 @@ FINANCIAL_GROWTH: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             description="Period type (annual, quarter, FY, Q1-Q4)",
             default="annual",
-            valid_values=["annual", "quarter", "FY", "Q1", "Q2", "Q3", "Q4"],
+            valid_values=list(PERIOD_VALUES),
         ),
         EndpointParam(
             name="limit",
@@ -1657,7 +1684,7 @@ FINANCIAL_GROWTH: Endpoint = Endpoint(
     response_model=FinancialGrowth,
 )
 
-FINANCIAL_REPORTS_JSON: Endpoint = Endpoint(
+FINANCIAL_REPORTS_JSON: Endpoint[FinancialReportJSON] = Endpoint(
     name="financial_reports_json",
     path="financial-reports-json",
     version=APIVersion.STABLE,
@@ -1680,20 +1707,21 @@ FINANCIAL_REPORTS_JSON: Endpoint = Endpoint(
             param_type=ParamType.INTEGER,
             description="Report year",
         ),
+    ],
+    optional_params=[
         EndpointParam(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             description="Report period (FY or Q1-Q4)",
             default="FY",
-            valid_values=["FY", "Q1", "Q2", "Q3", "Q4"],
+            valid_values=list(PERIOD_FISCAL_VALUES),
         ),
     ],
-    optional_params=[],
     response_model=FinancialReportJSON,
 )
 
-FINANCIAL_REPORTS_XLSX: Endpoint = Endpoint(
+FINANCIAL_REPORTS_XLSX: Endpoint[bytes] = Endpoint(
     name="financial_reports_xlsx",
     path="financial-reports-xlsx",
     version=APIVersion.STABLE,
@@ -1716,20 +1744,21 @@ FINANCIAL_REPORTS_XLSX: Endpoint = Endpoint(
             param_type=ParamType.INTEGER,
             description="Report year",
         ),
+    ],
+    optional_params=[
         EndpointParam(
             name="period",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             description="Report period (FY or Q1-Q4)",
             default="FY",
-            valid_values=["FY", "Q1", "Q2", "Q3", "Q4"],
+            valid_values=list(PERIOD_FISCAL_VALUES),
         ),
     ],
-    optional_params=[],
     response_model=bytes,  # Binary data
 )
 
-INCOME_STATEMENT_AS_REPORTED: Endpoint = Endpoint(
+INCOME_STATEMENT_AS_REPORTED: Endpoint[AsReportedIncomeStatement] = Endpoint(
     name="income_statement_as_reported",
     path="income-statement-as-reported",
     version=APIVersion.STABLE,
@@ -1754,7 +1783,7 @@ INCOME_STATEMENT_AS_REPORTED: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             description="Period type (annual or quarter)",
             default="annual",
-            valid_values=["annual", "quarter"],
+            valid_values=list(PERIOD_ANNUAL_QUARTER_VALUES),
         ),
         EndpointParam(
             name="limit",
@@ -1767,7 +1796,7 @@ INCOME_STATEMENT_AS_REPORTED: Endpoint = Endpoint(
     response_model=AsReportedIncomeStatement,
 )
 
-BALANCE_SHEET_AS_REPORTED: Endpoint = Endpoint(
+BALANCE_SHEET_AS_REPORTED: Endpoint[AsReportedBalanceSheet] = Endpoint(
     name="balance_sheet_as_reported",
     path="balance-sheet-statement-as-reported",
     version=APIVersion.STABLE,
@@ -1792,7 +1821,7 @@ BALANCE_SHEET_AS_REPORTED: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             description="Period type (annual or quarter)",
             default="annual",
-            valid_values=["annual", "quarter"],
+            valid_values=list(PERIOD_ANNUAL_QUARTER_VALUES),
         ),
         EndpointParam(
             name="limit",
@@ -1805,7 +1834,7 @@ BALANCE_SHEET_AS_REPORTED: Endpoint = Endpoint(
     response_model=AsReportedBalanceSheet,
 )
 
-CASH_FLOW_AS_REPORTED: Endpoint = Endpoint(
+CASH_FLOW_AS_REPORTED: Endpoint[AsReportedCashFlowStatement] = Endpoint(
     name="cash_flow_as_reported",
     path="cash-flow-statement-as-reported",
     version=APIVersion.STABLE,
@@ -1830,7 +1859,7 @@ CASH_FLOW_AS_REPORTED: Endpoint = Endpoint(
             param_type=ParamType.STRING,
             description="Period type (annual or quarter)",
             default="annual",
-            valid_values=["annual", "quarter"],
+            valid_values=list(PERIOD_ANNUAL_QUARTER_VALUES),
         ),
         EndpointParam(
             name="limit",

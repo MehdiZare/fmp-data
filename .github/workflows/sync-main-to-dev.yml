@@ -31,10 +31,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
           # PAT preferred so pushes and PRs are not GITHUB_TOKEN-attributed (#206).
+          # Credentials are persisted here on purpose, unlike the read-only
+          # checkouts elsewhere (#252): this job really does
+          # `git push origin HEAD:refs/heads/sync/main-to-dev`. Note the
+          # persisted value is a PAT, which is broader than GITHUB_TOKEN, so
+          # keep this job free of third-party actions and untrusted input.
           token: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Ensure main is reachable from dev

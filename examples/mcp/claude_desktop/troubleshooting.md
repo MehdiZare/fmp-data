@@ -92,12 +92,13 @@ which python3
 where python
 ```
 
-Update your config with the correct path:
+Update your config with the correct path (replace `command` with the
+output of `which python3` / `where python`):
 ```json
 {
   "mcpServers": {
     "fmp-data": {
-      "command": "/usr/bin/python3",  // Use your actual path
+      "command": "/usr/bin/python3",
       "args": ["-m", "fmp_data.mcp"],
       "env": {
         "FMP_API_KEY": "your_key"
@@ -140,7 +141,7 @@ Use a minimal configuration to reduce API calls:
       "args": ["-m", "fmp_data.mcp"],
       "env": {
         "FMP_API_KEY": "your_key",
-        "FMP_MCP_MANIFEST": "examples/mcp_configurations/minimal_manifest.py"
+        "FMP_MCP_MANIFEST": "examples/mcp/configurations/minimal_manifest.py"
       }
     }
   }
@@ -173,7 +174,9 @@ except json.JSONDecodeError as e:
 ```
 
 #### Common JSON Mistakes
-```json
+These are intentionally invalid; JSON does not allow comments, trailing
+commas, or single quotes.
+```text
 // ❌ WRONG - Comments not allowed
 {
   "mcpServers": {
@@ -198,8 +201,9 @@ except json.JSONDecodeError as e:
     ...
   }
 }
+```
 
-// ✅ CORRECT
+```json
 {
   "mcpServers": {
     "fmp-data": {
@@ -260,8 +264,9 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
 #### Path Separators
-Use forward slashes or escaped backslashes:
-```json
+Use forward slashes or escaped backslashes. These are fragments, not a
+full JSON document:
+```text
 // ✅ Good
 "FMP_MCP_MANIFEST": "C:/Users/Name/manifests/my_tools.py"
 

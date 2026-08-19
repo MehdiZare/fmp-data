@@ -8,7 +8,9 @@ from fmp_data.exceptions import (
     ConfigError,
     DependencyError,
     FMPError,
+    FMPNetworkError,
     FMPNotFound,
+    FMPTimeoutError,
     InvalidResponseTypeError,
     InvalidSymbolError,
     RateLimitError,
@@ -177,6 +179,8 @@ class TestExceptionHierarchy:
             AuthenticationError("msg"),
             ValidationError("msg"),
             ConfigError("msg"),
+            FMPTimeoutError("msg"),
+            FMPNetworkError("msg"),
         ]
         for exc in exceptions:
             assert isinstance(exc, FMPError)
@@ -273,6 +277,44 @@ class TestDependencyError:
         )
         assert error.feature == "Test feature"
         assert error.install_command == "pip install test"
+
+
+class TestFMPTimeoutError:
+    """Tests for FMPTimeoutError (#350)."""
+
+    def test_inherits_from_fmp_error(self) -> None:
+        error = FMPTimeoutError("Request timed out")
+        assert isinstance(error, FMPError)
+        assert error.status_code is None
+        assert error.response is None
+        assert str(error) == "Request timed out"
+
+    def test_is_public_export(self) -> None:
+        import fmp_data
+
+        assert fmp_data.FMPTimeoutError is FMPTimeoutError
+        assert "FMPTimeoutError" in fmp_data.__all__
+
+
+class TestFMPNetworkError:
+    """Tests for FMPNetworkError (#350)."""
+
+    def test_inherits_from_fmp_error(self) -> None:
+        error = FMPNetworkError("Network error")
+        assert isinstance(error, FMPError)
+        assert error.status_code is None
+        assert error.response is None
+        assert str(error) == "Network error"
+
+    def test_is_public_export(self) -> None:
+        import fmp_data
+
+        assert fmp_data.FMPNetworkError is FMPNetworkError
+        assert "FMPNetworkError" in fmp_data.__all__
+
+    def test_retryable_defaults_true_and_can_be_cleared(self) -> None:
+        assert FMPNetworkError("Network error").retryable is True
+        assert FMPNetworkError("Transport error", retryable=False).retryable is False
 
 
 class TestFMPNotFound:

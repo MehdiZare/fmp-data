@@ -17,6 +17,32 @@ class FMPError(Exception):
         super().__init__(self.message)
 
 
+class FMPTimeoutError(FMPError):
+    """Raised when an FMP HTTP request times out."""
+
+
+class FMPNetworkError(FMPError):
+    """Raised when an FMP HTTP request fails at the transport layer.
+
+    Covers ``httpx.NetworkError`` and leftover ``httpx.RequestError``
+    subclasses that are not timeouts (#350 / #354). ``retryable`` is True
+    for connect / protocol / proxy failures and False for
+    ``UnsupportedProtocol``, ``DecodingError``, ``TooManyRedirects``, and
+    any future ``RequestError`` that is not one of those.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        status_code: int | None = None,
+        response: dict[str, Any] | list[Any] | None = None,
+        *,
+        retryable: bool = True,
+    ) -> None:
+        super().__init__(message, status_code, response)
+        self.retryable = retryable
+
+
 class RateLimitError(FMPError):
     """Raised when API rate limit is exceeded"""
 

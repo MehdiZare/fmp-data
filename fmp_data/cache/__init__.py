@@ -43,6 +43,12 @@ def create_backend(config: CacheConfig) -> CacheBackend:
     if config.backend == "redis":
         from fmp_data.cache.redis_backend import RedisCache
 
-        redis_url = config.redis_url or "redis://localhost:6379/0"
+        # `redis.from_url` needs the real string; a SecretStr raises
+        # AttributeError on `.startswith` (#252).
+        redis_url = (
+            config.redis_url.get_secret_value()
+            if config.redis_url
+            else "redis://localhost:6379/0"
+        )
         return RedisCache(redis_url=redis_url, default_ttl=config.default_ttl)
     raise ValueError(f"Unknown cache backend: {config.backend!r}")

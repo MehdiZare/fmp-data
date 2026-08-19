@@ -99,7 +99,7 @@ WITHDRAWN_TOOLS: dict[str, str | None] = {
 
 DEFAULT_TOOLS: list[str] = [
     # Alternative (12 tools) - Crypto, Forex, and Commodities
-    # Dead FMP endpoints intentionally omitted (see DEPRECATED_TOOLS):
+    # Dead FMP endpoints intentionally omitted (see WITHDRAWN_TOOLS):
     # crypto_quotes, forex_quotes, commodities_quotes -- the live
     # batch-*-quotes paths are served by the batch client instead.
     "alternative.commodities_list",
@@ -114,14 +114,15 @@ DEFAULT_TOOLS: list[str] = [
     "alternative.forex_intraday",
     "alternative.forex_list",
     "alternative.forex_quote",
-    # Company (21 tools) - Company Information and Quotes
-    # Dead FMP endpoints intentionally omitted (see DEPRECATED_TOOLS):
+    # Company (22 tools) - Company Information and Quotes
+    # Dead FMP endpoints intentionally omitted (see WITHDRAWN_TOOLS):
     # analyst_recommendations, core_information, price_target,
     # upgrades_downgrades, upgrades_downgrades_consensus,
     # historical_share_float -- replaced by grades_consensus, profile,
     # price_target_summary, grades and share_float respectively.
     "company.analyst_estimates",
     "company.company_notes",
+    "company.delisted_companies",
     "company.employee_count",
     "company.executive_compensation",
     "company.aftermarket_quote",
@@ -171,7 +172,7 @@ DEFAULT_TOOLS: list[str] = [
     "institutional.insider_trades",
     "institutional.institutional_holdings",
     "institutional.transaction_types",
-    # Intelligence (38 tools) - news, events, grades/ratings (#116)
+    # Intelligence (44 tools) - news, events, grades/ratings (#116)
     # Dead FMP endpoints intentionally omitted from defaults, all in
     # WITHDRAWN_TOOLS: earnings_confirmed, earnings_surprises and
     # stock_news_sentiments 404 with no successor at all, and
@@ -204,6 +205,7 @@ DEFAULT_TOOLS: list[str] = [
     "intelligence.historical_earnings",
     "intelligence.house_disclosure",
     "intelligence.house_latest",
+    "intelligence.house_trades_by_id",
     "intelligence.house_trades_by_name",
     "intelligence.ipo_calendar",
     "intelligence.press_releases",
@@ -214,14 +216,19 @@ DEFAULT_TOOLS: list[str] = [
     "intelligence.ratings_snapshot",
     "intelligence.senate_trading",
     "intelligence.senate_latest",
+    "intelligence.senate_net_worth",
+    "intelligence.senate_net_worth_aggregated",
+    "intelligence.senate_positions",
+    "intelligence.senate_profile",
+    "intelligence.senate_trades_by_id",
     "intelligence.senate_trades_by_name",
     "intelligence.stock_news",
     "intelligence.stock_splits_calendar",
     # Investment (9 tools) - ETFs and Mutual Funds
-    # Dead FMP endpoints intentionally omitted: etf_holding_dates and
-    # mutual_fund_holdings are replaced by mutual_fund_dates and etf_holdings
-    # (see DEPRECATED_TOOLS); etf_holder, mutual_fund_holder and
-    # mutual_fund_by_name have no replacement (see WITHDRAWN_TOOLS).
+    # Dead FMP endpoints intentionally omitted (see WITHDRAWN_TOOLS):
+    # etf_holding_dates and mutual_fund_holdings are replaced by
+    # mutual_fund_dates and etf_holdings; etf_holder, mutual_fund_holder and
+    # mutual_fund_by_name have no replacement.
     "investment.etf_country_weightings",
     "investment.etf_exposure",
     "investment.etf_holdings",

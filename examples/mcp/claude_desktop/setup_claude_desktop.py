@@ -16,7 +16,12 @@ import json
 import os
 from pathlib import Path
 import platform
-import subprocess
+
+# Every call below passes an argument list (never shell=True) built from
+# sys.executable and literals, so there is no shell to inject into. #278
+# narrowed the global B404/B603 skips to file-local notes; this file follows
+# the same convention as fmp_data/mcp/setup.py (#273).
+import subprocess  # nosec B404
 import sys
 
 
@@ -61,11 +66,11 @@ def check_fmp_installation():
         return False
 
 
-def install_fmp_data():
+def install_fmp_data() -> bool:
     """Install fmp-data package with MCP support."""
     print("\n📦 Installing fmp-data with MCP support...")
     try:
-        subprocess.run(
+        subprocess.run(  # nosec B603
             [sys.executable, "-m", "pip", "install", "fmp-data[mcp]"], check=True
         )
         print("✅ Successfully installed fmp-data[mcp]")
@@ -153,7 +158,7 @@ def create_claude_config(api_key, custom_manifest=None):
     return True
 
 
-def test_mcp_server(api_key):
+def test_mcp_server(api_key: str) -> bool:
     """Test if the MCP server can start."""
     print("\n🧪 Testing MCP server...")
 
@@ -162,7 +167,7 @@ def test_mcp_server(api_key):
 
     try:
         # Try to import and create the app
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603
             [
                 sys.executable,
                 "-c",
@@ -180,19 +185,17 @@ def test_mcp_server(api_key):
         if result.returncode == 0:
             print("✅ MCP server test passed")
             return True
-        else:
-            print("❌ MCP server test failed")
-            print(f"   Error: {result.stderr}")
-            return False
+        print("❌ MCP server test failed")
+        return False
     except subprocess.TimeoutExpired:
         print("✅ MCP server test passed (server started)")
         return True
-    except Exception as e:
-        print(f"❌ MCP server test failed: {e}")
+    except Exception:
+        print("❌ MCP server test failed")
         return False
 
 
-def choose_configuration():
+def choose_configuration() -> str | None:
     """Let user choose a configuration preset."""
     print("\n🎯 Choose a configuration:")
     print("   1. Default - Comprehensive tool set")
@@ -205,10 +208,10 @@ def choose_configuration():
 
     manifest_map = {
         "1": None,  # Default
-        "2": "examples/mcp_configurations/minimal_manifest.py",
-        "3": "examples/mcp_configurations/trading_manifest.py",
-        "4": "examples/mcp_configurations/research_manifest.py",
-        "5": "examples/mcp_configurations/crypto_manifest.py",
+        "2": "examples/mcp/configurations/minimal_manifest.py",
+        "3": "examples/mcp/configurations/trading_manifest.py",
+        "4": "examples/mcp/configurations/research_manifest.py",
+        "5": "examples/mcp/configurations/crypto_manifest.py",
     }
 
     return manifest_map.get(choice)

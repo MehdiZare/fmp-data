@@ -1,5 +1,7 @@
 # fmp_data/intelligence/mapping.py
 
+from typing import Any
+
 from fmp_data.intelligence.endpoints import (
     CROWDFUNDING_BY_CIK,
     CROWDFUNDING_RSS,
@@ -29,6 +31,7 @@ from fmp_data.intelligence.endpoints import (
     HISTORICAL_SOCIAL_SENTIMENT_ENDPOINT,
     HOUSE_DISCLOSURE,
     HOUSE_LATEST,
+    HOUSE_TRADES_BY_ID,
     HOUSE_TRADES_BY_NAME,
     IPO_CALENDAR,
     PRESS_RELEASES_BY_SYMBOL_ENDPOINT,
@@ -38,6 +41,11 @@ from fmp_data.intelligence.endpoints import (
     RATINGS_HISTORICAL,
     RATINGS_SNAPSHOT,
     SENATE_LATEST,
+    SENATE_NET_WORTH,
+    SENATE_NET_WORTH_AGGREGATED,
+    SENATE_POSITIONS,
+    SENATE_PROFILE,
+    SENATE_TRADES_BY_ID,
     SENATE_TRADES_BY_NAME,
     SENATE_TRADING,
     SENATE_TRADING_RSS,
@@ -52,6 +60,7 @@ from fmp_data.lc.hints import (
     DATE_HINTS,
     LIMIT_HINT,
     PAGE_HINT,
+    SENATE_ID_HINT,
     SYMBOL_HINT,
 )
 from fmp_data.lc.models import (
@@ -60,9 +69,10 @@ from fmp_data.lc.models import (
     ResponseFieldInfo,
     SemanticCategory,
 )
+from fmp_data.models import Endpoint
 
 # Endpoint to method mapping
-INTELLIGENCE_ENDPOINT_MAP = {
+INTELLIGENCE_ENDPOINT_MAP: dict[str, Endpoint[Any]] = {
     # Calendar endpoints
     "get_earnings_calendar": EARNINGS_CALENDAR,
     "get_earnings_confirmed": EARNINGS_CONFIRMED,
@@ -79,10 +89,16 @@ INTELLIGENCE_ENDPOINT_MAP = {
     "get_senate_latest": SENATE_LATEST,
     "get_senate_trading": SENATE_TRADING,
     "get_senate_trades_by_name": SENATE_TRADES_BY_NAME,
+    "get_senate_trades_by_id": SENATE_TRADES_BY_ID,
+    "get_senate_profile": SENATE_PROFILE,
+    "get_senate_positions": SENATE_POSITIONS,
+    "get_senate_net_worth": SENATE_NET_WORTH,
+    "get_senate_net_worth_aggregated": SENATE_NET_WORTH_AGGREGATED,
     "get_senate_trading_rss": SENATE_TRADING_RSS,
     "get_house_latest": HOUSE_LATEST,
     "get_house_disclosure": HOUSE_DISCLOSURE,
     "get_house_trades_by_name": HOUSE_TRADES_BY_NAME,
+    "get_house_trades_by_id": HOUSE_TRADES_BY_ID,
     # Fundraising endpoints
     "get_crowdfunding_rss": CROWDFUNDING_RSS,
     "search_crowdfunding": CROWDFUNDING_SEARCH,
@@ -150,6 +166,48 @@ CRYPTO_PAIR_HINT = ParameterHint(
     ],
     examples=["BTCUSD", "ETHUSD", "BNBUSD"],
     context_clues=["crypto", "cryptocurrency", "bitcoin", "ethereum", "trading pair"],
+)
+
+ACTIVE_MEMBER_HINT = ParameterHint(
+    natural_names=["active", "currently serving", "in office"],
+    extraction_patterns=[
+        r"(?i)\bactive\b",
+        r"(?i)currently serving",
+        r"(?i)in office",
+    ],
+    examples=["true", "false"],
+    context_clues=["active", "current member", "in office"],
+    required=False,
+)
+
+CONGRESS_PARTY_HINT = ParameterHint(
+    natural_names=["party", "affiliation", "political party"],
+    extraction_patterns=[
+        r"(?i)\b(democrat(?:ic)?|republican|independent)\b",
+    ],
+    examples=["Democrat", "Republican", "Independent"],
+    context_clues=["party", "affiliation", "democrat", "republican"],
+    required=False,
+)
+
+CONGRESS_POSITION_HINT = ParameterHint(
+    natural_names=["position", "chamber", "office", "title"],
+    extraction_patterns=[
+        r"(?i)\b(senator|representative|house|senate)\b",
+    ],
+    examples=["Senator", "Representative"],
+    context_clues=["chamber", "senator", "representative", "position"],
+    required=False,
+)
+
+TOTALS_COL_HINT = ParameterHint(
+    natural_names=["totals column", "totalsCol", "aggregation column"],
+    extraction_patterns=[
+        r"(?i)totals[_ ]?col[:\s]+(\w+)",
+    ],
+    examples=["total"],
+    context_clues=["totals column", "aggregated total", "totalsCol"],
+    required=False,
 )
 
 # Additional utility mappings
@@ -878,6 +936,45 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "amount": ResponseFieldInfo(
                 description="Trade amount range",
                 examples=["$1,001 - $15,000", "$15,001 - $50,000"],
+                related_terms=["value", "transaction size"],
+            ),
+        },
+        use_cases=[
+            "Member trade review",
+            "Political trading analysis",
+            "Compliance checks",
+        ],
+    ),
+    "house_trades_by_id": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_house_trades_by_id",
+        natural_description="Get House trading data filtered by member id",
+        example_queries=[
+            "House trades by senate id",
+            "Trades for P000197",
+            "Look up House trades by member id",
+        ],
+        related_terms=[
+            "house trades by id",
+            "senateID",
+            "member id trades",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Government Trading",
+        parameter_hints={
+            "senate_id": SENATE_ID_HINT,
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
+        response_hints={
+            "symbol": ResponseFieldInfo(
+                description="Stock symbol",
+                examples=["UBER", "INTC"],
+                related_terms=["ticker", "company symbol"],
+            ),
+            "amount": ResponseFieldInfo(
+                description="Trade amount range",
+                examples=["$500,001 - $1,000,000", "$1,001 - $15,000"],
                 related_terms=["value", "transaction size"],
             ),
         },
@@ -1708,6 +1805,212 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "Member trade review",
             "Political trading analysis",
             "Compliance checks",
+        ],
+    ),
+    "senate_trades_by_id": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_senate_trades_by_id",
+        natural_description="Get Senate trading data filtered by member id",
+        example_queries=[
+            "Senate trades by senate id",
+            "Trades for W000802",
+            "Look up Senate trades by member id",
+        ],
+        related_terms=[
+            "senate trades by id",
+            "senateID",
+            "member id trades",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Government Trading",
+        parameter_hints={
+            "senate_id": SENATE_ID_HINT,
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
+        response_hints={
+            "symbol": ResponseFieldInfo(
+                description="Stock symbol",
+                examples=["LOW", "AAPL"],
+                related_terms=["ticker", "company symbol"],
+            ),
+            "amount": ResponseFieldInfo(
+                description="Trade amount range",
+                examples=["$1,001 - $15,000", "$15,001 - $50,000"],
+                related_terms=["value", "transaction size"],
+            ),
+        },
+        use_cases=[
+            "Member trade review",
+            "Political trading analysis",
+            "Compliance checks",
+        ],
+    ),
+    "senate_profile": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_senate_profile",
+        natural_description=(
+            "List Congress member profiles, optionally filtered by member id, "
+            "active status, party, or position"
+        ),
+        example_queries=[
+            "Senate member profiles",
+            "Profile for P000197",
+            "Active Congress members",
+        ],
+        related_terms=[
+            "senate profile",
+            "member directory",
+            "senateID",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Government Trading",
+        parameter_hints={
+            "senate_id": SENATE_ID_HINT,
+            "active": ACTIVE_MEMBER_HINT,
+            "latest_party": CONGRESS_PARTY_HINT,
+            "latest_position": CONGRESS_POSITION_HINT,
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
+        response_hints={
+            "first_name": ResponseFieldInfo(
+                description="Member first name",
+                examples=["Nancy", "Zoe"],
+                related_terms=["first name", "given name"],
+            ),
+            "last_name": ResponseFieldInfo(
+                description="Member last name",
+                examples=["Pelosi", "Lofgren"],
+                related_terms=["last name", "surname"],
+            ),
+        },
+        use_cases=[
+            "Member directory",
+            "Resolve name to senateID",
+            "Active member screening",
+        ],
+    ),
+    "senate_positions": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_senate_positions",
+        natural_description="Get Congress member term history by member id or chamber",
+        example_queries=[
+            "Senate positions for P000197",
+            "Term history for a member",
+            "Congress positions by party",
+        ],
+        related_terms=[
+            "senate positions",
+            "term history",
+            "congress number",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Government Trading",
+        parameter_hints={
+            "senate_id": SENATE_ID_HINT,
+            "party": CONGRESS_PARTY_HINT,
+            "position": CONGRESS_POSITION_HINT,
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
+        response_hints={
+            "position": ResponseFieldInfo(
+                description="Chamber or role",
+                examples=["Representative", "Senator"],
+                related_terms=["office", "title"],
+            ),
+            "party": ResponseFieldInfo(
+                description="Party during the term",
+                examples=["Democrat", "Republican"],
+                related_terms=["affiliation"],
+            ),
+        },
+        use_cases=[
+            "Term history",
+            "Party and chamber tracking",
+            "Member career timeline",
+        ],
+    ),
+    "senate_net_worth": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_senate_net_worth",
+        natural_description=(
+            "Get itemized Senate/House net-worth disclosures for a member id"
+        ),
+        example_queries=[
+            "Net worth for P000197",
+            "Senate net worth items",
+            "Disclosed assets and liabilities",
+        ],
+        related_terms=[
+            "net worth",
+            "assets",
+            "liabilities",
+            "senateID",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Government Trading",
+        parameter_hints={
+            "senate_id": SENATE_ID_HINT,
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
+        response_hints={
+            "section": ResponseFieldInfo(
+                description="Disclosure section",
+                examples=["Liabilities", "Assets"],
+                related_terms=["category", "schedule"],
+            ),
+            "value": ResponseFieldInfo(
+                description="Point estimate of the disclosed value",
+                examples=["3000001", "291009"],
+                related_terms=["amount", "worth"],
+            ),
+        },
+        use_cases=[
+            "Disclosed balance sheet",
+            "Asset and liability review",
+            "Conflict screening",
+        ],
+    ),
+    "senate_net_worth_aggregated": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_senate_net_worth_aggregated",
+        natural_description=(
+            "Get yearly aggregated Senate/House net-worth totals for a member id"
+        ),
+        example_queries=[
+            "Aggregated net worth for P000197",
+            "Yearly Senate net worth totals",
+        ],
+        related_terms=[
+            "net worth aggregated",
+            "yearly totals",
+            "senateID",
+        ],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="Government Trading",
+        parameter_hints={
+            "senate_id": SENATE_ID_HINT,
+            "totals_col": TOTALS_COL_HINT,
+        },
+        response_hints={
+            "total": ResponseFieldInfo(
+                description="Rolled-up net worth for the year",
+                examples=["225219551", "162568548.5"],
+                related_terms=["net worth", "total value"],
+            ),
+            "year": ResponseFieldInfo(
+                description="Disclosure year",
+                examples=["2024", "2023"],
+                related_terms=["filing year"],
+            ),
+        },
+        use_cases=[
+            "Yearly net-worth trend",
+            "Portfolio composition",
+            "Conflict screening",
         ],
     ),
     "senate_trading_rss": EndpointSemantics(

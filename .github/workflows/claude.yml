@@ -10,6 +10,12 @@ on:
   pull_request_review:
     types: [submitted]
 
+# One agent per issue/PR at a time. Two @claude mentions in quick succession
+# otherwise race each other in the same workspace, both holding contents:write.
+concurrency:
+  group: claude-${{ github.event.issue.number || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
 jobs:
   claude:
     if: |
@@ -30,17 +36,28 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
-      id-token: write
       actions: read # Required for Claude to read CI results on PRs
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 1
+          # persist-credentials is deliberately left on here, unlike every
+          # other checkout in this repo (#252). claude-code-action documents
+          # `use_commit_signing: false` (its default) as "Claude uses standard
+          # git commands", so it commits and pushes through the ambient git
+          # credential. Removing it would silently break @claude's ability to
+          # push, which is the point of this workflow.
+          #
+          # The residual risk is real and accepted: this job holds
+          # `contents: write` while running a model-driven agent over issue
+          # bodies, PR diffs and CI logs that are not author-gated (only the
+          # *trigger* is). The mitigations are the trigger gate above, the
+          # concurrency group below, and the SHA-pinned action.
 
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@239e3a730883eeb5c53db12b0fc9573b3024b126  # v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 

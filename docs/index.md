@@ -66,7 +66,7 @@ LangChain integration requires LangChain v1 (`langchain-core`, `langchain-openai
 ### Basic Usage
 
 ```python
-from fmp_data import FMPDataClient
+from fmp_data import FMPDataClient, Period
 
 # Initialize from environment variables
 with FMPDataClient.from_env() as client:
@@ -75,7 +75,8 @@ with FMPDataClient.from_env() as client:
     print(f"Company: {profile.company_name}")
 
     # Get financial statements
-    income = client.fundamental.get_income_statement("AAPL", period="annual")
+    period: Period = "annual"
+    income = client.fundamental.get_income_statement("AAPL", period=period)
     print(f"Revenue: ${income[0].revenue:,.0f}")
 
     # Get market data
@@ -108,6 +109,31 @@ async def main():
 
 asyncio.run(main())
 ```
+
+Period, interval, and timeframe are closed `Literal` aliases. Import them
+from the package root when you want to annotate against the live client
+contracts:
+
+```python
+from fmp_data import (
+    Interval,
+    Period,
+    PeriodAnnualQuarter,
+    PeriodFiscal,
+    Structure,
+    TechnicalInterval,
+    Timeframe,
+)
+```
+
+There are three period types on purpose: most statement endpoints take
+`Period` (`annual` / `quarter` / `FY` / `Q1`–`Q4`). Financial reports and
+batch bulk take only `PeriodFiscal`. Some company series take only
+`PeriodAnnualQuarter`. `Timeframe` is `Interval` plus `"1day"`.
+`TechnicalClient.interval=` takes `TechnicalInterval` (`Interval` plus
+`"daily"` / `"hourly"`), not `Timeframe`. Revenue segmentation
+`structure=` takes `Structure` (`flat` / `nested`); live `/stable`
+returns the same list-of-objects for both.
 
 ### Response Caching
 

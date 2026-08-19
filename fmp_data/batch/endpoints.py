@@ -15,8 +15,9 @@ from fmp_data.models import (
     ParamType,
     URLType,
 )
+from fmp_data.schema import PERIOD_FISCAL_VALUES
 
-BATCH_QUOTE: Endpoint = Endpoint(
+BATCH_QUOTE: Endpoint[BatchQuote] = Endpoint(
     name="batch_quote",
     path="batch-quote",
     version=APIVersion.STABLE,
@@ -40,7 +41,7 @@ BATCH_QUOTE: Endpoint = Endpoint(
     ],
 )
 
-BATCH_QUOTE_SHORT: Endpoint = Endpoint(
+BATCH_QUOTE_SHORT: Endpoint[BatchQuoteShort] = Endpoint(
     name="batch_quote_short",
     path="batch-quote-short",
     version=APIVersion.STABLE,
@@ -64,7 +65,7 @@ BATCH_QUOTE_SHORT: Endpoint = Endpoint(
     ],
 )
 
-BATCH_AFTERMARKET_TRADE: Endpoint = Endpoint(
+BATCH_AFTERMARKET_TRADE: Endpoint[AftermarketTrade] = Endpoint(
     name="batch_aftermarket_trade",
     path="batch-aftermarket-trade",
     version=APIVersion.STABLE,
@@ -88,7 +89,7 @@ BATCH_AFTERMARKET_TRADE: Endpoint = Endpoint(
     ],
 )
 
-BATCH_AFTERMARKET_QUOTE: Endpoint = Endpoint(
+BATCH_AFTERMARKET_QUOTE: Endpoint[AftermarketQuote] = Endpoint(
     name="batch_aftermarket_quote",
     path="batch-aftermarket-quote",
     version=APIVersion.STABLE,
@@ -112,7 +113,7 @@ BATCH_AFTERMARKET_QUOTE: Endpoint = Endpoint(
     ],
 )
 
-BATCH_EXCHANGE_QUOTE: Endpoint = Endpoint(
+BATCH_EXCHANGE_QUOTE: Endpoint[BatchQuote] = Endpoint(
     name="batch_exchange_quote",
     path="batch-exchange-quote",
     version=APIVersion.STABLE,
@@ -143,7 +144,7 @@ BATCH_EXCHANGE_QUOTE: Endpoint = Endpoint(
     ],
 )
 
-BATCH_MUTUALFUND_QUOTES: Endpoint = Endpoint(
+BATCH_MUTUALFUND_QUOTES: Endpoint[BatchQuote] = Endpoint(
     name="batch_mutualfund_quotes",
     path="batch-mutualfund-quotes",
     version=APIVersion.STABLE,
@@ -167,7 +168,7 @@ BATCH_MUTUALFUND_QUOTES: Endpoint = Endpoint(
     ],
 )
 
-BATCH_ETF_QUOTES: Endpoint = Endpoint(
+BATCH_ETF_QUOTES: Endpoint[BatchQuote] = Endpoint(
     name="batch_etf_quotes",
     path="batch-etf-quotes",
     version=APIVersion.STABLE,
@@ -191,7 +192,7 @@ BATCH_ETF_QUOTES: Endpoint = Endpoint(
     ],
 )
 
-BATCH_COMMODITY_QUOTES: Endpoint = Endpoint(
+BATCH_COMMODITY_QUOTES: Endpoint[BatchQuote] = Endpoint(
     name="batch_commodity_quotes",
     path="batch-commodity-quotes",
     version=APIVersion.STABLE,
@@ -215,7 +216,7 @@ BATCH_COMMODITY_QUOTES: Endpoint = Endpoint(
     ],
 )
 
-BATCH_CRYPTO_QUOTES: Endpoint = Endpoint(
+BATCH_CRYPTO_QUOTES: Endpoint[BatchQuote] = Endpoint(
     name="batch_crypto_quotes",
     path="batch-crypto-quotes",
     version=APIVersion.STABLE,
@@ -239,7 +240,7 @@ BATCH_CRYPTO_QUOTES: Endpoint = Endpoint(
     ],
 )
 
-BATCH_FOREX_QUOTES: Endpoint = Endpoint(
+BATCH_FOREX_QUOTES: Endpoint[BatchQuote] = Endpoint(
     name="batch_forex_quotes",
     path="batch-forex-quotes",
     version=APIVersion.STABLE,
@@ -263,7 +264,7 @@ BATCH_FOREX_QUOTES: Endpoint = Endpoint(
     ],
 )
 
-BATCH_INDEX_QUOTES: Endpoint = Endpoint(
+BATCH_INDEX_QUOTES: Endpoint[BatchQuote] = Endpoint(
     name="batch_index_quotes",
     path="batch-index-quotes",
     version=APIVersion.STABLE,
@@ -287,7 +288,7 @@ BATCH_INDEX_QUOTES: Endpoint = Endpoint(
     ],
 )
 
-BATCH_MARKET_CAP: Endpoint = Endpoint(
+BATCH_MARKET_CAP: Endpoint[BatchMarketCap] = Endpoint(
     name="batch_market_cap",
     path="market-capitalization-batch",
     version=APIVersion.STABLE,
@@ -311,7 +312,10 @@ BATCH_MARKET_CAP: Endpoint = Endpoint(
     ],
 )
 
-PROFILE_BULK: Endpoint = Endpoint(
+# CSV / bulk downloads. Payloads are raw bytes; fetch via _request_csv,
+# then parse with _parse_csv / parse_csv_*. Do not pass these to
+# _unwrap_list — a bytes payload becomes a one-element list.
+PROFILE_BULK: Endpoint[bytes] = Endpoint(
     name="profile_bulk",
     path="profile-bulk",
     version=APIVersion.STABLE,
@@ -330,7 +334,7 @@ PROFILE_BULK: Endpoint = Endpoint(
     response_model=bytes,
 )
 
-DCF_BULK: Endpoint = Endpoint(
+DCF_BULK: Endpoint[bytes] = Endpoint(
     name="dcf_bulk",
     path="dcf-bulk",
     version=APIVersion.STABLE,
@@ -342,7 +346,7 @@ DCF_BULK: Endpoint = Endpoint(
     response_model=bytes,
 )
 
-RATING_BULK: Endpoint = Endpoint(
+RATING_BULK: Endpoint[bytes] = Endpoint(
     name="rating_bulk",
     path="rating-bulk",
     version=APIVersion.STABLE,
@@ -354,7 +358,7 @@ RATING_BULK: Endpoint = Endpoint(
     response_model=bytes,
 )
 
-SCORES_BULK: Endpoint = Endpoint(
+SCORES_BULK: Endpoint[bytes] = Endpoint(
     name="scores_bulk",
     path="scores-bulk",
     version=APIVersion.STABLE,
@@ -366,7 +370,7 @@ SCORES_BULK: Endpoint = Endpoint(
     response_model=bytes,
 )
 
-RATIOS_TTM_BULK: Endpoint = Endpoint(
+RATIOS_TTM_BULK: Endpoint[bytes] = Endpoint(
     name="ratios_ttm_bulk",
     path="ratios-ttm-bulk",
     version=APIVersion.STABLE,
@@ -378,7 +382,7 @@ RATIOS_TTM_BULK: Endpoint = Endpoint(
     response_model=bytes,
 )
 
-PRICE_TARGET_SUMMARY_BULK: Endpoint = Endpoint(
+PRICE_TARGET_SUMMARY_BULK: Endpoint[bytes] = Endpoint(
     name="price_target_summary_bulk",
     path="price-target-summary-bulk",
     version=APIVersion.STABLE,
@@ -390,7 +394,7 @@ PRICE_TARGET_SUMMARY_BULK: Endpoint = Endpoint(
     response_model=bytes,
 )
 
-ETF_HOLDER_BULK: Endpoint = Endpoint(
+ETF_HOLDER_BULK: Endpoint[bytes] = Endpoint(
     name="etf_holder_bulk",
     path="etf-holder-bulk",
     version=APIVersion.STABLE,
@@ -409,7 +413,7 @@ ETF_HOLDER_BULK: Endpoint = Endpoint(
     response_model=bytes,
 )
 
-UPGRADES_DOWNGRADES_CONSENSUS_BULK: Endpoint = Endpoint(
+UPGRADES_DOWNGRADES_CONSENSUS_BULK: Endpoint[bytes] = Endpoint(
     name="upgrades_downgrades_consensus_bulk",
     path="upgrades-downgrades-consensus-bulk",
     version=APIVersion.STABLE,
@@ -421,7 +425,7 @@ UPGRADES_DOWNGRADES_CONSENSUS_BULK: Endpoint = Endpoint(
     response_model=bytes,
 )
 
-KEY_METRICS_TTM_BULK: Endpoint = Endpoint(
+KEY_METRICS_TTM_BULK: Endpoint[bytes] = Endpoint(
     name="key_metrics_ttm_bulk",
     path="key-metrics-ttm-bulk",
     version=APIVersion.STABLE,
@@ -433,7 +437,7 @@ KEY_METRICS_TTM_BULK: Endpoint = Endpoint(
     response_model=bytes,
 )
 
-PEERS_BULK: Endpoint = Endpoint(
+PEERS_BULK: Endpoint[bytes] = Endpoint(
     name="peers_bulk",
     path="peers-bulk",
     version=APIVersion.STABLE,
@@ -445,7 +449,7 @@ PEERS_BULK: Endpoint = Endpoint(
     response_model=bytes,
 )
 
-EARNINGS_SURPRISES_BULK: Endpoint = Endpoint(
+EARNINGS_SURPRISES_BULK: Endpoint[bytes] = Endpoint(
     name="earnings_surprises_bulk",
     path="earnings-surprises-bulk",
     version=APIVersion.STABLE,
@@ -464,7 +468,7 @@ EARNINGS_SURPRISES_BULK: Endpoint = Endpoint(
     response_model=bytes,
 )
 
-INCOME_STATEMENT_BULK: Endpoint = Endpoint(
+INCOME_STATEMENT_BULK: Endpoint[bytes] = Endpoint(
     name="income_statement_bulk",
     path="income-statement-bulk",
     version=APIVersion.STABLE,
@@ -483,14 +487,14 @@ INCOME_STATEMENT_BULK: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             description="Reporting period",
-            valid_values=["Q1", "Q2", "Q3", "Q4", "FY"],
+            valid_values=list(PERIOD_FISCAL_VALUES),
         ),
     ],
     optional_params=[],
     response_model=bytes,
 )
 
-INCOME_STATEMENT_GROWTH_BULK: Endpoint = Endpoint(
+INCOME_STATEMENT_GROWTH_BULK: Endpoint[bytes] = Endpoint(
     name="income_statement_growth_bulk",
     path="income-statement-growth-bulk",
     version=APIVersion.STABLE,
@@ -509,14 +513,14 @@ INCOME_STATEMENT_GROWTH_BULK: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             description="Reporting period",
-            valid_values=["Q1", "Q2", "Q3", "Q4", "FY"],
+            valid_values=list(PERIOD_FISCAL_VALUES),
         ),
     ],
     optional_params=[],
     response_model=bytes,
 )
 
-BALANCE_SHEET_STATEMENT_BULK: Endpoint = Endpoint(
+BALANCE_SHEET_STATEMENT_BULK: Endpoint[bytes] = Endpoint(
     name="balance_sheet_statement_bulk",
     path="balance-sheet-statement-bulk",
     version=APIVersion.STABLE,
@@ -535,14 +539,14 @@ BALANCE_SHEET_STATEMENT_BULK: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             description="Reporting period",
-            valid_values=["Q1", "Q2", "Q3", "Q4", "FY"],
+            valid_values=list(PERIOD_FISCAL_VALUES),
         ),
     ],
     optional_params=[],
     response_model=bytes,
 )
 
-BALANCE_SHEET_STATEMENT_GROWTH_BULK: Endpoint = Endpoint(
+BALANCE_SHEET_STATEMENT_GROWTH_BULK: Endpoint[bytes] = Endpoint(
     name="balance_sheet_statement_growth_bulk",
     path="balance-sheet-statement-growth-bulk",
     version=APIVersion.STABLE,
@@ -561,14 +565,14 @@ BALANCE_SHEET_STATEMENT_GROWTH_BULK: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             description="Reporting period",
-            valid_values=["Q1", "Q2", "Q3", "Q4", "FY"],
+            valid_values=list(PERIOD_FISCAL_VALUES),
         ),
     ],
     optional_params=[],
     response_model=bytes,
 )
 
-CASH_FLOW_STATEMENT_BULK: Endpoint = Endpoint(
+CASH_FLOW_STATEMENT_BULK: Endpoint[bytes] = Endpoint(
     name="cash_flow_statement_bulk",
     path="cash-flow-statement-bulk",
     version=APIVersion.STABLE,
@@ -587,14 +591,14 @@ CASH_FLOW_STATEMENT_BULK: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             description="Reporting period",
-            valid_values=["Q1", "Q2", "Q3", "Q4", "FY"],
+            valid_values=list(PERIOD_FISCAL_VALUES),
         ),
     ],
     optional_params=[],
     response_model=bytes,
 )
 
-CASH_FLOW_STATEMENT_GROWTH_BULK: Endpoint = Endpoint(
+CASH_FLOW_STATEMENT_GROWTH_BULK: Endpoint[bytes] = Endpoint(
     name="cash_flow_statement_growth_bulk",
     path="cash-flow-statement-growth-bulk",
     version=APIVersion.STABLE,
@@ -613,14 +617,14 @@ CASH_FLOW_STATEMENT_GROWTH_BULK: Endpoint = Endpoint(
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
             description="Reporting period",
-            valid_values=["Q1", "Q2", "Q3", "Q4", "FY"],
+            valid_values=list(PERIOD_FISCAL_VALUES),
         ),
     ],
     optional_params=[],
     response_model=bytes,
 )
 
-EOD_BULK: Endpoint = Endpoint(
+EOD_BULK: Endpoint[bytes] = Endpoint(
     name="eod_bulk",
     path="eod-bulk",
     version=APIVersion.STABLE,

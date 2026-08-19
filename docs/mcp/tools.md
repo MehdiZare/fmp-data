@@ -9,35 +9,37 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 (everything with MCP semantics, loadable via an explicit manifest), followed by
 how many of those are in `DEFAULT_TOOLS` (what a default server registers).
 The two differ where a tool is deprecated, redundant, or too heavy for the
-default set — `223` catalog tools, `137` default.
+default set — `230` catalog tools, `144` default.
 
-**Withdrawn endpoints:** 19 tools name an FMP endpoint that no longer exists.
+**Withdrawn endpoints:** 22 tools name an FMP endpoint that no longer exists.
 Probed against the live `stable` API, every one of those paths returns 404, so
 the tool can only ever answer with nothing. They remain in the catalog and stay
 loadable by explicit manifest, but they are **excluded from `DEFAULT_TOOLS`** —
 a default server should not offer a tool that cannot work. Where a live tool
 covers the same ground it is named in `WITHDRAWN_TOOLS`, but those are
 migrations rather than renames: the payloads differ, so check the fields you
-rely on. Six have no successor at all.
+rely on. Seven have no successor at all.
 
 **Tool keys:** a manifest entry may be the bare key (`profile`) or the fully
 qualified spec (`company.profile`). The bare form resolves only when exactly
 one client claims that key. Two keys are claimed by two clients each and must
 always be written in full: `crypto_quotes` (`alternative.crypto_quotes` vs
 `batch.crypto_quotes`) and `forex_quotes` (`alternative.forex_quotes` vs
-`batch.forex_quotes`). Rows marked *Deprecated* below still resolve but emit a
-`DeprecationWarning` and are removed in 3.0.
+`batch.forex_quotes`). Rows marked *Withdrawn* name a 404 FMP path; they still
+resolve and return `[]`, but they are not in `DEFAULT_TOOLS`. Rows marked
+*Deprecated* still resolve but emit a `DeprecationWarning` and are removed in
+3.0. Rows marked *Removed* raise `RemovedEndpointError`.
 
 ## Table of Contents
 
 - [Alternative (15 tools, 12 default)](#alternative)
 - [Batch (30 tools, 0 default)](#batch)
-- [Company (32 tools, 21 default)](#company)
+- [Company (33 tools, 22 default)](#company)
 - [Economics (7 tools, 7 default)](#economics)
 - [Fundamental (14 tools, 12 default)](#fundamental)
 - [Index (6 tools, 0 default)](#index)
 - [Institutional (12 tools, 8 default)](#institutional)
-- [Intelligence (45 tools, 38 default)](#intelligence)
+- [Intelligence (51 tools, 44 default)](#intelligence)
 - [Investment (14 tools, 9 default)](#investment)
 - [Market (23 tools, 21 default)](#market)
 - [SEC (12 tools, 0 default)](#sec)
@@ -106,7 +108,7 @@ via a manifest; these return large payloads and several are CSV).
 
 ## Company
 
-**32 tools** for company information and quotes (21 default).
+**33 tools** for company information and quotes (22 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -117,6 +119,7 @@ via a manifest; these return large payloads and several are CSV).
 | `company_logo_url` | Get the URL of the company's official logo image for use in applications, websites, or documentation |
 | `company_notes` | Retrieve company financial notes and disclosures from SEC filings, providing additional context and explanations about financial statements |
 | `core_information` | Get essential company information including CIK number, exchange listing, SIC code, state of incorporation, and fiscal year details |
+| `delisted_companies` | Get companies FMP reports as delisted, including the last exchange, IPO date, and delist date |
 | `employee_count` | Get historical employee count data showing how company workforce has changed over time |
 | `executive_compensation` | Get detailed executive compensation information including salary, bonuses, stock awards, and total compensation packages for company leaders |
 | `executives` | *Deprecated — use `key_executives`; removed in 3.0.* Get detailed information about company's key executives including their names, titles, compensation, and tenure. |
@@ -212,7 +215,7 @@ via a manifest; these return large payloads and several are CSV).
 
 ## Intelligence
 
-**45 tools** for news, sentiment, market events, and analyst ratings/grades (38 default).
+**51 tools** for news, sentiment, market events, and analyst ratings/grades (44 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -223,8 +226,8 @@ via a manifest; these return large payloads and several are CSV).
 | `crypto_symbol_news` | Search cryptocurrency news for a specific trading pair to track asset-specific developments |
 | `dividends_calendar` | Get upcoming and historical dividend events including ex-dividend dates, payment dates, and dividend amounts |
 | `earnings_calendar` | Access comprehensive earnings calendar showing upcoming earnings releases, estimated and actual results, and historical earnings data |
-| `earnings_confirmed` | **Deprecated / not in DEFAULT_TOOLS** — client returns `[]`; prefer `earnings_calendar` + `include_report_times` |
-| `earnings_surprises` | **Deprecated / not in DEFAULT_TOOLS** — client returns `[]`; prefer `historical_earnings` and compare eps |
+| `earnings_confirmed` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]`; prefer `earnings_calendar` + `include_report_times` |
+| `earnings_surprises` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]`; prefer `historical_earnings` and compare eps |
 | `equity_offering_by_cik` | Retrieve equity offerings for a specific company using CIK number including historical and current offerings |
 | `equity_offering_rss` | Get latest equity offerings including new issues, follow-on offerings, and capital raising events |
 | `equity_offering_search` | Search for equity offerings including public and private placements, with detailed offering terms and company information |
@@ -244,6 +247,7 @@ via a manifest; these return large payloads and several are CSV).
 | `historical_social_sentiment` | **Removed / not in DEFAULT_TOOLS** — raises `RemovedEndpointError` |
 | `house_disclosure` | Access House of Representatives trading disclosures including transaction details, filing information, and trade specifics |
 | `house_latest` | Get the latest House financial disclosures with transaction details |
+| `house_trades_by_id` | Get House trading data filtered by member id |
 | `house_trades_by_name` | Get House trading data filtered by representative name |
 | `ipo_calendar` | Retrieve upcoming and recent IPO events including pricing details, offering sizes, and listing dates |
 | `press_releases` | Retrieve corporate press releases and official company announcements with detailed content and publication information |
@@ -253,12 +257,17 @@ via a manifest; these return large payloads and several are CSV).
 | `ratings_historical` | Retrieve historical analyst ratings for a company to track how the rating and its component scores changed over time |
 | `ratings_snapshot` | Get the current analyst rating snapshot for a company, including the overall rating and component scores |
 | `senate_latest` | Get the latest Senate financial disclosures with transaction details |
+| `senate_net_worth` | Get itemized Senate/House net-worth disclosures for a member id |
+| `senate_net_worth_aggregated` | Get yearly aggregated Senate/House net-worth totals for a member id |
+| `senate_positions` | Get Congress member term history |
+| `senate_profile` | List Congress member profiles |
+| `senate_trades_by_id` | Get Senate trading data filtered by member id |
 | `senate_trades_by_name` | Get Senate trading data filtered by senator name |
 | `senate_trading` | Access Senate trading activity and disclosures including stock trades, transaction details, and filing information |
-| `senate_trading_rss` | Get real-time RSS feed of Senate trading disclosures including new filings and transaction updates |
+| `senate_trading_rss` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]`; prefer `senate_latest` |
 | `social_sentiment_changes` | **Removed / not in DEFAULT_TOOLS** — raises `RemovedEndpointError` |
 | `stock_news` | Market-wide stock news feed of company events and corporate developments. Not filterable by symbol; narrow it by date range or page |
-| `stock_news_sentiments` | **Deprecated / not in DEFAULT_TOOLS** — client returns `[]` |
+| `stock_news_sentiments` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]` |
 | `stock_splits_calendar` | Access upcoming and historical stock split events including split ratios, dates, and affected securities |
 | `trending_social_sentiment` | **Removed / not in DEFAULT_TOOLS** — raises `RemovedEndpointError` |
 

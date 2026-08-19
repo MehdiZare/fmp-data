@@ -7,44 +7,62 @@ name: Dev Release
 # Version is unique per workflow run so re-runs and force-pushes cannot
 # silently re-advertise a stale wheel via skip-existing (same failure
 # shape as #204).
+#
+# workflow_dispatch is bound to refs/heads/dev. An arbitrary ref cannot
+# be published under this Trusted Publisher identity (#252 FMP-SEC-003).
 
 on:
   push:
     branches:
       - dev
-  workflow_dispatch:  # Allow manual triggering
+  workflow_dispatch:
+
+# Serialize dev releases. Rapid pushes to `dev` would otherwise publish
+# out of order. Never cancel in progress -- a half-finished upload is
+# worse than a queued one (#252).
+concurrency:
+  group: dev-release-to-testpypi
+  cancel-in-progress: false
 
 permissions:
-  id-token: write              # OIDC → Trusted Publishing
-  contents: read               # Read repository contents
-  pull-requests: read          # Read PR labels for version calculation
+  contents: read
 
 jobs:
-  dev-release:
+  build:
+    if: github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      version: ${{ steps.version.outputs.DEV_VERSION }}
+      head_short: ${{ steps.version.outputs.HEAD_SHORT }}
     env:
       PYTHON_VERSION: "3.12"
 
     steps:
       - name: 🛎️  Checkout repository
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0  # Needed for version calculation
           fetch-tags: true
+          ref: refs/heads/dev
+          persist-credentials: false
 
       - name: 🐍  Set up Python
-        uses: actions/setup-python@v7.0.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: ⚡  Install uv (with cache)
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d  # v10.0.0
         with:
+          version: "0.12.3"
           enable-cache: true
 
-      - name: 📦  Install build tools
+      - name: 📦  Install build frontend and backend (version floors)
         run: |
-          uv pip install --system build hatch
+          uv pip install --system -r .github/requirements-build.txt
 
       - name: 🔍  Check for PR with release labels
         id: pr_labels
@@ -136,7 +154,7 @@ jobs:
           git describe --tags --always
           echo "📦 Building package..."
 
-          python -m build --wheel --sdist
+          python -m build --no-isolation --wheel --sdist
 
           echo "📦 Build completed. Contents of dist/:"
           ls -la dist/
@@ -148,8 +166,11 @@ jobs:
             exit 1
           fi
           SDIST="${sdists[0]}"
-          META_VERSION=$(tar -xOf "$SDIST" --wildcards '*/PKG-INFO' 2>/dev/null \
-            | awk -F': ' '/^Version:/{print $2; exit}')
+          # Read PKG-INFO in full first. `tar | awk ... exit` under pipefail
+          # dies with tar's SIGPIPE (exit 2) after awk closes the pipe — the
+          # sdist is fine, the job is not.
+          PKG_INFO=$(tar -xOf "$SDIST" --wildcards '*/PKG-INFO')
+          META_VERSION=$(awk -F': ' '/^Version:/{print $2; exit}' <<<"$PKG_INFO")
           if [ -z "${META_VERSION:-}" ]; then
             echo "::error::Could not read Version: from sdist PKG-INFO"
             exit 1
@@ -160,10 +181,43 @@ jobs:
           fi
           echo "📋 Built package version matches: $META_VERSION"
 
+          (cd dist && sha256sum ./* > ../SHA256SUMS)
+          cat SHA256SUMS
+
+      - name: 📤 Upload dist artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: python-package-dist
+          path: |
+            dist/
+            SHA256SUMS
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/fmp-data/${{ needs.build.outputs.version }}/
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: 📥 Download dist artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: python-package-dist
+
+      - name: 🔐 Verify artifact checksums
+        run: |
+          set -euo pipefail
+          (cd dist && sha256sum -c ../SHA256SUMS)
+
       - name: 🧪  Upload to Test PyPI
         # skip-existing OFF: unique version means a collision is a real bug
         # and must fail, not silently succeed with a stale artifact.
-        uses: pypa/gh-action-pypi-publish@v1.14.2
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # v1.14.2
         with:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: dist
@@ -175,11 +229,11 @@ jobs:
           {
             echo "## 🧪 Dev Release Published"
             echo ""
-            echo "**Version:** \`${{ steps.version.outputs.DEV_VERSION }}\`"
-            echo "**Commit:** \`${{ steps.version.outputs.HEAD_SHORT }}\`"
+            echo "**Version:** \`${{ needs.build.outputs.version }}\`"
+            echo "**Commit:** \`${{ needs.build.outputs.head_short }}\`"
             echo ""
             echo "### Installation"
             echo "\`\`\`bash"
-            echo "pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ fmp-data==${{ steps.version.outputs.DEV_VERSION }}"
+            echo "pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ fmp-data==${{ needs.build.outputs.version }}"
             echo "\`\`\`"
           } >> "$GITHUB_STEP_SUMMARY"

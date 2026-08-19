@@ -368,10 +368,13 @@ def test_partition_industry_classification_all_optional() -> None:
 
 
 def test_partition_omits_unmapped_when_method_active() -> None:
-    """Endpoint-only params (structure, limit) are dropped under method dispatch."""
+    """Unmapped endpoint params (e.g. employee-count limit) are dropped.
+
+    Revenue ``structure`` is advertised once the method accepts it.
+    """
 
     def get_product_revenue_segmentation(
-        symbol: str, period: str = "annual"
+        symbol: str, period: str = "annual", structure: str = "flat"
     ) -> list[Any]:
         return []
 
@@ -384,8 +387,7 @@ def test_partition_omits_unmapped_when_method_active() -> None:
         get_product_revenue_segmentation,
     )
     assert {p.name for p in rev_mandatory} == {"symbol"}
-    assert {p.name for p in rev_optional} == {"period"}
-    assert "structure" not in {p.name for p in rev_mandatory + rev_optional}
+    assert {p.name for p in rev_optional} == {"period", "structure"}
 
     emp_mandatory, emp_optional = partition_params_for_method(
         EMPLOYEE_COUNT.mandatory_params,
@@ -396,13 +398,14 @@ def test_partition_omits_unmapped_when_method_active() -> None:
     assert emp_optional == []
     assert "limit" not in {p.name for p in emp_mandatory + emp_optional}
 
-    # Without a method, pre-#172 lists are unchanged (structure/limit kept).
-    bare_mand, _bare_opt = partition_params_for_method(
+    # Without a method, lists stay as declared (structure and limit optional).
+    bare_mand, bare_opt = partition_params_for_method(
         PRODUCT_REVENUE_SEGMENTATION.mandatory_params,
         PRODUCT_REVENUE_SEGMENTATION.optional_params or [],
         None,
     )
-    assert "structure" in {p.name for p in bare_mand}
+    assert "structure" not in {p.name for p in bare_mand}
+    assert "structure" in {p.name for p in bare_opt}
     bare_emp_mand, bare_emp_opt = partition_params_for_method(
         EMPLOYEE_COUNT.mandatory_params,
         EMPLOYEE_COUNT.optional_params or [],
@@ -652,3 +655,71 @@ def test_successful_dispatch_logs_no_fallback(tmp_path: Any) -> None:
 
     store.logger.warning.assert_not_called()
     store.logger.debug.assert_not_called()
+
+
+def test_tool_error_envelope_redacts_reflected_api_keys(tmp_path: Any) -> None:
+    """The envelope is the tool's return value, so it reaches the model (#252).
+
+    `str()` of an `httpx.HTTPStatusError` stringifies the request URL, which
+    for this client always carries `apikey=`. That dict goes into the agent
+    scratchpad, the chat history and any tracing backend -- `base.py` suppresses
+    this exact leak on its own paths, but nothing under `lc/` was redacting.
+    """
+    planted = "PLANTEDCREDENTIALVALUE"
+    boom = RuntimeError(
+        f"Server error '500' for url "
+        f"'https://financialmodelingprep.com/stable/profile?apikey={planted}'"
+    )
+    client = cast(
+        BaseClient,
+        SimpleNamespace(
+            request=Mock(side_effect=boom),
+            sec=SimpleNamespace(
+                search_industry_classification=Mock(side_effect=boom),
+            ),
+        ),
+    )
+    registry = _sec_registry("industry_classification_search")
+    store = _store_with(client, registry, tmp_path)
+    info = registry.get_endpoint("search_industry_classification")
+    assert info is not None
+
+    result = cast(Any, store.create_tool(info)).invoke({"symbol": "AAPL"})
+
+    assert result["status"] == "error"
+    rendered = repr(result)
+    assert planted not in rendered, f"tool envelope leaked the key: {rendered}"
+    assert "[REDACTED]" in rendered
+
+
+def test_validation_error_envelope_redacts_reflected_api_keys(tmp_path: Any) -> None:
+    """Field-error lines must use the redacted message, not raw ``str(e)``."""
+    planted = "PLANTEDCREDENTIALVALUE"
+    boom = ValueError(
+        "  extra  url "
+        f"'https://financialmodelingprep.com/stable/profile?apikey={planted}'"
+    )
+    client = cast(
+        BaseClient,
+        SimpleNamespace(
+            request=Mock(side_effect=boom),
+            sec=SimpleNamespace(
+                search_industry_classification=Mock(side_effect=boom),
+            ),
+        ),
+    )
+    registry = _sec_registry("industry_classification_search")
+    store = _store_with(client, registry, tmp_path)
+    info = registry.get_endpoint("search_industry_classification")
+    assert info is not None
+
+    result = cast(Any, store.create_tool(info)).invoke({"symbol": "AAPL"})
+
+    assert result["status"] == "error"
+    assert result["error_type"] == "validation_error"
+    field_errors = result["details"]["validation_errors"]
+    assert field_errors
+    assert all(planted not in err for err in field_errors)
+    assert any("[REDACTED]" in err for err in field_errors)
+    rendered = repr(result)
+    assert planted not in rendered, f"validation envelope leaked the key: {rendered}"

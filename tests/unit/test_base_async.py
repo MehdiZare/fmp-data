@@ -1,6 +1,7 @@
 # tests/unit/test_base_async.py
 """Tests for async client functionality in BaseClient."""
 
+import inspect
 from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
@@ -106,6 +107,104 @@ class TestAsyncClientReuse:
 
         # Cleanup
         await client.aclose()
+
+    @pytest.mark.asyncio
+    async def test_async_client_installs_the_awaitable_redirect_hook(
+        self, client_config
+    ):
+        """The async client must register the *async* SEC-004 hook.
+
+        ``httpx.AsyncClient`` does ``await hook(response)``. Registering the
+        plain sync function made httpx await ``None``, which raised
+        ``TypeError`` on every async response. Membership alone is not
+        enough — assert it is a coroutine function too.
+        """
+        from fmp_data.base import BaseClient, _areject_cross_origin_redirect
+
+        client = BaseClient(client_config)
+        try:
+            hooks = client._setup_async_client().event_hooks["response"]
+            assert _areject_cross_origin_redirect in hooks
+            assert all(inspect.iscoroutinefunction(hook) for hook in hooks), (
+                "every async response hook must be awaitable"
+            )
+        finally:
+            await client.aclose()
+
+    @pytest.mark.asyncio
+    async def test_async_hook_lets_a_normal_response_through(self, client_config):
+        """Regression: a plain 200 must not raise (#252 FMP-SEC-004).
+
+        This drives the real ``httpx.AsyncClient`` send path rather than an
+        ``AsyncMock``. Before the async wrapper existed this raised
+        ``TypeError: object NoneType can't be used in 'await' expression``
+        for *every* async request, and the mock-based tests could not see it.
+        """
+        from fmp_data.base import BaseClient
+
+        client = BaseClient(client_config)
+        try:
+            async_client = client._setup_async_client()
+            async_client._transport = httpx.MockTransport(
+                lambda request: httpx.Response(200, json={"symbol": "AAPL"})
+            )
+            response = await async_client.get("https://financialmodelingprep.com/x")
+            assert response.status_code == 200
+            assert response.json() == {"symbol": "AAPL"}
+        finally:
+            await client.aclose()
+
+    @pytest.mark.asyncio
+    async def test_async_hook_refuses_a_real_cross_origin_redirect(self, client_config):
+        """A 302 to another origin is refused before the second hop."""
+        from fmp_data.base import BaseClient
+        from fmp_data.exceptions import FMPError
+
+        seen: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen.append(str(request.url))
+            if request.url.host == "financialmodelingprep.com":
+                return httpx.Response(
+                    302, headers={"Location": "https://attacker.test/steal"}
+                )
+            return httpx.Response(200, json={"leaked": True})
+
+        client = BaseClient(client_config)
+        try:
+            async_client = client._setup_async_client()
+            async_client._transport = httpx.MockTransport(handler)
+            with pytest.raises(FMPError, match="Refusing cross-origin redirect"):
+                await async_client.get("https://financialmodelingprep.com/x")
+        finally:
+            await client.aclose()
+
+        assert not any("attacker.test" in url for url in seen), (
+            f"request reached the attacker origin: {seen}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_async_hook_allows_a_same_origin_redirect(self, client_config):
+        """Same-origin 3xx still follows through to the final response."""
+        from fmp_data.base import BaseClient
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/x":
+                return httpx.Response(
+                    302,
+                    headers={"Location": "https://financialmodelingprep.com/y"},
+                )
+            return httpx.Response(200, json={"ok": True})
+
+        client = BaseClient(client_config)
+        try:
+            async_client = client._setup_async_client()
+            async_client._transport = httpx.MockTransport(handler)
+            response = await async_client.get("https://financialmodelingprep.com/x")
+            assert response.status_code == 200
+            assert response.json() == {"ok": True}
+        finally:
+            await client.aclose()
 
 
 class TestAclose:

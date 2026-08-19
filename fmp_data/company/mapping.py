@@ -1,6 +1,8 @@
 # fmp_data/company/mapping.py
 from __future__ import annotations
 
+from typing import Any
+
 from fmp_data.company.endpoints import (
     AFTERMARKET_QUOTE,
     AFTERMARKET_TRADE,
@@ -8,6 +10,7 @@ from fmp_data.company.endpoints import (
     ANALYST_RECOMMENDATIONS,
     COMPANY_NOTES,
     CORE_INFORMATION,
+    DELISTED_COMPANIES,
     EMPLOYEE_COUNT,
     EXECUTIVE_COMPENSATION,
     GEOGRAPHIC_REVENUE_SEGMENTATION,
@@ -47,9 +50,10 @@ from fmp_data.lc.hints import (
     SYMBOL_HINT,
 )
 from fmp_data.lc.models import EndpointSemantics, ResponseFieldInfo, SemanticCategory
+from fmp_data.models import Endpoint
 
 # Company endpoints mapping
-COMPANY_ENDPOINT_MAP = {
+COMPANY_ENDPOINT_MAP: dict[str, Endpoint[Any]] = {
     # Price Target endpoints
     "get_price_target": PRICE_TARGET,
     "get_price_target_summary": PRICE_TARGET_SUMMARY,
@@ -80,6 +84,7 @@ COMPANY_ENDPOINT_MAP = {
     "get_product_revenue_segmentation": PRODUCT_REVENUE_SEGMENTATION,
     "get_geographic_revenue_segmentation": GEOGRAPHIC_REVENUE_SEGMENTATION,
     "get_symbol_changes": SYMBOL_CHANGES,
+    "get_delisted_companies": DELISTED_COMPANIES,
 }
 
 # Complete semantic definitions for all endpoints
@@ -534,6 +539,62 @@ COMPANY_ENDPOINTS_SEMANTICS = {
             "Historical data analysis",
             "Market research",
             "Database maintenance",
+        ],
+    ),
+    "delisted_companies": EndpointSemantics(
+        client_name="company",
+        method_name="get_delisted_companies",
+        natural_description=(
+            "Get companies FMP reports as delisted, including the last "
+            "exchange, IPO date, and delist date"
+        ),
+        example_queries=[
+            "List recently delisted companies",
+            "Which symbols were delisted?",
+            "Get delisted stocks",
+            "Show companies that left the exchange",
+            "Find delisted tickers",
+        ],
+        related_terms=[
+            "delisted",
+            "delisting",
+            "removed from exchange",
+            "dead ticker",
+            "former listing",
+        ],
+        category=SemanticCategory.COMPANY_INFO,
+        parameter_hints={"page": PAGE_HINT, "limit": LIMIT_HINT},
+        response_hints={
+            "symbol": ResponseFieldInfo(
+                description="Former trading symbol",
+                examples=["EDAP", "2958.HK"],
+                related_terms=["ticker", "old symbol", "delisted ticker"],
+            ),
+            "company_name": ResponseFieldInfo(
+                description="Company name as FMP reports it",
+                examples=["EDAP TMS S.A.", "Vision Values Holdings Limited"],
+                related_terms=["name", "issuer"],
+            ),
+            "exchange": ResponseFieldInfo(
+                description="Exchange the symbol last traded on",
+                examples=["NASDAQ", "HKSE"],
+                related_terms=["listing venue", "last exchange"],
+            ),
+            "ipo_date": ResponseFieldInfo(
+                description="Original IPO date",
+                examples=["1997-08-01", "2026-05-27"],
+                related_terms=["listing date", "IPO"],
+            ),
+            "delisted_date": ResponseFieldInfo(
+                description="Date the symbol was delisted",
+                examples=["2026-07-28", "2026-05-27"],
+                related_terms=["delist date", "removal date"],
+            ),
+        },
+        use_cases=[
+            "Corporate action tracking",
+            "Historical universe maintenance",
+            "Survivorship-bias checks",
         ],
     ),
     "executives": EndpointSemantics(

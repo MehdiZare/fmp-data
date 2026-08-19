@@ -4,7 +4,7 @@
 #
 # For maintainer/developer commands, see Makefile.dev
 
-.PHONY: help install install-dev venv test test-unit test-integration test-integration-replay test-integration-record lint format fix check clean update update-dev
+.PHONY: help install install-dev venv test test-unit test-integration test-integration-replay test-integration-record e2e-list e2e-record e2e-replay lint format fix check clean update update-dev
 .PHONY: mcp-setup mcp-test mcp-list mcp-status ci
 
 # Default target
@@ -47,6 +47,9 @@ help: ## Show available commands
 	@echo "  $(GREEN)make test-unit$(RESET)       Run unit tests only"
 	@echo "  $(GREEN)make test-integration$(RESET) Run integration tests (replay by default)"
 	@echo "  $(GREEN)make test-integration-record$(RESET) Record/refresh integration cassettes"
+	@echo "  $(GREEN)make e2e-list$(RESET)         List client methods the e2e sweep covers"
+	@echo "  $(GREEN)make e2e-record$(RESET)       Record live e2e cassettes (set GROUP= / METHOD=)"
+	@echo "  $(GREEN)make e2e-replay$(RESET)       Replay e2e cassettes (no network)"
 	@echo "  $(GREEN)make lint$(RESET)            Check code quality"
 	@echo "  $(GREEN)make format$(RESET)          Check code formatting"
 	@echo "  $(GREEN)make fix$(RESET)             Auto-fix code issues"
@@ -127,7 +130,7 @@ venv: .venv/.installed ## Create .venv and install dev dependencies if missing
 
 test: venv ## Run tests
 	@echo "$(BOLD)$(BLUE)🧪 Running tests...$(RESET)"
-	@set -a; [ -f .env ] && . ./.env; set +a; \
+	@eval "$$(python3 scripts/export_dotenv.py .env)"; \
 		if [ -z "$$FMP_TEST_API_KEY" ] && [ -n "$$FMP_API_KEY" ]; then export FMP_TEST_API_KEY="$$FMP_API_KEY"; fi; \
 		if [ -z "$$FMP_API_KEY" ] && [ -n "$$FMP_TEST_API_KEY" ]; then export FMP_API_KEY="$$FMP_TEST_API_KEY"; fi; \
 		. .venv/bin/activate && pytest -q $(PYTEST_XDIST_ARGS)
@@ -140,7 +143,7 @@ test-integration: test-integration-replay ## Alias for replay integration tests
 
 test-integration-replay: venv ## Run integration tests using VCR replay mode (fast, deterministic)
 	@echo "$(BOLD)$(BLUE)🧪 Running integration tests (VCR replay)...$(RESET)"
-	@set -a; [ -f .env ] && . ./.env; set +a; \
+	@eval "$$(python3 scripts/export_dotenv.py .env)"; \
 		if [ -z "$$FMP_TEST_API_KEY" ] && [ -n "$$FMP_API_KEY" ]; then export FMP_TEST_API_KEY="$$FMP_API_KEY"; fi; \
 		if [ -z "$$FMP_API_KEY" ] && [ -n "$$FMP_TEST_API_KEY" ]; then export FMP_API_KEY="$$FMP_TEST_API_KEY"; fi; \
 		export FMP_VCR_RECORD=none; \
@@ -148,12 +151,38 @@ test-integration-replay: venv ## Run integration tests using VCR replay mode (fa
 
 test-integration-record: venv ## Record/update integration VCR cassettes (set TESTS=path/to/test.py for targeted refresh)
 	@echo "$(BOLD)$(YELLOW)🎥 Recording integration cassettes...$(RESET)"
-	@set -a; [ -f .env ] && . ./.env; set +a; \
+	@eval "$$(python3 scripts/export_dotenv.py .env)"; \
 		if [ -z "$$FMP_TEST_API_KEY" ] && [ -n "$$FMP_API_KEY" ]; then export FMP_TEST_API_KEY="$$FMP_API_KEY"; fi; \
 		if [ -z "$$FMP_API_KEY" ] && [ -n "$$FMP_TEST_API_KEY" ]; then export FMP_API_KEY="$$FMP_TEST_API_KEY"; fi; \
 		if [ -z "$$FMP_TEST_API_KEY" ]; then echo "$(YELLOW)FMP_TEST_API_KEY is required for recording.$(RESET)" && exit 1; fi; \
 		export FMP_VCR_RECORD=new_episodes; \
 		. .venv/bin/activate && pytest -q $${TESTS:-tests/integration}
+
+e2e-list: venv ## List every public sync method the e2e sweep will call
+	@echo "$(BOLD)$(BLUE)📋 E2E client-method sweep cases...$(RESET)"
+	@. .venv/bin/activate && python scripts/e2e_endpoints.py list $(if $(GROUP),--group $(GROUP),) $(if $(METHOD),--method $(METHOD),)
+
+e2e-record: venv ## Record live e2e cassettes (set GROUP=company METHOD=get_profile REFRESH=1 SKIP_BULK=1)
+	@echo "$(BOLD)$(YELLOW)🎥 Recording e2e client-method cassettes...$(RESET)"
+	@eval "$$(python3 scripts/export_dotenv.py .env)"; \
+		if [ -z "$$FMP_TEST_API_KEY" ] && [ -n "$$FMP_API_KEY" ]; then export FMP_TEST_API_KEY="$$FMP_API_KEY"; fi; \
+		if [ -z "$$FMP_API_KEY" ] && [ -n "$$FMP_TEST_API_KEY" ]; then export FMP_API_KEY="$$FMP_TEST_API_KEY"; fi; \
+		if [ -z "$$FMP_TEST_API_KEY" ]; then echo "$(YELLOW)FMP_TEST_API_KEY is required for recording.$(RESET)" && exit 1; fi; \
+		. .venv/bin/activate && python scripts/e2e_endpoints.py record \
+			$(if $(GROUP),--group $(GROUP),) \
+			$(if $(METHOD),--method $(METHOD),) \
+			$(if $(REFRESH),--refresh,) \
+			$(if $(SKIP_BULK),--skip-bulk,)
+
+e2e-replay: venv ## Replay e2e cassettes without hitting the API
+	@echo "$(BOLD)$(BLUE)🧪 Replaying e2e client-method cassettes...$(RESET)"
+	@eval "$$(python3 scripts/export_dotenv.py .env)"; \
+		if [ -z "$$FMP_TEST_API_KEY" ] && [ -n "$$FMP_API_KEY" ]; then export FMP_TEST_API_KEY="$$FMP_API_KEY"; fi; \
+		if [ -z "$$FMP_API_KEY" ] && [ -n "$$FMP_TEST_API_KEY" ]; then export FMP_API_KEY="$$FMP_TEST_API_KEY"; fi; \
+		. .venv/bin/activate && python scripts/e2e_endpoints.py replay \
+			$(if $(GROUP),--group $(GROUP),) \
+			$(if $(METHOD),--method $(METHOD),) \
+			$(if $(SKIP_BULK),--skip-bulk,)
 
 lint: ## Check code quality with ruff
 	@echo "$(BOLD)$(BLUE)🔍 Checking code quality...$(RESET)"

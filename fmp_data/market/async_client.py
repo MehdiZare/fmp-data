@@ -75,7 +75,10 @@ class AsyncMarketClient(AsyncEndpointGroup):
             params["limit"] = limit
         if exchange is not None:
             params["exchange"] = exchange
-        return await self.client.request_async(SEARCH_COMPANY, **params)
+        return self._unwrap_list(
+            await self.client.request_async(SEARCH_COMPANY, **params),
+            CompanySearchResult,
+        )
 
     async def search_symbol(
         self, query: str, limit: int | None = None, exchange: str | None = None
@@ -86,27 +89,42 @@ class AsyncMarketClient(AsyncEndpointGroup):
             params["limit"] = limit
         if exchange is not None:
             params["exchange"] = exchange
-        return await self.client.request_async(SEARCH_SYMBOL, **params)
+        return self._unwrap_list(
+            await self.client.request_async(SEARCH_SYMBOL, **params),
+            CompanySearchResult,
+        )
 
     async def search_exchange_variants(self, query: str) -> list[CompanySearchResult]:
         """Search for exchange trading variants of a company"""
-        return await self.client.request_async(SEARCH_EXCHANGE_VARIANTS, query=query)
+        return self._unwrap_list(
+            await self.client.request_async(SEARCH_EXCHANGE_VARIANTS, query=query),
+            CompanySearchResult,
+        )
 
     async def get_stock_list(self) -> list[CompanySymbol]:
         """Get list of all available stocks"""
-        return await self.client.request_async(STOCK_LIST)
+        return self._unwrap_list(
+            await self.client.request_async(STOCK_LIST), CompanySymbol
+        )
 
     async def get_financial_statement_symbol_list(self) -> list[CompanySymbol]:
         """Get list of symbols with financial statements available"""
-        return await self.client.request_async(FINANCIAL_STATEMENT_SYMBOL_LIST)
+        return self._unwrap_list(
+            await self.client.request_async(FINANCIAL_STATEMENT_SYMBOL_LIST),
+            CompanySymbol,
+        )
 
     async def get_etf_list(self) -> list[CompanySymbol]:
         """Get list of all available ETFs"""
-        return await self.client.request_async(ETF_LIST)
+        return self._unwrap_list(
+            await self.client.request_async(ETF_LIST), CompanySymbol
+        )
 
     async def get_actively_trading_list(self) -> list[CompanySymbol]:
         """Get list of actively trading stocks"""
-        return await self.client.request_async(ACTIVELY_TRADING_LIST)
+        return self._unwrap_list(
+            await self.client.request_async(ACTIVELY_TRADING_LIST), CompanySymbol
+        )
 
     @deprecated(
         "tradable-list is dead and FMP publishes no drop-in replacement: "
@@ -134,7 +152,9 @@ class AsyncMarketClient(AsyncEndpointGroup):
 
     async def get_available_indexes(self) -> list[AvailableIndex]:
         """Get list of all available indexes"""
-        return await self.client.request_async(AVAILABLE_INDEXES)
+        return self._unwrap_list(
+            await self.client.request_async(AVAILABLE_INDEXES), AvailableIndex
+        )
 
     async def search_by_cik(self, query: str) -> list[CIKResult]:
         """Search companies by CIK number.
@@ -150,21 +170,30 @@ class AsyncMarketClient(AsyncEndpointGroup):
         Returns:
             List of matching CIK records.
         """
-        return await self.client.request_async(CIK_SEARCH, query=query)
+        return self._unwrap_list(
+            await self.client.request_async(CIK_SEARCH, query=query), CIKResult
+        )
 
     async def get_cik_list(
         self, page: int = 0, limit: int = 1000
     ) -> list[CIKListEntry]:
         """Get complete list of all CIK numbers"""
-        return await self.client.request_async(CIK_LIST, page=page, limit=limit)
+        return self._unwrap_list(
+            await self.client.request_async(CIK_LIST, page=page, limit=limit),
+            CIKListEntry,
+        )
 
     async def search_by_cusip(self, query: str) -> list[CUSIPResult]:
         """Search companies by CUSIP"""
-        return await self.client.request_async(CUSIP_SEARCH, query=query)
+        return self._unwrap_list(
+            await self.client.request_async(CUSIP_SEARCH, query=query), CUSIPResult
+        )
 
     async def search_by_isin(self, query: str) -> list[ISINResult]:
         """Search companies by ISIN"""
-        return await self.client.request_async(ISIN_SEARCH, query=query)
+        return self._unwrap_list(
+            await self.client.request_async(ISIN_SEARCH, query=query), ISINResult
+        )
 
     async def get_company_screener(
         self,
@@ -186,9 +215,14 @@ class AsyncMarketClient(AsyncEndpointGroup):
         country: str | None = None,
         exchange: str | None = None,
         limit: int | None = None,
+        page: int | None = None,
         include_all_share_classes: bool | None = None,
     ) -> list[CompanySearchResult]:
-        """Screen companies based on various criteria"""
+        """Screen companies based on various criteria.
+
+        ``page`` is omitted from the request when unset so existing callers
+        keep the same wire shape. Pass ``0`` or a later page to paginate.
+        """
         params = {
             "market_cap_more_than": market_cap_more_than,
             "market_cap_less_than": market_cap_less_than,
@@ -208,10 +242,14 @@ class AsyncMarketClient(AsyncEndpointGroup):
             "country": country,
             "exchange": exchange,
             "limit": limit,
+            "page": page,
             "include_all_share_classes": include_all_share_classes,
         }
         params = {key: value for key, value in params.items() if value is not None}
-        return await self.client.request_async(COMPANY_SCREENER, **params)
+        return self._unwrap_list(
+            await self.client.request_async(COMPANY_SCREENER, **params),
+            CompanySearchResult,
+        )
 
     async def get_market_hours(self, exchange: str = "NYSE") -> MarketHours:
         """Get market trading hours information for a specific exchange
@@ -223,39 +261,40 @@ class AsyncMarketClient(AsyncEndpointGroup):
             MarketHours: Exchange trading hours object
 
         Raises:
-            ValueError: If no market hours data returned from API
+            ValueError: If the API returns an empty list
         """
         result = await self.client.request_async(MARKET_HOURS, exchange=exchange)
-        if isinstance(result, list):
-            if not result:
-                raise ValueError("No market hours data returned from API")
-            return result[0]
-        return result
+        return self._unwrap_single(result, MarketHours)
 
     async def get_all_exchange_market_hours(self) -> list[MarketHours]:
         """Get market trading hours information for all exchanges"""
-        result = await self.client.request_async(ALL_EXCHANGE_MARKET_HOURS)
-        if isinstance(result, list):
-            return result
-        return [result]
+        return self._unwrap_list(
+            await self.client.request_async(ALL_EXCHANGE_MARKET_HOURS),
+            MarketHours,
+        )
 
     async def get_holidays_by_exchange(
         self, exchange: str = "NYSE"
     ) -> list[MarketHoliday]:
         """Get market holidays for a specific exchange"""
-        return await self.client.request_async(HOLIDAYS_BY_EXCHANGE, exchange=exchange)
+        return self._unwrap_list(
+            await self.client.request_async(HOLIDAYS_BY_EXCHANGE, exchange=exchange),
+            MarketHoliday,
+        )
 
     async def get_gainers(self) -> list[MarketMover]:
         """Get market gainers"""
-        return await self.client.request_async(GAINERS)
+        return self._unwrap_list(await self.client.request_async(GAINERS), MarketMover)
 
     async def get_losers(self) -> list[MarketMover]:
         """Get market losers"""
-        return await self.client.request_async(LOSERS)
+        return self._unwrap_list(await self.client.request_async(LOSERS), MarketMover)
 
     async def get_most_active(self) -> list[MarketMover]:
         """Get most active stocks"""
-        return await self.client.request_async(MOST_ACTIVE)
+        return self._unwrap_list(
+            await self.client.request_async(MOST_ACTIVE), MarketMover
+        )
 
     async def get_sector_performance(
         self,
@@ -271,7 +310,10 @@ class AsyncMarketClient(AsyncEndpointGroup):
             params["exchange"] = exchange
         snapshot_date = date or dt_date.today()
         params["date"] = snapshot_date.strftime("%Y-%m-%d")
-        return await self.client.request_async(SECTOR_PERFORMANCE, **params)
+        return self._unwrap_list(
+            await self.client.request_async(SECTOR_PERFORMANCE, **params),
+            SectorPerformance,
+        )
 
     async def get_industry_performance_snapshot(
         self,
@@ -287,7 +329,10 @@ class AsyncMarketClient(AsyncEndpointGroup):
             params["exchange"] = exchange
         snapshot_date = date or dt_date.today()
         params["date"] = snapshot_date.strftime("%Y-%m-%d")
-        return await self.client.request_async(INDUSTRY_PERFORMANCE_SNAPSHOT, **params)
+        return self._unwrap_list(
+            await self.client.request_async(INDUSTRY_PERFORMANCE_SNAPSHOT, **params),
+            IndustryPerformance,
+        )
 
     async def get_historical_sector_performance(
         self,
@@ -304,7 +349,10 @@ class AsyncMarketClient(AsyncEndpointGroup):
             params["to"] = to_date.strftime("%Y-%m-%d")
         if exchange:
             params["exchange"] = exchange
-        return await self.client.request_async(HISTORICAL_SECTOR_PERFORMANCE, **params)
+        return self._unwrap_list(
+            await self.client.request_async(HISTORICAL_SECTOR_PERFORMANCE, **params),
+            SectorPerformance,
+        )
 
     async def get_historical_industry_performance(
         self,
@@ -321,8 +369,9 @@ class AsyncMarketClient(AsyncEndpointGroup):
             params["to"] = to_date.strftime("%Y-%m-%d")
         if exchange:
             params["exchange"] = exchange
-        return await self.client.request_async(
-            HISTORICAL_INDUSTRY_PERFORMANCE, **params
+        return self._unwrap_list(
+            await self.client.request_async(HISTORICAL_INDUSTRY_PERFORMANCE, **params),
+            IndustryPerformance,
         )
 
     async def get_sector_pe_snapshot(
@@ -339,7 +388,10 @@ class AsyncMarketClient(AsyncEndpointGroup):
             params["exchange"] = exchange
         snapshot_date = date or dt_date.today()
         params["date"] = snapshot_date.strftime("%Y-%m-%d")
-        return await self.client.request_async(SECTOR_PE_SNAPSHOT, **params)
+        return self._unwrap_list(
+            await self.client.request_async(SECTOR_PE_SNAPSHOT, **params),
+            SectorPESnapshot,
+        )
 
     async def get_industry_pe_snapshot(
         self,
@@ -355,7 +407,10 @@ class AsyncMarketClient(AsyncEndpointGroup):
             params["exchange"] = exchange
         snapshot_date = date or dt_date.today()
         params["date"] = snapshot_date.strftime("%Y-%m-%d")
-        return await self.client.request_async(INDUSTRY_PE_SNAPSHOT, **params)
+        return self._unwrap_list(
+            await self.client.request_async(INDUSTRY_PE_SNAPSHOT, **params),
+            IndustryPESnapshot,
+        )
 
     async def get_historical_sector_pe(
         self,
@@ -372,7 +427,10 @@ class AsyncMarketClient(AsyncEndpointGroup):
             params["to"] = to_date.strftime("%Y-%m-%d")
         if exchange:
             params["exchange"] = exchange
-        return await self.client.request_async(HISTORICAL_SECTOR_PE, **params)
+        return self._unwrap_list(
+            await self.client.request_async(HISTORICAL_SECTOR_PE, **params),
+            SectorPESnapshot,
+        )
 
     async def get_historical_industry_pe(
         self,
@@ -389,7 +447,10 @@ class AsyncMarketClient(AsyncEndpointGroup):
             params["to"] = to_date.strftime("%Y-%m-%d")
         if exchange:
             params["exchange"] = exchange
-        return await self.client.request_async(HISTORICAL_INDUSTRY_PE, **params)
+        return self._unwrap_list(
+            await self.client.request_async(HISTORICAL_INDUSTRY_PE, **params),
+            IndustryPESnapshot,
+        )
 
     @deprecated(
         "pre-post-market is dead, and the market-wide shape no longer exists. "
@@ -415,23 +476,33 @@ class AsyncMarketClient(AsyncEndpointGroup):
 
     async def get_all_shares_float(self) -> list[ShareFloat]:
         """Get share float data for all companies"""
-        return await self.client.request_async(ALL_SHARES_FLOAT)
+        return self._unwrap_list(
+            await self.client.request_async(ALL_SHARES_FLOAT), ShareFloat
+        )
 
     async def get_available_exchanges(self) -> list[ExchangeSymbol]:
         """Get a complete list of supported stock exchanges"""
-        return await self.client.request_async(AVAILABLE_EXCHANGES)
+        return self._unwrap_list(
+            await self.client.request_async(AVAILABLE_EXCHANGES), ExchangeSymbol
+        )
 
     async def get_available_sectors(self) -> list[str]:
         """Get a complete list of industry sectors"""
-        return await self.client.request_async(AVAILABLE_SECTORS)
+        return self._unwrap_list(
+            await self.client.request_async(AVAILABLE_SECTORS), str
+        )
 
     async def get_available_industries(self) -> list[str]:
         """Get a comprehensive list of industries where stock symbols are available"""
-        return await self.client.request_async(AVAILABLE_INDUSTRIES)
+        return self._unwrap_list(
+            await self.client.request_async(AVAILABLE_INDUSTRIES), str
+        )
 
     async def get_available_countries(self) -> list[str]:
         """Get a comprehensive list of countries where stock symbols are available"""
-        return await self.client.request_async(AVAILABLE_COUNTRIES)
+        return self._unwrap_list(
+            await self.client.request_async(AVAILABLE_COUNTRIES), str
+        )
 
     async def get_ipo_disclosure(
         self,
@@ -454,7 +525,9 @@ class AsyncMarketClient(AsyncEndpointGroup):
             params["from"] = from_date.strftime("%Y-%m-%d")
         if to_date:
             params["to"] = to_date.strftime("%Y-%m-%d")
-        return await self.client.request_async(IPO_DISCLOSURE, **params)
+        return self._unwrap_list(
+            await self.client.request_async(IPO_DISCLOSURE, **params), IPODisclosure
+        )
 
     async def get_ipo_prospectus(
         self,
@@ -477,4 +550,6 @@ class AsyncMarketClient(AsyncEndpointGroup):
             params["from"] = from_date.strftime("%Y-%m-%d")
         if to_date:
             params["to"] = to_date.strftime("%Y-%m-%d")
-        return await self.client.request_async(IPO_PROSPECTUS, **params)
+        return self._unwrap_list(
+            await self.client.request_async(IPO_PROSPECTUS, **params), IPOProspectus
+        )

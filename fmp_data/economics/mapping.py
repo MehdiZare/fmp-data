@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from fmp_data.economics.endpoints import (
     COMMITMENT_OF_TRADERS_ANALYSIS,
     COMMITMENT_OF_TRADERS_LIST,
@@ -17,8 +19,9 @@ from fmp_data.lc.models import (
     ResponseFieldInfo,
     SemanticCategory,
 )
+from fmp_data.models import Endpoint
 
-ECONOMICS_ENDPOINT_MAP = {
+ECONOMICS_ENDPOINT_MAP: dict[str, Endpoint[Any]] = {
     "get_treasury_rates": TREASURY_RATES,
     "get_economic_indicators": ECONOMIC_INDICATORS,
     "get_economic_calendar": ECONOMIC_CALENDAR,

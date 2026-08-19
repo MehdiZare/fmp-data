@@ -1,5 +1,6 @@
 # tests/test_logger.py
 import asyncio
+import io
 import json
 import logging
 import os
@@ -158,6 +159,106 @@ class TestSensitiveDataFilter:
         assert filter_instance.filter(record) is True
         assert record.getMessage() == original_message  # Should be unchanged
 
+    def test_percent_s_format_does_not_leak_or_raise(self) -> None:
+        """``api_key=%s`` must not treat ``%s`` as the secret (#252 FMP-SEC-005)."""
+        filter_instance = SensitiveDataFilter()
+        secret = "supersecretkey99"  # noqa: S105
+        record = logging.LogRecord(
+            name="test_logger",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="parent has api_key=%s",
+            args=(secret,),
+            exc_info=None,
+        )
+        assert filter_instance.filter(record) is True
+        text = record.getMessage()
+        assert secret not in text
+        assert "api_key=" in text
+
+    def test_child_logger_redacts_without_test_adding_filter(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        from fmp_data.logger import FMPLogger
+
+        planted = "childdummyvalue99"
+        log = FMPLogger().get_logger("fmp_data.base")
+        caplog.set_level(logging.INFO, logger="fmp_data.base")
+        log.info("child saw api_key=%s", planted)
+        assert planted not in caplog.text
+        assert "api_key=" in caplog.text
+
+    def test_every_pattern_masks_without_raising(self) -> None:
+        """No pattern may read a capture group it does not define (#252).
+
+        ``mask_replacement`` read ``match.group(3)`` unconditionally while
+        ``authorization`` is a two-group pattern, so the Bearer rule raised
+        ``IndexError`` instead of redacting. Drive every configured pattern
+        rather than only the three-group ones, so adding another two-group
+        rule cannot reintroduce this.
+        """
+        filter_instance = SensitiveDataFilter()
+        planted = "PLANTEDCREDENTIALVALUE"
+        samples = {
+            "api_key": f"api_key={planted}",
+            "authorization": f"Authorization: Bearer {planted}",
+            "password": f"password: {planted}",
+            "token": f"token={planted}",
+            "secret": f"client_secret={planted}",
+            "key": f"key={planted}",
+        }
+        assert set(samples) == set(filter_instance.patterns), (
+            "a pattern was added or renamed without a sample here"
+        )
+
+        for name, text in samples.items():
+            masked = filter_instance._mask_patterns_in_string(text)
+            assert planted not in masked, f"{name} pattern did not redact: {masked}"
+
+    def test_bearer_token_is_redacted_not_crashed(self) -> None:
+        """The two-group ``authorization`` pattern actually masks."""
+        filter_instance = SensitiveDataFilter()
+        planted = "PLANTEDCREDENTIALVALUE"
+        record = logging.LogRecord(
+            name="test_logger",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg=f"sending Authorization: Bearer {planted}",
+            args=(),
+            exc_info=None,
+        )
+        assert filter_instance.filter(record) is True
+        text = record.getMessage()
+        assert planted not in text
+        assert "Authorization: Bearer " in text
+
+    def test_bearer_in_traceback_does_not_replace_callers_exception(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """The filter must never become the error the caller sees (#252).
+
+        ``FMPDataClient.__exit__`` logs with ``exc_info=True``. The filter
+        walks ``exc_text``, so an exception whose message carried a Bearer
+        token raised ``IndexError: no such group`` *from inside logging* and
+        the caller's real ``RuntimeError`` was lost behind it.
+        """
+        from fmp_data.logger import FMPLogger
+
+        planted = "PLANTEDCREDENTIALVALUE"
+        log = FMPLogger().get_logger("fmp_data.base")
+        caplog.set_level(logging.ERROR, logger="fmp_data.base")
+
+        try:
+            raise RuntimeError(f"upstream rejected Authorization: Bearer {planted}")
+        except RuntimeError:
+            log.error("Error in context manager", exc_info=True)
+
+        assert planted not in caplog.text
+        assert "upstream rejected" in caplog.text
+        assert "no such group" not in caplog.text
+
 
 class TestJsonFormatter:
     """Test JsonFormatter functionality"""
@@ -234,6 +335,40 @@ class TestJsonFormatter:
         assert "exception" in json_data
         assert "ValueError" in json_data["exception"]["type"]
 
+    def test_format_masks_credentials_in_exception_and_traceback(self):
+        """The JSON exception block must not re-derive the raw traceback.
+
+        ``JsonFormatter`` renders from ``record.exc_info`` directly, so it
+        bypassed the mask the filter had applied and emitted the credential
+        verbatim under ``exception.message`` / ``exception.traceback``
+        (#252 FMP-SEC-005).
+        """
+        formatter = JsonFormatter()
+        secret = "supersecretkey99"  # noqa: S105
+
+        try:
+            raise ValueError(f"upstream said api_key={secret}")
+        except ValueError:
+            exc_info = sys.exc_info()
+
+        record = logging.LogRecord(
+            name="test_logger",
+            level=logging.ERROR,
+            pathname="/path/to/file.py",
+            lineno=42,
+            msg="Exception occurred",
+            args=(),
+            exc_info=exc_info,
+        )
+
+        formatted = formatter.format(record)
+        assert secret not in formatted
+
+        json_data = json.loads(formatted)
+        assert "api_key=" in json_data["exception"]["message"]
+        assert secret not in json_data["exception"]["message"]
+        assert secret not in json_data["exception"]["traceback"]
+
     def test_format_excludes_private_attributes(self):
         """Test that private attributes are excluded from JSON"""
         formatter = JsonFormatter()
@@ -290,22 +425,24 @@ class TestSecureRotatingFileHandler:
             permissions = stat_info.st_mode & 0o777
             assert permissions == 0o600
 
-    def test_permission_error_handling(self, tmp_path):
-        """Test handling of permission errors"""
+    def test_permission_error_handling(self, tmp_path, caplog):
+        """chmod failures log on fmp_data.logger, not a stdlib-only logger (#241)."""
         log_file = tmp_path / "test.log"
 
-        with patch("os.chmod", side_effect=OSError("Permission denied")):
-            with patch("logging.getLogger") as mock_get_logger:
-                mock_logger = Mock()
-                mock_get_logger.return_value = mock_logger
+        with (
+            patch("os.chmod", side_effect=OSError("Permission denied")),
+            caplog.at_level(logging.WARNING, logger="fmp_data.logger"),
+        ):
+            _ = SecureRotatingFileHandler(filename=str(log_file))
 
-                _ = SecureRotatingFileHandler(filename=str(log_file))
-
-                # Should have logged a warning (possibly called once during init)
-                assert mock_logger.warning.called
-                assert "Could not set secure permissions" in str(
-                    mock_logger.warning.call_args_list
-                )
+        extras = [
+            record
+            for record in caplog.records
+            if "Could not set secure permissions" in record.getMessage()
+        ]
+        # __init__ and _open both try chmod when the file is first used.
+        assert extras
+        assert all(record.name == "fmp_data.logger" for record in extras)
 
     def test_windows_skip_permissions(self, tmp_path):
         """Test that permission setting is skipped on Windows"""
@@ -362,6 +499,129 @@ class TestFMPLogger:
 
         named_logger = fmp_logger.get_logger("test.module")
         assert named_logger.name == "fmp_data.test.module"
+
+    def test_get_logger_does_not_double_package_prefix(self):
+        """get_logger(__name__) must not emit fmp_data.fmp_data.* (#238)."""
+        fmp_logger = FMPLogger()
+
+        assert fmp_logger.get_logger("fmp_data.base").name == "fmp_data.base"
+        assert fmp_logger.get_logger("fmp_data").name == "fmp_data"
+        assert fmp_logger.get_logger("fmp_data.mcp.tool_loader").name == (
+            "fmp_data.mcp.tool_loader"
+        )
+
+    def test_get_logger_module_name_is_visible_to_caplog(self, caplog):
+        """Operators and tests filtering fmp_data.base must see extras warnings."""
+        log = FMPLogger().get_logger("fmp_data.base")
+        with caplog.at_level(logging.WARNING, logger="fmp_data.base"):
+            log.warning("Unknown response fields detected")
+        extras = [
+            record
+            for record in caplog.records
+            if record.getMessage() == "Unknown response fields detected"
+        ]
+        assert len(extras) == 1
+        assert extras[0].name == "fmp_data.base"
+
+    def test_get_logger_qualified_name_is_stdlib_logger(self):
+        """Qualified names must be the same object operators already filter."""
+        fmp_logger = FMPLogger()
+        named = fmp_logger.get_logger("fmp_data.base")
+        assert named is logging.getLogger("fmp_data.base")
+        from fmp_data.base import logger as base_logger
+
+        assert base_logger.name == "fmp_data.base"
+
+    def test_csv_utils_logger_is_package_child(self):
+        """batch._csv_utils must go through FMPLogger, not stdlib getLogger (#241)."""
+        from fmp_data.batch._csv_utils import logger as csv_logger
+
+        assert csv_logger.name == "fmp_data.batch._csv_utils"
+        assert csv_logger is FMPLogger().get_logger("fmp_data.batch._csv_utils")
+
+    def test_remaining_stdlib_module_loggers_are_package_children(self):
+        """Leftover fmp_data.* module loggers must sit on the package tree (#241)."""
+        from fmp_data.cache.file import logger as file_logger
+        from fmp_data.cache.redis_backend import logger as redis_logger
+        from fmp_data.investment.async_client import logger as investment_logger
+        from fmp_data.rate_limit import logger as rate_logger
+
+        expected = {
+            file_logger: "fmp_data.cache.file",
+            redis_logger: "fmp_data.cache.redis_backend",
+            investment_logger: "fmp_data.investment.async_client",
+            rate_logger: "fmp_data.rate_limit",
+        }
+        for log, name in expected.items():
+            assert log.name == name
+            assert log is FMPLogger().get_logger(name)
+
+    def test_lc_class_loggers_use_module_tree(self):
+        """Class-name loggers must land on fmp_data.lc.*, not fmp_data.Class (#241)."""
+        from fmp_data.lc.models import SemanticCategory
+        from fmp_data.lc.registry import EndpointBasedRule, EndpointRegistry
+        from fmp_data.lc.registry import ValidationRuleRegistry as RegistryRules
+        from fmp_data.lc.validation import CommonValidationRule
+        from fmp_data.lc.validation import ValidationRuleRegistry as ValidationRules
+
+        class _StubRule(CommonValidationRule):
+            @property
+            def expected_category(self) -> SemanticCategory:
+                return SemanticCategory.COMPANY_INFO
+
+        rule = _StubRule()
+        assert rule.logger.name == "fmp_data.lc.validation._StubRule"
+
+        validation_registry = ValidationRules()
+        assert validation_registry.logger.name == (
+            "fmp_data.lc.validation.ValidationRuleRegistry"
+        )
+
+        registry_rules = RegistryRules()
+        assert registry_rules.logger.name == (
+            "fmp_data.lc.registry.ValidationRuleRegistry"
+        )
+
+        endpoint_rule = EndpointBasedRule({}, SemanticCategory.COMPANY_INFO)
+        assert endpoint_rule.logger.name == "fmp_data.lc.registry.EndpointBasedRule"
+
+        endpoint_registry = EndpointRegistry()
+        assert endpoint_registry.logger.name == "fmp_data.lc.registry.EndpointRegistry"
+
+    def test_package_modules_do_not_call_stdlib_getlogger_name(self):
+        """Production fmp_data modules must enter via FMPLogger (#241)."""
+        import ast
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[2] / "fmp_data"
+        offenders: list[str] = []
+        for path in root.rglob("*.py"):
+            tree = ast.parse(path.read_text(), filename=str(path))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                func = node.func
+                if not (
+                    isinstance(func, ast.Attribute)
+                    and func.attr == "getLogger"
+                    and isinstance(func.value, ast.Name)
+                    and func.value.id == "logging"
+                ):
+                    continue
+                if len(node.args) != 1:
+                    continue
+                arg = node.args[0]
+                # Root construction in FMPLogger stays stdlib.
+                if (
+                    isinstance(arg, ast.Constant)
+                    and arg.value == "fmp_data"
+                    and path.name == "logger.py"
+                ):
+                    continue
+                if isinstance(arg, ast.Name) and arg.id == "__name__":
+                    offenders.append(f"{path.relative_to(root.parent)}:{node.lineno}")
+
+        assert offenders == []
 
     def test_get_logger_without_name(self):
         """Test getting logger without name"""
@@ -851,3 +1111,148 @@ class TestLoggerIntegration:
         output = test_stream.getvalue()
         assert "secret123" not in output
         assert "api_key=" in output
+
+
+class TestRedactionIsTypeComplete:
+    """Redaction must not depend on a value happening to be a str (#252).
+
+    The filter gated on ``isinstance(v, str | int | float)`` to mask and
+    ``dict | list`` to recurse, so several ordinary shapes walked straight
+    through: a sensitive key holding ``bytes``/``tuple``/``set``, and any
+    secret reachable only through a tuple.
+    """
+
+    PLANTED = "PLANTEDCREDENTIALVALUE"
+
+    def _json(self, **extra):
+        record = logging.LogRecord("t", logging.INFO, "p", 1, "call", None, None)
+        record.__dict__.update(extra)
+        SensitiveDataFilter().filter(record)
+        return JsonFormatter().format(record)
+
+    @pytest.mark.parametrize("wrap", [bytes, tuple, set, list, str])
+    def test_sensitive_key_masked_whatever_the_container(self, wrap) -> None:
+        value = (
+            self.PLANTED.encode()
+            if wrap is bytes
+            else self.PLANTED
+            if wrap is str
+            else wrap([self.PLANTED])
+        )
+        assert self.PLANTED not in self._json(api_key=value)
+
+    def test_secret_reachable_only_through_a_tuple(self) -> None:
+        assert self.PLANTED not in self._json(
+            payload={"creds": ({"api_key": self.PLANTED},)}
+        )
+
+    def test_bytes_are_decoded_before_masking(self) -> None:
+        """Not a leak either way -- `_mask_value` masks the middle regardless --
+        but `str(b"...")` masks the *repr*, leaving `b'` decoration and a
+        misleading length in the log. Decoding first keeps the mask honest."""
+        from fmp_data.logger import _stringify
+
+        masker = SensitiveDataFilter()
+        raw = b"PLANTEDCREDENTIALVALUE"
+        assert masker._mask_value(_stringify(raw)) == "PL******************UE"
+        assert not masker._mask_value(_stringify(raw)).startswith("b'")
+
+    def test_non_secret_extras_survive(self) -> None:
+        """Over-redaction would make the logs useless."""
+        out = self._json(symbol="AAPL", attempt=3)
+        assert '"symbol": "AAPL"' in out
+        assert '"attempt": 3' in out
+
+    def test_standard_record_attributes_are_not_rewritten(self) -> None:
+        """`exc_info` is a tuple formatters unpack; mangling it breaks them."""
+        try:
+            raise ValueError("boom")
+        except ValueError:
+            record = logging.LogRecord(
+                "t", logging.ERROR, "p", 1, "m", None, sys.exc_info()
+            )
+        SensitiveDataFilter().filter(record)
+        assert isinstance(record.exc_info, tuple)
+        assert record.exc_info[0] is ValueError
+
+
+class TestEveryHandlerSeesRedactedExtras:
+    """Redaction happens on the record, not inside one formatter (#252).
+
+    Nested extras were masked inside ``JsonFormatter.format``, so a second
+    handler -- ``logging.basicConfig()``, a Sentry or OTel exporter -- got the
+    raw value from the same record.
+    """
+
+    def test_a_second_plain_handler_sees_masked_extras(self) -> None:
+        from fmp_data.logger import FMPLogger
+
+        planted = "PLANTEDCREDENTIALVALUE"
+        buf = io.StringIO()
+        handler = logging.StreamHandler(buf)
+        handler.setFormatter(logging.Formatter("%(message)s | %(nested)s"))
+        package_logger = logging.getLogger("fmp_data")
+        package_logger.addHandler(handler)
+        try:
+            FMPLogger().get_logger("fmp_data.base").info(
+                "call", extra={"nested": {"api_key": planted}}
+            )
+        finally:
+            package_logger.removeHandler(handler)
+
+        assert planted not in buf.getvalue()
+        assert "api_key" in buf.getvalue()
+
+    def test_string_leaves_and_authorization_keys_are_masked(self) -> None:
+        """Pattern-shaped strings and Authorization mapping keys are redacted."""
+        planted = "PLANTEDCREDENTIALVALUE"
+        filt = SensitiveDataFilter()
+        record = logging.LogRecord(
+            name="fmp_data.test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="payload",
+            args=(),
+            exc_info=None,
+        )
+        record.__dict__["payload"] = f"apikey={planted}"
+        record.__dict__["headers"] = {"Authorization": f"Bearer {planted}"}
+        assert filt.filter(record) is True
+        assert planted not in str(record.__dict__["payload"])
+        assert planted not in str(record.__dict__["headers"])
+
+
+class TestLogApiCallPositionalArguments:
+    """Positional arguments have no names, so nothing can judge them (#252).
+
+    ``call_args`` was the raw tuple of positional arguments; the filter masks
+    by key name and there is no key inside a tuple, so a credential passed
+    positionally was logged verbatim.
+    """
+
+    def test_positional_values_are_replaced_by_their_types(self) -> None:
+        from fmp_data.logger import log_api_call
+
+        planted = "PLANTEDCREDENTIALVALUE"
+        buf = io.StringIO()
+        handler = logging.StreamHandler(buf)
+        handler.setFormatter(JsonFormatter())
+        handler.addFilter(SensitiveDataFilter())
+        logger = logging.getLogger("fmp_data.test_positional")
+        logger.addHandler(handler)
+        logger.setLevel(logging.DEBUG)
+        logger.propagate = False
+
+        class Service:
+            @log_api_call(logger=logger)
+            def request(self, positional, **kwargs):
+                return "ok"
+
+        Service().request(planted, symbol="AAPL", api_key=planted)
+        out = buf.getvalue()
+
+        assert planted not in out
+        assert '"call_args": ["str"]' in out
+        # Named arguments stay readable except for the credential.
+        assert '"symbol": "AAPL"' in out

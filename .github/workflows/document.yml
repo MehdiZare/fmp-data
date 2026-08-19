@@ -40,22 +40,23 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: actions/setup-python@v7.0.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d  # v10.0.0
         with:
+          version: "0.12.3"
           enable-cache: true
 
       - name: Cache uv dependencies
-        uses: actions/cache@v6.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: |
             ~/.cache/uv
@@ -79,8 +80,8 @@ jobs:
           uv sync --group docs
 
           # Install git for version detection
-          echo "📦 Installing git and hatchling for versioning"
-          uv pip install --system hatchling hatch-vcs
+          echo "📦 Installing hatchling/hatch-vcs (version floors) for versioning"
+          uv pip install --system -r .github/requirements-build.txt
 
       - name: Get package version
         id: version
@@ -96,7 +97,7 @@ jobs:
           PACKAGE_VERSION="${{ steps.version.outputs.VERSION }}" uv run mkdocs build --strict
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v5.0.0
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9  # v5.0.0
         with:
           path: site
 
@@ -131,7 +132,7 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v5.0.0
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128  # v5.0.0
 
       - name: Generate deployment summary
         env:

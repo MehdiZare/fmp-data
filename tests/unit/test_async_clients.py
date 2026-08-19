@@ -13,6 +13,7 @@ from fmp_data.company.models import (
     AftermarketQuote,
     AftermarketTrade,
     CompanyProfile,
+    DelistedCompany,
     IntradayPrice,
     Quote,
     SimpleQuote,
@@ -247,6 +248,110 @@ class TestAsyncCompanyClient:
         assert result.one_day == 2.1008
 
     @pytest.mark.asyncio
+    async def test_get_delisted_companies(self, mock_client):
+        """Async delisted list forwards page/limit."""
+        from fmp_data.company.async_client import AsyncCompanyClient
+        from fmp_data.company.endpoints import DELISTED_COMPANIES
+
+        mock_client.request_async.return_value = [
+            DelistedCompany.model_validate(
+                {
+                    "symbol": "2958.HK",
+                    "companyName": "Vision Values Holdings Limited",
+                    "exchange": "HKSE",
+                    "ipoDate": "2026-05-27",
+                    "delistedDate": "2026-08-17",
+                }
+            )
+        ]
+        async_client = AsyncCompanyClient(mock_client)
+        result = await async_client.get_delisted_companies(page=0, limit=2)
+
+        assert len(result) == 1
+        assert result[0].symbol == "2958.HK"
+        mock_client.request_async.assert_called_once_with(
+            DELISTED_COMPANIES, page=0, limit=2
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_delisted_companies_defaults(self, mock_client):
+        """Async delisted list uses the same page=0 / limit=100 defaults."""
+        from fmp_data.company.async_client import AsyncCompanyClient
+        from fmp_data.company.endpoints import DELISTED_COMPANIES
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncCompanyClient(mock_client)
+        await async_client.get_delisted_companies()
+
+        mock_client.request_async.assert_called_once_with(
+            DELISTED_COMPANIES, page=0, limit=100
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_delisted_companies_wraps_single_row(self, mock_client):
+        """A lone object from request_async() is still list[DelistedCompany]."""
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        row = object()
+        mock_client.request_async.return_value = row
+        result = await AsyncCompanyClient(mock_client).get_delisted_companies()
+        assert result == [row]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "method_name,kwargs",
+        [
+            ("get_executives", {"symbol": "AAPL"}),
+            ("get_employee_count", {"symbol": "AAPL"}),
+            ("get_company_notes", {"symbol": "AAPL"}),
+            ("get_intraday_prices", {"symbol": "AAPL"}),
+            ("get_executive_compensation", {"symbol": "AAPL"}),
+            ("get_product_revenue_segmentation", {"symbol": "AAPL"}),
+            ("get_geographic_revenue_segmentation", {"symbol": "AAPL"}),
+            ("get_symbol_changes", {}),
+            ("get_delisted_companies", {}),
+            ("get_historical_market_cap", {"symbol": "AAPL"}),
+            ("get_analyst_estimates", {"symbol": "AAPL"}),
+            ("get_company_peers", {"symbol": "AAPL"}),
+            ("get_mergers_acquisitions_latest", {}),
+            ("get_mergers_acquisitions_search", {"name": "Apple"}),
+            ("get_executive_compensation_benchmark", {"year": 2023}),
+            ("get_dividends", {"symbol": "AAPL"}),
+            ("get_earnings", {"symbol": "AAPL"}),
+            ("get_stock_splits", {"symbol": "AAPL"}),
+            ("get_income_statement_ttm", {"symbol": "AAPL"}),
+            ("get_balance_sheet_ttm", {"symbol": "AAPL"}),
+            ("get_cash_flow_ttm", {"symbol": "AAPL"}),
+            ("get_key_metrics_ttm", {"symbol": "AAPL"}),
+            ("get_financial_ratios_ttm", {"symbol": "AAPL"}),
+            ("get_financial_scores", {"symbol": "AAPL"}),
+            ("get_enterprise_values", {"symbol": "AAPL"}),
+            ("get_income_statement_growth", {"symbol": "AAPL"}),
+            ("get_balance_sheet_growth", {"symbol": "AAPL"}),
+            ("get_cash_flow_growth", {"symbol": "AAPL"}),
+            ("get_financial_growth", {"symbol": "AAPL"}),
+            ("get_income_statement_as_reported", {"symbol": "AAPL"}),
+            ("get_balance_sheet_as_reported", {"symbol": "AAPL"}),
+            ("get_cash_flow_as_reported", {"symbol": "AAPL"}),
+        ],
+    )
+    async def test_list_methods_wrap_single_and_keep_empty(
+        self, mock_client, method_name, kwargs
+    ):
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        async_client = AsyncCompanyClient(mock_client)
+        method = getattr(async_client, method_name)
+        row = object()
+
+        mock_client.request_async.return_value = row
+        assert await method(**kwargs) == [row]
+
+        mock_client.request_async.return_value = []
+        assert await method(**kwargs) == []
+        mock_client.request_async.assert_called()
+
+    @pytest.mark.asyncio
     async def test_get_dividends_with_limit(self, mock_client):
         """Test async get_dividends with limit."""
         from fmp_data.company import endpoints as company_endpoints
@@ -329,6 +434,37 @@ class TestAsyncCompanyClient:
         with pytest.raises(InvalidSymbolError, match="Symbol is required"):
             async_client.get_company_logo_url(" ")
 
+    @pytest.mark.parametrize(
+        "symbol",
+        ["../../stable/profile", "a/b", "..", "%2f..%2f", "a\\b"],
+    )
+    def test_get_company_logo_url_rejects_path_escapes(self, mock_client, symbol):
+        """This builder bypasses `Endpoint.build_url` (#252 FMP-SEC-010).
+
+        The original sweep only covered `build_url` callers, so this raw
+        f-string was missed -- and `symbol` reaches it from an LLM through
+        the `company_logo_url` MCP tool.
+        """
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        mock_client.config = MagicMock(base_url="https://example.com")
+        async_client = AsyncCompanyClient(mock_client)
+
+        with pytest.raises(Exception, match="Invalid path parameter"):
+            async_client.get_company_logo_url(symbol)
+
+    def test_get_company_logo_url_allows_dotted_tickers(self, mock_client):
+        """`BRK.B` is a real ticker; only `.`/`..` segments are traversal."""
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        mock_client.config = MagicMock(base_url="https://example.com")
+        async_client = AsyncCompanyClient(mock_client)
+
+        assert (
+            async_client.get_company_logo_url("BRK.B")
+            == "https://example.com/image-stock/BRK.B.png"
+        )
+
     @pytest.mark.asyncio
     async def test_get_historical_prices_wraps_single_result(self, mock_client):
         """Test get_historical_prices wraps non-list results."""
@@ -342,6 +478,19 @@ class TestAsyncCompanyClient:
         assert result.symbol == "AAPL"
         assert len(result.historical) == 1
         assert result.historical[0].date.date() == dt_date(2024, 1, 1)
+
+    @pytest.mark.asyncio
+    async def test_get_historical_prices_empty_list_stays_empty(self, mock_client):
+        """Empty EOD lists become HistoricalData(historical=[])."""
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        mock_client.request_async.return_value = []
+
+        async_client = AsyncCompanyClient(mock_client)
+        result = await async_client.get_historical_prices("AAPL")
+
+        assert result.symbol == "AAPL"
+        assert result.historical == []
 
     @pytest.mark.asyncio
     async def test_get_historical_prices_with_date_filters(self, mock_client):
@@ -441,6 +590,36 @@ class TestAsyncCompanyClient:
             symbol="AAPL",
             structure="flat",
             period="quarter",
+        )
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "method_name,endpoint_name",
+        [
+            ("get_product_revenue_segmentation", "PRODUCT_REVENUE_SEGMENTATION"),
+            ("get_geographic_revenue_segmentation", "GEOGRAPHIC_REVENUE_SEGMENTATION"),
+        ],
+    )
+    async def test_revenue_segmentation_nested_structure(
+        self, mock_client, method_name, endpoint_name
+    ):
+        """structure=nested is forwarded on the async methods."""
+        from fmp_data.company import endpoints as company_endpoints
+        from fmp_data.company.async_client import AsyncCompanyClient
+
+        mock_client.request_async.return_value = []
+        async_client = AsyncCompanyClient(mock_client)
+
+        method = getattr(async_client, method_name)
+        result = await method("AAPL", structure="nested")
+
+        assert result == []
+        endpoint = getattr(company_endpoints, endpoint_name)
+        mock_client.request_async.assert_called_once_with(
+            endpoint,
+            symbol="AAPL",
+            structure="nested",
+            period="annual",
         )
 
     @pytest.mark.asyncio
@@ -728,6 +907,32 @@ class TestAsyncMarketClient:
         )
 
     @pytest.mark.asyncio
+    async def test_get_company_screener_forwards_page(self, mock_client):
+        """Async screener omits page when unset and forwards 0 when set."""
+        from fmp_data.market.async_client import AsyncMarketClient
+        from fmp_data.market.endpoints import COMPANY_SCREENER
+
+        mock_client.request_async.return_value = [
+            CompanySearchResult(symbol="AAPL", name="Apple Inc.")
+        ]
+        async_client = AsyncMarketClient(mock_client)
+
+        await async_client.get_company_screener(limit=2)
+        mock_client.request_async.assert_called_once_with(COMPANY_SCREENER, limit=2)
+
+        mock_client.request_async.reset_mock()
+        await async_client.get_company_screener(limit=2, page=0)
+        mock_client.request_async.assert_called_once_with(
+            COMPANY_SCREENER, limit=2, page=0
+        )
+
+        mock_client.request_async.reset_mock()
+        await async_client.get_company_screener(limit=2, page=1)
+        mock_client.request_async.assert_called_once_with(
+            COMPANY_SCREENER, limit=2, page=1
+        )
+
+    @pytest.mark.asyncio
     async def test_search_company_with_filters(self, mock_client):
         """Test async search_company method with optional filters."""
         from fmp_data.market.async_client import AsyncMarketClient
@@ -773,7 +978,7 @@ class TestAsyncMarketClient:
         mock_client.request_async.return_value = []
 
         async_client = AsyncMarketClient(mock_client)
-        with pytest.raises(ValueError, match="No market hours data"):
+        with pytest.raises(ValueError, match="Expected at least one MarketHours"):
             await async_client.get_market_hours(exchange="NYSE")
 
     @pytest.mark.asyncio
@@ -2481,7 +2686,7 @@ class TestAsyncAlternativeMarketsClient:
     async def test_get_crypto_historical_passes_dict_response(
         self, mock_client, monkeypatch
     ):
-        """Test crypto historical dict responses pass through."""
+        """Test crypto historical lone-row dicts wrap into HistoricalData."""
         from fmp_data.alternative.async_client import AsyncAlternativeMarketsClient
         from fmp_data.alternative.models import CryptoHistoricalData
 
@@ -2489,14 +2694,16 @@ class TestAsyncAlternativeMarketsClient:
         mock_validate = MagicMock(return_value=sentinel)
         monkeypatch.setattr(CryptoHistoricalData, "model_validate", mock_validate)
 
-        response = {"symbol": "BTCUSD", "historical": [{"date": "2024-01-01"}]}
+        response = {"date": "2024-01-01"}
         mock_client.request_async.return_value = response
 
         async_client = AsyncAlternativeMarketsClient(mock_client)
         result = await async_client.get_crypto_historical("BTCUSD")
 
         assert result is sentinel
-        mock_validate.assert_called_once_with(response)
+        mock_validate.assert_called_once_with(
+            {"symbol": "BTCUSD", "historical": [response]}
+        )
 
     @pytest.mark.asyncio
     async def test_get_forex_historical_formats_dates(self, mock_client):
@@ -2504,7 +2711,7 @@ class TestAsyncAlternativeMarketsClient:
         from fmp_data.alternative import endpoints as alternative_endpoints
         from fmp_data.alternative.async_client import AsyncAlternativeMarketsClient
 
-        mock_client.request_async.return_value = {"symbol": "EURUSD", "historical": []}
+        mock_client.request_async.return_value = []
 
         async_client = AsyncAlternativeMarketsClient(mock_client)
         result = await async_client.get_forex_historical(
@@ -2525,7 +2732,7 @@ class TestAsyncAlternativeMarketsClient:
         from fmp_data.alternative import endpoints as alternative_endpoints
         from fmp_data.alternative.async_client import AsyncAlternativeMarketsClient
 
-        mock_client.request_async.return_value = {"symbol": "CL", "historical": []}
+        mock_client.request_async.return_value = []
 
         async_client = AsyncAlternativeMarketsClient(mock_client)
         result = await async_client.get_commodity_historical(

@@ -33,6 +33,25 @@ FMP_TEST_API_KEY=your_test_api_key FMP_VCR_RECORD=new_episodes uv run pytest tes
 FMP_TEST_API_KEY=your_test_api_key FMP_VCR_RECORD=new_episodes uv run pytest tests/integration/test_sec.py  # pragma: allowlist secret
 ```
 
+7. Full client-method e2e sweep (local, spends quota on record):
+```bash
+# list every public sync method
+uv run python scripts/e2e_endpoints.py list
+
+# record one group, or everything
+uv run python scripts/e2e_endpoints.py record --group company
+uv run python scripts/e2e_endpoints.py record --skip-bulk
+
+# replay without hitting the API
+uv run python scripts/e2e_endpoints.py replay
+```
+
+This sweep calls every public `FMPDataClient` method, writes VCR cassettes
+under `tests/e2e/vcr_cassettes/` (gitignored), and writes a JSON report to
+`tests/e2e/reports/last-report.json`. It is deselected from `make test`.
+Use it to debug model/path drift after an FMP change. The cheaper
+declaration probe remains `pytest tests/e2e/ -m live`.
+
 ## Test Structure
 
 ```
@@ -101,7 +120,13 @@ def test_api_call(client):
 
 We maintain high test coverage:
 
-- Minimum coverage: 80%
+- Core minimum coverage: 80% (`fmp_data/lc/*`, `fmp_data/mcp/*`, and
+  `fmp_data/cache/redis_backend.py` stay omitted from that number)
+- Extras gate: 80% via `uv tool run nox -s coverage_extras` (or the
+  CI `extras-coverage` job, required by `Test-MatrixExpected`). That
+  session installs langchain / mcp / cache-redis and measures only
+  those trees. The floor was raised from 65% after dedicated tests
+  left about 7 points of headroom (#283).
 - Coverage report: `uv run pytest --cov=fmp_data --cov-report=html`
 - View report: `open htmlcov/index.html`
 

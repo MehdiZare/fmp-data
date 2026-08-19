@@ -6,16 +6,17 @@ Helper functions for setting up and managing MCP server configuration.
 
 from __future__ import annotations
 
+import ast
 from datetime import datetime
-import importlib.util
 import json
 import os
 from pathlib import Path
 import platform
 import shutil
-import subprocess
+import subprocess  # nosec B404
 import sys
-from typing import Any
+import tempfile
+from typing import Any, Literal
 
 
 def get_claude_config_path() -> Path:
@@ -64,12 +65,13 @@ def find_python_executable() -> str:
     # Try common Python commands
     for cmd in ["python3", "python", "python3.10", "python3.11", "python3.12"]:
         try:
-            result = subprocess.run(
+            # Fixed argv from the literal list above; no shell.
+            result = subprocess.run(  # noqa: S603  # nosec B603
                 [cmd, "--version"], capture_output=True, text=True, timeout=2
             )
             if result.returncode == 0:
                 # Get the full path
-                which_result = subprocess.run(
+                which_result = subprocess.run(  # noqa: S603  # nosec B603
                     (
                         ["which", cmd]
                         if platform.system() != "Windows"
@@ -140,6 +142,32 @@ def load_claude_config() -> dict[str, Any]:
     return {}
 
 
+def _chmod_user_only(path: Path, mode: int) -> None:
+    """Best-effort owner-only mode. Windows chmod is a no-op for this bit."""
+    if os.name == "nt":
+        return
+    try:
+        os.chmod(path, mode)
+    except OSError:
+        return
+
+
+def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
+    """Write JSON via a temp file, then ``os.replace``, mode ``0600``."""
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    tmp_path = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, indent=2)
+            handle.write("\n")
+        _chmod_user_only(tmp_path, 0o600)
+        os.replace(tmp_path, path)
+        _chmod_user_only(path, 0o600)
+    except Exception:
+        tmp_path.unlink(missing_ok=True)
+        raise
+
+
 def save_claude_config(config: dict[str, Any], backup: bool = True) -> Path | None:
     """
     Save the Claude Desktop configuration.
@@ -161,17 +189,16 @@ def save_claude_config(config: dict[str, Any], backup: bool = True) -> Path | No
 
     # Create directory if it doesn't exist
     config_path.parent.mkdir(parents=True, exist_ok=True)
+    _chmod_user_only(config_path.parent, 0o700)
 
     # Create backup if requested and file exists
     if backup and config_path.exists():
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_path = config_path.with_suffix(f".backup_{timestamp}.json")
         shutil.copy2(config_path, backup_path)
+        _chmod_user_only(backup_path, 0o600)
 
-    # Save configuration
-    with open(config_path, "w") as f:
-        json.dump(config, f, indent=2)
-
+    _atomic_write_json(config_path, config)
     return backup_path
 
 
@@ -223,21 +250,26 @@ def add_mcp_server_to_config(
     return config
 
 
-def test_mcp_server(api_key: str, manifest_path: str | None = None) -> tuple[bool, str]:
-    """
-    Test if the MCP server can start successfully.
+# Classified reasons only. Never embed stderr / exception text — those
+# strings can quote the API key, and stdout is a CodeQL logging sink
+# (py/clear-text-logging-sensitive-data). Callers must map the reason
+# onto a string literal at the print site (#319, #321).
+McpServerCheckReason = Literal["passed", "started", "failed", "unavailable"]
+ApiKeyCheckReason = Literal["valid", "invalid", "timeout", "unavailable"]
 
-    Parameters
-    ----------
-    api_key
-        FMP API key to test
-    manifest_path
-        Optional path to custom manifest
+# Cheap authenticated probe used by ``validate_api_key``. Any live symbol
+# works; AAPL is on every FMP plan that can call ``quote``.
+_PROBE_SYMBOL = "AAPL"
 
-    Returns
-    -------
-    tuple[bool, str]
-        Success status and message
+
+def test_mcp_server(
+    api_key: str, manifest_path: str | None = None
+) -> tuple[bool, McpServerCheckReason]:
+    """Test whether the MCP server process can start.
+
+    Returns a classified reason, never subprocess stderr or exception
+    text. ``fmp-mcp status`` / ``test`` must print a sink-local literal
+    derived from the reason, not this return value interpolated (#319).
     """
     env = os.environ.copy()
     env["FMP_API_KEY"] = api_key
@@ -247,7 +279,7 @@ def test_mcp_server(api_key: str, manifest_path: str | None = None) -> tuple[boo
 
     try:
         # Try to import and create the app
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603
             [
                 sys.executable,
                 "-c",
@@ -262,16 +294,14 @@ def test_mcp_server(api_key: str, manifest_path: str | None = None) -> tuple[boo
         )
 
         if result.returncode == 0:
-            return True, "MCP server test passed"
-        else:
-            error_msg = result.stderr.strip() if result.stderr else "Unknown error"
-            return False, f"MCP server test failed: {error_msg}"
+            return True, "passed"
+        return False, "failed"
 
     except subprocess.TimeoutExpired:
         # Timeout actually means the server started and is waiting for input
-        return True, "MCP server test passed (server started)"
-    except Exception as e:
-        return False, f"MCP server test failed: {e}"
+        return True, "started"
+    except Exception:
+        return False, "unavailable"
 
 
 def get_api_key_from_env() -> str | None:
@@ -286,53 +316,56 @@ def get_api_key_from_env() -> str | None:
     return os.environ.get("FMP_API_KEY")
 
 
-def validate_api_key(api_key: str) -> tuple[bool, str]:
-    """
-    Validate an FMP API key by making a test request.
+def validate_api_key(api_key: str) -> tuple[bool, ApiKeyCheckReason]:
+    """Validate an FMP API key with a cheap authenticated request.
 
-    Parameters
-    ----------
-    api_key
-        API key to validate
-
-    Returns
-    -------
-    tuple[bool, str]
-        Success status and message
+    Constructs a client and calls ``company.get_quote`` so a typed junk
+    key cannot report success (#317). Returns a classified reason, never
+    exception text or stderr — those can quote the key (#319).
     """
+    import httpx
+
+    from fmp_data.client import FMPDataClient
+    from fmp_data.exceptions import (
+        AuthenticationError,
+        ConfigError,
+        FMPError,
+        FMPNetworkError,
+        FMPTimeoutError,
+    )
+
+    client: FMPDataClient | None = None
     try:
-        # Try to create a client with the API key
-        env = os.environ.copy()
-        env["FMP_API_KEY"] = api_key
-
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-c",
-                "import os; "
-                "from fmp_data import FMPDataClient; "
-                "client = FMPDataClient.from_env(); "
-                "client.close(); "
-                "print('API key is valid')",
-            ],
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-
-        if result.returncode == 0:
-            return True, "API key is valid"
-        else:
-            error_msg = result.stderr.strip() if result.stderr else "Invalid API key"
-            if "401" in error_msg or "403" in error_msg:
-                return False, "API key is invalid or expired"
-            return False, f"API key validation failed: {error_msg}"
-
-    except subprocess.TimeoutExpired:
-        return False, "API key validation timed out"
-    except Exception as e:
-        return False, f"API key validation failed: {e}"
+        # One attempt: 401 is not retried, and a 4-10s backoff would make
+        # the wizard feel hung on a network blip.
+        client = FMPDataClient(api_key=api_key, timeout=10, max_retries=1)
+        client.company.get_quote(_PROBE_SYMBOL)
+    except AuthenticationError:
+        return False, "invalid"
+    except ConfigError:
+        return False, "invalid"
+    except (TimeoutError, httpx.TimeoutException, FMPTimeoutError):
+        # #350 maps client timeouts to FMPTimeoutError. Keep the raw
+        # httpx type for fakes/adapters that still raise it.
+        return False, "timeout"
+    except (FMPNetworkError, httpx.RequestError):
+        # #350 / #354: leftover RequestError subclasses map to
+        # FMPNetworkError. Keep the raw httpx type for fakes/adapters.
+        # TimeoutException is a RequestError and is handled above.
+        return False, "unavailable"
+    except FMPError as exc:
+        # AuthenticationError (HTTP 401 and typed 2xx invalid-key
+        # bodies) is handled above. 403 is still a generic FMPError
+        # and counts as invalid. 429 / 5xx mean the key was accepted.
+        if exc.status_code in {401, 403}:
+            return False, "invalid"
+        return True, "valid"
+    except Exception:
+        return False, "unavailable"
+    finally:
+        if client is not None:
+            client.close()
+    return True, "valid"
 
 
 def get_manifest_choices() -> dict[str, str | None]:
@@ -344,7 +377,12 @@ def get_manifest_choices() -> dict[str, str | None]:
     dict[str, str | None]
         Mapping of choice names to manifest paths (None for default)
     """
-    base_path = Path(__file__).parent.parent.parent / "examples" / "mcp_configurations"
+    base_path = (
+        Path(__file__).resolve().parent.parent.parent
+        / "examples"
+        / "mcp"
+        / "configurations"
+    )
 
     choices: dict[str, str | None] = {
         "default": None,  # Use default manifest
@@ -366,14 +404,160 @@ def get_manifest_choices() -> dict[str, str | None]:
     return choices
 
 
+def _coerce_tool_list(data: Any, path: Path) -> list[str]:
+    """Accept a top-level list or an object with a ``tools`` list of strings."""
+    if isinstance(data, list):
+        items = data
+    elif isinstance(data, dict) and "tools" in data:
+        items = data["tools"]
+    else:
+        raise ValueError(
+            f"{path} must be a list of tool specs or an object with a "
+            "'tools' list of strings"
+        )
+    if not isinstance(items, list):
+        raise ValueError(f"{path}: 'tools' must be a list of strings")
+    tools: list[str] = []
+    for item in items:
+        if not isinstance(item, str) or not item:
+            raise ValueError(f"{path}: every tool spec must be a non-empty string")
+        tools.append(item)
+    return tools
+
+
+def _string_list_from_ast(node: ast.AST, path: Path) -> list[str]:
+    if not isinstance(node, ast.List):
+        raise ValueError(
+            f"{path} is not a data-only manifest: TOOLS must be a list of "
+            "string literals. A Python manifest does not execute."
+        )
+    tools: list[str] = []
+    for elt in node.elts:
+        if (
+            not isinstance(elt, ast.Constant)
+            or not isinstance(elt.value, str)
+            or not elt.value
+        ):
+            raise ValueError(
+                f"{path} is not a data-only manifest: TOOLS must contain only "
+                "non-empty string literals. A Python manifest does not execute."
+            )
+        tools.append(elt.value)
+    return tools
+
+
+def _tools_list_from_assignment(
+    stmt: ast.Assign | ast.AnnAssign, path: Path, already: list[str] | None
+) -> list[str]:
+    """Extract ``TOOLS`` from a module-level assignment or annotated assignment."""
+    value: ast.expr | None
+    if isinstance(stmt, ast.Assign):
+        ok = (
+            len(stmt.targets) == 1
+            and isinstance(stmt.targets[0], ast.Name)
+            and stmt.targets[0].id == "TOOLS"
+        )
+        value = stmt.value
+    else:
+        ok = isinstance(stmt.target, ast.Name) and stmt.target.id == "TOOLS"
+        value = stmt.value
+    if not ok or value is None:
+        raise ValueError(
+            f"{path} is not a data-only manifest: only a module-level "
+            "TOOLS = [...] assignment is allowed. A Python manifest "
+            "does not execute."
+        )
+    if already is not None:
+        raise ValueError(
+            f"{path} is not a data-only manifest: TOOLS is assigned "
+            "more than once. A Python manifest does not execute."
+        )
+    return _string_list_from_ast(value, path)
+
+
+def _parse_python_manifest(source: str, path: Path) -> list[str]:
+    """Parse a legacy ``TOOLS = ["..."]`` file without executing it."""
+    try:
+        tree = ast.parse(source, filename=str(path))
+    except SyntaxError as exc:
+        raise ValueError(f"Invalid Python manifest {path}: {exc}") from exc
+
+    tools: list[str] | None = None
+    for stmt in tree.body:
+        if (
+            isinstance(stmt, ast.Expr)
+            and isinstance(stmt.value, ast.Constant)
+            and isinstance(stmt.value.value, str)
+        ):
+            continue
+        if isinstance(stmt, ast.Assign | ast.AnnAssign):
+            tools = _tools_list_from_assignment(stmt, path, tools)
+            continue
+        raise ValueError(
+            f"{path} is not a data-only manifest: only a docstring and "
+            "TOOLS = [...] are allowed. A Python manifest does not execute."
+        )
+
+    if tools is None:
+        raise AttributeError(f"{path} does not define a global variable 'TOOLS'")
+    return tools
+
+
+def _load_json_manifest(path: Path) -> list[str]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON manifest {path}: {exc}") from exc
+    return _coerce_tool_list(data, path)
+
+
+def _load_yaml_manifest(path: Path) -> list[str]:
+    try:
+        import yaml
+    except ImportError as exc:
+        raise RuntimeError(
+            f"Cannot load {path}: PyYAML is required for YAML manifests. "
+            "Install with: pip install 'fmp-data[mcp]'"
+        ) from exc
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise ValueError(f"Invalid YAML manifest {path}: {exc}") from exc
+    return _coerce_tool_list(data, path)
+
+
+def _load_toml_manifest(path: Path) -> list[str]:
+    try:
+        import tomllib
+    except ImportError:  # pragma: no cover - Python 3.10
+        try:
+            import tomli as tomllib  # type: ignore[no-redef]
+        except ImportError as exc:
+            raise RuntimeError(
+                f"Cannot load {path}: TOML manifests need tomli on Python "
+                "3.10. Install with: pip install 'fmp-data[mcp]'"
+            ) from exc
+    try:
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+    except tomllib.TOMLDecodeError as exc:
+        raise ValueError(f"Invalid TOML manifest {path}: {exc}") from exc
+    return _coerce_tool_list(data, path)
+
+
 def load_manifest_tools(manifest_path: str | Path | None) -> list[str]:
     """
-    Load tool specs from a manifest file or return defaults.
+    Load tool specs from a data-only manifest, or return defaults.
+
+    Python files are parsed as a restricted ``TOOLS = ["..."]`` assignment.
+    They are never imported or executed. JSON and YAML accept a top-level
+    list or an object with a ``tools`` list. TOML accepts only a ``tools``
+    array (no top-level TOML array). On Python 3.10 TOML parsing uses
+    ``tomli`` from the mcp extra.
 
     Parameters
     ----------
     manifest_path
-        Path to a manifest file that defines ``TOOLS``, or None for defaults.
+        Path to a manifest file, or None for defaults.
 
     Returns
     -------
@@ -386,18 +570,18 @@ def load_manifest_tools(manifest_path: str | Path | None) -> list[str]:
         return list(DEFAULT_TOOLS)
 
     path = Path(manifest_path).expanduser().resolve()
-    spec = importlib.util.spec_from_file_location("user_manifest", path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Cannot import manifest at {path}")
+    if not path.is_file():
+        raise FileNotFoundError(f"Manifest file not found: {path}")
 
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    suffix = path.suffix.lower()
+    if suffix == ".json":
+        return _load_json_manifest(path)
+    if suffix in {".yaml", ".yml"}:
+        return _load_yaml_manifest(path)
+    if suffix == ".toml":
+        return _load_toml_manifest(path)
 
-    tools = getattr(module, "TOOLS", None)
-    if tools is None:
-        raise AttributeError(f"{path} does not define a global variable 'TOOLS'")
-
-    return list(tools)
+    return _parse_python_manifest(path.read_text(encoding="utf-8"), path)
 
 
 def restart_claude_desktop_instructions() -> str:

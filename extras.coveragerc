@@ -1,0 +1,36 @@
+# Separate extras coverage gate (#273).
+# Core 80% still omits these trees in pyproject.toml.
+[run]
+branch = true
+source =
+    fmp_data.lc
+    fmp_data.mcp
+    fmp_data.cache.redis_backend
+
+[report]
+# Baseline was 66.78% when this gate landed (#273); dedicated tests for
+# redis_backend / lc.validation / lc.__init__ / mcp.utils / mcp.setup took
+# it to 86.99% (#282). 80 keeps ~7 points of headroom so an ordinary
+# uncovered addition does not block merges the moment this becomes a
+# required check.
+fail_under = 80
+show_missing = true
+precision = 2
+skip_empty = false
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    def __str__
+    raise NotImplementedError
+    if __name__ == ['\"]__main__['\"]:
+    if TYPE_CHECKING:
+    pass
+    raise ImportError
+    except ImportError
+    def main():
+    # Single backslashes: this is an INI file, not TOML. The double-escaped
+    # copy (`\\(Protocol\\)`) asked for a literal backslash and never matched.
+    class .*\(Protocol\):
+    @abstractmethod
+    @overload
+    \.\.\.$

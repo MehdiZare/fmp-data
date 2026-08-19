@@ -748,9 +748,7 @@ class TestToolKeyNamespace:
                 "default", category=DeprecationWarning, module="__main__"
             )
             warnings.filterwarnings("ignore", category=DeprecationWarning)
-            with caplog.at_level(
-                logging.WARNING, logger="fmp_data.fmp_data.mcp.tool_loader"
-            ):
+            with caplog.at_level(logging.WARNING, logger="fmp_data.mcp.tool_loader"):
                 _warn_if_deprecated("company.historical_price")
 
         assert shown == [], (
@@ -759,6 +757,7 @@ class TestToolKeyNamespace:
         )
         logged = [r.getMessage() for r in caplog.records]
         assert len(logged) == 1, f"expected exactly one log record, got {logged}"
+        assert caplog.records[0].name == "fmp_data.mcp.tool_loader"
         assert "company.historical_price" in logged[0]
         assert "company.historical_prices" in logged[0]
         assert "3.0" in logged[0]
@@ -769,9 +768,7 @@ class TestToolKeyNamespace:
         """The log channel must not turn every canonical key into noise."""
         from fmp_data.mcp.tool_loader import _warn_if_deprecated
 
-        with caplog.at_level(
-            logging.WARNING, logger="fmp_data.fmp_data.mcp.tool_loader"
-        ):
+        with caplog.at_level(logging.WARNING, logger="fmp_data.mcp.tool_loader"):
             _warn_if_deprecated("company.historical_prices")
 
         assert caplog.records == [], (
@@ -1094,14 +1091,138 @@ class TestMCPManifestLoading:
         assert tools == ["company.profile", "market.gainers"]
 
     def test_load_manifest_tools_missing_tools(self, tmp_path):
-        """Missing TOOLS should raise."""
+        """A comment-only Python file has no TOOLS assignment."""
         from fmp_data.mcp.utils import load_manifest_tools
 
         manifest = tmp_path / "manifest.py"
-        manifest.write_text("X = 1")
+        manifest.write_text("# No TOOLS variable\n")
 
         with pytest.raises(AttributeError, match="does not define"):
             load_manifest_tools(manifest)
+
+    def test_load_manifest_refuses_executable_python(self, tmp_path):
+        """A 'manifest' must not run arbitrary code (#252 FMP-SEC-001)."""
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        marker = tmp_path / "executed"
+        manifest = tmp_path / "evil.py"
+        manifest.write_text(
+            f"open({str(marker)!r}, 'w').write('RAN')\nTOOLS = ['company.profile']\n"
+        )
+
+        with pytest.raises(ValueError, match="does not execute"):
+            load_manifest_tools(manifest)
+        assert not marker.exists()
+
+    def test_load_manifest_refuses_imports_and_calls(self, tmp_path):
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        manifest = tmp_path / "importy.py"
+        manifest.write_text(
+            "import os\nTOOLS = [os.getenv('HOME', 'company.profile')]\n"
+        )
+
+        with pytest.raises(ValueError, match="does not execute"):
+            load_manifest_tools(manifest)
+
+    def test_load_manifest_refuses_call_inside_tools_list(self, tmp_path):
+        """A call as a TOOLS element must not run (#252 FMP-SEC-001)."""
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        marker = tmp_path / "rhs-executed"
+        manifest = tmp_path / "rhs_call.py"
+        manifest.write_text(
+            f"TOOLS = [__import__('pathlib').Path({str(marker)!r}).write_text('RAN')]\n"
+        )
+
+        with pytest.raises(ValueError, match="does not execute"):
+            load_manifest_tools(manifest)
+        assert not marker.exists()
+
+    def test_load_manifest_refuses_fstring_inside_tools_list(self, tmp_path):
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        marker = tmp_path / "fstring-executed"
+        manifest = tmp_path / "rhs_fstring.py"
+        manifest.write_text(
+            'TOOLS = [f"{open(' + repr(str(marker)) + ", 'w').write('RAN')}\"]\n"
+        )
+
+        with pytest.raises(ValueError, match="does not execute"):
+            load_manifest_tools(manifest)
+        assert not marker.exists()
+
+    def test_load_manifest_refuses_non_tools_assignment(self, tmp_path):
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        manifest = tmp_path / "manifest.py"
+        manifest.write_text("X = 1\nTOOLS = ['company.profile']\n")
+
+        with pytest.raises(ValueError, match="does not execute"):
+            load_manifest_tools(manifest)
+
+    def test_load_manifest_json_list(self, tmp_path):
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        manifest = tmp_path / "manifest.json"
+        manifest.write_text('["company.profile", "market.gainers"]\n')
+
+        assert load_manifest_tools(manifest) == ["company.profile", "market.gainers"]
+
+    def test_load_manifest_json_object(self, tmp_path):
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        manifest = tmp_path / "manifest.json"
+        manifest.write_text('{"tools": ["company.profile"]}\n')
+
+        assert load_manifest_tools(manifest) == ["company.profile"]
+
+    def test_load_manifest_yaml_object(self, tmp_path):
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        manifest = tmp_path / "manifest.yaml"
+        manifest.write_text("tools:\n  - company.profile\n  - market.gainers\n")
+
+        assert load_manifest_tools(manifest) == ["company.profile", "market.gainers"]
+
+    def test_load_manifest_yml_suffix(self, tmp_path):
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        manifest = tmp_path / "manifest.yml"
+        manifest.write_text("- company.profile\n")
+
+        assert load_manifest_tools(manifest) == ["company.profile"]
+
+    def test_load_manifest_toml_object(self, tmp_path):
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        manifest = tmp_path / "manifest.toml"
+        manifest.write_text('tools = ["company.profile", "market.gainers"]\n')
+
+        assert load_manifest_tools(manifest) == ["company.profile", "market.gainers"]
+
+    def test_validate_manifest_does_not_execute_python(self, tmp_path, capsys):
+        from fmp_data.mcp.cli import validate_manifest
+
+        marker = tmp_path / "validated"
+        manifest = tmp_path / "evil.py"
+        manifest.write_text(
+            f"open({str(marker)!r}, 'w').write('RAN')\nTOOLS = ['company.profile']\n"
+        )
+
+        assert validate_manifest(manifest) is False
+        assert not marker.exists()
+        err = capsys.readouterr().err
+        assert "does not execute" in err
+
+    def test_validate_manifest_rejects_malformed_json(self, tmp_path, capsys):
+        from fmp_data.mcp.cli import validate_manifest
+
+        manifest = tmp_path / "broken.json"
+        manifest.write_text("{not json\n")
+
+        assert validate_manifest(manifest) is False
+        assert "Invalid JSON" in capsys.readouterr().err
 
 
 @pytest.mark.integration
@@ -1258,23 +1379,20 @@ class TestMCPSetupSecurity:
                 mock_redact.assert_any_call("default_value")
 
     def test_print_method_always_redacts(self):
-        """Test that all print method calls apply redaction."""
+        """Console output pattern-redacts key-shaped tokens."""
         import io
         from unittest.mock import patch
 
         from fmp_data.mcp.setup import SetupWizard
 
         setup = SetupWizard(quiet=False)
-        setup.api_key = "secret123"
-
-        # Capture stdout
         captured_output = io.StringIO()
 
         with patch("sys.stdout", captured_output):
-            setup.print("Your API key secret123 is valid", "info")
+            setup.print("Your API key sk-abcdefgh12345678 is valid", "info")
 
         output = captured_output.getvalue()
-        assert "secret123" not in output
+        assert "sk-abcdefgh12345678" not in output
         assert "[REDACTED]" in output
 
     def test_exception_handling_security(self):
@@ -1284,7 +1402,6 @@ class TestMCPSetupSecurity:
 
         from fmp_data.mcp.setup import run_setup
 
-        # Mock an exception that might contain sensitive data
         sensitive_error = Exception("Error with api_key=secret123: connection failed")
 
         captured_output = io.StringIO()
@@ -1296,10 +1413,10 @@ class TestMCPSetupSecurity:
                 result = run_setup(quiet=False)
 
         output = captured_output.getvalue()
-        # Should not contain the raw API key (pattern-based redaction should catch it)
         assert "secret123" not in output
-        assert "[REDACTED]" in output or "Setup failed" in output
-        assert result == 1  # Should return error code
+        assert "api_key=" not in output
+        assert "Setup failed." in output
+        assert result == 1
 
 
 class TestMCPCompat:
@@ -1379,8 +1496,8 @@ class TestDeprecationMechanismsStaySeparate:
     These live here, rather than beside the other #137 tests in
     ``tests/unit/lc/``, because they need the ``mcp`` extra and that directory
     is skipped without ``langchain``. No CI job installs both: the ``langchain``
-    job has no ``mcp``, and the ``mcp-server`` job runs only this file
-    (``noxfile.py``). Placed anywhere else, they would never execute.
+    job has no ``mcp``, and the ``mcp-server`` job runs ``tests/unit/test_mcp*.py``
+    (``noxfile.py``). Placed under ``tests/unit/lc/``, they would never execute.
     """
 
     def test_mcp_catalog_still_advertises_the_deprecated_keys(self):

@@ -939,6 +939,81 @@ class TestGeneratedManifestIsUsable:
         assert content.endswith("]\n")
 
 
+class TestGenerateManifestFormatFromSuffix:
+    """#256: suffix chooses JSON / YAML / TOML / legacy Python."""
+
+    @staticmethod
+    def _write(
+        tmp_path: Path, name: str
+    ) -> tuple[Path, bool, list[str] | None, str | None]:
+        from fmp_data.mcp.cli import generate_manifest
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        path = tmp_path / name
+        written = generate_manifest(
+            path,
+            tools=["company.profile", "market.gainers"],
+            include_defaults=False,
+        )
+        if not written:
+            return path, written, None, None
+        return path, written, load_manifest_tools(path), path.read_text()
+
+    def test_json_suffix_writes_tools_object(self, tmp_path: Path) -> None:
+        _path, written, tools, content = self._write(tmp_path, "manifest.json")
+        assert written is True
+        assert tools == ["company.profile", "market.gainers"]
+        assert content is not None
+        assert '"tools"' in content
+        assert "TOOLS =" not in content
+        assert content.endswith("\n")
+
+    def test_yaml_suffix_loads(self, tmp_path: Path) -> None:
+        _, written, tools, content = self._write(tmp_path, "manifest.yaml")
+        assert written is True
+        assert tools == ["company.profile", "market.gainers"]
+        assert content is not None
+        assert content.startswith("tools:")
+
+    def test_toml_suffix_loads(self, tmp_path: Path) -> None:
+        _, written, tools, content = self._write(tmp_path, "manifest.toml")
+        assert written is True
+        assert tools == ["company.profile", "market.gainers"]
+        assert content is not None
+        assert content.startswith("tools = [")
+
+    def test_py_suffix_still_writes_tools_assignment(self, tmp_path: Path) -> None:
+        _, written, tools, content = self._write(tmp_path, "manifest.py")
+        assert written is True
+        assert tools == ["company.profile", "market.gainers"]
+        assert content is not None
+        assert "TOOLS = [" in content
+
+    def test_no_suffix_writes_json(self, tmp_path: Path) -> None:
+        from fmp_data.mcp.cli import generate_manifest
+        from fmp_data.mcp.utils import load_manifest_tools
+
+        path = tmp_path / "manifest"
+        written = generate_manifest(
+            path, tools=["company.profile"], include_defaults=False
+        )
+        written_path = tmp_path / "manifest.json"
+        assert written is True
+        assert not path.exists()
+        assert load_manifest_tools(written_path) == ["company.profile"]
+
+    def test_unknown_suffix_is_refused(self, tmp_path: Path, capsys) -> None:
+        from fmp_data.mcp.cli import generate_manifest
+
+        path = tmp_path / "manifest.txt"
+        written = generate_manifest(
+            path, tools=["company.profile"], include_defaults=False
+        )
+        assert written is False
+        assert not path.exists()
+        assert ".json" in capsys.readouterr().err
+
+
 class TestListLabelsAllThreeRetirementConcepts:
     """#158: ``list`` knew only about renames, so withdrawals read as live.
 
@@ -1101,3 +1176,83 @@ class TestListLabelsAllThreeRetirementConcepts:
         assert DEPRECATED_TOOLS, "floor: no renames to check"
         for spec, replacement in sorted(DEPRECATED_TOOLS.items()):
             assert f"{spec} [DEPRECATED -> {replacement}]" in rendered
+
+
+class TestServerCheckPrinting:
+    """``fmp-mcp status`` / ``test`` must print sink-local literals (#319)."""
+
+    def test_failed_reason_does_not_flow_into_stdout(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        from fmp_data.mcp.cli import _print_server_check
+
+        planted = "PLANTED_apikey_should_not_print"
+        _print_server_check(False, f"failed: apikey={planted}")
+
+        out = capsys.readouterr().out
+        assert planted not in out
+        assert out == "❌ MCP server test failed\n"
+
+    def test_started_and_passed_use_distinct_literals(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        from fmp_data.mcp.cli import _print_server_check
+
+        _print_server_check(True, "started")
+        _print_server_check(True, "passed")
+
+        assert capsys.readouterr().out == (
+            "✅ MCP server test passed (server started)\n✅ MCP server test passed\n"
+        )
+
+    def test_test_command_does_not_echo_a_leaky_helper(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        import argparse
+
+        from fmp_data.mcp import cli as cli_mod
+        from fmp_data.mcp import utils as mcp_utils
+
+        planted = "PLANTED_cli_key"
+        monkeypatch.setenv("FMP_API_KEY", planted)
+
+        def leaky(api_key: str, manifest_path: str | None = None) -> tuple[bool, str]:
+            return False, f"MCP server test failed: stderr quoted {api_key}"
+
+        monkeypatch.setattr(mcp_utils, "test_mcp_server", leaky)
+
+        assert cli_mod.test_command(argparse.Namespace()) == 1
+        out = capsys.readouterr().out
+        assert planted not in out
+        assert "MCP server test failed: stderr" not in out
+        assert "❌ MCP server test failed" in out
+
+    def test_test_command_does_not_echo_create_app_exception(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        import argparse
+        import sys
+        import types
+
+        from fmp_data.mcp import cli as cli_mod
+        from fmp_data.mcp import utils as mcp_utils
+
+        planted = "PLANTED_create_app_key"
+        monkeypatch.setenv("FMP_API_KEY", planted)
+        monkeypatch.setattr(
+            mcp_utils,
+            "test_mcp_server",
+            lambda api_key, manifest_path=None: (True, "passed"),
+        )
+
+        def boom() -> None:
+            raise RuntimeError(f"create_app failed apikey={planted}")
+
+        fake_server = types.ModuleType("fmp_data.mcp.server")
+        fake_server.create_app = boom  # type: ignore[attr-defined]
+        monkeypatch.setitem(sys.modules, "fmp_data.mcp.server", fake_server)
+
+        assert cli_mod.test_command(argparse.Namespace()) == 0
+        out = capsys.readouterr().out
+        assert planted not in out
+        assert "Could not count tools" in out

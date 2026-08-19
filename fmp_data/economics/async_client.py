@@ -22,6 +22,7 @@ from fmp_data.economics.models import (
     MarketRiskPremium,
     TreasuryRate,
 )
+from fmp_data.economics.schema import EconomicIndicatorType
 
 
 class AsyncEconomicsClient(AsyncEndpointGroup):
@@ -37,13 +38,18 @@ class AsyncEconomicsClient(AsyncEndpointGroup):
         if end_date:
             params["end_date"] = end_date.strftime("%Y-%m-%d")
 
-        return await self.client.request_async(TREASURY_RATES, **params)
+        return self._unwrap_list(
+            await self.client.request_async(TREASURY_RATES, **params), TreasuryRate
+        )
 
     async def get_economic_indicators(
-        self, indicator_name: str
+        self, indicator_name: EconomicIndicatorType | str
     ) -> list[EconomicIndicator]:
         """Get economic indicator data"""
-        return await self.client.request_async(ECONOMIC_INDICATORS, name=indicator_name)
+        return self._unwrap_list(
+            await self.client.request_async(ECONOMIC_INDICATORS, name=indicator_name),
+            EconomicIndicator,
+        )
 
     async def get_economic_calendar(
         self, start_date: date | None = None, end_date: date | None = None
@@ -55,11 +61,15 @@ class AsyncEconomicsClient(AsyncEndpointGroup):
         if end_date:
             params["end_date"] = end_date.strftime("%Y-%m-%d")
 
-        return await self.client.request_async(ECONOMIC_CALENDAR, **params)
+        return self._unwrap_list(
+            await self.client.request_async(ECONOMIC_CALENDAR, **params), EconomicEvent
+        )
 
     async def get_market_risk_premium(self) -> list[MarketRiskPremium]:
         """Get market risk premium data"""
-        return await self.client.request_async(MARKET_RISK_PREMIUM)
+        return self._unwrap_list(
+            await self.client.request_async(MARKET_RISK_PREMIUM), MarketRiskPremium
+        )
 
     async def get_commitment_of_traders_report(
         self, symbol: str, start_date: date, end_date: date
@@ -70,7 +80,10 @@ class AsyncEconomicsClient(AsyncEndpointGroup):
             "start_date": start_date.strftime("%Y-%m-%d"),
             "end_date": end_date.strftime("%Y-%m-%d"),
         }
-        return await self.client.request_async(COMMITMENT_OF_TRADERS_REPORT, **params)
+        return self._unwrap_list(
+            await self.client.request_async(COMMITMENT_OF_TRADERS_REPORT, **params),
+            CommitmentOfTradersReport,
+        )
 
     async def get_commitment_of_traders_analysis(
         self, symbol: str, start_date: date, end_date: date
@@ -81,10 +94,16 @@ class AsyncEconomicsClient(AsyncEndpointGroup):
             "start_date": start_date.strftime("%Y-%m-%d"),
             "end_date": end_date.strftime("%Y-%m-%d"),
         }
-        return await self.client.request_async(COMMITMENT_OF_TRADERS_ANALYSIS, **params)
+        return self._unwrap_list(
+            await self.client.request_async(COMMITMENT_OF_TRADERS_ANALYSIS, **params),
+            CommitmentOfTradersAnalysis,
+        )
 
     async def get_commitment_of_traders_list(
         self,
     ) -> list[CommitmentOfTradersListItem]:
         """Get list of available Commitment of Traders (COT) symbols"""
-        return await self.client.request_async(COMMITMENT_OF_TRADERS_LIST)
+        return self._unwrap_list(
+            await self.client.request_async(COMMITMENT_OF_TRADERS_LIST),
+            CommitmentOfTradersListItem,
+        )

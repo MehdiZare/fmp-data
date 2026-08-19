@@ -10,7 +10,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 - [Market (36 endpoints)](#market)
 - [Fundamental (14 endpoints)](#fundamental)
 - [Technical (9 endpoints)](#technical)
-- [Market Intelligence (46 endpoints)](#market-intelligence)
+- [Market Intelligence (52 endpoints)](#market-intelligence)
 - [Institutional (24 endpoints)](#institutional)
 - [Investment (14 endpoints)](#investment)
 - [Alternative Markets (15 endpoints)](#alternative-markets)
@@ -39,7 +39,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 | `core_information` | `/stable/company-core-information` | Retrieve essential company information including CIK, exchange, SIC code, state of incorporation, and fiscal year details. Provides core regulatory and administrative information about a company. |
 | `company_notes` | `/stable/company-notes` | Retrieve company financial notes and disclosures. These notes provide additional context and detailed explanations about company financial statements and important events. |
 | `company_outlook` | `/stable/company-outlook` | Get comprehensive company outlook data |
-| `delisted_companies` | `/stable/delisted-companies` | Get list of delisted companies |
+| `delisted_companies` | `/stable/delisted-companies` | Slim delist list: symbol, companyName, exchange, ipoDate, delistedDate |
 | `company_dividends` | `/stable/dividends` | Get historical dividend payments for a specific company. Includes ex-dividend dates, payment dates, and dividend amounts. |
 | `company_earnings` | `/stable/earnings` | Get historical earnings reports for a specific company. Includes actual EPS, estimated EPS, revenue, and earnings dates. |
 | `employee_count` | `/stable/employee-count` | Get historical employee count data for a company. Tracks how the company's workforce has changed over time, providing insights into company growth and operational scale. |
@@ -167,7 +167,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 
 ## Market Intelligence
 
-### 46 endpoints
+### 52 endpoints
 
 | Endpoint | Path | Description |
 |----------|------|-------------|
@@ -194,6 +194,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 | `historical_social_sentiment` | `/stable/historical/social-sentiment` | **Removed** — raises `RemovedEndpointError` |
 | `house_latest` | `/stable/house-latest` | Get latest House financial disclosures |
 | `house_disclosure` | `/stable/house-trades` | Get House trading data by symbol |
+| `house_trades_by_id` | `/stable/house-trades-by-id` | Get House trading data by member id |
 | `house_trades_by_name` | `/stable/house-trades-by-name` | Get House trading data by name |
 | `ipo_calendar` | `/stable/ipos-calendar` | Get IPO calendar |
 | `crypto_news_symbol` | `/stable/news/crypto` | Search crypto news articles by trading pair |
@@ -210,7 +211,12 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 | `ratings_historical` | `/stable/ratings-historical` | Get historical analyst ratings |
 | `ratings_snapshot` | `/stable/ratings-snapshot` | Get current analyst ratings snapshot |
 | `senate_latest` | `/stable/senate-latest` | Get latest Senate financial disclosures |
+| `senate_net_worth` | `/stable/senate-net-worth` | Get itemized Senate/House net-worth disclosures |
+| `senate_net_worth_aggregated` | `/stable/senate-net-worth-aggregated` | Get yearly aggregated Senate/House net-worth totals |
+| `senate_positions` | `/stable/senate-positions` | Get Congress member term history |
+| `senate_profile` | `/stable/senate-profile` | Get Congress member profiles |
 | `senate_trading` | `/stable/senate-trades` | Get Senate trading data by symbol |
+| `senate_trades_by_id` | `/stable/senate-trades-by-id` | Get Senate trading data by member id |
 | `senate_trades_by_name` | `/stable/senate-trades-by-name` | Get Senate trading data by name |
 | `senate_trading_rss` | `/stable/senate-trading-rss-feed` | Get Senate trading RSS feed |
 | `social_sentiment_changes` | `/stable/social-sentiments/change` | Get changes in social sentiment data |

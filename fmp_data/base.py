@@ -24,11 +24,14 @@ from tenacity import (
     wait_exponential,
 )
 
+from fmp_data._redaction import redact_credential_patterns
 from fmp_data.cache.base import CacheBackend
 from fmp_data.config import ClientConfig
 from fmp_data.exceptions import (
     AuthenticationError,
     FMPError,
+    FMPNetworkError,
+    FMPTimeoutError,
     RateLimitError,
     ValidationError,
 )
@@ -39,6 +42,154 @@ from fmp_data.rate_limit import AsyncFMPRateLimiter, FMPRateLimiter, QuotaConfig
 T = TypeVar("T")
 ValidationMode = Literal["lenient", "warn", "strict"]
 
+# 2xx JSON bodies use this copy for a junk key. HTTP 401 is the live
+# /quote path (probed 2026-08-15); this is the typed regression guard
+# so callers do not see a bare FMPError (#340).
+_INVALID_API_KEY_BODY = re.compile(r"^invalid api key\b", re.IGNORECASE)
+_ERROR_BODY_KEY_ORDER = ("Error Message", "message", "error")
+_ERROR_BODY_KEYS = frozenset(_ERROR_BODY_KEY_ORDER)
+_ERROR_BODY_UNWRAP_DEPTH = 4
+
+
+def _is_invalid_api_key_text(message: Any) -> bool:
+    """True when the coerced 2xx body is the known invalid-key copy."""
+    return bool(_INVALID_API_KEY_BODY.match(_error_body_text(message).strip()))
+
+
+def _error_body_text(message: Any, *, depth: int = 0) -> str:
+    """Coerce a 2xx error-body value to text.
+
+    Nested dicts are walked along the known error keys so
+    ``{"message": "Invalid API KEY"}`` types as auth, not as a ``str()``
+    repr. Junk that is not on those keys stays a string — it is not
+    mapped to ``None`` (#344).
+    """
+    if depth > _ERROR_BODY_UNWRAP_DEPTH:
+        return str(message)
+    if isinstance(message, str):
+        return message
+    if isinstance(message, dict):
+        for key in _ERROR_BODY_KEY_ORDER:
+            if key in message:
+                return _error_body_text(message[key], depth=depth + 1)
+        return str(message)
+    if isinstance(message, (list, tuple)) and len(message) == 1:
+        return _error_body_text(message[0], depth=depth + 1)
+    return str(message)
+
+
+def _default_http_headers() -> dict[str, str]:
+    """Headers shared by the sync and async clients. No API key (#252)."""
+    return {
+        "User-Agent": "FMP-Python-Client/1.0",
+        "Accept": "application/json",
+    }
+
+
+def _origin(url: httpx.URL) -> tuple[str, str, int | None]:
+    """Scheme, host, and defaulted port so ``:443`` matches a bare HTTPS URL."""
+    scheme = url.scheme.lower()
+    host = (url.host or "").lower()
+    port = url.port
+    if port is None:
+        if scheme == "https":
+            port = 443
+        elif scheme == "http":
+            port = 80
+    return scheme, host, port
+
+
+def _resolve_redirect_target(response: httpx.Response) -> httpx.URL | None:
+    """Next hop URL. Prefer ``next_request``; else resolve ``Location`` as httpx does.
+
+    With ``follow_redirects=True`` the response hook runs *before* httpx
+    builds ``next_request``, so a Location-only 302 is the production case
+    (#252 FMP-SEC-004).
+    """
+    nxt = response.next_request
+    if nxt is not None:
+        return nxt.url
+    if not response.has_redirect_location:
+        return None
+    try:
+        url = httpx.URL(response.headers["Location"])
+    except httpx.InvalidURL:
+        src = response.request.url
+        raise FMPError(
+            f"Refusing redirect with invalid Location from {src.scheme}://{src.host}"
+        ) from None
+    src = response.request.url
+    if url.scheme and not url.host:
+        url = url.copy_with(host=src.host)
+    if url.is_relative_url:
+        url = src.join(url)
+    return url
+
+
+def _reject_cross_origin_redirect(response: httpx.Response) -> None:
+    """Refuse a 3xx that would send the next hop to another origin."""
+    target = _resolve_redirect_target(response)
+    if target is None:
+        return
+    src = response.request.url
+    if _origin(src) != _origin(target):
+        raise FMPError(
+            "Refusing cross-origin redirect "
+            f"from {src.scheme}://{src.host} to {target.scheme}://{target.host}"
+        )
+
+
+async def _areject_cross_origin_redirect(response: httpx.Response) -> None:
+    """Async event-hook wrapper for :func:`_reject_cross_origin_redirect`.
+
+    ``httpx.AsyncClient`` *awaits* every response hook it invokes
+    (``await hook(response)`` in ``httpx._client``), while ``httpx.Client``
+    calls it plainly. Registering the sync function on the async client made
+    httpx await ``None`` and raised ``TypeError: object NoneType can't be
+    used in 'await' expression`` on **every** async response, not just
+    redirects. The check itself does no I/O, so the async hook simply
+    delegates (#252 FMP-SEC-004).
+    """
+    _reject_cross_origin_redirect(response)
+
+
+def _refuse_bytes_list_request(endpoint: Endpoint[T]) -> None:
+    """``request_list`` is for row lists, not file downloads."""
+    if endpoint.response_model is bytes:
+        raise TypeError(
+            f"{endpoint.name} returns bytes; use request() or a dedicated "
+            "bytes helper, not request_list()"
+        )
+
+
+def _unwrap_list_result(result: T | list[T], model: type[T]) -> list[T]:
+    """Normalize ``request()`` output to ``list[T]``.
+
+    List endpoints are declared ``Endpoint[T]`` (the row type). ``request``
+    remains ``T | list[T]`` so single-item callers can still use
+    ``_unwrap_single``. A lone row becomes ``[row]``. An empty list stays
+    empty (unlike ``_unwrap_single``, which raises).
+
+    ``model`` is a type witness for ``T``. A value that is already an
+    instance of ``model`` is wrapped first so a list-like row type is
+    not treated as an already-unwrapped ``list[T]``.
+
+    ``model is bytes`` is refused. ``isinstance(payload, bytes)`` is
+    true, so the wrap-first branch would turn a CSV/XLSX body into
+    ``[bytes]``. Use ``request()`` or a dedicated bytes helper.
+    """
+    if model is bytes:
+        raise TypeError(
+            "bytes is not a list row type; use request() or a dedicated "
+            "bytes helper, not _unwrap_list"
+        )
+    if isinstance(result, model):
+        return [result]
+    if isinstance(result, list):
+        return result
+    return [result]
+
+
 logger = FMPLogger().get_logger(__name__)
 
 # Context variable for request-scoped rate limit retry tracking.
@@ -47,11 +198,6 @@ _rate_limit_retry_count: ContextVar[int] = ContextVar(
     "rate_limit_retry_count", default=0
 )
 _extra_field_warnings_seen: set[tuple[str, tuple[str, ...]]] = set()
-_API_KEY_ASSIGNMENT_RE = re.compile(
-    r"([\"']?api_?key[\"']?\s*[=:]\s*[\"']?)([^&\s\"'<>]+)([\"']?)",
-    re.IGNORECASE,
-)
-_API_KEY_ENCODED_RE = re.compile(r"(apikey%3[Dd])([^&\s\"'<>]+)", re.IGNORECASE)
 
 
 def _is_pydantic_model(model: type[Any]) -> TypeGuard[type[BaseModel]]:
@@ -59,14 +205,15 @@ def _is_pydantic_model(model: type[Any]) -> TypeGuard[type[BaseModel]]:
 
 
 def _redact_api_keys(text: str) -> str:
-    """Redact apikey/api_key values embedded in free-form strings.
+    """Redact credential-shaped tokens in free-form strings.
 
-    Handles common query-string, percent-encoded (``apikey%3D``), and
-    assignment/JSON-text patterns. For structured dict payloads, use
-    :func:`_sanitize_error_details` (also redacts ``api-key`` keys by name).
+    Delegates to :func:`fmp_data._redaction.redact_credential_patterns` so
+    query/assignment/encoded rules cannot drift from the setup wizard
+    (#316). Pattern-only: never pass the live secret. Does not run
+    wizard key-shaped heuristics (those blank request ids). For
+    structured dict payloads, use :func:`_sanitize_error_details`.
     """
-    redacted = _API_KEY_ASSIGNMENT_RE.sub(r"\1[REDACTED]\3", text)
-    return _API_KEY_ENCODED_RE.sub(r"\1[REDACTED]", redacted)
+    return redact_credential_patterns(text)
 
 
 def _sanitize_error_details(
@@ -150,15 +297,16 @@ class BaseClient:
     def _setup_http_client(self) -> None:
         """
         Setup HTTP client with default configuration.
+
+        The API key travels as the ``apikey`` query parameter only. A
+        client-wide header would be forwarded on a 302 to another origin
+        (#252 FMP-SEC-004). Cross-origin redirects are refused.
         """
         self.client = httpx.Client(
             timeout=self.config.timeout,
             follow_redirects=True,
-            headers={
-                "User-Agent": "FMP-Python-Client/1.0",
-                "Accept": "application/json",
-                "apikey": self.config.api_key,
-            },
+            headers=_default_http_headers(),
+            event_hooks={"response": [_reject_cross_origin_redirect]},
         )
 
     def close(self) -> None:
@@ -180,11 +328,9 @@ class BaseClient:
             self._async_client = httpx.AsyncClient(
                 timeout=self.config.timeout,
                 follow_redirects=True,
-                headers={
-                    "User-Agent": "FMP-Python-Client/1.0",
-                    "Accept": "application/json",
-                    "apikey": self.config.api_key,
-                },
+                headers=_default_http_headers(),
+                # Must be the async wrapper: httpx awaits async-client hooks.
+                event_hooks={"response": [_areject_cross_origin_redirect]},
             )
         return self._async_client
 
@@ -319,7 +465,17 @@ class BaseClient:
 
     @staticmethod
     def _is_retryable_error(exc: BaseException) -> bool:
-        if isinstance(exc, httpx.TimeoutException | httpx.NetworkError):
+        if isinstance(exc, FMPTimeoutError):
+            return True
+        if isinstance(exc, FMPNetworkError):
+            return exc.retryable
+        if isinstance(
+            exc,
+            httpx.TimeoutException
+            | httpx.NetworkError
+            | httpx.ProtocolError
+            | httpx.ProxyError,
+        ):
             return True
         if isinstance(exc, RateLimitError):
             return True
@@ -334,6 +490,66 @@ class BaseClient:
             return exc.response.status_code >= 500
         return False
 
+    def _reraise_transport_failure(
+        self, exc: BaseException, *, endpoint_name: str
+    ) -> NoReturn:
+        """Map request-layer httpx errors without chaining the request URL.
+
+        ``from None`` is the same pin as ``_raise_fmp_http_error`` (#97):
+        httpx stringifies ``request.url``, which carries ``apikey=``
+        (#350 / #354).
+        """
+        if isinstance(exc, httpx.TimeoutException):
+            self.logger.error(
+                "Request timed out",
+                extra={"endpoint": endpoint_name},
+            )
+            raise FMPTimeoutError("Request timed out") from None
+        if isinstance(exc, httpx.NetworkError):
+            self.logger.error(
+                "Network error",
+                extra={"endpoint": endpoint_name},
+            )
+            raise FMPNetworkError("Network error") from None
+        if isinstance(exc, httpx.ProtocolError):
+            self.logger.error(
+                "Protocol error",
+                extra={"endpoint": endpoint_name},
+            )
+            raise FMPNetworkError("Protocol error") from None
+        if isinstance(exc, httpx.ProxyError):
+            self.logger.error(
+                "Proxy error",
+                extra={"endpoint": endpoint_name},
+            )
+            raise FMPNetworkError("Proxy error") from None
+        if isinstance(exc, httpx.RequestError):
+            self.logger.error(
+                "Transport error",
+                extra={"endpoint": endpoint_name},
+            )
+            raise FMPNetworkError("Transport error", retryable=False) from None
+        raise exc
+
+    def _handle_execute_failure(
+        self, exc: BaseException, *, endpoint_name: str
+    ) -> None:
+        """Log a failed attempt, mapping transport errors first (#350 / #354)."""
+        if isinstance(exc, httpx.RequestError):
+            self._reraise_transport_failure(exc, endpoint_name=endpoint_name)
+        self.logger.error(
+            "Request failed: %s",
+            exc,
+            extra={"endpoint": endpoint_name, "error": str(exc)},
+            exc_info=True,
+        )
+
+    @overload
+    def request(self, endpoint: Endpoint[bytes], **kwargs: Any) -> bytes: ...
+
+    @overload
+    def request(self, endpoint: Endpoint[T], **kwargs: Any) -> T | list[T]: ...
+
     @log_api_call()
     def request(self, endpoint: Endpoint[T], **kwargs: Any) -> T | list[T]:
         """
@@ -344,7 +560,8 @@ class BaseClient:
             **kwargs: Arbitrary keyword arguments passed as request parameters.
 
         Returns:
-            Either a single Pydantic model of type T or a list of T.
+            ``bytes`` for ``Endpoint[bytes]``. Otherwise a single model of
+            type T or a list of T.
         """
         _rate_limit_retry_count.set(0)  # Reset counter at start of new request
 
@@ -364,6 +581,33 @@ class BaseClient:
 
         # This should never be reached due to reraise=True, but satisfies type checker
         raise FMPError("Request failed after all retry attempts")
+
+    @overload
+    def request_list(self, endpoint: Endpoint[bytes], **kwargs: Any) -> NoReturn: ...
+
+    @overload
+    def request_list(self, endpoint: Endpoint[T], **kwargs: Any) -> list[T]: ...
+
+    def request_list(self, endpoint: Endpoint[T], **kwargs: Any) -> list[T]:
+        """Request a list-returning endpoint as ``list[T]``.
+
+        ``request`` stays ``Endpoint[T] -> T | list[T]`` except for
+        ``Endpoint[bytes]``, which overloads to ``bytes``. Use this helper
+        when the caller wants ``list[T]`` directly. Client methods that
+        still call ``request()`` (so tests can mock it) should normalize
+        with ``EndpointGroup._unwrap_list`` instead of ``_unwrap_single``.
+        An empty list stays empty.
+
+        Raises:
+            TypeError: If ``endpoint.response_model is bytes``. A file
+                payload is not a row list; ``isinstance(payload, bytes)``
+                would wrap it as ``[bytes]``.
+        """
+        _refuse_bytes_list_request(endpoint)
+        return _unwrap_list_result(
+            self.request(endpoint, **kwargs),
+            endpoint.response_model,
+        )
 
     def _execute_request(self, endpoint: Endpoint[T], **kwargs: Any) -> T | list[T]:
         """
@@ -391,9 +635,12 @@ class BaseClient:
             # Build URL
             url = endpoint.build_url(self.config.base_url, validated_params)
 
-            # Extract query parameters and add API key
+            # Extract query parameters and add API key.
+            # `.get_secret_value()` is mandatory here: httpx accepts a
+            # SecretStr and stringifies it, so a missed unwrap silently sends
+            # `apikey=**********` and every request 401s (#252).
             query_params = endpoint.get_query_params(validated_params)
-            query_params["apikey"] = self.config.api_key
+            query_params["apikey"] = self.config.api_key.get_secret_value()
 
             # Check cache before rate limiting — cache hits are free
             cache_key: str | None = None
@@ -465,11 +712,7 @@ class BaseClient:
             # Re-raise rate limit errors to be handled by retry logic
             raise
         except Exception as e:
-            self.logger.error(
-                f"Request failed: {e!s}",
-                extra={"endpoint": endpoint.name, "error": str(e)},
-                exc_info=True,
-            )
+            self._handle_execute_failure(e, endpoint_name=endpoint.name)
             raise
         finally:
             # Log timing metrics
@@ -534,10 +777,23 @@ class BaseClient:
             return self._parse_json_response(response)
         except httpx.HTTPStatusError as exc:
             return self._handle_http_status_error(endpoint_for_error, exc)
-        except json.JSONDecodeError as exc:
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
+            # Same trio as `_get_error_details`. `response.json()` can raise
+            # UnicodeDecodeError on a non-UTF-8 body, and JSONDecodeError is
+            # only a subclass of ValueError — leaving those out let a 2xx
+            # non-UTF-8 body escape as a raw decode error instead of FMPError.
+            # Redact, exactly as the sibling error path does. A 2xx carrying a
+            # non-JSON body is routine -- WAF and CDN block pages echo the full
+            # request URL, and ours carries `apikey=` -- so this branch put the
+            # live key straight into `FMPError.response` while the same body on
+            # a 5xx came back redacted (#252 FMP-SEC-005).
+            # `errors="replace"` matches `_get_error_details`: without it a
+            # non-UTF-8 body raises UnicodeDecodeError *while handling* the
+            # JSON error, losing the original failure.
+            raw = response.content.decode("utf-8", errors="replace")
             raise FMPError(
                 f"Invalid JSON response from API: {exc!s}",
-                response={"raw_content": response.content.decode()},
+                response={"raw_content": _redact_api_keys(raw)},
             ) from exc
 
     @staticmethod
@@ -546,9 +802,15 @@ class BaseClient:
     ) -> dict[str, Any] | list[Any]:
         data = response.json()
         if not isinstance(data, dict | list):
+            # Scalar bodies land here -- including a bare JSON *string*, which
+            # is how upstream proxies return short error text. That string can
+            # reflect the request URL, so it needs the same redaction the
+            # dict/list paths get via `_sanitize_error_details` (#252).
             raise FMPError(
                 f"Unexpected response type: {type(data)}. Expected dict or list.",
-                response={"data": data},
+                response={"data": _sanitize_error_details(data)}
+                if isinstance(data, str)
+                else {"data": data},
             )
         return cast(dict[str, Any] | list[Any], data)
 
@@ -686,20 +948,68 @@ class BaseClient:
 
     @staticmethod
     def _check_error_response(data: dict[str, Any]) -> None:
-        """Check for error messages in response data and raise FMPError if found.
+        """Raise a typed error when a 2xx JSON dict carries an error body.
 
         Args:
             data: Dictionary response data to check
 
         Raises:
-            FMPError: If an error message is found in the data
+            AuthenticationError: If the body is the known invalid-key copy
+                on a 2xx response (#340).
+            FMPError: If any other error message is found in the data
         """
-        if "Error Message" in data:
-            raise FMPError(data["Error Message"])
-        if "message" in data:
-            raise FMPError(data["message"])
-        if "error" in data:
-            raise FMPError(data["error"])
+        for key in _ERROR_BODY_KEY_ORDER:
+            if key in data:
+                BaseClient._raise_response_error(data[key])
+
+    @staticmethod
+    def _raise_response_error(message: Any) -> NoReturn:
+        """Raise a typed error for a 2xx JSON error body."""
+        text = _error_body_text(message)
+        if _is_invalid_api_key_text(text):
+            raise AuthenticationError(text, status_code=200)
+        raise FMPError(text)
+
+    @staticmethod
+    def _raise_decorator_invalid_key(item: dict[str, Any]) -> None:
+        """Type a mixed-key singleton only when the copy is the junk key."""
+        for key in _ERROR_BODY_KEY_ORDER:
+            if key in item:
+                if _is_invalid_api_key_text(item[key]):
+                    BaseClient._raise_response_error(item[key])
+                return
+
+    @staticmethod
+    def _check_singleton_error_list(data: list[Any]) -> None:
+        """Type leftover one-element 2xx list bodies (#342, #344).
+
+        Multi-row lists are not inspected. A one-element list is typed
+        when it is:
+
+        * error-key-only (any copy → AuthenticationError or FMPError)
+        * a dict with decorator keys whose error value is the known
+          invalid-key copy (AuthenticationError). Unrelated mixed-key
+          rows stay on the validation path so a real quote that happens
+          to carry an ``error`` field is not turned into FMPError.
+        * a scalar string that matches the invalid-key copy
+          (AuthenticationError). Other scalars keep the first-field
+          fallback.
+        """
+        if len(data) != 1:
+            return
+        item = data[0]
+        if isinstance(item, str):
+            if _is_invalid_api_key_text(item):
+                BaseClient._raise_response_error(item)
+            return
+        if not isinstance(item, dict) or not item:
+            return
+        keys = set(item)
+        if keys <= _ERROR_BODY_KEYS:
+            BaseClient._check_error_response(item)
+            return
+        if keys & _ERROR_BODY_KEYS:
+            BaseClient._raise_decorator_invalid_key(item)
 
     @staticmethod
     def _validate_model(
@@ -853,6 +1163,7 @@ class BaseClient:
 
         # Process list responses
         if isinstance(data, list):
+            BaseClient._check_singleton_error_list(data)
             return BaseClient._process_list_response(
                 endpoint,
                 data,
@@ -885,9 +1196,21 @@ class BaseClient:
             )
         raise ValueError(f"Unsupported response model: {model!r}")
 
+    @overload
+    async def request_async(
+        self, endpoint: Endpoint[bytes], **kwargs: Any
+    ) -> bytes: ...
+
+    @overload
+    async def request_async(
+        self, endpoint: Endpoint[T], **kwargs: Any
+    ) -> T | list[T]: ...
+
     async def request_async(self, endpoint: Endpoint[T], **kwargs: Any) -> T | list[T]:
         """
-        Make async request with rate limiting and retry logic, returning T or list[T].
+        Make async request with rate limiting and retry logic.
+
+        Returns ``bytes`` for ``Endpoint[bytes]``. Otherwise T or list[T].
         """
         _rate_limit_retry_count.set(0)  # Reset counter at start of new request
 
@@ -907,6 +1230,28 @@ class BaseClient:
 
         # This should never be reached due to reraise=True
         raise FMPError("Async request failed after all retry attempts")
+
+    @overload
+    async def request_async_list(
+        self, endpoint: Endpoint[bytes], **kwargs: Any
+    ) -> NoReturn: ...
+
+    @overload
+    async def request_async_list(
+        self, endpoint: Endpoint[T], **kwargs: Any
+    ) -> list[T]: ...
+
+    async def request_async_list(self, endpoint: Endpoint[T], **kwargs: Any) -> list[T]:
+        """Async counterpart of :meth:`request_list`.
+
+        Raises:
+            TypeError: If ``endpoint.response_model is bytes``.
+        """
+        _refuse_bytes_list_request(endpoint)
+        return _unwrap_list_result(
+            await self.request_async(endpoint, **kwargs),
+            endpoint.response_model,
+        )
 
     async def _execute_request_async(
         self, endpoint: Endpoint[T], **kwargs: Any
@@ -933,9 +1278,12 @@ class BaseClient:
             # Build URL
             url = endpoint.build_url(self.config.base_url, validated_params)
 
-            # Extract query parameters and add API key
+            # Extract query parameters and add API key.
+            # `.get_secret_value()` is mandatory here: httpx accepts a
+            # SecretStr and stringifies it, so a missed unwrap silently sends
+            # `apikey=**********` and every request 401s (#252).
             query_params = endpoint.get_query_params(validated_params)
-            query_params["apikey"] = self.config.api_key
+            query_params["apikey"] = self.config.api_key.get_secret_value()
 
             # Check cache before rate limiting — cache hits are free
             cache_key: str | None = None
@@ -1023,11 +1371,7 @@ class BaseClient:
             # Re-raise rate limit errors to be handled by retry logic
             raise
         except Exception as e:
-            self.logger.error(
-                f"Async request failed: {e!s}",
-                extra={"endpoint": endpoint.name, "error": str(e)},
-                exc_info=True,
-            )
+            self._handle_execute_failure(e, endpoint_name=endpoint.name)
             raise
 
 
@@ -1103,6 +1447,16 @@ class EndpointGroup:
                 )
             return cast(T, result[0])
         return cast(T, result)
+
+    @staticmethod
+    def _unwrap_list(result: T | list[T], model: type[T]) -> list[T]:
+        """Normalize a ``request()`` result to ``list[T]``.
+
+        A lone row becomes ``[row]``. An empty list stays empty.
+        ``model`` is the row type (type witness; also used to recognize a
+        lone row).
+        """
+        return _unwrap_list_result(result, model)
 
 
 class AsyncEndpointGroup:
@@ -1182,3 +1536,13 @@ class AsyncEndpointGroup:
                 )
             return cast(T, result[0])
         return cast(T, result)
+
+    @staticmethod
+    def _unwrap_list(result: T | list[T], model: type[T]) -> list[T]:
+        """Normalize a ``request_async()`` result to ``list[T]``.
+
+        A lone row becomes ``[row]``. An empty list stays empty.
+        ``model`` is the row type (type witness; also used to recognize a
+        lone row).
+        """
+        return _unwrap_list_result(result, model)

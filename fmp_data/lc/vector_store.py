@@ -22,7 +22,7 @@ except ModuleNotFoundError:  # pragma: no cover
         "Install with:  pip install 'fmp-data[langchain]'"
     ) from None
 
-from fmp_data.base import BaseClient
+from fmp_data.base import BaseClient, _redact_api_keys
 from fmp_data.exceptions import ConfigError
 from fmp_data.lc.registry import EndpointInfo, EndpointRegistry
 from fmp_data.logger import FMPLogger
@@ -171,20 +171,21 @@ class ToolFactory:
 
         Mandatory-ness is taken from which list a parameter arrives in, never
         inferred from the parameter itself. ``EndpointParam.required`` and
-        ``EndpointParam.default`` both disagreed with list membership across
-        the catalog: 14 params sat in ``optional_params`` with
-        ``required=True``, and 13 more sit in ``mandatory_params`` carrying a
-        ``default`` -- so either one would silently mis-shape a schema.
-        ``Endpoint`` itself resolves the same question by list membership in
-        ``validate_params``.
+        ``EndpointParam.default`` both used to disagree with list membership:
+        14 params sat in ``optional_params`` with ``required=True``, and 13
+        more sat in ``mandatory_params`` carrying a ``default`` -- so either
+        one would silently mis-shape a schema. ``Endpoint`` itself resolves
+        the same question by list membership in ``validate_params``.
 
         The ``required`` half is settled as of #165: the flag is no longer
         stored at all, and ``EndpointParam.required`` is now a read-only
         property that ``Endpoint`` derives from these very lists. Reading it
         here would be correct today but circular -- it would route the answer
         through the parameter to get back the list it came from -- so the list
-        stays the direct source. The ``default`` half is still live, and
-        reading *that* would still be wrong.
+        stays the direct source. The ``default`` half is still live: #349
+        cleared the last mandatory-plus-default cases, but optional params
+        may still have ``default is None``, so reading *that* would still be
+        wrong.
 
         Optional parameters get a pydantic default so ``is_required()`` is
         false and the LLM may omit them. That default is ``param.default``
@@ -863,16 +864,24 @@ class EndpointVectorStore:
                     return self._serialize_result(result)
 
                 except Exception as e:
-                    # Handle different types of errors
-                    error_message = str(e)
+                    # Handle different types of errors.
+                    # Redact at the point of capture so every branch below
+                    # inherits it. This dict is the tool's *return value*: it
+                    # goes into the agent scratchpad, the chat history and any
+                    # tracing backend. `str()` of an `httpx.HTTPStatusError`
+                    # stringifies the request URL, which carries `apikey=` --
+                    # the exact leak `base.py` suppresses on its own paths, but
+                    # nothing under `lc/` was redacting (#252 FMP-SEC-005).
+                    error_message = _redact_api_keys(str(e))
                     error_type = type(e).__name__
 
                     # ValueError covers method-level constraints the endpoint
                     # cannot express (e.g. SEC search_industry_classification
                     # requiring at least one of symbol/cik/sic_code).
                     if "ValidationError" in error_type or error_type == "ValueError":
-                        # Parse validation error for better feedback
-                        error_details = str(e).split("\n")
+                        # Parse the already-redacted message so a reflected
+                        # ``apikey=`` cannot reach ``details.validation_errors``.
+                        error_details = error_message.split("\n")
                         field_errors = [
                             line.strip() for line in error_details if "  " in line
                         ]

@@ -648,6 +648,28 @@ class SymbolChange(BaseModel):
     new_symbol: str = Field(alias="newSymbol", description="New trading symbol")
 
 
+class DelistedCompany(BaseModel):
+    """A symbol FMP reports as delisted.
+
+    Live ``/stable/delisted-companies`` rows are this slim shape, not a
+    ``CompanyProfile``. Probed 2026-08-12.
+    """
+
+    model_config = default_model_config
+
+    symbol: str = Field(min_length=1, description="Former trading symbol")
+    company_name: str | None = Field(
+        None, alias="companyName", description="Company name"
+    )
+    exchange: str | None = Field(None, description="Exchange the symbol last traded on")
+    ipo_date: dt_date | None = Field(
+        None, alias="ipoDate", description="Original IPO date"
+    )
+    delisted_date: dt_date | None = Field(
+        None, alias="delistedDate", description="Date the symbol was delisted"
+    )
+
+
 class PriceTarget(BaseModel):
     """Price target data based on FMP API response"""
 

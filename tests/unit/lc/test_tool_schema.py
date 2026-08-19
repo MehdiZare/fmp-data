@@ -60,10 +60,10 @@ def _catalog() -> list[tuple[str, Endpoint[Any], EndpointSemantics]]:
 def test_tool_schema_requires_exactly_the_mandatory_params() -> None:
     """A tool's required arguments must be the endpoint's mandatory params.
 
-    Not ``param.required`` and not "has no default": 13 endpoints declare a
-    ``default`` on a mandatory param and 13 more carry ``required=True`` on a
-    param that sits in ``optional_params``. Membership of ``mandatory_params``
-    is the only self-consistent answer, so it is the one the schema follows.
+    Not ``param.required`` and not "has no default": after #349 no
+    mandatory param carries a default, and ``required`` is derived from
+    list membership (#165). Membership of ``mandatory_params`` is the
+    only self-consistent answer, so it is the one the schema follows.
     """
     drift: dict[str, str] = {}
     checked = 0

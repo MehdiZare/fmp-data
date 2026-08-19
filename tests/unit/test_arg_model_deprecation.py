@@ -322,7 +322,7 @@ def test_importing_an_arg_model_stays_silent() -> None:
         "import fmp_data.market.schema\n"
         "import fmp_data.models\n"
     )
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603
         [sys.executable, "-c", code], capture_output=True, text=True
     )
     assert result.returncode == 0, (

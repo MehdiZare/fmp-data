@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import logging
 import os
 from pathlib import Path
 import tempfile
@@ -12,8 +11,9 @@ import time
 from typing import Any
 
 from fmp_data.cache.base import CacheBackend
+from fmp_data.logger import FMPLogger
 
-logger = logging.getLogger(__name__)
+logger = FMPLogger().get_logger(__name__)
 
 
 class FileCache(CacheBackend):

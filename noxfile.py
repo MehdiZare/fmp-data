@@ -87,36 +87,15 @@ def _sync_with_uv(session: Session, extras: Iterable[str] = ()) -> None:
     # Install the base package first
     session.run("uv", "pip", "install", "-e", ".")
 
-    # Install dependency groups and extras separately
+    # Install dependency groups and extras from pyproject.toml so
+    # floors live in one place and a bump there is enough to update CI.
     for extra in extras:
         if extra == "dev":
-            # Install all dev dependencies from dependency-groups
-            session.run(
-                "uv",
-                "pip",
-                "install",
-                "pytest>=8.3.3",
-                "pytest-asyncio>=0.24.0",
-                "pytest-cov>=6.0.0",
-                "pytest-mock>=3.14.0",
-                "pytest-xdist>=3.6.1",
-                "coverage>=7.6.4",
-                "freezegun>=1.5.1",
-                "responses>=0.25.3",
-                "vcrpy>=6.0.2",
-                "ruff>=0.12.2",
-                "mypy>=1.13.0",
-                "bandit[toml]>=1.7.10",
-                "pip-audit>=2.7.0",
-                "python-dotenv>=1.2.1",
-            )
+            session.run("uv", "pip", "install", "--group", "dev")
         elif extra in ["langchain", "mcp", "mcp-server"]:
-            # Handle actual extras from [project.optional-dependencies]
-            # mcp-server maps to mcp in optional-dependencies
             extra_name = "mcp" if extra == "mcp-server" else extra
             session.run("uv", "pip", "install", f"-e.[{extra_name}]")
         else:
-            # Try as an extra
             session.run("uv", "pip", "install", f"-e.[{extra}]")
 
 
@@ -124,6 +103,14 @@ def _pytest_xdist_args() -> list[str]:
     if os.getenv("CI") == "true":
         return []
     return ["-n", "auto"]
+
+
+def _mcp_unit_tests() -> list[str]:
+    """Every ``tests/unit/test_mcp*.py`` file for the mcp-server session."""
+    return sorted(
+        p.relative_to(REPO_ROOT).as_posix()
+        for p in (REPO_ROOT / "tests" / "unit").glob("test_mcp*.py")
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -146,20 +133,18 @@ def tests(session: Session, feature_group: str | None) -> None:
     pytest_args = ["-q", *_pytest_xdist_args()]
 
     if feature_group == "mcp-server":
-        # Check if mcp tests exist and handle gracefully
-        mcp_test_file = Path("tests/unit/test_mcp.py")
-        if mcp_test_file.exists():
-            # Use success_codes to handle no tests collected gracefully
+        mcp_tests = _mcp_unit_tests()
+        if mcp_tests:
             session.run(
                 "pytest",
                 *pytest_args,
-                "tests/unit/test_mcp.py",
+                *mcp_tests,
                 "-m",
                 "not integration",
                 success_codes=[0, 5],  # 0=success, 5=no tests collected
             )
         else:
-            session.log("Skipping mcp-server tests - test_mcp.py not found")
+            session.log("Skipping mcp-server tests - no tests/unit/test_mcp*.py")
     else:
         # For core and langchain, run all tests
         session.run("pytest", *pytest_args, success_codes=[0, 5])
@@ -228,20 +213,19 @@ def coverage_local(session: Session) -> None:
 
         # Handle different feature groups
         if feature_group == "mcp-server":
-            # Check if mcp tests exist first
-            mcp_test_file = Path("tests/unit/test_mcp.py")
-            if mcp_test_file.exists():
+            mcp_tests = _mcp_unit_tests()
+            if mcp_tests:
                 session.run(
                     "pytest",
                     *pytest_args,
-                    "tests/unit/test_mcp.py",
+                    *mcp_tests,
                     "-m",
                     "not integration",
                     env=env,
                     success_codes=[0, 5],  # 0=success, 5=no tests collected
                 )
             else:
-                session.log("Skipping mcp-server tests - test_mcp.py not found")
+                session.log("Skipping mcp-server tests - no tests/unit/test_mcp*.py")
                 # Create minimal coverage file for this feature group
                 session.run(
                     "python",
@@ -279,6 +263,35 @@ cov.save()
     session.run("coverage", "xml")
     session.run("coverage", "html")
     session.run("coverage", "report")
+
+
+@nox.session(python=DEFAULT_PYTHON, tags=["coverage-extras"])
+def coverage_extras(session: Session) -> None:
+    """Separate extras coverage gate for lc / mcp / Redis (#273).
+
+    Core 80% still omits these trees. This session installs the extras,
+    measures only those files, and fails under 80%. The baseline was 66.78%
+    when the gate landed; dedicated tests for ``redis_backend``,
+    ``lc.validation``, ``lc.__init__``, ``mcp.utils`` and ``mcp.setup``
+    raised it to 86.99%, which is the headroom that makes this safe to
+    require at the ruleset layer (#282). xdist is off so local and CI
+    numbers stay comparable.
+    """
+    _sync_with_uv(
+        session,
+        extras=["dev", "langchain", "mcp-server", "cache-redis"],
+    )
+    session.run(
+        "pytest",
+        "-q",
+        "tests/unit",
+        "--cov=fmp_data.lc",
+        "--cov=fmp_data.mcp",
+        "--cov=fmp_data.cache.redis_backend",
+        "--cov-config=extras.coveragerc",
+        "--cov-report=term-missing",
+        "--cov-fail-under=80",
+    )
 
 
 @nox.session(python=DEFAULT_PYTHON, tags=["test-local"])
@@ -327,14 +340,48 @@ def typecheck(session: Session) -> None:
 
 @nox.session(python=DEFAULT_PYTHON, tags=["security"])
 def security(session: Session) -> None:
-    """Check dependencies for known CVEs."""
-    _sync_with_uv(session, extras=["dev"])
-    # virtualenv seeds this session with whatever pip it bundles, which lags
-    # behind the current release and drags its own CVEs into the audit. Upgrade
-    # it first so the report covers project dependencies rather than the
-    # scaffolding around them.
-    session.run("python", "-m", "pip", "install", "--upgrade", "pip")
-    session.run("pip-audit")
+    """Static-analyse the source and audit the extra graph for known CVEs.
+
+    Two halves:
+
+    * ``bandit`` over the library. #278 replaced the global ``B404`` /
+      ``B603`` / ``B607`` / ``B608`` skips with narrow, documented
+      file-local ``# nosec`` notes, but bandit only ran from
+      ``.pre-commit-config.yaml`` — there is no pre-commit CI job, so the
+      narrowing was unenforced on CI and a new ``subprocess`` call could
+      land unreviewed (#273).
+    * ``pip-audit`` over the extras resolved from ``pyproject.toml`` at
+      session time (no committed hashed lock), so a floor bump is enough
+      to pick up newer deps (#252 FMP-SEC-008).
+    """
+    session.install("uv", "pip-audit>=2.10.1", "bandit[toml]>=1.8.0")
+    session.run("bandit", "-c", "pyproject.toml", "-r", PACKAGE_NAME)
+    export = Path(session.create_tmp()) / "requirements-audit.txt"
+    session.run(
+        "uv",
+        "export",
+        "--extra",
+        "langchain",
+        "--extra",
+        "mcp",
+        "--extra",
+        "cache-redis",
+        "--no-dev",
+        "--no-emit-project",
+        "--no-hashes",
+        "--no-header",
+        "--no-annotate",
+        "-o",
+        str(export),
+    )
+    session.run(
+        "pip-audit",
+        "-r",
+        str(export),
+        "--strict",
+        "--no-deps",
+        "--disable-pip",
+    )
 
 
 @nox.session(python=DEFAULT_PYTHON, tags=["smoke"])

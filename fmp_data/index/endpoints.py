@@ -7,7 +7,7 @@ from fmp_data.models import (
     URLType,
 )
 
-SP500_CONSTITUENTS: Endpoint = Endpoint(
+SP500_CONSTITUENTS: Endpoint[IndexConstituent] = Endpoint(
     name="sp500_constituents",
     path="sp500-constituent",
     version=APIVersion.STABLE,
@@ -24,7 +24,7 @@ SP500_CONSTITUENTS: Endpoint = Endpoint(
     ],
 )
 
-NASDAQ_CONSTITUENTS: Endpoint = Endpoint(
+NASDAQ_CONSTITUENTS: Endpoint[IndexConstituent] = Endpoint(
     name="nasdaq_constituents",
     path="nasdaq-constituent",
     version=APIVersion.STABLE,
@@ -41,7 +41,7 @@ NASDAQ_CONSTITUENTS: Endpoint = Endpoint(
     ],
 )
 
-DOWJONES_CONSTITUENTS: Endpoint = Endpoint(
+DOWJONES_CONSTITUENTS: Endpoint[IndexConstituent] = Endpoint(
     name="dowjones_constituents",
     path="dowjones-constituent",
     version=APIVersion.STABLE,
@@ -58,7 +58,7 @@ DOWJONES_CONSTITUENTS: Endpoint = Endpoint(
     ],
 )
 
-HISTORICAL_SP500: Endpoint = Endpoint(
+HISTORICAL_SP500: Endpoint[HistoricalIndexConstituent] = Endpoint(
     name="historical_sp500",
     path="historical-sp500-constituent",
     version=APIVersion.STABLE,
@@ -75,7 +75,7 @@ HISTORICAL_SP500: Endpoint = Endpoint(
     ],
 )
 
-HISTORICAL_NASDAQ: Endpoint = Endpoint(
+HISTORICAL_NASDAQ: Endpoint[HistoricalIndexConstituent] = Endpoint(
     name="historical_nasdaq",
     path="historical-nasdaq-constituent",
     version=APIVersion.STABLE,
@@ -92,7 +92,7 @@ HISTORICAL_NASDAQ: Endpoint = Endpoint(
     ],
 )
 
-HISTORICAL_DOWJONES: Endpoint = Endpoint(
+HISTORICAL_DOWJONES: Endpoint[HistoricalIndexConstituent] = Endpoint(
     name="historical_dowjones",
     path="historical-dowjones-constituent",
     version=APIVersion.STABLE,

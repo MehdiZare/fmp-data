@@ -27,11 +27,16 @@ env/
 venv/
 ENV/
 
-# Lock files (trade-off: size vs reproducibility)
-# uv.lock (878KB) excluded to avoid GitHub's 500KB warning threshold
-# Trade-off: Accepts potential dependency drift for smaller repo size
-# CI regenerates from pyproject.toml - version constraints provide partial reproducibility
-# Users generate locally via: uv sync
+# Lock files — deliberately not committed (#273).
+# fmp-data ships as a library, so the compatibility contract is the version
+# floors in pyproject.toml; installers resolve against those and never read a
+# committed lock. Freezing one here would only pin CI, at the cost of a ~1MB
+# blob and a multi-thousand-line diff on every dependency bump.
+# Drift is caught rather than frozen: `nox -s security` exports the live
+# extras graph and audits it with `pip-audit --strict`, and the Actions used
+# by CI/publish are SHA-pinned (#252 FMP-SEC-002/008). See CONTRIBUTING.md
+# "Lock file policy".
+# Generate locally with: uv sync
 uv.lock
 poetry.lock
 
@@ -60,6 +65,8 @@ cover/
 
 # VCR cassettes (large recorded API responses, regenerated locally)
 tests/integration/vcr_cassettes/
+tests/e2e/vcr_cassettes/
+tests/e2e/reports/
 
 # Build
 *.manifest

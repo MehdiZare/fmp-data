@@ -882,6 +882,7 @@ class TestMarketIntelligenceClientGovernment:
         """Test get_senate_latest"""
         mock_data = {
             "symbol": "AAPL",
+            "senateID": "W000802",
             "disclosureDate": "2025-01-08",
             "transactionDate": "2024-12-19",
             "firstName": "Sheldon",
@@ -899,12 +900,14 @@ class TestMarketIntelligenceClientGovernment:
         }
         mock_client.request.return_value = [SenateTrade(**mock_data)]
 
-        _ = fmp_client.intelligence.get_senate_latest(page=0, limit=100)
+        result = fmp_client.intelligence.get_senate_latest(page=0, limit=100)
 
         mock_client.request.assert_called_once()
         _args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 0
         assert kwargs["limit"] == 100
+        assert result[0].senate_id == "W000802"
+        assert result[0].model_dump(by_alias=True)["senateID"] == "W000802"
 
     def test_get_senate_trading(self, fmp_client, mock_client):
         """Test get_senate_trading"""
@@ -941,6 +944,24 @@ class TestMarketIntelligenceClientGovernment:
         _args, kwargs = mock_client.request.call_args
         assert kwargs["name"] == "Jerry"
 
+    def test_get_senate_trades_by_id(self, fmp_client, mock_client):
+        """senate_id is forwarded as senate_id, not a name= leftover (#323)."""
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_trades_by_id(
+            "W000802", page=0, limit=100
+        )
+
+        mock_client.request.assert_called_once()
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["senate_id"] == "W000802"
+        assert "name" not in kwargs
+        assert "symbol" not in kwargs
+        assert kwargs["page"] == 0
+        assert kwargs["limit"] == 100
+        assert _args[0].name == "senate_trades_by_id"
+        assert _args[0].path == "senate-trades-by-id"
+
     def test_get_senate_trading_rss_is_deprecated(self, fmp_client, mock_client):
         """``senate-trading-rss-feed`` 404s; ``senate-latest`` is the live feed."""
         with pytest.warns(DeprecationWarning, match="get_senate_latest"):
@@ -953,6 +974,7 @@ class TestMarketIntelligenceClientGovernment:
         """Test get_house_latest"""
         mock_data = {
             "symbol": "AAPL",
+            "senateID": "P000197",
             "disclosureDate": "2025-02-03",
             "transactionDate": "2025-01-03",
             "firstName": "Michael",
@@ -970,12 +992,14 @@ class TestMarketIntelligenceClientGovernment:
         }
         mock_client.request.return_value = [HouseDisclosure(**mock_data)]
 
-        _ = fmp_client.intelligence.get_house_latest(page=0, limit=100)
+        result = fmp_client.intelligence.get_house_latest(page=0, limit=100)
 
         mock_client.request.assert_called_once()
         _args, kwargs = mock_client.request.call_args
         assert kwargs["page"] == 0
         assert kwargs["limit"] == 100
+        assert result[0].senate_id == "P000197"
+        assert result[0].model_dump(by_alias=True)["senateID"] == "P000197"
 
     def test_get_house_disclosure(self, fmp_client, mock_client):
         """Test get_house_disclosure"""
@@ -1011,6 +1035,467 @@ class TestMarketIntelligenceClientGovernment:
         mock_client.request.assert_called_once()
         _args, kwargs = mock_client.request.call_args
         assert kwargs["name"] == "James"
+
+    def test_get_house_trades_by_id(self, fmp_client, mock_client):
+        """senate_id is forwarded as senate_id, not a name= leftover (#323)."""
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_house_trades_by_id("P000197", page=0, limit=100)
+
+        mock_client.request.assert_called_once()
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["senate_id"] == "P000197"
+        assert "name" not in kwargs
+        assert "symbol" not in kwargs
+        assert kwargs["page"] == 0
+        assert kwargs["limit"] == 100
+        assert _args[0].name == "house_trades_by_id"
+        assert _args[0].path == "house-trades-by-id"
+
+    def test_get_senate_profile_unfiltered_and_omits_none(
+        self, fmp_client, mock_client
+    ):
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_profile()
+
+        mock_client.request.assert_called_once()
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["senate_id"] is None
+        assert kwargs["active"] is None
+        assert kwargs["latest_party"] is None
+        assert kwargs["latest_position"] is None
+        assert kwargs["page"] == 0
+        assert kwargs["limit"] == 500
+
+        from fmp_data.intelligence.endpoints import SENATE_PROFILE
+
+        wire = SENATE_PROFILE.validate_params(kwargs)
+        assert "senateID" not in wire
+        assert "active" not in wire
+        assert "latestParty" not in wire
+        assert "latestPosition" not in wire
+        assert wire["page"] == 0
+        assert wire["limit"] == 500
+
+    def test_get_senate_profile_filters_senate_id(self, fmp_client, mock_client):
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_profile(senate_id="P000197")
+
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["senate_id"] == "P000197"
+
+        from fmp_data.intelligence.endpoints import SENATE_PROFILE
+
+        wire = SENATE_PROFILE.validate_params(kwargs)
+        assert wire["senateID"] == "P000197"
+
+    def test_get_senate_profile_filters_use_wire_aliases(self, fmp_client, mock_client):
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_profile(
+            active=True,
+            latest_party="Democrat",
+            latest_position="Representative",
+        )
+
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["active"] is True
+        assert kwargs["latest_party"] == "Democrat"
+        assert kwargs["latest_position"] == "Representative"
+
+        from fmp_data.intelligence.endpoints import SENATE_PROFILE
+
+        wire = SENATE_PROFILE.validate_params(kwargs)
+        assert wire["active"] is True
+        assert wire["latestParty"] == "Democrat"
+        assert wire["latestPosition"] == "Representative"
+        assert "latest_party" not in wire
+        assert "latest_position" not in wire
+
+    def test_get_senate_positions_unfiltered_and_omits_none(
+        self, fmp_client, mock_client
+    ):
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_positions()
+
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["senate_id"] is None
+        assert kwargs["party"] is None
+        assert kwargs["position"] is None
+
+        from fmp_data.intelligence.endpoints import SENATE_POSITIONS
+
+        wire = SENATE_POSITIONS.validate_params(kwargs)
+        assert "senateID" not in wire
+        assert "party" not in wire
+        assert "position" not in wire
+        assert wire["page"] == 0
+        assert wire["limit"] == 300
+
+    def test_get_senate_positions_filters_senate_id(self, fmp_client, mock_client):
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_positions(senate_id="P000197")
+
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["senate_id"] == "P000197"
+
+        from fmp_data.intelligence.endpoints import SENATE_POSITIONS
+
+        wire = SENATE_POSITIONS.validate_params(kwargs)
+        assert wire["senateID"] == "P000197"
+
+    def test_get_senate_positions_filters_use_wire_keys(self, fmp_client, mock_client):
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_positions(
+            party="Republican",
+            position="Senator",
+        )
+
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["party"] == "Republican"
+        assert kwargs["position"] == "Senator"
+
+        from fmp_data.intelligence.endpoints import SENATE_POSITIONS
+
+        wire = SENATE_POSITIONS.validate_params(kwargs)
+        assert wire["party"] == "Republican"
+        assert wire["position"] == "Senator"
+
+    def test_senate_profile_parses_birth_date(self):
+        from datetime import date
+
+        from fmp_data.intelligence.models import SenateProfile
+
+        row = SenateProfile.model_validate(
+            {
+                "senateID": "L000397",
+                "firstName": "Zoe",
+                "lastName": "Lofgren",
+                "birthDate": "1947-12-20",
+                "latestParty": "Democrat",
+                "latestState": "CA",
+                "latestPosition": "Representative",
+                "image": "https://images.financialmodelingprep.com/senate/L000397.jpg",
+                "active": True,
+                "yearsActive": 31.6,
+            }
+        )
+        assert row.senate_id == "L000397"
+        assert row.birth_date == date(1947, 12, 20)
+        assert row.active is True
+
+    def test_senate_position_null_end_date_stays_none(self):
+        from datetime import date
+
+        from fmp_data.intelligence.models import SenatePosition
+
+        row = SenatePosition.model_validate(
+            {
+                "senateID": "Z000018",
+                "congressNumber": 119,
+                "startDate": "2025-01-02",
+                "endDate": None,
+                "party": "Republican",
+                "position": "Representative",
+                "state": "MT",
+                "yearsInTerm": 0.7,
+            }
+        )
+        assert row.start_date == date(2025, 1, 2)
+        assert row.end_date is None
+
+    def test_get_senate_net_worth(self, fmp_client, mock_client):
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_net_worth("P000197", page=0, limit=250)
+
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["senate_id"] == "P000197"
+        assert kwargs["page"] == 0
+        assert kwargs["limit"] == 250
+
+        from fmp_data.intelligence.endpoints import SENATE_NET_WORTH
+
+        wire = SENATE_NET_WORTH.validate_params(kwargs)
+        assert wire["senateID"] == "P000197"
+        assert "senate_id" not in wire
+
+    def test_get_senate_net_worth_aggregated_omits_totals_col(
+        self, fmp_client, mock_client
+    ):
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_net_worth_aggregated("P000197")
+
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["senate_id"] == "P000197"
+        assert kwargs["totals_col"] is None
+
+        from fmp_data.intelligence.endpoints import SENATE_NET_WORTH_AGGREGATED
+
+        wire = SENATE_NET_WORTH_AGGREGATED.validate_params(kwargs)
+        assert wire["senateID"] == "P000197"
+        assert "totalsCol" not in wire
+
+    def test_get_senate_net_worth_aggregated_sends_totals_col(
+        self, fmp_client, mock_client
+    ):
+        mock_client.request.return_value = []
+
+        _ = fmp_client.intelligence.get_senate_net_worth_aggregated(
+            "P000197", totals_col="total"
+        )
+
+        _args, kwargs = mock_client.request.call_args
+        assert kwargs["totals_col"] == "total"
+
+        from fmp_data.intelligence.endpoints import SENATE_NET_WORTH_AGGREGATED
+
+        wire = SENATE_NET_WORTH_AGGREGATED.validate_params(kwargs)
+        assert wire["senateID"] == "P000197"
+        assert wire["totalsCol"] == "total"
+        assert "totals_col" not in wire
+
+    def test_senate_net_worth_item_keeps_nested_ranges(self):
+        from datetime import date
+
+        from fmp_data.intelligence.models import SenateNetWorthItem
+
+        row = SenateNetWorthItem.model_validate(
+            {
+                "senateID": "P000197",
+                "formType": "House Report",
+                "year": 2022,
+                "filingDate": "2023-05-15",
+                "section": "Liabilities",
+                "category": "Mortgage & Real Estate Liability",
+                "name": "Union Bank of California",
+                "assetType": "Mortgage on 2640 Broadway, San Francisco, CA",
+                "incomeType": None,
+                "owner": "Joint",
+                "comment": None,
+                "debtDetails": {"dateIncurred": "September 2007"},
+                "valueRange": {"min": 1000001, "max": 5000000},
+                "value": 3000001,
+                "incomeRange": None,
+                "income": None,
+                "link": (
+                    "https://disclosures-clerk.house.gov/public_disc/"
+                    "financial-pdfs/2022/10053231.pdf"
+                ),
+            }
+        )
+        assert row.senate_id == "P000197"
+        assert row.filing_date == date(2023, 5, 15)
+        assert row.debt_details is not None
+        assert row.debt_details.date_incurred == "September 2007"
+        assert row.value_range is not None
+        assert row.value_range.minimum == 1000001
+        assert row.value_range.maximum == 5000000
+        assert row.income_range is None
+        assert row.income is None
+        assert not row.model_extra
+
+    def test_senate_net_worth_aggregated_parses_aliases_and_keeps_extras(self):
+        from fmp_data.intelligence.models import SenateNetWorthAggregated
+
+        row = SenateNetWorthAggregated.model_validate(
+            {
+                "senateID": "P000197",
+                "year": 2024,
+                "total": 225219551,
+                "realEstateLiabilities": 1000001,
+                "cashAndCashEquivalents": 500000,
+                "businessAndSelfEmployment": 0,
+                "realEstate": 2000000,
+                "ownershipInterest": 0,
+                "stock": 220000000,
+                "options": 0,
+                "revolvingAndCreditLines": 0,
+                "assetBackedSecurities": 0,
+                "businessLiabilities": 0,
+                "mutualFundsAndETFs": 1718550,
+                "bonds": 42.5,
+            }
+        )
+        assert row.senate_id == "P000197"
+        assert row.year == 2024
+        assert row.total == 225219551
+        assert row.real_estate_liabilities == 1000001
+        assert row.mutual_funds_and_etfs == 1718550
+        assert row.model_extra == {"bonds": 42.5}
+
+    def test_trades_by_id_query_uses_senateID_alias(self):
+        """Client kwargs use senate_id; the wire query key is senateID (#323)."""
+        from fmp_data.intelligence.endpoints import (
+            HOUSE_TRADES_BY_ID,
+            SENATE_TRADES_BY_ID,
+        )
+
+        for endpoint in (SENATE_TRADES_BY_ID, HOUSE_TRADES_BY_ID):
+            wire = endpoint.validate_params({"senate_id": "P000197", "page": 0})
+            assert wire["senateID"] == "P000197"
+            assert "senate_id" not in wire
+            assert "name" not in wire
+            assert "symbol" not in wire
+
+    def test_senate_trade_senate_id_alias_round_trip(self):
+        """senateID is a first-class SenateTrade field (#229)."""
+        trade = SenateTrade.model_validate(
+            {
+                "symbol": "AAPL",
+                "senateID": "T000278",
+                "firstName": "Tommy",
+                "lastName": "Tuberville",
+                "link": "https://example.com/filing",
+            }
+        )
+        assert trade.senate_id == "T000278"
+        assert trade.model_dump(by_alias=True)["senateID"] == "T000278"
+
+    def test_house_disclosure_keeps_wire_senate_id(self):
+        """House rows keep FMP's senateID key, not a house_id rename (#229)."""
+        row = HouseDisclosure.model_validate(
+            {
+                "symbol": "INTC",
+                "senateID": "P000197",
+                "firstName": "Nancy",
+                "lastName": "Pelosi",
+                "link": "https://example.com/filing",
+            }
+        )
+        assert row.senate_id == "P000197"
+        assert row.model_dump(by_alias=True)["senateID"] == "P000197"
+
+    def test_trade_and_disclosure_dates_are_date_not_datetime(self) -> None:
+        """SenateTrade / HouseDisclosure dates are calendar dates, not datetimes."""
+        from datetime import date, datetime
+
+        trade = SenateTrade.model_validate(
+            {
+                "disclosureDate": datetime(2025, 1, 8, 10, 0, 0),
+                "transactionDate": "2024-12-19T10:00:00Z",
+                "link": "https://example.com/filing",
+            }
+        )
+        house = HouseDisclosure.model_validate(
+            {
+                "disclosureDate": "2025-01-08T00:00:00",
+                "transactionDate": "2024-12-19",
+                "link": "https://example.com/filing",
+            }
+        )
+        assert type(trade.disclosure_date) is date
+        assert trade.disclosure_date == date(2025, 1, 8)
+        assert type(trade.transaction_date) is date
+        assert trade.transaction_date == date(2024, 12, 19)
+        assert type(trade.date_received) is date
+        assert type(house.disclosure_date) is date
+        assert type(house.transaction_date) is date
+
+    def test_latest_pagination_is_optional_like_trades_by_id(self) -> None:
+        """page/limit with defaults belong in optional_params (#338)."""
+        from fmp_data.intelligence.endpoints import (
+            HOUSE_LATEST,
+            HOUSE_TRADES_BY_ID,
+            SENATE_LATEST,
+            SENATE_TRADES_BY_ID,
+        )
+
+        for endpoint in (
+            SENATE_LATEST,
+            HOUSE_LATEST,
+            SENATE_TRADES_BY_ID,
+            HOUSE_TRADES_BY_ID,
+        ):
+            mandatory = {param.name for param in endpoint.mandatory_params}
+            optional = {param.name for param in endpoint.optional_params or []}
+            assert "page" in optional, endpoint.name
+            assert "limit" in optional, endpoint.name
+            assert "page" not in mandatory, endpoint.name
+            assert "limit" not in mandatory, endpoint.name
+
+        latest_defaults = SENATE_LATEST.validate_params({})
+        assert latest_defaults["page"] == 0
+        assert latest_defaults["limit"] == 100
+        house_defaults = HOUSE_LATEST.validate_params({})
+        assert house_defaults["page"] == 0
+        assert house_defaults["limit"] == 100
+
+    def test_rss_pagination_is_optional_like_latest(self) -> None:
+        """Mandatory page/limit defaults never apply (#345)."""
+        from fmp_data.intelligence.endpoints import (
+            CROWDFUNDING_RSS,
+            EQUITY_OFFERING_RSS,
+            SENATE_TRADING_RSS,
+        )
+
+        crowd = CROWDFUNDING_RSS.validate_params({})
+        assert crowd["page"] == 0
+        assert crowd["limit"] == 100
+        equity = EQUITY_OFFERING_RSS.validate_params({})
+        assert equity["page"] == 0
+        assert equity["limit"] == 10
+        rss = SENATE_TRADING_RSS.validate_params({})
+        assert rss["page"] == 0
+
+        for endpoint in (CROWDFUNDING_RSS, EQUITY_OFFERING_RSS, SENATE_TRADING_RSS):
+            mandatory = {param.name for param in endpoint.mandatory_params}
+            optional = {param.name for param in endpoint.optional_params or []}
+            assert "page" in optional, endpoint.name
+            assert "page" not in mandatory, endpoint.name
+            if endpoint is not SENATE_TRADING_RSS:
+                assert "limit" in optional, endpoint.name
+                assert "limit" not in mandatory, endpoint.name
+
+    def test_newer_government_models_have_field_descriptions(self) -> None:
+        """MCP/JSON schema text should match the rest of intelligence (#338)."""
+        from fmp_data.intelligence.models import (
+            SenateNetWorthAggregated,
+            SenateNetWorthDebtDetails,
+            SenateNetWorthItem,
+            SenateNetWorthValueRange,
+            SenatePosition,
+            SenateProfile,
+        )
+
+        missing: list[str] = []
+        for model in (
+            SenateProfile,
+            SenatePosition,
+            SenateNetWorthValueRange,
+            SenateNetWorthDebtDetails,
+            SenateNetWorthItem,
+            SenateNetWorthAggregated,
+        ):
+            for name, field in model.model_fields.items():
+                if not (field.description or "").strip():
+                    missing.append(f"{model.__name__}.{name}")
+        assert not missing, f"missing Field(description=): {missing}"
+
+    def test_value_range_uses_minimum_maximum_and_enforces_order(self) -> None:
+        """Do not shadow builtins; inverted ranges are invalid (#336)."""
+        from pydantic import ValidationError as PydanticValidationError
+
+        from fmp_data.intelligence.models import SenateNetWorthValueRange
+
+        row = SenateNetWorthValueRange.model_validate({"min": 1, "max": 5})
+        assert row.minimum == 1
+        assert row.maximum == 5
+        assert row.model_dump(by_alias=True) == {"min": 1.0, "max": 5.0}
+        assert "min" not in SenateNetWorthValueRange.model_fields
+        assert "max" not in SenateNetWorthValueRange.model_fields
+        point = SenateNetWorthValueRange.model_validate({"min": 1, "max": 1})
+        assert point.minimum == point.maximum == 1
+        with pytest.raises(PydanticValidationError, match="minimum must be"):
+            SenateNetWorthValueRange.model_validate({"min": 5, "max": 1})
+        with pytest.raises(PydanticValidationError, match="finite"):
+            SenateNetWorthValueRange.model_validate({"min": float("nan"), "max": 1})
 
 
 class TestMarketIntelligenceClientFundraising:
@@ -1547,3 +2032,19 @@ class TestMarketIntelligenceClientAnalyst:
         assert kwargs["page"] == 0
         assert isinstance(result, list)
         assert result[0].symbol == "MSFT"
+
+
+def test_crypto_news_article_allows_null_symbol() -> None:
+    """General crypto news often has symbol: null (live 2026-08-14)."""
+    item = CryptoNewsArticle.model_validate(
+        {
+            "publishedDate": "2024-01-15T10:00:00",
+            "title": "Crypto Update",
+            "image": "https://example.com/image.jpg",
+            "site": "Crypto News",
+            "text": "News content",
+            "url": "https://example.com/crypto",
+            "symbol": None,
+        }
+    )
+    assert item.symbol is None

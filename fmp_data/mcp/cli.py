@@ -378,6 +378,43 @@ def _manifest_header(
     return "\n".join(lines)
 
 
+_GENERATE_SUFFIXES = {".json", ".yaml", ".yml", ".toml", ".py"}
+
+
+def _normalize_generate_path(path: Path) -> Path:
+    """Choose a write path whose suffix ``load_manifest_tools`` understands."""
+    if path.suffix == "":
+        return path.with_suffix(".json")
+    if path.suffix.lower() not in _GENERATE_SUFFIXES:
+        raise ValueError(f"{path}: generate writes .json, .yaml, .yml, .toml, or .py")
+    return path
+
+
+def _render_generated_manifest(
+    path: Path,
+    tools: list[str],
+    deprecated: list[str],
+    excluded: list[str],
+    collisions: dict[str, list[str]],
+    withdrawn: list[str],
+) -> str:
+    """Serialize ``tools`` in the format implied by ``path.suffix``."""
+    sorted_tools = sorted(tools)
+    suffix = path.suffix.lower()
+    if suffix == ".json":
+        return json.dumps({"tools": sorted_tools}, indent=2) + "\n"
+    if suffix in {".yaml", ".yml"}:
+        lines = ["tools:"]
+        lines.extend(f'  - "{spec}"' for spec in sorted_tools)
+        return "\n".join(lines) + "\n"
+    if suffix == ".toml":
+        quoted = ", ".join(json.dumps(spec) for spec in sorted_tools)
+        return f"tools = [{quoted}]\n"
+    header = _manifest_header(deprecated, excluded, collisions, withdrawn)
+    body = "\n".join(f'    "{spec}",' for spec in sorted_tools)
+    return f"{header}\nTOOLS = [\n{body}\n]\n"
+
+
 def _startable_catalog(
     available_specs: set[str],
     excluded: list[str],
@@ -620,7 +657,11 @@ def generate_manifest(
     Parameters
     ----------
     output_path
-        Path to save the manifest file
+        Path to save the manifest. The suffix chooses the format:
+        ``.json`` (preferred), ``.yaml`` / ``.yml``, ``.toml``, or
+        legacy ``.py``. A path with no suffix is written as ``.json``.
+        Other suffixes are refused. A ``.py`` file is still a data-only
+        ``TOOLS = ["..."]`` assignment, never executed.
     tools
         List of tool specs to include (if None, includes the whole catalog)
     include_defaults
@@ -634,6 +675,11 @@ def generate_manifest(
         failed entry has been printed to stderr.
     """
     output_path = Path(output_path)
+    try:
+        output_path = _normalize_generate_path(output_path)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return False
 
     # Get available tools
     available_tools = list_available_tools()
@@ -692,16 +738,14 @@ def generate_manifest(
             )
             return False
 
-    # Generate manifest content
-    manifest_content = (
-        _manifest_header(deprecated, excluded, collisions, withdrawn) + "\nTOOLS = [\n"
+    manifest_content = _render_generated_manifest(
+        output_path,
+        selected_tools,
+        deprecated,
+        excluded,
+        collisions,
+        withdrawn,
     )
-    for tool in sorted(selected_tools):
-        manifest_content += f'    "{tool}",\n'
-
-    manifest_content += "]\n"
-
-    # Save manifest
     output_path.write_text(manifest_content)
     print(f"Manifest saved to: {output_path}")
     print(f"Total tools: {len(selected_tools)}")
@@ -965,6 +1009,9 @@ def validate_manifest(manifest_path: str | Path) -> bool:
     """
     Validate a manifest file for correctness.
 
+    The file is loaded as data (JSON / YAML / TOML / restricted ``TOOLS =``
+    Python). It is never imported or executed.
+
     Parameters
     ----------
     manifest_path
@@ -975,7 +1022,7 @@ def validate_manifest(manifest_path: str | Path) -> bool:
     bool
         True if valid, False otherwise
     """
-    import importlib.util
+    from fmp_data.mcp.utils import load_manifest_tools
 
     manifest_path = Path(manifest_path).expanduser().resolve()
 
@@ -983,31 +1030,11 @@ def validate_manifest(manifest_path: str | Path) -> bool:
         print(f"Error: Manifest file not found: {manifest_path}", file=sys.stderr)
         return False
 
-    # Try to import the manifest
-    spec = importlib.util.spec_from_file_location("test_manifest", manifest_path)
-    if spec is None or spec.loader is None:
-        print(f"Error: Cannot import manifest: {manifest_path}", file=sys.stderr)
-        return False
-
-    module = importlib.util.module_from_spec(spec)
     try:
-        spec.loader.exec_module(module)
+        tools = load_manifest_tools(manifest_path)
     except Exception as e:
         print(f"Error loading manifest: {e}", file=sys.stderr)
         return False
-
-    tools = getattr(module, "TOOLS", None)
-    if tools is None:
-        print("Error: Manifest does not define TOOLS variable", file=sys.stderr)
-        return False
-    if not isinstance(tools, list):
-        print("Error: TOOLS must be a list", file=sys.stderr)
-        return False
-
-    for tool in tools:
-        if not isinstance(tool, str):
-            print(f"Error: Tool spec must be string, got {type(tool)}", file=sys.stderr)
-            return False
 
     unknown, ambiguous, deprecated, withdrawn = _classify_manifest_entries(tools)
     duplicates, collisions = _manifest_name_clashes(tools)
@@ -1079,6 +1106,22 @@ def setup_command(args: argparse.Namespace) -> int:
     return run_setup(quiet=getattr(args, "quiet", False))
 
 
+def _print_server_check(success: bool, reason: str) -> None:
+    """Print a classified MCP server check using sink-local literals.
+
+    Do not interpolate ``reason`` into the printed string. CodeQL treats
+    stdout as a logging sink; a helper return that once held stderr is
+    still tainted even after an allowlist (#319, #321).
+    """
+    if success:
+        if reason == "started":
+            print("✅ MCP server test passed (server started)")
+        else:
+            print("✅ MCP server test passed")
+        return
+    print("❌ MCP server test failed")
+
+
 def status_command(args: argparse.Namespace) -> int:
     """Check MCP server status."""
     from fmp_data.mcp.utils import (
@@ -1112,11 +1155,8 @@ def status_command(args: argparse.Namespace) -> int:
             )
             if api_key:
                 print("🧪 Testing server connection...")
-                success, message = test_mcp_server(api_key)
-                if success:
-                    print(f"✅ {message}")
-                else:
-                    print(f"❌ {message}")
+                success, reason = test_mcp_server(api_key)
+                _print_server_check(success, reason)
             else:
                 print("⚠️  No API key configured")
         else:
@@ -1144,25 +1184,24 @@ def test_command(args: argparse.Namespace) -> int:
         return 1
 
     # Test server
-    success, message = test_mcp_server(api_key)
-    if success:
-        print(f"✅ {message}")
-
-        # Try to get tool count
-        try:
-            from fmp_data.mcp.server import create_app
-
-            app = create_app()
-            tool_manager = getattr(app, "_tool_manager", None)
-            tool_count = len(tool_manager._tools) if tool_manager else 0
-            print(f"✅ {tool_count} tools registered")
-        except Exception as e:
-            print(f"⚠️  Could not count tools: {e}")
-
-        return 0
-    else:
-        print(f"❌ {message}")
+    success, reason = test_mcp_server(api_key)
+    _print_server_check(success, reason)
+    if not success:
         return 1
+
+    # Try to get tool count
+    try:
+        from fmp_data.mcp.server import create_app
+
+        app = create_app()
+        tool_manager = getattr(app, "_tool_manager", None)
+        tool_count = len(tool_manager._tools) if tool_manager else 0
+        print(f"✅ {tool_count} tools registered")
+    except Exception:
+        # create_app can reflect the key in an exception message.
+        print("⚠️  Could not count tools")
+
+    return 0
 
 
 # CLI entry points for potential future integration with click/argparse
@@ -1211,7 +1250,13 @@ def main() -> None:
 
     # Generate manifest command
     gen_parser = subparsers.add_parser("generate", help="Generate manifest file")
-    gen_parser.add_argument("output", help="Output file path")
+    gen_parser.add_argument(
+        "output",
+        help=(
+            "Output file path. Suffix selects the format: .json (preferred), "
+            ".yaml, .toml, or legacy .py. No suffix writes <name>.json."
+        ),
+    )
     gen_parser.add_argument("--tools", nargs="+", help="Specific tools to include")
     gen_parser.add_argument(
         "--no-defaults", action="store_true", help="Exclude default tools"
