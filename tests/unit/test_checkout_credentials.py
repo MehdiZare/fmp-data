@@ -22,10 +22,6 @@ WORKFLOWS = sorted((REPO_ROOT / ".github" / "workflows").glob("*.yml"))
 
 # job name -> why this one keeps its credential.
 ALLOWED_TO_PERSIST = {
-    "claude": (
-        "claude-code-action runs standard git commands to commit and push; "
-        "dropping the credential silently breaks @claude"
-    ),
     "sync-main-to-dev": "really runs `git push origin HEAD:refs/heads/...`",
 }
 
@@ -80,3 +76,13 @@ def test_read_only_checkouts_do_not_pass_an_explicit_token() -> None:
         if "token" in (step.get("with") or {}) and job not in ALLOWED_TO_PERSIST
     ]
     assert not offenders, offenders
+
+
+def test_claude_code_action_workflows_are_absent() -> None:
+    """#359: do not restore the unpinned marketplace review or @claude agent."""
+    workflows = REPO_ROOT / ".github" / "workflows"
+    assert not (workflows / "claude.yml").exists()
+    assert not (workflows / "claude-code-review.yml").exists()
+    remaining = "\n".join(path.read_text(encoding="utf-8") for path in WORKFLOWS)
+    assert "anthropics/claude-code-action" not in remaining
+    assert "CLAUDE_CODE_OAUTH_TOKEN" not in remaining
