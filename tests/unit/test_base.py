@@ -1497,7 +1497,8 @@ def test_protocol_error_is_retried(mock_request, mock_endpoint, base_client) -> 
     ):
         base_client.request(mock_endpoint)
     assert exc_info.value.retryable is True
-    assert mock_request.call_count > 1
+    assert mock_request.call_count == base_client.config.max_retries
+    _assert_secret_stays_off_exception(exc_info.value, _LEAK_SECRET)
 
 
 @patch("httpx.Client.request")
@@ -1512,6 +1513,72 @@ def test_too_many_redirects_is_not_retried(
         base_client.request(mock_endpoint)
     assert exc_info.value.retryable is False
     assert mock_request.call_count == 1
+    _assert_secret_stays_off_exception(exc_info.value, _LEAK_SECRET)
+
+
+@pytest.mark.asyncio
+async def test_async_protocol_error_is_retried(mock_endpoint, client_config) -> None:
+    """#354: ProtocolError uses the configured attempt count on the async path."""
+    mock_endpoint.method = MagicMock()
+    mock_endpoint.method.value = "GET"
+    mock_endpoint.response_model = SampleResponse
+    config = ClientConfig(
+        api_key=_LEAK_SECRET,
+        base_url=client_config.base_url,
+        max_retries=3,
+        max_rate_limit_retries=0,
+    )
+    client = BaseClient(config)
+    mock_async_client = AsyncMock()
+    mock_async_client.request = AsyncMock(
+        side_effect=_httpx_error_with_key(httpx.ProtocolError, _LEAK_SECRET)
+    )
+    try:
+        with (
+            patch.object(client, "_setup_async_client", return_value=mock_async_client),
+            patch("tenacity.nap.sleep", return_value=None),
+            pytest.raises(FMPNetworkError) as exc_info,
+        ):
+            await client.request_async(mock_endpoint)
+    finally:
+        await client.aclose()
+        client.close()
+    assert exc_info.value.retryable is True
+    assert mock_async_client.request.call_count == config.max_retries
+    _assert_secret_stays_off_exception(exc_info.value, _LEAK_SECRET)
+
+
+@pytest.mark.asyncio
+async def test_async_too_many_redirects_is_not_retried(
+    mock_endpoint, client_config
+) -> None:
+    """#354: TooManyRedirects is a single attempt on the async path."""
+    mock_endpoint.method = MagicMock()
+    mock_endpoint.method.value = "GET"
+    mock_endpoint.response_model = SampleResponse
+    config = ClientConfig(
+        api_key=_LEAK_SECRET,
+        base_url=client_config.base_url,
+        max_retries=3,
+        max_rate_limit_retries=0,
+    )
+    client = BaseClient(config)
+    mock_async_client = AsyncMock()
+    mock_async_client.request = AsyncMock(
+        side_effect=_httpx_error_with_key(httpx.TooManyRedirects, _LEAK_SECRET)
+    )
+    try:
+        with (
+            patch.object(client, "_setup_async_client", return_value=mock_async_client),
+            pytest.raises(FMPNetworkError) as exc_info,
+        ):
+            await client.request_async(mock_endpoint)
+    finally:
+        await client.aclose()
+        client.close()
+    assert exc_info.value.retryable is False
+    assert mock_async_client.request.call_count == 1
+    _assert_secret_stays_off_exception(exc_info.value, _LEAK_SECRET)
 
 
 def test_request_retries_on_http_5xx(base_client):

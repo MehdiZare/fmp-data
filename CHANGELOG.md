@@ -97,8 +97,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   secret-absent pin as #97 / #350 (`str` / `repr` / `__cause__` /
   traceback / error log). `ProtocolError` / `ProxyError` stay
   retryable; the others set `FMPNetworkError.retryable = False`.
-  Timeouts stay `FMPTimeoutError`. `validate_api_key` already classifies
-  `FMPNetworkError` as `unavailable`.
+  Timeouts stay `FMPTimeoutError`. `validate_api_key` classifies
+  `FMPNetworkError` and raw non-timeout `httpx.RequestError` (fakes /
+  adapters) as `unavailable`.
 
 - **Timeout and network errors no longer leak `apikey=` (#350).**
   `httpx.TimeoutException` / `httpx.NetworkError` now raise
