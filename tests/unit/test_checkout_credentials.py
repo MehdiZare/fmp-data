@@ -2,11 +2,11 @@
 
 ``actions/checkout`` writes the job's token into ``.git/config`` unless told
 not to, where every later step can read it -- including dependency installs,
-build backends and third-party actions. Only two jobs in this repo actually
-push, so the rest have no reason to carry the credential at all.
+build backends and third-party actions. Only ``sync-main-to-dev`` still
+pushes, so every other checkout drops the credential.
 
-The exceptions are asserted by name rather than skipped, so adding a third one
-is a deliberate edit to this list and not an accident.
+The remaining exception is asserted by name rather than skipped, so adding
+another one is a deliberate edit to this list and not an accident.
 """
 
 from __future__ import annotations
