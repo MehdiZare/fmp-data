@@ -717,7 +717,9 @@ def test_validation_error_envelope_redacts_reflected_api_keys(tmp_path: Any) -> 
 
     assert result["status"] == "error"
     assert result["error_type"] == "validation_error"
+    field_errors = result["details"]["validation_errors"]
+    assert field_errors
+    assert all(planted not in err for err in field_errors)
+    assert any("[REDACTED]" in err for err in field_errors)
     rendered = repr(result)
     assert planted not in rendered, f"validation envelope leaked the key: {rendered}"
-    assert planted not in "".join(result["details"]["validation_errors"])
-    assert "[REDACTED]" in rendered

@@ -68,6 +68,7 @@ def test_only_the_steps_that_need_it_receive_a_token() -> None:
     """A job-level `env: GH_TOKEN` would hand it to the build step too."""
     loaded = yaml.safe_load(RELEASE.read_text(encoding="utf-8"))
     assert isinstance(loaded, dict)
+    assert "GH_TOKEN" not in (loaded.get("env") or {})
     build_job = loaded["jobs"]["build"]
     assert "GH_TOKEN" not in (build_job.get("env") or {})
 

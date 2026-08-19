@@ -22,11 +22,13 @@ typing migration, types period / interval / timeframe as closed
 vocabularies (`Period`, `Interval`, `TechnicalInterval`, `Timeframe`),
 and adds a local VCR-backed client-method sweep.
 
-**Read before upgrading.** One public-type break, narrow:
+**Read before upgrading.** Three public-type breaks, all narrow:
 
 | Change | Who it affects | Migration |
 |---|---|---|
 | Credential config fields are `SecretStr` (#252 FMP-SEC-007) | anyone reading `ClientConfig.api_key`, `LangChainConfig.embedding_api_key`, `EmbeddingConfig.api_key`, or `CacheConfig.redis_url` as a `str` | call `.get_secret_value()` |
+| Senate/House trade dates are `date`, not `datetime` (#338) | anyone comparing `SenateTrade` / `HouseDisclosure` `disclosure_date`, `transaction_date`, or `SenateTrade.date_received` to `datetime.now()` | compare with `date.today()` |
+| `SenateNetWorthValueRange` dropped `.min` / `.max` (#336) | anyone reading those attributes | use `.minimum` / `.maximum` (wire aliases `min` / `max` unchanged) |
 
 Construction is unchanged — passing a plain `str` still works. `repr()` /
 `str()` were already redacted. What breaks is code that *reads* the field
@@ -434,7 +436,8 @@ None. No FMP path we ship was newly retired by this changelog window.
   escaped quotes / backslashes. URL redaction covers ``?api-key=``.
   LangChain tool validation envelopes reuse the already-redacted
   message so a reflected ``apikey=`` cannot reach
-  ``details.validation_errors``.
+  ``details.validation_errors``. Claude Desktop troubleshooting
+  samples that users copy into a config file are valid JSON.
 
 - **`HolderIndustryBreakdown.industry_title` accepts `null`.** A live
   13F industry-breakdown row sends `industryTitle: null`; the field was

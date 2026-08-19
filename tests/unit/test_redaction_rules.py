@@ -110,12 +110,18 @@ def test_non_string_keys_do_not_raise() -> None:
 
 
 def test_url_query_redacts_hyphenated_api_key() -> None:
-    """Reflected ``?api-key=`` must not skip the URL credential pattern."""
-    planted = "PLANTED_hyphen_query_secret"
+    """Reflected ``?api-key=`` must not skip the URL credential pattern.
+
+    The value includes a ``"`` so ``_ASSIGNMENT_RE`` cannot consume it
+    (that pattern stops at quotes). Only ``_URL_CREDENTIAL_RE`` covers
+    the full query value.
+    """
+    planted = 'PLANTED_hyphen"query'
     redacted = redact_credential_patterns(
         f"GET https://fmp.test/v3/profile?api-key={planted}&symbol=AAPL"
     )
     assert planted not in redacted
+    assert "query" not in redacted
     assert "api-key=[REDACTED]" in redacted
 
 
@@ -186,8 +192,10 @@ def test_pattern_api_leaves_32_char_identifiers() -> None:
 def test_key_shaped_api_redacts_terminal_api_key_assignment() -> None:
     """``api_key=`` at end-of-string has no trailing delimiter."""
     planted = "secret12"
-    assert planted not in redact_key_shaped_tokens(f"denied api_key={planted}")
     assert redact_key_shaped_tokens(f"denied api_key={planted}") == "denied [REDACTED]"
+    for suffix in (" tail", ":tail", ";tail"):
+        redacted = redact_key_shaped_tokens(f"denied api_key={planted}{suffix}")
+        assert planted not in redacted
 
 
 def test_key_shaped_api_redacts_wizard_heuristics() -> None:

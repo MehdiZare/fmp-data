@@ -25,8 +25,10 @@ qualified spec (`company.profile`). The bare form resolves only when exactly
 one client claims that key. Two keys are claimed by two clients each and must
 always be written in full: `crypto_quotes` (`alternative.crypto_quotes` vs
 `batch.crypto_quotes`) and `forex_quotes` (`alternative.forex_quotes` vs
-`batch.forex_quotes`). Rows marked *Deprecated* below still resolve but emit a
-`DeprecationWarning` and are removed in 3.0.
+`batch.forex_quotes`). Rows marked *Withdrawn* name a 404 FMP path; they still
+resolve and return `[]`, but they are not in `DEFAULT_TOOLS`. Rows marked
+*Deprecated* still resolve but emit a `DeprecationWarning` and are removed in
+3.0. Rows marked *Removed* raise `RemovedEndpointError`.
 
 ## Table of Contents
 
@@ -224,8 +226,8 @@ via a manifest; these return large payloads and several are CSV).
 | `crypto_symbol_news` | Search cryptocurrency news for a specific trading pair to track asset-specific developments |
 | `dividends_calendar` | Get upcoming and historical dividend events including ex-dividend dates, payment dates, and dividend amounts |
 | `earnings_calendar` | Access comprehensive earnings calendar showing upcoming earnings releases, estimated and actual results, and historical earnings data |
-| `earnings_confirmed` | **Deprecated / not in DEFAULT_TOOLS** — client returns `[]`; prefer `earnings_calendar` + `include_report_times` |
-| `earnings_surprises` | **Deprecated / not in DEFAULT_TOOLS** — client returns `[]`; prefer `historical_earnings` and compare eps |
+| `earnings_confirmed` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]`; prefer `earnings_calendar` + `include_report_times` |
+| `earnings_surprises` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]`; prefer `historical_earnings` and compare eps |
 | `equity_offering_by_cik` | Retrieve equity offerings for a specific company using CIK number including historical and current offerings |
 | `equity_offering_rss` | Get latest equity offerings including new issues, follow-on offerings, and capital raising events |
 | `equity_offering_search` | Search for equity offerings including public and private placements, with detailed offering terms and company information |
@@ -262,10 +264,10 @@ via a manifest; these return large payloads and several are CSV).
 | `senate_trades_by_id` | Get Senate trading data filtered by member id |
 | `senate_trades_by_name` | Get Senate trading data filtered by senator name |
 | `senate_trading` | Access Senate trading activity and disclosures including stock trades, transaction details, and filing information |
-| `senate_trading_rss` | **Withdrawn / not in DEFAULT_TOOLS** — prefer `senate_latest` |
+| `senate_trading_rss` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]`; prefer `senate_latest` |
 | `social_sentiment_changes` | **Removed / not in DEFAULT_TOOLS** — raises `RemovedEndpointError` |
 | `stock_news` | Market-wide stock news feed of company events and corporate developments. Not filterable by symbol; narrow it by date range or page |
-| `stock_news_sentiments` | **Deprecated / not in DEFAULT_TOOLS** — client returns `[]` |
+| `stock_news_sentiments` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]` |
 | `stock_splits_calendar` | Access upcoming and historical stock split events including split ratios, dates, and affected securities |
 | `trending_social_sentiment` | **Removed / not in DEFAULT_TOOLS** — raises `RemovedEndpointError` |
 

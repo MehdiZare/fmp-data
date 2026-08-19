@@ -89,6 +89,10 @@ def test_export_lines_decodes_escaped_quotes_and_backslashes() -> None:
             r'ESCAPED_BACKSLASH="a\\b"',
             r"ESCAPED_SINGLE='a\'b'",
             r'ORDINARY="quoted value"',
+            r'NEWLINE="a\nb"',
+            r"SINGLE_NEWLINE='a\nb'",
+            r'UNKNOWN="\q"',
+            r'UNCLOSED="hello',
         ]
     )
     lines = export_dotenv.export_lines(text)
@@ -100,3 +104,7 @@ def test_export_lines_decodes_escaped_quotes_and_backslashes() -> None:
     assert by_key["ESCAPED_BACKSLASH"] == "a\\b"
     assert by_key["ESCAPED_SINGLE"] == "a'b"
     assert by_key["ORDINARY"] == "quoted value"
+    assert by_key["NEWLINE"] == "a\nb"
+    assert by_key["SINGLE_NEWLINE"] == "a\\nb"
+    assert by_key["UNKNOWN"] == "\\q"
+    assert by_key["UNCLOSED"] == "hello"

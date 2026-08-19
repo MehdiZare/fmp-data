@@ -121,6 +121,7 @@ def redact_mapping(data: dict[str, Any]) -> dict[str, Any]:
 # --- Free-form text -------------------------------------------------------
 # Pattern-only. Never take the live secret as an argument. Safe for
 # logging sinks / stdout (CodeQL py/clear-text-logging-sensitive-data).
+# ``api[_-]?key`` covers ``apikey``, ``api_key``, and hyphenated ``api-key``.
 _URL_CREDENTIAL_RE = re.compile(
     r"([?&](?:api[_-]?key|token|secret)=)[^&\s]+",
     re.IGNORECASE,
