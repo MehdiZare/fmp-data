@@ -120,6 +120,7 @@ from fmp_data import (
     Period,
     PeriodAnnualQuarter,
     PeriodFiscal,
+    Structure,
     TechnicalInterval,
     Timeframe,
 )
@@ -130,7 +131,9 @@ There are three period types on purpose: most statement endpoints take
 batch bulk take only `PeriodFiscal`. Some company series take only
 `PeriodAnnualQuarter`. `Timeframe` is `Interval` plus `"1day"`.
 `TechnicalClient.interval=` takes `TechnicalInterval` (`Interval` plus
-`"daily"` / `"hourly"`), not `Timeframe`.
+`"daily"` / `"hourly"`), not `Timeframe`. Revenue segmentation
+`structure=` takes `Structure` (`flat` / `nested`); live `/stable`
+returns the same list-of-objects for both.
 
 ### Response Caching
 

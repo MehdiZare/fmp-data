@@ -3,9 +3,9 @@
 ## Closed request vocabularies
 
 `Period`, `PeriodFiscal`, `PeriodAnnualQuarter`, `Interval`,
-`TechnicalInterval`, and `Timeframe` are re-exported from `fmp_data`.
-They are the typed contracts for client method parameters. Import them
-from the package root:
+`TechnicalInterval`, `Timeframe`, and `Structure` are re-exported from
+`fmp_data`. They are the typed contracts for client method parameters.
+Import them from the package root:
 
 ```python
 from fmp_data import (
@@ -13,6 +13,7 @@ from fmp_data import (
     Period,
     PeriodAnnualQuarter,
     PeriodFiscal,
+    Structure,
     TechnicalInterval,
     Timeframe,
 )
@@ -23,7 +24,9 @@ Do not collapse the three period aliases. Most statement endpoints take
 batch bulk accept only `PeriodFiscal`. Some company series take only
 `PeriodAnnualQuarter`. `Timeframe` is `Interval` plus `"1day"`.
 `TechnicalClient.interval=` takes `TechnicalInterval` (`Interval` plus
-`"daily"` / `"hourly"`), not `Timeframe`.
+`"daily"` / `"hourly"`), not `Timeframe`. Revenue segmentation
+`structure=` takes `Structure` (`flat` / `nested`); live `/stable`
+returns the same list-of-objects for both.
 
 ## Main Clients
 

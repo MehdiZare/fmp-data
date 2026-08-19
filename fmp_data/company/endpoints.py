@@ -567,7 +567,11 @@ PRODUCT_REVENUE_SEGMENTATION: Endpoint[ProductRevenueSegment] = Endpoint(
             name="structure",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            description="Data structure format",
+            description=(
+                "Response layout (flat or nested). Stable currently "
+                "returns the same list-of-objects for both "
+                "(probed 2026-08-17)."
+            ),
             default="flat",
             valid_values=list(STRUCTURE_VALUES),
         ),
@@ -612,7 +616,11 @@ GEOGRAPHIC_REVENUE_SEGMENTATION: Endpoint[GeographicRevenueSegment] = Endpoint(
             name="structure",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
-            description="Data structure format",
+            description=(
+                "Response layout (flat or nested). Stable currently "
+                "returns the same list-of-objects for both "
+                "(probed 2026-08-17)."
+            ),
             default="flat",
             valid_values=list(STRUCTURE_VALUES),
         ),

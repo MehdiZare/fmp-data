@@ -89,7 +89,11 @@ class RevenueSegmentationArgs(SymbolArg):
 
     structure: StructureTypeEnum = Field(
         default=StructureTypeEnum.FLAT,
-        description="Data structure format",
+        description=(
+            "Response layout (flat or nested). Stable currently "
+            "returns the same list-of-objects for both "
+            "(probed 2026-08-17)."
+        ),
         json_schema_extra={"enum": ["flat", "nested"], "examples": ["flat"]},
     )
     period: ReportingPeriodEnum = Field(

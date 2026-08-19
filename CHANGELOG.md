@@ -31,6 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   2026-08-15 returned 200 with 12 yearly rows when it was omitted,
   sent empty, or set to `total`. Missing `senateID` is 400.
 
+- **Public re-export of `Structure` (#352).** Annotate revenue
+  segmentation `structure=` against `from fmp_data import Structure`.
+  It is `Literal["flat", "nested"]`. Live `/stable` returns the same
+  list-of-objects for both (probed 2026-08-17). `StructureTypeEnum`
+  stays leftover / deprecated.
+
 ### Changed
 
 - **One module now owns credential display redaction (#316).**
