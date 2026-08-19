@@ -233,73 +233,31 @@ jobs:
           gh api "repos/${REPO}/git/ref/tags/${RELEASE_TAG}" > /dev/null
           echo "Pushed tag ${RELEASE_TAG} -> ${COMMIT_SHA}"
 
-      - name: 📋 Generate release notes from PR
-        id: release_notes
+      - name: 📋 Generate release notes from CHANGELOG
         env:
-          # Untrusted PR fields via env to avoid script injection.
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          RELEASE_TAG: ${{ steps.version.outputs.VERSION }}
+          RELEASE_VERSION: ${{ steps.version.outputs.VERSION_NUMBER }}
         run: |
           set -euo pipefail
-
-          if [[ "$PR_BRANCH" =~ ^hotfix-.* ]]; then
-            RELEASE_TYPE="🔥 Hotfix"
-          else
-            RELEASE_TYPE="🚀 Release"
-          fi
-
-          # Get commits since last *previous* tag (HEAD is the new tag tip)
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          if [ -z "$PREV_TAG" ]; then
-            COMMIT_NOTES="Initial release"
-          else
-            COMMIT_NOTES=$(git log --pretty=format:"- %s" "$PREV_TAG"..HEAD)
-          fi
-
-          # Random per-run delimiter. A fixed `EOF` is only safe here by
-          # accident: `--pretty=format:"- %s"` prefixes every commit line, so a
-          # commit subject of literally `EOF` emits `- EOF` and cannot close
-          # the heredoc. Drop the `- ` prefix and it becomes a live injection --
-          # every following line would be parsed by the runner as a workflow
-          # command. Verified both ways; the guard should not be a side effect
-          # of a format string (#252).
-          DELIM="NOTES_EOF_$(openssl rand -hex 16)"
-          {
-            echo "NOTES<<$DELIM"
-            echo "### $RELEASE_TYPE"
-            echo ""
-            echo "**$PR_TITLE** (#$PR_NUMBER) by @$PR_AUTHOR"
-            echo ""
-            echo "### 📝 Commits"
-            echo "$COMMIT_NOTES"
-            echo "$DELIM"
-          } >> "$GITHUB_OUTPUT"
+          # Body is the matching ## [X.Y.Z] section, not the squash commit
+          # list. Missing / empty section fails the job (#370).
+          python3 scripts/github_release_notes.py \
+            --changelog CHANGELOG.md \
+            --version "$RELEASE_VERSION" \
+            --tag "$RELEASE_TAG" \
+            --out release-notes.md
 
       - name: 🚀 Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ steps.version.outputs.VERSION }}
-          RELEASE_VERSION: ${{ steps.version.outputs.VERSION_NUMBER }}
-          RELEASE_NOTES: ${{ steps.release_notes.outputs.NOTES }}
         run: |
           set -euo pipefail
 
-          {
-            echo "## 🎉 Release ${RELEASE_TAG}"
-            echo ""
-            echo "${RELEASE_NOTES}"
-            echo ""
-            echo "### 📦 Installation"
-            echo '```bash'
-            echo "pip install fmp-data==${RELEASE_VERSION}"
-            echo '```'
-            echo ""
-            echo "### 🔗 Links"
-            echo "- [PyPI Package](https://pypi.org/project/fmp-data/${RELEASE_VERSION}/)"
-            echo "- [Documentation](https://mehdizare.github.io/fmp-data/)"
-          } > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::release-notes.md is missing or empty."
+            exit 1
+          fi
 
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
             echo "::error::GitHub Release $RELEASE_TAG already exists. Refusing to overwrite."

@@ -130,7 +130,9 @@ the overlay in a hotfix-shaped PR.
   `contents: write` build job, then publishes to PyPI from a second job that
   only downloads the hashed artifacts and has `id-token: write` (environment
   `pypi`). Existing tags / releases / PyPI versions fail the job instead of
-  being skipped.
+  being skipped. Release notes are the matching `## [X.Y.Z]` section of
+  `CHANGELOG.md` (via `scripts/github_release_notes.py`), not the squash
+  commit list (#370). A missing or empty section fails the job.
 - External Actions are pinned to full commit SHAs. The PEP 517 frontend
   (`build`) and backend (`hatchling`, `hatch-vcs`) are installed from
   version floors in `.github/requirements-build.txt` (not a hashed lock).
@@ -256,10 +258,11 @@ For emergency releases or when automation fails:
    ```
 
 9. **Create GitHub Release**
-   - Go to GitHub Releases
-   - Create release from tag
-   - Add release notes
-   - Publish release
+   - Automated `release.yml` does this. Notes are the matching
+     `## [X.Y.Z]` section of `CHANGELOG.md`, wrapped with install /
+     docs links (`scripts/github_release_notes.py`). They are **not**
+     the squash commit list. Keep CHANGELOG updated before the release
+     PR merges; a missing section fails the job.
 
 ## Pre-release Process
 
