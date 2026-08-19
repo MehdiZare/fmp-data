@@ -134,6 +134,22 @@ jobs:
             echo "VERSION_NUMBER=$NEW_VERSION"
           } >> "$GITHUB_OUTPUT"
 
+      - name: 📋 Generate release notes from CHANGELOG
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.VERSION }}
+          RELEASE_VERSION: ${{ steps.version.outputs.VERSION_NUMBER }}
+        run: |
+          set -euo pipefail
+          # Body is the matching ## [X.Y.Z] section, not the squash commit
+          # list. Missing / empty section fails the job *before* the tag is
+          # created or pushed, so a missing heading cannot leave a remote
+          # tag with no GitHub Release / PyPI artifact (#370 leftover).
+          python3 scripts/github_release_notes.py \
+            --changelog CHANGELOG.md \
+            --version "$RELEASE_VERSION" \
+            --tag "$RELEASE_TAG" \
+            --out release-notes.md
+
       - name: 🏷️ Create local tag
         run: |
           set -euo pipefail
@@ -232,20 +248,6 @@ jobs:
           # and less legibly).
           gh api "repos/${REPO}/git/ref/tags/${RELEASE_TAG}" > /dev/null
           echo "Pushed tag ${RELEASE_TAG} -> ${COMMIT_SHA}"
-
-      - name: 📋 Generate release notes from CHANGELOG
-        env:
-          RELEASE_TAG: ${{ steps.version.outputs.VERSION }}
-          RELEASE_VERSION: ${{ steps.version.outputs.VERSION_NUMBER }}
-        run: |
-          set -euo pipefail
-          # Body is the matching ## [X.Y.Z] section, not the squash commit
-          # list. Missing / empty section fails the job (#370).
-          python3 scripts/github_release_notes.py \
-            --changelog CHANGELOG.md \
-            --version "$RELEASE_VERSION" \
-            --tag "$RELEASE_TAG" \
-            --out release-notes.md
 
       - name: 🚀 Create GitHub Release
         env:

@@ -18,10 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   immediately under the intro. The uniqueness tripwire matches dated
   `## [X.Y.Z] - date` headings; empty Unreleased stays valid.
 - **GitHub Release notes come from CHANGELOG.md (#370).** `release.yml`
-  extracts the matching `## [X.Y.Z]` section (fail-closed if missing or
-  empty) and wraps it with install / docs links. The published `v2.7.0`
-  notes were rewritten to that body. They are no longer the squash
-  commit stub.
+  runs `scripts/github_release_notes.py` to extract the matching
+  `## [X.Y.Z]` section (fail-closed if missing or empty) and wrap it
+  with install / docs links. The published `v2.7.0` notes were rewritten
+  to that body. They are no longer the squash commit stub.
 - **Withdrawn MCP catalog rows are marked in `docs/mcp/tools.md` (#361).**
   Every `WITHDRAWN_TOOLS` spec now carries **Withdrawn / not in
   DEFAULT_TOOLS** (with successor or none). Docs-sync fails if a
@@ -58,6 +58,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   as nothing-to-release, converts an already-open empty slot to draft,
   and restores it when a content delta appears. Opening an unlabeled
   empty squash recreated the #202 ancestry break (#374).
+- **CHANGELOG notes generate before tagging (#370 leftover).** A missing
+  `## [X.Y.Z]` used to fail after the remote tag existed, leaving a tag
+  with no GitHub Release or PyPI artifact. The extract step now runs
+  immediately after version calculation.
 
 ## [2.7.0] - 2026-08-19
 

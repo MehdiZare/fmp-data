@@ -109,10 +109,11 @@ def test_cli_writes_release_file(tmp_path: Path) -> None:
         ]
     )
     assert rc == 0
-    text = out.read_text(encoding="utf-8")
-    assert "Released from `dev`." in text
-    assert "pip install fmp-data==2.7.0" in text
-    assert "unreleased note" not in text
+    body = notes.extract_section(_SAMPLE, "2.7.0")
+    expected = notes.render_github_release(tag="v2.7.0", version="2.7.0", body=body)
+    assert out.read_text(encoding="utf-8") == expected
+    assert "unreleased note" not in expected
+    assert "old note" not in expected
 
 
 def test_cli_missing_section_is_nonzero(tmp_path: Path) -> None:

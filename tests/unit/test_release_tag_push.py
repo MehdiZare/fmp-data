@@ -116,7 +116,10 @@ def test_the_push_is_verified_before_downstream_steps_rely_on_it() -> None:
     assert "git/ref/tags/" in _step("Push tag")["run"]
 
 
-@pytest.mark.parametrize("fragment", ["Push tag", "Create GitHub Release"])
+@pytest.mark.parametrize(
+    "fragment",
+    ["Push tag", "Create GitHub Release", "Generate release notes from CHANGELOG"],
+)
 def test_token_scoped_steps_still_fail_closed(fragment: str) -> None:
     run = _step(fragment)["run"]
     assert "set -euo pipefail" in run
@@ -126,14 +129,28 @@ def test_token_scoped_steps_still_fail_closed(fragment: str) -> None:
 def test_github_release_notes_come_from_changelog() -> None:
     """#370: notes are CHANGELOG.md, not the squash commit list."""
     generate = _step("Generate release notes from CHANGELOG")
-    run = generate["run"]
-    assert "set -euo pipefail" in run
+    run = _code_lines(generate["run"])
     assert "scripts/github_release_notes.py" in run
-    assert "git log" not in _code_lines(run)
+    assert "--changelog CHANGELOG.md" in run
+    assert '--version "$RELEASE_VERSION"' in run
+    assert '--tag "$RELEASE_TAG"' in run
+    assert "--out release-notes.md" in run
+    assert "git log" not in run
     assert "GITHUB_OUTPUT" not in run
+    env = generate.get("env") or {}
+    assert "steps.version.outputs.VERSION_NUMBER" in str(env.get("RELEASE_VERSION"))
+    assert "steps.version.outputs.VERSION" in str(env.get("RELEASE_TAG"))
 
     create = _step("Create GitHub Release")
     create_run = create["run"]
     assert "--notes-file release-notes.md" in create_run
+    assert "! -s release-notes.md" in create_run
     assert "RELEASE_NOTES" not in (create.get("env") or {})
     assert "git log" not in _code_lines(create_run)
+
+
+def test_changelog_notes_are_generated_before_tagging() -> None:
+    """A missing ## [X.Y.Z] must fail before a remote tag exists."""
+    assert _index("Generate release notes") < _index("Create local tag")
+    assert _index("Generate release notes") < _index("Push tag")
+    assert _index("Generate release notes") < _index("Create GitHub Release")
