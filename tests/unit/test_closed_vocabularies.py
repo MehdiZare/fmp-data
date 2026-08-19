@@ -183,7 +183,7 @@ def test_getting_started_income_statement_examples_use_period() -> None:
 
 
 def test_closed_vocabularies_are_public_exports() -> None:
-    """#308 / #311: callers annotate against the live contracts from fmp_data."""
+    """#308 / #311 / #352: callers annotate against the live contracts from fmp_data."""
     import fmp_data
 
     assert fmp_data.Period is Period
@@ -192,6 +192,7 @@ def test_closed_vocabularies_are_public_exports() -> None:
     assert fmp_data.Interval is Interval
     assert fmp_data.Timeframe is Timeframe
     assert fmp_data.TechnicalInterval is TechnicalInterval
+    assert fmp_data.Structure is Structure
     for name in (
         "Period",
         "PeriodFiscal",
@@ -199,12 +200,9 @@ def test_closed_vocabularies_are_public_exports() -> None:
         "Interval",
         "TechnicalInterval",
         "Timeframe",
+        "Structure",
     ):
         assert name in fmp_data.__all__, name
-    # #349: Structure is a closed vocab on public methods but is not
-    # promoted to the package surface (same deferred decision as #308 /
-    # #311 were before Period / TechnicalInterval landed).
-    assert "Structure" not in fmp_data.__all__
     assert "1day" not in literal_values(fmp_data.TechnicalInterval)
     assert "daily" in literal_values(fmp_data.TechnicalInterval)
     assert "hourly" in literal_values(fmp_data.TechnicalInterval)
@@ -422,6 +420,32 @@ def test_client_period_interval_annotations_are_the_typed_literals() -> None:
     assert not untyped, "client methods still take a naked str:\n  " + "\n  ".join(
         untyped
     )
+
+
+def test_structure_endpoint_description_mentions_stable_same_shape() -> None:
+    """#352: LangChain tools read the endpoint description, not the method docstring."""
+    found: list[str] = []
+    stale: list[str] = []
+    for endpoint in _all_endpoints():
+        params = list(endpoint.mandatory_params) + list(endpoint.optional_params or [])
+        for param in params:
+            if param.name != "structure":
+                continue
+            found.append(endpoint.name)
+            description = param.description or ""
+            if "same list-of-objects" not in description:
+                stale.append(f"{endpoint.name}: {description!r}")
+    assert found, "expected revenue-segmentation structure params"
+    assert not stale, (
+        "structure description omitted the stable same-shape note:\n  "
+        + ("\n  ".join(stale))
+    )
+
+
+def test_structure_hint_mentions_stable_same_shape() -> None:
+    from fmp_data.company.hints import STRUCTURE_HINT
+
+    assert "same list-of-objects" in STRUCTURE_HINT.context_clues
 
 
 def test_structure_endpoint_valid_values_come_from_the_literal() -> None:

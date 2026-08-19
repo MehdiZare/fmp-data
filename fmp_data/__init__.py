@@ -43,6 +43,7 @@ from fmp_data.schema import (
     Period,
     PeriodAnnualQuarter,
     PeriodFiscal,
+    Structure,
     TechnicalInterval,
     Timeframe,
 )
@@ -76,6 +77,7 @@ __all__ = [
     "PeriodFiscal",
     "RateLimitConfig",
     "RateLimitError",
+    "Structure",
     "TechnicalInterval",
     "Timeframe",
     "ValidationError",

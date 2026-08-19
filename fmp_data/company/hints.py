@@ -4,7 +4,13 @@ STRUCTURE_HINT = ParameterHint(
     natural_names=["structure", "format", "data format"],
     extraction_patterns=[r"\b(flat|nested)\b"],
     examples=["flat", "nested"],
-    context_clues=["structure", "format", "organize", "arrangement"],
+    context_clues=[
+        "structure",
+        "format",
+        "organize",
+        "arrangement",
+        "same list-of-objects",
+    ],
 )
 
 # Common response field hints

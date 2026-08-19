@@ -79,6 +79,7 @@ from fmp_data import (
     Period,
     PeriodAnnualQuarter,
     PeriodFiscal,
+    Structure,
     TechnicalInterval,
     Timeframe,
 )
@@ -89,7 +90,9 @@ Keep the three period types distinct. Most statement endpoints take `Period`
 take only `PeriodFiscal`. Some company series take only `PeriodAnnualQuarter`.
 `Timeframe` is `Interval` plus `"1day"`. `TechnicalClient.interval=` takes
 `TechnicalInterval` (`Interval` plus `"daily"` / `"hourly"`), not
-`Timeframe`. Plain strings still work at runtime.
+`Timeframe`. Revenue segmentation `structure=` takes `Structure`
+(`flat` / `nested`); live `/stable` returns the same list-of-objects for
+both. Plain strings still work at runtime.
 
 ## Responses and data handling
 Endpoints return Pydantic models (or lists of models). Use attributes directly
