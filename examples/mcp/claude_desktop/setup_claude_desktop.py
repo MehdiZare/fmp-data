@@ -66,7 +66,7 @@ def check_fmp_installation():
         return False
 
 
-def install_fmp_data():
+def install_fmp_data() -> bool:
     """Install fmp-data package with MCP support."""
     print("\n📦 Installing fmp-data with MCP support...")
     try:
@@ -158,7 +158,7 @@ def create_claude_config(api_key, custom_manifest=None):
     return True
 
 
-def test_mcp_server(api_key):
+def test_mcp_server(api_key: str) -> bool:
     """Test if the MCP server can start."""
     print("\n🧪 Testing MCP server...")
 
@@ -195,7 +195,7 @@ def test_mcp_server(api_key):
         return False
 
 
-def choose_configuration():
+def choose_configuration() -> str | None:
     """Let user choose a configuration preset."""
     print("\n🎯 Choose a configuration:")
     print("   1. Default - Comprehensive tool set")

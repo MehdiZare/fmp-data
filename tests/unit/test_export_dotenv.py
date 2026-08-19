@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+import shlex
 
 _SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "export_dotenv.py"
 _SPEC = importlib.util.spec_from_file_location("export_dotenv", _SCRIPT)
@@ -78,3 +79,32 @@ def test_export_lines_strips_unquoted_inline_comments() -> None:
     assert "export QUOTED_THEN_COMMENT=keep" in joined
     assert "drop" not in joined
     assert any("HASHONLY=" in line and "abc#def" in line for line in lines)
+
+
+def test_export_lines_decodes_escaped_quotes_and_backslashes() -> None:
+    """Quoted values follow python-dotenv: closing quotes must be unescaped."""
+    text = "\n".join(
+        [
+            r'ESCAPED_DOUBLE="a\"b"',
+            r'ESCAPED_BACKSLASH="a\\b"',
+            r"ESCAPED_SINGLE='a\'b'",
+            r'ORDINARY="quoted value"',
+            r'NEWLINE="a\nb"',
+            r"SINGLE_NEWLINE='a\nb'",
+            r'UNKNOWN="\q"',
+            r'UNCLOSED="hello',
+        ]
+    )
+    lines = export_dotenv.export_lines(text)
+    by_key: dict[str, str] = {}
+    for line in lines:
+        key, quoted = line.split("=", 1)
+        by_key[key.removeprefix("export ")] = shlex.split(quoted)[0]
+    assert by_key["ESCAPED_DOUBLE"] == 'a"b'
+    assert by_key["ESCAPED_BACKSLASH"] == "a\\b"
+    assert by_key["ESCAPED_SINGLE"] == "a'b"
+    assert by_key["ORDINARY"] == "quoted value"
+    assert by_key["NEWLINE"] == "a\nb"
+    assert by_key["SINGLE_NEWLINE"] == "a\\nb"
+    assert by_key["UNKNOWN"] == "\\q"
+    assert by_key["UNCLOSED"] == "hello"

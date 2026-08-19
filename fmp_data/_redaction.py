@@ -121,8 +121,9 @@ def redact_mapping(data: dict[str, Any]) -> dict[str, Any]:
 # --- Free-form text -------------------------------------------------------
 # Pattern-only. Never take the live secret as an argument. Safe for
 # logging sinks / stdout (CodeQL py/clear-text-logging-sensitive-data).
+# ``api[_-]?key`` covers ``apikey``, ``api_key``, and hyphenated ``api-key``.
 _URL_CREDENTIAL_RE = re.compile(
-    r"([?&](?:api_?key|token|secret)=)[^&\s]+",
+    r"([?&](?:api[_-]?key|token|secret)=)[^&\s]+",
     re.IGNORECASE,
 )
 _URL_APIKEY_RE = re.compile(r"([?&]apikey=)[^&\s]+", re.IGNORECASE)
@@ -143,7 +144,7 @@ _ENCODED_RE = re.compile(r"(apikey%3[Dd])([^&\s\"'<>]+)", re.IGNORECASE)
 # run these on HTTP error bodies (``base._redact_api_keys``).
 _KEY_SHAPED_RES = (
     re.compile(r"\b(?:sk-|pk_)[a-zA-Z0-9_-]{8,}\b"),
-    re.compile(r"\bapi_key=[a-zA-Z0-9_-]{8,}(?=\s|:|;)"),
+    re.compile(r"\bapi_key=[a-zA-Z0-9_-]{8,}(?=\s|:|;|$)"),
     re.compile(r"\b[a-zA-Z0-9]{32,}\b"),
     re.compile(r"[a-fA-F0-9]{40,}"),
 )
