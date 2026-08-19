@@ -138,8 +138,6 @@ the overlay in a hotfix-shaped PR.
   version floors in `.github/requirements-build.txt` (not a hashed lock).
   Publish jobs run `python -m build --no-isolation` so isolation cannot
   pull a different backend than the one just installed.
-- **Claude Code Review** is advisory: missing or expired OAuth tokens do not
-  fail the PR. Required gates live in `ci.yml` / the branch rulesets.
 
 ### Secrets used by release automation
 
