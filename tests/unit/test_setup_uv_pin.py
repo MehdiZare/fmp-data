@@ -21,7 +21,7 @@ def test_setup_uv_is_v10_and_tracks_latest_uv() -> None:
             assert len(pin) == 40
             assert all(char in "0123456789abcdef" for char in pin)
             assert "v9.0.0" not in line
-            assert "v10.0.0" in line
+            assert "v10.0.1" in line
         assert 'version: "0.12.3"' in text
     assert seen >= 1
 

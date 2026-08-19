@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- **GitHub Actions pins.** `github/codeql-action` 4.37.6 → 4.37.7
+  (default bundle 2.26.3). `astral-sh/setup-uv` 10.0.0 → 10.0.1
+  (tolerate transient manifest timeouts). `anthropics/claude-code-action`
+  1.0.191 → 1.0.195. All remain 40-char SHA pins. The installed uv
+  floor is unchanged (`0.12.3`).
+
 ## [2.7.0] - 2026-08-19
 
 Released from `dev`. A security-and-contracts minor in the same shape as
