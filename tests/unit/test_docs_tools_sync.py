@@ -144,6 +144,40 @@ _NO_SUCCESSOR_WORDS = {
 }
 
 
+_WITHDRAWN_MARK = "**Withdrawn / not in DEFAULT_TOOLS**"
+_ROW_FULL_RE = re.compile(r"^\| `(?P<key>[a-z_0-9]+)` \| (?P<desc>.*) \|$")
+
+
+def _documented_row_text() -> dict[str, str]:
+    """``{client.key: description}`` for every catalog row."""
+    rows: dict[str, str] = {}
+    client: str | None = None
+
+    for line in DOC_PATH.read_text().splitlines():
+        section = _SECTION_RE.match(line)
+        if section:
+            title = section.group("title")
+            client = None if title == "Table of Contents" else title.lower()
+            continue
+
+        row = _ROW_FULL_RE.match(line)
+        if row and client is not None:
+            rows[f"{client}.{row.group('key')}"] = row.group("desc")
+
+    return rows
+
+
+def test_withdrawn_catalog_rows_are_marked() -> None:
+    """Every WITHDRAWN_TOOLS spec must carry the withdrawn mark in its row."""
+    rows = _documented_row_text()
+    missing = sorted(
+        spec for spec in WITHDRAWN_TOOLS if _WITHDRAWN_MARK not in rows.get(spec, "")
+    )
+    assert missing == [], (
+        f"{DOC_PATH.name} withdrawn rows omit {_WITHDRAWN_MARK!r}: {missing}"
+    )
+
+
 def test_withdrawn_preamble_counts_match_source() -> None:
     """The withdrawn-endpoint prose must track WITHDRAWN_TOOLS, not rot."""
     text = DOC_PATH.read_text()

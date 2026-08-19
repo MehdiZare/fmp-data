@@ -53,7 +53,7 @@ resolve and return `[]`, but they are not in `DEFAULT_TOOLS`. Rows marked
 | Tool Key | Description |
 |----------|-------------|
 | `commodities_list` | Get a list of all available commodities |
-| `commodities_quotes` | Get current quotes for all available commodities |
+| `commodities_quotes` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]`; prefer `commodity_quotes` (batch) |
 | `commodity_historical` | Get historical price data for a commodity |
 | `commodity_intraday` | Get intraday price data for commodities |
 | `commodity_quote` | Get detailed quote for a specific commodity |
@@ -61,12 +61,12 @@ resolve and return `[]`, but they are not in `DEFAULT_TOOLS`. Rows marked
 | `crypto_intraday` | Get detailed intraday price data for a cryptocurrency |
 | `crypto_list` | Get a list of all available cryptocurrencies and their basic information |
 | `crypto_quote` | Get detailed real-time quote for a specific cryptocurrency |
-| `crypto_quotes` | Get current price quotes for all available cryptocurrencies |
+| `crypto_quotes` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]`; prefer `batch.crypto_quotes` |
 | `forex_historical` | Get historical exchange rate data for a currency pair |
 | `forex_intraday` | Get intraday exchange rate data at specified intervals |
 | `forex_list` | Get a complete list of available forex currency pairs |
 | `forex_quote` | Get detailed real-time quote for a specific currency pair |
-| `forex_quotes` | Get real-time quotes for all available forex currency pairs |
+| `forex_quotes` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]`; prefer `batch.forex_quotes` |
 
 ## Batch
 
@@ -115,10 +115,10 @@ via a manifest; these return large payloads and several are CSV).
 | `aftermarket_quote` | Get after-hours bid/ask quote data for a stock with sizes, prices, and timestamp |
 | `aftermarket_trade` | Get after-hours trade data for a stock, including price, size, and trade timestamp |
 | `analyst_estimates` | Retrieve detailed analyst estimates including revenue, earnings, EBITDA, and other financial metrics forecasts with high/low/average ranges |
-| `analyst_recommendations` | Retrieve analyst buy/sell/hold recommendations and consensus ratings for stocks including detailed rating breakdowns |
+| `analyst_recommendations` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]`; prefer `grades_consensus` |
 | `company_logo_url` | Get the URL of the company's official logo image for use in applications, websites, or documentation |
 | `company_notes` | Retrieve company financial notes and disclosures from SEC filings, providing additional context and explanations about financial statements |
-| `core_information` | Get essential company information including CIK number, exchange listing, SIC code, state of incorporation, and fiscal year details |
+| `core_information` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]`; prefer `profile` |
 | `delisted_companies` | Get companies FMP reports as delisted, including the last exchange, IPO date, and delist date |
 | `employee_count` | Get historical employee count data showing how company workforce has changed over time |
 | `executive_compensation` | Get detailed executive compensation information including salary, bonuses, stock awards, and total compensation packages for company leaders |
@@ -127,12 +127,12 @@ via a manifest; these return large payloads and several are CSV).
 | `historical_market_cap` | Retrieve historical market capitalization data to track changes in company value over time |
 | `historical_price` | *Deprecated — use `historical_prices`; removed in 3.0.* Retrieve historical daily price data including open, high, low, close, and adjusted prices with volume information . |
 | `historical_prices` | Retrieve historical price data including OHLCV (Open, High, Low, Close, Volume) information for detailed technical and performance analysis. |
-| `historical_share_float` | Get historical share float data showing how the number of tradable shares has changed over time |
+| `historical_share_float` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]`; prefer `share_float` |
 | `intraday_price` | *Deprecated — use `intraday_prices`; removed in 3.0.* Get intraday price data at various intervals (1min to 4hour) for detailed analysis of price movements within the trading day |
 | `intraday_prices` | Get intraday price data with minute-by-minute or hourly intervals |
 | `key_executives` | Get detailed information about company's key executives including their names, titles, tenure, and basic compensation data |
 | `market_cap` | Get current market capitalization data for a company, including total market value and related metrics |
-| `price_target` | Retrieve analyst price targets for a specific stock, including target prices, analyst details, and publication dates |
+| `price_target` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]`; prefer `price_target_summary` |
 | `price_target_consensus` | Get detailed consensus information about analyst price targets, including target distribution, recent changes, and analyst recommendations. |
 | `price_target_summary` | Get a summary of analyst price targets for a stock, including average, highest, and lowest targets along with number of analysts. |
 | `product_revenue_segmentation` | Get detailed revenue breakdown by product lines or services, showing how company revenue is distributed across different offerings |
@@ -143,8 +143,8 @@ via a manifest; these return large payloads and several are CSV).
 | `simple_quote` | Get real-time basic stock quote including price, volume, and change information |
 | `stock_price_change` | Get percentage price changes across multiple time horizons for a stock |
 | `symbol_changes` | Get historical record of company ticker symbol changes, tracking when and why companies changed their trading symbols |
-| `upgrades_downgrades` | Access stock rating changes including upgrades, downgrades, and rating adjustments with analyst and firm information |
-| `upgrades_downgrades_consensus` | Get aggregated rating consensus data including buy/sell/hold counts and overall recommendation trends |
+| `upgrades_downgrades` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]`; prefer `grades` |
+| `upgrades_downgrades_consensus` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]`; prefer `grades_consensus` |
 
 ## Economics
 
@@ -174,7 +174,7 @@ via a manifest; these return large payloads and several are CSV).
 | `financial_ratios` | Access comprehensive financial ratios for analyzing company performance, efficiency, and financial health. |
 | `financial_reports_dates` | Retrieve available financial report dates and access links for a company, including quarterly and annual filings. |
 | `full_financial_statement` | Access complete financial statements as reported to regulatory authorities, including detailed line items, notes, and supplementary information. |
-| `historical_rating` | Retrieve historical company ratings and scoring metrics over time based on fundamental analysis. |
+| `historical_rating` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]`; prefer `ratings_historical` |
 | `income_statement` | Retrieve detailed income statements showing revenue, costs, expenses and profitability metrics for a company over multiple periods. |
 | `key_metrics` | Access essential financial metrics and KPIs including profitability, efficiency, and valuation measures. |
 | `latest_financial_statements` | Get the latest financial statement publication metadata across symbols with pagination. |
@@ -200,10 +200,10 @@ via a manifest; these return large payloads and several are CSV).
 
 | Tool Key | Description |
 |----------|-------------|
-| `asset_allocation` | Analyze asset allocation data from 13F filings |
+| `asset_allocation` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]` |
 | `beneficial_ownership` | Retrieve beneficial ownership information including voting rights and dispositive power for major shareholders of a company. |
 | `cik_mappings` | Get a comprehensive mapping between CIK numbers and company/institution names. |
-| `fail_to_deliver` | Get data on failed trade settlements (FTDs) for a security. |
+| `fail_to_deliver` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]` |
 | `form_13f` | Retrieve Form 13F filings data for institutional investment managers, including detailed holdings information, share quantities, and market values. |
 | `form_13f_dates` | Get a list of available Form 13F filing dates for a specific institutional investment manager, helping track their reporting history and timeline. |
 | `insider_roster` | Get a list of company insiders including executives, directors, and major shareholders, along with their positions and latest transaction dates. |
@@ -279,18 +279,18 @@ via a manifest; these return large payloads and several are CSV).
 |----------|-------------|
 | `etf_country_weightings` | Get detailed geographic allocation data for an ETF, showing the percentage of the portfolio invested in different countries |
 | `etf_exposure` | Retrieve detailed stock exposure data for an ETF, showing specific securities held and their weights in the portfolio |
-| `etf_holder` | Get information about institutional holders of an ETF, including their holdings and position sizes |
-| `etf_holding_dates` | Get a list of available portfolio dates for which ETF holdings data is available |
+| `etf_holder` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]`; prefer `fund_disclosure_holders_latest` |
+| `etf_holding_dates` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]`; prefer `mutual_fund_dates` |
 | `etf_holdings` | Retrieve detailed holdings information for an ETF including assets, weights, and market values as of a specific date |
 | `etf_info` | Get comprehensive information about an ETF including expense ratio, assets under management, and fund characteristics |
 | `etf_sector_weightings` | Retrieve detailed sector allocation data for an ETF, showing the percentage of the portfolio invested in different market sectors |
 | `fund_disclosure` | Retrieve detailed fund disclosure holdings for a symbol and reporting period, including security metadata and portfolio percentages |
 | `fund_disclosure_holders_latest` | Retrieve the latest fund disclosure holders for a symbol, including holder name, shares, and weight percentage |
 | `fund_disclosure_holders_search` | Search fund disclosure holders by name to retrieve fund identifiers and entity details |
-| `mutual_fund_by_name` | Search for mutual funds by name to get their holdings and basic information |
+| `mutual_fund_by_name` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]` |
 | `mutual_fund_dates` | Retrieve available portfolio dates for mutual fund holdings data, helping track portfolio composition changes over time |
-| `mutual_fund_holder` | Get information about institutional holders of a mutual fund, including their holdings and position sizes |
-| `mutual_fund_holdings` | Get detailed holdings information for a mutual fund, including securities held, weights, and market values as of a specific date |
+| `mutual_fund_holder` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]`; prefer `fund_disclosure_holders_latest` |
+| `mutual_fund_holdings` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]`; prefer `etf_holdings` |
 
 ## Market
 
@@ -313,7 +313,7 @@ via a manifest; these return large payloads and several are CSV).
 | `losers` | Get list of top losing stocks by percentage change, showing the worst performing stocks in the current trading session |
 | `market_hours` | Check current market status and trading hours for a specific exchange |
 | `most_active` | Get list of most actively traded stocks by volume, showing stocks with the highest trading activity in the current session |
-| `pre_post_market` | Retrieve pre-market and post-market trading data including prices, volume, and trading session information outside regular market hours |
+| `pre_post_market` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]` |
 | `search` | Search for companies by name, ticker, or other identifiers. |
 | `search_by_cik` | Search for companies by their SEC Central Index Key (CIK) number |
 | `search_by_cusip` | Search for companies by their CUSIP identifier |

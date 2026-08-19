@@ -36,7 +36,7 @@ jobs:
           python-version: ${{ matrix.python }}
 
       - name: ⚡  Install uv (with cache)
-        uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d  # v10.0.0
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
           version: "0.12.3"
           enable-cache: true
@@ -88,7 +88,7 @@ jobs:
           python-version: "3.14"
 
       - name: ⚡  Install uv
-        uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d  # v10.0.0
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
           version: "0.12.3"
 
@@ -145,7 +145,7 @@ jobs:
           python-version: "3.14"
 
       - name: ⚡  Install uv
-        uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d  # v10.0.0
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
           version: "0.12.3"
 
@@ -240,12 +240,18 @@ jobs:
             exit 1
           fi
           sudo apt-get update -qq
-          sudo apt-get install -y -qq shellcheck
+          sudo apt-get install -y -qq shellcheck python3-yaml
           shellcheck --version
           shellcheck "${scripts[@]}"
 
       - name: 🧪 check-pr-mergeable mock matrix
         run: bash .github/actions/check-pr-mergeable/test-check.sh
+
+      # YAML `run: |` strips the common indent, then bash parses the result.
+      # An indented here-doc terminator is not recognized (#363). This is the
+      # same checker as tests/unit/test_workflow_run_scripts.py.
+      - name: 🔍 bash -n every workflow run block
+        run: python3 tests/unit/test_workflow_run_scripts.py
 
   test-matrix-expected:
     name: Test-MatrixExpected
