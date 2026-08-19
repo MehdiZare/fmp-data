@@ -73,13 +73,21 @@ def _heredoc_problems(script: str) -> list[str]:
         found = False
         while index < len(lines):
             raw = lines[index]
-            candidate = raw.lstrip("\t") if strip_tabs else raw
-            if candidate == token:
-                if not strip_tabs and raw != token:
-                    problems.append(
-                        f"indented here-doc terminator {token!r} "
-                        f"(survives YAML strip; bash will not close it)"
-                    )
+            # `<<-` strips leading tabs only. `<<` requires column 0.
+            # Spaces in front of the token survive YAML strip and must
+            # be flagged; matching only the exact line made the indented
+            # diagnostic dead and reported those as "unclosed" instead.
+            if strip_tabs and raw.lstrip("\t") == token:
+                found = True
+                break
+            if raw == token:
+                found = True
+                break
+            if raw.lstrip() == token:
+                problems.append(
+                    f"indented here-doc terminator {token!r} "
+                    f"(survives YAML strip; bash will not close it)"
+                )
                 found = True
                 break
             index += 1
@@ -149,6 +157,31 @@ def test_sync_main_to_dev_is_among_the_compiled_scripts() -> None:
     ]
     matching = [label for label in labels if "sync-main-to-dev" in label]
     assert matching, "sync-main-to-dev.yml produced no run: blocks"
+
+
+def test_indented_heredoc_terminator_is_flagged() -> None:
+    """Spaces in front of EOF survive YAML strip; bash never closes the doc."""
+    script = "cat <<'EOF'\nhello\n  EOF\n"
+    problems = _heredoc_problems(script)
+    assert problems, "indented terminator must be reported"
+    assert any("indented here-doc terminator" in item for item in problems)
+
+
+def test_column0_heredoc_terminator_is_clean() -> None:
+    script = "cat <<'EOF'\nhello\nEOF\n"
+    assert _heredoc_problems(script) == []
+
+
+def test_tab_stripped_dash_heredoc_is_clean() -> None:
+    script = "cat <<-EOF\nhello\n\tEOF\n"
+    assert _heredoc_problems(script) == []
+
+
+def test_unclosed_heredoc_is_flagged() -> None:
+    script = "cat <<'EOF'\nhello\n"
+    problems = _heredoc_problems(script)
+    assert problems
+    assert any("unclosed here-doc" in item for item in problems)
 
 
 def main() -> int:
