@@ -241,11 +241,16 @@ For emergency releases or when automation fails:
    - Add exactly one version label: `release:major`, `release:minor`, or `release:patch`
    - Include release notes in description
 
-7. **Merge and Tag**
+7. **Merge, generate notes, then tag**
    ```bash
    # After PR approval and merge
    git checkout main
    git pull origin main
+   python3 scripts/github_release_notes.py \
+     --changelog CHANGELOG.md \
+     --version 1.2.3 \
+     --tag v1.2.3 \
+     --out release-notes.md
    git tag v1.2.3
    git push origin v1.2.3
    ```
@@ -259,13 +264,8 @@ For emergency releases or when automation fails:
 9. **Create GitHub Release**
    - Happy path: `release.yml` extracts `## [X.Y.Z]` via
      `scripts/github_release_notes.py` (fail-closed, before tagging).
-   - If automation failed, generate the same file locally and publish it:
+   - If automation failed, use the file from step 7:
      ```bash
-     python3 scripts/github_release_notes.py \
-       --changelog CHANGELOG.md \
-       --version 1.2.3 \
-       --tag v1.2.3 \
-       --out release-notes.md
      gh release create v1.2.3 --notes-file release-notes.md
      ```
    - Fold `## Unreleased` into `## [X.Y.Z] - date` *before* adding a

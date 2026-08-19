@@ -66,6 +66,22 @@ def test_extract_section_missing_version_raises() -> None:
         notes.extract_section(_SAMPLE, "2.8.0")
 
 
+def test_extract_section_keeps_non_version_level_two_heading() -> None:
+    text = (
+        "## [2.7.0] - 2026-08-19\n\n"
+        "intro\n\n"
+        "## Upgrade notes\n\n"
+        "keep me\n\n"
+        "## [2.6.0] - 2026-08-10\n\n"
+        "old\n"
+    )
+    body = notes.extract_section(text, "2.7.0")
+    assert "intro" in body
+    assert "## Upgrade notes" in body
+    assert "keep me" in body
+    assert "old" not in body
+
+
 def test_extract_section_empty_body_raises() -> None:
     text = "## [2.7.1] - 2026-08-20\n\n## [2.7.0] - 2026-08-19\n\nbody\n"
     with pytest.raises(ValueError, match=r"## \[2\.7\.1\] is empty"):
@@ -127,6 +143,22 @@ def test_cli_missing_section_is_nonzero(tmp_path: Path) -> None:
             "9.9.9",
             "--out",
             str(tmp_path / "x.md"),
+        ]
+    )
+    assert rc == 1
+
+
+def test_cli_unwritable_out_is_nonzero(tmp_path: Path) -> None:
+    changelog = tmp_path / "CHANGELOG.md"
+    changelog.write_text(_SAMPLE, encoding="utf-8")
+    rc = notes.main(
+        [
+            "--changelog",
+            str(changelog),
+            "--version",
+            "2.7.0",
+            "--out",
+            str(tmp_path),
         ]
     )
     assert rc == 1
