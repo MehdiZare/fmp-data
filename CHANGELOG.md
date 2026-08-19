@@ -17,9 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **2.7.0 changelog subsections are unique (#360).** One Added / Changed /
   Fixed / Security under the version heading. `### FMP API surface` sits
   immediately under the intro. The uniqueness tripwire matches dated
-  `## [X.Y.Z] - date` headings; empty Unreleased stays valid. The
-  published GitHub Release notes are unchanged (they never used this
-  file's body).
+  `## [X.Y.Z] - date` headings; empty Unreleased stays valid.
+- **GitHub Release notes come from CHANGELOG.md (#370).** `release.yml`
+  extracts the matching `## [X.Y.Z]` section (fail-closed if missing or
+  empty) and wraps it with install / docs links. The published `v2.7.0`
+  notes were rewritten to that body. They are no longer the squash
+  commit stub.
 - **Withdrawn MCP catalog rows are marked in `docs/mcp/tools.md` (#361).**
   Every `WITHDRAWN_TOOLS` spec now carries **Withdrawn / not in
   DEFAULT_TOOLS** (with successor or none). Docs-sync fails if a

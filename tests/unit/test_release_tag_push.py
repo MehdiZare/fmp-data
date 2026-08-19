@@ -121,3 +121,19 @@ def test_token_scoped_steps_still_fail_closed(fragment: str) -> None:
     run = _step(fragment)["run"]
     assert "set -euo pipefail" in run
     assert "|| true" not in run
+
+
+def test_github_release_notes_come_from_changelog() -> None:
+    """#370: notes are CHANGELOG.md, not the squash commit list."""
+    generate = _step("Generate release notes from CHANGELOG")
+    run = generate["run"]
+    assert "set -euo pipefail" in run
+    assert "scripts/github_release_notes.py" in run
+    assert "git log" not in _code_lines(run)
+    assert "GITHUB_OUTPUT" not in run
+
+    create = _step("Create GitHub Release")
+    create_run = create["run"]
+    assert "--notes-file release-notes.md" in create_run
+    assert "RELEASE_NOTES" not in (create.get("env") or {})
+    assert "git log" not in _code_lines(create_run)
