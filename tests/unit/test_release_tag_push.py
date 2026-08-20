@@ -149,6 +149,15 @@ def test_github_release_notes_come_from_changelog() -> None:
     assert "git log" not in _code_lines(create_run)
 
 
+def test_generate_step_fails_closed_on_empty_notes() -> None:
+    """#387: empty notes must fail on the generate step, before any tag."""
+    generate = _step("Generate release notes from CHANGELOG")
+    run = _code_lines(generate["run"])
+    assert "! -s release-notes.md" in run
+    assert _index("Generate release notes") < _index("Create local tag")
+    assert _index("Generate release notes") < _index("Push tag")
+
+
 def test_changelog_notes_are_generated_before_tagging() -> None:
     """A missing ## [X.Y.Z] must fail before a remote tag exists."""
     assert _index("Generate release notes") < _index("Create local tag")

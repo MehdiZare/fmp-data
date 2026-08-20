@@ -132,9 +132,12 @@ def test_cli_writes_release_file(tmp_path: Path) -> None:
     assert "old note" not in expected
 
 
-def test_cli_missing_section_is_nonzero(tmp_path: Path) -> None:
+def test_cli_missing_section_is_nonzero(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     changelog = tmp_path / "CHANGELOG.md"
     changelog.write_text(_SAMPLE, encoding="utf-8")
+    out = tmp_path / "x.md"
     rc = notes.main(
         [
             "--changelog",
@@ -142,13 +145,18 @@ def test_cli_missing_section_is_nonzero(tmp_path: Path) -> None:
             "--version",
             "9.9.9",
             "--out",
-            str(tmp_path / "x.md"),
+            str(out),
         ]
     )
     assert rc == 1
+    err = capsys.readouterr().err
+    assert err.startswith("error:")
+    assert not out.exists()
 
 
-def test_cli_unwritable_out_is_nonzero(tmp_path: Path) -> None:
+def test_cli_unwritable_out_is_nonzero(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     changelog = tmp_path / "CHANGELOG.md"
     changelog.write_text(_SAMPLE, encoding="utf-8")
     rc = notes.main(
@@ -162,3 +170,33 @@ def test_cli_unwritable_out_is_nonzero(tmp_path: Path) -> None:
         ]
     )
     assert rc == 1
+    err = capsys.readouterr().err
+    assert err.startswith("error:")
+    assert "cannot write" in err
+
+
+def test_cli_missing_changelog_file_is_nonzero(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    rc = notes.main(
+        [
+            "--changelog",
+            str(tmp_path / "missing.md"),
+            "--version",
+            "2.7.0",
+            "--out",
+            str(tmp_path / "x.md"),
+        ]
+    )
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert err.startswith("error:")
+    assert not (tmp_path / "x.md").exists()
+
+
+def test_live_changelog_2_7_1_extracts() -> None:
+    body = notes.extract_section(_CHANGELOG.read_text(encoding="utf-8"), "2.7.1")
+    assert body.startswith("Patch of leftover 2.7.0")
+    assert "## Unreleased" not in body
+    assert "## [2.7.0]" not in body
+    assert "fmp_data" in body
