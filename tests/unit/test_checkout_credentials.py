@@ -96,8 +96,10 @@ def test_claude_code_action_workflows_are_absent() -> None:
         "claude-code-review.yaml",
     ):
         assert not (WORKFLOWS_DIR / name).exists()
-    remaining = "\n".join(path.read_text(encoding="utf-8") for path in GITHUB_YAML)
+    remaining = "\n".join(
+        path.read_text(encoding="utf-8") for path in GITHUB_YAML
+    ).casefold()
     assert "anthropics/claude-code-action" not in remaining
-    assert "CLAUDE_CODE_OAUTH_TOKEN" not in remaining
+    assert "claude_code_oauth_token" not in remaining
     assert "plugin_marketplaces" not in remaining
     assert "anthropics/claude-code.git" not in remaining

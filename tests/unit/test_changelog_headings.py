@@ -27,11 +27,18 @@ _VERSION_HEADER = re.compile(
     r"^## (?:Unreleased|\[(\d+)\.(\d+)\.[^\]]+\])(?:\s+-.*)?\s*$"
 )
 _HEADING = re.compile(r"^### (.+)$", re.M)
+# Extractor splits only on ``## [X.Y.Z]`` (#385 / ``_VERSION_CHUNK_START``).
+# Uniqueness does the same for version bodies, plus ``## Unreleased`` so
+# the post-cut bucket stays its own gated section. A bare ``## `` inside
+# a version must not start a new chunk (#387).
+_SECTION_CHUNK_START = re.compile(
+    r"(?=^## (?:Unreleased|\[[^\]]+\])(?:\s+-.*)?\s*$)", re.M
+)
 
 
 def _gated_sections(text: str) -> list[tuple[str, str]]:
     """``(header, body)`` for Unreleased and every ``[X.Y.*]`` with X.Y >= 2.7."""
-    chunks = re.split(r"(?=^## )", text, flags=re.M)
+    chunks = _SECTION_CHUNK_START.split(text)
     out: list[tuple[str, str]] = []
     for chunk in chunks:
         lines = chunk.splitlines()
@@ -58,6 +65,22 @@ def test_version_header_matches_dated_keep_a_changelog() -> None:
     assert _VERSION_HEADER.match("## Unreleased") is not None
     assert _VERSION_HEADER.match("## [2.6.0] - 2026-08-10") is not None
     assert _VERSION_HEADER.match("## Future Roadmap") is None
+
+
+def test_gated_sections_keep_non_version_level_two_inside_version() -> None:
+    """#387: a ``## `` that is not a version heading stays in the section."""
+    text = (
+        "## [2.7.0] - 2026-08-19\n\n"
+        "### Added\n\n- first\n\n"
+        "## Upgrade notes\n\n"
+        "### Added\n\n- second\n\n"
+        "## [2.6.0] - 2026-08-10\n\n"
+        "### Added\n\n- old\n"
+    )
+    sections = _gated_sections(text)
+    assert [header for header, _ in sections] == ["## [2.7.0] - 2026-08-19"]
+    headings = [name for name in _HEADING.findall(sections[0][1]) if name in _STANDARD]
+    assert headings == ["Added", "Added"]
 
 
 def test_gated_sections_include_dated_2_7_and_allow_empty_unreleased() -> None:

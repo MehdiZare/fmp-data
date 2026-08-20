@@ -150,6 +150,13 @@ jobs:
             --tag "$RELEASE_TAG" \
             --out release-notes.md
 
+          # Empty-file guard belongs here, before the local tag (#387).
+          # A comment cannot satisfy the tripwire; this must execute.
+          if [ ! -s release-notes.md ]; then
+            echo "::error::release-notes.md is missing or empty."
+            exit 1
+          fi
+
       - name: 🏷️ Create local tag
         run: |
           set -euo pipefail
