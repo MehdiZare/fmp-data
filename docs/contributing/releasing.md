@@ -132,7 +132,9 @@ the overlay in a hotfix-shaped PR.
   `pypi`). Existing tags / releases / PyPI versions fail the job instead of
   being skipped. Release notes are the matching `## [X.Y.Z]` section of
   `CHANGELOG.md` (via `scripts/github_release_notes.py`), not the squash
-  commit list (#370). A missing or empty section fails the job.
+  commit list (#370). A missing or empty section fails the job **before
+  the local or remote tag**. The job is a **no-op without a `release:*`
+  label**.
 - External Actions are pinned to full commit SHAs. The PEP 517 frontend
   (`build`) and backend (`hatchling`, `hatch-vcs`) are installed from
   version floors in `.github/requirements-build.txt` (not a hashed lock).
@@ -160,14 +162,22 @@ the overlay in a hotfix-shaped PR.
 
 ### GitHub Actions Workflow (on merge to main)
 
+The job is a **no-op without a `release:*` label**. Unlabeled
+`dev → main` leftover landings do not tag or publish; Sync-Main-to-Dev
+still records the squash (#375, #383).
+
 1. **PR Merge**: When a labeled release PR is merged to `main`
 2. **Label Detection**: Action reads PR labels to determine version bump
-3. **Version Calculation**: New version is calculated based on current version + bump type
-4. **Git Tagging**: New git tag is created with the version
-5. **Release Creation**: GitHub release notes are the matching
-   `## [X.Y.Z]` CHANGELOG section (`scripts/github_release_notes.py`)
-6. **PyPI Publishing**: Package is built and published to PyPI
-7. **History sync**: Sync-Main-to-Dev restores `main` as an ancestor of `dev`
+3. **Version Calculation**: New version from the latest tag + bump type
+4. **Extract notes (fail-closed)**: matching `## [X.Y.Z]` via
+   `scripts/github_release_notes.py`. Missing or empty section fails
+   the job before any tag
+5. **Local annotated tag**: created for hatch-vcs (not pushed yet)
+6. **Build**: sdist/wheel; sdist `Version:` must match the calculated version
+7. **API tag push**: annotated tag object, then the ref
+8. **GitHub Release**: `--notes-file release-notes.md`
+9. **PyPI Publishing**: hashed artifacts from the build job
+10. **History sync**: Sync-Main-to-Dev restores `main` as an ancestor of `dev`
 
 ### Required PR Labels
 
@@ -465,7 +475,8 @@ pip install fmp-data==1.2.2
 - **GitHub Actions**: CI/CD automation
 - **PyPI**: Package distribution
 - **MkDocs**: Documentation generation
-- **Conventional Commits**: Automated changelog generation
+- **CHANGELOG.md**: hand-maintained Keep a Changelog. GitHub Release
+  notes are the matching `## [X.Y.Z]` section, not git-log autogen
 
 ## Troubleshooting
 

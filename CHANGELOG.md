@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [2.7.1] - 2026-08-20
+
+Patch of leftover 2.7.0 CI, docs, and tests that landed unlabeled on
+`main` (#380). The published `fmp_data` library is identical to 2.7.0.
+This cut exists so the next labeled release has a `## [X.Y.Z]` heading
+the notes extractor can fail-close on (#383).
+
 ### Changed
 
 - **GitHub Actions pins.** `github/codeql-action` 4.37.6 → 4.37.7
@@ -26,15 +33,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Every `WITHDRAWN_TOOLS` spec now carries **Withdrawn / not in
   DEFAULT_TOOLS** (with successor or none). Docs-sync fails if a
   withdrawn row omits the mark.
+- **releasing.md merge-to-main list matches notes-before-tag (#386).**
+  Version calc → extract `## [X.Y.Z]` (fail-closed) → local annotated
+  tag → build → API tag push → GitHub Release. The job is a no-op
+  without a `release:*` label. Notes are a hand-maintained Keep a
+  Changelog section, not git-log autogen.
 
 ### Removed
 
 - **Claude Code GitHub Actions (#359).** Dropped `claude-code-review.yml`
   (automatic PR review that cloned `anthropics/claude-code` at HEAD) and
   `claude.yml` (`@claude` mention agent with `contents: write`). Required
-  checks stay in `ci.yml`. Claude Desktop MCP setup is unchanged. Delete
-  the `CLAUDE_CODE_OAUTH_TOKEN` repository secret after this reaches
-  `main`.
+  checks stay in `ci.yml`. Claude Desktop MCP setup is unchanged. The
+  `CLAUDE_CODE_OAUTH_TOKEN` repository secret was deleted after this
+  reached `main` (#384).
 
 ### Fixed
 
@@ -67,6 +79,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   level-2 headings. CLI write failures print `error:` and exit 1.
   Manual release docs generate notes before pushing the tag. Async
   retry test asserts both Tenacity waits are 4s.
+- **Generate-step empty-notes check (#387).** `[ ! -s release-notes.md ]`
+  runs on the generate step, before the local tag, so an empty file
+  cannot orphan a remote tag. A comment cannot satisfy the tripwire.
+- **CLI `error:` contract and uniqueness splitter (#387).** Missing
+  section / missing changelog / unwritable `--out` print `error:` on
+  stderr and do not create `--out`. The uniqueness tripwire splits on
+  version headings (and Unreleased), matching the extractor. Claude
+  absence checks are case-insensitive.
 
 ## [2.7.0] - 2026-08-19
 
