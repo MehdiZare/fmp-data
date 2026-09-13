@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- **Refresh every dependency group to current stable releases (2026-09-13).**
+  Upgrade Pydantic 2.13.4 → 2.13.5; MCP 2.0.0 → 2.2.0; langchain-core
+  1.5.3 → 1.6.3; langchain-openai 1.4.2 → 1.6.2; LangGraph 1.2.10 → 1.2.11;
+  OpenAI 2.53.0 → 3.13.0; tiktoken 0.13.0 → 0.14.0; and tomli 2.0.1 → 2.4.1.
+  OpenAI 3 uses HTTPX2 internally; FMP requests continue through HTTPX 0.28.1.
+  The MCP compatibility loader retains its 1.x fallback while type-checking
+  against the 2.2 stubs. The package still supports Python 3.10–3.14.
+- **Build, development, documentation, and CI tools.** Upgrade Hatchling
+  1.31.0 → 1.32.0, build 1.5.0 → 1.6.1, uv 0.12.3 → 0.12.13, Ruff
+  0.16.2 → 0.16.7 (including the hook), mypy 2.3.0 → 2.3.1, nox
+  2026.7.11 → 2026.8.17, coverage 7.15.4 → 7.16.0, pre-commit 4.6.1 → 4.6.2,
+  python-dotenv 1.2.2 → 1.2.3, responses 0.26.2 → 0.26.3, and
+  mkdocstrings-python 2.0.5 → 2.0.8. Align the security session's Bandit floor
+  with 1.9.4. Dependencies already at the latest stable release are retained;
+  prereleases are excluded and `uv.lock` remains uncommitted.
+- **SHA-pinned GitHub Actions.** setup-uv 10.0.1 → 10.1.0, deploy-pages
+  5.0.0 → 5.0.1, and CodeQL 4.37.7 → 4.38.0; other actions and hooks were
+  checked and remain at their latest stable versions.
+
+
 ## [2.7.1] - 2026-08-20
 
 Patch of leftover 2.7.0 CI, docs, and tests that landed unlabeled on

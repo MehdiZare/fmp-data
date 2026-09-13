@@ -1,6 +1,6 @@
 [build-system]
 requires = [
-    "hatchling>=1.31.0",
+    "hatchling>=1.32.0",
     "hatch-vcs>=0.5.0",
 ]
 build-backend = "hatchling.build"
@@ -47,7 +47,7 @@ classifiers = [
 ]
 dependencies = [
     "httpx>=0.28.1",
-    "pydantic>=2.13.4",
+    "pydantic>=2.13.5",
     "tenacity>=9.1.4",
 ]
 
@@ -64,94 +64,93 @@ fmp-mcp = "fmp_data.mcp.cli:main"
 
 [project.optional-dependencies]
 mcp = [
-    # MCP Python SDK 2.0 is stable; fmp_data.mcp._compat supports 1.x and 2.x.
-    # Floor at 2.0 so fresh installs land on the maintained line (1.x is
-    # security-fixes only).
-    "mcp[cli]>=2.0.0",
+    # MCP Python SDK 2.2 is stable; fmp_data.mcp._compat retains the 1.x
+    # fallback while fresh installs use the maintained 2.x line.
+    "mcp[cli]>=2.2.0",
     "pyyaml>=6.0.3",
     # stdlib tomllib is 3.11+; keep TOML manifests working on 3.10.
-    "tomli>=2.0.1; python_version < '3.11'",
+    "tomli>=2.4.1; python_version < '3.11'",
 ]
 cache-redis = [
     "redis>=8.1.0",
 ]
 langchain = [
     "faiss-cpu>=1.15.0",
-    "langchain-core>=1.5.3",
+    "langchain-core>=1.6.3",
     "langchain-community>=0.4.2",
-    "langchain-openai>=1.4.2",
-    "langgraph>=1.2.10",
-    "openai>=2.53.0",
-    "tiktoken>=0.13.0",
+    "langchain-openai>=1.6.2",
+    "langgraph>=1.2.11",
+    "openai>=3.13.0",
+    "tiktoken>=0.14.0",
 ]
 dev = [
-    "ruff>=0.16.2",
-    "mypy>=2.3.0",
+    "ruff>=0.16.7",
+    "mypy>=2.3.1",
     "bandit[toml]>=1.9.4",
     "pip-audit>=2.10.1",
-    "python-dotenv>=1.2.2",
+    "python-dotenv>=1.2.3",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
     "pytest-mock>=3.15.1",
     "pytest-xdist>=3.8.0",
     "freezegun>=1.5.5",
-    "responses>=0.26.2",
+    "responses>=0.26.3",
     "vcrpy>=8.3.0",
-    "coverage>=7.15.4",
-    "pre-commit>=4.6.1",
+    "coverage>=7.16.0",
+    "pre-commit>=4.6.2",
     "rich>=15.0.0",
     "twine>=7.0.0",
-    "nox>=2026.7.11",
+    "nox>=2026.8.17",
 ]
 docs = [
     "mkdocs>=1.6.1",
     "mkdocs-material>=9.7.7",
-    "mkdocstrings-python>=2.0.5",
+    "mkdocstrings-python>=2.0.8",
 ]
 
 [dependency-groups]
 dev = [
-    "ruff>=0.16.2",
-    "mypy>=2.3.0",
+    "ruff>=0.16.7",
+    "mypy>=2.3.1",
     "bandit[toml]>=1.9.4",
     "pip-audit>=2.10.1",
-    "python-dotenv>=1.2.2",
+    "python-dotenv>=1.2.3",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
     "pytest-mock>=3.15.1",
     "pytest-xdist>=3.8.0",
     "freezegun>=1.5.5",
-    "responses>=0.26.2",
+    "responses>=0.26.3",
     "vcrpy>=8.3.0",
-    "coverage>=7.15.4",
-    "pre-commit>=4.6.1",
+    "coverage>=7.16.0",
+    "pre-commit>=4.6.2",
     "rich>=15.0.0",
     "twine>=7.0.0",
-    "nox>=2026.7.11",
+    "nox>=2026.8.17",
 ]
 docs = [
     "mkdocs>=1.6.1",
     "mkdocs-material>=9.7.7",
-    "mkdocstrings-python>=2.0.5",
+    "mkdocstrings-python>=2.0.8",
 ]
 langchain = [
     "faiss-cpu>=1.15.0",
-    "langchain-core>=1.5.3",
+    "langchain-core>=1.6.3",
     "langchain-community>=0.4.2",
-    "langchain-openai>=1.4.2",
-    "langgraph>=1.2.10",
-    "openai>=2.53.0",
-    "tiktoken>=0.13.0",
+    "langchain-openai>=1.6.2",
+    "langgraph>=1.2.11",
+    "openai>=3.13.0",
+    "tiktoken>=0.14.0",
 ]
 mcp = [
-    "mcp[cli]>=2.0.0",
+    "mcp[cli]>=2.2.0",
     "pyyaml>=6.0.3",
 ]
 
 [tool.uv]
-required-version = ">=0.12.3"
+required-version = ">=0.12.13"
 
 [tool.hatch.version]
 source = "vcs"

@@ -82,7 +82,7 @@ def _sync_with_uv(session: Session, extras: Iterable[str] = ()) -> None:
         return
 
     # Install uv in the session if not available
-    session.install("uv")
+    session.install("uv>=0.12.13")
 
     # Install the base package first
     session.run("uv", "pip", "install", "-e", ".")
@@ -354,7 +354,7 @@ def security(session: Session) -> None:
       session time (no committed hashed lock), so a floor bump is enough
       to pick up newer deps (#252 FMP-SEC-008).
     """
-    session.install("uv", "pip-audit>=2.10.1", "bandit[toml]>=1.8.0")
+    session.install("uv>=0.12.13", "pip-audit>=2.10.1", "bandit[toml]>=1.9.4")
     session.run("bandit", "-c", "pyproject.toml", "-r", PACKAGE_NAME)
     export = Path(session.create_tmp()) / "requirements-audit.txt"
     session.run(
