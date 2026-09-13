@@ -368,7 +368,24 @@ SEC_ENDPOINTS_SEMANTICS = {
             "industry taxonomy",
         ],
         category=SemanticCategory.COMPANY_INFO,
-        parameter_hints={},
+        parameter_hints={
+            "industry_title": ParameterHint(
+                natural_names=["industry title"],
+                extraction_patterns=[],
+                examples=["SERVICES"],
+                context_clues=["Filter SIC classifications by industry title."],
+                required=False,
+            ),
+            "sic_code": ParameterHint(
+                natural_names=["sic code"],
+                extraction_patterns=[],
+                examples=["7371"],
+                context_clues=[
+                    ("Filter by SIC code; kept as a string to preserve leading zeros.")
+                ],
+                required=False,
+            ),
+        },
         response_hints={},
         use_cases=["Financial analysis", "Investment research"],
     ),

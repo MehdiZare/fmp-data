@@ -80,6 +80,14 @@ EARNINGS_CALENDAR: Endpoint[EarningEvent] = Endpoint(
             ),
             alias="includeReportTimes",
         ),
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description=(
+                "Zero-based page number; pagination is controlled by the caller."
+            ),
+        ),
     ],
     response_model=EarningEvent,
 )
@@ -189,6 +197,14 @@ DIVIDENDS_CALENDAR: Endpoint[DividendEvent] = Endpoint(
             description="End date",
             alias="to",
         ),
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description=(
+                "Zero-based page number; pagination is controlled by the caller."
+            ),
+        ),
     ],
     response_model=DividendEvent,
 )
@@ -215,6 +231,14 @@ STOCK_SPLITS_CALENDAR: Endpoint[StockSplitEvent] = Endpoint(
             param_type=ParamType.DATE,
             description="End date",
             alias="to",
+        ),
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description=(
+                "Zero-based page number; pagination is controlled by the caller."
+            ),
         ),
     ],
     response_model=StockSplitEvent,
@@ -782,7 +806,14 @@ ESG_BENCHMARK: Endpoint[ESGBenchmark] = Endpoint(
     version=APIVersion.STABLE,
     description="Get ESG benchmark data",
     mandatory_params=[],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="year",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Benchmark reporting year.",
+        ),
+    ],
     response_model=ESGBenchmark,
 )
 
@@ -825,7 +856,22 @@ SENATE_TRADING: Endpoint[SenateTrade] = Endpoint(
             description="Stock symbol",
         )
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description=(
+                "Zero-based page number; pagination is controlled by the caller."
+            ),
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Maximum number of results requested from FMP.",
+        ),
+    ],
     response_model=SenateTrade,
 )
 
@@ -939,7 +985,22 @@ HOUSE_DISCLOSURE: Endpoint[HouseDisclosure] = Endpoint(
             description="Stock symbol",
         )
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description=(
+                "Zero-based page number; pagination is controlled by the caller."
+            ),
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Maximum number of results requested from FMP.",
+        ),
+    ],
     response_model=HouseDisclosure,
 )
 

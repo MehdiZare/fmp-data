@@ -380,7 +380,24 @@ SIC_LIST: Endpoint[SICCode] = Endpoint(
     method=HTTPMethod.GET,
     description="Get list of all Standard Industrial Classification (SIC) codes",
     mandatory_params=[],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="industry_title",
+            alias="industryTitle",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="Filter SIC classifications by industry title.",
+        ),
+        EndpointParam(
+            name="sic_code",
+            alias="sicCode",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description=(
+                "Filter by SIC code; kept as a string to preserve leading zeros."
+            ),
+        ),
+    ],
     response_model=SICCode,
     example_queries=[
         "Get all SIC codes",

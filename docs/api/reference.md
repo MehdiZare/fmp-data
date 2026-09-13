@@ -28,6 +28,11 @@ batch bulk accept only `PeriodFiscal`. Some company series take only
 `structure=` takes `Structure` (`flat` / `nested`); live `/stable`
 returns the same list-of-objects for both.
 
+## Optional request filters
+
+See [optional request parameters](optional-parameters.md) for the new filters,
+backward-compatible defaults, custom DCF assumptions, and provider limitations.
+
 ## Main Clients
 
 ### Sync Client

@@ -513,3 +513,45 @@ FROM_TO_DATE_HINTS = {
     "from": DATE_HINTS["start_date"],
     "to": DATE_HINTS["end_date"],
 }
+
+
+# Optional controls shared by the audited client methods (Refs #396).
+TIMESTAMP_HINT = ParameterHint(
+    natural_names=["timestamp", "Unix timestamp", "market open at"],
+    extraction_patterns=[],
+    examples=["1789138800"],
+    context_clues=["at", "market hours", "Unix seconds"],
+    required=False,
+)
+
+DCF_PARAMETER_HINTS = {
+    name: ParameterHint(
+        natural_names=[label],
+        extraction_patterns=[],
+        examples=["0", "5.5"],
+        context_clues=["DCF", "valuation assumption", label],
+        required=False,
+    )
+    for name, label in {
+        "revenue_growth_pct": "revenue growth pct",
+        "ebitda_pct": "ebitda pct",
+        "depreciation_and_amortization_pct": "depreciation and amortization pct",
+        "cash_and_short_term_investments_pct": "cash and short term investments pct",
+        "receivables_pct": "receivables pct",
+        "inventories_pct": "inventories pct",
+        "payable_pct": "payable pct",
+        "ebit_pct": "ebit pct",
+        "capital_expenditure_pct": "capital expenditure pct",
+        "operating_cash_flow_pct": "operating cash flow pct",
+        "selling_general_and_administrative_expenses_pct": (
+            "selling general and administrative expenses pct"
+        ),
+        "tax_rate": "tax rate",
+        "long_term_growth_rate": "long term growth rate",
+        "cost_of_debt": "cost of debt",
+        "cost_of_equity": "cost of equity",
+        "market_risk_premium": "market risk premium",
+        "beta": "beta",
+        "risk_free_rate": "risk free rate",
+    }.items()
+}

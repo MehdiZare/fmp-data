@@ -344,7 +344,7 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INSTITUTIONAL,
         sub_category="Insider Activity",
-        parameter_hints={},  # No parameters needed
+        parameter_hints={},
         response_hints={
             "code": ResponseFieldInfo(
                 description="Transaction type code",
@@ -512,7 +512,10 @@ INSTITUTIONAL_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INSTITUTIONAL,
         sub_category="Ownership Analysis",
-        parameter_hints={"symbol": SYMBOL_HINT},
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "limit": LIMIT_HINT,
+        },
         response_hints={
             "amount_beneficially_owned": ResponseFieldInfo(
                 description="Number of shares beneficially owned",

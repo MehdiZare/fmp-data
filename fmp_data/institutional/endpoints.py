@@ -295,7 +295,14 @@ BENEFICIAL_OWNERSHIP: Endpoint[BeneficialOwnership] = Endpoint(
             description="Stock symbol",
         )
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Maximum number of results requested from FMP.",
+        ),
+    ],
     response_model=BeneficialOwnership,
 )
 

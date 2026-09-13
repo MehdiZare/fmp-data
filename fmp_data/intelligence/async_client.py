@@ -138,6 +138,8 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         start_date: date | None = None,
         end_date: date | None = None,
         include_report_times: bool | None = None,
+        *,
+        page: int | None = None,
     ) -> list[EarningEvent]:
         """Get earnings calendar
 
@@ -151,12 +153,24 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
 
         Returns:
             list[EarningEvent]: Earnings events in the requested window
+
+        Additional keyword arguments (None preserves the existing request):
+            page: Zero-based page number; pagination is controlled by the caller.
         """
+        optional_params = {
+            "page": page,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         params: dict[str, Any] = self._build_date_params(start_date, end_date)
         if include_report_times is not None:
             params["include_report_times"] = include_report_times
         return self._unwrap_list(
-            await self.client.request_async(EARNINGS_CALENDAR, **params), EarningEvent
+            await self.client.request_async(
+                EARNINGS_CALENDAR, **params, **optional_params
+            ),
+            EarningEvent,
         )
 
     async def get_historical_earnings(
@@ -226,21 +240,54 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         return []
 
     async def get_dividends_calendar(
-        self, start_date: date | None = None, end_date: date | None = None
+        self,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        *,
+        page: int | None = None,
     ) -> list[DividendEvent]:
-        """Get dividends calendar"""
+        """Get dividends calendar
+
+        Additional keyword arguments (None preserves the existing request):
+            page: Zero-based page number; pagination is controlled by the caller.
+        """
+        optional_params = {
+            "page": page,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         params = self._build_date_params(start_date, end_date)
         return self._unwrap_list(
-            await self.client.request_async(DIVIDENDS_CALENDAR, **params), DividendEvent
+            await self.client.request_async(
+                DIVIDENDS_CALENDAR, **params, **optional_params
+            ),
+            DividendEvent,
         )
 
     async def get_stock_splits_calendar(
-        self, start_date: date | None = None, end_date: date | None = None
+        self,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        *,
+        page: int | None = None,
     ) -> list[StockSplitEvent]:
-        """Get stock splits calendar"""
+        """Get stock splits calendar
+
+        Additional keyword arguments (None preserves the existing request):
+            page: Zero-based page number; pagination is controlled by the caller.
+        """
+        optional_params = {
+            "page": page,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         params = self._build_date_params(start_date, end_date)
         return self._unwrap_list(
-            await self.client.request_async(STOCK_SPLITS_CALENDAR, **params),
+            await self.client.request_async(
+                STOCK_SPLITS_CALENDAR, **params, **optional_params
+            ),
             StockSplitEvent,
         )
 
@@ -547,10 +594,25 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         result = await self.client.request_async(ESG_RATINGS, symbol=symbol)
         return self._unwrap_single(result, ESGRating, allow_none=True)
 
-    async def get_esg_benchmark(self) -> list[ESGBenchmark]:
-        """Get ESG benchmark data"""
+    async def get_esg_benchmark(
+        self,
+        *,
+        year: int | None = None,
+    ) -> list[ESGBenchmark]:
+        """Get ESG benchmark data
+
+        Additional keyword arguments (None preserves the existing request):
+            year: Benchmark reporting year.
+        """
+        optional_params = {
+            "year": year,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            await self.client.request_async(ESG_BENCHMARK), ESGBenchmark
+            await self.client.request_async(ESG_BENCHMARK, **optional_params),
+            ESGBenchmark,
         )
 
     # Government trading methods
@@ -563,10 +625,31 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             SenateTrade,
         )
 
-    async def get_senate_trading(self, symbol: str) -> list[SenateTrade]:
-        """Get Senate trading data"""
+    async def get_senate_trading(
+        self,
+        symbol: str,
+        *,
+        page: int | None = None,
+        limit: int | None = None,
+    ) -> list[SenateTrade]:
+        """Get Senate trading data
+
+        Additional keyword arguments (None preserves the existing request):
+            page: Zero-based page number; pagination is controlled by the caller.
+            limit: Maximum number of results requested from FMP.
+        """
+        optional_params = {
+            "page": page,
+            "limit": limit,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            await self.client.request_async(SENATE_TRADING, symbol=symbol), SenateTrade
+            await self.client.request_async(
+                SENATE_TRADING, symbol=symbol, **optional_params
+            ),
+            SenateTrade,
         )
 
     async def get_senate_trades_by_name(self, name: str) -> list[SenateTrade]:
@@ -613,10 +696,30 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             HouseDisclosure,
         )
 
-    async def get_house_disclosure(self, symbol: str) -> list[HouseDisclosure]:
-        """Get House disclosure data"""
+    async def get_house_disclosure(
+        self,
+        symbol: str,
+        *,
+        page: int | None = None,
+        limit: int | None = None,
+    ) -> list[HouseDisclosure]:
+        """Get House disclosure data
+
+        Additional keyword arguments (None preserves the existing request):
+            page: Zero-based page number; pagination is controlled by the caller.
+            limit: Maximum number of results requested from FMP.
+        """
+        optional_params = {
+            "page": page,
+            "limit": limit,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            await self.client.request_async(HOUSE_DISCLOSURE, symbol=symbol),
+            await self.client.request_async(
+                HOUSE_DISCLOSURE, symbol=symbol, **optional_params
+            ),
             HouseDisclosure,
         )
 

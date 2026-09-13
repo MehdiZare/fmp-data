@@ -213,12 +213,12 @@ class TestCompanySearch:
             status_code=200, json_data=[search_result_data]
         )
 
-        results = fmp_client.market.search_exchange_variants("Apple")
+        results = fmp_client.market.search_exchange_variants("MSFT")
         assert len(results) == 1
         assert isinstance(results[0], CompanySearchResult)
 
         params = mock_request.call_args[1]["params"]
-        assert params["query"] == "Apple"
+        assert params["symbol"] == "MSFT"
 
     @patch("httpx.Client.request")
     def test_search_by_cik(self, mock_request, fmp_client, mock_response):

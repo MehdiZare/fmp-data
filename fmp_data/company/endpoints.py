@@ -320,6 +320,12 @@ INTRADAY_PRICE: Endpoint[IntradayPrice] = Endpoint(
             param_type=ParamType.BOOLEAN,
             description="Use non-adjusted data",
         ),
+        EndpointParam(
+            name="extended",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            description="Include pre-market and after-hours prices.",
+        ),
     ],
     response_model=IntradayPrice,
 )
@@ -653,7 +659,23 @@ SYMBOL_CHANGES: Endpoint[SymbolChange] = Endpoint(
         "historical data and understanding corporate actions."
     ),
     mandatory_params=[],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="invalid",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description=(
+                "FMP invalid-symbol-change filter, supplied as a string (for "
+                "example false)."
+            ),
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Maximum number of results requested from FMP.",
+        ),
+    ],
     response_model=SymbolChange,
     example_queries=[
         "Show recent stock symbol changes",
@@ -722,7 +744,32 @@ HISTORICAL_MARKET_CAP: Endpoint[MarketCapitalization] = Endpoint(
             description="Stock symbol (ticker)",
         )
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="from_date",
+            alias="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            description=(
+                "Start date passed to FMP; boundary semantics depend on the endpoint."
+            ),
+        ),
+        EndpointParam(
+            name="to_date",
+            alias="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            description=(
+                "End date passed to FMP; boundary semantics depend on the endpoint."
+            ),
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Maximum number of results requested from FMP.",
+        ),
+    ],
     response_model=MarketCapitalization,
 )
 PRICE_TARGET: Endpoint[PriceTarget] = Endpoint(
@@ -1279,6 +1326,13 @@ COMPANY_EARNINGS: Endpoint[EarningEvent] = Endpoint(
             param_type=ParamType.INTEGER,
             description="Number of earnings reports to return",
             default=20,
+        ),
+        EndpointParam(
+            name="include_report_times",
+            alias="includeReportTimes",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            description="Include earnings report times when available.",
         ),
     ],
     response_model=EarningEvent,

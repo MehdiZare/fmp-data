@@ -95,7 +95,10 @@ class AsyncMarketClient(AsyncEndpointGroup):
         )
 
     async def search_exchange_variants(self, query: str) -> list[CompanySearchResult]:
-        """Search for exchange trading variants of a company"""
+        """Search exchange variants by ticker (for example ``query="MSFT"``).
+
+        The public ``query`` argument is sent as FMP's ``symbol`` parameter.
+        """
         return self._unwrap_list(
             await self.client.request_async(SEARCH_EXCHANGE_VARIANTS, query=query),
             CompanySearchResult,
@@ -156,7 +159,12 @@ class AsyncMarketClient(AsyncEndpointGroup):
             await self.client.request_async(AVAILABLE_INDEXES), AvailableIndex
         )
 
-    async def search_by_cik(self, query: str) -> list[CIKResult]:
+    async def search_by_cik(
+        self,
+        query: str,
+        *,
+        limit: int | None = None,
+    ) -> list[CIKResult]:
         """Search companies by CIK number.
 
         Args:
@@ -169,9 +177,19 @@ class AsyncMarketClient(AsyncEndpointGroup):
 
         Returns:
             List of matching CIK records.
+
+        Additional keyword arguments (None preserves the existing request):
+            limit: Maximum number of results requested from FMP.
         """
+        optional_params = {
+            "limit": limit,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            await self.client.request_async(CIK_SEARCH, query=query), CIKResult
+            await self.client.request_async(CIK_SEARCH, query=query, **optional_params),
+            CIKResult,
         )
 
     async def get_cik_list(
@@ -217,12 +235,26 @@ class AsyncMarketClient(AsyncEndpointGroup):
         limit: int | None = None,
         page: int | None = None,
         include_all_share_classes: bool | None = None,
+        *,
+        avg_volume_more_than: int | None = None,
+        avg_volume_less_than: int | None = None,
     ) -> list[CompanySearchResult]:
         """Screen companies based on various criteria.
 
         ``page`` is omitted from the request when unset so existing callers
         keep the same wire shape. Pass ``0`` or a later page to paginate.
+
+        Additional keyword arguments (None preserves the existing request):
+            avg_volume_more_than: Minimum average trading volume filter.
+            avg_volume_less_than: Maximum average trading volume filter.
         """
+        optional_params = {
+            "avg_volume_more_than": avg_volume_more_than,
+            "avg_volume_less_than": avg_volume_less_than,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         params = {
             "market_cap_more_than": market_cap_more_than,
             "market_cap_less_than": market_cap_less_than,
@@ -247,11 +279,18 @@ class AsyncMarketClient(AsyncEndpointGroup):
         }
         params = {key: value for key, value in params.items() if value is not None}
         return self._unwrap_list(
-            await self.client.request_async(COMPANY_SCREENER, **params),
+            await self.client.request_async(
+                COMPANY_SCREENER, **params, **optional_params
+            ),
             CompanySearchResult,
         )
 
-    async def get_market_hours(self, exchange: str = "NYSE") -> MarketHours:
+    async def get_market_hours(
+        self,
+        exchange: str = "NYSE",
+        *,
+        timestamp: int | None = None,
+    ) -> MarketHours:
         """Get market trading hours information for a specific exchange
 
         Args:
@@ -262,23 +301,69 @@ class AsyncMarketClient(AsyncEndpointGroup):
 
         Raises:
             ValueError: If the API returns an empty list
+
+        Additional keyword arguments (None preserves the existing request):
+            timestamp: Unix timestamp in seconds at which to evaluate market hours.
         """
-        result = await self.client.request_async(MARKET_HOURS, exchange=exchange)
+        optional_params = {
+            "timestamp": timestamp,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
+        result = await self.client.request_async(
+            MARKET_HOURS, exchange=exchange, **optional_params
+        )
         return self._unwrap_single(result, MarketHours)
 
-    async def get_all_exchange_market_hours(self) -> list[MarketHours]:
-        """Get market trading hours information for all exchanges"""
+    async def get_all_exchange_market_hours(
+        self,
+        *,
+        timestamp: int | None = None,
+    ) -> list[MarketHours]:
+        """Get market trading hours information for all exchanges
+
+        Additional keyword arguments (None preserves the existing request):
+            timestamp: Unix timestamp in seconds at which to evaluate market hours.
+        """
+        optional_params = {
+            "timestamp": timestamp,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            await self.client.request_async(ALL_EXCHANGE_MARKET_HOURS),
+            await self.client.request_async(
+                ALL_EXCHANGE_MARKET_HOURS, **optional_params
+            ),
             MarketHours,
         )
 
     async def get_holidays_by_exchange(
-        self, exchange: str = "NYSE"
+        self,
+        exchange: str = "NYSE",
+        *,
+        from_date: dt_date | None = None,
+        to_date: dt_date | None = None,
     ) -> list[MarketHoliday]:
-        """Get market holidays for a specific exchange"""
+        """Get market holidays for a specific exchange
+
+        Additional keyword arguments (None preserves the existing request):
+            from_date: Start date passed to FMP; boundary semantics depend on the
+                endpoint.
+            to_date: End date passed to FMP; boundary semantics depend on the endpoint.
+        """
+        optional_params = {
+            "from_date": from_date,
+            "to_date": to_date,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            await self.client.request_async(HOLIDAYS_BY_EXCHANGE, exchange=exchange),
+            await self.client.request_async(
+                HOLIDAYS_BY_EXCHANGE, exchange=exchange, **optional_params
+            ),
             MarketHoliday,
         )
 
@@ -474,16 +559,49 @@ class AsyncMarketClient(AsyncEndpointGroup):
         """
         return []
 
-    async def get_all_shares_float(self) -> list[ShareFloat]:
-        """Get share float data for all companies"""
+    async def get_all_shares_float(
+        self,
+        *,
+        page: int | None = None,
+        limit: int | None = None,
+    ) -> list[ShareFloat]:
+        """Get share float data for all companies
+
+        Additional keyword arguments (None preserves the existing request):
+            page: Zero-based page number; pagination is controlled by the caller.
+            limit: Maximum number of results requested from FMP.
+        """
+        optional_params = {
+            "page": page,
+            "limit": limit,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            await self.client.request_async(ALL_SHARES_FLOAT), ShareFloat
+            await self.client.request_async(ALL_SHARES_FLOAT, **optional_params),
+            ShareFloat,
         )
 
-    async def get_available_exchanges(self) -> list[ExchangeSymbol]:
-        """Get a complete list of supported stock exchanges"""
+    async def get_available_exchanges(
+        self,
+        *,
+        extended: bool | None = None,
+    ) -> list[ExchangeSymbol]:
+        """Get a complete list of supported stock exchanges
+
+        Additional keyword arguments (None preserves the existing request):
+            extended: Include extended exchange listings.
+        """
+        optional_params = {
+            "extended": extended,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            await self.client.request_async(AVAILABLE_EXCHANGES), ExchangeSymbol
+            await self.client.request_async(AVAILABLE_EXCHANGES, **optional_params),
+            ExchangeSymbol,
         )
 
     async def get_available_sectors(self) -> list[str]:

@@ -1,5 +1,4 @@
 # fmp_data/market/mapping.py
-
 from typing import Any
 
 from fmp_data.lc.hints import (
@@ -8,7 +7,9 @@ from fmp_data.lc.hints import (
     FROM_TO_DATE_HINTS,
     INDUSTRY_HINT,
     LIMIT_HINT,
+    PAGE_HINT,
     SECTOR_HINT,
+    TIMESTAMP_HINT,
 )
 from fmp_data.lc.models import EndpointSemantics, ResponseFieldInfo, SemanticCategory
 from fmp_data.market.endpoints import (
@@ -378,7 +379,10 @@ MARKET_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.MARKET_DATA,
         sub_category="Float",
-        parameter_hints={},  # No parameters needed
+        parameter_hints={
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
         response_hints={
             "symbol": ResponseFieldInfo(
                 description="Company stock symbol",
@@ -430,7 +434,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.MARKET_DATA,
         sub_category="Lists",
-        parameter_hints={},  # No parameters needed
+        parameter_hints={},
         response_hints={
             "symbol": ResponseFieldInfo(
                 description="ETF trading symbol",
@@ -474,7 +478,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.MARKET_DATA,
         sub_category="Lists",
-        parameter_hints={},  # No parameters needed
+        parameter_hints={},
         response_hints={
             "symbol": ResponseFieldInfo(
                 description="Index symbol",
@@ -516,7 +520,10 @@ MARKET_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.MARKET_DATA,
         sub_category="Market Status",
-        parameter_hints={"exchange": EXCHANGE_HINT},
+        parameter_hints={
+            "exchange": EXCHANGE_HINT,
+            "timestamp": TIMESTAMP_HINT,
+        },
         response_hints={
             "exchange": ResponseFieldInfo(
                 description="Exchange code",
@@ -574,7 +581,9 @@ MARKET_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.MARKET_DATA,
         sub_category="Market Status",
-        parameter_hints={},  # No parameters required
+        parameter_hints={
+            "timestamp": TIMESTAMP_HINT,
+        },
         response_hints={
             "exchange": ResponseFieldInfo(
                 description="Exchange code",
@@ -623,7 +632,11 @@ MARKET_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.MARKET_DATA,
         sub_category="Market Calendar",
-        parameter_hints={"exchange": EXCHANGE_HINT},
+        parameter_hints={
+            "exchange": EXCHANGE_HINT,
+            "from_date": DATE_HINTS["start_date"],
+            "to_date": DATE_HINTS["end_date"],
+        },
         response_hints={
             "date": ResponseFieldInfo(
                 description="Holiday date",
@@ -670,7 +683,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.MARKET_DATA,
         sub_category="Market Movers",
-        parameter_hints={},  # No parameters needed
+        parameter_hints={},
         response_hints={
             "symbol": ResponseFieldInfo(
                 description="Stock symbol",
@@ -715,7 +728,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.MARKET_DATA,
         sub_category="Market Movers",
-        parameter_hints={},  # No parameters needed
+        parameter_hints={},
         response_hints={
             "symbol": ResponseFieldInfo(
                 description="Stock symbol",
@@ -760,7 +773,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.MARKET_DATA,
         sub_category="Market Activity",
-        parameter_hints={},  # No parameters needed
+        parameter_hints={},
         response_hints={
             "symbol": ResponseFieldInfo(
                 description="Stock symbol",
@@ -1123,7 +1136,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.MARKET_DATA,
         sub_category="Extended Hours Trading",
-        parameter_hints={},  # No parameters needed
+        parameter_hints={},
         response_hints={
             "symbol": ResponseFieldInfo(
                 description="Stock symbol",
@@ -1184,7 +1197,7 @@ MARKET_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.MARKET_DATA,
         sub_category="Lists",
-        parameter_hints={},  # No parameters needed
+        parameter_hints={},
         response_hints={
             "symbol": ResponseFieldInfo(
                 description="Stock trading symbol",

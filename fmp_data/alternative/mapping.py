@@ -109,7 +109,7 @@ ALTERNATIVE_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.ALTERNATIVE_DATA,
         sub_category="Cryptocurrency",
-        parameter_hints={},  # No parameters needed
+        parameter_hints={},
         response_hints={
             "symbol": ResponseFieldInfo(
                 description="Trading symbol for the cryptocurrency pair",
@@ -203,7 +203,7 @@ ALTERNATIVE_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.ALTERNATIVE_DATA,
         sub_category="Cryptocurrency",
-        parameter_hints={},  # No parameters needed
+        parameter_hints={},
         response_hints={
             "price": ResponseFieldInfo(
                 description="Current trading price",
@@ -281,6 +281,8 @@ ALTERNATIVE_ENDPOINTS_SEMANTICS = {
         parameter_hints={
             "symbol": SYMBOL_HINTS["crypto"],
             "interval": INTERVAL_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
         },
         response_hints={
             "datetime": ResponseFieldInfo(
@@ -503,6 +505,8 @@ ALTERNATIVE_ENDPOINTS_SEMANTICS = {
         parameter_hints={
             "symbol": SYMBOL_HINTS["forex"],
             "interval": INTERVAL_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
         },
         response_hints={
             "datetime": ResponseFieldInfo(
@@ -707,6 +711,8 @@ ALTERNATIVE_ENDPOINTS_SEMANTICS = {
         parameter_hints={
             "symbol": SYMBOL_HINTS["commodity"],
             "interval": INTERVAL_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
         },
         response_hints={
             "datetime": ResponseFieldInfo(

@@ -1,5 +1,4 @@
 # fmp_data/fundamental/mapping.py
-
 from typing import Any
 
 from fmp_data.fundamental.endpoints import (
@@ -19,6 +18,7 @@ from fmp_data.fundamental.endpoints import (
     OWNER_EARNINGS,
 )
 from fmp_data.lc.hints import (
+    DCF_PARAMETER_HINTS,
     LIMIT_HINT,
     PAGE_HINT,
     PERIOD_WITH_FISCAL_HINT,
@@ -882,7 +882,10 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.FUNDAMENTAL_ANALYSIS,
         sub_category="Valuation",
-        parameter_hints={"symbol": SYMBOL_HINT},
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            **DCF_PARAMETER_HINTS,
+        },
         response_hints={
             "fcf0": ResponseFieldInfo(
                 description="Current year free cash flow",
@@ -947,7 +950,10 @@ FUNDAMENTAL_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.FUNDAMENTAL_ANALYSIS,
         sub_category="Valuation",
-        parameter_hints={"symbol": SYMBOL_HINT},
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            **DCF_PARAMETER_HINTS,
+        },
         response_hints={
             "fcfe0": ResponseFieldInfo(
                 description="Current year free cash flow to equity",

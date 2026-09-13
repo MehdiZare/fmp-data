@@ -1,5 +1,4 @@
 # fmp_data/intelligence/mapping.py
-
 from typing import Any
 
 from fmp_data.intelligence.endpoints import (
@@ -62,6 +61,7 @@ from fmp_data.lc.hints import (
     PAGE_HINT,
     SENATE_ID_HINT,
     SYMBOL_HINT,
+    YEAR_HINT,
 )
 from fmp_data.lc.models import (
     EndpointSemantics,
@@ -275,6 +275,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "start_date": DATE_HINTS["start_date"],
             "end_date": DATE_HINTS["end_date"],
             "include_report_times": INCLUDE_REPORT_TIMES_HINT,
+            "page": PAGE_HINT,
         },
         response_hints={
             "date": ResponseFieldInfo(
@@ -841,7 +842,11 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INTELLIGENCE,
         sub_category="Government Trading",
-        parameter_hints={"symbol": SYMBOL_HINT},
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
         response_hints={
             "first_name": ResponseFieldInfo(
                 description="Representative first name",
@@ -1488,6 +1493,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         parameter_hints={
             "start_date": DATE_HINTS["start_date"],
             "end_date": DATE_HINTS["end_date"],
+            "page": PAGE_HINT,
         },
         response_hints={
             "date": ResponseFieldInfo(
@@ -1535,6 +1541,7 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         parameter_hints={
             "start_date": DATE_HINTS["start_date"],
             "end_date": DATE_HINTS["end_date"],
+            "page": PAGE_HINT,
         },
         response_hints={
             "date": ResponseFieldInfo(
@@ -1666,7 +1673,9 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INTELLIGENCE,
         sub_category="ESG",
-        parameter_hints={},
+        parameter_hints={
+            "year": YEAR_HINT,
+        },
         response_hints={
             "sector": ResponseFieldInfo(
                 description="Industry sector name",
@@ -1708,7 +1717,11 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.INTELLIGENCE,
         sub_category="Government Trading",
-        parameter_hints={"symbol": SYMBOL_HINT},
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "page": PAGE_HINT,
+            "limit": LIMIT_HINT,
+        },
         response_hints={
             "transaction_date": ResponseFieldInfo(
                 description="Date of the trade",

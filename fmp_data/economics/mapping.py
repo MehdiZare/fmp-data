@@ -350,6 +350,8 @@ ECONOMICS_ENDPOINTS_SEMANTICS = {
                     "data",
                 ],
             ),
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
         },
         response_hints={
             "indicator_date": ResponseFieldInfo(
@@ -448,6 +450,18 @@ ECONOMICS_ENDPOINTS_SEMANTICS = {
                     "up to",
                     "no later than",
                 ],
+            ),
+            "country": ParameterHint(
+                natural_names=["country"],
+                extraction_patterns=[],
+                examples=["US"],
+                context_clues=[
+                    (
+                        "Country filter using the provider country code "
+                        "(for example US or UK)."
+                    )
+                ],
+                required=False,
             ),
         },
         response_hints={
@@ -582,7 +596,7 @@ ECONOMICS_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.ECONOMIC,
         sub_category="Risk Metrics",
-        parameter_hints={},  # No parameters needed
+        parameter_hints={},
         response_hints={
             "country": ResponseFieldInfo(
                 description="Country name for risk premium data",

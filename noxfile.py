@@ -118,6 +118,20 @@ def _mcp_unit_tests() -> list[str]:
 # --------------------------------------------------------------------------- #
 
 
+@nox.session(python=False)
+def ci_check(session: Session) -> None:
+    """Run the existing gates used by ``make ci`` and ``make check-all``."""
+    for gate in (
+        "lint",
+        "typecheck",
+        "security",
+        "coverage_local",
+        "coverage_extras",
+        "smoke",
+    ):
+        session.notify(gate)
+
+
 @nox.session(python=PY_VERSIONS, tags=["tests"])
 @nox.parametrize("feature_group", FEATURE_GROUPS, ids=FEATURE_IDS)
 def tests(session: Session, feature_group: str | None) -> None:

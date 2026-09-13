@@ -105,12 +105,30 @@ class AsyncAlternativeMarketsClient(AsyncEndpointGroup):
         )
 
     async def get_crypto_intraday(
-        self, symbol: str, interval: Interval = "5min"
+        self,
+        symbol: str,
+        interval: Interval = "5min",
+        *,
+        start_date: date | None = None,
+        end_date: date | None = None,
     ) -> list[CryptoIntradayPrice]:
-        """Get cryptocurrency intraday prices"""
+        """Get cryptocurrency intraday prices
+
+        Additional keyword arguments (None preserves the existing request):
+            start_date: Start date passed to FMP; boundary semantics depend on the
+                endpoint.
+            end_date: End date passed to FMP; boundary semantics depend on the endpoint.
+        """
+        optional_params = {
+            "start_date": start_date,
+            "end_date": end_date,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
             await self.client.request_async(
-                CRYPTO_INTRADAY, symbol=symbol, interval=interval
+                CRYPTO_INTRADAY, symbol=symbol, interval=interval, **optional_params
             ),
             CryptoIntradayPrice,
         )
@@ -162,12 +180,30 @@ class AsyncAlternativeMarketsClient(AsyncEndpointGroup):
         )
 
     async def get_forex_intraday(
-        self, symbol: str, interval: Interval = "5min"
+        self,
+        symbol: str,
+        interval: Interval = "5min",
+        *,
+        start_date: date | None = None,
+        end_date: date | None = None,
     ) -> list[ForexIntradayPrice]:
-        """Get forex intraday prices"""
+        """Get forex intraday prices
+
+        Additional keyword arguments (None preserves the existing request):
+            start_date: Start date passed to FMP; boundary semantics depend on the
+                endpoint.
+            end_date: End date passed to FMP; boundary semantics depend on the endpoint.
+        """
+        optional_params = {
+            "start_date": start_date,
+            "end_date": end_date,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
             await self.client.request_async(
-                FOREX_INTRADAY, symbol=symbol, interval=interval
+                FOREX_INTRADAY, symbol=symbol, interval=interval, **optional_params
             ),
             ForexIntradayPrice,
         )
@@ -221,12 +257,30 @@ class AsyncAlternativeMarketsClient(AsyncEndpointGroup):
         )
 
     async def get_commodity_intraday(
-        self, symbol: str, interval: Interval = "5min"
+        self,
+        symbol: str,
+        interval: Interval = "5min",
+        *,
+        start_date: date | None = None,
+        end_date: date | None = None,
     ) -> list[CommodityIntradayPrice]:
-        """Get commodity intraday prices"""
+        """Get commodity intraday prices
+
+        Additional keyword arguments (None preserves the existing request):
+            start_date: Start date passed to FMP; boundary semantics depend on the
+                endpoint.
+            end_date: End date passed to FMP; boundary semantics depend on the endpoint.
+        """
+        optional_params = {
+            "start_date": start_date,
+            "end_date": end_date,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
             await self.client.request_async(
-                COMMODITY_INTRADAY, symbol=symbol, interval=interval
+                COMMODITY_INTRADAY, symbol=symbol, interval=interval, **optional_params
             ),
             CommodityIntradayPrice,
         )

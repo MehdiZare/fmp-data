@@ -76,7 +76,26 @@ ECONOMIC_INDICATORS: Endpoint[EconomicIndicator] = Endpoint(
             valid_values=list(EconomicIndicatorType),
         )
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="start_date",
+            alias="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            description=(
+                "Start date passed to FMP; boundary semantics depend on the endpoint."
+            ),
+        ),
+        EndpointParam(
+            name="end_date",
+            alias="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            description=(
+                "End date passed to FMP; boundary semantics depend on the endpoint."
+            ),
+        ),
+    ],
     response_model=EconomicIndicator,
     example_queries=[
         "Get GDP growth rate",
@@ -114,6 +133,14 @@ ECONOMIC_CALENDAR: Endpoint[EconomicEvent] = Endpoint(
             param_type=ParamType.DATE,
             description="End date",
             alias="to",
+        ),
+        EndpointParam(
+            name="country",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description=(
+                "Country filter using the provider country code (for example US or UK)."
+            ),
         ),
     ],
     response_model=EconomicEvent,
