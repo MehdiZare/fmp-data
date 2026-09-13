@@ -172,10 +172,26 @@ class CompanyClient(EndpointGroup):
             self.client.request(KEY_EXECUTIVES, symbol=symbol), CompanyExecutive
         )
 
-    def get_employee_count(self, symbol: str) -> list[EmployeeCount]:
-        """Get company employee count history"""
+    def get_employee_count(
+        self,
+        symbol: str,
+        *,
+        limit: int | None = None,
+    ) -> list[EmployeeCount]:
+        """Get company employee count history
+
+        Additional keyword arguments (None preserves the existing request):
+            limit: Maximum number of results requested from FMP.
+        """
+        optional_params = {
+            "limit": limit,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            self.client.request(EMPLOYEE_COUNT, symbol=symbol), EmployeeCount
+            self.client.request(EMPLOYEE_COUNT, symbol=symbol, **optional_params),
+            EmployeeCount,
         )
 
     def get_company_notes(self, symbol: str) -> list[CompanyNote]:
@@ -259,6 +275,8 @@ class CompanyClient(EndpointGroup):
         from_date: date | None = None,
         to_date: date | None = None,
         nonadjusted: bool | None = None,
+        *,
+        extended: bool | None = None,
     ) -> list[IntradayPrice]:
         """Get intraday price data
 
@@ -268,7 +286,16 @@ class CompanyClient(EndpointGroup):
             from_date: Start date (optional)
             to_date: End date (optional)
             nonadjusted: Use non-adjusted data (optional)
+
+        Additional keyword arguments (None preserves the existing request):
+            extended: Include pre-market and after-hours prices.
         """
+        optional_params = {
+            "extended": extended,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         start_date = _format_date(from_date)
         end_date = _format_date(to_date)
         return self._unwrap_list(
@@ -279,6 +306,7 @@ class CompanyClient(EndpointGroup):
                 start_date=start_date,
                 end_date=end_date,
                 nonadjusted=nonadjusted,
+                **optional_params,
             ),
             IntradayPrice,
         )
@@ -366,9 +394,29 @@ class CompanyClient(EndpointGroup):
             GeographicRevenueSegment,
         )
 
-    def get_symbol_changes(self) -> list[SymbolChange]:
-        """Get symbol change history"""
-        return self._unwrap_list(self.client.request(SYMBOL_CHANGES), SymbolChange)
+    def get_symbol_changes(
+        self,
+        *,
+        invalid: str | None = None,
+        limit: int | None = None,
+    ) -> list[SymbolChange]:
+        """Get symbol change history
+
+        Additional keyword arguments (None preserves the existing request):
+            invalid: FMP invalid-symbol-change filter, supplied as a string (for example
+                false).
+            limit: Maximum number of results requested from FMP.
+        """
+        optional_params = {
+            "invalid": invalid,
+            "limit": limit,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
+        return self._unwrap_list(
+            self.client.request(SYMBOL_CHANGES, **optional_params), SymbolChange
+        )
 
     def get_delisted_companies(
         self, page: int = 0, limit: int = 100
@@ -398,10 +446,34 @@ class CompanyClient(EndpointGroup):
         result = self.client.request(MARKET_CAP, symbol=symbol)
         return self._unwrap_single(result, MarketCapitalization)
 
-    def get_historical_market_cap(self, symbol: str) -> list[MarketCapitalization]:
-        """Get historical market capitalization data"""
+    def get_historical_market_cap(
+        self,
+        symbol: str,
+        *,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        limit: int | None = None,
+    ) -> list[MarketCapitalization]:
+        """Get historical market capitalization data
+
+        Additional keyword arguments (None preserves the existing request):
+            from_date: Start date passed to FMP; boundary semantics depend on the
+                endpoint.
+            to_date: End date passed to FMP; boundary semantics depend on the endpoint.
+            limit: Maximum number of results requested from FMP.
+        """
+        optional_params = {
+            "from_date": from_date,
+            "to_date": to_date,
+            "limit": limit,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            self.client.request(HISTORICAL_MARKET_CAP, symbol=symbol),
+            self.client.request(
+                HISTORICAL_MARKET_CAP, symbol=symbol, **optional_params
+            ),
             MarketCapitalization,
         )
 
@@ -694,7 +766,13 @@ class CompanyClient(EndpointGroup):
             self.client.request(COMPANY_DIVIDENDS, **params), DividendEvent
         )
 
-    def get_earnings(self, symbol: str, limit: int = 20) -> list[EarningEvent]:
+    def get_earnings(
+        self,
+        symbol: str,
+        limit: int = 20,
+        *,
+        include_report_times: bool | None = None,
+    ) -> list[EarningEvent]:
         """Get historical earnings reports for a specific company
 
         Args:
@@ -703,9 +781,20 @@ class CompanyClient(EndpointGroup):
 
         Returns:
             List of EarningEvent objects containing earnings history
+
+        Additional keyword arguments (None preserves the existing request):
+            include_report_times: Include earnings report times when available.
         """
+        optional_params = {
+            "include_report_times": include_report_times,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            self.client.request(COMPANY_EARNINGS, symbol=symbol, limit=limit),
+            self.client.request(
+                COMPANY_EARNINGS, symbol=symbol, limit=limit, **optional_params
+            ),
             EarningEvent,
         )
 

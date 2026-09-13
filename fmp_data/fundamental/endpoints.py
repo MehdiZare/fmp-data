@@ -452,7 +452,179 @@ CUSTOM_DISCOUNTED_CASH_FLOW: Endpoint[CustomDCF] = Endpoint(
             description="Stock symbol (ticker)",
         )
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="revenue_growth_pct",
+            alias="revenueGrowthPct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Revenue growth pct assumption passed to FMP for the custom DCF "
+                "calculation."
+            ),
+        ),
+        EndpointParam(
+            name="ebitda_pct",
+            alias="ebitdaPct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Ebitda pct assumption passed to FMP for the custom DCF calculation."
+            ),
+        ),
+        EndpointParam(
+            name="depreciation_and_amortization_pct",
+            alias="depreciationAndAmortizationPct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Depreciation and amortization pct assumption passed to FMP for "
+                "the custom DCF calculation."
+            ),
+        ),
+        EndpointParam(
+            name="cash_and_short_term_investments_pct",
+            alias="cashAndShortTermInvestmentsPct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Cash and short term investments pct assumption passed to FMP for "
+                "the custom DCF calculation."
+            ),
+        ),
+        EndpointParam(
+            name="receivables_pct",
+            alias="receivablesPct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Receivables pct assumption passed to FMP for the custom DCF "
+                "calculation."
+            ),
+        ),
+        EndpointParam(
+            name="inventories_pct",
+            alias="inventoriesPct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Inventories pct assumption passed to FMP for the custom DCF "
+                "calculation."
+            ),
+        ),
+        EndpointParam(
+            name="payable_pct",
+            alias="payablePct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Payable pct assumption passed to FMP for the custom DCF calculation."
+            ),
+        ),
+        EndpointParam(
+            name="ebit_pct",
+            alias="ebitPct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Ebit pct assumption passed to FMP for the custom DCF calculation."
+            ),
+        ),
+        EndpointParam(
+            name="capital_expenditure_pct",
+            alias="capitalExpenditurePct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Capital expenditure pct assumption passed to FMP for the custom "
+                "DCF calculation."
+            ),
+        ),
+        EndpointParam(
+            name="operating_cash_flow_pct",
+            alias="operatingCashFlowPct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Operating cash flow pct assumption passed to FMP for the custom "
+                "DCF calculation."
+            ),
+        ),
+        EndpointParam(
+            name="selling_general_and_administrative_expenses_pct",
+            alias="sellingGeneralAndAdministrativeExpensesPct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Selling general and administrative expenses pct assumption passed "
+                "to FMP for the custom DCF calculation."
+            ),
+        ),
+        EndpointParam(
+            name="tax_rate",
+            alias="taxRate",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Tax rate assumption passed to FMP for the custom DCF calculation."
+            ),
+        ),
+        EndpointParam(
+            name="long_term_growth_rate",
+            alias="longTermGrowthRate",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Long term growth rate assumption passed to FMP for the custom DCF "
+                "calculation."
+            ),
+        ),
+        EndpointParam(
+            name="cost_of_debt",
+            alias="costOfDebt",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Cost of debt assumption passed to FMP for the custom DCF calculation."
+            ),
+        ),
+        EndpointParam(
+            name="cost_of_equity",
+            alias="costOfEquity",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Cost of equity assumption passed to FMP for the custom DCF "
+                "calculation."
+            ),
+        ),
+        EndpointParam(
+            name="market_risk_premium",
+            alias="marketRiskPremium",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Market risk premium assumption passed to FMP for the custom DCF "
+                "calculation."
+            ),
+        ),
+        EndpointParam(
+            name="beta",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description="Beta assumption passed to FMP for the custom DCF calculation.",
+        ),
+        EndpointParam(
+            name="risk_free_rate",
+            alias="riskFreeRate",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Risk free rate assumption passed to FMP for the custom DCF "
+                "calculation."
+            ),
+        ),
+    ],
     response_model=CustomDCF,
     example_queries=[
         "Get detailed DCF for AAPL",
@@ -479,7 +651,179 @@ CUSTOM_LEVERED_DCF: Endpoint[CustomLeveredDCF] = Endpoint(
             description="Stock symbol (ticker)",
         )
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="revenue_growth_pct",
+            alias="revenueGrowthPct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Revenue growth pct assumption passed to FMP for the custom DCF "
+                "calculation."
+            ),
+        ),
+        EndpointParam(
+            name="ebitda_pct",
+            alias="ebitdaPct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Ebitda pct assumption passed to FMP for the custom DCF calculation."
+            ),
+        ),
+        EndpointParam(
+            name="depreciation_and_amortization_pct",
+            alias="depreciationAndAmortizationPct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Depreciation and amortization pct assumption passed to FMP for "
+                "the custom DCF calculation."
+            ),
+        ),
+        EndpointParam(
+            name="cash_and_short_term_investments_pct",
+            alias="cashAndShortTermInvestmentsPct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Cash and short term investments pct assumption passed to FMP for "
+                "the custom DCF calculation."
+            ),
+        ),
+        EndpointParam(
+            name="receivables_pct",
+            alias="receivablesPct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Receivables pct assumption passed to FMP for the custom DCF "
+                "calculation."
+            ),
+        ),
+        EndpointParam(
+            name="inventories_pct",
+            alias="inventoriesPct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Inventories pct assumption passed to FMP for the custom DCF "
+                "calculation."
+            ),
+        ),
+        EndpointParam(
+            name="payable_pct",
+            alias="payablePct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Payable pct assumption passed to FMP for the custom DCF calculation."
+            ),
+        ),
+        EndpointParam(
+            name="ebit_pct",
+            alias="ebitPct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Ebit pct assumption passed to FMP for the custom DCF calculation."
+            ),
+        ),
+        EndpointParam(
+            name="capital_expenditure_pct",
+            alias="capitalExpenditurePct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Capital expenditure pct assumption passed to FMP for the custom "
+                "DCF calculation."
+            ),
+        ),
+        EndpointParam(
+            name="operating_cash_flow_pct",
+            alias="operatingCashFlowPct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Operating cash flow pct assumption passed to FMP for the custom "
+                "DCF calculation."
+            ),
+        ),
+        EndpointParam(
+            name="selling_general_and_administrative_expenses_pct",
+            alias="sellingGeneralAndAdministrativeExpensesPct",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Selling general and administrative expenses pct assumption passed "
+                "to FMP for the custom DCF calculation."
+            ),
+        ),
+        EndpointParam(
+            name="tax_rate",
+            alias="taxRate",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Tax rate assumption passed to FMP for the custom DCF calculation."
+            ),
+        ),
+        EndpointParam(
+            name="long_term_growth_rate",
+            alias="longTermGrowthRate",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Long term growth rate assumption passed to FMP for the custom DCF "
+                "calculation."
+            ),
+        ),
+        EndpointParam(
+            name="cost_of_debt",
+            alias="costOfDebt",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Cost of debt assumption passed to FMP for the custom DCF calculation."
+            ),
+        ),
+        EndpointParam(
+            name="cost_of_equity",
+            alias="costOfEquity",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Cost of equity assumption passed to FMP for the custom DCF "
+                "calculation."
+            ),
+        ),
+        EndpointParam(
+            name="market_risk_premium",
+            alias="marketRiskPremium",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Market risk premium assumption passed to FMP for the custom DCF "
+                "calculation."
+            ),
+        ),
+        EndpointParam(
+            name="beta",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description="Beta assumption passed to FMP for the custom DCF calculation.",
+        ),
+        EndpointParam(
+            name="risk_free_rate",
+            alias="riskFreeRate",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.FLOAT,
+            description=(
+                "Risk free rate assumption passed to FMP for the custom DCF "
+                "calculation."
+            ),
+        ),
+    ],
     response_model=CustomLeveredDCF,
     example_queries=[
         "Calculate levered DCF for AAPL",

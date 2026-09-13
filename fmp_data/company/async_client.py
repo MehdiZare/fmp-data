@@ -182,10 +182,27 @@ class AsyncCompanyClient(AsyncEndpointGroup):
             CompanyExecutive,
         )
 
-    async def get_employee_count(self, symbol: str) -> list[EmployeeCount]:
-        """Get company employee count history"""
+    async def get_employee_count(
+        self,
+        symbol: str,
+        *,
+        limit: int | None = None,
+    ) -> list[EmployeeCount]:
+        """Get company employee count history
+
+        Additional keyword arguments (None preserves the existing request):
+            limit: Maximum number of results requested from FMP.
+        """
+        optional_params = {
+            "limit": limit,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            await self.client.request_async(EMPLOYEE_COUNT, symbol=symbol),
+            await self.client.request_async(
+                EMPLOYEE_COUNT, symbol=symbol, **optional_params
+            ),
             EmployeeCount,
         )
 
@@ -269,6 +286,8 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         from_date: date | None = None,
         to_date: date | None = None,
         nonadjusted: bool | None = None,
+        *,
+        extended: bool | None = None,
     ) -> list[IntradayPrice]:
         """Get intraday price data
 
@@ -278,7 +297,16 @@ class AsyncCompanyClient(AsyncEndpointGroup):
             from_date: Start date (optional)
             to_date: End date (optional)
             nonadjusted: Use non-adjusted data (optional)
+
+        Additional keyword arguments (None preserves the existing request):
+            extended: Include pre-market and after-hours prices.
         """
+        optional_params = {
+            "extended": extended,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         start_date = _format_date(from_date)
         end_date = _format_date(to_date)
         return self._unwrap_list(
@@ -289,6 +317,7 @@ class AsyncCompanyClient(AsyncEndpointGroup):
                 start_date=start_date,
                 end_date=end_date,
                 nonadjusted=nonadjusted,
+                **optional_params,
             ),
             IntradayPrice,
         )
@@ -380,10 +409,29 @@ class AsyncCompanyClient(AsyncEndpointGroup):
             GeographicRevenueSegment,
         )
 
-    async def get_symbol_changes(self) -> list[SymbolChange]:
-        """Get symbol change history"""
+    async def get_symbol_changes(
+        self,
+        *,
+        invalid: str | None = None,
+        limit: int | None = None,
+    ) -> list[SymbolChange]:
+        """Get symbol change history
+
+        Additional keyword arguments (None preserves the existing request):
+            invalid: FMP invalid-symbol-change filter, supplied as a string (for example
+                false).
+            limit: Maximum number of results requested from FMP.
+        """
+        optional_params = {
+            "invalid": invalid,
+            "limit": limit,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            await self.client.request_async(SYMBOL_CHANGES), SymbolChange
+            await self.client.request_async(SYMBOL_CHANGES, **optional_params),
+            SymbolChange,
         )
 
     async def get_delisted_companies(
@@ -415,11 +463,33 @@ class AsyncCompanyClient(AsyncEndpointGroup):
         return self._unwrap_single(result, MarketCapitalization)
 
     async def get_historical_market_cap(
-        self, symbol: str
+        self,
+        symbol: str,
+        *,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        limit: int | None = None,
     ) -> list[MarketCapitalization]:
-        """Get historical market capitalization data"""
+        """Get historical market capitalization data
+
+        Additional keyword arguments (None preserves the existing request):
+            from_date: Start date passed to FMP; boundary semantics depend on the
+                endpoint.
+            to_date: End date passed to FMP; boundary semantics depend on the endpoint.
+            limit: Maximum number of results requested from FMP.
+        """
+        optional_params = {
+            "from_date": from_date,
+            "to_date": to_date,
+            "limit": limit,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            await self.client.request_async(HISTORICAL_MARKET_CAP, symbol=symbol),
+            await self.client.request_async(
+                HISTORICAL_MARKET_CAP, symbol=symbol, **optional_params
+            ),
             MarketCapitalization,
         )
 
@@ -722,7 +792,13 @@ class AsyncCompanyClient(AsyncEndpointGroup):
             await self.client.request_async(COMPANY_DIVIDENDS, **params), DividendEvent
         )
 
-    async def get_earnings(self, symbol: str, limit: int = 20) -> list[EarningEvent]:
+    async def get_earnings(
+        self,
+        symbol: str,
+        limit: int = 20,
+        *,
+        include_report_times: bool | None = None,
+    ) -> list[EarningEvent]:
         """Get historical earnings reports for a specific company
 
         Args:
@@ -731,10 +807,19 @@ class AsyncCompanyClient(AsyncEndpointGroup):
 
         Returns:
             List of EarningEvent objects containing earnings history
+
+        Additional keyword arguments (None preserves the existing request):
+            include_report_times: Include earnings report times when available.
         """
+        optional_params = {
+            "include_report_times": include_report_times,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
             await self.client.request_async(
-                COMPANY_EARNINGS, symbol=symbol, limit=limit
+                COMPANY_EARNINGS, symbol=symbol, limit=limit, **optional_params
             ),
             EarningEvent,
         )

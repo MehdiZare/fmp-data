@@ -262,7 +262,14 @@ MARKET_HOURS: Endpoint[MarketHours] = Endpoint(
             valid_values=None,
         )
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="timestamp",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Unix timestamp in seconds at which to evaluate market hours.",
+        ),
+    ],
     response_model=MarketHours,
 )
 
@@ -272,7 +279,14 @@ ALL_EXCHANGE_MARKET_HOURS: Endpoint[MarketHours] = Endpoint(
     version=APIVersion.STABLE,
     description="Get market trading hours for all exchanges",
     mandatory_params=[],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="timestamp",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Unix timestamp in seconds at which to evaluate market hours.",
+        ),
+    ],
     response_model=MarketHours,
 )
 
@@ -290,7 +304,26 @@ HOLIDAYS_BY_EXCHANGE: Endpoint[MarketHoliday] = Endpoint(
             valid_values=None,
         )
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="from_date",
+            alias="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            description=(
+                "Start date passed to FMP; boundary semantics depend on the endpoint."
+            ),
+        ),
+        EndpointParam(
+            name="to_date",
+            alias="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            description=(
+                "End date passed to FMP; boundary semantics depend on the endpoint."
+            ),
+        ),
+    ],
     response_model=MarketHoliday,
 )
 
@@ -613,7 +646,22 @@ ALL_SHARES_FLOAT: Endpoint[ShareFloat] = Endpoint(
         "companies based on their float characteristics."
     ),
     mandatory_params=[],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description=(
+                "Zero-based page number; pagination is controlled by the caller."
+            ),
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Maximum number of results requested from FMP.",
+        ),
+    ],
     response_model=ShareFloat,
     example_queries=[
         "Get share float data for all companies",
@@ -870,6 +918,20 @@ COMPANY_SCREENER: Endpoint[CompanySearchResult] = Endpoint(
             description="Include all share classes in results",
             alias="includeAllShareClasses",
         ),
+        EndpointParam(
+            name="avg_volume_more_than",
+            alias="avgVolumeMoreThan",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Minimum average trading volume filter.",
+        ),
+        EndpointParam(
+            name="avg_volume_less_than",
+            alias="avgVolumeLowerThan",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Maximum average trading volume filter.",
+        ),
     ],
     response_model=CompanySearchResult,
 )
@@ -881,6 +943,7 @@ SEARCH_EXCHANGE_VARIANTS: Endpoint[CompanySearchResult] = Endpoint(
     description="Search for exchange trading variants of a company",
     mandatory_params=[
         EndpointParam(
+            alias="symbol",
             name="query",
             location=ParamLocation.QUERY,
             param_type=ParamType.STRING,
@@ -897,7 +960,14 @@ AVAILABLE_EXCHANGES: Endpoint[ExchangeSymbol] = Endpoint(
     version=APIVersion.STABLE,
     description="Get a complete list of supported stock exchanges",
     mandatory_params=[],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="extended",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            description="Include extended exchange listings.",
+        ),
+    ],
     response_model=ExchangeSymbol,
 )
 

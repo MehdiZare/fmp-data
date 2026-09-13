@@ -10,6 +10,7 @@ support either SDK.
 
 from __future__ import annotations
 
+from importlib import import_module
 from typing import Any, cast
 
 # The concrete class differs per SDK major, so the public surface is typed as
@@ -34,10 +35,12 @@ def import_mcp_server_class() -> type[Any]:
     else:
         return cast(type[Any], MCPServer)
 
-    # MCP SDK 1.x
-    from mcp.server.fastmcp import FastMCP
-
-    return cast(type[Any], FastMCP)
+    # MCP SDK 1.x. Resolve dynamically: the 2.2 stubs no longer export FastMCP,
+    # so a static import cannot type-check with the current optional extra.
+    server_class = getattr(import_module("mcp.server.fastmcp"), "FastMCP", None)
+    if server_class is None:
+        raise ImportError("No supported MCP server class found")
+    return cast(type[Any], server_class)
 
 
 def mcp_server_available() -> bool:

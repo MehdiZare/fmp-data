@@ -41,18 +41,52 @@ class EconomicsClient(EndpointGroup):
         )
 
     def get_economic_indicators(
-        self, indicator_name: EconomicIndicatorType | str
+        self,
+        indicator_name: EconomicIndicatorType | str,
+        *,
+        start_date: date | None = None,
+        end_date: date | None = None,
     ) -> list[EconomicIndicator]:
-        """Get economic indicator data"""
+        """Get economic indicator data
+
+        Additional keyword arguments (None preserves the existing request):
+            start_date: Start date passed to FMP; boundary semantics depend on the
+                endpoint.
+            end_date: End date passed to FMP; boundary semantics depend on the endpoint.
+        """
+        optional_params = {
+            "start_date": start_date,
+            "end_date": end_date,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            self.client.request(ECONOMIC_INDICATORS, name=indicator_name),
+            self.client.request(
+                ECONOMIC_INDICATORS, name=indicator_name, **optional_params
+            ),
             EconomicIndicator,
         )
 
     def get_economic_calendar(
-        self, start_date: date | None = None, end_date: date | None = None
+        self,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        *,
+        country: str | None = None,
     ) -> list[EconomicEvent]:
-        """Get economic calendar events"""
+        """Get economic calendar events
+
+        Additional keyword arguments (None preserves the existing request):
+            country: Country filter using the provider country code (for example US or
+                UK).
+        """
+        optional_params = {
+            "country": country,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         params: dict[str, str] = {}
         if start_date:
             params["start_date"] = start_date.strftime("%Y-%m-%d")
@@ -60,7 +94,8 @@ class EconomicsClient(EndpointGroup):
             params["end_date"] = end_date.strftime("%Y-%m-%d")
 
         return self._unwrap_list(
-            self.client.request(ECONOMIC_CALENDAR, **params), EconomicEvent
+            self.client.request(ECONOMIC_CALENDAR, **params, **optional_params),
+            EconomicEvent,
         )
 
     def get_market_risk_premium(self) -> list[MarketRiskPremium]:

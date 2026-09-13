@@ -306,10 +306,25 @@ class InstitutionalClient(EndpointGroup):
             and name_upper in item.reporting_name.upper()
         ]
 
-    def get_beneficial_ownership(self, symbol: str) -> list[BeneficialOwnership]:
-        """Get beneficial ownership data for a symbol"""
+    def get_beneficial_ownership(
+        self,
+        symbol: str,
+        *,
+        limit: int | None = None,
+    ) -> list[BeneficialOwnership]:
+        """Get beneficial ownership data for a symbol
+
+        Additional keyword arguments (None preserves the existing request):
+            limit: Maximum number of results requested from FMP.
+        """
+        optional_params = {
+            "limit": limit,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            self.client.request(BENEFICIAL_OWNERSHIP, symbol=symbol),
+            self.client.request(BENEFICIAL_OWNERSHIP, symbol=symbol, **optional_params),
             BeneficialOwnership,
         )
 
