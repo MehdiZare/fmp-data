@@ -190,8 +190,20 @@ class AsyncCompanyClient(AsyncEndpointGroup):
     ) -> list[EmployeeCount]:
         """Get company employee count history
 
-        Additional keyword arguments (None preserves the existing request):
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            symbol: Ticker symbol identifying the requested instrument.
             limit: Maximum number of results requested from FMP.
+
+        Returns:
+            list[EmployeeCount]: Parsed provider records.
+
+        Example:
+            records = await client.company.get_employee_count(
+                'MSFT', limit=20
+            )
         """
         optional_params = {
             "limit": limit,
@@ -291,15 +303,24 @@ class AsyncCompanyClient(AsyncEndpointGroup):
     ) -> list[IntradayPrice]:
         """Get intraday price data
 
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
             interval: Time interval (1min, 5min, 15min, 30min, 1hour, 4hour)
             from_date: Start date (optional)
             to_date: End date (optional)
             nonadjusted: Use non-adjusted data (optional)
-
-        Additional keyword arguments (None preserves the existing request):
             extended: Include pre-market and after-hours prices.
+
+        Returns:
+            list[IntradayPrice]: Parsed provider records.
+
+        Example:
+            records = await client.company.get_intraday_prices(
+                'MSFT', extended=False
+            )
         """
         optional_params = {
             "extended": extended,
@@ -417,10 +438,21 @@ class AsyncCompanyClient(AsyncEndpointGroup):
     ) -> list[SymbolChange]:
         """Get symbol change history
 
-        Additional keyword arguments (None preserves the existing request):
-            invalid: FMP invalid-symbol-change filter, supplied as a string (for example
-                false).
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            invalid: FMP invalid-symbol-change filter, supplied as a string (for
+                example false).
             limit: Maximum number of results requested from FMP.
+
+        Returns:
+            list[SymbolChange]: Parsed provider records.
+
+        Example:
+            records = await client.company.get_symbol_changes(
+                invalid='false'
+            )
         """
         optional_params = {
             "invalid": invalid,
@@ -472,11 +504,25 @@ class AsyncCompanyClient(AsyncEndpointGroup):
     ) -> list[MarketCapitalization]:
         """Get historical market capitalization data
 
-        Additional keyword arguments (None preserves the existing request):
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            symbol: Ticker symbol identifying the requested instrument.
             from_date: Start date passed to FMP; boundary semantics depend on the
                 endpoint.
-            to_date: End date passed to FMP; boundary semantics depend on the endpoint.
+            to_date: End date passed to FMP; boundary semantics depend on the
+                endpoint.
             limit: Maximum number of results requested from FMP.
+
+        Returns:
+            list[MarketCapitalization]: Parsed provider records.
+
+        Example:
+            from datetime import date
+            records = await client.company.get_historical_market_cap(
+                'MSFT', from_date=date(2026, 9, 10)
+            )
         """
         optional_params = {
             "from_date": from_date,
@@ -801,15 +847,21 @@ class AsyncCompanyClient(AsyncEndpointGroup):
     ) -> list[EarningEvent]:
         """Get historical earnings reports for a specific company
 
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
             limit: Number of earnings reports to return (default: 20)
+            include_report_times: Include earnings report times when available.
 
         Returns:
             List of EarningEvent objects containing earnings history
 
-        Additional keyword arguments (None preserves the existing request):
-            include_report_times: Include earnings report times when available.
+        Example:
+            records = await client.company.get_earnings(
+                'MSFT', include_report_times=False
+            )
         """
         optional_params = {
             "include_report_times": include_report_times,

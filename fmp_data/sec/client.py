@@ -282,12 +282,21 @@ class SECClient(EndpointGroup):
     ) -> list[SICCode]:
         """Get list of all Standard Industrial Classification (SIC) codes
 
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            industry_title: Filter SIC classifications by industry title.
+            sic_code: Filter by SIC code; kept as a string to preserve leading
+                zeros.
+
         Returns:
             List of SIC codes
 
-        Additional keyword arguments (None preserves the existing request):
-            industry_title: Filter SIC classifications by industry title.
-            sic_code: Filter by SIC code; kept as a string to preserve leading zeros.
+        Example:
+            records = client.sec.get_sic_codes(
+                industry_title='SERVICES'
+            )
         """
         optional_params = {
             "industry_title": industry_title,

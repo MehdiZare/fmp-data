@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [2.8.0] - 2026-09-13
+
 ### Added
 
 - **Optional FMP parameters across 27 sync/async method pairs (Refs #396).**
@@ -63,8 +65,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and import-smoke gates. Coverage thresholds and hosted CI policy are unchanged.
 - **Document remaining provider qualification.** Date filters do not repair
   NYSE 2027/2028 calendar completeness, GDP date-filter behavior, SEC profile
-  identifier behavior, or overlapping pages. These remain tracked in #396;
-  the SDK does not alter provider records or infer completeness from HTTP 200.
+  identifier behavior, or overlapping pages. Issue #396 retains the provider evidence and is closed for the completed
+  connector work. Correcting FMP data remains the provider's responsibility;
+  the SDK does not alter records or infer completeness from HTTP 200.
 
 ## [2.7.1] - 2026-08-20
 

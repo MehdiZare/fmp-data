@@ -51,10 +51,24 @@ class AsyncEconomicsClient(AsyncEndpointGroup):
     ) -> list[EconomicIndicator]:
         """Get economic indicator data
 
-        Additional keyword arguments (None preserves the existing request):
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            indicator_name: FMP economic indicator name, for example "GDP".
             start_date: Start date passed to FMP; boundary semantics depend on the
                 endpoint.
-            end_date: End date passed to FMP; boundary semantics depend on the endpoint.
+            end_date: End date passed to FMP; boundary semantics depend on the
+                endpoint.
+
+        Returns:
+            list[EconomicIndicator]: Parsed provider records.
+
+        Example:
+            from datetime import date
+            records = await client.economics.get_economic_indicators(
+                'GDP', start_date=date(2026, 9, 10)
+            )
         """
         optional_params = {
             "start_date": start_date,
@@ -79,9 +93,22 @@ class AsyncEconomicsClient(AsyncEndpointGroup):
     ) -> list[EconomicEvent]:
         """Get economic calendar events
 
-        Additional keyword arguments (None preserves the existing request):
-            country: Country filter using the provider country code (for example US or
-                UK).
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            start_date: Start date passed to FMP; omitted when None.
+            end_date: End date passed to FMP; omitted when None.
+            country: Country filter using the provider country code (for example US
+                or UK).
+
+        Returns:
+            list[EconomicEvent]: Parsed provider records.
+
+        Example:
+            records = await client.economics.get_economic_calendar(
+                country='US'
+            )
         """
         optional_params = {
             "country": country,

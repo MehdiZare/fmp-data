@@ -117,9 +117,10 @@ variants in the live audit.
 Exposing a filter is separate from verifying the returned dataset. The audit
 found overlapping calendar pages, an empty date-bounded GDP response despite
 an in-range row in the unbounded series, and unresolved SEC profile identifier
-behavior. NYSE 2027/2028 holiday and early-close completeness also remains under
-investigation. No calendar flags, provider payloads, or date boundaries are
+behavior. NYSE 2027/2028 holiday and early-close records also have known provider-side
+defects. No calendar flags, provider payloads, or date boundaries are
 rewritten. An empty successful response does not establish completeness.
 
 See [issue #396](https://github.com/MehdiZare/fmp-data/issues/396) for the provider
-evidence and remaining qualification work.
+evidence and the closed connector scope. Correcting or completing these datasets
+is FMP's responsibility; this release does not qualify a trading-session calendar.

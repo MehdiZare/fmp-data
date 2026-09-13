@@ -178,7 +178,11 @@ class FundamentalClient(EndpointGroup):
     ) -> list[CustomDCF]:
         """Get advanced DCF analysis with detailed projections
 
-        Additional keyword arguments (None preserves the existing request):
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            symbol: Ticker symbol identifying the requested instrument.
             revenue_growth_pct: Revenue growth pct assumption passed to FMP for the
                 custom DCF calculation.
             ebitda_pct: Ebitda pct assumption passed to FMP for the custom DCF
@@ -187,32 +191,42 @@ class FundamentalClient(EndpointGroup):
                 assumption passed to FMP for the custom DCF calculation.
             cash_and_short_term_investments_pct: Cash and short term investments pct
                 assumption passed to FMP for the custom DCF calculation.
-            receivables_pct: Receivables pct assumption passed to FMP for the custom DCF
-                calculation.
-            inventories_pct: Inventories pct assumption passed to FMP for the custom DCF
-                calculation.
+            receivables_pct: Receivables pct assumption passed to FMP for the custom
+                DCF calculation.
+            inventories_pct: Inventories pct assumption passed to FMP for the custom
+                DCF calculation.
             payable_pct: Payable pct assumption passed to FMP for the custom DCF
                 calculation.
-            ebit_pct: Ebit pct assumption passed to FMP for the custom DCF calculation.
-            capital_expenditure_pct: Capital expenditure pct assumption passed to FMP
-                for the custom DCF calculation.
-            operating_cash_flow_pct: Operating cash flow pct assumption passed to FMP
-                for the custom DCF calculation.
-            selling_general_and_administrative_expenses_pct: Selling general and
-                administrative expenses pct assumption passed to FMP for the custom DCF
+            ebit_pct: Ebit pct assumption passed to FMP for the custom DCF
                 calculation.
-            tax_rate: Tax rate assumption passed to FMP for the custom DCF calculation.
-            long_term_growth_rate: Long term growth rate assumption passed to FMP for
-                the custom DCF calculation.
+            capital_expenditure_pct: Capital expenditure pct assumption passed to
+                FMP for the custom DCF calculation.
+            operating_cash_flow_pct: Operating cash flow pct assumption passed to
+                FMP for the custom DCF calculation.
+            selling_general_and_administrative_expenses_pct: Selling general and
+                administrative expenses pct assumption passed to FMP for the custom
+                DCF calculation.
+            tax_rate: Tax rate assumption passed to FMP for the custom DCF
+                calculation.
+            long_term_growth_rate: Long term growth rate assumption passed to FMP
+                for the custom DCF calculation.
             cost_of_debt: Cost of debt assumption passed to FMP for the custom DCF
                 calculation.
-            cost_of_equity: Cost of equity assumption passed to FMP for the custom DCF
-                calculation.
-            market_risk_premium: Market risk premium assumption passed to FMP for the
-                custom DCF calculation.
+            cost_of_equity: Cost of equity assumption passed to FMP for the custom
+                DCF calculation.
+            market_risk_premium: Market risk premium assumption passed to FMP for
+                the custom DCF calculation.
             beta: Beta assumption passed to FMP for the custom DCF calculation.
-            risk_free_rate: Risk free rate assumption passed to FMP for the custom DCF
-                calculation.
+            risk_free_rate: Risk free rate assumption passed to FMP for the custom
+                DCF calculation.
+
+        Returns:
+            list[CustomDCF]: Parsed provider records.
+
+        Example:
+            records = client.fundamental.get_custom_discounted_cash_flow(
+                'MSFT', risk_free_rate=3.5
+            )
         """
         optional_params = {
             "revenue_growth_pct": revenue_growth_pct,
@@ -271,7 +285,11 @@ class FundamentalClient(EndpointGroup):
     ) -> list[CustomLeveredDCF]:
         """Get levered DCF analysis using FCFE
 
-        Additional keyword arguments (None preserves the existing request):
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            symbol: Ticker symbol identifying the requested instrument.
             revenue_growth_pct: Revenue growth pct assumption passed to FMP for the
                 custom DCF calculation.
             ebitda_pct: Ebitda pct assumption passed to FMP for the custom DCF
@@ -280,32 +298,42 @@ class FundamentalClient(EndpointGroup):
                 assumption passed to FMP for the custom DCF calculation.
             cash_and_short_term_investments_pct: Cash and short term investments pct
                 assumption passed to FMP for the custom DCF calculation.
-            receivables_pct: Receivables pct assumption passed to FMP for the custom DCF
-                calculation.
-            inventories_pct: Inventories pct assumption passed to FMP for the custom DCF
-                calculation.
+            receivables_pct: Receivables pct assumption passed to FMP for the custom
+                DCF calculation.
+            inventories_pct: Inventories pct assumption passed to FMP for the custom
+                DCF calculation.
             payable_pct: Payable pct assumption passed to FMP for the custom DCF
                 calculation.
-            ebit_pct: Ebit pct assumption passed to FMP for the custom DCF calculation.
-            capital_expenditure_pct: Capital expenditure pct assumption passed to FMP
-                for the custom DCF calculation.
-            operating_cash_flow_pct: Operating cash flow pct assumption passed to FMP
-                for the custom DCF calculation.
-            selling_general_and_administrative_expenses_pct: Selling general and
-                administrative expenses pct assumption passed to FMP for the custom DCF
+            ebit_pct: Ebit pct assumption passed to FMP for the custom DCF
                 calculation.
-            tax_rate: Tax rate assumption passed to FMP for the custom DCF calculation.
-            long_term_growth_rate: Long term growth rate assumption passed to FMP for
-                the custom DCF calculation.
+            capital_expenditure_pct: Capital expenditure pct assumption passed to
+                FMP for the custom DCF calculation.
+            operating_cash_flow_pct: Operating cash flow pct assumption passed to
+                FMP for the custom DCF calculation.
+            selling_general_and_administrative_expenses_pct: Selling general and
+                administrative expenses pct assumption passed to FMP for the custom
+                DCF calculation.
+            tax_rate: Tax rate assumption passed to FMP for the custom DCF
+                calculation.
+            long_term_growth_rate: Long term growth rate assumption passed to FMP
+                for the custom DCF calculation.
             cost_of_debt: Cost of debt assumption passed to FMP for the custom DCF
                 calculation.
-            cost_of_equity: Cost of equity assumption passed to FMP for the custom DCF
-                calculation.
-            market_risk_premium: Market risk premium assumption passed to FMP for the
-                custom DCF calculation.
+            cost_of_equity: Cost of equity assumption passed to FMP for the custom
+                DCF calculation.
+            market_risk_premium: Market risk premium assumption passed to FMP for
+                the custom DCF calculation.
             beta: Beta assumption passed to FMP for the custom DCF calculation.
-            risk_free_rate: Risk free rate assumption passed to FMP for the custom DCF
-                calculation.
+            risk_free_rate: Risk free rate assumption passed to FMP for the custom
+                DCF calculation.
+
+        Returns:
+            list[CustomLeveredDCF]: Parsed provider records.
+
+        Example:
+            records = client.fundamental.get_custom_levered_dcf(
+                'MSFT', risk_free_rate=3.5
+            )
         """
         optional_params = {
             "revenue_growth_pct": revenue_growth_pct,

@@ -114,10 +114,25 @@ class AsyncAlternativeMarketsClient(AsyncEndpointGroup):
     ) -> list[CryptoIntradayPrice]:
         """Get cryptocurrency intraday prices
 
-        Additional keyword arguments (None preserves the existing request):
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            symbol: Ticker symbol identifying the requested instrument.
+            interval: Intraday bar interval; defaults to the value in the signature.
             start_date: Start date passed to FMP; boundary semantics depend on the
                 endpoint.
-            end_date: End date passed to FMP; boundary semantics depend on the endpoint.
+            end_date: End date passed to FMP; boundary semantics depend on the
+                endpoint.
+
+        Returns:
+            list[CryptoIntradayPrice]: Parsed provider records.
+
+        Example:
+            from datetime import date
+            records = await client.alternative.get_crypto_intraday(
+                'BTCUSD', start_date=date(2026, 9, 10)
+            )
         """
         optional_params = {
             "start_date": start_date,
@@ -189,10 +204,25 @@ class AsyncAlternativeMarketsClient(AsyncEndpointGroup):
     ) -> list[ForexIntradayPrice]:
         """Get forex intraday prices
 
-        Additional keyword arguments (None preserves the existing request):
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            symbol: Ticker symbol identifying the requested instrument.
+            interval: Intraday bar interval; defaults to the value in the signature.
             start_date: Start date passed to FMP; boundary semantics depend on the
                 endpoint.
-            end_date: End date passed to FMP; boundary semantics depend on the endpoint.
+            end_date: End date passed to FMP; boundary semantics depend on the
+                endpoint.
+
+        Returns:
+            list[ForexIntradayPrice]: Parsed provider records.
+
+        Example:
+            from datetime import date
+            records = await client.alternative.get_forex_intraday(
+                'EURUSD', start_date=date(2026, 9, 10)
+            )
         """
         optional_params = {
             "start_date": start_date,
@@ -266,10 +296,25 @@ class AsyncAlternativeMarketsClient(AsyncEndpointGroup):
     ) -> list[CommodityIntradayPrice]:
         """Get commodity intraday prices
 
-        Additional keyword arguments (None preserves the existing request):
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            symbol: Ticker symbol identifying the requested instrument.
+            interval: Intraday bar interval; defaults to the value in the signature.
             start_date: Start date passed to FMP; boundary semantics depend on the
                 endpoint.
-            end_date: End date passed to FMP; boundary semantics depend on the endpoint.
+            end_date: End date passed to FMP; boundary semantics depend on the
+                endpoint.
+
+        Returns:
+            list[CommodityIntradayPrice]: Parsed provider records.
+
+        Example:
+            from datetime import date
+            records = await client.alternative.get_commodity_intraday(
+                'GCUSD', start_date=date(2026, 9, 10)
+            )
         """
         optional_params = {
             "start_date": start_date,

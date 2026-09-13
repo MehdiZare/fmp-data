@@ -296,8 +296,20 @@ class AsyncInstitutionalClient(AsyncEndpointGroup):
     ) -> list[BeneficialOwnership]:
         """Get beneficial ownership data for a symbol
 
-        Additional keyword arguments (None preserves the existing request):
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            symbol: Ticker symbol identifying the requested instrument.
             limit: Maximum number of results requested from FMP.
+
+        Returns:
+            list[BeneficialOwnership]: Parsed provider records.
+
+        Example:
+            records = await client.institutional.get_beneficial_ownership(
+                'MSFT', limit=20
+            )
         """
         optional_params = {
             "limit": limit,

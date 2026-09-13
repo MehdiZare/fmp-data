@@ -141,19 +141,25 @@ class MarketIntelligenceClient(EndpointGroup):
     ) -> list[EarningEvent]:
         """Get earnings calendar
 
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
         Args:
             start_date: Earliest reporting date to include
             end_date: Latest reporting date to include
-            include_report_times: When True, the API may include session
-                ``time`` ('bmo'/'amc'), ``period_ending``, ``fiscal_period``,
-                ``fiscal_year`` and ``confirmed`` on events (per-row optional).
-                Omitted from the query when unset; explicit True/False is sent.
+            include_report_times: When True, the API may include session ``time``
+                ('bmo'/'amc'), ``period_ending``, ``fiscal_period``, ``fiscal_year``
+                and ``confirmed`` on events (per-row optional). Omitted from the
+                query when unset; explicit True/False is sent.
+            page: Zero-based page number; pagination is controlled by the caller.
 
         Returns:
             list[EarningEvent]: Earnings events in the requested window
 
-        Additional keyword arguments (None preserves the existing request):
-            page: Zero-based page number; pagination is controlled by the caller.
+        Example:
+            records = client.intelligence.get_earnings_calendar(
+                page=0
+            )
         """
         optional_params = {
             "page": page,
@@ -244,8 +250,21 @@ class MarketIntelligenceClient(EndpointGroup):
     ) -> list[DividendEvent]:
         """Get dividends calendar
 
-        Additional keyword arguments (None preserves the existing request):
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            start_date: Start date passed to FMP; omitted when None.
+            end_date: End date passed to FMP; omitted when None.
             page: Zero-based page number; pagination is controlled by the caller.
+
+        Returns:
+            list[DividendEvent]: Parsed provider records.
+
+        Example:
+            records = client.intelligence.get_dividends_calendar(
+                page=0
+            )
         """
         optional_params = {
             "page": page,
@@ -268,8 +287,21 @@ class MarketIntelligenceClient(EndpointGroup):
     ) -> list[StockSplitEvent]:
         """Get stock splits calendar
 
-        Additional keyword arguments (None preserves the existing request):
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            start_date: Start date passed to FMP; omitted when None.
+            end_date: End date passed to FMP; omitted when None.
             page: Zero-based page number; pagination is controlled by the caller.
+
+        Returns:
+            list[StockSplitEvent]: Parsed provider records.
+
+        Example:
+            records = client.intelligence.get_stock_splits_calendar(
+                page=0
+            )
         """
         optional_params = {
             "page": page,
@@ -580,8 +612,19 @@ class MarketIntelligenceClient(EndpointGroup):
     ) -> list[ESGBenchmark]:
         """Get ESG benchmark data
 
-        Additional keyword arguments (None preserves the existing request):
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
             year: Benchmark reporting year.
+
+        Returns:
+            list[ESGBenchmark]: Parsed provider records.
+
+        Example:
+            records = client.intelligence.get_esg_benchmark(
+                year=2026
+            )
         """
         optional_params = {
             "year": year,
@@ -609,9 +652,21 @@ class MarketIntelligenceClient(EndpointGroup):
     ) -> list[SenateTrade]:
         """Get Senate trading data
 
-        Additional keyword arguments (None preserves the existing request):
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            symbol: Ticker symbol identifying the requested instrument.
             page: Zero-based page number; pagination is controlled by the caller.
             limit: Maximum number of results requested from FMP.
+
+        Returns:
+            list[SenateTrade]: Parsed provider records.
+
+        Example:
+            records = client.intelligence.get_senate_trading(
+                'MSFT', page=0
+            )
         """
         optional_params = {
             "page": page,
@@ -676,9 +731,21 @@ class MarketIntelligenceClient(EndpointGroup):
     ) -> list[HouseDisclosure]:
         """Get House disclosure data
 
-        Additional keyword arguments (None preserves the existing request):
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            symbol: Ticker symbol identifying the requested instrument.
             page: Zero-based page number; pagination is controlled by the caller.
             limit: Maximum number of results requested from FMP.
+
+        Returns:
+            list[HouseDisclosure]: Parsed provider records.
+
+        Example:
+            records = client.intelligence.get_house_disclosure(
+                'MSFT', page=0
+            )
         """
         optional_params = {
             "page": page,
