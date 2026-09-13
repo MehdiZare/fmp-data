@@ -9,6 +9,7 @@ import pytest
 
 pytest.importorskip("mcp", reason="MCP extra not installed")
 
+from fmp_data import FMPDataClient
 from fmp_data.mcp._compat import import_mcp_server_class
 from fmp_data.mcp.tool_loader import register_from_manifest
 from tests.unit.test_provider_optional_parameters import CASES, IDS, _transport
@@ -17,7 +18,9 @@ from tests.unit.test_provider_optional_parameters import CASES, IDS, _transport
 @pytest.mark.parametrize("case", CASES, ids=IDS)
 @pytest.mark.parametrize("mode", ["omitted", "none", "value"])
 @pytest.mark.asyncio
-async def test_native_mcp_schema_and_query(case, mode, fmp_client):
+async def test_native_mcp_schema_and_query(
+    case: dict[str, Any], mode: str, fmp_client: FMPDataClient
+) -> None:
     captured: list[dict[str, Any]] = []
     fmp_client.client.close()
     fmp_client.client = httpx.Client(transport=_transport(case, captured))

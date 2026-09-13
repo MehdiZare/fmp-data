@@ -144,8 +144,10 @@ def test_every_semantics_method_resolves(live_client: FMPDataClient) -> None:
     assert not missing, "Unresolvable semantics method names:\n" + "\n".join(missing)
 
 
-def test_optional_wire_fields_are_not_silently_dropped(live_client):
-    actual = set()
+def test_optional_wire_fields_are_not_silently_dropped(
+    live_client: FMPDataClient,
+) -> None:
+    actual: set[tuple[str, str, str]] = set()
     catalog = _catalog()
     assert len(catalog) >= _MIN_PAIRS
     for _label, endpoint, semantics in catalog:
@@ -163,8 +165,8 @@ def test_optional_wire_fields_are_not_silently_dropped(live_client):
 
 
 def test_optional_coverage_guard_detects_an_added_unbound_filter(
-    live_client, monkeypatch
-):
+    live_client: FMPDataClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     catalog = _catalog()
     label, endpoint, semantics = catalog[0]
     mutated = endpoint.model_copy(

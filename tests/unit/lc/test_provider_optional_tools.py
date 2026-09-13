@@ -1,6 +1,7 @@
 """Exercise actual LangChain schemas and dispatch for provider filters."""
 
 import importlib
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -9,6 +10,7 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel
 import pytest
 
+from fmp_data import FMPDataClient
 from fmp_data.lc.models import EndpointInfo
 from fmp_data.lc.registry import EndpointRegistry
 from fmp_data.lc.vector_store import EndpointVectorStore
@@ -26,7 +28,12 @@ SDK_ONLY = {
 
 @pytest.mark.parametrize("case", CASES, ids=IDS)
 @pytest.mark.parametrize("mode", ["omitted", "none", "value"])
-def test_native_langchain_tool_preserves_filters(case, mode, fmp_client, tmp_path):
+def test_native_langchain_tool_preserves_filters(
+    case: dict[str, Any],
+    mode: str,
+    fmp_client: FMPDataClient,
+    tmp_path: Path,
+) -> None:
     module = importlib.import_module(f"fmp_data.{case['group']}.mapping")
     table = getattr(module, f"{case['group'].upper()}_ENDPOINTS_SEMANTICS")
     matches = [s for s in table.values() if s.method_name == case["method"]]

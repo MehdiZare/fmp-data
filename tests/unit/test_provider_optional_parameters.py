@@ -17,6 +17,7 @@ import httpx
 import pytest
 
 from fmp_data import AsyncFMPDataClient, FMPDataClient
+from fmp_data.config import ClientConfig
 from fmp_data.tool_binding import resolve_method_param_name
 
 CASES = json.loads(
@@ -27,18 +28,20 @@ CASES = json.loads(
 IDS = [f"{case['group']}.{case['method']}" for case in CASES]
 
 
-def test_provider_fixture_retains_all_audited_findings():
+def test_provider_fixture_retains_all_audited_findings() -> None:
     assert len(CASES) == len(set(IDS)) == 27
     assert sum(len(case["new_parameters"]) for case in CASES) == 74
 
 
-def _sample(param):
+def _sample(param: dict[str, Any]) -> Any:
     value = param["sample"]
     return date.fromisoformat(value) if param["type"] == "date" else value
 
 
-def _transport(case, captured):
-    def respond(request):
+def _transport(
+    case: dict[str, Any], captured: list[dict[str, Any]]
+) -> httpx.MockTransport:
+    def respond(request: httpx.Request) -> httpx.Response:
         captured.append(
             {
                 "path": request.url.path,
@@ -64,7 +67,9 @@ def _transport(case, captured):
 
 @pytest.mark.parametrize("case", CASES, ids=IDS)
 @pytest.mark.parametrize("asynchronous", [False, True], ids=["sync", "async"])
-def test_additions_preserve_signature(case, asynchronous, client_config):
+def test_additions_preserve_signature(
+    case: dict[str, Any], asynchronous: bool, client_config: ClientConfig
+) -> None:
     cls = AsyncFMPDataClient if asynchronous else FMPDataClient
     client = cls(
         config=client_config.model_copy(
@@ -120,8 +125,11 @@ def test_additions_preserve_signature(case, asynchronous, client_config):
 @pytest.mark.parametrize("asynchronous", [False, True], ids=["sync", "async"])
 @pytest.mark.asyncio
 async def test_actual_query_and_legacy_defaults(
-    case, mode, asynchronous, client_config
-):
+    case: dict[str, Any],
+    mode: str,
+    asynchronous: bool,
+    client_config: ClientConfig,
+) -> None:
     captured: list[dict[str, Any]] = []
     cls = AsyncFMPDataClient if asynchronous else FMPDataClient
     client = cls(
@@ -170,7 +178,9 @@ async def test_actual_query_and_legacy_defaults(
 
 
 @pytest.mark.parametrize("case", CASES, ids=IDS)
-def test_provider_parameters_reach_metadata_and_binding(case, fmp_client):
+def test_provider_parameters_reach_metadata_and_binding(
+    case: dict[str, Any], fmp_client: FMPDataClient
+) -> None:
     module = importlib.import_module(f"fmp_data.{case['group']}.endpoints")
     endpoint = getattr(module, case["endpoint"])
     optional_by_wire = {p.alias or p.name: p for p in endpoint.optional_params}
@@ -200,8 +210,8 @@ def test_provider_parameters_reach_metadata_and_binding(case, fmp_client):
 @pytest.mark.parametrize("asynchronous", [False, True], ids=["sync", "async"])
 @pytest.mark.asyncio
 async def test_exchange_variants_uses_symbol_without_renaming_query(
-    asynchronous, client_config
-):
+    asynchronous: bool, client_config: ClientConfig
+) -> None:
     captured: list[dict[str, Any]] = []
     client = (AsyncFMPDataClient if asynchronous else FMPDataClient)(
         config=client_config
