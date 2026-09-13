@@ -341,7 +341,7 @@ class TestMarketClientEndpoints(BaseTestCase):
         """Test exchange variants search"""
         with vcr_instance.use_cassette("market/search_exchange_variants.yaml"):
             results = self._handle_rate_limit(
-                fmp_client.market.search_exchange_variants, "Apple"
+                fmp_client.market.search_exchange_variants, "MSFT"
             )
             assert isinstance(results, list)
             assert len(results) > 0
