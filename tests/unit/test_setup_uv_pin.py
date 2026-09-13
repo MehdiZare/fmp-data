@@ -1,4 +1,4 @@
-"""setup-uv is SHA-pinned at v10 and installs uv 0.12.3."""
+"""setup-uv is SHA-pinned at v10 and installs uv 0.12.13."""
 
 from __future__ import annotations
 
@@ -21,8 +21,8 @@ def test_setup_uv_is_v10_and_tracks_latest_uv() -> None:
             assert len(pin) == 40
             assert all(char in "0123456789abcdef" for char in pin)
             assert "v9.0.0" not in line
-            assert "v10.0.1" in line
-        assert 'version: "0.12.3"' in text
+            assert "v10.1.0" in line
+        assert 'version: "0.12.13"' in text
     assert seen >= 1
 
 
@@ -34,4 +34,4 @@ def test_pyproject_requires_current_uv() -> None:
         .joinpath("pyproject.toml")
         .read_text(encoding="utf-8")
     )
-    assert 'required-version = ">=0.12.3"' in text
+    assert 'required-version = ">=0.12.13"' in text

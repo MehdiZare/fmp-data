@@ -170,7 +170,26 @@ CRYPTO_INTRADAY: Endpoint[CryptoIntradayPrice] = Endpoint(
             description="Crypto pair symbol",
         ),
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="start_date",
+            alias="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            description=(
+                "Start date passed to FMP; boundary semantics depend on the endpoint."
+            ),
+        ),
+        EndpointParam(
+            name="end_date",
+            alias="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            description=(
+                "End date passed to FMP; boundary semantics depend on the endpoint."
+            ),
+        ),
+    ],
     response_model=CryptoIntradayPrice,
     example_queries=[
         "Get Bitcoin minute-by-minute prices",
@@ -320,7 +339,26 @@ FOREX_INTRADAY: Endpoint[ForexIntradayPrice] = Endpoint(
             description="Forex pair symbol",
         ),
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="start_date",
+            alias="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            description=(
+                "Start date passed to FMP; boundary semantics depend on the endpoint."
+            ),
+        ),
+        EndpointParam(
+            name="end_date",
+            alias="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            description=(
+                "End date passed to FMP; boundary semantics depend on the endpoint."
+            ),
+        ),
+    ],
     response_model=ForexIntradayPrice,
     example_queries=[
         "Get minute-by-minute EURUSD data",
@@ -476,7 +514,26 @@ COMMODITY_INTRADAY: Endpoint[CommodityIntradayPrice] = Endpoint(
             description="Commodity symbol",
         ),
     ],
-    optional_params=[],
+    optional_params=[
+        EndpointParam(
+            name="start_date",
+            alias="from",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            description=(
+                "Start date passed to FMP; boundary semantics depend on the endpoint."
+            ),
+        ),
+        EndpointParam(
+            name="end_date",
+            alias="to",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            description=(
+                "End date passed to FMP; boundary semantics depend on the endpoint."
+            ),
+        ),
+    ],
     response_model=CommodityIntradayPrice,
     example_queries=[
         "Get minute-by-minute gold prices",

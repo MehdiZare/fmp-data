@@ -1,0 +1,1304 @@
+{
+  "provider_checked": "2026-09-13",
+  "baseline_commit": "02d2a90",
+  "cases": [
+    {
+      "group": "market",
+      "method": "get_holidays_by_exchange",
+      "endpoint": "HOLIDAYS_BY_EXCHANGE",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/holidays-by-exchange",
+      "args": [],
+      "baseline_request": {
+        "path": "/stable/holidays-by-exchange",
+        "query": {
+          "exchange": "NYSE"
+        }
+      },
+      "baseline_parameters": [
+        {
+          "name": "exchange",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "'NYSE'"
+        }
+      ],
+      "baseline_annotations": {
+        "exchange": "str"
+      },
+      "return_annotation": "list[MarketHoliday]",
+      "new_parameters": [
+        {
+          "name": "from_date",
+          "wire": "from",
+          "type": "date",
+          "sample": "2026-09-10"
+        },
+        {
+          "name": "to_date",
+          "wire": "to",
+          "type": "date",
+          "sample": "2026-09-11"
+        }
+      ]
+    },
+    {
+      "group": "market",
+      "method": "get_company_screener",
+      "endpoint": "COMPANY_SCREENER",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/search-company-screener",
+      "args": [],
+      "baseline_request": {
+        "path": "/stable/company-screener",
+        "query": {}
+      },
+      "baseline_parameters": [
+        {
+          "name": "market_cap_more_than",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "market_cap_less_than",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "price_more_than",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "price_less_than",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "beta_more_than",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "beta_less_than",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "volume_more_than",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "volume_less_than",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "dividend_more_than",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "dividend_less_than",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "is_etf",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "is_fund",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "is_actively_trading",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "sector",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "industry",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "country",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "exchange",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "limit",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "page",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "include_all_share_classes",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        }
+      ],
+      "baseline_annotations": {
+        "market_cap_more_than": "float | None",
+        "market_cap_less_than": "float | None",
+        "price_more_than": "float | None",
+        "price_less_than": "float | None",
+        "beta_more_than": "float | None",
+        "beta_less_than": "float | None",
+        "volume_more_than": "int | None",
+        "volume_less_than": "int | None",
+        "dividend_more_than": "float | None",
+        "dividend_less_than": "float | None",
+        "is_etf": "bool | None",
+        "is_fund": "bool | None",
+        "is_actively_trading": "bool | None",
+        "sector": "str | None",
+        "industry": "str | None",
+        "country": "str | None",
+        "exchange": "str | None",
+        "limit": "int | None",
+        "page": "int | None",
+        "include_all_share_classes": "bool | None"
+      },
+      "return_annotation": "list[CompanySearchResult]",
+      "new_parameters": [
+        {
+          "name": "avg_volume_more_than",
+          "wire": "avgVolumeMoreThan",
+          "type": "int",
+          "sample": 0
+        },
+        {
+          "name": "avg_volume_less_than",
+          "wire": "avgVolumeLowerThan",
+          "type": "int",
+          "sample": 0
+        }
+      ]
+    },
+    {
+      "group": "market",
+      "method": "get_market_hours",
+      "endpoint": "MARKET_HOURS",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/exchange-market-hours",
+      "args": [],
+      "baseline_request": {
+        "path": "/stable/exchange-market-hours",
+        "query": {
+          "exchange": "NYSE"
+        }
+      },
+      "baseline_parameters": [
+        {
+          "name": "exchange",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "'NYSE'"
+        }
+      ],
+      "baseline_annotations": {
+        "exchange": "str"
+      },
+      "return_annotation": "MarketHours",
+      "new_parameters": [
+        {
+          "name": "timestamp",
+          "wire": "timestamp",
+          "type": "int",
+          "sample": 0
+        }
+      ]
+    },
+    {
+      "group": "market",
+      "method": "get_all_exchange_market_hours",
+      "endpoint": "ALL_EXCHANGE_MARKET_HOURS",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/all-exchange-market-hours",
+      "args": [],
+      "baseline_request": {
+        "path": "/stable/all-exchange-market-hours",
+        "query": {}
+      },
+      "baseline_parameters": [],
+      "baseline_annotations": {},
+      "return_annotation": "list[MarketHours]",
+      "new_parameters": [
+        {
+          "name": "timestamp",
+          "wire": "timestamp",
+          "type": "int",
+          "sample": 0
+        }
+      ]
+    },
+    {
+      "group": "market",
+      "method": "get_all_shares_float",
+      "endpoint": "ALL_SHARES_FLOAT",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/all-shares-float",
+      "args": [],
+      "baseline_request": {
+        "path": "/stable/shares-float-all",
+        "query": {}
+      },
+      "baseline_parameters": [],
+      "baseline_annotations": {},
+      "return_annotation": "list[ShareFloat]",
+      "new_parameters": [
+        {
+          "name": "page",
+          "wire": "page",
+          "type": "int",
+          "sample": 0
+        },
+        {
+          "name": "limit",
+          "wire": "limit",
+          "type": "int",
+          "sample": 0
+        }
+      ]
+    },
+    {
+      "group": "market",
+      "method": "get_available_exchanges",
+      "endpoint": "AVAILABLE_EXCHANGES",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/available-exchanges",
+      "args": [],
+      "baseline_request": {
+        "path": "/stable/available-exchanges",
+        "query": {}
+      },
+      "baseline_parameters": [],
+      "baseline_annotations": {},
+      "return_annotation": "list[ExchangeSymbol]",
+      "new_parameters": [
+        {
+          "name": "extended",
+          "wire": "extended",
+          "type": "bool",
+          "sample": false
+        }
+      ]
+    },
+    {
+      "group": "market",
+      "method": "search_by_cik",
+      "endpoint": "CIK_SEARCH",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/search-cik",
+      "args": [
+        "320193"
+      ],
+      "baseline_request": {
+        "path": "/stable/search-cik",
+        "query": {
+          "cik": "0000320193",
+          "limit": "50"
+        }
+      },
+      "baseline_parameters": [
+        {
+          "name": "query",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "<class 'inspect._empty'>"
+        }
+      ],
+      "baseline_annotations": {
+        "query": "str"
+      },
+      "return_annotation": "list[CIKResult]",
+      "new_parameters": [
+        {
+          "name": "limit",
+          "wire": "limit",
+          "type": "int",
+          "sample": 0
+        }
+      ]
+    },
+    {
+      "group": "company",
+      "method": "get_employee_count",
+      "endpoint": "EMPLOYEE_COUNT",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/employee-count",
+      "args": [
+        "MSFT"
+      ],
+      "baseline_request": {
+        "path": "/stable/employee-count",
+        "query": {
+          "symbol": "MSFT"
+        }
+      },
+      "baseline_parameters": [
+        {
+          "name": "symbol",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "<class 'inspect._empty'>"
+        }
+      ],
+      "baseline_annotations": {
+        "symbol": "str"
+      },
+      "return_annotation": "list[EmployeeCount]",
+      "new_parameters": [
+        {
+          "name": "limit",
+          "wire": "limit",
+          "type": "int",
+          "sample": 0
+        }
+      ]
+    },
+    {
+      "group": "company",
+      "method": "get_historical_market_cap",
+      "endpoint": "HISTORICAL_MARKET_CAP",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/historical-market-cap",
+      "args": [
+        "MSFT"
+      ],
+      "baseline_request": {
+        "path": "/stable/historical-market-capitalization",
+        "query": {
+          "symbol": "MSFT"
+        }
+      },
+      "baseline_parameters": [
+        {
+          "name": "symbol",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "<class 'inspect._empty'>"
+        }
+      ],
+      "baseline_annotations": {
+        "symbol": "str"
+      },
+      "return_annotation": "list[MarketCapitalization]",
+      "new_parameters": [
+        {
+          "name": "from_date",
+          "wire": "from",
+          "type": "date",
+          "sample": "2026-09-10"
+        },
+        {
+          "name": "to_date",
+          "wire": "to",
+          "type": "date",
+          "sample": "2026-09-11"
+        },
+        {
+          "name": "limit",
+          "wire": "limit",
+          "type": "int",
+          "sample": 0
+        }
+      ]
+    },
+    {
+      "group": "company",
+      "method": "get_symbol_changes",
+      "endpoint": "SYMBOL_CHANGES",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/symbol-changes-list",
+      "args": [],
+      "baseline_request": {
+        "path": "/stable/symbol-change",
+        "query": {}
+      },
+      "baseline_parameters": [],
+      "baseline_annotations": {},
+      "return_annotation": "list[SymbolChange]",
+      "new_parameters": [
+        {
+          "name": "invalid",
+          "wire": "invalid",
+          "type": "str",
+          "sample": "false"
+        },
+        {
+          "name": "limit",
+          "wire": "limit",
+          "type": "int",
+          "sample": 0
+        }
+      ]
+    },
+    {
+      "group": "company",
+      "method": "get_intraday_prices",
+      "endpoint": "INTRADAY_PRICE",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/intraday-5-min",
+      "args": [
+        "MSFT"
+      ],
+      "baseline_request": {
+        "path": "/stable/historical-chart/1min",
+        "query": {
+          "symbol": "MSFT"
+        }
+      },
+      "baseline_parameters": [
+        {
+          "name": "symbol",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "<class 'inspect._empty'>"
+        },
+        {
+          "name": "interval",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "'1min'"
+        },
+        {
+          "name": "from_date",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "to_date",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "nonadjusted",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        }
+      ],
+      "baseline_annotations": {
+        "symbol": "str",
+        "interval": "Interval",
+        "from_date": "date | None",
+        "to_date": "date | None",
+        "nonadjusted": "bool | None"
+      },
+      "return_annotation": "list[IntradayPrice]",
+      "new_parameters": [
+        {
+          "name": "extended",
+          "wire": "extended",
+          "type": "bool",
+          "sample": false
+        }
+      ]
+    },
+    {
+      "group": "company",
+      "method": "get_earnings",
+      "endpoint": "COMPANY_EARNINGS",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/earnings-company",
+      "args": [
+        "MSFT"
+      ],
+      "baseline_request": {
+        "path": "/stable/earnings",
+        "query": {
+          "symbol": "MSFT",
+          "limit": "20"
+        }
+      },
+      "baseline_parameters": [
+        {
+          "name": "symbol",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "<class 'inspect._empty'>"
+        },
+        {
+          "name": "limit",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "20"
+        }
+      ],
+      "baseline_annotations": {
+        "symbol": "str",
+        "limit": "int"
+      },
+      "return_annotation": "list[EarningEvent]",
+      "new_parameters": [
+        {
+          "name": "include_report_times",
+          "wire": "includeReportTimes",
+          "type": "bool",
+          "sample": false
+        }
+      ]
+    },
+    {
+      "group": "economics",
+      "method": "get_economic_indicators",
+      "endpoint": "ECONOMIC_INDICATORS",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/economics-indicators",
+      "args": [
+        "GDP"
+      ],
+      "baseline_request": {
+        "path": "/stable/economic-indicators",
+        "query": {
+          "name": "GDP"
+        }
+      },
+      "baseline_parameters": [
+        {
+          "name": "indicator_name",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "<class 'inspect._empty'>"
+        }
+      ],
+      "baseline_annotations": {
+        "indicator_name": "EconomicIndicatorType | str"
+      },
+      "return_annotation": "list[EconomicIndicator]",
+      "new_parameters": [
+        {
+          "name": "start_date",
+          "wire": "from",
+          "type": "date",
+          "sample": "2026-09-10"
+        },
+        {
+          "name": "end_date",
+          "wire": "to",
+          "type": "date",
+          "sample": "2026-09-11"
+        }
+      ]
+    },
+    {
+      "group": "economics",
+      "method": "get_economic_calendar",
+      "endpoint": "ECONOMIC_CALENDAR",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/economics-calendar",
+      "args": [],
+      "baseline_request": {
+        "path": "/stable/economic-calendar",
+        "query": {}
+      },
+      "baseline_parameters": [
+        {
+          "name": "start_date",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "end_date",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        }
+      ],
+      "baseline_annotations": {
+        "start_date": "date | None",
+        "end_date": "date | None"
+      },
+      "return_annotation": "list[EconomicEvent]",
+      "new_parameters": [
+        {
+          "name": "country",
+          "wire": "country",
+          "type": "str",
+          "sample": "US"
+        }
+      ]
+    },
+    {
+      "group": "fundamental",
+      "method": "get_custom_discounted_cash_flow",
+      "endpoint": "CUSTOM_DISCOUNTED_CASH_FLOW",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/custom-dcf-advanced",
+      "args": [
+        "MSFT"
+      ],
+      "baseline_request": {
+        "path": "/stable/custom-discounted-cash-flow",
+        "query": {
+          "symbol": "MSFT"
+        }
+      },
+      "baseline_parameters": [
+        {
+          "name": "symbol",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "<class 'inspect._empty'>"
+        }
+      ],
+      "baseline_annotations": {
+        "symbol": "str"
+      },
+      "return_annotation": "list[CustomDCF]",
+      "new_parameters": [
+        {
+          "name": "revenue_growth_pct",
+          "wire": "revenueGrowthPct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "ebitda_pct",
+          "wire": "ebitdaPct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "depreciation_and_amortization_pct",
+          "wire": "depreciationAndAmortizationPct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "cash_and_short_term_investments_pct",
+          "wire": "cashAndShortTermInvestmentsPct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "receivables_pct",
+          "wire": "receivablesPct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "inventories_pct",
+          "wire": "inventoriesPct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "payable_pct",
+          "wire": "payablePct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "ebit_pct",
+          "wire": "ebitPct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "capital_expenditure_pct",
+          "wire": "capitalExpenditurePct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "operating_cash_flow_pct",
+          "wire": "operatingCashFlowPct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "selling_general_and_administrative_expenses_pct",
+          "wire": "sellingGeneralAndAdministrativeExpensesPct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "tax_rate",
+          "wire": "taxRate",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "long_term_growth_rate",
+          "wire": "longTermGrowthRate",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "cost_of_debt",
+          "wire": "costOfDebt",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "cost_of_equity",
+          "wire": "costOfEquity",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "market_risk_premium",
+          "wire": "marketRiskPremium",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "beta",
+          "wire": "beta",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "risk_free_rate",
+          "wire": "riskFreeRate",
+          "type": "float",
+          "sample": 0.0
+        }
+      ]
+    },
+    {
+      "group": "fundamental",
+      "method": "get_custom_levered_dcf",
+      "endpoint": "CUSTOM_LEVERED_DCF",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/custom-dcf-levered",
+      "args": [
+        "MSFT"
+      ],
+      "baseline_request": {
+        "path": "/stable/custom-levered-discounted-cash-flow",
+        "query": {
+          "symbol": "MSFT"
+        }
+      },
+      "baseline_parameters": [
+        {
+          "name": "symbol",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "<class 'inspect._empty'>"
+        }
+      ],
+      "baseline_annotations": {
+        "symbol": "str"
+      },
+      "return_annotation": "list[CustomLeveredDCF]",
+      "new_parameters": [
+        {
+          "name": "revenue_growth_pct",
+          "wire": "revenueGrowthPct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "ebitda_pct",
+          "wire": "ebitdaPct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "depreciation_and_amortization_pct",
+          "wire": "depreciationAndAmortizationPct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "cash_and_short_term_investments_pct",
+          "wire": "cashAndShortTermInvestmentsPct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "receivables_pct",
+          "wire": "receivablesPct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "inventories_pct",
+          "wire": "inventoriesPct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "payable_pct",
+          "wire": "payablePct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "ebit_pct",
+          "wire": "ebitPct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "capital_expenditure_pct",
+          "wire": "capitalExpenditurePct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "operating_cash_flow_pct",
+          "wire": "operatingCashFlowPct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "selling_general_and_administrative_expenses_pct",
+          "wire": "sellingGeneralAndAdministrativeExpensesPct",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "tax_rate",
+          "wire": "taxRate",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "long_term_growth_rate",
+          "wire": "longTermGrowthRate",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "cost_of_debt",
+          "wire": "costOfDebt",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "cost_of_equity",
+          "wire": "costOfEquity",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "market_risk_premium",
+          "wire": "marketRiskPremium",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "beta",
+          "wire": "beta",
+          "type": "float",
+          "sample": 0.0
+        },
+        {
+          "name": "risk_free_rate",
+          "wire": "riskFreeRate",
+          "type": "float",
+          "sample": 0.0
+        }
+      ]
+    },
+    {
+      "group": "institutional",
+      "method": "get_beneficial_ownership",
+      "endpoint": "BENEFICIAL_OWNERSHIP",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/acquisition-ownership",
+      "args": [
+        "MSFT"
+      ],
+      "baseline_request": {
+        "path": "/stable/acquisition-of-beneficial-ownership",
+        "query": {
+          "symbol": "MSFT"
+        }
+      },
+      "baseline_parameters": [
+        {
+          "name": "symbol",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "<class 'inspect._empty'>"
+        }
+      ],
+      "baseline_annotations": {
+        "symbol": "str"
+      },
+      "return_annotation": "list[BeneficialOwnership]",
+      "new_parameters": [
+        {
+          "name": "limit",
+          "wire": "limit",
+          "type": "int",
+          "sample": 0
+        }
+      ]
+    },
+    {
+      "group": "intelligence",
+      "method": "get_earnings_calendar",
+      "endpoint": "EARNINGS_CALENDAR",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/earnings-calendar",
+      "args": [],
+      "baseline_request": {
+        "path": "/stable/earnings-calendar",
+        "query": {}
+      },
+      "baseline_parameters": [
+        {
+          "name": "start_date",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "end_date",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "include_report_times",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        }
+      ],
+      "baseline_annotations": {
+        "start_date": "date | None",
+        "end_date": "date | None",
+        "include_report_times": "bool | None"
+      },
+      "return_annotation": "list[EarningEvent]",
+      "new_parameters": [
+        {
+          "name": "page",
+          "wire": "page",
+          "type": "int",
+          "sample": 0
+        }
+      ]
+    },
+    {
+      "group": "intelligence",
+      "method": "get_dividends_calendar",
+      "endpoint": "DIVIDENDS_CALENDAR",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/dividends-calendar",
+      "args": [],
+      "baseline_request": {
+        "path": "/stable/dividends-calendar",
+        "query": {}
+      },
+      "baseline_parameters": [
+        {
+          "name": "start_date",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "end_date",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        }
+      ],
+      "baseline_annotations": {
+        "start_date": "date | None",
+        "end_date": "date | None"
+      },
+      "return_annotation": "list[DividendEvent]",
+      "new_parameters": [
+        {
+          "name": "page",
+          "wire": "page",
+          "type": "int",
+          "sample": 0
+        }
+      ]
+    },
+    {
+      "group": "intelligence",
+      "method": "get_stock_splits_calendar",
+      "endpoint": "STOCK_SPLITS_CALENDAR",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/splits-calendar",
+      "args": [],
+      "baseline_request": {
+        "path": "/stable/splits-calendar",
+        "query": {}
+      },
+      "baseline_parameters": [
+        {
+          "name": "start_date",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        },
+        {
+          "name": "end_date",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "None"
+        }
+      ],
+      "baseline_annotations": {
+        "start_date": "date | None",
+        "end_date": "date | None"
+      },
+      "return_annotation": "list[StockSplitEvent]",
+      "new_parameters": [
+        {
+          "name": "page",
+          "wire": "page",
+          "type": "int",
+          "sample": 0
+        }
+      ]
+    },
+    {
+      "group": "intelligence",
+      "method": "get_esg_benchmark",
+      "endpoint": "ESG_BENCHMARK",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/esg-benchmark",
+      "args": [],
+      "baseline_request": {
+        "path": "/stable/esg-benchmark",
+        "query": {}
+      },
+      "baseline_parameters": [],
+      "baseline_annotations": {},
+      "return_annotation": "list[ESGBenchmark]",
+      "new_parameters": [
+        {
+          "name": "year",
+          "wire": "year",
+          "type": "int",
+          "sample": 0
+        }
+      ]
+    },
+    {
+      "group": "intelligence",
+      "method": "get_senate_trading",
+      "endpoint": "SENATE_TRADING",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/senate-trading",
+      "args": [
+        "MSFT"
+      ],
+      "baseline_request": {
+        "path": "/stable/senate-trades",
+        "query": {
+          "symbol": "MSFT"
+        }
+      },
+      "baseline_parameters": [
+        {
+          "name": "symbol",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "<class 'inspect._empty'>"
+        }
+      ],
+      "baseline_annotations": {
+        "symbol": "str"
+      },
+      "return_annotation": "list[SenateTrade]",
+      "new_parameters": [
+        {
+          "name": "page",
+          "wire": "page",
+          "type": "int",
+          "sample": 0
+        },
+        {
+          "name": "limit",
+          "wire": "limit",
+          "type": "int",
+          "sample": 0
+        }
+      ]
+    },
+    {
+      "group": "intelligence",
+      "method": "get_house_disclosure",
+      "endpoint": "HOUSE_DISCLOSURE",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/house-trading",
+      "args": [
+        "MSFT"
+      ],
+      "baseline_request": {
+        "path": "/stable/house-trades",
+        "query": {
+          "symbol": "MSFT"
+        }
+      },
+      "baseline_parameters": [
+        {
+          "name": "symbol",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "<class 'inspect._empty'>"
+        }
+      ],
+      "baseline_annotations": {
+        "symbol": "str"
+      },
+      "return_annotation": "list[HouseDisclosure]",
+      "new_parameters": [
+        {
+          "name": "page",
+          "wire": "page",
+          "type": "int",
+          "sample": 0
+        },
+        {
+          "name": "limit",
+          "wire": "limit",
+          "type": "int",
+          "sample": 0
+        }
+      ]
+    },
+    {
+      "group": "alternative",
+      "method": "get_crypto_intraday",
+      "endpoint": "CRYPTO_INTRADAY",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/cryptocurrency-intraday-1-hour",
+      "args": [
+        "MSFT"
+      ],
+      "baseline_request": {
+        "path": "/stable/historical-chart/5min",
+        "query": {
+          "symbol": "MSFT"
+        }
+      },
+      "baseline_parameters": [
+        {
+          "name": "symbol",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "<class 'inspect._empty'>"
+        },
+        {
+          "name": "interval",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "'5min'"
+        }
+      ],
+      "baseline_annotations": {
+        "symbol": "str",
+        "interval": "Interval"
+      },
+      "return_annotation": "list[CryptoIntradayPrice]",
+      "new_parameters": [
+        {
+          "name": "start_date",
+          "wire": "from",
+          "type": "date",
+          "sample": "2026-09-10"
+        },
+        {
+          "name": "end_date",
+          "wire": "to",
+          "type": "date",
+          "sample": "2026-09-11"
+        }
+      ]
+    },
+    {
+      "group": "alternative",
+      "method": "get_forex_intraday",
+      "endpoint": "FOREX_INTRADAY",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/forex-intraday-1-hour",
+      "args": [
+        "MSFT"
+      ],
+      "baseline_request": {
+        "path": "/stable/historical-chart/5min",
+        "query": {
+          "symbol": "MSFT"
+        }
+      },
+      "baseline_parameters": [
+        {
+          "name": "symbol",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "<class 'inspect._empty'>"
+        },
+        {
+          "name": "interval",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "'5min'"
+        }
+      ],
+      "baseline_annotations": {
+        "symbol": "str",
+        "interval": "Interval"
+      },
+      "return_annotation": "list[ForexIntradayPrice]",
+      "new_parameters": [
+        {
+          "name": "start_date",
+          "wire": "from",
+          "type": "date",
+          "sample": "2026-09-10"
+        },
+        {
+          "name": "end_date",
+          "wire": "to",
+          "type": "date",
+          "sample": "2026-09-11"
+        }
+      ]
+    },
+    {
+      "group": "alternative",
+      "method": "get_commodity_intraday",
+      "endpoint": "COMMODITY_INTRADAY",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/commodities-intraday-1-hour",
+      "args": [
+        "MSFT"
+      ],
+      "baseline_request": {
+        "path": "/stable/historical-chart/5min",
+        "query": {
+          "symbol": "MSFT"
+        }
+      },
+      "baseline_parameters": [
+        {
+          "name": "symbol",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "<class 'inspect._empty'>"
+        },
+        {
+          "name": "interval",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "default": "'5min'"
+        }
+      ],
+      "baseline_annotations": {
+        "symbol": "str",
+        "interval": "Interval"
+      },
+      "return_annotation": "list[CommodityIntradayPrice]",
+      "new_parameters": [
+        {
+          "name": "start_date",
+          "wire": "from",
+          "type": "date",
+          "sample": "2026-09-10"
+        },
+        {
+          "name": "end_date",
+          "wire": "to",
+          "type": "date",
+          "sample": "2026-09-11"
+        }
+      ]
+    },
+    {
+      "group": "sec",
+      "method": "get_sic_codes",
+      "endpoint": "SIC_LIST",
+      "source": "https://site.financialmodelingprep.com/developer/docs/stable/industry-classification-list",
+      "args": [],
+      "baseline_request": {
+        "path": "/stable/standard-industrial-classification-list",
+        "query": {}
+      },
+      "baseline_parameters": [],
+      "baseline_annotations": {},
+      "return_annotation": "list[SICCode]",
+      "new_parameters": [
+        {
+          "name": "industry_title",
+          "wire": "industryTitle",
+          "type": "str",
+          "sample": "SERVICES"
+        },
+        {
+          "name": "sic_code",
+          "wire": "sicCode",
+          "type": "str",
+          "sample": "7371"
+        }
+      ]
+    }
+  ]
+}

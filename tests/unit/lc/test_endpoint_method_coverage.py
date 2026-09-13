@@ -24,8 +24,8 @@ This guard walks every ``(endpoint_map x semantics)`` pair that
    tool schema. The dropped-mandatory allowlist is empty; a new
    dropped-mandatory is a PR failure.
 
-Optional wire fields dropped under method dispatch are intentionally out of
-scope here (they are not required for a successful call). MCP registers the
+Optional wire fields are also covered: losing a filter can silently change
+the requested data. MCP registers the
 live Python method via :func:`fmp_data.tool_binding.resolve_attr` and does
 not run this shape gate, so the two integrations *could* disagree on an
 allowlisted fallback — but as of #188 nothing is allowlisted, so both
@@ -90,6 +90,11 @@ _KNOWN_REQUEST_FALLBACK_METHODS: frozenset[tuple[str, str]] = frozenset(
 # dropped-mandatory is a PR failure.
 KNOWN_DROPPED_MANDATORY_WIRE: frozenset[tuple[str, str, str]] = frozenset()
 
+# The catalog uses full-capability methods. Legacy convenience adapters such as
+# get_insider_trades and search_cik_by_name are not catalog entries; their fixed
+# or intentionally narrower queries must not excuse omissions in advertised tools.
+KNOWN_DROPPED_OPTIONAL_WIRE: frozenset[tuple[str, str, str]] = frozenset()
+
 
 def _catalog() -> list[tuple[str, Endpoint[Any], Any]]:
     """Every (label, endpoint, semantics) triple with resolvable semantics."""
@@ -137,6 +142,52 @@ def test_every_semantics_method_resolves(live_client: FMPDataClient) -> None:
         f"only walked {checked} endpoint/semantics pairs; expected ≥ {_MIN_PAIRS}"
     )
     assert not missing, "Unresolvable semantics method names:\n" + "\n".join(missing)
+
+
+def test_optional_wire_fields_are_not_silently_dropped(
+    live_client: FMPDataClient,
+) -> None:
+    actual: set[tuple[str, str, str]] = set()
+    catalog = _catalog()
+    assert len(catalog) >= _MIN_PAIRS
+    for _label, endpoint, semantics in catalog:
+        method = resolve_client_method(
+            live_client, semantics.client_name, semantics.method_name
+        )
+        assert method is not None
+        names = set(bindable_params(method))
+        for param in endpoint.optional_params or []:
+            if resolve_method_param_name(param.name, names) is None:
+                actual.add((semantics.client_name, semantics.method_name, param.name))
+    assert actual == set(KNOWN_DROPPED_OPTIONAL_WIRE), (
+        f"Optional tool parameters dropped or stale exceptions: {actual}"
+    )
+
+
+def test_optional_coverage_guard_detects_an_added_unbound_filter(
+    live_client: FMPDataClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    catalog = _catalog()
+    label, endpoint, semantics = catalog[0]
+    mutated = endpoint.model_copy(
+        update={
+            "optional_params": [
+                *(endpoint.optional_params or []),
+                EndpointParam(
+                    name="unbound_provider_filter",
+                    location=ParamLocation.QUERY,
+                    param_type=ParamType.STRING,
+                    description="Deliberate schema drift to prove the guard fails",
+                ),
+            ]
+        }
+    )
+    monkeypatch.setattr(
+        "tests.unit.lc.test_endpoint_method_coverage._catalog",
+        lambda: [(label, mutated, semantics), *catalog[1:]],
+    )
+    with pytest.raises(AssertionError, match="unbound_provider_filter"):
+        test_optional_wire_fields_are_not_silently_dropped(live_client)
 
 
 def test_request_fallback_set_is_exactly_the_known_mismatches(

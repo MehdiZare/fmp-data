@@ -165,20 +165,216 @@ class AsyncFundamentalClient(AsyncEndpointGroup):
             DCF,
         )
 
-    async def get_custom_discounted_cash_flow(self, symbol: str) -> list[CustomDCF]:
-        """Get advanced DCF analysis with detailed projections"""
+    async def get_custom_discounted_cash_flow(
+        self,
+        symbol: str,
+        *,
+        revenue_growth_pct: float | None = None,
+        ebitda_pct: float | None = None,
+        depreciation_and_amortization_pct: float | None = None,
+        cash_and_short_term_investments_pct: float | None = None,
+        receivables_pct: float | None = None,
+        inventories_pct: float | None = None,
+        payable_pct: float | None = None,
+        ebit_pct: float | None = None,
+        capital_expenditure_pct: float | None = None,
+        operating_cash_flow_pct: float | None = None,
+        selling_general_and_administrative_expenses_pct: float | None = None,
+        tax_rate: float | None = None,
+        long_term_growth_rate: float | None = None,
+        cost_of_debt: float | None = None,
+        cost_of_equity: float | None = None,
+        market_risk_premium: float | None = None,
+        beta: float | None = None,
+        risk_free_rate: float | None = None,
+    ) -> list[CustomDCF]:
+        """Get advanced DCF analysis with detailed projections
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            symbol: Ticker symbol identifying the requested instrument.
+            revenue_growth_pct: Revenue growth pct assumption passed to FMP for the
+                custom DCF calculation.
+            ebitda_pct: Ebitda pct assumption passed to FMP for the custom DCF
+                calculation.
+            depreciation_and_amortization_pct: Depreciation and amortization pct
+                assumption passed to FMP for the custom DCF calculation.
+            cash_and_short_term_investments_pct: Cash and short term investments pct
+                assumption passed to FMP for the custom DCF calculation.
+            receivables_pct: Receivables pct assumption passed to FMP for the custom
+                DCF calculation.
+            inventories_pct: Inventories pct assumption passed to FMP for the custom
+                DCF calculation.
+            payable_pct: Payable pct assumption passed to FMP for the custom DCF
+                calculation.
+            ebit_pct: Ebit pct assumption passed to FMP for the custom DCF
+                calculation.
+            capital_expenditure_pct: Capital expenditure pct assumption passed to
+                FMP for the custom DCF calculation.
+            operating_cash_flow_pct: Operating cash flow pct assumption passed to
+                FMP for the custom DCF calculation.
+            selling_general_and_administrative_expenses_pct: Selling general and
+                administrative expenses pct assumption passed to FMP for the custom
+                DCF calculation.
+            tax_rate: Tax rate assumption passed to FMP for the custom DCF
+                calculation.
+            long_term_growth_rate: Long term growth rate assumption passed to FMP
+                for the custom DCF calculation.
+            cost_of_debt: Cost of debt assumption passed to FMP for the custom DCF
+                calculation.
+            cost_of_equity: Cost of equity assumption passed to FMP for the custom
+                DCF calculation.
+            market_risk_premium: Market risk premium assumption passed to FMP for
+                the custom DCF calculation.
+            beta: Beta assumption passed to FMP for the custom DCF calculation.
+            risk_free_rate: Risk free rate assumption passed to FMP for the custom
+                DCF calculation.
+
+        Returns:
+            list[CustomDCF]: Parsed provider records.
+
+        Example:
+            records = await client.fundamental.get_custom_discounted_cash_flow(
+                'MSFT', risk_free_rate=3.5
+            )
+        """
+        optional_params = {
+            "revenue_growth_pct": revenue_growth_pct,
+            "ebitda_pct": ebitda_pct,
+            "depreciation_and_amortization_pct": depreciation_and_amortization_pct,
+            "cash_and_short_term_investments_pct": cash_and_short_term_investments_pct,
+            "receivables_pct": receivables_pct,
+            "inventories_pct": inventories_pct,
+            "payable_pct": payable_pct,
+            "ebit_pct": ebit_pct,
+            "capital_expenditure_pct": capital_expenditure_pct,
+            "operating_cash_flow_pct": operating_cash_flow_pct,
+            "selling_general_and_administrative_expenses_pct": (
+                selling_general_and_administrative_expenses_pct
+            ),
+            "tax_rate": tax_rate,
+            "long_term_growth_rate": long_term_growth_rate,
+            "cost_of_debt": cost_of_debt,
+            "cost_of_equity": cost_of_equity,
+            "market_risk_premium": market_risk_premium,
+            "beta": beta,
+            "risk_free_rate": risk_free_rate,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
             await self.client.request_async(
-                endpoints.CUSTOM_DISCOUNTED_CASH_FLOW, symbol=symbol
+                endpoints.CUSTOM_DISCOUNTED_CASH_FLOW, symbol=symbol, **optional_params
             ),
             CustomDCF,
         )
 
-    async def get_custom_levered_dcf(self, symbol: str) -> list[CustomLeveredDCF]:
-        """Get levered DCF analysis using FCFE"""
+    async def get_custom_levered_dcf(
+        self,
+        symbol: str,
+        *,
+        revenue_growth_pct: float | None = None,
+        ebitda_pct: float | None = None,
+        depreciation_and_amortization_pct: float | None = None,
+        cash_and_short_term_investments_pct: float | None = None,
+        receivables_pct: float | None = None,
+        inventories_pct: float | None = None,
+        payable_pct: float | None = None,
+        ebit_pct: float | None = None,
+        capital_expenditure_pct: float | None = None,
+        operating_cash_flow_pct: float | None = None,
+        selling_general_and_administrative_expenses_pct: float | None = None,
+        tax_rate: float | None = None,
+        long_term_growth_rate: float | None = None,
+        cost_of_debt: float | None = None,
+        cost_of_equity: float | None = None,
+        market_risk_premium: float | None = None,
+        beta: float | None = None,
+        risk_free_rate: float | None = None,
+    ) -> list[CustomLeveredDCF]:
+        """Get levered DCF analysis using FCFE
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            symbol: Ticker symbol identifying the requested instrument.
+            revenue_growth_pct: Revenue growth pct assumption passed to FMP for the
+                custom DCF calculation.
+            ebitda_pct: Ebitda pct assumption passed to FMP for the custom DCF
+                calculation.
+            depreciation_and_amortization_pct: Depreciation and amortization pct
+                assumption passed to FMP for the custom DCF calculation.
+            cash_and_short_term_investments_pct: Cash and short term investments pct
+                assumption passed to FMP for the custom DCF calculation.
+            receivables_pct: Receivables pct assumption passed to FMP for the custom
+                DCF calculation.
+            inventories_pct: Inventories pct assumption passed to FMP for the custom
+                DCF calculation.
+            payable_pct: Payable pct assumption passed to FMP for the custom DCF
+                calculation.
+            ebit_pct: Ebit pct assumption passed to FMP for the custom DCF
+                calculation.
+            capital_expenditure_pct: Capital expenditure pct assumption passed to
+                FMP for the custom DCF calculation.
+            operating_cash_flow_pct: Operating cash flow pct assumption passed to
+                FMP for the custom DCF calculation.
+            selling_general_and_administrative_expenses_pct: Selling general and
+                administrative expenses pct assumption passed to FMP for the custom
+                DCF calculation.
+            tax_rate: Tax rate assumption passed to FMP for the custom DCF
+                calculation.
+            long_term_growth_rate: Long term growth rate assumption passed to FMP
+                for the custom DCF calculation.
+            cost_of_debt: Cost of debt assumption passed to FMP for the custom DCF
+                calculation.
+            cost_of_equity: Cost of equity assumption passed to FMP for the custom
+                DCF calculation.
+            market_risk_premium: Market risk premium assumption passed to FMP for
+                the custom DCF calculation.
+            beta: Beta assumption passed to FMP for the custom DCF calculation.
+            risk_free_rate: Risk free rate assumption passed to FMP for the custom
+                DCF calculation.
+
+        Returns:
+            list[CustomLeveredDCF]: Parsed provider records.
+
+        Example:
+            records = await client.fundamental.get_custom_levered_dcf(
+                'MSFT', risk_free_rate=3.5
+            )
+        """
+        optional_params = {
+            "revenue_growth_pct": revenue_growth_pct,
+            "ebitda_pct": ebitda_pct,
+            "depreciation_and_amortization_pct": depreciation_and_amortization_pct,
+            "cash_and_short_term_investments_pct": cash_and_short_term_investments_pct,
+            "receivables_pct": receivables_pct,
+            "inventories_pct": inventories_pct,
+            "payable_pct": payable_pct,
+            "ebit_pct": ebit_pct,
+            "capital_expenditure_pct": capital_expenditure_pct,
+            "operating_cash_flow_pct": operating_cash_flow_pct,
+            "selling_general_and_administrative_expenses_pct": (
+                selling_general_and_administrative_expenses_pct
+            ),
+            "tax_rate": tax_rate,
+            "long_term_growth_rate": long_term_growth_rate,
+            "cost_of_debt": cost_of_debt,
+            "cost_of_equity": cost_of_equity,
+            "market_risk_premium": market_risk_premium,
+            "beta": beta,
+            "risk_free_rate": risk_free_rate,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
             await self.client.request_async(
-                endpoints.CUSTOM_LEVERED_DCF, symbol=symbol
+                endpoints.CUSTOM_LEVERED_DCF, symbol=symbol, **optional_params
             ),
             CustomLeveredDCF,
         )

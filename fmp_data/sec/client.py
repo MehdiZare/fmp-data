@@ -274,13 +274,40 @@ class SECClient(EndpointGroup):
             return None
         return self._unwrap_single(result, SECProfile, allow_none=True)
 
-    def get_sic_codes(self) -> list[SICCode]:
+    def get_sic_codes(
+        self,
+        *,
+        industry_title: str | None = None,
+        sic_code: str | None = None,
+    ) -> list[SICCode]:
         """Get list of all Standard Industrial Classification (SIC) codes
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            industry_title: Filter SIC classifications by industry title.
+            sic_code: Filter by SIC code; kept as a string to preserve leading
+                zeros.
 
         Returns:
             List of SIC codes
+
+        Example:
+            records = client.sec.get_sic_codes(
+                industry_title='SERVICES'
+            )
         """
-        return self._unwrap_list(self.client.request(SIC_LIST), SICCode)
+        optional_params = {
+            "industry_title": industry_title,
+            "sic_code": sic_code,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
+        return self._unwrap_list(
+            self.client.request(SIC_LIST, **optional_params), SICCode
+        )
 
     def search_industry_classification(
         self,

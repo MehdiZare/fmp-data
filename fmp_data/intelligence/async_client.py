@@ -138,25 +138,45 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         start_date: date | None = None,
         end_date: date | None = None,
         include_report_times: bool | None = None,
+        *,
+        page: int | None = None,
     ) -> list[EarningEvent]:
         """Get earnings calendar
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
 
         Args:
             start_date: Earliest reporting date to include
             end_date: Latest reporting date to include
-            include_report_times: When True, the API may include session
-                ``time`` ('bmo'/'amc'), ``period_ending``, ``fiscal_period``,
-                ``fiscal_year`` and ``confirmed`` on events (per-row optional).
-                Omitted from the query when unset; explicit True/False is sent.
+            include_report_times: When True, the API may include session ``time``
+                ('bmo'/'amc'), ``period_ending``, ``fiscal_period``, ``fiscal_year``
+                and ``confirmed`` on events (per-row optional). Omitted from the
+                query when unset; explicit True/False is sent.
+            page: Zero-based page number; pagination is controlled by the caller.
 
         Returns:
             list[EarningEvent]: Earnings events in the requested window
+
+        Example:
+            records = await client.intelligence.get_earnings_calendar(
+                page=0
+            )
         """
+        optional_params = {
+            "page": page,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         params: dict[str, Any] = self._build_date_params(start_date, end_date)
         if include_report_times is not None:
             params["include_report_times"] = include_report_times
         return self._unwrap_list(
-            await self.client.request_async(EARNINGS_CALENDAR, **params), EarningEvent
+            await self.client.request_async(
+                EARNINGS_CALENDAR, **params, **optional_params
+            ),
+            EarningEvent,
         )
 
     async def get_historical_earnings(
@@ -226,21 +246,80 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         return []
 
     async def get_dividends_calendar(
-        self, start_date: date | None = None, end_date: date | None = None
+        self,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        *,
+        page: int | None = None,
     ) -> list[DividendEvent]:
-        """Get dividends calendar"""
+        """Get dividends calendar
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            start_date: Start date passed to FMP; omitted when None.
+            end_date: End date passed to FMP; omitted when None.
+            page: Zero-based page number; pagination is controlled by the caller.
+
+        Returns:
+            list[DividendEvent]: Parsed provider records.
+
+        Example:
+            records = await client.intelligence.get_dividends_calendar(
+                page=0
+            )
+        """
+        optional_params = {
+            "page": page,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         params = self._build_date_params(start_date, end_date)
         return self._unwrap_list(
-            await self.client.request_async(DIVIDENDS_CALENDAR, **params), DividendEvent
+            await self.client.request_async(
+                DIVIDENDS_CALENDAR, **params, **optional_params
+            ),
+            DividendEvent,
         )
 
     async def get_stock_splits_calendar(
-        self, start_date: date | None = None, end_date: date | None = None
+        self,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        *,
+        page: int | None = None,
     ) -> list[StockSplitEvent]:
-        """Get stock splits calendar"""
+        """Get stock splits calendar
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            start_date: Start date passed to FMP; omitted when None.
+            end_date: End date passed to FMP; omitted when None.
+            page: Zero-based page number; pagination is controlled by the caller.
+
+        Returns:
+            list[StockSplitEvent]: Parsed provider records.
+
+        Example:
+            records = await client.intelligence.get_stock_splits_calendar(
+                page=0
+            )
+        """
+        optional_params = {
+            "page": page,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         params = self._build_date_params(start_date, end_date)
         return self._unwrap_list(
-            await self.client.request_async(STOCK_SPLITS_CALENDAR, **params),
+            await self.client.request_async(
+                STOCK_SPLITS_CALENDAR, **params, **optional_params
+            ),
             StockSplitEvent,
         )
 
@@ -547,10 +626,36 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         result = await self.client.request_async(ESG_RATINGS, symbol=symbol)
         return self._unwrap_single(result, ESGRating, allow_none=True)
 
-    async def get_esg_benchmark(self) -> list[ESGBenchmark]:
-        """Get ESG benchmark data"""
+    async def get_esg_benchmark(
+        self,
+        *,
+        year: int | None = None,
+    ) -> list[ESGBenchmark]:
+        """Get ESG benchmark data
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            year: Benchmark reporting year.
+
+        Returns:
+            list[ESGBenchmark]: Parsed provider records.
+
+        Example:
+            records = await client.intelligence.get_esg_benchmark(
+                year=2026
+            )
+        """
+        optional_params = {
+            "year": year,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            await self.client.request_async(ESG_BENCHMARK), ESGBenchmark
+            await self.client.request_async(ESG_BENCHMARK, **optional_params),
+            ESGBenchmark,
         )
 
     # Government trading methods
@@ -563,10 +668,43 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             SenateTrade,
         )
 
-    async def get_senate_trading(self, symbol: str) -> list[SenateTrade]:
-        """Get Senate trading data"""
+    async def get_senate_trading(
+        self,
+        symbol: str,
+        *,
+        page: int | None = None,
+        limit: int | None = None,
+    ) -> list[SenateTrade]:
+        """Get Senate trading data
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            symbol: Ticker symbol identifying the requested instrument.
+            page: Zero-based page number; pagination is controlled by the caller.
+            limit: Maximum number of results requested from FMP.
+
+        Returns:
+            list[SenateTrade]: Parsed provider records.
+
+        Example:
+            records = await client.intelligence.get_senate_trading(
+                'MSFT', page=0
+            )
+        """
+        optional_params = {
+            "page": page,
+            "limit": limit,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            await self.client.request_async(SENATE_TRADING, symbol=symbol), SenateTrade
+            await self.client.request_async(
+                SENATE_TRADING, symbol=symbol, **optional_params
+            ),
+            SenateTrade,
         )
 
     async def get_senate_trades_by_name(self, name: str) -> list[SenateTrade]:
@@ -613,10 +751,42 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
             HouseDisclosure,
         )
 
-    async def get_house_disclosure(self, symbol: str) -> list[HouseDisclosure]:
-        """Get House disclosure data"""
+    async def get_house_disclosure(
+        self,
+        symbol: str,
+        *,
+        page: int | None = None,
+        limit: int | None = None,
+    ) -> list[HouseDisclosure]:
+        """Get House disclosure data
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            symbol: Ticker symbol identifying the requested instrument.
+            page: Zero-based page number; pagination is controlled by the caller.
+            limit: Maximum number of results requested from FMP.
+
+        Returns:
+            list[HouseDisclosure]: Parsed provider records.
+
+        Example:
+            records = await client.intelligence.get_house_disclosure(
+                'MSFT', page=0
+            )
+        """
+        optional_params = {
+            "page": page,
+            "limit": limit,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            await self.client.request_async(HOUSE_DISCLOSURE, symbol=symbol),
+            await self.client.request_async(
+                HOUSE_DISCLOSURE, symbol=symbol, **optional_params
+            ),
             HouseDisclosure,
         )
 

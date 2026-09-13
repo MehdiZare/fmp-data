@@ -18,9 +18,9 @@ repos:
   # ───────── Ruff (lint / fix / format) ────────────────────────────────────
   # Ruff replaces black here: black 24.x and ruff's formatter disagree on
   # assert-with-message wrapping, so running both fights over the same lines.
-  # Keep this rev in sync with the ruff pin in uv.lock.
+  # Keep this rev in sync with the ruff floor in pyproject.toml.
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.2
+    rev: v0.16.7
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]

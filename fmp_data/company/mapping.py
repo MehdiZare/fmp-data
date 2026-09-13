@@ -49,7 +49,12 @@ from fmp_data.lc.hints import (
     PERIOD_HINT,
     SYMBOL_HINT,
 )
-from fmp_data.lc.models import EndpointSemantics, ResponseFieldInfo, SemanticCategory
+from fmp_data.lc.models import (
+    EndpointSemantics,
+    ParameterHint,
+    ResponseFieldInfo,
+    SemanticCategory,
+)
 from fmp_data.models import Endpoint
 
 # Company endpoints mapping
@@ -521,7 +526,21 @@ COMPANY_ENDPOINTS_SEMANTICS = {
             "stock symbol history",
         ],
         category=SemanticCategory.COMPANY_INFO,
-        parameter_hints={},  # No parameters needed
+        parameter_hints={
+            "invalid": ParameterHint(
+                natural_names=["invalid"],
+                extraction_patterns=[],
+                examples=["false"],
+                context_clues=[
+                    (
+                        "FMP invalid-symbol-change filter, supplied as a string (for "
+                        "example false)."
+                    )
+                ],
+                required=False,
+            ),
+            "limit": LIMIT_HINT,
+        },
         response_hints={
             "old_symbol": ResponseFieldInfo(
                 description="Previous trading symbol",
@@ -1012,6 +1031,13 @@ COMPANY_ENDPOINTS_SEMANTICS = {
             "start_date": DATE_HINTS["start_date"],
             "end_date": DATE_HINTS["end_date"],
             "nonadjusted": NONADJUSTED_HINT,
+            "extended": ParameterHint(
+                natural_names=["extended"],
+                extraction_patterns=[],
+                examples=["false"],
+                context_clues=["Include pre-market and after-hours prices."],
+                required=False,
+            ),
         },
         response_hints={
             "datetime": ResponseFieldInfo(
@@ -1133,6 +1159,13 @@ COMPANY_ENDPOINTS_SEMANTICS = {
             "start_date": DATE_HINTS["start_date"],
             "end_date": DATE_HINTS["end_date"],
             "nonadjusted": NONADJUSTED_HINT,
+            "extended": ParameterHint(
+                natural_names=["extended"],
+                extraction_patterns=[],
+                examples=["false"],
+                context_clues=["Include pre-market and after-hours prices."],
+                required=False,
+            ),
         },
         response_hints={
             "date": ResponseFieldInfo(
@@ -1223,7 +1256,12 @@ COMPANY_ENDPOINTS_SEMANTICS = {
         ],
         category=SemanticCategory.COMPANY_INFO,
         sub_category="Historical Valuation",
-        parameter_hints={"symbol": SYMBOL_HINT},
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "from_date": DATE_HINTS["start_date"],
+            "to_date": DATE_HINTS["end_date"],
+            "limit": LIMIT_HINT,
+        },
         response_hints={
             "date": ResponseFieldInfo(
                 description="Date of the market cap value",

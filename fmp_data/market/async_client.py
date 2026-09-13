@@ -95,7 +95,21 @@ class AsyncMarketClient(AsyncEndpointGroup):
         )
 
     async def search_exchange_variants(self, query: str) -> list[CompanySearchResult]:
-        """Search for exchange trading variants of a company"""
+        """Search exchange variants by ticker (for example ``query="MSFT"``).
+
+        The public ``query`` argument is sent as FMP's ``symbol`` parameter.
+
+        Args:
+            query: Ticker symbol, for example "MSFT".
+
+        Returns:
+            list[CompanySearchResult]: Parsed provider records.
+
+        Example:
+            records = await client.market.search_exchange_variants(
+                'MSFT'
+            )
+        """
         return self._unwrap_list(
             await self.client.request_async(SEARCH_EXCHANGE_VARIANTS, query=query),
             CompanySearchResult,
@@ -156,22 +170,42 @@ class AsyncMarketClient(AsyncEndpointGroup):
             await self.client.request_async(AVAILABLE_INDEXES), AvailableIndex
         )
 
-    async def search_by_cik(self, query: str) -> list[CIKResult]:
+    async def search_by_cik(
+        self,
+        query: str,
+        *,
+        limit: int | None = None,
+    ) -> list[CIKResult]:
         """Search companies by CIK number.
 
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
         Args:
-            query: The CIK number, e.g. ``"320193"`` or ``"0000320193"``.
-                Despite the parameter name this is not a free-text search:
-                the API matches a CIK only and rejects a company name with
-                400 ``Invalid or missing query parameter - cik``. A numeric
-                value is zero-padded to the canonical 10 digits before it is
-                sent.
+            query: The CIK number, e.g. ``"320193"`` or ``"0000320193"``. Despite
+                the parameter name this is not a free-text search: the API matches a
+                CIK only and rejects a company name with 400 ``Invalid or missing
+                query parameter - cik``. A numeric value is zero-padded to the
+                canonical 10 digits before it is sent.
+            limit: Maximum number of results requested from FMP.
 
         Returns:
             List of matching CIK records.
+
+        Example:
+            records = await client.market.search_by_cik(
+                '320193', limit=20
+            )
         """
+        optional_params = {
+            "limit": limit,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            await self.client.request_async(CIK_SEARCH, query=query), CIKResult
+            await self.client.request_async(CIK_SEARCH, query=query, **optional_params),
+            CIKResult,
         )
 
     async def get_cik_list(
@@ -217,12 +251,60 @@ class AsyncMarketClient(AsyncEndpointGroup):
         limit: int | None = None,
         page: int | None = None,
         include_all_share_classes: bool | None = None,
+        *,
+        avg_volume_more_than: int | None = None,
+        avg_volume_less_than: int | None = None,
     ) -> list[CompanySearchResult]:
         """Screen companies based on various criteria.
 
         ``page`` is omitted from the request when unset so existing callers
         keep the same wire shape. Pass ``0`` or a later page to paginate.
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            market_cap_more_than: Minimum market capitalization filter; omitted when
+                None.
+            market_cap_less_than: Maximum market capitalization filter; omitted when
+                None.
+            price_more_than: Minimum share price filter; omitted when None.
+            price_less_than: Maximum share price filter; omitted when None.
+            beta_more_than: Minimum beta filter; omitted when None.
+            beta_less_than: Maximum beta filter; omitted when None.
+            volume_more_than: Minimum trading volume filter; omitted when None.
+            volume_less_than: Maximum trading volume filter; omitted when None.
+            dividend_more_than: Minimum dividend yield filter; omitted when None.
+            dividend_less_than: Maximum dividend yield filter; omitted when None.
+            is_etf: Filter for ETFs; omitted when None.
+            is_fund: Filter for funds; omitted when None.
+            is_actively_trading: Filter by active trading status; omitted when None.
+            sector: Sector filter; omitted when None.
+            industry: Industry filter; omitted when None.
+            country: Provider country code filter; omitted when None.
+            exchange: Exchange code filter; omitted when None.
+            limit: Maximum result count; omitted when None.
+            page: Zero-based page number; omitted when None.
+            include_all_share_classes: Include all share classes when True; omitted
+                when None.
+            avg_volume_more_than: Minimum average trading volume filter.
+            avg_volume_less_than: Maximum average trading volume filter.
+
+        Returns:
+            list[CompanySearchResult]: Parsed provider records.
+
+        Example:
+            records = await client.market.get_company_screener(
+                avg_volume_more_than=0
+            )
         """
+        optional_params = {
+            "avg_volume_more_than": avg_volume_more_than,
+            "avg_volume_less_than": avg_volume_less_than,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         params = {
             "market_cap_more_than": market_cap_more_than,
             "market_cap_less_than": market_cap_less_than,
@@ -247,38 +329,125 @@ class AsyncMarketClient(AsyncEndpointGroup):
         }
         params = {key: value for key, value in params.items() if value is not None}
         return self._unwrap_list(
-            await self.client.request_async(COMPANY_SCREENER, **params),
+            await self.client.request_async(
+                COMPANY_SCREENER, **params, **optional_params
+            ),
             CompanySearchResult,
         )
 
-    async def get_market_hours(self, exchange: str = "NYSE") -> MarketHours:
+    async def get_market_hours(
+        self,
+        exchange: str = "NYSE",
+        *,
+        timestamp: int | None = None,
+    ) -> MarketHours:
         """Get market trading hours information for a specific exchange
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
 
         Args:
             exchange: Exchange code (e.g., "NYSE", "NASDAQ"). Defaults to "NYSE".
+            timestamp: Unix timestamp in seconds at which to evaluate market hours.
 
         Returns:
             MarketHours: Exchange trading hours object
 
         Raises:
             ValueError: If the API returns an empty list
+
+        Example:
+            records = await client.market.get_market_hours(
+                timestamp=0
+            )
         """
-        result = await self.client.request_async(MARKET_HOURS, exchange=exchange)
+        optional_params = {
+            "timestamp": timestamp,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
+        result = await self.client.request_async(
+            MARKET_HOURS, exchange=exchange, **optional_params
+        )
         return self._unwrap_single(result, MarketHours)
 
-    async def get_all_exchange_market_hours(self) -> list[MarketHours]:
-        """Get market trading hours information for all exchanges"""
+    async def get_all_exchange_market_hours(
+        self,
+        *,
+        timestamp: int | None = None,
+    ) -> list[MarketHours]:
+        """Get market trading hours information for all exchanges
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            timestamp: Unix timestamp in seconds at which to evaluate market hours.
+
+        Returns:
+            list[MarketHours]: Parsed provider records.
+
+        Example:
+            records = await client.market.get_all_exchange_market_hours(
+                timestamp=0
+            )
+        """
+        optional_params = {
+            "timestamp": timestamp,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            await self.client.request_async(ALL_EXCHANGE_MARKET_HOURS),
+            await self.client.request_async(
+                ALL_EXCHANGE_MARKET_HOURS, **optional_params
+            ),
             MarketHours,
         )
 
     async def get_holidays_by_exchange(
-        self, exchange: str = "NYSE"
+        self,
+        exchange: str = "NYSE",
+        *,
+        from_date: dt_date | None = None,
+        to_date: dt_date | None = None,
     ) -> list[MarketHoliday]:
-        """Get market holidays for a specific exchange"""
+        """Get market holidays for a specific exchange
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        FMP was observed to use (from_date, to_date] bounds. Returned rows and
+        empty responses do not establish complete calendar coverage.
+
+        Args:
+            exchange: Exchange code, for example "NYSE"; defaults to "NYSE".
+            from_date: Start date passed to FMP; boundary semantics depend on the
+                endpoint.
+            to_date: End date passed to FMP; boundary semantics depend on the
+                endpoint.
+
+        Returns:
+            list[MarketHoliday]: Parsed provider records.
+
+        Example:
+            from datetime import date
+            records = await client.market.get_holidays_by_exchange(
+                from_date=date(2026, 9, 10)
+            )
+        """
+        optional_params = {
+            "from_date": from_date,
+            "to_date": to_date,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            await self.client.request_async(HOLIDAYS_BY_EXCHANGE, exchange=exchange),
+            await self.client.request_async(
+                HOLIDAYS_BY_EXCHANGE, exchange=exchange, **optional_params
+            ),
             MarketHoliday,
         )
 
@@ -474,16 +643,71 @@ class AsyncMarketClient(AsyncEndpointGroup):
         """
         return []
 
-    async def get_all_shares_float(self) -> list[ShareFloat]:
-        """Get share float data for all companies"""
+    async def get_all_shares_float(
+        self,
+        *,
+        page: int | None = None,
+        limit: int | None = None,
+    ) -> list[ShareFloat]:
+        """Get share float data for all companies
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            page: Zero-based page number; pagination is controlled by the caller.
+            limit: Maximum number of results requested from FMP.
+
+        Returns:
+            list[ShareFloat]: Parsed provider records.
+
+        Example:
+            records = await client.market.get_all_shares_float(
+                page=0
+            )
+        """
+        optional_params = {
+            "page": page,
+            "limit": limit,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            await self.client.request_async(ALL_SHARES_FLOAT), ShareFloat
+            await self.client.request_async(ALL_SHARES_FLOAT, **optional_params),
+            ShareFloat,
         )
 
-    async def get_available_exchanges(self) -> list[ExchangeSymbol]:
-        """Get a complete list of supported stock exchanges"""
+    async def get_available_exchanges(
+        self,
+        *,
+        extended: bool | None = None,
+    ) -> list[ExchangeSymbol]:
+        """Get a complete list of supported stock exchanges
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            extended: Include extended exchange listings.
+
+        Returns:
+            list[ExchangeSymbol]: Parsed provider records.
+
+        Example:
+            records = await client.market.get_available_exchanges(
+                extended=False
+            )
+        """
+        optional_params = {
+            "extended": extended,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            await self.client.request_async(AVAILABLE_EXCHANGES), ExchangeSymbol
+            await self.client.request_async(AVAILABLE_EXCHANGES, **optional_params),
+            ExchangeSymbol,
         )
 
     async def get_available_sectors(self) -> list[str]:

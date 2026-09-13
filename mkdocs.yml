@@ -31,6 +31,7 @@ nav:
   - API:
       - Reference: api/reference.md
       - Endpoints: api/endpoints.md
+      - Optional Parameters: api/optional-parameters.md
 
 markdown_extensions:
   - pymdownx.highlight:

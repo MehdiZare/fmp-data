@@ -280,13 +280,40 @@ class AsyncSECClient(AsyncEndpointGroup):
             return None
         return self._unwrap_single(result, SECProfile, allow_none=True)
 
-    async def get_sic_codes(self) -> list[SICCode]:
+    async def get_sic_codes(
+        self,
+        *,
+        industry_title: str | None = None,
+        sic_code: str | None = None,
+    ) -> list[SICCode]:
         """Get list of all Standard Industrial Classification (SIC) codes
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            industry_title: Filter SIC classifications by industry title.
+            sic_code: Filter by SIC code; kept as a string to preserve leading
+                zeros.
 
         Returns:
             List of SIC codes
+
+        Example:
+            records = await client.sec.get_sic_codes(
+                industry_title='SERVICES'
+            )
         """
-        return self._unwrap_list(await self.client.request_async(SIC_LIST), SICCode)
+        optional_params = {
+            "industry_title": industry_title,
+            "sic_code": sic_code,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
+        return self._unwrap_list(
+            await self.client.request_async(SIC_LIST, **optional_params), SICCode
+        )
 
     async def search_industry_classification(
         self,

@@ -136,25 +136,43 @@ class MarketIntelligenceClient(EndpointGroup):
         start_date: date | None = None,
         end_date: date | None = None,
         include_report_times: bool | None = None,
+        *,
+        page: int | None = None,
     ) -> list[EarningEvent]:
         """Get earnings calendar
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
 
         Args:
             start_date: Earliest reporting date to include
             end_date: Latest reporting date to include
-            include_report_times: When True, the API may include session
-                ``time`` ('bmo'/'amc'), ``period_ending``, ``fiscal_period``,
-                ``fiscal_year`` and ``confirmed`` on events (per-row optional).
-                Omitted from the query when unset; explicit True/False is sent.
+            include_report_times: When True, the API may include session ``time``
+                ('bmo'/'amc'), ``period_ending``, ``fiscal_period``, ``fiscal_year``
+                and ``confirmed`` on events (per-row optional). Omitted from the
+                query when unset; explicit True/False is sent.
+            page: Zero-based page number; pagination is controlled by the caller.
 
         Returns:
             list[EarningEvent]: Earnings events in the requested window
+
+        Example:
+            records = client.intelligence.get_earnings_calendar(
+                page=0
+            )
         """
+        optional_params = {
+            "page": page,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         params: dict[str, Any] = self._build_date_params(start_date, end_date)
         if include_report_times is not None:
             params["include_report_times"] = include_report_times
         return self._unwrap_list(
-            self.client.request(EARNINGS_CALENDAR, **params), EarningEvent
+            self.client.request(EARNINGS_CALENDAR, **params, **optional_params),
+            EarningEvent,
         )
 
     def get_historical_earnings(
@@ -224,21 +242,77 @@ class MarketIntelligenceClient(EndpointGroup):
         return []
 
     def get_dividends_calendar(
-        self, start_date: date | None = None, end_date: date | None = None
+        self,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        *,
+        page: int | None = None,
     ) -> list[DividendEvent]:
-        """Get dividends calendar"""
+        """Get dividends calendar
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            start_date: Start date passed to FMP; omitted when None.
+            end_date: End date passed to FMP; omitted when None.
+            page: Zero-based page number; pagination is controlled by the caller.
+
+        Returns:
+            list[DividendEvent]: Parsed provider records.
+
+        Example:
+            records = client.intelligence.get_dividends_calendar(
+                page=0
+            )
+        """
+        optional_params = {
+            "page": page,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         params = self._build_date_params(start_date, end_date)
         return self._unwrap_list(
-            self.client.request(DIVIDENDS_CALENDAR, **params), DividendEvent
+            self.client.request(DIVIDENDS_CALENDAR, **params, **optional_params),
+            DividendEvent,
         )
 
     def get_stock_splits_calendar(
-        self, start_date: date | None = None, end_date: date | None = None
+        self,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        *,
+        page: int | None = None,
     ) -> list[StockSplitEvent]:
-        """Get stock splits calendar"""
+        """Get stock splits calendar
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            start_date: Start date passed to FMP; omitted when None.
+            end_date: End date passed to FMP; omitted when None.
+            page: Zero-based page number; pagination is controlled by the caller.
+
+        Returns:
+            list[StockSplitEvent]: Parsed provider records.
+
+        Example:
+            records = client.intelligence.get_stock_splits_calendar(
+                page=0
+            )
+        """
+        optional_params = {
+            "page": page,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         params = self._build_date_params(start_date, end_date)
         return self._unwrap_list(
-            self.client.request(STOCK_SPLITS_CALENDAR, **params), StockSplitEvent
+            self.client.request(STOCK_SPLITS_CALENDAR, **params, **optional_params),
+            StockSplitEvent,
         )
 
     def get_ipo_calendar(
@@ -531,9 +605,36 @@ class MarketIntelligenceClient(EndpointGroup):
         result = self.client.request(ESG_RATINGS, symbol=symbol)
         return self._unwrap_single(result, ESGRating, allow_none=True)
 
-    def get_esg_benchmark(self) -> list[ESGBenchmark]:
-        """Get ESG benchmark data"""
-        return self._unwrap_list(self.client.request(ESG_BENCHMARK), ESGBenchmark)
+    def get_esg_benchmark(
+        self,
+        *,
+        year: int | None = None,
+    ) -> list[ESGBenchmark]:
+        """Get ESG benchmark data
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            year: Benchmark reporting year.
+
+        Returns:
+            list[ESGBenchmark]: Parsed provider records.
+
+        Example:
+            records = client.intelligence.get_esg_benchmark(
+                year=2026
+            )
+        """
+        optional_params = {
+            "year": year,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
+        return self._unwrap_list(
+            self.client.request(ESG_BENCHMARK, **optional_params), ESGBenchmark
+        )
 
     # Government trading methods
     def get_senate_latest(self, page: int = 0, limit: int = 100) -> list[SenateTrade]:
@@ -542,10 +643,41 @@ class MarketIntelligenceClient(EndpointGroup):
             self.client.request(SENATE_LATEST, page=page, limit=limit), SenateTrade
         )
 
-    def get_senate_trading(self, symbol: str) -> list[SenateTrade]:
-        """Get Senate trading data"""
+    def get_senate_trading(
+        self,
+        symbol: str,
+        *,
+        page: int | None = None,
+        limit: int | None = None,
+    ) -> list[SenateTrade]:
+        """Get Senate trading data
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            symbol: Ticker symbol identifying the requested instrument.
+            page: Zero-based page number; pagination is controlled by the caller.
+            limit: Maximum number of results requested from FMP.
+
+        Returns:
+            list[SenateTrade]: Parsed provider records.
+
+        Example:
+            records = client.intelligence.get_senate_trading(
+                'MSFT', page=0
+            )
+        """
+        optional_params = {
+            "page": page,
+            "limit": limit,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            self.client.request(SENATE_TRADING, symbol=symbol), SenateTrade
+            self.client.request(SENATE_TRADING, symbol=symbol, **optional_params),
+            SenateTrade,
         )
 
     def get_senate_trades_by_name(self, name: str) -> list[SenateTrade]:
@@ -590,10 +722,41 @@ class MarketIntelligenceClient(EndpointGroup):
             self.client.request(HOUSE_LATEST, page=page, limit=limit), HouseDisclosure
         )
 
-    def get_house_disclosure(self, symbol: str) -> list[HouseDisclosure]:
-        """Get House disclosure data"""
+    def get_house_disclosure(
+        self,
+        symbol: str,
+        *,
+        page: int | None = None,
+        limit: int | None = None,
+    ) -> list[HouseDisclosure]:
+        """Get House disclosure data
+
+        New keyword-only filters are omitted when None, preserving the existing
+        request.
+
+        Args:
+            symbol: Ticker symbol identifying the requested instrument.
+            page: Zero-based page number; pagination is controlled by the caller.
+            limit: Maximum number of results requested from FMP.
+
+        Returns:
+            list[HouseDisclosure]: Parsed provider records.
+
+        Example:
+            records = client.intelligence.get_house_disclosure(
+                'MSFT', page=0
+            )
+        """
+        optional_params = {
+            "page": page,
+            "limit": limit,
+        }
+        optional_params = {
+            key: value for key, value in optional_params.items() if value is not None
+        }
         return self._unwrap_list(
-            self.client.request(HOUSE_DISCLOSURE, symbol=symbol), HouseDisclosure
+            self.client.request(HOUSE_DISCLOSURE, symbol=symbol, **optional_params),
+            HouseDisclosure,
         )
 
     def get_house_trades_by_name(self, name: str) -> list[HouseDisclosure]:

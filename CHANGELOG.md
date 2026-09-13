@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [2.8.0] - 2026-09-13
+
+### Added
+
+- **Optional FMP parameters across 27 sync/async method pairs (Refs #396).**
+  Add holiday date ranges, market-hours timestamps, exchange-list expansion,
+  screener average-volume bounds, share-float pagination, CIK/employee limits,
+  historical market-cap dates and limits, symbol-change filters, extended
+  intraday hours, earnings report-time inclusion, economic indicator dates and
+  calendar country filters, beneficial-ownership limits, calendar pagination,
+  ESG benchmark years, Senate/House pagination, alternative-asset intraday
+  dates, and SIC industry/code filters. Both custom DCF methods expose all 18
+  documented numeric assumptions. Existing tool schemas and parameter hints
+  include the controls; a provider-derived fixture and catalog guard detect
+  missing optional parameters. See `docs/api/optional-parameters.md` for the
+  complete Python-to-FMP mapping.
+
+### Changed
+
+- **Preserve existing signatures and requests.** New arguments are keyword-only
+  with `None` defaults and are omitted before request validation. Existing
+  positional calls, types, return shapes, and endpoint defaults remain intact,
+  including CIK search's limit of 50. Explicit `False` and `0` are forwarded.
+- **Refresh every dependency group to current stable releases (2026-09-13).**
+  Upgrade Pydantic 2.13.4 → 2.13.5; MCP 2.0.0 → 2.2.0; langchain-core
+  1.5.3 → 1.6.3; langchain-openai 1.4.2 → 1.6.2; LangGraph 1.2.10 → 1.2.11;
+  OpenAI 2.53.0 → 3.13.0; tiktoken 0.13.0 → 0.14.0; and tomli 2.0.1 → 2.4.1.
+  OpenAI 3 uses HTTPX2 internally; FMP requests continue through HTTPX 0.28.1.
+  The MCP compatibility loader retains its 1.x fallback while type-checking
+  against the 2.2 stubs. The package still supports Python 3.10–3.14.
+- **Build, development, documentation, and CI tools.** Upgrade Hatchling
+  1.31.0 → 1.32.0, build 1.5.0 → 1.6.1, uv 0.12.3 → 0.12.13, Ruff
+  0.16.2 → 0.16.7 (including the hook), mypy 2.3.0 → 2.3.1, nox
+  2026.7.11 → 2026.8.17, coverage 7.15.4 → 7.16.0, pre-commit 4.6.1 → 4.6.2,
+  python-dotenv 1.2.2 → 1.2.3, responses 0.26.2 → 0.26.3, and
+  mkdocstrings-python 2.0.5 → 2.0.8. Align the security session's Bandit floor
+  with 1.9.4. Dependencies already at the latest stable release are retained;
+  prereleases are excluded and `uv.lock` remains uncommitted.
+- **SHA-pinned GitHub Actions.** setup-uv 10.0.1 → 10.1.0, deploy-pages
+  5.0.0 → 5.0.1, and CodeQL 4.37.7 → 4.38.0; other actions and hooks were
+  checked and remain at their latest stable versions.
+
+### Fixed
+
+- **Fractional insider share totals (#395).** Both insider-statistics models now
+  expose `total_acquired` and `total_disposed` as floats, accepting fractional
+  share quantities without rounding. Historical fractional rows no longer block
+  sync or async statistics retrieval. Transaction counts remain integers.
+
+- **Exchange-variant queries use `symbol`.** Keep the public
+  `search_exchange_variants(query)` signature while mapping it to FMP's
+  `symbol` key. The old wire name could silently return Apple variants for a
+  Microsoft query.
+- **Restore `make ci` and `make check-all`.** Add the missing `ci_check` nox
+  aggregator for the existing lint, typing, security, core/extras coverage,
+  and import-smoke gates. Coverage thresholds and hosted CI policy are unchanged.
+- **Document remaining provider qualification.** Date filters do not repair
+  NYSE 2027/2028 calendar completeness, GDP date-filter behavior, SEC profile
+  identifier behavior, or overlapping pages. Issue #396 retains the provider evidence and is closed for the completed
+  connector work. Correcting FMP data remains the provider's responsibility;
+  the SDK does not alter records or infer completeness from HTTP 200.
+
 ## [2.7.1] - 2026-08-20
 
 Patch of leftover 2.7.0 CI, docs, and tests that landed unlabeled on

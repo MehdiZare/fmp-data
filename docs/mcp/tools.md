@@ -1,5 +1,7 @@
 # FMP Data MCP Tools Reference
 
+For optional filters and defaults, see [request parameters](../api/optional-parameters.md).
+
 This document lists the MCP tools available in this release.
 Tools are organized by client module and include descriptions.
 
