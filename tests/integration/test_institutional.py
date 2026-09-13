@@ -168,8 +168,8 @@ class TestInsiderTradingEndpoints(BaseTestCase):
             assert isinstance(stats.acquired_transactions, int)
             assert isinstance(stats.disposed_transactions, int)
             assert isinstance(stats.acquired_disposed_ratio, float)
-            assert isinstance(stats.total_acquired, int)
-            assert isinstance(stats.total_disposed, int)
+            assert isinstance(stats.total_acquired, float)
+            assert isinstance(stats.total_disposed, float)
 
     @pytest.mark.parametrize(
         "test_symbol",
