@@ -49,6 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Fractional insider share totals (#395).** Both insider-statistics models now
+  expose `total_acquired` and `total_disposed` as floats, accepting fractional
+  share quantities without rounding. Historical fractional rows no longer block
+  sync or async statistics retrieval. Transaction counts remain integers.
+
 - **Exchange-variant queries use `symbol`.** Keep the public
   `search_exchange_variants(query)` signature while mapping it to FMP's
   `symbol` key. The old wire name could silently return Apple variants for a

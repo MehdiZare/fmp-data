@@ -250,8 +250,14 @@ class InsiderStatistic(BaseModel):
     acquired_disposed_ratio: float = Field(
         alias="acquiredDisposedRatio", description="Acquired/disposed ratio"
     )
-    total_acquired: int = Field(alias="totalAcquired", description="Total acquired")
-    total_disposed: int = Field(alias="totalDisposed", description="Total disposed")
+    total_acquired: float = Field(
+        alias="totalAcquired",
+        description="Total shares acquired, including fractional shares",
+    )
+    total_disposed: float = Field(
+        alias="totalDisposed",
+        description="Total shares disposed, including fractional shares",
+    )
     average_acquired: float = Field(
         alias="averageAcquired", description="Average acquired"
     )
@@ -532,8 +538,14 @@ class InsiderTradingStatistics(BaseModel):
     acquired_disposed_ratio: float = Field(
         alias="acquiredDisposedRatio", description="Acquired/disposed ratio"
     )
-    total_acquired: int = Field(alias="totalAcquired", description="Total acquired")
-    total_disposed: int = Field(alias="totalDisposed", description="Total disposed")
+    total_acquired: float = Field(
+        alias="totalAcquired",
+        description="Total shares acquired, including fractional shares",
+    )
+    total_disposed: float = Field(
+        alias="totalDisposed",
+        description="Total shares disposed, including fractional shares",
+    )
     average_acquired: float = Field(
         alias="averageAcquired", description="Average acquired"
     )
