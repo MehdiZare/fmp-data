@@ -35,6 +35,10 @@ from fmp_data.intelligence.models import (
     StockNewsArticle,
     StockNewsSentiment,
     StockSplitEvent,
+    TipRanksAnalyst,
+    TipRanksPointInTimeRating,
+    TipRanksRating,
+    TipRanksSummary,
     TrendingSocialSentiment,
 )
 from fmp_data.models import (
@@ -1535,4 +1539,240 @@ GRADES_LATEST_NEWS: Endpoint[StockGradeNews] = Endpoint(
         )
     ],
     response_model=StockGradeNews,
+)
+
+
+def _date_window_params() -> list[EndpointParam]:
+    return [
+        EndpointParam(
+            name="start_date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            description="Window start. Omitted when unset.",
+            alias="from",
+        ),
+        EndpointParam(
+            name="end_date",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            description="Window end. Omitted when unset.",
+            alias="to",
+        ),
+    ]
+
+
+def _page_params() -> list[EndpointParam]:
+    return [
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Maximum rows. Omitted when unset.",
+        ),
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Zero-based page. Omitted when unset.",
+        ),
+        EndpointParam(
+            name="nonadjusted",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.BOOLEAN,
+            description="Return price targets in their native currency when true.",
+        ),
+    ]
+
+
+TIPRANKS_SEARCH: Endpoint[TipRanksRating] = Endpoint(
+    name="tipranks_search",
+    path="tipranks-search",
+    version=APIVersion.STABLE,
+    description=("Search TipRanks analyst ratings. History covers about three years."),
+    mandatory_params=[],
+    optional_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="Ticker symbol",
+        ),
+        EndpointParam(
+            name="expert_uid",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="TipRanks analyst id",
+            alias="expertUID",
+        ),
+        EndpointParam(
+            name="firm_name",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="Exact firm name, for example Morgan Stanley",
+            alias="firmName",
+        ),
+        *_date_window_params(),
+        *_page_params(),
+    ],
+    response_model=TipRanksRating,
+)
+
+TIPRANKS_PIT_SYMBOL: Endpoint[TipRanksPointInTimeRating] = Endpoint(
+    name="tipranks_pit_symbol",
+    path="tipranks-pit-symbol",
+    version=APIVersion.STABLE,
+    description=(
+        "Point-in-time TipRanks ratings for a symbol. History covers about three years."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="Ticker symbol",
+        )
+    ],
+    optional_params=[
+        EndpointParam(
+            name="as_of",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            description="Snapshot date. Omitted for the latest book.",
+            alias="date",
+        ),
+        *_page_params(),
+    ],
+    response_model=TipRanksPointInTimeRating,
+)
+
+TIPRANKS_PIT_ANALYST: Endpoint[TipRanksPointInTimeRating] = Endpoint(
+    name="tipranks_pit_analyst",
+    path="tipranks-pit-analyst",
+    version=APIVersion.STABLE,
+    description=(
+        "Point-in-time TipRanks ratings for one analyst. History covers about "
+        "three years."
+    ),
+    mandatory_params=[],
+    optional_params=[
+        EndpointParam(
+            name="expert_uid",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="TipRanks analyst id",
+            alias="expertUID",
+        ),
+        EndpointParam(
+            name="analyst_name",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="Published analyst name. Not a fuzzy match.",
+            alias="analystName",
+        ),
+        EndpointParam(
+            name="as_of",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.DATE,
+            description="Snapshot date. Omitted for the latest book.",
+            alias="date",
+        ),
+        *_page_params(),
+    ],
+    response_model=TipRanksPointInTimeRating,
+)
+
+TIPRANKS_SYMBOL_SUMMARY: Endpoint[TipRanksSummary] = Endpoint(
+    name="tipranks_symbol_summary",
+    path="tipranks-symbol-summary",
+    version=APIVersion.STABLE,
+    description=(
+        "Aggregated TipRanks ratings for one symbol. Default window is twelve months."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="symbol",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="Ticker symbol",
+        )
+    ],
+    optional_params=_date_window_params(),
+    response_model=TipRanksSummary,
+)
+
+TIPRANKS_ANALYST_SUMMARY: Endpoint[TipRanksSummary] = Endpoint(
+    name="tipranks_analyst_summary",
+    path="tipranks-analyst-summary",
+    version=APIVersion.STABLE,
+    description=(
+        "Aggregated TipRanks ratings for one analyst. Default window is twelve months."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="expert_uid",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="TipRanks analyst id",
+            alias="expertUID",
+        )
+    ],
+    optional_params=_date_window_params(),
+    response_model=TipRanksSummary,
+)
+
+TIPRANKS_FIRM_SUMMARY: Endpoint[TipRanksSummary] = Endpoint(
+    name="tipranks_firm_summary",
+    path="tipranks-firm-summary",
+    version=APIVersion.STABLE,
+    description=(
+        "Aggregated TipRanks ratings for one firm. firmName must match exactly."
+    ),
+    mandatory_params=[
+        EndpointParam(
+            name="firm_name",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="Exact firm name, for example Morgan Stanley",
+            alias="firmName",
+        )
+    ],
+    optional_params=_date_window_params(),
+    response_model=TipRanksSummary,
+)
+
+TIPRANKS_ANALYSTS: Endpoint[TipRanksAnalyst] = Endpoint(
+    name="tipranks_analysts",
+    path="tipranks-analysts",
+    version=APIVersion.STABLE,
+    description="Look up TipRanks analysts. Names match exactly and are not fuzzy.",
+    mandatory_params=[],
+    optional_params=[
+        EndpointParam(
+            name="analyst_name",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="Published analyst name. Not a fuzzy match.",
+            alias="analystName",
+        ),
+        EndpointParam(
+            name="firm_name",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.STRING,
+            description="Exact firm name",
+            alias="firmName",
+        ),
+        EndpointParam(
+            name="limit",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Maximum rows. Omitted when unset.",
+        ),
+        EndpointParam(
+            name="page",
+            location=ParamLocation.QUERY,
+            param_type=ParamType.INTEGER,
+            description="Zero-based page. Omitted when unset.",
+        ),
+    ],
+    response_model=TipRanksAnalyst,
 )

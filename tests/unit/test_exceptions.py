@@ -7,10 +7,12 @@ from fmp_data.exceptions import (
     AuthenticationError,
     ConfigError,
     DependencyError,
+    FMPAPIError,
     FMPError,
     FMPNetworkError,
     FMPNotFound,
     FMPTimeoutError,
+    FMPTransportError,
     InvalidResponseTypeError,
     InvalidSymbolError,
     RateLimitError,
@@ -330,3 +332,38 @@ class TestFMPNotFound:
     def test_can_be_caught_as_fmp_error(self):
         with pytest.raises(FMPError):
             raise FMPNotFound("TEST")
+
+
+class TestTransportAndAPIBases:
+    """#406: transport and API failures have separate bases."""
+
+    def test_transport_errors_share_a_base_and_stay_fmp_errors(self) -> None:
+        assert issubclass(FMPTimeoutError, FMPTransportError)
+        assert issubclass(FMPNetworkError, FMPTransportError)
+        assert issubclass(FMPTransportError, FMPError)
+        assert not issubclass(FMPTransportError, FMPAPIError)
+
+    def test_status_errors_share_an_api_base(self) -> None:
+        for error_type in (
+            RateLimitError,
+            AuthenticationError,
+            ValidationError,
+            FMPNotFound,
+            InvalidSymbolError,
+        ):
+            assert issubclass(error_type, FMPAPIError)
+            assert not issubclass(error_type, FMPTransportError)
+
+    def test_config_errors_are_neither_transport_nor_api(self) -> None:
+        assert issubclass(ConfigError, FMPError)
+        assert not issubclass(ConfigError, FMPAPIError)
+        assert not issubclass(ConfigError, FMPTransportError)
+        assert not issubclass(InvalidResponseTypeError, FMPAPIError)
+
+    def test_new_bases_are_public(self) -> None:
+        import fmp_data
+
+        assert fmp_data.FMPTransportError is FMPTransportError
+        assert fmp_data.FMPAPIError is FMPAPIError
+        assert "FMPTransportError" in fmp_data.__all__
+        assert "FMPAPIError" in fmp_data.__all__

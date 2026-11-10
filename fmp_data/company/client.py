@@ -633,7 +633,11 @@ class CompanyClient(EndpointGroup):
         return None
 
     def get_company_peers(self, symbol: str) -> list[CompanyPeer]:
-        """Get company peers"""
+        """Get company peers.
+
+        Peer market caps use the same reporting units as the rest of the API,
+        including subunit-quoted currencies such as pence.
+        """
         return self._unwrap_list(
             self.client.request(COMPANY_PEERS, symbol=symbol), CompanyPeer
         )
@@ -960,7 +964,10 @@ class CompanyClient(EndpointGroup):
         )
 
     def get_financial_scores(self, symbol: str) -> list[FinancialScore]:
-        """Get comprehensive financial health scores
+        """Get comprehensive financial health scores.
+
+        Semi-annual reporters are included. The asset-turnover signal is
+        counted only when a full prior year is available.
 
         Args:
             symbol: Stock symbol (e.g., 'AAPL')

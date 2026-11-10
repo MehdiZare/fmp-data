@@ -19,6 +19,7 @@ from fmp_data.base import (
 from fmp_data.config import ClientConfig
 from fmp_data.exceptions import (
     AuthenticationError,
+    FMPAPIError,
     FMPError,
     FMPNetworkError,
     FMPTimeoutError,
@@ -486,6 +487,23 @@ def test_handle_http_status_error_allow_empty_on_404(base_client, mock_endpoint)
     result = base_client._handle_http_status_error(mock_endpoint, error)
 
     assert result == []
+
+
+def test_handle_http_status_error_404_empty_body_can_stay_an_error(
+    base_client, mock_endpoint
+):
+    """A strict endpoint raises on a 404 even when the body is empty (#405)."""
+    request = httpx.Request("GET", "https://example.com")
+    response = httpx.Response(404, json=[])
+    error = httpx.HTTPStatusError("Not found", request=request, response=response)
+    mock_endpoint.allow_empty_on_404 = False
+    mock_endpoint.normalize_empty_404_body = False
+    mock_endpoint.name = "strict-endpoint"
+
+    with pytest.raises(FMPAPIError) as exc_info:
+        base_client._handle_http_status_error(mock_endpoint, error)
+
+    assert exc_info.value.status_code == 404
 
 
 def test_handle_http_status_error_404_non_empty_raises(base_client):
@@ -1128,7 +1146,7 @@ def test_check_error_response_unrelated_2xx_body_stays_fmp_error(
     """Do not type every 2xx error body as auth failure (#340)."""
     with pytest.raises(FMPError) as exc_info:
         BaseClient._check_error_response(payload)
-    assert type(exc_info.value) is FMPError
+    assert type(exc_info.value) is FMPAPIError
     assert exc_info.value.status_code is None
 
 
@@ -1193,7 +1211,7 @@ def test_process_response_singleton_unrelated_error_list_is_not_auth() -> None:
             _list_quote_endpoint(),
             [{"Error Message": "Legacy endpoint retired"}],
         )
-    assert type(exc_info.value) is FMPError
+    assert type(exc_info.value) is FMPAPIError
 
 
 def test_process_response_normal_quote_list_is_unchanged() -> None:
@@ -1250,7 +1268,7 @@ def test_nested_junk_error_value_stays_fmp_error() -> None:
     """Do not map an unrecognized nested body to None or to auth (#344)."""
     with pytest.raises(FMPError) as exc_info:
         BaseClient._check_error_response({"Error Message": {"foo": 1}})
-    assert type(exc_info.value) is FMPError
+    assert type(exc_info.value) is FMPAPIError
     assert exc_info.value.status_code is None
 
 

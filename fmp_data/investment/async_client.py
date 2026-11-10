@@ -105,7 +105,11 @@ class AsyncInvestmentClient(AsyncEndpointGroup):
             raise
 
     async def get_etf_sector_weightings(self, symbol: str) -> list[ETFSectorWeighting]:
-        """Get ETF sector weightings"""
+        """Get ETF sector weightings.
+
+        Results are ordered by weight, largest first. Delisted funds return
+        an empty list.
+        """
         return self._unwrap_list(
             await self.client.request_async(ETF_SECTOR_WEIGHTINGS, symbol=symbol),
             ETFSectorWeighting,
@@ -114,7 +118,11 @@ class AsyncInvestmentClient(AsyncEndpointGroup):
     async def get_etf_country_weightings(
         self, symbol: str
     ) -> list[ETFCountryWeighting]:
-        """Get ETF country weightings"""
+        """Get ETF country weightings.
+
+        Delisted funds return an empty list. The breakdown matches FMP's
+        other country-allocation endpoints for the same fund.
+        """
         return self._unwrap_list(
             await self.client.request_async(ETF_COUNTRY_WEIGHTINGS, symbol=symbol),
             ETFCountryWeighting,

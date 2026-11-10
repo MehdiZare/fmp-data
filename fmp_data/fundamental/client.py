@@ -114,7 +114,12 @@ class FundamentalClient(EndpointGroup):
     def get_owner_earnings(
         self, symbol: str, limit: int | None = None
     ) -> list[OwnerEarnings]:
-        """Get owner earnings metrics"""
+        """Get owner earnings metrics.
+
+        Includes companies with no fixed assets and semi-annual reporters.
+        Semi-annual growth compares each period with the same period a year
+        earlier.
+        """
         return self._unwrap_list(
             self.client.request(endpoints.OWNER_EARNINGS, symbol=symbol, limit=limit),
             OwnerEarnings,

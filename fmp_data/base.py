@@ -29,6 +29,7 @@ from fmp_data.cache.base import CacheBackend
 from fmp_data.config import ClientConfig
 from fmp_data.exceptions import (
     AuthenticationError,
+    FMPAPIError,
     FMPError,
     FMPNetworkError,
     FMPTimeoutError,
@@ -882,13 +883,26 @@ class BaseClient:
                     extra={"endpoint": endpoint_name, "status_code": status_code},
                 )
                 return []
-            if isinstance(error_details, list) and not error_details:
+            normalize_empty = True
+            if endpoint is not None:
+                normalize_empty = bool(
+                    getattr(endpoint, "normalize_empty_404_body", True)
+                )
+            if (
+                normalize_empty
+                and isinstance(error_details, list)
+                and not error_details
+            ):
                 self.logger.warning(
                     "Received 404 with empty list payload; returning empty list.",
                     extra={"status_code": status_code},
                 )
                 return []
-            if isinstance(error_details, dict) and not error_details:
+            if (
+                normalize_empty
+                and isinstance(error_details, dict)
+                and not error_details
+            ):
                 self.logger.warning(
                     "Received 404 with empty object payload; returning empty object.",
                     extra={"status_code": status_code},
@@ -940,7 +954,7 @@ class BaseClient:
                 response=error_details,
             ) from None
 
-        raise FMPError(
+        raise FMPAPIError(
             f"HTTP {status_code} error occurred: {error_details}",
             status_code=status_code,
             response=error_details,
@@ -956,7 +970,7 @@ class BaseClient:
         Raises:
             AuthenticationError: If the body is the known invalid-key copy
                 on a 2xx response (#340).
-            FMPError: If any other error message is found in the data
+            FMPAPIError: If any other error message is found in the data
         """
         for key in _ERROR_BODY_KEY_ORDER:
             if key in data:
@@ -968,7 +982,7 @@ class BaseClient:
         text = _error_body_text(message)
         if _is_invalid_api_key_text(text):
             raise AuthenticationError(text, status_code=200)
-        raise FMPError(text)
+        raise FMPAPIError(text)
 
     @staticmethod
     def _raise_decorator_invalid_key(item: dict[str, Any]) -> None:

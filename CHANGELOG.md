@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [2.9.0] - 2026-11-10
+
+Python 3.10 through 3.14 stay supported. New types are additive:
+`except FMPError` still catches every error it caught before.
+
+**Provider behavior that reaches you unchanged.**
+
+- Economics indicators with no `from` date now return about three months of
+  data, not twelve. Pass `start_date` when you need a longer window. The
+  client does not inject the old default.
+- Company screener pages omit alternate share classes and duplicate listings
+  unless you pass `include_all_share_classes=True`.
+- Stock-quote `marketCap` values are whole numbers. The field stays a
+  `float`, so an integer still validates.
+
+### Added
+
+- **TipRanks partner endpoints.** Sync and async intelligence methods for
+  `tipranks-search` (including exact `firmName`), point-in-time ratings by
+  symbol and analyst, summaries by symbol, analyst, and firm, and the
+  analyst directory. Ratings history is about three years. Unset filters
+  are omitted.
+- **Index change type and IPO deal size.** `HistoricalIndexConstituent.change_type`
+  and `IPOEvent.deal_size`. ESG benchmarks expose `period`.
+- **Strict empty 404s (#405).** `Endpoint.normalize_empty_404_body` defaults
+  to `True`. Set it `False` on a copied endpoint to raise on a 404 whose
+  body is `[]` or `{}`. `allow_empty_on_404=True` still returns `[]` first.
+- **Transport and API exception bases (#406).** `FMPTransportError` is the
+  parent of `FMPTimeoutError` and `FMPNetworkError`. `FMPAPIError` is the
+  parent of the status errors. Both remain `FMPError`. Catch
+  `FMPTransportError` before a degrading `except FMPError` when an outage
+  must abort.
+
+### Changed
+
+- **Provider behavior, passed through.** ETF sector weights are sorted by
+  weight and empty for delisted funds. Country allocations match across
+  endpoints and are empty for delisted funds. Senate and House dates are
+  the filed calendar date, pages are stably ordered, and owner labels are
+  standardized (`Dependent` covers dependent children). Index constituent
+  dates are the real change date. Mutual-fund disclosures are one series
+  per period. Peer market caps use reporting units. Earnings, split, and
+  dividend calendars sort by date descending, then symbol. Holiday names
+  and half-days are corrected. Financial scores and owner earnings return
+  for semi-annual reporters, and owner earnings return for firms with no
+  fixed assets. IPO `marketCap` is null until listing.
+- **Dependency floors and GitHub Actions.** Runtime, LangChain, MCP, dev,
+  and docs floors move to the current stable releases, including Pydantic
+  2.14.3, Tenacity 9.2.1, MCP 2.3.0, OpenAI 3.49.0, langchain-core 1.7.7,
+  and uv 0.13.7. vcrpy 9.4.2, coverage 7.17, pre-commit 4.7,
+  mkdocs-material 9.8, and mkdocstrings-python 2.0.10 install on Python
+  3.11+; 3.10 stays on the last release that supports it. `tomli` remains
+  in the mcp extra for 3.10. Actions are SHA-pinned at current stable
+  releases, including setup-uv 10.3.3, setup-python 7.1.0, CodeQL 4.39.3,
+  codecov 7.1.1, and gh-action-pypi-publish 1.14.3.
+
 ## [2.8.0] - 2026-09-13
 
 ### Added
@@ -165,13 +221,14 @@ typing migration, types period / interval / timeframe as closed
 vocabularies (`Period`, `Interval`, `TechnicalInterval`, `Timeframe`),
 and adds a local VCR-backed client-method sweep.
 
-**Read before upgrading.** Three public-type breaks, all narrow:
+**Read before upgrading.** Four public-type breaks, all narrow:
 
 | Change | Who it affects | Migration |
 |---|---|---|
 | Credential config fields are `SecretStr` (#252 FMP-SEC-007) | anyone reading `ClientConfig.api_key`, `LangChainConfig.embedding_api_key`, `EmbeddingConfig.api_key`, or `CacheConfig.redis_url` as a `str` | call `.get_secret_value()` |
 | Senate/House trade dates are `date`, not `datetime` (#338) | anyone comparing `SenateTrade` / `HouseDisclosure` `disclosure_date`, `transaction_date`, or `SenateTrade.date_received` to `datetime.now()` | compare with `date.today()` |
 | `SenateNetWorthValueRange` dropped `.min` / `.max` (#336) | anyone reading those attributes | use `.minimum` / `.maximum` (wire aliases `min` / `max` unchanged) |
+| Transport failures are `FMPError` (#350 / #354, called out in #406) | `except httpx.TimeoutException` / `except httpx.ConnectError` no longer matches, and `except FMPError` now also catches an outage | catch `FMPTimeoutError` / `FMPNetworkError` (or `FMPTransportError` from 2.9.0) and re-raise them before a degrading `except FMPError` |
 
 Construction is unchanged — passing a plain `str` still works. `repr()` /
 `str()` were already redacted. What breaks is code that *reads* the field
