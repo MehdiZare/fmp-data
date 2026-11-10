@@ -270,8 +270,9 @@ class MarketClient(EndpointGroup):
             exchange: Exchange code filter; omitted when None.
             limit: Maximum result count; omitted when None.
             page: Zero-based page number; omitted when None.
-            include_all_share_classes: Include all share classes when True; omitted
-                when None.
+            include_all_share_classes: Include alternate share classes and
+                duplicate listings when True. Omitted when None, which keeps
+                FMP's default of filtering those rows before paging.
             avg_volume_more_than: Minimum average trading volume filter.
             avg_volume_less_than: Maximum average trading volume filter.
 
@@ -392,7 +393,10 @@ class MarketClient(EndpointGroup):
         from_date: dt_date | None = None,
         to_date: dt_date | None = None,
     ) -> list[MarketHoliday]:
-        """Get market holidays for a specific exchange
+        """Get market holidays for a specific exchange.
+
+        Holiday names are the exchange's own labels, and half-day sessions
+        stay in the result with their open and close times.
 
         New keyword-only filters are omitted when None, preserving the existing
         request.

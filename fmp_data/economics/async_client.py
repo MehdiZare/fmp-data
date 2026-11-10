@@ -56,8 +56,9 @@ class AsyncEconomicsClient(AsyncEndpointGroup):
 
         Args:
             indicator_name: FMP economic indicator name, for example "GDP".
-            start_date: Start date passed to FMP; boundary semantics depend on the
-                endpoint.
+            start_date: Start date passed to FMP as ``from``. Omitted when None.
+                With no start date, FMP returns about the most recent three
+                months rather than twelve.
             end_date: End date passed to FMP; boundary semantics depend on the
                 endpoint.
 

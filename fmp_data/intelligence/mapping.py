@@ -52,9 +52,17 @@ from fmp_data.intelligence.endpoints import (
     STOCK_NEWS_ENDPOINT,
     STOCK_NEWS_SENTIMENTS_ENDPOINT,
     STOCK_SPLITS_CALENDAR,
+    TIPRANKS_ANALYST_SUMMARY,
+    TIPRANKS_ANALYSTS,
+    TIPRANKS_FIRM_SUMMARY,
+    TIPRANKS_PIT_ANALYST,
+    TIPRANKS_PIT_SYMBOL,
+    TIPRANKS_SEARCH,
+    TIPRANKS_SYMBOL_SUMMARY,
     TRENDING_SOCIAL_SENTIMENT_ENDPOINT,
 )
 from fmp_data.lc.hints import (
+    AS_OF_DATE_HINT,
     CIK_HINT,
     DATE_HINTS,
     LIMIT_HINT,
@@ -131,6 +139,13 @@ INTELLIGENCE_ENDPOINT_MAP: dict[str, Endpoint[Any]] = {
     "get_grades_consensus": GRADES_CONSENSUS,
     "get_grades_news": GRADES_NEWS,
     "get_grades_latest_news": GRADES_LATEST_NEWS,
+    "search_tipranks_ratings": TIPRANKS_SEARCH,
+    "get_tipranks_pit_by_symbol": TIPRANKS_PIT_SYMBOL,
+    "get_tipranks_pit_by_analyst": TIPRANKS_PIT_ANALYST,
+    "get_tipranks_symbol_summary": TIPRANKS_SYMBOL_SUMMARY,
+    "get_tipranks_analyst_summary": TIPRANKS_ANALYST_SUMMARY,
+    "get_tipranks_firm_summary": TIPRANKS_FIRM_SUMMARY,
+    "get_tipranks_analysts": TIPRANKS_ANALYSTS,
 }
 
 # Common parameter hints
@@ -154,6 +169,35 @@ INCLUDE_REPORT_TIMES_HINT = ParameterHint(
         "confirmed",
         "fiscal period",
     ],
+    required=False,
+)
+
+TIPRANKS_FIRM_HINT = ParameterHint(
+    natural_names=["firm", "broker", "bank"],
+    extraction_patterns=[r"(?i)\b(morgan stanley|goldman sachs)\b"],
+    examples=["Morgan Stanley"],
+    context_clues=["firm", "broker", "desk"],
+    required=False,
+)
+TIPRANKS_EXPERT_HINT = ParameterHint(
+    natural_names=["expert uid", "analyst id", "expertUID"],
+    extraction_patterns=[r"(?i)expert[_ ]?uid[:\s]+([0-9a-f]{8,})"],
+    examples=["expert-uid"],
+    context_clues=["expert", "analyst id"],
+    required=False,
+)
+TIPRANKS_ANALYST_HINT = ParameterHint(
+    natural_names=["analyst name", "analyst"],
+    extraction_patterns=[r"(?i)analyst\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)"],
+    examples=["Andrew Marok"],
+    context_clues=["analyst name", "exact name"],
+    required=False,
+)
+TIPRANKS_NONADJUSTED_HINT = ParameterHint(
+    natural_names=["native currency", "nonadjusted"],
+    extraction_patterns=[r"(?i)native currency|nonadjusted"],
+    examples=["true", "false"],
+    context_clues=["currency", "unadjusted"],
     required=False,
 )
 
@@ -2548,5 +2592,176 @@ INTELLIGENCE_ENDPOINTS_SEMANTICS = {
             "Screening",
             "Analyst activity tracking",
         ],
+    ),
+    "tipranks_search": EndpointSemantics(
+        client_name="intelligence",
+        method_name="search_tipranks_ratings",
+        natural_description=(
+            "Search individual TipRanks analyst ratings, optionally by firm"
+        ),
+        example_queries=[
+            "TipRanks ratings for AAPL",
+            "Morgan Stanley TipRanks calls",
+            "Search analyst ratings by firm",
+        ],
+        related_terms=["tipranks", "analyst rating", "price target", "firm"],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="TipRanks",
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "expert_uid": TIPRANKS_EXPERT_HINT,
+            "firm_name": TIPRANKS_FIRM_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+            "limit": LIMIT_HINT,
+            "page": PAGE_HINT,
+            "nonadjusted": TIPRANKS_NONADJUSTED_HINT,
+        },
+        response_hints={
+            "recommendation": ResponseFieldInfo(
+                description="Analyst recommendation",
+                examples=["buy", "hold", "sell"],
+                related_terms=["rating"],
+            )
+        },
+        use_cases=["Analyst research", "Rating feeds", "Firm coverage"],
+    ),
+    "tipranks_pit_symbol": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_tipranks_pit_by_symbol",
+        natural_description="Point-in-time TipRanks ratings for one symbol",
+        example_queries=["Who covered AAPL on this date", "TipRanks book for AAPL"],
+        related_terms=["point in time", "coverage", "tipranks"],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="TipRanks",
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "as_of": AS_OF_DATE_HINT,
+            "limit": LIMIT_HINT,
+            "page": PAGE_HINT,
+            "nonadjusted": TIPRANKS_NONADJUSTED_HINT,
+        },
+        response_hints={
+            "last_recommendation": ResponseFieldInfo(
+                description="Latest recommendation as of the date",
+                examples=["buy", "hold"],
+                related_terms=["rating"],
+            )
+        },
+        use_cases=["Historical consensus", "Coverage panels"],
+    ),
+    "tipranks_pit_analyst": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_tipranks_pit_by_analyst",
+        natural_description="Point-in-time TipRanks book for one analyst",
+        example_queries=["What does this analyst cover", "Analyst book as of a date"],
+        related_terms=["analyst", "expert", "tipranks"],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="TipRanks",
+        parameter_hints={
+            "expert_uid": TIPRANKS_EXPERT_HINT,
+            "analyst_name": TIPRANKS_ANALYST_HINT,
+            "as_of": AS_OF_DATE_HINT,
+            "limit": LIMIT_HINT,
+            "page": PAGE_HINT,
+            "nonadjusted": TIPRANKS_NONADJUSTED_HINT,
+        },
+        response_hints={
+            "symbol": ResponseFieldInfo(
+                description="Covered symbol",
+                examples=["AAPL"],
+                related_terms=["ticker"],
+            )
+        },
+        use_cases=["Analyst profiles", "Historical books"],
+    ),
+    "tipranks_symbol_summary": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_tipranks_symbol_summary",
+        natural_description="Aggregated TipRanks ratings for one symbol",
+        example_queries=["TipRanks summary for AAPL", "Buy hold sell counts"],
+        related_terms=["consensus", "summary", "tipranks"],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="TipRanks",
+        parameter_hints={
+            "symbol": SYMBOL_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+        },
+        response_hints={
+            "total_recommendations": ResponseFieldInfo(
+                description="Ratings in the window",
+                examples=["425"],
+                related_terms=["count"],
+            )
+        },
+        use_cases=["Consensus chips", "Watchlists"],
+    ),
+    "tipranks_analyst_summary": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_tipranks_analyst_summary",
+        natural_description="Aggregated TipRanks ratings for one analyst",
+        example_queries=["Analyst rating mix", "TipRanks analyst summary"],
+        related_terms=["analyst", "track record", "tipranks"],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="TipRanks",
+        parameter_hints={
+            "expert_uid": TIPRANKS_EXPERT_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+        },
+        response_hints={
+            "expert_uid": ResponseFieldInfo(
+                description="Stable analyst id",
+                examples=["3c6eb8cf"],
+                related_terms=["expert"],
+            )
+        },
+        use_cases=["Analyst comparison", "Research quality"],
+    ),
+    "tipranks_firm_summary": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_tipranks_firm_summary",
+        natural_description="Aggregated TipRanks ratings for one firm",
+        example_queries=["Morgan Stanley TipRanks summary", "Desk rating mix"],
+        related_terms=["firm", "desk", "tipranks"],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="TipRanks",
+        parameter_hints={
+            "firm_name": TIPRANKS_FIRM_HINT,
+            "start_date": DATE_HINTS["start_date"],
+            "end_date": DATE_HINTS["end_date"],
+        },
+        response_hints={
+            "firm_name": ResponseFieldInfo(
+                description="Exact firm name",
+                examples=["Morgan Stanley"],
+                related_terms=["broker"],
+            )
+        },
+        use_cases=["Firm comparison", "Desk footprint"],
+    ),
+    "tipranks_analysts": EndpointSemantics(
+        client_name="intelligence",
+        method_name="get_tipranks_analysts",
+        natural_description="Look up TipRanks analysts by exact name or firm",
+        example_queries=["Find a TipRanks analyst", "Analysts at Morgan Stanley"],
+        related_terms=["directory", "expert uid", "tipranks"],
+        category=SemanticCategory.INTELLIGENCE,
+        sub_category="TipRanks",
+        parameter_hints={
+            "analyst_name": TIPRANKS_ANALYST_HINT,
+            "firm_name": TIPRANKS_FIRM_HINT,
+            "limit": LIMIT_HINT,
+            "page": PAGE_HINT,
+        },
+        response_hints={
+            "analyst_name": ResponseFieldInfo(
+                description="Published analyst name",
+                examples=["Andrew Marok"],
+                related_terms=["name"],
+            )
+        },
+        use_cases=["Resolve expert ids", "Analyst pages"],
     ),
 }

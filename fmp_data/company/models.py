@@ -362,7 +362,9 @@ class Quote(BaseModel):
     year_high: float | None = Field(None, alias="yearHigh", description="52-week high")
     year_low: float | None = Field(None, alias="yearLow", description="52-week low")
     market_cap: float | None = Field(
-        None, alias="marketCap", description="Market capitalization"
+        None,
+        alias="marketCap",
+        description="Market capitalization as a whole number",
     )
     price_avg_50: float | None = Field(
         None, alias="priceAvg50", description="50-day average price"

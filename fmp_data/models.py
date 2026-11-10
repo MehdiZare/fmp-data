@@ -379,6 +379,10 @@ class Endpoint(BaseModel, Generic[T]):
     optional_params: list[EndpointParam] | None
     response_model: type[T]
     allow_empty_on_404: bool = True
+    #: When True, a 404 whose body is ``[]`` or ``{}`` is returned as that
+    #: empty payload. Set False to raise on that 404. ``allow_empty_on_404``
+    #: still returns ``[]`` first when it is True.
+    normalize_empty_404_body: bool = True
     #: .. deprecated:: 2.6
     #:     Removed in 3.0 (#153). Read by nothing: LangChain builds argument
     #:     schemas dynamically from ``mandatory_params``/``optional_params``
