@@ -33,7 +33,7 @@ def main() -> None:
     manifest = {
         "$schema": f"{schema}/plugin.schema.json",
         "name": "fmp-data",
-        "version": "0.1.0",
+        "version": "0.2.0",
         "description": "Find company tickers, quotes, and profiles with fmp-data.",
         "author": {"name": args.publisher},
         "repository": "https://github.com/MehdiZare/fmp-data",
@@ -55,7 +55,26 @@ def main() -> None:
     }
     mcp = {
         "$schema": f"{schema}/mcp.schema.json",
-        "mcpServers": {"fmp-data": {"type": "streamable-http", "url": args.endpoint}},
+        "mcpServers": {
+            "fmp-data": {
+                "type": "streamable-http",
+                "url": args.endpoint,
+                "extensions": {
+                    "com.openai": {
+                        "auth": {
+                            "type": "oauth",
+                            "resource": args.endpoint,
+                            "baseScopes": ["market:read"],
+                            "client": {
+                                "mode": "provided",
+                                "clientId": "fmp-data-chatgpt",
+                                "tokenEndpointAuthMethod": "client_secret_post",
+                            },
+                        }
+                    }
+                },
+            }
+        },
     }
     with ZipFile(args.output, "x", compression=ZIP_DEFLATED) as archive:
         for name, obj in (("plugin.json", manifest), ("mcp.json", mcp)):

@@ -63,6 +63,10 @@ Documentation = "https://mehdizare.github.io/fmp-data/"
 fmp-mcp = "fmp_data.mcp.cli:main"
 
 [project.optional-dependencies]
+chatgpt = [
+    "cryptography>=50.0.2",
+    "mcp[cli]>=2.3.0",
+]
 mcp = [
     # MCP Python SDK 2.2 is stable; fmp_data.mcp._compat retains the 1.x
     # fallback while fresh installs use the maintained 2.x line.

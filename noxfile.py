@@ -380,6 +380,8 @@ def security(session: Session) -> None:
         "mcp",
         "--extra",
         "cache-redis",
+        "--extra",
+        "chatgpt",
         "--no-dev",
         "--no-emit-project",
         "--no-hashes",
