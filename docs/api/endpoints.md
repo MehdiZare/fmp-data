@@ -10,7 +10,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 - [Market (36 endpoints)](#market)
 - [Fundamental (14 endpoints)](#fundamental)
 - [Technical (9 endpoints)](#technical)
-- [Market Intelligence (52 endpoints)](#market-intelligence)
+- [Market Intelligence (59 endpoints)](#market-intelligence)
 - [Institutional (24 endpoints)](#institutional)
 - [Investment (14 endpoints)](#investment)
 - [Alternative Markets (15 endpoints)](#alternative-markets)
@@ -167,7 +167,7 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 
 ## Market Intelligence
 
-### 52 endpoints
+### 59 endpoints
 
 | Endpoint | Path | Description |
 |----------|------|-------------|
@@ -189,6 +189,13 @@ All endpoints use the `/stable` prefix unless explicitly marked as `DIRECT` or `
 | `grades_consensus` | `/stable/grades-consensus` | Get stock grades consensus summary |
 | `grades_historical` | `/stable/grades-historical` | Get historical stock grades |
 | `grades_latest_news` | `/stable/grades-latest-news` | Get latest stock grade news |
+| `tipranks_search` | `/stable/tipranks-search` | Search TipRanks analyst ratings. History covers about three years. |
+| `tipranks_pit_symbol` | `/stable/tipranks-pit-symbol` | Point-in-time TipRanks ratings for a symbol. History covers about three years. |
+| `tipranks_pit_analyst` | `/stable/tipranks-pit-analyst` | Point-in-time TipRanks ratings for one analyst. History covers about three years. |
+| `tipranks_symbol_summary` | `/stable/tipranks-symbol-summary` | Aggregated TipRanks ratings for one symbol. Default window is twelve months. |
+| `tipranks_analyst_summary` | `/stable/tipranks-analyst-summary` | Aggregated TipRanks ratings for one analyst. Default window is twelve months. |
+| `tipranks_firm_summary` | `/stable/tipranks-firm-summary` | Aggregated TipRanks ratings for one firm. firmName must match exactly. |
+| `tipranks_analysts` | `/stable/tipranks-analysts` | Look up TipRanks analysts. Names match exactly and are not fuzzy. |
 | `grades_news` | `/stable/grades-news` | Get stock grade news |
 | `historical_earnings` | `/stable/earnings` | Get historical/upcoming earnings for a symbol (`limit`, `includeReportTimes`) |
 | `historical_social_sentiment` | `/stable/historical/social-sentiment` | **Removed** — raises `RemovedEndpointError` |

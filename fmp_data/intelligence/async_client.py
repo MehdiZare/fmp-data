@@ -5,7 +5,9 @@ from datetime import date
 from typing import Any
 
 from fmp_data.base import AsyncEndpointGroup
+from fmp_data.exceptions import ValidationError
 from fmp_data.helpers import RemovedEndpointError, deprecated, removed
+from fmp_data.intelligence.client import MarketIntelligenceClient
 from fmp_data.intelligence.endpoints import (
     CROWDFUNDING_BY_CIK,
     CROWDFUNDING_RSS,
@@ -52,6 +54,13 @@ from fmp_data.intelligence.endpoints import (
     STOCK_NEWS_ENDPOINT,
     STOCK_SPLITS_CALENDAR,
     STOCK_SYMBOL_NEWS_ENDPOINT,
+    TIPRANKS_ANALYST_SUMMARY,
+    TIPRANKS_ANALYSTS,
+    TIPRANKS_FIRM_SUMMARY,
+    TIPRANKS_PIT_ANALYST,
+    TIPRANKS_PIT_SYMBOL,
+    TIPRANKS_SEARCH,
+    TIPRANKS_SYMBOL_SUMMARY,
 )
 from fmp_data.intelligence.models import (
     CrowdfundingOffering,
@@ -91,6 +100,10 @@ from fmp_data.intelligence.models import (
     StockNewsArticle,
     StockNewsSentiment,
     StockSplitEvent,
+    TipRanksAnalyst,
+    TipRanksPointInTimeRating,
+    TipRanksRating,
+    TipRanksSummary,
     TrendingSocialSentiment,
 )
 
@@ -1002,4 +1015,180 @@ class AsyncMarketIntelligenceClient(AsyncEndpointGroup):
         return self._unwrap_list(
             await self.client.request_async(GRADES_LATEST_NEWS, page=page),
             StockGradeNews,
+        )
+
+    async def search_tipranks_ratings(
+        self,
+        symbol: str | None = None,
+        *,
+        expert_uid: str | None = None,
+        firm_name: str | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        limit: int | None = None,
+        page: int | None = None,
+        nonadjusted: bool | None = None,
+    ) -> list[TipRanksRating]:
+        """Search TipRanks analyst ratings.
+
+        History covers about three years. Unset filters, including
+        ``firm_name``, are omitted. ``firm_name`` must match the published
+        firm exactly.
+        """
+        params = MarketIntelligenceClient._omit_unset(
+            {
+                "symbol": symbol,
+                "expert_uid": expert_uid,
+                "firm_name": firm_name,
+                "start_date": MarketIntelligenceClient._format_date(start_date),
+                "end_date": MarketIntelligenceClient._format_date(end_date),
+                "limit": limit,
+                "page": page,
+                "nonadjusted": nonadjusted,
+            }
+        )
+        return self._unwrap_list(
+            await self.client.request_async(TIPRANKS_SEARCH, **params),
+            TipRanksRating,
+        )
+
+    async def get_tipranks_pit_by_symbol(
+        self,
+        symbol: str,
+        *,
+        as_of: date | None = None,
+        limit: int | None = None,
+        page: int | None = None,
+        nonadjusted: bool | None = None,
+    ) -> list[TipRanksPointInTimeRating]:
+        """Get each analyst's latest TipRanks call on a symbol as of a date.
+
+        History covers about three years.
+        """
+        params = MarketIntelligenceClient._omit_unset(
+            {
+                "as_of": MarketIntelligenceClient._format_date(as_of),
+                "limit": limit,
+                "page": page,
+                "nonadjusted": nonadjusted,
+            }
+        )
+        return self._unwrap_list(
+            await self.client.request_async(
+                TIPRANKS_PIT_SYMBOL, symbol=symbol, **params
+            ),
+            TipRanksPointInTimeRating,
+        )
+
+    async def get_tipranks_pit_by_analyst(
+        self,
+        *,
+        expert_uid: str | None = None,
+        analyst_name: str | None = None,
+        as_of: date | None = None,
+        limit: int | None = None,
+        page: int | None = None,
+        nonadjusted: bool | None = None,
+    ) -> list[TipRanksPointInTimeRating]:
+        """Get one analyst's TipRanks book as of a date.
+
+        Pass ``expert_uid`` or the exact published ``analyst_name``.
+        """
+        if expert_uid is None and analyst_name is None:
+            raise ValidationError("expert_uid or analyst_name is required")
+        params = MarketIntelligenceClient._omit_unset(
+            {
+                "expert_uid": expert_uid,
+                "analyst_name": analyst_name,
+                "as_of": MarketIntelligenceClient._format_date(as_of),
+                "limit": limit,
+                "page": page,
+                "nonadjusted": nonadjusted,
+            }
+        )
+        return self._unwrap_list(
+            await self.client.request_async(TIPRANKS_PIT_ANALYST, **params),
+            TipRanksPointInTimeRating,
+        )
+
+    async def get_tipranks_symbol_summary(
+        self,
+        symbol: str,
+        *,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> TipRanksSummary | None:
+        """Get the TipRanks ratings rollup for a symbol."""
+        params = MarketIntelligenceClient._omit_unset(
+            {
+                "start_date": MarketIntelligenceClient._format_date(start_date),
+                "end_date": MarketIntelligenceClient._format_date(end_date),
+            }
+        )
+        result = await self.client.request_async(
+            TIPRANKS_SYMBOL_SUMMARY, symbol=symbol, **params
+        )
+        return self._unwrap_single(result, TipRanksSummary, allow_none=True)
+
+    async def get_tipranks_analyst_summary(
+        self,
+        expert_uid: str,
+        *,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> TipRanksSummary | None:
+        """Get the TipRanks ratings rollup for one analyst."""
+        params = MarketIntelligenceClient._omit_unset(
+            {
+                "start_date": MarketIntelligenceClient._format_date(start_date),
+                "end_date": MarketIntelligenceClient._format_date(end_date),
+            }
+        )
+        result = await self.client.request_async(
+            TIPRANKS_ANALYST_SUMMARY, expert_uid=expert_uid, **params
+        )
+        return self._unwrap_single(result, TipRanksSummary, allow_none=True)
+
+    async def get_tipranks_firm_summary(
+        self,
+        firm_name: str,
+        *,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> TipRanksSummary | None:
+        """Get the TipRanks ratings rollup for one firm."""
+        params = MarketIntelligenceClient._omit_unset(
+            {
+                "start_date": MarketIntelligenceClient._format_date(start_date),
+                "end_date": MarketIntelligenceClient._format_date(end_date),
+            }
+        )
+        result = await self.client.request_async(
+            TIPRANKS_FIRM_SUMMARY, firm_name=firm_name, **params
+        )
+        return self._unwrap_single(result, TipRanksSummary, allow_none=True)
+
+    async def get_tipranks_analysts(
+        self,
+        *,
+        analyst_name: str | None = None,
+        firm_name: str | None = None,
+        limit: int | None = None,
+        page: int | None = None,
+    ) -> list[TipRanksAnalyst]:
+        """Look up TipRanks analysts.
+
+        ``analyst_name`` is an exact published name, not a fuzzy search.
+        """
+        params = MarketIntelligenceClient._omit_unset(
+            {
+                "analyst_name": analyst_name,
+                "firm_name": firm_name,
+                "limit": limit,
+                "page": page,
+            }
+        )
+        return self._unwrap_list(
+            await self.client.request_async(TIPRANKS_ANALYSTS, **params),
+            TipRanksAnalyst,
         )

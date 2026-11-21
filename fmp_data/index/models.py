@@ -39,7 +39,14 @@ class HistoricalIndexConstituent(BaseModel):
 
     model_config = default_model_config
 
-    date: datetime = Field(description="Date of change")
+    date: datetime = Field(
+        description="Calendar date of the index change, as reported by FMP"
+    )
+    change_type: str | None = Field(
+        None,
+        alias="changeType",
+        description="Kind of change: addition, removal, or replacement",
+    )
     symbol: str | None = Field(None, description="Stock symbol")
     date_added: str | None = Field(
         None, alias="dateAdded", description="Human-readable date added"

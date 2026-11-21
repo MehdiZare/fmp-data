@@ -210,7 +210,15 @@ class IPOEvent(BaseModel):
         alias="priceRange", description="Expected price range"
     )
     market_cap: Decimal | None = Field(
-        alias="marketCap", description="Expected market cap"
+        alias="marketCap",
+        description=(
+            "Capitalization at listing. Null until the company has been added."
+        ),
+    )
+    deal_size: Decimal | None = Field(
+        None,
+        alias="dealSize",
+        description="Offering value (shares offered times offer price)",
     )
     daa: str | None = Field(default=None, description="Undocumented FMP internal field")
 
@@ -463,6 +471,10 @@ class ESGBenchmark(BaseModel):
     average_governance_score: float | None = Field(None, alias="averageGovernanceScore")
     average_esg_score: float | None = Field(None, alias="averageESGScore")
     fiscal_year: int | None = Field(default=None)
+    period: str | None = Field(
+        None,
+        description="Fiscal period the benchmark scores cover, such as FY",
+    )
 
 
 # Government Trading Models
@@ -493,7 +505,13 @@ class SenateTrade(BaseModel):
     )
     office: str | None = Field(None, description="Senate office")
     district: str | None = Field(None, description="Senate district")
-    owner: str | None = Field(None, description="Owner of the asset")
+    owner: str | None = Field(
+        None,
+        description=(
+            "Standardized owner label. 'Dependent' covers dependent children "
+            "in both chambers."
+        ),
+    )
     asset_description: str | None = Field(
         None, alias="assetDescription", description="Description of the asset"
     )
@@ -1418,3 +1436,121 @@ class StockGradeNews(BaseModel):
     price_when_posted: Decimal = Field(
         alias="priceWhenPosted", description="Stock price when grade was posted"
     )
+
+
+class TipRanksRating(BaseModel):
+    """One TipRanks analyst rating from ``tipranks-search``.
+
+    Ratings history covers about three years.
+    """
+
+    model_config = default_model_config
+
+    symbol: str | None = None
+    date: datetime | None = None
+    recommendation_date: dt_date | None = Field(None, alias="recommendationDate")
+    expert_uid: str | None = Field(None, alias="expertUID")
+    analyst_name: str | None = Field(None, alias="analystName")
+    firm_name: str | None = Field(None, alias="firmName")
+    recommendation: str | None = None
+    analyst_action: str | None = Field(None, alias="analystAction")
+    article_title: str | None = Field(None, alias="articleTitle")
+    article_site: str | None = Field(None, alias="articleSite")
+    price_target: float | None = Field(None, alias="priceTarget")
+    price_target_currency: str | None = Field(None, alias="priceTargetCurrency")
+    url: str | None = None
+
+
+class TipRanksPointInTimeRating(BaseModel):
+    """One analyst's latest active call as of a date."""
+
+    model_config = default_model_config
+
+    symbol: str | None = None
+    date: datetime | None = None
+    expert_uid: str | None = Field(None, alias="expertUID")
+    analyst_name: str | None = Field(None, alias="analystName")
+    stock_success_rate: float | None = Field(None, alias="stockSuccessRate")
+    firm_name: str | None = Field(None, alias="firmName")
+    last_recommendation: str | None = Field(None, alias="lastRecommendation")
+    last_recommendation_date: dt_date | None = Field(
+        None, alias="lastRecommendationDate"
+    )
+    article_title: str | None = Field(None, alias="articleTitle")
+    article_site: str | None = Field(None, alias="articleSite")
+    price_target: float | None = Field(None, alias="priceTarget")
+    price_target_currency: str | None = Field(None, alias="priceTargetCurrency")
+    url: str | None = None
+    last_analyst_action: str | None = Field(None, alias="lastAnalystAction")
+    stock_return: float | None = Field(None, alias="stockReturn")
+    beat_target: bool | None = Field(None, alias="beatTarget")
+    analyst_rank: int | None = Field(None, alias="analystRank")
+    stock_avg_return: float | None = Field(None, alias="stockAvgReturn")
+
+
+class TipRanksRecommendationCounts(BaseModel):
+    """Buy, hold, and sell counts inside a TipRanks summary."""
+
+    model_config = default_model_config
+
+    buy: int | None = None
+    hold: int | None = None
+    sell: int | None = None
+
+
+class TipRanksAnalystActionCounts(BaseModel):
+    """Analyst-action counts inside a TipRanks summary."""
+
+    model_config = default_model_config
+
+    initiated: int | None = None
+    maintained: int | None = None
+    upgraded: int | None = None
+    downgraded: int | None = None
+    reiterated: int | None = None
+    resumed: int | None = None
+
+
+class TipRanksSummary(BaseModel):
+    """One aggregated TipRanks ratings row."""
+
+    model_config = default_model_config
+
+    symbol: str | None = None
+    expert_uid: str | None = Field(None, alias="expertUID")
+    firm_name: str | None = Field(None, alias="firmName")
+    window_start: dt_date | None = Field(None, alias="from")
+    window_end: dt_date | None = Field(None, alias="to")
+    total_recommendations: int | None = Field(None, alias="totalRecommendations")
+    distinct_symbols: int | None = Field(None, alias="distinctSymbols")
+    distinct_analysts: int | None = Field(None, alias="distinctAnalysts")
+    valid_price_targets: int | None = Field(None, alias="validPriceTargets")
+    recommendations: TipRanksRecommendationCounts | None = None
+    analyst_action: TipRanksAnalystActionCounts | None = Field(
+        None, alias="analystAction"
+    )
+    compared_price_targets: int | None = Field(None, alias="comparedPriceTargets")
+    beats: int | None = None
+    misses: int | None = None
+    average_return: float | None = Field(None, alias="averageReturn")
+    top_return: float | None = Field(None, alias="topReturn")
+    worst_return: float | None = Field(None, alias="worstReturn")
+
+
+class TipRanksAnalyst(BaseModel):
+    """A TipRanks analyst directory row.
+
+    ``analyst_name`` matches the published name exactly. The lookup is not fuzzy.
+    """
+
+    model_config = default_model_config
+
+    expert_uid: str | None = Field(None, alias="expertUID")
+    analyst_name: str | None = Field(None, alias="analystName")
+    firm_name: str | None = Field(None, alias="firmName")
+    success_rate: float | None = Field(None, alias="successRate")
+    excess_return: float | None = Field(None, alias="excessReturn")
+    total_recommendations: int | None = Field(None, alias="totalRecommendations")
+    good_recommendations: int | None = Field(None, alias="goodRecommendations")
+    analyst_rank: int | None = Field(None, alias="analystRank")
+    num_of_stars: float | None = Field(None, alias="numOfStars")

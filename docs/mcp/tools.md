@@ -11,7 +11,7 @@ For full FMP endpoint coverage, use the Python client. The MCP tool catalog incl
 (everything with MCP semantics, loadable via an explicit manifest), followed by
 how many of those are in `DEFAULT_TOOLS` (what a default server registers).
 The two differ where a tool is deprecated, redundant, or too heavy for the
-default set — `230` catalog tools, `144` default.
+default set — `237` catalog tools, `151` default.
 
 **Withdrawn endpoints:** 22 tools name an FMP endpoint that no longer exists.
 Probed against the live `stable` API, every one of those paths returns 404, so
@@ -41,7 +41,7 @@ resolve and return `[]`, but they are not in `DEFAULT_TOOLS`. Rows marked
 - [Fundamental (14 tools, 12 default)](#fundamental)
 - [Index (6 tools, 0 default)](#index)
 - [Institutional (12 tools, 8 default)](#institutional)
-- [Intelligence (51 tools, 44 default)](#intelligence)
+- [Intelligence (58 tools, 51 default)](#intelligence)
 - [Investment (14 tools, 9 default)](#investment)
 - [Market (23 tools, 21 default)](#market)
 - [SEC (12 tools, 0 default)](#sec)
@@ -217,7 +217,7 @@ via a manifest; these return large payloads and several are CSV).
 
 ## Intelligence
 
-**51 tools** for news, sentiment, market events, and analyst ratings/grades (44 default).
+**58 tools** for news, sentiment, market events, analyst ratings, and TipRanks (51 default).
 
 | Tool Key | Description |
 |----------|-------------|
@@ -271,6 +271,13 @@ via a manifest; these return large payloads and several are CSV).
 | `stock_news` | Market-wide stock news feed of company events and corporate developments. Not filterable by symbol; narrow it by date range or page |
 | `stock_news_sentiments` | **Withdrawn / not in DEFAULT_TOOLS** — client returns `[]` |
 | `stock_splits_calendar` | Access upcoming and historical stock split events including split ratios, dates, and affected securities |
+| `tipranks_analyst_summary` | Aggregated TipRanks ratings for one analyst over a date window |
+| `tipranks_analysts` | Look up TipRanks analysts by exact published name or firm |
+| `tipranks_firm_summary` | Aggregated TipRanks ratings for one firm. The firm name must match exactly |
+| `tipranks_pit_analyst` | Point-in-time TipRanks book for one analyst. History covers about three years |
+| `tipranks_pit_symbol` | Point-in-time TipRanks ratings for one symbol. History covers about three years |
+| `tipranks_search` | Search individual TipRanks analyst ratings, including an exact firm name filter |
+| `tipranks_symbol_summary` | Aggregated TipRanks ratings for one symbol over a date window |
 | `trending_social_sentiment` | **Removed / not in DEFAULT_TOOLS** — raises `RemovedEndpointError` |
 
 ## Investment

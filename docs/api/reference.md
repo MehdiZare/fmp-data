@@ -504,7 +504,9 @@ client = FMPDataClient(config=config)
 ```python
 from fmp_data import FMPDataClient
 from fmp_data.exceptions import (
+    FMPAPIError,
     FMPError,
+    FMPTransportError,
     RateLimitError,
     AuthenticationError,
     ValidationError,
@@ -513,14 +515,18 @@ from fmp_data.exceptions import (
 try:
     with FMPDataClient.from_env() as client:
         data = client.company.get_profile("INVALID")
+except FMPTransportError:
+    raise  # outage: abort and retry; do not treat it as empty data
 except AuthenticationError:
     print("Check your API key")
 except RateLimitError as e:
     print(f"Rate limited. Wait {e.retry_after} seconds")
 except ValidationError as e:
     print(f"Invalid request: {e.message}")
-except FMPError as e:
+except FMPAPIError as e:
     print(f"API error: {e.message}")
+except FMPError as e:
+    print(f"Client error: {e.message}")
 ```
 
 ### Custom Logging
