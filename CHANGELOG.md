@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [2.9.0] - 2026-11-10
+## [2.9.0] - 2026-11-21
 
 Python 3.10 through 3.14 stay supported. New types are additive:
 `except FMPError` still catches every error it caught before.
@@ -32,8 +32,8 @@ Python 3.10 through 3.14 stay supported. New types are additive:
 - **Index change type and IPO deal size.** `HistoricalIndexConstituent.change_type`
   and `IPOEvent.deal_size`. ESG benchmarks expose `period`.
 - **Strict empty 404s (#405).** `Endpoint.normalize_empty_404_body` defaults
-  to `True`. Set it `False` on a copied endpoint to raise on a 404 whose
-  body is `[]` or `{}`. `allow_empty_on_404=True` still returns `[]` first.
+  to `True`. Set both `allow_empty_on_404` and `normalize_empty_404_body`
+  to `False` on a copied endpoint to raise on a 404 with body `[]` or `{}`.
 - **Transport and API exception bases (#406).** `FMPTransportError` is the
   parent of `FMPTimeoutError` and `FMPNetworkError`. `FMPAPIError` is the
   parent of the status errors. Both remain `FMPError`. Catch
@@ -54,14 +54,10 @@ Python 3.10 through 3.14 stay supported. New types are additive:
   for semi-annual reporters, and owner earnings return for firms with no
   fixed assets. IPO `marketCap` is null until listing.
 - **Dependency floors and GitHub Actions.** Runtime, LangChain, MCP, dev,
-  and docs floors move to the current stable releases, including Pydantic
-  2.14.3, Tenacity 9.2.1, MCP 2.3.0, OpenAI 3.49.0, langchain-core 1.7.7,
-  and uv 0.13.7. vcrpy 9.4.2, coverage 7.17, pre-commit 4.7,
-  mkdocs-material 9.8, and mkdocstrings-python 2.0.10 install on Python
-  3.11+; 3.10 stays on the last release that supports it. `tomli` remains
-  in the mcp extra for 3.10. Actions are SHA-pinned at current stable
-  releases, including setup-uv 10.3.3, setup-python 7.1.0, CodeQL 4.39.3,
-  codecov 7.1.1, and gh-action-pypi-publish 1.14.3.
+  and docs dependencies include Pydantic 2.14.4, MCP 2.3.0, OpenAI 3.57.0,
+  and uv 0.13.9. Python 3.11+ uses LangChain Core 1.8.4 and
+  langchain-openai 1.8.5. Python 3.10 retains compatible versions of both
+  packages. CI pins setup-uv 10.4.0 and CodeQL 4.39.4 by commit SHA.
 
 ## [2.8.0] - 2026-09-13
 

@@ -107,7 +107,7 @@ class AsyncInvestmentClient(AsyncEndpointGroup):
     async def get_etf_sector_weightings(self, symbol: str) -> list[ETFSectorWeighting]:
         """Get ETF sector weightings.
 
-        Results are ordered by weight, largest first. Delisted funds return
+        FMP orders rows by raw percentage before parsing. Delisted funds return
         an empty list.
         """
         return self._unwrap_list(

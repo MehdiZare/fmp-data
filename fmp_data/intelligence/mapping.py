@@ -188,7 +188,7 @@ TIPRANKS_EXPERT_HINT = ParameterHint(
 )
 TIPRANKS_ANALYST_HINT = ParameterHint(
     natural_names=["analyst name", "analyst"],
-    extraction_patterns=[r"(?i)analyst\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)"],
+    extraction_patterns=[r"(?i:analyst)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)"],
     examples=["Andrew Marok"],
     context_clues=["analyst name", "exact name"],
     required=False,
