@@ -139,6 +139,9 @@ agent connector; use `fmp-mcp` for the broader MCP tool catalog, manifests,
 and typed local control. Comparison and coverage matrix:
 [docs/mcp/hosted.md](docs/mcp/hosted.md).
 
+For the ChatGPT plugin server, local setup, and directory package instructions,
+see [FMP Data for ChatGPT](plugins/chatgpt/README.md).
+
 ### Quick Setup for Claude Desktop
 
 ```bash

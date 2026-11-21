@@ -1184,7 +1184,10 @@ class TestEveryHandlerSeesRedactedExtras:
     raw value from the same record.
     """
 
-    def test_a_second_plain_handler_sees_masked_extras(self) -> None:
+    def test_a_second_plain_handler_sees_masked_extras(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        caplog.set_level(logging.INFO, logger="fmp_data.base")
         from fmp_data.logger import FMPLogger
 
         planted = "PLANTEDCREDENTIALVALUE"
