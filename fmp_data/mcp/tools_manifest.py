@@ -172,7 +172,7 @@ DEFAULT_TOOLS: list[str] = [
     "institutional.insider_trades",
     "institutional.institutional_holdings",
     "institutional.transaction_types",
-    # Intelligence (44 tools) - news, events, grades/ratings (#116)
+    # Intelligence (51 tools) - news, events, grades/ratings, TipRanks (#116)
     # Dead FMP endpoints intentionally omitted from defaults, all in
     # WITHDRAWN_TOOLS: earnings_confirmed, earnings_surprises and
     # stock_news_sentiments 404 with no successor at all, and
@@ -224,6 +224,13 @@ DEFAULT_TOOLS: list[str] = [
     "intelligence.senate_trades_by_name",
     "intelligence.stock_news",
     "intelligence.stock_splits_calendar",
+    "intelligence.tipranks_analyst_summary",
+    "intelligence.tipranks_analysts",
+    "intelligence.tipranks_firm_summary",
+    "intelligence.tipranks_pit_analyst",
+    "intelligence.tipranks_pit_symbol",
+    "intelligence.tipranks_search",
+    "intelligence.tipranks_symbol_summary",
     # Investment (9 tools) - ETFs and Mutual Funds
     # Dead FMP endpoints intentionally omitted (see WITHDRAWN_TOOLS):
     # etf_holding_dates and mutual_fund_holdings are replaced by

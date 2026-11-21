@@ -17,11 +17,30 @@ class FMPError(Exception):
         super().__init__(self.message)
 
 
-class FMPTimeoutError(FMPError):
+class FMPTransportError(FMPError):
+    """Raised when FMP was not reached.
+
+    Parent of :class:`FMPTimeoutError` and :class:`FMPNetworkError`. Catch
+    this before a degrading ``except FMPError`` when an outage must abort
+    and be retried instead of being treated as an empty API result.
+    """
+
+
+class FMPAPIError(FMPError):
+    """Raised when FMP answered with an error.
+
+    Parent of the status-bearing errors (:class:`RateLimitError`,
+    :class:`AuthenticationError`, :class:`ValidationError`,
+    :class:`FMPNotFound`) and of generic HTTP or 2xx error-body failures.
+    Transport failures are not :class:`FMPAPIError`.
+    """
+
+
+class FMPTimeoutError(FMPTransportError):
     """Raised when an FMP HTTP request times out."""
 
 
-class FMPNetworkError(FMPError):
+class FMPNetworkError(FMPTransportError):
     """Raised when an FMP HTTP request fails at the transport layer.
 
     Covers ``httpx.NetworkError`` and leftover ``httpx.RequestError``
@@ -43,7 +62,7 @@ class FMPNetworkError(FMPError):
         self.retryable = retryable
 
 
-class RateLimitError(FMPError):
+class RateLimitError(FMPAPIError):
     """Raised when API rate limit is exceeded"""
 
     def __init__(
@@ -63,13 +82,13 @@ class RateLimitError(FMPError):
         return base_msg
 
 
-class AuthenticationError(FMPError):
+class AuthenticationError(FMPAPIError):
     """Raised when API key is invalid or missing"""
 
     pass
 
 
-class ValidationError(FMPError):
+class ValidationError(FMPAPIError):
     """Raised when request parameters are invalid"""
 
     pass
@@ -116,7 +135,7 @@ class DependencyError(ConfigError):
         self.install_command = install_command
 
 
-class FMPNotFound(FMPError):
+class FMPNotFound(FMPAPIError):
     """Raised when a requested symbol or resource cannot be found."""
 
     def __init__(self, symbol: str):

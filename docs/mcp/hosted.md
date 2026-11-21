@@ -125,7 +125,7 @@ Hosted `endpoint` values are FMP path slugs, not our `client.method` specs.
 | `commodity` | 9 | `alternative.commodity_*` + `batch.commodity_quotes` | |
 | `crypto` | 9 | `alternative.crypto_*` + `batch.crypto_quotes` | |
 | `forex` | 9 | `alternative.forex_*` + `batch.forex_quotes` | |
-| `tipranks` | 7 | **none** | Paid TipRanks add-on. Not in this client. |
+| `tipranks` | 7 | `intelligence` TipRanks search, ratings, summaries, and analysts | Requires the paid TipRanks add-on. |
 
 ### What hosted MCP does not replace
 
@@ -137,7 +137,6 @@ Hosted `endpoint` values are FMP path slugs, not our `client.method` specs.
 
 ### What we do not ship that they do
 
-- `tipranks` (paid add-on).
 - A single dataset tool that internally multiplexes dozens of REST paths.
   Our tools stay one-endpoint-each so LangChain / MCP argument schemas stay
   honest.

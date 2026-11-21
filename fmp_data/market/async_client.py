@@ -285,8 +285,9 @@ class AsyncMarketClient(AsyncEndpointGroup):
             exchange: Exchange code filter; omitted when None.
             limit: Maximum result count; omitted when None.
             page: Zero-based page number; omitted when None.
-            include_all_share_classes: Include all share classes when True; omitted
-                when None.
+            include_all_share_classes: Include alternate share classes and
+                duplicate listings when True. Omitted when None, which keeps
+                FMP's default of filtering those rows before paging.
             avg_volume_more_than: Minimum average trading volume filter.
             avg_volume_less_than: Maximum average trading volume filter.
 
